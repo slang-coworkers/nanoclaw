@@ -3,7 +3,7 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 19
+source_count: 22
 ---
 
 # Slang Compiler Crash & Legalization Probes
@@ -50,6 +50,12 @@ mishandles an input shape, and the crash surfaces far downstream in codegen or t
 - **`CoerceToProperTypeImpl` has THREE failure representations, not two** — normalize at the wrapper.
 - **"guard A subsumes guard B" is a claim about the FULL consumer set of each** — a `static_assert`
   reachability walk and `isFromCoreModule` cover disjoint consumers; keep both.
+- **Before turning a fallback into a `SLANG_RELEASE_ASSERT` on a closed set of IR layout shapes,
+  list the `IRTypeLayout` subclasses and probe each** (existential via `slangc -specialize`,
+  pointer, combined-sampler, DescriptorHandle). A corpus that never hits the fallback is no proof;
+  the existential+resource tests are disabled. Run the full suite after adding the assert.
+- **On HLSL/CPU/CUDA a spec-const `[numthreads]` operand is a removed inst with a null type**;
+  any pass that reads its type before emit segfaults.
 
 ## Front-end / classifier fall-throughs that crash downstream
 
@@ -142,6 +148,52 @@ arity with `-dump-ir-after fixEntryPointCallsites`. The clone/trampoline design 
 (clone or forwarding wrapper at one split point after linking); there is no tracking issue as of
 2026-10-19 [only the borrow pass updates callers](../learnings/1792432625744-slang-entry-point-called-as-a-function-only-the-bo.md).
 
+**Turning a silent fallback into a `SLANG_RELEASE_ASSERT` needs every input shape probed, not
+a corpus run.** On #13811 (for #13789), R2 replaced the `return typeLayout;` fallback in
+`_createOrdinaryPartTypeLayout` (slang-ir-legalize-types.cpp) with
+`SLANG_RELEASE_ASSERT(as<IRPointerTypeLayout>(typeLayout))`, because a probe saw only pointer
+layouts there and 12k corpus compiles never reached it. Valid code still did: an
+`IRExistentialTypeLayout` arrives when an interface-typed parameter is specialized to a concrete
+type that mixes data and resources, so a Release build reported E99997 on code that master
+compiled. The corpus is blind here because the existential+resource tests
+(tests/compute/interface-shader-param*.slang) are DISABLED or report "no tests run". A hand repro
+is `interface IFoo{float4 get();} struct Impl:IFoo{float4 v; Texture2D t; ...}` with
+`void main(uniform IFoo f, uniform float4 tint, ...)`, compiled with `slangc ... -specialize Impl`;
+a global `uniform IFoo` or an `IFoo` field inside a CB/PB needs the API
+(`IComponentType::specialize` with `SpecializationArg::fromType(layout->findTypeByName("Impl"))`).
+To audit, instrument the fallback to log which subclass reaches it (test
+`as<IRExistentialTypeLayout>` and the like; raw `getOp()` numbers do not match a naive parse of
+the fiddle enum), then probe existential, pointer, combined-sampler and DescriptorHandle fields
+[release-assert catch-all in IR layout code: existential layouts reach it](../learnings/1792594670567-release-assert-catch-all-in-ir-layout-code-existen.md).
+Start from the list of `IRTypeLayout` subclasses (struct, array, parameterGroup, pointer,
+existential, structuredBuffer, streamOutput, ...) and probe each before asserting a closed set.
+IR passes that run before type legalization rebuild layouts, so AST-layout invariants may not hold:
+an earlier assert in the same PR ("every kind of the new element is in the old element") broke 3
+combined-sampler suite tests, because `lowerCombinedTextureSamplers` builds `Sampler2D` struct
+layouts with field layouts but no size attributes. Run the FULL suite after adding any release
+assert. CI also runs Debug test jobs, and some shapes (existentials with resources, a
+`Ptr<Struct-with-resource>` field) already hit the Debug-only
+`SLANG_ASSERT(fieldLayout || !typeLayout)` in the declareVars tuple case on master, so a `.slang`
+regression test for them fails Debug CI; use a unit test guarded by
+`#ifdef _DEBUG SLANG_IGNORE_TEST`
+[enumerate the IRTypeLayout subclasses before release-asserting a closed set](../learnings/1792599445713-before-release-asserting-a-closed-set-of-ir-layout.md).
+
+**`[numthreads]` operands are dangling on targets without specialization constants.** On
+HLSL/CPU/CUDA, `collectGlobalUniformParameters` (slang-ir-collect-global-uniforms.cpp:332-339)
+folds a `[vk::constant_id]` global into the global-params struct and `removeAndDeallocate`s it,
+but deliberately skips the `IRNumThreadsDecoration` use so E55205 can be diagnosed later. The
+decoration's operand is then a removed inst with a cleared type, and any pass between collect and
+emit that reads that type (e.g. `builder.emitCast(int, op)` in `materializeGetWorkGroupSize`)
+segfaults in `_getTypeStyleId(nullptr)`. Touch spec-const-rate operands only on targets that keep
+them (an `isSpecConstRateType(op->getFullType())` guard is itself a read of the dead type). The
+suite missed it because no test called `WorkgroupSize()` with a spec-const `[numthreads]` on
+HLSL/CPU; /code-review found it on #13767 (PR #13826). On SPIR-V, the cast of a `uint` spec const
+to `int` is an `OpSpecConstantOp`, and `maybeHoistConstructInstToGlobalScope` then hoists an
+all-module-scope `makeVector` to an `OpConstantComposite` with a spec-const constituent, which
+spirv-val rejects; skip the hoist when any operand is spec-const rate
+[[numthreads] operands on non-spec-const targets are dangling](../learnings/1792609336816-slang-numthreads-operands-on-non-spec-const-target.md).
+The missing casts in that splice are on [[wiki/concepts/slang-b-language-semantics.md]].
+
 ## Subsumption, wrappers, and value-shape completeness
 
 "Guard A subsumes guard B" is a claim about the full consumer set each protects. On #12623 a
@@ -228,7 +280,7 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 `imageSubscript` insts, and compare `t[i] = v` with `t[i].x = v`
 [plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md).
 
-**Source learnings (19):**
+**Source learnings (22):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -248,3 +300,6 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 - [Full-coverage swizzle on RWTexture goes through the RMW path (false E56006 / E55204 on CUDA)](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md) — fix in `legalizeStore`: a component permutation becomes a plain imageStore.
 - [skip the texel read only when the swizzle covers the image op's texel (4-vector on Metal/GLSL/SPIR-V, element type on CUDA); test a non-self-inverse swizzle; don't rebuild during an A/B run (exit 127)](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)
 - [Slang: plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md) — `set` before `ref`; only swizzle/member writes reach `legalizeImageSubscript`, so image-subscript rules (#13363 E56007) miss plain stores; count `imageSubscript` in `-dump-ir` two-sided
+- [Release-assert 'catch-all' in IR layout code: existential layouts reach it — test with slangc -specialize](../learnings/1792594670567-release-assert-catch-all-in-ir-layout-code-existen.md) — #13811 R2 `_createOrdinaryPartTypeLayout` assert broke Release on an interface param specialized to data+resource; corpus tests disabled; instrument the fallback
+- [Before release-asserting a closed set of IR layout shapes, enumerate the IRTypeLayout subclasses](../learnings/1792599445713-before-release-asserting-a-closed-set-of-ir-layout.md) — probe each subclass; pre-legalization passes rebuild layouts (combined-sampler, no size attrs); Debug-only declareVars assert forces a `_DEBUG`-ignored unit test
+- [Slang: [numthreads] operands on non-spec-const targets are dangling (null type) — never read their type](../learnings/1792609336816-slang-numthreads-operands-on-non-spec-const-target.md) — `collectGlobalUniformParameters` removes the spec const but skips the decoration use; `materializeGetWorkGroupSize` cast segfaults (#13826); don't hoist spec-const makeVector on SPIR-V

@@ -141,6 +141,7 @@ type: nav
 - [Reading a CI Run — Census, Roll-Ups & the Retry Layers](concepts/ci-github-run-census-and-retry-layers.md)
 - [Reading GitHub/CI state without false zeros — gh API/CLI instrument defects](concepts/ci-tooling-f0909b0-github-api-instruments.md)
 - [Slang compiler and build-system findings surfaced during CI/review work](concepts/ci-tooling-f0909b0-slang-compiler-build-findings.md)
+- [Windows GPU slang-test jobs: the API split, the merge back, and sizing CI jobs from step timings](concepts/ci-windows-gpu-test-job-split-and-merge.md)
 
 **general**
 - [Agent coordination — message delivery, shared identity, resume, and verification tooling](concepts/general-misc-b-agent-coordination-and-messaging.md)
@@ -429,6 +430,7 @@ type: nav
 - [Slang Compiler: IR Type-Legalization, Empty Structs, Half, and Enum-Cast Lowering](concepts/slang-compiler-ir-type-legalization.md)
 - [Slang Compiler: Probe Discipline Behind Source-Read Claims, and Opaque IR Type Naming](concepts/slang-compiler-probe-discipline-and-type-naming.md)
 - [Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline, and 2026-07-17 Operational Fold](concepts/slang-compiler-type-flow-and-gate-discipline.md)
+- [Slang Compiler: Type-Flow Set-Specialization Diamonds (E33180) and analyzeCall Callee Lifetime](concepts/slang-compiler-type-flow-set-specialization-diamonds.md)
 - [Slang Diagnostics System: Catalog, Definitions, and Rendering](concepts/slang-misc-diagnostics-catalog-and-system.md)
 - [Slang Diagnostics: Deep-Dive Incidents & Case Studies](concepts/slang-misc-diagnostics-deep-dives.md)
 - [Slang IR: phi block parameters and where inlined global values land](concepts/slang-compiler-ir-phis-and-global-value-placement.md)
@@ -439,6 +441,7 @@ type: nav
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
 - [Slang Test — FileCheck Authoring and Opt-Levels](concepts/slang-test-filecheck-authoring-and-opt-levels.md)
 - [Slang Test — Output Assertions and Truncated Runs](concepts/slang-test-output-assertions-and-truncated-runs.md)
+- [slang-test #line directive and source-location checks: meta-module locations, inlining, and drills that keep their teeth](concepts/slang-test-line-directive-and-location-checks.md)
 - [slang-test False Greens and Verification Discipline](concepts/slang-test-false-greens-and-verification-traps.md)
 - [slang-test GPU lanes on the shared L40S: run suites serially, orphaned test-servers, 'ignored' that is contention, and what the GPU confirms](concepts/slang-test-gpu-lanes-on-shared-l40s.md)
 - [slang-test Harness Internals and In-Process Unit Tests](concepts/slang-test-harness-internals-and-unit-tests.md)

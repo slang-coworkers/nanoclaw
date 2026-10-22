@@ -2,8 +2,8 @@
 title: "Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName"
 type: concept
 group: slang-backends
-tags: [spirv, debug-info, nonsemantic, g0, g2, DebugSource, DebugLine, DebugTypeMatrix, DebugTypeComposite, DebugValue, OpName, spirv_asm, separate-debug-info]
-source_count: 24
+tags: [spirv, debug-info, nonsemantic, g0, g2, DebugSource, DebugLine, DebugTypeMatrix, DebugTypeComposite, DebugValue, DebugDeclare, dbgvar, spirv-opt-adce, OpName, spirv_asm, separate-debug-info]
+source_count: 26
 ---
 
 # Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName
@@ -22,6 +22,7 @@ Producer and consumer rules for SPIR-V debug information: what each `-g` level e
 - A matrix's debug type is layout-independent: `OpTypeMatrix` is the same for all layouts, and packing rides the member decoration plus `MatrixStride`.
 - Opaque-handle locals: the emitter already handles them (`OpDebugLocalVariable` + `OpDebugValue`, no backing `OpVariable`). Admit them at the leaf/creation type gates with a narrow texture/sampler predicate, never inside recursive `isDebuggableType`, and cover both `let` and `var`.
 - DebugVar type-eligibility and DebugValue value-representability are separate checks. DebugVar `ArgNumber` remapping across param-removing passes is cross-cutting: flag it to the maintainer.
+- At `-g2 -O0` each local gets a `_dbgvar_*` shadow with both `OpStore` and `OpDebugValue`; at `-O1` spirv-opt ADCE turns the shadow stores into duplicate DebugValues, then deletes store-only shadows with their `DebugDeclare`. The `-O` difference is spirv-opt, never a Slang IR pass; a `DebugDeclare` on the real storage survives.
 - Every named `%id` register in a `spirv_asm` block gets an `OpName`; stdlib registers are `__`-prefixed, renamed only inside brace-tracked `spirv_asm{}` ranges. Settle "debug name on the wrong inst" claims with a rename drill.
 - spirv-opt's strip-debug passes delete `DebugBuildIdentifier`, so `-separate-debug-info` needs a Slang shim that keeps it.
 - The `DebugEntryPoint` command-line string hardcodes `-g2` and silently drops un-cased options.
@@ -68,6 +69,22 @@ Producer and consumer rules for SPIR-V debug information: what each `-g` level e
 
 Sources: [root cause = two type gates](../learnings/1788744414687-slang-spir-v-opaque-resource-sampler-function-loca.md), [leaf/creation gates, let-path, dead processDebugVar](../learnings/1788748635093-slang-spir-v-opaque-handle-local-debug-info-fix-at.md), [value-operand limits & ArgNumber remap](../learnings/1789468940215-slang-spir-v-debug-var-value-operand-limits-param-.md).
 
+## Debug variables across `-O` levels: `_dbgvar_` shadows and spirv-opt ADCE (#13841, #13842)
+
+The `-O0` vs `-O1` difference in debug variables comes from spirv-opt, not from any Slang IR pass: slang-emit-spirv never checks the optimization level, the Slang IR dumps are identical at both levels, and spirv-opt runs only at `-O1`+ (slang-emit.cpp:3608) [`_dbgvar_` helper vars: -O0 duplicates real storage, -O1 loses DebugDeclare](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md). Consider a scalar local updated three times, compiled with `-g2`:
+
+- **At `-O0`** every eligible local gets a `DebugDeclare` on a `_dbgvar_*` shadow `OpVariable` (`slang-emit-spirv.cpp:4781`), and each update emits both an `OpDebugValue` and an `OpStore` into that shadow (`:11148-11185`). So a local that also keeps real storage is described twice.
+- **At default `-O`/`-O1`**, ADCE (`aggressive_dead_code_elim_pass.cpp` ~310, `AddDebugValueForVariable`) sees the shadow's storage is dead and converts each whole-variable `OpStore` into a new `DebugValue`, duplicating Slang's own: the scalar ends with 6 DebugValues for 3 updates. `spirv-opt --eliminate-dead-code-aggressive` alone on the `-O0` module reproduces 3→6. `-O2`/`-O3` show no duplicates, and struct members are not duplicated because their stores go through access chains.
+- **Dynamically indexed updates** such as `arr[tid] = v` get no DebugValue, because `translateIRAccessChain` rejects a non-constant index. The shadow is then store-only, ADCE deletes it with its `DebugDeclare`, and at `-O1` the array has a `DebugLocalVariable` and nothing else. The same happens to any local that keeps real storage, for example a struct or float passed `inout` to a `[noinline]` function.
+- **A `DebugDeclare` that targets the real local storage survives** Slang's `-O1` pass list. Verify by hand-editing the `-O0` spirv-asm so the `DebugDeclare` names the real var, then running `spirv-as`, the pass list from `slang-glslang.cpp` (or `spirv-opt -O`) and `spirv-dis` from `build/external/spirv-tools/tools/Debug/`.
+
+spirv-val passes every one of these forms, so check them by counting `DebugValue %var` per `DebugLocalVariable` [spirv-opt ADCE duplicates Slang's DebugValue](../learnings/1792627232349-spir-v-debug-vars-spirv-opt-adce-duplicates-slang-.md). Rules for a fix that points `DebugDeclare` at real storage [`_dbgvar_` helper vars](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md):
+
+- Not every `-O0` `OpVariable %x` is the source variable. `eliminatePhis` creates temporaries with only a name hint and no DebugLocation; in one test a single `%i` served two different loop `i`s. Match on the original `IRVar` (its DebugLocation decoration), never on the name.
+- Pointer-typed `inout`/`out` params (`OpFunctionParameter %_ptr_Function_T`) are real storage too.
+- Link the DebugVar to the var with a decoration on the `IRVar`. An operand on the DebugVar is a non-load/store use, and `isPromotableVar` (slang-ir-ssa.cpp:513) would refuse to promote the var.
+- A shared `build/Release` can be relinked mid-session by a sibling; "file too short" on `libslang-compiler.so` means the relink is still running, so wait rather than fall back to a stale `build/Debug`.
+
 ## OpName and `spirv_asm` register names (#12002, #12108)
 
 **#12002 (PR #12053).** A "misattributed OpName" turned out to be a stdlib register name collision. The emitter emits an `OpName` for every named `%id` register in a `spirv_asm` block, not gated on the debug level (`idMap` loop in `slang-emit-spirv.cpp`), and the texture-sample intrinsics in `hlsl.meta.slang` named their raw-sample register `%sampled`, so every texture sample emitted `OpName ... "sampled"` whatever the caller's variable was called. A user call-result value produces no `OpName` at all, because it does not route through `maybeEmitName`; the defect is cosmetic, and `slangc -target spirv-asm | grep OpName` reproduces it without a GPU ([spirv_asm named registers leak into OpName; %sampled](../learnings/1783525064110-slang-12002-spirv-asm-named-registers-leak-into-op.md)). The fix renamed the internal register `%sampled`→`%__sampled` at 94 sites and added a `CHECK-NOT: "sampled"` test. Rename-drill decides such claims: rename the user's variable; if the OpName follows it propagates, if it stays it is intrinsic-baked. Lead a public verdict with the refutation, then give the real defect. Gating the auto-OpName loop is maintainer scope, because it is a documented, tested feature (`tests/language-feature/spirv-asm/opname.slang`) and plain user OpNames are ungated too ([#12002 refute-then-fix](../learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)).
@@ -92,7 +109,7 @@ Sources: [root cause = two type gates](../learnings/1788744414687-slang-spir-v-o
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (24):**
+**Source learnings (26):**
 - [slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path](../learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md)
 - [-g0/DebugInfoLevel::None emits EXACTLY OpSource/OpName/OpMemberName in SPIR-V (not OpLine/OpString/OpModuleProcessed)](../learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)
 - [source-text embedding gated at producer + consumer (#12181)](../learnings/1784666850986-slang-spir-v-source-text-embedding-is-gated-at-two.md)
@@ -117,3 +134,5 @@ Sources: [root cause = two type gates](../learnings/1788744414687-slang-spir-v-o
 - [spirv_asm register rename: block-scoped; textures.cpp generator](../learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md)
 - [slang#8681 spirv-opt strip-debug deletes DebugBuildIdentifier — separate-debug-info needs a DBI shim](../learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md)
 - [DebugEntryPoint command-line string two roots: hardcoded -g2 + no-default writeCommandLineArgs switch (#12220)](../learnings/1784915879616-spir-v-debugentrypoint-command-line-string-two-roo.md)
+- [SPIR-V debug vars: spirv-opt ADCE duplicates Slang's DebugValue; _dbgvar_ shadow dies at -O1](../learnings/1792627232349-spir-v-debug-vars-spirv-opt-adce-duplicates-slang-.md) — 3 updates → 6 DebugValues at -O1; dynamic-index updates get none; real-storage DebugDeclare survives (#13842)
+- [SPIR-V -g2 `_dbgvar_` helper vars: -O0 duplicates real storage, -O1 loses DebugDeclare entirely](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md) — difference is spirv-opt, not Slang IR; match on IRVar not name; link by decoration (`isPromotableVar`) (#13841)

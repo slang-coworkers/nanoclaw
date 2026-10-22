@@ -3,7 +3,7 @@ title: "slangc Target Coverage & Capability Gating"
 type: concept
 group: slang-tooling
 tags: [targets, capability, atomic64, cpu, optimization, profile, wasm, family, gating]
-source_count: 8
+source_count: 9
 ---
 
 # slangc Target Coverage & Capability Gating
@@ -22,6 +22,7 @@ This page covers how `slangc` reports and gates target/feature coverage: why `fi
 - **Direct `ResourceDescriptorHeap[i]` / `SamplerDescriptorHeap[i]` input syntax first ships in v2026.14;** older builds give E30015, so ask for the user's version first.
 - **`[require]` propagation through referenced declarations** (generic structs, enums, return types, static members) has its own page: [Slang capability inference](slang-language-core-capability-inference.md).
 - **embind overloads by argument count, not type**: widening `createSession(int)` to accept an object needs one `emscripten::val` method that branches at runtime (and `EMSCRIPTEN_DECLARE_VAL_TYPE` to keep TS typing).
+- The JS gap is not C++ drift: `searchPaths`, `preprocessorMacros`, `compilerOptionEntries` and `findProfile` already existed when slang-wasm was added; the binding never mirrored them. Read the TS surface from the release wasm zip's `interface.d.ts`.
 
 ## Target coverage: `hasOption(Optimization)` is NOT an explicit-request signal
 
@@ -64,15 +65,17 @@ A related version gate from the same support question: direct `ResourceDescripto
 
 **Verified at HEAD 8e3f9163d (2026-07-15).** The Slang WASM/JS bindings do **not** let a JS caller pass compiler options like `-allow-glsl` — `createSession` takes only an int target. ([slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md))
 
+The gap is not C++ API drift. At `dfab34e4b` (#5237, where slang-wasm was added), `include/slang.h` already had `SessionDesc::searchPaths`, `preprocessorMacros`, `compilerOptionEntries` and `IGlobalSession::findProfile`, so the JS binding never mirrored them. The C++ additions since then are `SlangGlobalSessionDesc` (#6152, enableGLSL) and `SessionDesc::skipSPIRVValidation` (#6893). To answer "did the C++ API diverge from the JS API?" (#13642), read `git show dfab34e4b:include/slang.h`, and read the real TS surface from `interface.d.ts` in the release `slang-<ver>-wasm.zip` (`gh release download vX -p '*-wasm.zip'`) after checking that `git diff vX origin/master -- source/slang-wasm` is empty [slang-wasm vs C++ API: SessionDesc options predate slang-wasm](../learnings/1792598993719-slang-wasm-vs-c-api-sessiondesc-options-predate-sl.md).
+
 ---
 
-Widening the bindings has a constraint of its own: embind overloads by argument **count** only, not type (embind docs, "Overloaded functions"), so `createSession(emscripten::val)` cannot sit beside `createSession(int)` (#13642). The options are one method taking `emscripten::val` that branches at runtime (`val.isNumber()` vs object), or a new method name. With `emscripten::val` the `--emit-tsd` `interface.d.ts` shows `any` unless you add `EMSCRIPTEN_DECLARE_VAL_TYPE` + `register_type<T>(name, tsDef)`, so the first option can lose today's `number` typing for TS users. On the native side, `CompilerOptionSet::load` (`slang-compiler-options.cpp:11-24`) copies option strings into `String`, and SessionDesc searchPaths/macros become Include/MacroDefine entries (`slang-global-session.cpp:837-862`), so JS-side `std::string` storage only has to outlive the `createSession` call; there is no in-tree string→`CompilerOptionName` table. A source-rewriting workaround (prepended `#define`s) keeps diagnostics on the original lines with `#line 1 "<file>.slang"` after the prepended block [embind overloads by arg count only](../learnings/1792071361108-embind-overloads-by-arg-count-only-backward-compat.md).
+Widening the bindings has a constraint of its own: embind overloads by argument **count** only, not type (embind docs, "Overloaded functions"), so `createSession(emscripten::val)` cannot sit beside `createSession(int)` (#13642). The options are one method taking `emscripten::val` that branches at runtime (`val.isNumber()` vs object), or a new method name. With `emscripten::val` the `--emit-tsd` `interface.d.ts` shows `any` unless you add `EMSCRIPTEN_DECLARE_VAL_TYPE` + `register_type<T>(name, tsDef)`, so the first option can lose today's `number` typing for TS users. `register_type` alone does not type a plain `emscripten::val` parameter: declare a distinct `EMSCRIPTEN_DECLARE_VAL_TYPE(T)`, use `T` in the C++ signature, then `register_type<T>("Alias", "number | {...}")`. Also, `enum_<E>` values are JS objects with `.value` by default (`enum_value_type::object`), so code that reads them with `.as<int>()` needs `enum_value_type::number` [embind val typing and enum values](../learnings/1792598993719-slang-wasm-vs-c-api-sessiondesc-options-predate-sl.md). On the native side, `CompilerOptionSet::load` (`slang-compiler-options.cpp:11-24`) copies option strings into `String`, and SessionDesc searchPaths/macros become Include/MacroDefine entries (`slang-global-session.cpp:837-862`), so JS-side `std::string` storage only has to outlive the `createSession` call; there is no in-tree string→`CompilerOptionName` table. A source-rewriting workaround (prepended `#define`s) keeps diagnostics on the original lines with `#line 1 "<file>.slang"` after the prepended block [embind overloads by arg count only](../learnings/1792071361108-embind-overloads-by-arg-count-only-backward-compat.md).
 
 ## Capability inference through referenced declarations
 
 How `[require]` propagates through generic structs, enums, static member calls and return types (#13579 / PR #13616), the scoping traps around `__intrinsic_type` and core-module types, and the twin-row method for testing a generic-vs-non-generic parity fix are on [Slang capability inference](slang-language-core-capability-inference.md).
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [Slang coverage target-support gate ≠ atomic64 capability membership](../learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md)
 - [Slang: gate IR passes on target family, not CapabilitySet.implies(compound-alias)](../learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md)
@@ -81,5 +84,6 @@ How `[require]` propagates through generic structs, enums, static member calls a
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
 - [Slang: findProfile ignores '+' caps; ResourceDescriptorHeap needs >= v2026.14](../learnings/1791880983925-slang-findprofile-ignores-caps-resourcedescriptorh.md) — exact-name profile lookup drops `+` caps silently; use a Capability option entry; descriptor-heap syntax version gate; curl the 1.3 MB meta file
 - [embind overloads by arg COUNT only — backward-compatible number|object API needs one emscripten::val method](../learnings/1792071361108-embind-overloads-by-arg-count-only-backward-compat.md) — `val.isNumber()` branch; `EMSCRIPTEN_DECLARE_VAL_TYPE` for TS; `#line 1` after prepended defines (#13642)
+- [slang-wasm vs C++ API: SessionDesc options predate slang-wasm; typed embind val params need EMSCRIPTEN_DECLARE_VAL_TYPE](../learnings/1792598993719-slang-wasm-vs-c-api-sessiondesc-options-predate-sl.md) — read slang.h at dfab34e4b (#5237); TS surface from release wasm.zip `interface.d.ts`; `enum_value_type::number` for `.as<int>()`
 
 _Catalog: [[wiki/index.md]]_

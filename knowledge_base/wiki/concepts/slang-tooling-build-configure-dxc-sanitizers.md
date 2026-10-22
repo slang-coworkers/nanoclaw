@@ -3,7 +3,7 @@ title: "Slang build configuration: DXC-from-source on old glibc, slim configure 
 type: concept
 group: slang-tooling
 tags: [build, cmake, configure, dxc, glibc, slangc-only, asan, tsan, valgrind, object-library, compile-flags, xcode, build-time, bisect, embed-core-module-source, fetchcontent]
-source_count: 17
+source_count: 18
 ---
 
 # Slang build configuration: DXC-from-source on old glibc, slim configure flags, sanitizers, CMake flag scope, and measured build costs
@@ -32,6 +32,7 @@ This page covers configuring and sizing a Slang build: which flags keep a probe 
   `build/compile_commands.json`; and `cmake --build --target X -k 0` silently no-ops
   (`cmake --build` has no `-k`, so the ninja keep-going flag must follow `--`).
 - **Fresh-worktree Release `slangc` builds cost ~12 min each and run well four at a time**; a one-TU bisect step rebuilds in under a minute; `-DSLANG_ENABLE_DXIL=OFF` keeps scratch trees from rebuilding DXC into a shared `_deps`.
+- **A `git bisect run` across DXC-pin changes needs `-DSLANG_ENABLE_DXIL=OFF`** — otherwise each reconfigure fails the FetchDXC tag check, the probe exits 125, and bisect skips every commit. (`SLANG_ENABLE_DXC` is not an option; CMake silently ignores it.)
 
 ## GLIBC, DXC-from-source, and the stale CMake graph
 
@@ -184,9 +185,11 @@ break is the *only* remaining one
 
 **A two-commit build bisect is cheap when the suspect touches one `.cpp`.** For #13603, a worktree at `<sha>^` with LLVM/tests/examples/gfx/rhi/slangd/slangi/dxil OFF built `--target slangc` in about 15 min; `git checkout <sha>` and a rebuild then recompiled only the touched TU (13 steps, under 1 min), giving a built counterfactual instead of "by code trace". The finding itself: #11430 folded base+immediate in `slang-ir-byte-address-legalize`, so float3 struct members at literal base 0 now hit `emitSimpleLoad`'s offset/12 divide on an ArrayStride-16 alias (wrong bytes on SPIR-V/GLSL std430; `-fvk-use-scalar-layout` is the workaround) [two-commit build bisect](../learnings/1792065111999-two-commit-build-bisect-is-cheap-when-the-suspect-.md).
 
+**A many-commit `git bisect run` needs DXC out of the configure, or every step is skipped.** On GLIBC 2.36 a default configure source-builds DXC through `cmake/FetchDXC.cmake`, and when the checkout moves to a commit that pins a different DXC tag the reconfigure hard-fails with `DXC tag ... resolved to <sha>, expected <sha>` (`FetchDXC.cmake:582`). A probe that maps a build failure to `exit 125` then skips every commit ("only skipped commits left to test"). Configure once with DXC and the extra targets off, build only `--target slangc` (first Release build ~7 min on 64 cores, later steps 1–4 min), and run each step in a throwaway `git worktree add --detach /tmp/...`. Submodules there need `--depth 1 -j 8`, because `--reference` to a shallow clone fails. A probe that greps slangc output for one string (e.g. a `#line N "core.meta.slang"` count) is enough for a `docs/generated` fixture, with no slang-test build; the nightly agentic-tests fixture break bisected to #13724 in 9 builds. The atom spells the switch `-DSLANG_ENABLE_DXC=OFF`, but no such option exists at master `653bfdeef4` (CMake ignores an unknown `-D` with a "not used" warning); the option that gates `include(FetchDXC)` is `SLANG_ENABLE_DXIL` (`CMakeLists.txt:149`, `:690`), so pass `-DSLANG_ENABLE_DXIL=OFF` [bisecting locally: DXC off, or every step exits 125](../learnings/1792572198277-bisecting-a-slang-commit-locally-use-dslang-enable.md).
+
 **Non-embedded core-module source reproduces natively in about 5 min, no emsdk.** `cmake --preset default -B /tmp/b -DSLANG_EMBED_CORE_MODULE_SOURCE=OFF -DSLANG_ENABLE_DXIL=OFF -DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DFETCHCONTENT_BASE_DIR=<main>/build/_deps -DFETCHCONTENT_FULLY_DISCONNECTED=ON`, then build `slangd slangc slang-glsl-module`; `slangd --print-builtin-module core` goes through the same `Slang::getBuiltinModuleSource` as slang-wasm (slang#13664). Leaving out `-DSLANG_ENABLE_DXIL=OFF` makes every scratch tree that shares `FETCHCONTENT_BASE_DIR` rebuild DXC from source into the shared `_deps/dxc_source-build`, and two such builds collide (llvm-tblgen / `Intrinsics.gen` FAILED). That slangc lacks slang-glslang, so sanity-compile with `-target hlsl`. Deleting `lib/libslang-glsl-module-*.so` forces the `slang-api.cpp:244` compile-from-source fallback, which writes `lib/slang-glsl-module.bin` [SLANG_EMBED_CORE_MODULE_SOURCE=OFF repro](../learnings/1792085283366-repro-slang-embed-core-module-source-off-natively-.md).
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md)
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
@@ -204,5 +207,6 @@ break is the *only* remaining one
 - [Four concurrent Release slangc worktree builds take about 12 minutes on 64 cores](../learnings/1792138931353-four-concurrent-release-slangc-worktree-builds-tak.md) — serial core-module tail; parallel worktrees beat one -j64
 - [Two-commit build bisect is cheap when the suspect touches one .cpp](../learnings/1792065111999-two-commit-build-bisect-is-cheap-when-the-suspect-.md) — <1 min rebuild for the second commit; #11430 byte-address float3 regression (#13603)
 - [Repro SLANG_EMBED_CORE_MODULE_SOURCE=OFF natively in ~5 min; avoid parallel DXC-from-source builds](../learnings/1792085283366-repro-slang-embed-core-module-source-off-natively-.md) — `slangd --print-builtin-module core`; shared `_deps` DXC collision (#13664)
+- [Bisecting a Slang commit locally: DXC off, or every git-bisect step exits 125](../learnings/1792572198277-bisecting-a-slang-commit-locally-use-dslang-enable.md) — FetchDXC tag check fails each reconfigure → probe exits 125 → all commits skipped; the real switch is `-DSLANG_ENABLE_DXIL=OFF`; #13724 in 9 builds
 
 _Catalog: [[wiki/index.md]]_

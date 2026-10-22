@@ -3,7 +3,7 @@ title: "Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels"
 type: concept
 group: slang-backends
 tags: [spirv, spirv-opt, spirv-tools, slang-glslang, optimization-level, O0, inlining, constant-folding, loop-unroll, wave-ops]
-source_count: 24
+source_count: 26
 ---
 
 # Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels
@@ -19,6 +19,7 @@ How Slang's directly emitted SPIR-V passes through the bundled `slang-glslang` m
 - Pre-existing on master: linking a precompiled `-embed-downstream-ir` SPIR-V module with `-g2 -separate-debug-info` and any spirv-opt pass segfaults inside libslang-glslang; at `-g0`/`-g1` spirv-opt reports a dangling `OpExtInst` set id.
 - slangc has no build-graph dependency on the dlopen'd `slang-glslang`, so a FetchContent consumer's SPIR-V custom command needs `DEPENDS slang-glslang`. To trace its calls without a debugger, put a logging shim named `libslang-glslang-<ver>.so` in a directory and pass `-spirv-opt-path <dir>` (a directory, never the `.so` path).
 - Default optimization runs spirv-opt, `-target spirv-asm` included; only `-O0` runs zero passes, so `-O0` is a faithful "no spirv-opt" proxy. `legalizeIRForSPIRV` always runs, independent of `-O`.
+- `-O<n>` changes only the downstream level, never Slang IR passes; `-minimum-slang-optimization` is the switch that alters Slang's own pipeline.
 - spirv-opt is size/perf only, not correctness; binary size is not GPU runtime, and no size/perf harness exists.
 - `CreatePrivateToLocalPass` (default preset) demotes a single-function `Private` var to `Function` storage and breaks function-`static` persistence.
 - Default-opt SPIR-V is exhaustively inlined into one `OpFunction`; WGSL/HLSL keep the call graph. Compare per-target function/param shapes at `-O0` or with `-dump-ir-after transformParamsToConstRef`.
@@ -53,6 +54,8 @@ How Slang's directly emitted SPIR-V passes through the bundled `slang-glslang` m
 
 **`-O0` is a faithful no-spirv-opt proxy.** `needsOptimization = getOptimizationLevel() != None` maps None → downstream None, and `glslang_optimizeSPIRV` early-returns. The always-on `legalizeIRForSPIRV` does not depend on `-O`. When studying what spirv-opt buys, state these caveats: binary size ≠ GPU runtime (the driver re-optimizes), the corpus must include large real shaders (the 50-70% size win doesn't show on tests/), and no size/perf harness exists ([-O0 is a faithful no-spirv-opt proxy](../learnings/1784653425624-o0-is-a-faithful-no-spirv-opt-proxy-spirv-opt-is-s.md)).
 
+**`-O<n>` never changes the Slang IR pipeline.** It only sets `CompilerOptionName::Optimization`, which only downstream compilers read; Slang IR dumps are identical at `-O0` and `-O1`, and on a target with no downstream compiler (WGSL) the output is byte-identical at every level. The switch that does change Slang's own passes is `-minimum-slang-optimization`, which skips the late `simplifyIR` after `lowerBitCast` and runs SCCP only once, so an IR-fold fix must be tested under it ([-O<n> does not change IR passes](../learnings/1792593053197-slang-o-n-does-not-change-ir-passes-test-ir-fold-f.md); WGSL detail on [[wiki/concepts/slang-backends-wgsl-f16-and-const-expressions.md]]). Any `-O0`/`-O1` SPIR-V difference therefore comes from spirv-opt; the `-g2` debug-variable case (ADCE duplicating `DebugValue`s and deleting `_dbgvar_` shadows with their `DebugDeclare`) is on [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] ([`_dbgvar_` helper vars: -O0 vs -O1](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md)).
+
 **Default opt inlines the whole SPIR-V call graph; other targets keep it.** At the default level, `-target spirv` runs spirv-opt with `CreateInlineExhaustivePass` (the `#elif 1` default preset, `source/slang-glslang/slang-glslang.cpp:366`), so the final module has a single `OpFunction`. To see the function and parameter shapes that Slang's IR produces for SPIR-V (for example by-value vs pointer params, #13703), compile with `-O0` or use `-dump-ir-after transformParamsToConstRef`. WGSL and HLSL output keeps every non-`[ForceInline]` function (WGSL legalize does "no extra inlining", `slang-ir-wgsl-legalize.cpp:230-234`), so Tint/DXC and the driver decide inlining there. `transformParamsToConstRef` runs only for SPIR-V/Metal/CUDA/CPU (`slang-emit.cpp:2496-2534`); WGSL, HLSL and GLSL keep struct `in` params by value ([SPIR-V -O1 is fully inlined; WGSL/HLSL keep the call graph](../learnings/1792160953423-slang-spir-v-default-o1-is-fully-inlined-by-spirv-.md)).
 
 **SlangPy kernel abstraction:** Fully collapses to zero overhead in Slang SPIR-V at `-O3` — 0 `OpFunctionCall`, byte-identical to a hand-rolled kernel. Runtime index arithmetic (1 sdiv + 1 srem + strided loads) is design-inherent, not a codegen defect ([SlangPy generated-kernel abstraction fully folds in slang SPIR-V (-O3), but is deferred to nvrtc for CUDA target](../learnings/1781017004302-slangpy-generated-kernel-abstraction-fully-folds-i.md), [Measure SlangPy generated-kernel codegen quality GPU-free via slangc SPIR-V opcode census](../learnings/1781050949927-measure-slangpy-generated-kernel-codegen-quality-g.md)).
@@ -83,7 +86,9 @@ Float reassociation under default fp-mode (#12160) is also a spirv-opt fold, gat
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (24):**
+**Source learnings (26):**
+- [Slang: -O<n> does not change IR passes; test IR-fold fixes under -minimum-slang-optimization](../learnings/1792593053197-slang-o-n-does-not-change-ir-passes-test-ir-fold-f.md) — `-O` is downstream-only; `-minimum-slang-optimization` skips late `simplifyIR`
+- [SPIR-V -g2 `_dbgvar_` helper vars: -O0 duplicates real storage, -O1 loses DebugDeclare entirely](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md) — the -O difference is spirv-opt ADCE (slang-emit.cpp:3608), not Slang IR
 - [slang-glslang is the SPIR-V backend — don't mask its load as optional](../learnings/1782152994624-slang-glslang-is-the-spir-v-backend-don-t-mask-its.md)
 - [slang-glslang: add an opt-out via dedicated CMake escape-hatch, not by deleting the pass](../learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md)
 - [slang downstream-compiler load: optional spirv-opt is fatal via real sink](../learnings/1781799089141-slang-downstream-compiler-load-optional-spirv-opt-.md)

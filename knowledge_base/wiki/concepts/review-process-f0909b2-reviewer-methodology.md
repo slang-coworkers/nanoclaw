@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile, probe-matrix, pass-reordering]
-source_count: 22
+source_count: 23
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -232,6 +232,23 @@ trap from the same review: WGSL on the L40S through dawn.node works, but subgrou
 output reads 0 on base and head alike, which looks like a pass/fail signal and is not one
 [rejecting a 'make it valid' remedy: compare the per-EP location to the single-EP compile](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md).
 
+**A new `SLANG_ASSERT` has to be exercised on a Debug build.** In Release, `SLANG_ASSERT` is
+`SLANG_ASSUME` (`[[assume]]`), so a false condition is silent UB and the output looks fine; a
+Release-only fixer and reviewer, full suite included, never see it. On #13811 a new
+`SLANG_ASSERT(oldArrayCount % oldElementCount == 0)` in `_createArrayTypeLayoutLike`
+(`slang-ir-legalize-types.cpp`) fired in Debug on valid HLSL — an array of structs whose element
+nests a struct mixing data and resources (`struct Inner{Texture2D t; float x;}; struct S{Inner
+inner; float y; float z;}; S gS[2];`, `-target hlsl -profile cs_5_0`), because HLSL cbuffer array
+byte sizes are not multiples of the element size. The recipe took about 10 minutes: copy the PR
+into an instrumented worktree, replace each new assert and fallback with an
+`fopen("/tmp/x.log","a")` marker, run the corpus (every SIMPLE test plus `computeMain` × 5 targets,
+~12k compiles) and adversarial shapes through it, then confirm any hit on a Debug `slangc`
+(`cmake --build --preset debug --target slangc`, ~6 min). For `isParameterLocationUsed` reviews, a
+small API probe (`getEntryPointMetadata` over category/space/register) diffed against bindings
+parsed from the emitted code gives a ground-truth FP/FN table per shape × target; parse array
+declarations as ranges, or HLSL `T x[2] : register(t0)` reads as an FP
+[release-only review misses SLANG_ASSERT regressions](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md).
+
 ## Self-raised findings, EXIT=0, and the full file list
 
 As the reviewer, do not close a finding YOU raised on the author's self-reported result you
@@ -264,7 +281,7 @@ A second blind spot of the same stack is **fidelity to a maintainer's written sp
 
 Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
 
-**Source learnings (22):**
+**Source learnings (23):**
 - [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: a single-block test short-circuits the multi-block conjunct, so the buggy `hasUses` swap still passed 21/21; pin an emit-time `SLANG_FAIL` with `-emit-spirv-via-glsl` + `CHECK-NOT: glslang`, not `CHECK-NOT: error`.
 - [Reviewing a stale-CHECK refresh: run the CHECK block against output that has the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` after `default :` never covered case 0; don't anchor paren counts.
 - [Rejecting a 'make it valid' remedy: compare the per-EP location to the single-EP compile](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: shared module-scope Input passed spirv-val but fsA read Location 1 vs 0 alone (silent mislink); dawn.node subgroups need `requiredFeatures:['subgroups']`.
@@ -287,3 +304,4 @@ Two durable-text disciplines that cost avoidable review round-trips, both caught
 - [maintainer's own deep review caught correctness bugs the automated stack missed on slang#12875](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md) — full stack (3 reviewers + CodeRabbit + bot + codex gates) APPROVEd 0 bugs; maintainer found ABI-empty-member byte-incompat + ungated `bit_cast` zero-fill; treat a clean pass on ABI/legalization PRs as not-yet-proven.
 - [five diff-review rounds on slang-rhi#881 missed two spec'd rules (producer-based severity, ownership at create); map each spec requirement to met/partial/missed with file:line before sign-off; `gh run list --commit` needs the full SHA.](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)
 - [never cite file.cpp:line in durable text; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md) — merges shift line numbers so cite symbols; `//DIAGNOSTIC_TEST` matches text as a plain substring (`{{.*}}` unsupported), so make the CHECK reject the buggy variant.
+- [Release-only review misses SLANG_ASSERT regressions — run new-helper asserts on a Debug build](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md) — #13811 cbuffer array-size assert fires only in Debug (Release = `SLANG_ASSUME`); marker-instrument new asserts over a ~12k-compile corpus, confirm on Debug slangc

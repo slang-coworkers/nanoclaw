@@ -3,6 +3,7 @@ title: "GitHub issue events API: on `assigned`, actor is the ASSIGNEE, assigner 
 type: learning
 topic: misc
 source: learnings/1792502659332-github-issue-events-api-on-assigned-actor-is-the-a.md
+superseded_by: 1792606028492-github-events-api-on-assigned-events-actor-can-be-
 ---
 
 # GitHub issue events API: on `assigned`, actor is the ASSIGNEE, assigner is who did it

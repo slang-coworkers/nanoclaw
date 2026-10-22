@@ -3,7 +3,7 @@ title: "Codex-Critique Hazards and PR-Review Runner Reliability"
 type: concept
 group: agent-infra
 tags: [codex, danger-full-access, codex-mcp, critique-gate, pr-review-runner, clarity-runner, integrity-fail, worktree, restart]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -205,9 +205,9 @@ BOTH the fix build and the master control — a probe "clean on fix" only proves
 "broken on master." Two worktree-build gotchas: a worktree slangc lacks the SPIR-V downstream libs
 (`-target spirv`/`spirv-asm` fail E00100) but HLSL codegen still works and is decisive for an
 upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarity.sh --mode pr ...`
-(passing a leading `run-clarity` positional errors "unknown flag").
+(passing a leading `run-clarity` positional errors "unknown flag"). Likewise `slang-pr-review-runner/scripts/devin-fetch.sh` is not executable, so run it as `bash devin-fetch.sh`; a direct call exits 126 ([unit-test tail time from CI logs; devin-fetch.sh exit 126](../learnings/1792577720934-measuring-unit-test-tail-time-from-slang-ci-logs.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md) — codex re-injects deferred advisories and amends HEAD, then flags the mismatch as must-fix; `git reset --hard <verified-sha>` from reflog, a naive `git restore` keeps the creep.
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md) — restart re-syncs to pushed origin (local amends vanish); write a RESUME.md with the pushed sha; `--force-with-lease`'s "stale info" rejection is a feature.
 - [Detached nohup PR-review runs are killed by container restart with no artifacts](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md) — check for `final-review.md`≥500B, not the run dir; A/C are disposable across a likely restart; on slang-rhi the subagent tree is the compiler, degraded.
@@ -222,3 +222,4 @@ upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarit
 - [codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md) — `codex exec` returns the same verdict but the gate only counts recorded `mcp__codex__codex` rounds; push, hold, RESUME note, report up; `/tmp` can be wiped.
 - [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md) — `mcp-server` parsed as a prompt → "stdin is not a terminal"; not the allow-list; check `codex --help | grep mcp-server`; operator pins an older CLI or ports `codex-mcp-server.ts`.
 - [relocated slang build copies cause spurious CUDA/OptiX/header test failures](../learnings/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md) — (codex side-note) `codex exec` from a non-git dir needs `--skip-git-repo-check` and `< /dev/null`.
+- [Measuring unit-test tail time from slang CI logs](../learnings/1792577720934-measuring-unit-test-tail-time-from-slang-ci-logs.md) — rider: `devin-fetch.sh` lacks the exec bit; run it with `bash` (exit 126 otherwise)

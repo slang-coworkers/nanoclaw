@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -11,11 +11,13 @@ source_count: 16
 Two facts govern every Slang docs/markdown edit, and getting either backwards turns a green
 PR red or balloons a minimal diff into a rejected reformat.
 
-- **Prettier is NOT enforced on markdown in CI.** `extras/formatting.sh`'s final dispatch
-  gates every other type on `run_all || run_<type>` but markdown on `((run_markdown))`
-  alone. CI runs bare `--check-only` (`run_all=1`, `run_markdown=0`), so prettier never runs
-  on markdown. `master` itself carries ~100–250 lines of prettier-nonconformant markdown and
-  `check-formatting` is green.
+- **Prettier is NOT enforced on `docs/**` markdown in CI; it IS enforced on the six
+  top-level `*.md` files.** Until #12600 (2026-09-01) the markdown dispatch lacked
+  `run_all ||`, so CI's bare `--check-only` never ran prettier. Since then it does, but the
+  unquoted `git ls-files $@` expands `*.md` to the repo-root files only (`AGENTS`, `CLAUDE`,
+  `CODE_OF_CONDUCT`, `CONTRIBUTING`, `README`, `REVIEW`), which pass prettier@3.3.3. An edit
+  to one of those must stay prettier-clean; `docs/**` still carries hundreds of
+  nonconformant files with `check-formatting` green.
 - **Therefore: never run `prettier --write` / `formatting.sh --md` on an existing `docs/*.md`.**
   It reflows hundreds of pre-existing lines (Setext→ATX headings, `*`→`-` bullets, table
   padding, blank-line-after-heading) that master never conformed to — a huge unrelated diff
@@ -72,7 +74,15 @@ pinned `prettier@3.3.3` while `check-formatting` stays green
 [docs/generated not format-gated](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md).
 (Draft PRs also skip `check-formatting` entirely via `if: ... draft != true`.) The single
 missing `run_all ||` guard is itself a real one-line fix — see the approver page for how that
-fix reddens the very check it activates.
+fix reddens the very check it activates. That fix has since landed (#12600, 2026-09-01:
+`((run_all || run_markdown)) && markdown_formatting` at `extras/formatting.sh:444`), so the
+paragraph above is history for the top-level files: a logging-stub `prettier` on master
+`653bfdeef4` (2026-10-22) received exactly the six repo-root `.md` files from a default
+`--check-only`, and all six pass prettier@3.3.3, `CONTRIBUTING.md` included
+[correction: CONTRIBUTING.md now passes prettier (#13822)](../learnings/1792607515728-correction-contributing-md-now-passes-prettier-on-.md).
+`docs/**` stays unchecked only because the unquoted `git ls-files $@` lets the shell expand
+`*.md` against the repo root (427 of 594 tracked `.md` files still fail 3.3.3), so the
+delta-scoped advice below still holds for `docs/`.
 
 The practical consequence is the same across every docs-editing atom: **scope your format
 check to your delta, do not reflow the file.** Running whole-file prettier on
@@ -239,10 +249,11 @@ note from the same fix: `./extras/formatting.sh` with no arguments only prints h
 markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 [RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md)).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
+- [Correction: CONTRIBUTING.md now passes prettier on slang master](../learnings/1792607515728-correction-contributing-md-now-passes-prettier-on-.md) — #12600 activated the markdown stage; top-level `.md` files are now prettier-checked in CI and pass; keep edits to them clean (#13822)
 - [Slang docs markdown is pre-existing prettier-nonconformant; scope your format check to your delta](../learnings/1787178316113-slang-docs-markdown-is-pre-existing-prettier-nonco.md) — `prettier(HEAD:path)` vs `prettier(working)` shows only your lines; the version-drift caveat makes raw line counts unreliable; CI-installed tool versions.
 - [byte-identical is a falsifiable overclaim for generated docs](../learnings/1787337743213-approver-critique-mustfix-byte-identical-is-a-fals.md) — content-match (true, decision-relevant) vs byte-identical (falsified by generator whitespace/escaping); say "modulo generator formatting"; land cosmetic fixes before the shipping OUTPUT_REVIEW.
 - [Slang docs/ markdown is not prettier-conformant under 3.3.3 or 3.9.6 — do not run formatting.sh on doc edits](../learnings/1787601974871-slang-docs-markdown-is-not-prettier-conformant-und.md) — Verified on master ba1f1aecb5; a 3-line change balloons to 100–250; `diff <(prettier EDITED) <(prettier PRISTINE)` is the robust check; C++ (clang-format) IS enforced, markdown is not.

@@ -3,7 +3,7 @@ title: "Formatting & Lint Tooling (clang-format, prettier, gersemi)"
 type: concept
 group: slang-tooling
 tags: [clang-format, prettier, gersemi, formatting, lint, ci, draft-pr, check-formatting]
-source_count: 22
+source_count: 23
 ---
 
 # Formatting & Lint Tooling (clang-format, prettier, gersemi)
@@ -26,7 +26,7 @@ This page covers how Slang's `extras/formatting.sh` works, what CI pins for each
 - **"clang-format is missing here, so the author must run formatting.sh" is an unnecessary punt.** The PyPI wheel ships a real prebuilt native binary under `clang_format/data/bin/`, so EXTRACTING the wheel is enough — no `pip install` (which can hit `externally-managed-environment`), no apt, no admin approval, ~10 seconds: `pip download clang-format==17.0.6 -d /tmp/cf17 --no-deps`, then `python3 -m zipfile -e`, `chmod +x`, prepend to `PATH`.
 - **A `pip install --user` binary lands in `~/.local/bin`, off PATH by default; a `pip install --target DIR` shim is a Python launcher that needs `PYTHONPATH=DIR`** or every invocation throws a Traceback.
 - **If your change touches `.cpp`/`.h`, run the formatter yourself** rather than delegating it in the PR body.
-- **Only C++ clang-format is truly enforced; markdown conformance is effectively unenforced.** `check-formatting.yml` runs on the whole tree yet stays green on master for docs that fail local prettier — proven by merged PRs that added to them.
+- **CI's prettier check covers the six top-level `*.md` files, not `docs/`.** Since #12600 (2026-09-01) a default `--check-only` run reaches the markdown stage, but the unquoted `git ls-files $@` glob-expands `*.md` to the repo-root files (`AGENTS`, `CLAUDE`, `CODE_OF_CONDUCT`, `CONTRIBUTING`, `README`, `REVIEW`). Those pass prettier@3.3.3 on master, so an edit to one must keep passing or Check Formatting goes red; `docs/**` markdown is still effectively unenforced.
 - **Never `prettier --write` repo markdown.** The design docs and user-guide docs use setext headings (`Title\n=====`), `*` bullets, and `*emphasis*`; a local prettier (3.8.x/3.9.x) rewrites all three to ATX `#`, `-`, and `_emphasis_` — 50-130 lines of churn per file. Even the CI-pinned prettier@3.3.3 flags them.
 - **If `origin/master`'s version of a file already fails your local prettier, the divergence is the tool version, not your edit.** Match the file's existing conventions by eye and trust merged-PR precedent over any local checker.
 - **Prove format-neutrality instead of rewriting:** `prettier <orig> > /tmp/a; prettier <edited> > /tmp/b; diff /tmp/a /tmp/b` should show only your intended semantic lines. The local prettier binary lives at `/pnpm/prettier` (not resolvable via `npx --no-install`).
@@ -152,7 +152,9 @@ For targeted docs edits:
 
 If `origin/master`'s version of a file already fails your local prettier check, the divergence is the tool version, not your edit — never `--write` the whole file. ([Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md))
 
-The same trap applies to the user-guide docs (`docs/*/09-reflection.md`, `08-compiling.md`, `README.md`), which use Setext headings, `*` bullets, and `*emphasis*`: the default pnpm prettier (3.9.x) rewrites all of these to ATX `#`, `-` bullets, and `_emphasis_` — 50-130 lines of churn per file. CI's `check-formatting.yml` runs on the whole tree yet stays green on master for these "non-conforming" docs (proven by 3+ merged PRs — #11436, #11280, #10594 — that added to `09-reflection.md`), so markdown conformance is effectively unenforced for them; match the file's existing conventions by eye and trust the merged-PR precedent over any local checker, even the CI-pinned prettier@3.3.3 which also flags them. Only C++ clang-format is truly enforced. ([Slang formatting.sh markdown: never run local prettier on whole doc — version-skew churns pre-existing files](../learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-prett.md))
+The same trap applies to the user-guide docs (`docs/*/09-reflection.md`, `08-compiling.md`, `README.md`), which use Setext headings, `*` bullets, and `*emphasis*`: the default pnpm prettier (3.9.x) rewrites all of these to ATX `#`, `-` bullets, and `_emphasis_` — 50-130 lines of churn per file. CI's `check-formatting.yml` runs on the whole tree yet stays green on master for these "non-conforming" docs (proven by 3+ merged PRs — #11436, #11280, #10594 — that added to `09-reflection.md`), so markdown conformance is effectively unenforced for them; match the file's existing conventions by eye and trust the merged-PR precedent over any local checker, even the CI-pinned prettier@3.3.3 which also flags them. ([Slang formatting.sh markdown: never run local prettier on whole doc — version-skew churns pre-existing files](../learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-prett.md))
+
+**The top-level markdown files are the exception, and they are now enforced.** Older notes say `CLAUDE.md`/`CONTRIBUTING.md`/`README.md` are prettier-dirty on master and not your problem ([formatting.sh --cpp silently no-ops](../learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md)). That is stale. #12600 (2026-09-01) changed the dispatch to `((run_all || run_markdown)) && markdown_formatting` (`extras/formatting.sh:444`) together with the reformat, so CI's `formatting.sh --check-only` now runs prettier, and `npx -y prettier@3 --check CONTRIBUTING.md` passes at master a801f2685 ([correction: CONTRIBUTING.md now passes prettier on slang master (#13822)](../learnings/1792607515728-correction-contributing-md-now-passes-prettier-on-.md)). Re-measured 2026-10-22 at master `653bfdeef4` with a logging stub `prettier` on `PATH`: a default `--check-only` handed prettier exactly six files, `AGENTS.md`, `CLAUDE.md`, `CODE_OF_CONDUCT.md`, `CONTRIBUTING.md`, `README.md` and `REVIEW.md`. All six pass prettier@3.3.3, while 427 of the 594 tracked `.md` files elsewhere still fail it. The six-file scope comes from `list_files`' unquoted `git ls-files $@`, which lets the shell expand `*.md` against the repo root ([git ls-files $@ unquoted narrows a repo-wide pathspec](../learnings/1786023595379-git-ls-files-unquoted-silently-narrows-a-repo-wide.md)). So keep any edit to a top-level `.md` prettier-clean (run `npx -y prettier@3.3.3 --check <file>`), or the Check Formatting job fails on a non-draft PR; for `docs/**`, the format-neutral delta check above still applies.
 
 ## Public Headers Must Be ASCII-Only (MSVC C4819); Sweep prelude/ Too
 
@@ -168,7 +170,7 @@ A `printf`-family call with a **non-literal** format string and **zero** variadi
 
 ## Contradictions / supersessions
 
-None found. The two "draft PR CI" learnings are complementary (one adds the workflow_dispatch clarification; both are consistent).
+The two "draft PR CI" learnings are complementary (one adds the workflow_dispatch clarification; both are consistent). The "CLAUDE.md/CONTRIBUTING.md/README.md are prettier-dirty on master" aside in the clang-format no-op atom is superseded for the top-level files by the 2026-10-21 CONTRIBUTING.md correction; that atom's clang-format finding still stands, so both stay live.
 
 ## slang-rhi lint gates differ from the slang compiler
 
@@ -182,7 +184,7 @@ The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format
 **Never run prettier (formatting.sh --md) on the generated capability-atoms doc** — **Context:** slang#12097 — editing a capdef `///` doc comment regenerates `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator`. [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 
 ---
-**Source learnings (22):**
+**Source learnings (23):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -200,6 +202,7 @@ The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format
 - [clang-format via pip wheel: never point it at .meta.slang (destructive); PATH must be inline in the same bash call](../learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md)
 - [formatting.sh --cpp silently no-ops (exit 0) when clang-format absent from PATH](../learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md)
 - [never run local prettier on whole user-guide docs — version-skew churns pre-existing Setext/emphasis files; only C++ clang-format is enforced](../learnings/1785550531048-slang-formatting-sh-markdown-never-run-local-prett.md)
+- [Correction: CONTRIBUTING.md now passes prettier on slang master](../learnings/1792607515728-correction-contributing-md-now-passes-prettier-on-.md) — since #12600 CI's `--check-only` runs prettier on the top-level `*.md`; CONTRIBUTING.md passes at a801f2685; keep edits prettier-clean (#13822)
 - [REUSE lint doesn't cover statically-linked submodules — BSD-2/3 copyright notices missing from shipped artifact (#12302)](../learnings/1785460293333-slang-third-party-license-attribution-reuse-doesn-.md)
 - [#12302 BSD-notice fix: bare LICENSES/BSD-*.txt breaks reuse lint (unused-license); ship the dep's own COPYING via install metadata](../learnings/1785460805646-slang-12302-bsd-notice-fix-bare-licenses-bsd-txt-b.md)
 - [don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)

@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen, llvm-prebuilt, gcs, ci]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -22,6 +22,7 @@ module silently, and a universal macOS build that ships x86_64-only host tools w
   compiles exit-0 and the IR never reaches slang-test's FileCheck buffer — a `CHECK-NOT` there passes
   on the buggy binary (useless). `llvm-host-ir -o -` puts textual IR on captured stdout for a real
   red→green.
+- **For BAB-legalization changes on CPU-via-LLVM, count `llvm.memcpy` / load shapes in `-target llvm-shader-ir`** — a `-llvm` buffer compare passes on aligned render-test buffers either way.
 - **A `CHECK-NOT: noinline` can false-match the mangled symbol name** — keep the substring out of the
   filename and anchor the `CHECK-NOT` *after* the `attributes #N = {` positive match.
 - **A universal macOS build with x86_64-only host tools: check Slang's own arg plumbing first.** #13077
@@ -147,6 +148,18 @@ precedence must be applied in BOTH emitters. CUDA (`slang-emit-cuda.cpp`) uses a
 union `ForceInline || UserForceInline`, because on the LLVM path inlining is deferred to LLVM via the
 `alwaysinline` attribute, so both kinds reach the function decl and must suppress `noinline`.
 
+**A byte-address-buffer legalization change on CPU-via-LLVM needs an IR-shape check, not a
+buffer compare.** CPU-via-LLVM sets `scalarizeVectorLoadStore` (`slang-emit.cpp:2222`), so a
+change to `legalizeByteAddressBufferOps` changes the LLVM output, but a `-llvm` COMPARE_COMPUTE
+run usually passes before and after because render-test buffers are well aligned. Compile with
+`slangc <t> -target llvm-shader-ir -entry computeMain -stage compute -o x.ll` and count the
+shapes: in #13815, whole-array BAB loads appear as `llvm.memcpy` (17 at base, 0
+at head), and head had 32 `load float` where base had 16 `load i64` + 8 `load float`. A
+FileCheck `LLVM-NOT: llvm.memcpy` row tells the two apart. In that build `-target llvm-ir` and
+`host-callable -emit-cpu-via-llvm` both failed ("Unsupported instruction for LLVM target" /
+unknown target), so `llvm-shader-ir` was the working form
+[CPU-via-LLVM BAB aggregate loads: count llvm.memcpy in llvm-shader-ir](../learnings/1792584200379-cpu-via-llvm-bab-aggregate-loads-count-llvm-memcpy.md).
+
 ## Forcing host-native LLVM TableGen tools was the wrong layer for #13077
 
 For the macOS universal DXC build failure (#13077, `clang-tblgen: Bad CPU type in executable`), the rounds that enabled `LLVM_USE_HOST_TOOLS` and then injected `-DCMAKE_OSX_ARCHITECTURES=<host>` through `CROSS_TOOLCHAIN_FLAGS_NATIVE` rested on the theory that the vendored LLVM's host-tool arch handling was at fault. It was not: Slang's own `FetchDXC.cmake` consumed the list's `\;` escape in an unquoted `set()` hop, so DXC was configured x86_64-only from the start. The durable CMake fact is the one those rounds brushed against, that a `\;` escape survives exactly one unquoted expansion; the durable process rule is to dump the argv the child actually received before theorising about a vendored build. The full account and the argv-harness recipe are in [Slang tooling: build runtime libs](../concepts/slang-tooling-build-runtime-libs.md) ([CMake: unquoted list expansion consumes \; escapes — verify your own arg plumbing before blaming a vendored dep](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md)).
@@ -190,7 +203,7 @@ So before fanning out reruns after a reseed, rerun one job as a canary and read 
 
 For a "bump LLVM to a version containing upstream PR X" issue (for example slang#13549 / llvm#229712), check three things before writing a bump plan. First, the PR state: `gh pr view <N> -R llvm/llvm-project --json state,mergedAt`. `gh api repos/llvm/...` REST calls return 401 through the gateway, but `gh pr view` goes through GraphQL and works. Second, whether the fix is in any release: fetch the touched file from raw.githubusercontent.com at each release tag (`llvmorg-21.1.8`, `22.1.8`, `23.1.x`, `main`), compare md5s, and run `git apply --check` of the local backport on a temp tree that holds just those files. A quicker check is `curl https://raw.githubusercontent.com/llvm/llvm-project/<ref>/<path> | grep <symbol>`, which works through the gateway, but grep for a symbol the fix *adds* (for llvm#229712, the helper `read32AArch64LdrAddend` in `RuntimeDyldCOFFAArch64.h`), not a relocation name like `PAGEOFFSET_12L` that exists before the fix and gives a false hit. On 2026-10-19 the helper was absent on `main` and `llvmorg-22.1.8`, so the Slang backport patch stays ([grep raw.githubusercontent for a symbol the fix adds](../learnings/1792427631921-check-whether-an-unmerged-llvm-fix-landed-on-main-.md)). Third, tag dates: `git ls-remote --tags` gives the list, and the GraphQL `ref(qualifiedName:"refs/tags/…")` committedDate gives the dates. Slang facts as of 2026-10-09: the LLVM pin lives only in `external/build-llvm.sh:57` and `build-llvm.ps1:58`; the CI cache key globs `external/llvm-*.patch`, so deleting a backport patch rekeys the prebuilts (see the section above); moving to LLVM 23 trips `static_assert(LLVM_VERSION_MAJOR < 23)` in `slang-llvm-jit-shared-library.cpp` (the Win64 RTDyld workaround); and draft #11017 bumps to 22.1.4 ([checking whether an upstream LLVM fix has shipped](../learnings/1791577897128-checking-whether-an-upstream-llvm-fix-has-shipped-.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [target-gating an emitted-code optimization: CPU-via-LLVM (slang-emit-llvm.cpp, raw trap-less CreateUnreachable) is a separate emitter with no text prelude — a producer predicate must exclude isCPUTargetViaLLVM (#13220/PR #13228)](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
 - [emitCast int→int widening is SOURCE-signedness-driven (SExt/ZExt from srcIsSigned), not dstIsSigned; dstIsSigned only gates float↔int; default `-cpu` emits C++ (never slang-emit-llvm.cpp); a `-cpu` test of `int→intptr` is false coverage (#13202)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md)
 - [adjudicating an "isSignedType flip = silent cross-backend change" review finding: the genuine GPU-free witnesses are float→intptr on `-target llvm` and `OpSLessThan` on SPIR-V (slang-emit-spirv.cpp:841); verify the target path reaches the emitter before requiring a test](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)
@@ -198,6 +211,7 @@ For a "bump LLVM to a version containing upstream PR X" issue (for example slang
 - [Fresh slang worktree configure can fetch a stale slang-llvm → silent (llvm) test failures](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md) — v2026.9.1 vs v2026.19 via `SLANG_SLANG_LLVM_BINARY_URL`; `(llvm)` legs `result code = 1`, `E00098 cannot access as a blob`; copy a current lib or set the URL
 - [slang-test 'FileCheck is not available' silently ignores filecheck tests; copy libslang-llvm.so into the build](../learnings/1791516327523-slang-test-filecheck-is-not-available-silently-ign.md) — `--target slangc slang-test` build has no library; 4/14 PR tests ignored on #13538 under "100% passed"; grep `ignored test`
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md) — `host-callable` ignores `verifyModule`'s return so an invalid module exits 0 and never reaches FileCheck; `llvm-host-ir -o -` gives red→green; `CHECK-NOT: noinline` false-matches the mangled name; `[ForceInline]` must beat `[noinline]` in both emitters.
+- [CPU-via-LLVM BAB aggregate loads: count llvm.memcpy in -target llvm-shader-ir; a buffer-compare -llvm run can't tell](../learnings/1792584200379-cpu-via-llvm-bab-aggregate-loads-count-llvm-memcpy.md) — #13815: 17→0 `llvm.memcpy`; `scalarizeVectorLoadStore` on CPU-via-LLVM; `LLVM-NOT: llvm.memcpy` row
 - [CMake: unquoted list expansion consumes \; escapes (#13077 root cause)](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md) — supersedes the LLVM_USE_HOST_TOOLS / NATIVE-flags diagnosis.
 - [slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release in default local builds](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md) — #13359: an `IFileCheck` change fails `locateLLVMFileCheck` at startup until a release ships; per-prefix `performTest` loses cross-prefix ordering
 - [LLVM prebuilt cache-key change can hard-fail master-ref cold builds in release.yml](../learnings/1791518829641-llvm-prebuilt-cache-key-change-can-hard-fail-maste.md) — #13540: "Upload LLVM to GCS" fails without gcloud auth; probe with `-w '%{http_code}'`

@@ -3,7 +3,7 @@ title: "slangc CLI behavior: exit codes, crash semantics, output streams, and op
 type: concept
 group: slang-tooling
 tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths, e00070, entry-point, container-output, slang-module]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -31,6 +31,7 @@ several inspection paths silently drop the CLI options you passed.
   reproduces a seek bug.
 - **A master-vs-fix probe matrix with the wrong `-entry` fails E38000 on both sides** and reads as "no diff" — grep the matrix for E38000 before trusting it.
 - **`-target hlsl -o out.hlsl` without `-entry` stops at E00070 before semantic checking**, so a front-end error never shows and "HLSL works" is a false claim. Re-run every "only target X fails" report with `-entry <name>` on the other targets.
+- **A diagnostic with no source location also drops its span message** (which names the decl or path); re-run with `-enable-machine-readable-diagnostics` to see it.
 - **Container outputs can fail with exit 0 and no file** (before the slang-13304 fix): a missing output directory, `-target spirv -o x.slang-module` without `-embed-downstream-ir`, and `-target host-callable -o x.zip`. Check that the file exists.
 - **`head -N` on a compiler log can hide the ICE** — Slang prints warnings first. Grep for
   outcome classes (`assert failure|E99997`), don't slice by position.
@@ -130,6 +131,16 @@ the HLSL case (and every other target) with `-entry <name> -stage <stage>` befor
 the bug is target-specific
 [-target hlsl without -entry stops at E00070](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md),
 ['works on HLSL' claims: check for E00070 when -o has no -entry](../learnings/1792306193789-slangc-works-on-hlsl-claims-check-for-e00070-when-.md).
+
+The same E30600 shows a second reading trap: it prints as `error[E30600]: declaration not
+accessible` with no span, so it does not say WHICH declaration. The default renderer drops the
+span message whenever the location is invalid (the E52004 path-less case below is the same
+effect). Re-run with `-enable-machine-readable-diagnostics`: the tab-separated output keeps the
+span text, e.g. `'Concrete.init' is not accessible from the current context.` For #12917 that
+names the synthesized `IDefaultInitializable` ctor, whose module-default Internal visibility is
+explained on [[wiki/concepts/slang-language-core-f0909b0-default-args-methods-visibility.md]];
+workarounds are `public __init()` on the struct, or `-std 2026`
+[recover the decl name from a location-less diagnostic](../learnings/1792648748867-slang-recover-the-decl-name-from-a-location-less-d.md).
 
 There is, however, a *corrected* premise about output streams worth flagging as a
 supersession. `docs/generated/tests/_meta/prompts/_common.md` long claimed that a `-dump-ir` +
@@ -342,7 +353,7 @@ churn, whereas changing the default to emit column would touch hundreds of `test
 expected-output blocks
 [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md) — both binaries fail E38000 → "no diff"; `-o /dev/null` + validation gives E00004, not a spirv-val failure
 - [slangc -lang applies only to inputs after it; slang-test SIMPLE puts the file path first](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md) — a `.slang` test with `-lang hlsl` is still parsed as Slang; use a `.hlsl` file (#10305, #13495)
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
@@ -362,4 +373,5 @@ expected-output blocks
 - [slangc -o /dev/null fails with E00004 in the fixer container (slang#11782)](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md) — workflow docs suggest it for validation checks; EXIT=255 there is not a compile failure
 - [slangc -target hlsl without -entry stops at E00070, hiding semantic errors](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md) — false "HLSL works" claims; WGSL/SPIR-V accept `-o` without `-entry` (#12917)
 - [slangc 'works on HLSL' claims: check for E00070 when -o has no -entry](../learnings/1792306193789-slangc-works-on-hlsl-claims-check-for-e00070-when-.md) — re-run HLSL with `-entry -stage`; #12917 hits the same E30600 on v2026.8.1 and v2026.20
+- [Slang: recover the decl name from a location-less diagnostic](../learnings/1792648748867-slang-recover-the-decl-name-from-a-location-less-d.md) — `-enable-machine-readable-diagnostics` keeps the span text; #12917 E30600 names the synthesized `IDefaultInitializable` ctor (Internal default visibility); `public __init()` or `-std 2026`
 - [slangc container outputs: silent no-file cases and how to test exit codes](../learnings/1792174239466-slangc-container-outputs-silent-no-file-cases-and-.md) — `maybeWriteContainer` dropped failures; three exit-0 cases; `result code = -1`; `-emit-cpu-via-llvm` gate

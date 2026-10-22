@@ -3,6 +3,7 @@ title: "#12987 local-struct constrained-generic conformance crash: fix ships in 
 type: learning
 topic: slang-compiler
 source: learnings/1792156128422-12987-local-struct-constrained-generic-conformance.md
+superseded_by: 1792403199630-12987-local-struct-conformance-fix-first-ships-in-
 ---
 
 # #12987 local-struct constrained-generic conformance crash: fix ships in v2026.18.3

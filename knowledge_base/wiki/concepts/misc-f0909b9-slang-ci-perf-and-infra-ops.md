@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 25
+source_count: 26
 ---
 
 ## TL;DR
@@ -37,6 +37,9 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
   circulated mislabeled or went stale.
 - **Per-pass compile-time A/B:** use phase-scoped callgrind instruction counts
   (deterministic) plus an ABBA wall-clock run, not wall-clock medians on a shared box.
+  For a quick per-target claim in a reply, run a `tools/compile-perf` generator
+  through `slangc -report-detailed-perf-benchmark` (SPIR-V control:
+  `-emit-spirv-directly -O0`) rather than quoting the README table.
 - **Nightly MDL perf: a green night after a red one is usually a sub-threshold
   confirmation** (1.08× < 1.10×), not baseline absorption — read the analyze log's
   `Confirmation:` and `baseline: trailing 7` lines; localize a real step by per-timer
@@ -238,6 +241,19 @@ phase-delta: measure whole-process Ir, and report a paired IQR that sits entirel
 above zero instead of calling everything noise
 ([deterministic compile-perf A/B for a Slang pass: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md)).
 
+**Quick per-target evidence for a reply (under a minute).** When a triage reply
+needs to back a claim such as "this pass is slow on CUDA", run the suite's own
+generator instead of quoting the README table: import it from
+`tools/compile-perf/lib/workloads.py` (e.g. `gen_resource_load_chain(n)`), write the
+`.slang` file, run `build/Release/bin/slangc <f> -target cuda -entry computeMain
+-stage compute -report-detailed-perf-benchmark`, and grep the per-pass lines (for
+example `[*] deferBufferLoad`, `simplifyNonSSAIR`). For the SPIR-V control add
+`-emit-spirv-directly -O0`, which avoids the missing spirv-opt (E00100) without
+building slang-glslang. Measured on 2026-10-22 ToT (L40S container): at N=640 CUDA
+spends about 80 ms in each of those two passes and SPIR-V under 2 ms; at N=160 CUDA
+is about 5 ms
+([quick CUDA vs SPIR-V compile-time evidence from the compile-perf generators](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md)).
+
 ## Triaging the Nightly MDL Perf Test gate: split resize-noise from real regressions
 
 When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with many workloads/metrics lit at once, don't treat it as one blob — split it. (1) **Check for a disclosed benchmark-methodology change first:** search recently-merged PRs touching `tools/compile-perf/lib/manifest.py` for `default_size`/`sweep_sizes` edits — a human-reviewed PR that changed a workload's `default_size` often *predicts* the expected before/after ratio in its body (e.g. Slang PR #13035 said "one night of movement on those four workloads is expected"), so a flagged workload matching that predicted list+ratio is NOT a regression, just the gate correctly detecting an intentional disclosed change. (2) **What's left after removing resize-explained workloads is the real signal** — look at which *timer* flagged, not just which workload: a genuine localized pass regression shows up in a sub-pass timer (`specializeModule`, `simplifyIR`, `linkAndOptimizeIR`) while the workload's own `compileInner` (full wall-clock) stays clean (the regression is a fraction of total time, below the workload-level ratio threshold); if `compileInner` also moves for every workload, suspect host/runner contention instead. (3) **Narrow suspects to PRs touching `source/slang/core.meta.slang` / `hlsl.meta.slang`** — the shared core/HLSL prelude is checked+specialized on every single compile (`bench.py` spawns a fresh `slangc` per sample, no cross-process module cache), so adding generic functions/overloads there inflates `specializeModule`/`simplifyIR` broadly across unrelated workloads (easy to miss because a title like "Support generic builtin vector dot products" gives no perf hint). (4) Cross-reference self-merge status (author == merged_by, no APPROVED review) on candidate PRs in the window — a fast signal for where review rigor was lowest, not proof of causation. Worked example (2026-09-19): 4 workloads' 2.4-10x jumps → PR #13035 resize (not a regression); a separate ~1.7-2.4x `specializeModule`/`simplifyIR` jump on other workloads → traced to self-merged #13138/#13135 adding new generics to the core/HLSL prelude ([separating disclosed benchmark-resize noise from genuine compiler perf regressions](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md)).
@@ -246,7 +262,7 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 
 **Size a front-end step with per-timer geomeans from the perf-confirmation artifacts.** The `analyze` table lists only counters over the ratio≥1.1 / abs≥2 ms gate against a trailing-7 median, and chronic noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p 'perf-confirmation-*'`, read `results.json` (workloads with `timers.<name>.median` and `size`), keep workloads whose `size` matches between nights, and take the geomean ratio per timer against a fixed green night. A real front-end regression moves `SemanticChecking`/`frontEndExecute` broadly (39/54 workloads above the prior four nights' max) while `linkAndOptimizeIR` and `loadBuiltinModule` stay near 1.00; runner noise moves everything. The 10-16 nightly measured SemanticChecking 1.052 vs 10-12 (1.042 vs 10-15 alone), with only #13537/#13615/#13626 in the window. Artifacts expire after about a week (10-07/10-08 runs returned 404 on 10-16), so record the geomeans durably when sizing a step [MDL perf nightly per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md).
 
-**Source learnings (25):**
+**Source learnings (26):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
 - [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
@@ -272,4 +288,5 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 - [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — per-timer geomean vs a fixed green night; one phase shifting broadly = real, all phases together = runner noise.
 - [Nightly compile-perf: a green night after a red one is a threshold miss, not baseline absorption](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md) — median unchanged, 1.08× < 1.10× ERROR; grep `Confirmation:`; #13445 getTypeTags walk suspect (#13565).
 - [Deterministic compile-perf A/B for a Slang pass: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md) — --toggle-collect on the phase gives run-identical Ir; build slang-glslang for SPIR-V workloads; report whole-process Ir, not phase-share x delta (PR #13236).
+- [Quick CUDA vs SPIR-V compile-time evidence from the compile-perf generators](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md) — import a `workloads.py` generator, `-report-detailed-perf-benchmark`; SPIR-V control needs `-emit-spirv-directly -O0`; N=640: CUDA ~80 ms/pass vs SPIR-V <2 ms
 - [MDL perf nightly: size a front-end step with per-timer geomeans from perf-confirmation artifacts](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md) — size-matched workloads vs a fixed green night; artifacts expire ~1 week

@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 13
+source_count: 14
 ---
 
 ## TL;DR
@@ -125,6 +125,13 @@ from #13179's missing rootUri fallback. Probe it over stdio (`initialize`, `init
 config reply, `didOpen`, then `textDocument/definition` on the include line) with the include target in a
 *different* folder, since a same-folder include resolves relative to the includer and hides the bug
 ([a null workspace/configuration reply disables searchInAllWorkspaceDirectories](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md)).
+The Zed side is confirmed in source: the Slang extension Zed publishes (zed-industries/extensions →
+submodule cohaereo/zed-slang) registers its server id as `slangd`, which is why user settings live under
+`lsp.slangd.settings`, and Zed's workspace/configuration handler (`crates/project/src/lsp_store.rs`
+~:1059) answers `.get(section).unwrap_or(Value::Null)`, so every unset `slang.*` key reaches slangd as
+`null`. To read such third-party repos from the eval container, `gh api repos/<non-slang-repo>/contents/…`
+returns 401 Bad credentials, while `curl -sfL https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path>`
+works for public repos ([Zed Slang extension server id is slangd](../learnings/1792652480222-zed-slang-extension-server-id-is-slangd-read-third.md)).
 The probe needs no Zed and no build: `gh release download vX -p 'slang-<n>-linux-x86_64.tar.gz'`, set
 `LD_LIBRARY_PATH=<x>/lib`, and drive `bin/slangd` over stdio with a 60-line Python client that sends
 `initialize` with rootUri/rootPath/workspaceFolders, then `initialized` and `didOpen`, and answers each
@@ -263,7 +270,7 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (13):**
+**Source learnings (14):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
 - [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
@@ -277,5 +284,6 @@ Triage implications:
 - [slangd LSP probe: a 60-line Python stdio client reproduces Zed include bugs GPU-free](../learnings/1792406418147-slangd-lsp-probe-a-60-line-python-stdio-client-rep.md) — release tarball + LD_LIBRARY_PATH; null vs true config replies; v2026.19 fails, v2026.20 resolves (#13475)
 - [slangd LSP probe: check textDocument/definition, because a clean file may send no diagnostics](../learnings/1792427403200-slangd-lsp-probe-check-textdocument-definition-bec.md) — wait ~1.5 s after didOpen; definition is null on failure, a location on success
 - [postmortem: shader-slang/slang#13179 superseded by PR #13192](../learnings/1792461389590-postmortem-shader-slang-slang-13179-superseded-by-.md) — #13192 also fixed the per-root `workspaceSearchPaths` overwrite; test list-valued fallbacks with N≥2 entries and order; array `settings` crash filed as #13757
+- [Zed Slang extension: server id is slangd; read third-party repos via raw.githubusercontent](../learnings/1792652480222-zed-slang-extension-server-id-is-slangd-read-third.md) — cohaereo/zed-slang registers `slangd` (`lsp.slangd.settings`); Zed's `lsp_store.rs` answers null for unset sections; `gh api` on non-slang repos 401s in eval, raw.githubusercontent works
 
 _Catalog: [[wiki/index.md]]_

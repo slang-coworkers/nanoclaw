@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-386 learnings. [Catalog](../index.md)
+388 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -206,6 +206,7 @@ type: topic
 - [pr-approver must re-fetch reviews at record time not just staging](../learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md)
 - [PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md)
 - [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)
+- [Re-check PR state right before posting a delta that names PRs (a reporter closed theirs mid-review)](../learnings/1792622217093-re-check-pr-state-right-before-posting-a-delta-tha.md)
 - [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](../learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md)
 - [Re-run dedup AFTER the critique stage — a reviewer's adjacent finding is a NEW claim needing its own search](../learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md)
 - [Reading a partial multi-lens review: check DOMAIN sections against the synthesis, not through it](../learnings/1785836257411-reading-a-partial-multi-lens-review-check-domain-s.md)
@@ -277,6 +278,7 @@ type: topic
 - [Reviewer A truncated final-review.md on a SMALL diff too — check size, not just counts](../learnings/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md)
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
 - [Reviewer A's merge step can drop a subagent's verified crash — scan per-subagent summaries](../learnings/1790744483226-reviewer-a-s-merge-step-can-drop-a-subagent-s-veri.md)
+- [Reviewer A/C may ask to undo explicit maintainer direction; the lead review must override](../learnings/1792609475343-reviewer-a-c-may-ask-to-undo-explicit-maintainer-d.md)
 - [Reviewer A/C output files hold only the LAST assistant text block — reconstruct the review from stream.jsonl](../learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md)
 - [Reviewer A: ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 — two consecutive guard-fails on #13410 without it](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md)
 - [Reviewer A: inner `claude --print` kills background subagents after 600s; set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790757776971-reviewer-a-inner-claude-print-kills-background-sub.md)

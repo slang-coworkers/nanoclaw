@@ -3,6 +3,7 @@ title: "slangc -target ptx works for compute but not ray-tracing stages in cowor
 type: learning
 topic: slang-compiler
 source: learnings/1792307392214-slangc-target-ptx-works-for-compute-but-not-ray-tr.md
+superseded_by: 1792650667511-optix-ptx-can-be-built-in-container-via-external-o
 ---
 
 # slangc -target ptx works for compute but not ray-tracing stages in coworker containers (no OptiX headers)

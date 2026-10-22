@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7725 agent learnings**, synthesized into **483 concept pages**.
+Standalone wiki built from **7844 agent learnings**, synthesized into **486 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -152,6 +152,7 @@ Standalone wiki built from **7725 agent learnings**, synthesized into **483 conc
 - [Reading a CI Run — Census, Roll-Ups & the Retry Layers](concepts/ci-github-run-census-and-retry-layers.md)
 - [Reading GitHub/CI state without false zeros — gh API/CLI instrument defects](concepts/ci-tooling-f0909b0-github-api-instruments.md)
 - [Slang compiler and build-system findings surfaced during CI/review work](concepts/ci-tooling-f0909b0-slang-compiler-build-findings.md)
+- [Windows GPU slang-test jobs: the API split, the merge back, and sizing CI jobs from step timings](concepts/ci-windows-gpu-test-job-split-and-merge.md)
 
 ### general
 - [Agent coordination — message delivery, shared identity, resume, and verification tooling](concepts/general-misc-b-agent-coordination-and-messaging.md)
@@ -440,6 +441,7 @@ Standalone wiki built from **7725 agent learnings**, synthesized into **483 conc
 - [Slang Compiler: IR Type-Legalization, Empty Structs, Half, and Enum-Cast Lowering](concepts/slang-compiler-ir-type-legalization.md)
 - [Slang Compiler: Probe Discipline Behind Source-Read Claims, and Opaque IR Type Naming](concepts/slang-compiler-probe-discipline-and-type-naming.md)
 - [Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline, and 2026-07-17 Operational Fold](concepts/slang-compiler-type-flow-and-gate-discipline.md)
+- [Slang Compiler: Type-Flow Set-Specialization Diamonds (E33180) and analyzeCall Callee Lifetime](concepts/slang-compiler-type-flow-set-specialization-diamonds.md)
 - [Slang Diagnostics System: Catalog, Definitions, and Rendering](concepts/slang-misc-diagnostics-catalog-and-system.md)
 - [Slang Diagnostics: Deep-Dive Incidents & Case Studies](concepts/slang-misc-diagnostics-deep-dives.md)
 - [Slang IR: phi block parameters and where inlined global values land](concepts/slang-compiler-ir-phis-and-global-value-placement.md)
@@ -450,6 +452,7 @@ Standalone wiki built from **7725 agent learnings**, synthesized into **483 conc
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
 - [Slang Test — FileCheck Authoring and Opt-Levels](concepts/slang-test-filecheck-authoring-and-opt-levels.md)
 - [Slang Test — Output Assertions and Truncated Runs](concepts/slang-test-output-assertions-and-truncated-runs.md)
+- [slang-test #line directive and source-location checks: meta-module locations, inlining, and drills that keep their teeth](concepts/slang-test-line-directive-and-location-checks.md)
 - [slang-test False Greens and Verification Discipline](concepts/slang-test-false-greens-and-verification-traps.md)
 - [slang-test GPU lanes on the shared L40S: run suites serially, orphaned test-servers, 'ignored' that is contention, and what the GPU confirms](concepts/slang-test-gpu-lanes-on-shared-l40s.md)
 - [slang-test Harness Internals and In-Process Unit Tests](concepts/slang-test-harness-internals-and-unit-tests.md)
@@ -539,10 +542,10 @@ Standalone wiki built from **7725 agent learnings**, synthesized into **483 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2380)
-- [NanoClaw / agent operations](topics/agent-ops.md) (905)
-- [CI, build & tooling](topics/ci-tooling.md) (569)
-- [Review & process](topics/review-process.md) (386)
+- [Slang compiler & language](topics/slang-compiler.md) (2445)
+- [NanoClaw / agent operations](topics/agent-ops.md) (914)
+- [CI, build & tooling](topics/ci-tooling.md) (575)
+- [Review & process](topics/review-process.md) (388)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (576)
-- [Uncategorized](topics/misc.md) (1490)
+- [Verification & evidence discipline](topics/verification.md) (581)
+- [Uncategorized](topics/misc.md) (1522)

@@ -3,7 +3,7 @@ title: nv-slang-bot identities and the license/cla gate
 type: concept
 group: slang
 tags: [slang, slang-rhi, slangpy, cla, github-bot, false-zero, gh-api]
-source_count: 11
+source_count: 12
 ---
 
 ## TL;DR
@@ -26,6 +26,8 @@ id 286953280 = nv-slang-bot        type=User   <- CLA NOT signed  => license/cla
 ```
 
 cla-assistant keys off **commit metadata**, not the PR-level author — the App is the PR author in both cases. A commit authored under the User identity *anywhere* in a PR's history makes `license/cla` report `pending` plus a `CLAassistant` comment (bot-authored, so not a routing inbound). The state lives **only on `commits/{sha}/status`**, never on `commits/{sha}/check-runs` — the same two-surface trap as merge-queue eviction. And `author.id`/`author.type` are the discriminator, *not* the commit email string: the email correlated perfectly across 8 PRs but is a *proxy* (it differs *because* the identities differ), and acting on it would send someone hunting an email-formatting bug in the push tooling instead of a wrong-account defect. When a string field separates your cases cleanly, ask what it is a shadow of before publishing it as the mechanism. [Two GitHub identities named nv-slang-bot — the User one is CLA-unsigned and invisible on check-runs](../learnings/1785883269148-two-github-identities-named-nv-slang-bot-the-user-.md) [Two nv-slang-bot identities gate CLA — test ALL commits, never a single index (HEAD-only returns false clean)](../learnings/1785888345635-two-nv-slang-bot-identities-gate-cla-test-all-comm.md)
+
+Which CLA a repo's `license/cla` enforces is a separate question from who signed it. The `cla-assistant.io/shader-slang/<repo>` page is rendered by JavaScript, so `curl` returns only a ToS gist. The read-only API answers it: `curl -s -X POST https://cla-assistant.io/api/cla/getLinkedItem -H 'Content-Type: application/json' -d '{"owner":"shader-slang","repo":"<repo>"}' | jq .gist`, then fetch the text from `https://gist.githubusercontent.com/<owner>/<id>/raw` (`gh api gists/...` fails with 401 `app_not_connected` in the container). On 2026-10-21 slang, spec, slangpy, slang-rhi and slang-torch all mapped to the same gist (KhronosWebservices/588fd094cae16183e7a80e21f685a45b, 84 words, version 2024-11-21), so a claim that one of them "has a different CLA" is not supported by cla-assistant (#13822) ([find which CLA text a shader-slang repo uses via cla-assistant getLinkedItem](../learnings/1792607068662-find-which-cla-text-a-shader-slang-repo-uses-via-c.md)).
 
 ## Probing safely: all commits, right login, both surfaces
 
@@ -68,7 +70,8 @@ On shader-slang/slang worktrees the repo-local git config already sets the CLA-s
 
 A pre-commit / pre-merge-commit hook that checks `git var GIT_AUTHOR_IDENT` / `GIT_COMMITTER_IDENT` for the bare noreply email must fail closed. In a clone with no `user.name` (seen in slang-11225, slang-master-1181 and wt-samples-46 under slangpy-fixer), `GIT_COMMITTER_EMAIL=<bad> git var GIT_COMMITTER_IDENT` exits 128 ("empty ident name not allowed"), so `ident=$(git var …) || continue` passes silently and the smoke test reads as "override accepted". Treating an unresolvable ident as a reject makes the guard refuse every override variant (`-c user.email`, `--author`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL`, and a `--no-ff` merge with an override) in every clone. A rejected pre-merge-commit leaves MERGE_HEAD pending, so run `git merge --abort` between test cases; `git hook run pre-commit` (git ≥ 2.36) smoke-tests a hook without committing. Email variants, checked on the slangpy PR commits API on 2026-10-13: `274397474+nv-slang-bot@…`, `274397474+nv-slang-bot[bot]@…` and `nv-slang-bot[bot]@…` all map to the App (id 274397474, CLA ok); `nv-slang-bot@…` maps to User id 286953280 (CLA pending); `174632915+nv-slang-bot[bot]@…` is linked to no account (a stale App id, seen on slangpy#1118) [identity-guard hook: fail closed when git var can't resolve the ident](../learnings/1791865446442-identity-guard-hook-fail-closed-when-git-var-can-t.md).
 
-**Source learnings (11):**
+**Source learnings (12):**
+- [Find which CLA text a shader-slang repo uses via cla-assistant getLinkedItem](../learnings/1792607068662-find-which-cla-text-a-shader-slang-repo-uses-via-c.md) — the page is JS-rendered; POST `/api/cla/getLinkedItem` gives the gist; all five shader-slang repos share one CLA (2026-10-21).
 - [Never pass -c user.name/email on slang bot commits — it flips license/cla](../learnings/1791864867562-never-pass-c-user-name-email-on-slang-bot-commits-.md) — repo-local config already has the App identity; override authors as the User; force-push is operator-gated
 - [Identity-guard hook: fail closed when git var can't resolve the ident](../learnings/1791865446442-identity-guard-hook-fail-closed-when-git-var-can-t.md) — exit 128 with no `user.name`; `|| continue` passes silently; email-variant → account mapping
 
