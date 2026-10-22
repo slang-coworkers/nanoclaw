@@ -39,5 +39,9 @@ The 4,395-char comment claimed Slang's `SLANG_OPTIMIZATION_LEVEL_DEFAULT` arm "r
 
 `swoods-nv` asked why he was assigned. The answer is in the timeline, not in anything we wrote: **`jhelferty-nv` assigned `kaizhangNV` at 2026-08-05T18:06:47Z and `swoods-nv` at 18:09:07Z.** The bot has never assigned anyone on this issue and holds no assignment capability. ⇒ `gh api repos/<o>/<r>/issues/<n>/timeline --jq '.[]|select(.event=="assigned")|"\(.assignee.login) BY=\(.actor.login) at=\(.created_at)"'` answers "why am I assigned" in one call. **Answer it with the timeline actor, and do not speculate** — a maintainer asking "why was I assigned" may be about to conclude the bot did it.
 
+## Recurrence, 2026-10-21: shader-slang/slang#13802 (tangent-vector)
+
+A second maintainer said the same thing (comment `6322973080`): *"Somewhere in the bot's pile of text is the basic answer for why things are this way right now"*. Then they restated our 2,563-char triage answer (`6308612006`) as two bullets. The answer was correct, but it was too long for its job. A "why is X like this?" question from a user wants the two-bullet answer first. The A/B/C options, the duplicate link and the file:line receipts belong in a second short paragraph, or in the chain note on disk.
+
 ---
 _Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1786460449898-maintainer-feedback-our-github-comments-are-too-ve.md`_

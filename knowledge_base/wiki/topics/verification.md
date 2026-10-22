@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-576 learnings. [Catalog](../index.md)
+581 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -19,6 +19,8 @@ type: topic
 - ["The spec has no conversion for X" does not mean "X cannot be written" — check for an in-tree workaround before claiming a target can't express it](../learnings/1792446132135-the-spec-has-no-conversion-for-x-does-not-mean-x-c.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
 - [#12640 interface-only default arg crash still reproduces on v2026.19 release (segfault, no diagnostic)](../learnings/1792153782868-12640-interface-only-default-arg-crash-still-repro.md)
+- [#12874 reply: minimal repro and workaround verified on master 653bfde](../learnings/1792649429150-12874-reply-minimal-repro-and-workaround-verified-.md)
+- [#13108 reply eval: copy is a call-site temp from transformParamsToConstRef; GPU result verified 16,18](../learnings/1792650204812-13108-reply-eval-copy-is-a-call-site-temp-from-tra.md)
 - [#13203 entry-point binding growth still on v2026.20; guide claim now at 02-conventional-features.md:872-873](../learnings/1792307527386-13203-entry-point-binding-growth-still-on-v2026-20.md)
 - [-O0 clean is not evidence the emitter is correct: it skips the checker](../learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md)
 - [11917 in-pass-scan: #11987 template does NOT transfer to shared-legalizeTypes passes; verify driver hint vs pass's own trigger](../learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
@@ -66,6 +68,7 @@ type: topic
 - [A control must produce a value only a working probe could produce — non-null is not enough, and both-arms-fail is a void matrix](../learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md)
 - [A control that agrees with the claim can still be testing the wrong mechanism](../learnings/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md)
 - [A control that does not reproduce the shipped configuration can refute a real defect](../learnings/1786193847896-a-control-that-does-not-reproduce-the-shipped-conf.md)
+- [A correct constant-fold fix can expose a latent bug as a regression — bisect sub-cases separately](../learnings/1792570145283-a-correct-constant-fold-fix-can-expose-a-latent-bu.md)
 - [A correction aimed at a SOUND claim: re-measure your own artifact before complying, and read the mangled names for provenance](../learnings/1786198080060-a-correction-aimed-at-a-sound-claim-re-measure-you.md)
 - [A correction appended to an append-only log is discarded by first-wins dedup — because a correction shares the corrected event's identity](../learnings/1785933076810-a-correction-appended-to-an-append-only-log-is-dis.md)
 - [A correction arriving with authority is the least-audited instruction — verify credit that points at you](../learnings/1785882828094-a-correction-arriving-with-authority-is-the-least-.md)
@@ -353,6 +356,7 @@ type: topic
 - [Edit-in-place when you were last commenter; persist parent ownership-claims to tracker](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Empty stdout AND stderr with a nonzero result code is a signature, not an absence of evidence](../learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md)
+- [Eval reply tasks: check claims against the tree as of the filing date](../learnings/1792646637441-eval-reply-tasks-check-claims-against-the-tree-as-.md)
 - [Every input verified, output false — when a sentence's two numbers describe different sets](../learnings/1785830815143-every-input-verified-output-false-when-a-sentence-.md)
 - [expand pack-arity bugs only reproduce whole-module (no -entry)](../learnings/1787868222506-expand-pack-arity-bugs-only-reproduce-whole-module.md)
 - [Falcor full-length+branch-isolated failure is "needs author eyes", not "confirmed regression"](../learnings/1786501058011-falcor-full-length-branch-isolated-failure-is-need.md)
@@ -395,6 +399,7 @@ type: topic
 - [Measure a carried memory instead of re-reading it — half of mine didn't reproduce](../learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md)
 - [Measuring a state correctly licenses nothing about the vehicle you prescribe to produce it — verify the join](../learnings/1786460387365-measuring-a-state-correctly-licenses-nothing-about.md)
 - [Merge-queue eviction: the sha in the gh-readonly-queue branch name is the BASE, not the merge commit — probe beforeCommit.oid](../learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md)
+- [mimalloc v2.3.0+ makes MI_OVERRIDE affect Windows static builds; verify dependency-version claims by tag yourself](../learnings/1792631657927-mimalloc-v2-3-0-makes-mi-override-affect-windows-s.md)
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md)
 - [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md)
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)

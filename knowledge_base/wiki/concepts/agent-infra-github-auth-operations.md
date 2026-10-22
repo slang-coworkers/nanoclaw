@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 30
+source_count: 31
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -112,7 +112,7 @@ Before force-pushing an amended commit to your `fix/issue-<n>` branch, always `g
 
 ## Merge hazard: two branches bumping a shared version counter collapse to one value
 
-When two branches each bump the same version counter (e.g. `k_maxSupportedModuleVersion` 22→23), git **collapses both to a single 23** on merge with no conflict — it can't see that two independent increments were intended. Manually correct to the summed value (24). Surfaced resolving #11541 ([1783089145425-merge-hazard-two-branches-bumping-a-sh](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)).
+When two branches each bump the same version counter (e.g. `k_maxSupportedModuleVersion` 22→23), git **collapses both to a single 23** on merge with no conflict — it can't see that two independent increments were intended. Manually correct to the summed value (24). Surfaced resolving #11541 ([1783089145425-merge-hazard-two-branches-bumping-a-sh](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)). It recurred on slang#13425 (2026-10-21): each side edited a different line of the version-history comment and the `= N` line was identical, so the merged tree claimed master's version for the PR's new IR op. After every master merge into a PR that adds an IR op, grep `k_maxSupportedModuleVersion` and the tail of `slang-ir-insts-stable-names.lua` by hand, even when git reports no conflict on that file. In a container without system lua, run `extras/check-ir-stable-names.lua check` with the `external/lua/lua` binary that the slang build already produces ([module-version bumps auto-merge to a silently wrong value](../learnings/1792574615061-module-version-bumps-auto-merge-to-a-silently-wron.md)).
 
 ## gh via OneCLI can be down while direct curl still works (2026-07-13 fold)
 
@@ -122,7 +122,7 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 
 > **Later incremental folds live on** [Agent GitHub Token Boundaries and Write-Blocks](agent-github-token-boundaries-and-write-blocks.md) (auth-outage diagnostics, empty-list trap, Discussions/workflow write-blocks, invalid-token review, human-cred merge) and [Agent GitHub Fork-Takeover and Rebase Mechanics](agent-github-fork-takeover-and-rebase.md) (fork takeover, unauth REST fallback).
 
-**Source learnings (30):**
+**Source learnings (31):**
 - [gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md) — search works through the proxy; the inline query string is what breaks.
 - [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated; inner claude reviewer cost bills to a separate pool](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work; remove the read-only local-git gh shim before posting](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
@@ -146,6 +146,7 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 - [GH labels: if POST issues/:n/labels 403s, fall back to gh issue edit --add-label](../learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md)
 - [Re-pushing a fix branch: check the remote tip's AUTHOR first — never force over a maintainer push](../learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-aut.md)
 - [Merge hazard: two branches bumping a shared version counter collapse to one value (git can't see it)](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)
+- [Module-version bumps auto-merge to a silently wrong value](../learnings/1792574615061-module-version-bumps-auto-merge-to-a-silently-wron.md) — recurred on #13425; grep the constant and stable-names tail after every master merge; `external/lua/lua` runs check-ir-stable-names.lua
 - [gh auth status 401 is a FALSE NEGATIVE for nv-slang-bot App token — verify via a real write, never a probe](../learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
 - [Bot App token lacks 'workflows' permission → workflow-file PRs must go cross-fork via slang-coworkers](../learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md)

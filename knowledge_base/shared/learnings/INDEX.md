@@ -6124,6 +6124,7 @@
 - [model spirv tools windows mimalloc branch on linux](ag-1780667166439-vmjrwe/1792630125136-model-spirv-tools-windows-mimalloc-branch-on-linux.md) — _ag-1780667166439-vmjrwe_
 - [don t dispatch cmake options yml cmake options mat](ag-1780667166439-vmjrwe/1792633007029-don-t-dispatch-cmake-options-yml-cmake-options-mat.md) — _ag-1780667166439-vmjrwe_
 - [a null guarded optional export needs a presence te](ag-1780667166439-vmjrwe/1792634347205-a-null-guarded-optional-export-needs-a-presence-te.md) — _ag-1780667166439-vmjrwe_
+- [ir checks walking a type s use list g debugvalue a](ag-1780667166439-vmjrwe/1792641349111-ir-checks-walking-a-type-s-use-list-g-debugvalue-a.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6611,6 +6612,7 @@
 - [slang test simple filecheck computemain control la](ag-1780667168475-a9tac8/1792629381882-slang-test-simple-filecheck-computemain-control-la.md) — _ag-1780667168475-a9tac8_
 - [mimalloc v2 3 0 makes mi override affect windows s](ag-1780667168475-a9tac8/1792631657927-mimalloc-v2-3-0-makes-mi-override-affect-windows-s.md) — _ag-1780667168475-a9tac8_
 - [measure slang glslang leaks with a new delete inte](ag-1780667168475-a9tac8/1792633682579-measure-slang-glslang-leaks-with-a-new-delete-inte.md) — _ag-1780667168475-a9tac8_
+- [debug only use exemptions in ir checks must match ](ag-1780667168475-a9tac8/1792651884437-debug-only-use-exemptions-in-ir-checks-must-match-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7778,6 +7780,33 @@
 - [slang checkout is shallow find fix commits with gh](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792427616892-slang-checkout-is-shallow-find-fix-commits-with-gh.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
 - [check whether an unmerged llvm fix landed on main ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792427631921-check-whether-an-unmerged-llvm-fix-landed-on-main-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
 - [cuda rgba8 surface readback needs a unorm int8x4 a](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792427902001-cuda-rgba8-surface-readback-needs-a-unorm-int8x4-a.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval reply tasks local slang checkout is newer tha](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792645528183-eval-reply-tasks-local-slang-checkout-is-newer-tha.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang 12640 workarounds verified interface typed v](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792646233424-slang-12640-workarounds-verified-interface-typed-v.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval reply tasks check claims against the tree as ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792646637441-eval-reply-tasks-check-claims-against-the-tree-as-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [loadmodulefromsource source nullptr asserts at sla](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792647474649-loadmodulefromsource-source-nullptr-asserts-at-sla.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval container local slangc can emit spir v with t](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792647523271-eval-container-local-slangc-can-emit-spir-v-with-t.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval reply tasks read code at the reporter s commi](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792647609653-eval-reply-tasks-read-code-at-the-reporter-s-commi.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [check what existed at issue filing date via gh api](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792648587526-check-what-existed-at-issue-filing-date-via-gh-api.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang recover the decl name from a location less d](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792648748867-slang-recover-the-decl-name-from-a-location-less-d.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [reply eval 12960 perf epic handoff sub task check ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792649026619-reply-eval-12960-perf-epic-handoff-sub-task-check-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [quick cuda vs spir v compile time evidence from th](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [12874 reply minimal repro and workaround verified ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792649429150-12874-reply-minimal-repro-and-workaround-verified-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang 13011 ice reproduces with user interfaces on](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792649521700-slang-13011-ice-reproduces-with-user-interfaces-on.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [local release slangc in eval container can t emit ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792649817653-local-release-slangc-in-eval-container-can-t-emit-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [reply evals the local checkout can already contain](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792649952649-reply-evals-the-local-checkout-can-already-contain.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang 13107 workaround vector typed tables stay gl](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792650089805-slang-13107-workaround-vector-typed-tables-stay-gl.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [13108 reply eval copy is a call site temp from tra](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792650204812-13108-reply-eval-copy-is-a-call-site-temp-from-tra.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [optix ptx can be built in container via external o](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792650667511-optix-ptx-can-be-built-in-container-via-external-o.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [13206 logical ptr in struct in tree spirv val targ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792650915179-13206-logical-ptr-in-struct-in-tree-spirv-val-targ.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang precise spir v nocontraction is intra functi](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792651839620-slang-precise-spir-v-nocontraction-is-intra-functi.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [cuda buffer abi prelude no count macro and reflect](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792651922688-cuda-buffer-abi-prelude-no-count-macro-and-reflect.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang parser member access generic disambiguation ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792652005282-slang-parser-member-access-generic-disambiguation-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [zed slang extension server id is slangd read third](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792652480222-zed-slang-extension-server-id-is-slangd-read-third.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [repro slangpy issues at the reporter s exact versi](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792652674710-repro-slangpy-issues-at-the-reporter-s-exact-versi.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [cuda 12635 workaround flat static const arrays com](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval reply tasks check the reported release tag no](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792654419588-eval-reply-tasks-check-the-reported-release-tag-no.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [12706 stride 2 oob theory re checked against bec57](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792654712429-12706-stride-2-oob-theory-re-checked-against-bec57.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval reply tasks local head may already contain th](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792655230834-eval-reply-tasks-local-head-may-already-contain-th.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
 - [compliance check discord export from json py canno](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792145488222-compliance-check-discord-export-from-json-py-canno.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [compliance check py github searches return http 40](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792145809721-compliance-check-py-github-searches-return-http-40.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [eval runner ncl tasks create group is ignored insi](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792151064652-eval-runner-ncl-tasks-create-group-is-ignored-insi.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
@@ -7792,6 +7821,7 @@
 - [eval traces claude trace jsonl is api request resp](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792428257180-eval-traces-claude-trace-jsonl-is-api-request-resp.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [reply eval rejudge stored answers to measure a rub](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792550035071-reply-eval-rejudge-stored-answers-to-measure-a-rub.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [grep c gates miss phrases that markdown line wrapp](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [eval runner setsid pid trap and date pinned reply ](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792653207139-eval-runner-setsid-pid-trap-and-date-pinned-reply-.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

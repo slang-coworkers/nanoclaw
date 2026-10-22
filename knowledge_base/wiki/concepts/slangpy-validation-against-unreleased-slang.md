@@ -3,7 +3,7 @@ title: "SlangPy Validation Against an Unreleased Slang PR"
 type: concept
 group: slangpy
 tags: [slangpy, cross-repo, validation, no-gpu, slangc, companion-pr, ci-latest-slang, cpu-device, regression-masking]
-source_count: 8
+source_count: 9
 ---
 
 # SlangPy Validation Against an Unreleased Slang PR
@@ -28,6 +28,7 @@ How to prove that a SlangPy change, or a SlangPy companion PR that pre-adapts `s
 - **SlangPy against a local Slang commit: detached Slang worktree + throwaway SlangPy worktree with copied `vcpkg_installed`, `--target slangpy_ext`, about 6 minutes in all.** A Slang compile error at dispatch surfaces as a `RuntimeError` whose real diagnostic is under "RHI messages".
 - **`slangpy.__version__` names the source tree, not the build** — identify each A/B arm by `ldd slangpy_ext*.so | grep libslang-compiler` and `slangpy.__file__`. The current directory beats `PYTHONPATH` for `import slangpy`, so never start Python inside another SlangPy worktree.
 - **A SlangPy wheel binary-links against a newer Slang, but its shipped `.slang` modules do not compile there**; read the bundled version from `slangpy.SLANG_BUILD_TAG`.
+- **To test the reporter's exact SlangPy,** `pip download slangpy==<ver> --no-deps` into a py3.11 venv and run their driver on vulkan/cuda; the wheel bundles its own `libslang-compiler`.
 
 ## Building just enough Slang from the PR head
 
@@ -92,7 +93,9 @@ The same slang#13537 regression was hidden a second time by a library swap. One 
 
 **A wheel is locked to one Slang at the `.slang` level, not the binary level (slangpy#1226).** The stock 0.43.1 wheel (built for Slang 2026.12) links and runs against Slang 2026.19 when that library is forced in with an `RTLD_GLOBAL` preload or an `LD_LIBRARY_PATH` symlink: all 103 imported symbols resolve and `SLANG_BUILD_TAG` reports 2026.19. The shipped `.slang` modules then fail (`slangpy/slang/staticarray.slang:10`, `E30019 expected 'MatrixLayoutMode'`, from slang#12986), and main's copy fails on 2026.12 (E30015). So "run a wheel against a newer external Slang" needs `.slang` sources that compile on several Slang versions plus CI against newer Slang, not documentation. Two Slangs can share one Linux process, because `libslang-compiler.so.0.<ver>` has a versioned SONAME: with another Slang already loaded `RTLD_LOCAL`, SlangPy still binds its bundled copy, and it breaks only when the other library is loaded `RTLD_GLOBAL` before slangpy is imported (Windows DLL names carry no version, so the first loaded wins; untested). Release bodies are empty; the bundled Slang version appears only in `docs/changelog.rst` or at runtime as `slangpy.SLANG_BUILD_TAG` [SlangPy wheels are locked to one Slang version at the .slang level](../learnings/1792145562307-slangpy-wheels-are-locked-to-one-slang-version-at-.md).
 
-**Source learnings (8):**
+**Reproduce a SlangPy-based Slang issue at the reporter's exact version.** When the issue names a slangpy version (0.43.1 bundles Slang 2026.12), run `pip download slangpy==<ver> --no-deps` and install the wheel into a `python3 -m venv` (the container has Python 3.11, which matches the cp311 manylinux wheel), then run the reporter's driver on the L40S with `spy.DeviceType.vulkan` / `cuda`. The wheel bundles `libslang-compiler.so.0.<ver>`, so this tests the reporter's compiler, not master. Its `slangpy/slang/*.slang` modules do not parse with a master `slangc` (the `matrix<T,R,C,L>` MatrixLayoutMode mismatch in staticarray.slang, as above), so for master checks fetch slangpy main's modules and pass `-I <dir>` (the contents-API recipe in the kernel-compile section). On slang#13480 (`bit_cast` Tensor→PrimalTensor) this split the targets: with 0.43.1, Vulkan fails with "non-simple operand(s)!" and CUDA passes, because `StorageTraits::BufferType` is `T*` under `__TARGET_CUDA__`; with master slangc, SPIR-V/HLSL/GLSL/Metal/WGSL fail in legalize-types and CUDA fails in lower-bit-cast ("Unable to generate bit_cast code"). The field-by-field copy works on both [repro slangpy issues at the reporter's exact version via pip download](../learnings/1792652674710-repro-slangpy-issues-at-the-reporter-s-exact-versi.md).
+
+**Source learnings (9):**
 
 - [Verify a slangpy companion PR against an unmerged Slang PR's compiler locally (no GPU)](../learnings/1791935481120-verify-a-slangpy-companion-pr-against-an-unmerged-.md) — slangc + slang-glslang minimal build; harness across 4 targets; spirv-asm no-op diff; PR-CI tally by DeviceType; ci-latest-slang branch dispatch
 - [Downstream SlangPy failures can hide later regressions](../learnings/1791941484429-downstream-slangpy-failures-can-hide-later-regress.md) — import failure = unknown beyond; slang#13537 `Texture2D<T>` inference regression surfaced only after slangpy#1220; revert is not a valid control
@@ -101,4 +104,5 @@ The same slang#13537 regression was hidden a second time by a library swap. One 
 - [SlangPy wheels are locked to one Slang version at the .slang level, not the binary level](../learnings/1792145562307-slangpy-wheels-are-locked-to-one-slang-version-at-.md) — symbols resolve on 2026.19, `staticarray.slang` E30019; versioned SONAME coexistence (slangpy#1226)
 - [Building slangpy against a local Slang build that lacks libslang-glslang: stage a lib dir](../learnings/1792402219482-building-slangpy-against-a-local-slang-build-that-.md) — symlink build/Release + same-version prebuilt glslang; md5sum proves the local libslang-compiler loaded (slang#13742)
 - [Compile slangpy shaders with plain slangc: fetch slangpy/slang/*.slang from main and pass -I](../learnings/1792406504709-compile-slangpy-shaders-with-plain-slangc-fetch-sl.md) — git trees + contents API, base64-decode 17 files, `-I <dir>`; reproduced slang#13480 on v2026.20
+- [Repro slangpy issues at the reporter's exact version: pip download the wheel into a py3.11 venv](../learnings/1792652674710-repro-slangpy-issues-at-the-reporter-s-exact-versi.md) — cp311 wheel bundles the reporter's libslang-compiler; #13480 Vulkan fails / CUDA passes on 0.43.1, master fails in legalize-types and lower-bit-cast
 - [Running SlangPy against a local Slang commit: isolated worktrees build in ~6 min](../learnings/1792536990284-running-slangpy-against-a-local-slang-commit-isola.md) — detached worktree, copied `vcpkg_installed`, `slangpy_ext` target; `ldd`+`cmp` proof; cwd beats `PYTHONPATH`; "RHI messages" holds the real diagnostic; vklayer manifest off `/tmp`

@@ -3,7 +3,7 @@ title: "Fixer Dispatch & Coordination Failure Modes"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, dispatch, coordination, subagent-typing, echo-loop, fixer-silence, hallucination-vs-invisible-edge, artifact-verification, slang]
-source_count: 11
+source_count: 12
 ---
 
 # Fixer Dispatch & Coordination Failure Modes
@@ -51,11 +51,14 @@ The single-source-dispatch rule has a reporting-side corollary for periodic swee
 
 A dispatched handoff can carry an *incomplete* scope just as easily as it can silently die. On slangpy #886/#1177 the maintainer's actual comment (kaizhangNV, 2026-09-22) was *"…let's add the slangpy module searching path by default. **And this should also fix the #1177.**"* — but the scope relayed to the fixer **dropped the "also fix #1177" clause** and told it to stay narrow (`create_slang_session` only, explicitly not #1177). The fixer implemented to the relayed scope, so its PR #1182 didn't satisfy the maintainer and was closed unmerged, superseded by the broader PR #1183. Lesson: before implementing from a relayed handoff, **read the maintainer's actual GitHub comment(s) on the issue directly** (`gh issue view <n> --comments` / API) — the truthfulness rule ("read the actual source; verify") applies to the *requirements*, not just the code; a relayed scope can be incomplete or contradict its source. Corollary: also check for **parallel bot PRs on the same issue family** before/while implementing — two nv-slang-bot sessions landed on #886/#1177 (#1182 vs #1183) with no collision signal reaching the fixer ([slangpy#886/#1177: read the maintainer's actual GitHub comment for scope — the relayed scope omitted "also fix #1177"](../learnings/1790193131048-slangpy-886-1177-read-the-maintainer-s-actual-gith.md)).
 
+A relay can also go stale without being wrong when written, because maintainers edit comments. On slang#13822 jkwak-work edited the direction comment (6323476509) at 18:33Z, 2 minutes after the triager's handoff quoted it, adding "Question (1) is answered"; the handoff's "(1) and (3) are open" was then stale, and only codex PLAN_REVIEW's live fetch caught the misquote. So when building the `## Maintainer requirements` list, fetch each cited comment with `gh api repos/<o>/<r>/issues/comments/<id> --jq '{created_at,updated_at,body}'`; if `updated_at` is later than the handoff, re-quote from the live body, and never quote the parent's relay ([maintainer comments can be edited after the triage handoff — check updated_at](../learnings/1792608633600-maintainer-comments-can-be-edited-after-the-triage.md)).
+
 ## Contradictions / Supersessions
 
 - The "fixer silence usually is NOT a dropped chain" framing ([Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)) is QUALIFIED: it remains the right default for a *nudge-before-restart* decision, but it is not a licence to relay the fixer's last message as status. Dispatches do silently die — slang#11917 batch-2 produced no branch and no PR across 7 days while a later dispatch completed in 2h — so the artifact check (`git/matching-refs/heads/<prefix>` + `gh pr list --search`) is mandatory before any downstream "in progress" claim ([a dispatched handoff can silently die](../learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md)).
 
-**Source learnings (11):**
+**Source learnings (12):**
+- [Maintainer comments can be edited after the triage handoff — check updated_at before planning](../learnings/1792608633600-maintainer-comments-can-be-edited-after-the-triage.md) — slang#13822: a direction comment edited 2 min after the handoff quoted it; re-quote from the live body when `updated_at` is later.
 - [Don't fork (omit subagent_type) for read-only recall/scan steps](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
 - [slang-fixer: contributor PR combined review is advisory](../learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)

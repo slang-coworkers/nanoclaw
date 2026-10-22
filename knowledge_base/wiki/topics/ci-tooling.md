@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-569 learnings. [Catalog](../index.md)
+575 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -156,10 +156,12 @@ type: topic
 - [Attribute a runner-scoped CI defect with a host×job cross-tab, not a list of reds](../learnings/1785853592478-attribute-a-runner-scoped-ci-defect-with-a-host-jo.md)
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
 - [Background build exit code masked by trailing `tail`/`echo` — check BUILD_EXIT, not the wrapper](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
+- [Bare file-name #line CHECK-DAGs can be satisfied by struct types from incidental meta locations](../learnings/1792583190960-bare-file-name-line-check-dags-can-be-satisfied-by.md)
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md)
 - [Before citing an identifier as evidence, prove it varies (cross-repo dispatch head_sha is a constant)](../learnings/1786093847191-before-citing-an-identifier-as-evidence-prove-it-v.md)
 - [Benign/valid-output severity calls must check every reachable emit target (validity is target-specific)](../learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md)
 - [Binary provenance: a clone's checkout SHA says nothing about its build/ binaries](../learnings/1791495972610-binary-provenance-a-clone-s-checkout-sha-says-noth.md)
+- [Bisect a Slang nightly regression with MQ build artifacts, and measure real job starts by runner name](../learnings/1792572260133-bisect-a-slang-nightly-regression-with-mq-build-ar.md)
 - [Blindness and success share an output channel — a control must return a specific value only a working probe could produce](../learnings/1786043347132-blindness-and-success-share-an-output-channel-a-co.md)
 - [Bot App token CANNOT push .github/workflows/* (missing 'workflows' permission) — deliver CI as a patch](../learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md)
 - [Bot auto-filing an adjacent P3 follow-up issue can read as noise to maintainers — prefer surfacing over filing unless the finding is standalone-actionable](../learnings/1788204809444-bot-auto-filing-an-adjacent-p3-follow-up-issue-can.md)
@@ -274,6 +276,7 @@ type: topic
 - [D3D12 device-removal cascade can masquerade as CI infra flake — trace the FIRST failure, not a spot-check](../learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md)
 - [Daily-report CI health: WebFetch can't reach the tail of health_snapshots.jsonl](../learnings/1789719726999-daily-report-ci-health-webfetch-can-t-reach-the-ta.md)
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)
+- [Dawn NVIDIA f16 toggle first lands in chromium/7559; CI T4 also ignores every -wgpu half row](../learnings/1792571519251-dawn-nvidia-f16-toggle-first-lands-in-chromium-755.md)
 - [DeepWiki can hallucinate API symbols — grep the real header before citing](../learnings/1785836147443-deepwiki-can-hallucinate-api-symbols-grep-the-real.md)
 - [Depfile-aarch64 systemic CI regression (#12666) — fix landed, PRs just need rebase](../learnings/1787898092490-depfile-aarch64-systemic-ci-regression-12666-fix-l.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
@@ -294,6 +297,7 @@ type: topic
 - [doctest counts a device-SKIPPED case as PASSED — a suite tally never proves a specific test ran](../learnings/1785938474607-doctest-counts-a-device-skipped-case-as-passed-a-s.md)
 - [Don't cite env-var or flag names without verifying — they're a high-frequency hallucination surface](../learnings/1780177920997-don-t-cite-env-var-or-flag-names-without-verifying.md)
 - [Don't conflate internal a2a review with GitHub reviewDecision in human-facing comments](../learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md)
+- [Don't dispatch cmake-options.yml (CMake Options matrix) for a draft bot PR](../learnings/1792633007029-don-t-dispatch-cmake-options-yml-cmake-options-mat.md)
 - [Don't manually dispatch ci.yml on a non-draft PR — the pull_request trigger already runs it](../learnings/1787275583180-don-t-manually-dispatch-ci-yml-on-a-non-draft-pr-t.md)
 - [Don't rank flake signatures by an action field you also use for non-actions](../learnings/1785780857080-don-t-rank-flake-signatures-by-an-action-field-you.md)
 - [Draft bot-PR CI stays in GitHub Actions 'waiting' (priority-yield) — re-dispatch is futile](../learnings/1789265530355-draft-bot-pr-ci-stays-in-github-actions-waiting-pr.md)
@@ -305,6 +309,7 @@ type: topic
 - [Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally](../learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md)
 - [Equivalence-to-incumbent is circular: a byte-for-byte review can pass a real bug](../learnings/1785767751083-equivalence-to-incumbent-is-circular-a-byte-for-by.md)
 - [Establish an intermittent CI failure's BASE RATE before accepting a regression window (annotations outlive expired logs)](../learnings/1785746835066-establish-an-intermittent-ci-failure-s-base-rate-b.md)
+- [eval-runner: setsid PID trap and date-pinned reply baseline](../learnings/1792653207139-eval-runner-setsid-pid-trap-and-date-pinned-reply-.md)
 - [Evicted-PR requeue decision needs three independent surfaces, each alone misleading](../learnings/1786494014693-evicted-pr-requeue-decision-needs-three-independen.md)
 - [Failed merge-group check-ci does not imply eviction: a stacked later entry's green run merges earlier entries](../learnings/1791564244082-failed-merge-group-check-ci-does-not-imply-evictio.md)
 - [Falcor #12145 crash code is emitted in DECIMAL only — a hex grep is a false-negative trap](../learnings/1785910460636-falcor-12145-crash-code-is-emitted-in-decimal-only.md)
@@ -389,6 +394,7 @@ type: topic
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
 - [Merge-queue checks_timed_out can be a self-hosted sm80 runner queue wait, not a code/LLVM issue](../learnings/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md)
 - [Merge-queue failure:1 can be a same-run GPU-flake auto-retry, not a stall](../learnings/1787581056199-merge-queue-failure-1-can-be-a-same-run-gpu-flake-.md)
+- [Merged Windows GPU CI job (-api all) measured: Debug 90.8 min, Release 21.5 min](../learnings/1792592295131-merged-windows-gpu-ci-job-api-all-measured-debug-9.md)
 - [METHOD: verifying a negative — reproducible recipes for sweeps, GitHub reads, rewritten history, and "is my green real?"](../learnings/1785936194762-method-verifying-a-negative-reproducible-recipes-f.md)
 - [MSVC /WX C4456 shadow: Linux Debug build can't catch it](../learnings/1789493968162-msvc-wx-c4456-shadow-linux-debug-build-can-t-catch.md)
 - [Multi-mode CI failure spread = degrading-runner issue, not test-flake](../learnings/1783354616229-multi-mode-ci-failure-spread-degrading-runner-issu.md)

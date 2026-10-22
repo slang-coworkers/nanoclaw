@@ -8,7 +8,7 @@ source_count: 25
 
 # Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline, and 2026-07-17 Operational Fold
 
-This page covers the dynamic-dispatch type-flow specialization pass (`slang-ir-typeflow-specialize.cpp`), the discipline for relaxing a compiler diagnostic gate, and a fold of dated operational learnings (approver false-safe/challenger notes, capdef, meta.slang splice, revert-drill, analyzeMakeStruct, createGlobalSession RSS).
+This page covers the dynamic-dispatch type-flow specialization pass (`slang-ir-typeflow-specialize.cpp`), the discipline for relaxing a compiler diagnostic gate, and a fold of dated operational learnings (approver false-safe/challenger notes, capdef, meta.slang splice, revert-drill, analyzeMakeStruct, createGlobalSession RSS). Set-specialized generics, the #13817 E33180 diamond and `analyzeCall` callee lifetime are on [Type-Flow Set-Specialization Diamonds](slang-compiler-type-flow-set-specialization-diamonds.md).
 
 ## TL;DR
 - **Type-flow `ExtractExistential` ICEs (#12934/#13259) are fixed at the PRODUCER (merged PR #12935).** Each `specializeDynamicInsts` run writes lowered info back onto data types, `isConcreteType` calls that info concrete, and `makeInfoForConcreteType` re-wrapped it as `UntaggedUnion(TypeSet(TaggedUnion(...)))`. The fix is `if (isRefinedInfoType(type)) return type;` at the TOP of `makeInfoForConcreteType`, before the structural-match cases (an entry assert hard-aborts on `IAccessor[1]`-style nesting). Teaching the consumer analyzers to accept the shape removes the ICE but emits ill-typed code.

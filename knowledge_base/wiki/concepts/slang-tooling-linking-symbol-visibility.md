@@ -3,7 +3,7 @@ title: "Linking and Symbol Visibility"
 type: concept
 group: slang-tooling
 tags: [linker, version-script, symbol-visibility, exports, elf, mach-o, dylib, nm, readelf, cmake, check-linker-flag, glslang, libstdcxx-leak, exclude-libs, lto, abi]
-source_count: 10
+source_count: 11
 ---
 
 # Linking and Symbol Visibility
@@ -16,6 +16,7 @@ Controlling and measuring a shared library's exported-symbol set: GNU ld version
 - **Ask what your guard's correctness rests on. If the answer is the thing you are fixing, it is the wrong guard.**
 - **Find every consumer**: grep all `dlsym`/`findFuncByName` sites before claiming an interface is covered — an omitted name in a `dlopen`ed module fails at runtime, not at build.
 - **A `global:` name absent from the link is silent** (exit 0); only a *malformed or missing* map is a hard error.
+- **A null-guarded optional export needs a presence test** (`SharedLibrary::findSymbolAddressByName` on the real library in a unit test); otherwise dropping it from the version script passes every test.
 - **A version script cannot resurrect an `STV_HIDDEN` symbol.** An anonymous block (`{...};`) adds 0 VERDEF — no ABI break; a *named* node is an observable ABI change.
 - **`-fvisibility=hidden` DOES hide `std::` instantiations your TU emits implicitly**; it cannot override an *explicit* attribute (libstdc++'s `namespace std _GLIBCXX_VISIBILITY(default)`).
 - **`--exclude-libs,ALL` survives LTO** (GCC 12.2 / binutils 2.40) — the "LTO dissolves the archive boundary" story did not reproduce.
@@ -50,6 +51,8 @@ All measured on GCC 12.2 / binutils 2.40 ([a version-script allow-list must LIST
 - **`--exclude-libs,ALL` survives LTO**: with the dependency archive forced to GIMPLE bytecode (138 `.gnu.lto` sections vs 0 stock), everything was still localized.
 - **`#` comments are valid** in GNU ld and gold version scripts; **lld accepts only `/* */`.**
 - **Omissions are silent; malformations are loud.** The map listed `glslang_compile_1_3`, a stale `.o` lacked it → 8 exports, exit 0; a bad or missing map is `syntax error in VERSION script` / `cannot open linker script file`. In this module a dropped name is a crash, not a build error: `GlslangDownstreamCompiler::init` fails only when all four `m_compile_*` are null, and `m_link` is dereferenced unguarded (`slang-glslang-compiler.cpp:426`) ([check_linker_flag probes the map's contents](../learnings/1785987788952-check-linker-flag-with-a-version-script-probes-the.md)).
+
+A null-guarded *optional* export inverts that: the dropped name is neither a build error nor a crash. On slang#13830 (PR #13849), callers look up the new `glslang_freeLinkResult` and skip the call when it is null, so an older slang-glslang still works; but deleting the name from `slang-glslang.version-script` (an allow-list ending in `local: *`) then passes every test and silently brings the leak back, which a peer reviewer confirmed with a drill. The null guard covers compatibility with older libraries; a presence test on the real library makes sure the current one ships the export. `SLANG_UNIT_TEST(getDownstreamCompilerPath)` (tools/slang-unit-test/unit-test-downstream-compiler-path.cpp) already loads the real slang-glslang with `SharedLibrary::loadWithPlatformPath` and checks the compile symbols; add `SLANG_CHECK(SharedLibrary::findSymbolAddressByName(handle, "<export>") != nullptr)` next to them. It fails with the version-script line removed and passes with it restored; use it for every new optional slang-glslang export ([a null-guarded optional export needs a presence test](../learnings/1792634347205-a-null-guarded-optional-export-needs-a-presence-te.md)).
 
 **Stale-artifact trap.** CMake needs `set_property(TARGET t APPEND PROPERTY LINK_DEPENDS <abs path>)` or editing the script will not relink — and `LINK_DEPENDS` does not relink a binary built before the flag existed. A "9 exports / 0 `std::`" success was nearly reported until `stat` showed the `.so` predated the edit by 13 minutes. ⇒ `rm` the artifact, force the relink, measure, check the mtime ([a version-script allow-list must LIST names](../learnings/1785985189936-a-version-script-allow-list-must-list-names-not-ma.md)).
 
@@ -104,7 +107,7 @@ Slang's COM-style vtables (`include/slang.h` and internal interfaces) have layou
 **Exposing a `source/slang` internal to `slang-static-unit-test`.** Many `slang-ir-*.cpp` files wrap all file-local helpers in one anonymous namespace, which gives internal linkage regardless of `static` — "drop the `static`" is insufficient. Move the definition to `namespace Slang` scope (after `} // anonymous namespace`, where the public entry points live), drop `static`, declare it in the header; it can still call the anon-ns helpers. The STATIC target exists only with `-DSLANG_LIB_TYPE=STATIC -DSLANG_ENABLE_SLANG_RHI=ON -DSLANG_ENABLE_TESTS=ON`, and new `tools/slang-static-unit-test/*.cpp` are auto-globbed — no CMake edit ([exposing an internal: check the anonymous namespace](../learnings/1789225246267-exposing-a-source-slang-internal-for-slang-static-.md)).
 
 ---
-**Source learnings (10):**
+**Source learnings (11):**
 - [Exposing an internal: anon-namespace linkage beats dropping static](../learnings/1789225246267-exposing-a-source-slang-internal-for-slang-static-.md)
 - [Version-script allow-list must LIST names; what scripts can't hide](../learnings/1785985189936-a-version-script-allow-list-must-list-names-not-ma.md)
 - [Wildcard export pattern's scope is the whole link (50/41 vs 9/0)](../learnings/1785985481291-a-wildcard-export-pattern-s-scope-is-the-whole-lin.md)
@@ -115,4 +118,6 @@ Slang's COM-style vtables (`include/slang.h` and internal interfaces) have layou
 - [IDownstreamCompiler capability: castAs interface, not vtable slot](../learnings/1788074617370-adding-a-capability-to-idownstreamcompiler-crosses.md)
 - [castAs capability interface: standalone, served from getObject](../learnings/1788289363595-adding-a-castas-capability-interface-to-a-downstre.md)
 - [int→enum public-param retype breaks downstream (E30019, #12840)](../learnings/1788455543019-slang-int-enum-public-param-retype-breaks-downstre.md)
+- [A null-guarded optional export needs a presence test, or dropping it from the version script is silent](../learnings/1792634347205-a-null-guarded-optional-export-needs-a-presence-te.md) — `glslang_freeLinkResult` (#13849); add `findSymbolAddressByName` check to `getDownstreamCompilerPath` unit test
+
 _Catalog: [[wiki/index.md]]_
