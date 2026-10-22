@@ -7,11 +7,23 @@ import path from 'node:path';
 import * as p from '@clack/prompts';
 
 import {
+  createdSecretId,
+  hasProviderCredential,
+  isSavedProviderCredential,
+  recordProviderCredentials,
+} from '../payload/src/gateway-providers/onecli-provider-credentials.js';
+import {
+  anthropicCredentialError,
+  anthropicCredentialPrompt,
+  pastedCredential,
+} from '../../../../setup/lib/anthropic-credential.js';
+import {
   customEndpointBaseUrl,
   endpointFromSecrets,
   endpointModelDefaults,
   NVIDIA_INFERENCE_URL,
 } from '../../../../setup/lib/custom-endpoint.js';
+import { createSecret } from './secret-input.js';
 
 type Method = 'subscription' | 'oauth' | 'api' | 'endpoint' | 'skip';
 
@@ -23,32 +35,55 @@ function childEnv(): NodeJS.ProcessEnv {
   };
 }
 
+type SecretRow = { id?: string; type?: string; name?: string };
+
 function secretsJson(): string {
-  return execFileSync('onecli', ['secrets', 'list'], {
+  return execFileSync('onecli', ['secrets', 'list', '--max', '0'], {
     encoding: 'utf8',
     env: childEnv(),
     stdio: ['ignore', 'pipe', 'ignore'],
   });
 }
 
-function hasAnthropicSecret(): boolean {
+function listSecrets(): SecretRow[] {
+  const raw = secretsJson();
+  const parsed = JSON.parse(raw) as SecretRow[] | { data?: SecretRow[] };
+  return (Array.isArray(parsed) ? parsed : parsed.data) ?? [];
+}
+
+const dataDir = () => path.join(process.cwd(), 'data');
+
+// Connected means Claude groups will be granted a recorded credential.
+async function hasAnthropicSecret(): Promise<boolean> {
+  let secrets: SecretRow[];
   try {
-    const raw = secretsJson();
-    const data = (JSON.parse(raw) as { data?: Array<{ type?: string; name?: string }> }).data ?? [];
-    return data.some((secret) => secret.type === 'anthropic' || /anthropic/i.test(secret.name ?? ''));
+    secrets = listSecrets();
   } catch {
     return false;
   }
+  return hasProviderCredential(dataDir(), 'claude', secrets);
 }
 
-function saveSecret(value: string, baseUrl?: string): void {
-  const args = ['secrets', 'create', '--name', 'Anthropic'];
+// New groups get only the recorded model credential, so record what was saved:
+// the created id, or the one Claude secret that appeared since `before`.
+async function recordClaudeSecret(id: string | null, before = new Set<string>()): Promise<void> {
+  const ids = id
+    ? [id]
+    : listSecrets().flatMap((s) => (s.id && !before.has(s.id) && isSavedProviderCredential('claude', s) ? [s.id] : []));
+  if (ids.length > 1) {
+    throw new Error(
+      `more than one Anthropic secret appeared during sign-in (${ids.join(', ')}), perhaps from another setup on this gateway: run setup again`,
+    );
+  }
+  if (ids.length) await recordProviderCredentials(dataDir(), 'claude', ids);
+}
+
+async function saveSecret(value: string, baseUrl?: string, before?: Set<string>): Promise<void> {
+  const args = ['--name', 'Anthropic'];
   if (baseUrl) {
     args.push(
       '--type',
       'generic',
-      '--value',
-      value,
       '--host-pattern',
       new URL(baseUrl).hostname,
       '--header-name',
@@ -57,12 +92,25 @@ function saveSecret(value: string, baseUrl?: string): void {
       'Bearer {value}',
     );
   } else {
-    args.push('--type', 'anthropic', '--value', value, '--host-pattern', 'api.anthropic.com');
+    args.push('--type', 'anthropic', '--host-pattern', 'api.anthropic.com');
   }
-  execFileSync('onecli', args, {
-    env: childEnv(),
-    stdio: ['ignore', 'ignore', 'pipe'],
-  });
+  await recordClaudeSecret(createdSecretId(createSecret(args, value, childEnv())), before);
+}
+
+// The script only captures the token, into a private file: saving it here
+// keeps a failed save as redacted as a pasted token's.
+function capturedSubscriptionToken(): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'onecli-claude-token-'));
+  const output = path.join(dir, 'token');
+  try {
+    const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'register-claude-token.sh');
+    const result = spawnSync('bash', [script, output], { env: childEnv(), stdio: 'inherit' });
+    const token = result.status === 0 && fs.existsSync(output) ? fs.readFileSync(output, 'utf8').trim() : '';
+    if (!token) throw new Error('Claude subscription sign-in failed');
+    return token;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function saveEnv(key: string, value: string): void {
@@ -101,7 +149,7 @@ function recordEndpoint(baseUrl: string): void {
   }
 }
 
-function migrateLegacyEnvSecret(): boolean {
+async function migrateLegacyEnvSecret(): Promise<boolean> {
   const file = path.join(process.cwd(), '.env');
   if (!fs.existsSync(file)) return false;
   const current = fs.readFileSync(file, 'utf8');
@@ -116,7 +164,7 @@ function migrateLegacyEnvSecret(): boolean {
       `Multiple Anthropic credentials exist in .env (${found.map(({ key }) => key).join(', ')}); keep one and retry`,
     );
   }
-  saveSecret(found[0].value);
+  await saveSecret(found[0].value);
   const next = current
     .split('\n')
     .filter((line) => !line.startsWith(`${found[0].key}=`))
@@ -144,15 +192,15 @@ export async function run(): Promise<void> {
   const customUrl = process.env.NANOCLAW_ANTHROPIC_BASE_URL?.trim();
   const customToken = process.env.NANOCLAW_ANTHROPIC_AUTH_TOKEN?.trim();
   if (customUrl && customToken) {
-    saveSecret(customToken, customUrl);
+    await saveSecret(customToken, customUrl);
     recordEndpoint(customUrl);
     p.log.success('Claude endpoint connected.');
     return;
   }
 
-  if (migrateLegacyEnvSecret()) return;
+  if (await migrateLegacyEnvSecret()) return;
 
-  if (hasAnthropicSecret()) {
+  if (await hasAnthropicSecret()) {
     // Nothing to ask for, but a custom endpoint still has to reach .env, or
     // agents call api.anthropic.com where the stored credential is never
     // injected: from NANOCLAW_ANTHROPIC_BASE_URL, else from the host the
@@ -197,6 +245,13 @@ export async function run(): Promise<void> {
     p.log.warn('Claude is not connected. Run setup again before starting an agent.');
     return;
   }
+  if (method === 'subscription') {
+    // Without a parsed id, record only the Claude secret this save added.
+    const before = new Set(listSecrets().flatMap((s) => (s.id ? [s.id] : [])));
+    await saveSecret(capturedSubscriptionToken(), undefined, before);
+    p.log.success('Claude account connected.');
+    return;
+  }
   if (method === 'endpoint') {
     const url = answer<string>(
       await p.text({
@@ -213,35 +268,22 @@ export async function run(): Promise<void> {
       }),
     ).replace(/\s+/g, '');
     const baseUrl = customEndpointBaseUrl(url)!;
-    saveSecret(key, baseUrl);
+    await saveSecret(key, baseUrl);
     recordEndpoint(baseUrl);
     p.log.success(`Claude endpoint connected (${baseUrl}).`);
     return;
   }
-  if (method === 'subscription') {
-    const script = path.join(path.dirname(fileURLToPath(import.meta.url)), 'register-claude-token.sh');
-    const result = spawnSync('bash', [script], {
-      env: childEnv(),
-      stdio: 'inherit',
-    });
-    if (result.status !== 0) throw new Error('Claude subscription sign-in failed');
-    return;
-  }
 
-  const prefix = method === 'oauth' ? 'sk-ant-oat' : 'sk-ant-api';
-  const token = answer<string>(
-    await p.password({
-      message: method === 'oauth' ? 'Paste your OAuth token' : 'Paste your API key',
-      clearOnError: true,
-      validate: (raw) => {
-        const value = (raw ?? '').replace(/\s+/g, '');
-        if (!value) return 'Required';
-        if (!value.startsWith(prefix)) return `Must start with ${prefix}`;
-        return undefined;
-      },
-    }),
-  ).replace(/\s+/g, '');
-  saveSecret(token);
+  const token = pastedCredential(
+    answer<string>(
+      await p.password({
+        message: anthropicCredentialPrompt(method),
+        clearOnError: true,
+        validate: (raw) => anthropicCredentialError(method, raw),
+      }),
+    ),
+  );
+  await saveSecret(token);
   p.log.success('Claude account connected.');
 }
 

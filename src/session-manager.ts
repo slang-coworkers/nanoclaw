@@ -8,7 +8,7 @@ import path from 'path';
 
 import { AnchoredDir } from './anchored-dir.js';
 import { deriveAttachmentName } from './attachment-naming.js';
-import { isSafeAttachmentName } from './attachment-safety.js';
+import { inboxFolderName, isSafeAttachmentName } from './attachment-safety.js';
 import type { OutboundFile } from './channels/adapter.js';
 import { DATA_DIR } from './config.js';
 import { getSourceFor as getA2aSourceFor } from './db/a2a-session-sources.js';
@@ -424,8 +424,9 @@ export async function writeSessionMessage(
  * `inbox/<msgId>` names and can turn either into a symlink at any time.
  *
  * Defenses:
- *   1. basename check on `messageId` and `filename`.
- *   2. `inbox/<messageId>` is opened as an AnchoredDir, refusing symlinks, and
+ *   1. `messageId` maps to one safe folder name (`inboxFolderName`), and
+ *      `filename` passes the basename check.
+ *   2. `inbox/<folder>` is opened as an AnchoredDir, refusing symlinks, and
  *      every attachment is written through that descriptor, so a later swap
  *      of either name cannot redirect a write.
  *   3. exclusive create: never follows or overwrites an existing entry.
@@ -446,7 +447,8 @@ function extractAttachmentFiles(
   const attachments = parsed.attachments as Array<Record<string, unknown>> | undefined;
   if (!Array.isArray(attachments)) return contentStr;
 
-  if (!isSafeAttachmentName(messageId)) {
+  const folder = inboxFolderName(messageId);
+  if (folder === null) {
     log.warn('Rejecting unsafe inbound message id', { messageId });
     return contentStr;
   }
@@ -472,7 +474,7 @@ function extractAttachmentFiles(
 
       if (inbox === undefined) {
         try {
-          inbox = AnchoredDir.open(sessionDir(agentGroupId, sessionId), ['inbox', messageId], true);
+          inbox = AnchoredDir.open(sessionDir(agentGroupId, sessionId), ['inbox', folder], true);
         } catch (err) {
           log.warn('Rejecting unsafe inbox directory', { messageId, err });
           inbox = null;
@@ -496,7 +498,7 @@ function extractAttachmentFiles(
       }
 
       att.name = filename;
-      att.localPath = `inbox/${messageId}/${filename}`;
+      att.localPath = `inbox/${folder}/${filename}`;
       delete att.data;
       changed = true;
       log.debug('Saved attachment to inbox', { messageId, filename, size: att.size });
