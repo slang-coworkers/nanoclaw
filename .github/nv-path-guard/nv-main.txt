@@ -13,6 +13,9 @@ setup/**
 container/agent-runner/**
 container/hooks/**
 container/Dockerfile
+# Upstream #4183 / #4174: tests of container/Dockerfile.
+container/base-image.test.ts
+container/dockerfile.test.ts
 container/build.sh
 container/pull.sh
 # Upstream #4139 (hardened image per release): siblings of pull.sh / versions.json.
