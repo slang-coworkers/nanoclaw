@@ -11,7 +11,7 @@ import { pathToFileURL } from 'node:url';
  * @property {string} started_at
  * @property {string} instance_id
  * @property {string} project_root
- * @property {{ id: string, port: number, paths: string[] } | null} webhook
+ * @property {{ id: string, host?: string, port: number, paths: string[] } | null} webhook — `host` is absent from a host older than WEBHOOK_HOST
  * @property {Array<{ instance: string, type: string, connected: boolean }>} channels
  */
 
