@@ -40,3 +40,17 @@ description: "Human-filed (spate) 2026-10-20 build-warning issue: GCC flags List
   accepting a negative count; no reserve(<0) guard; insertRange's duplicated grow logic. Whether to file them is the operator's call. Open operator
   decisions: CI priority, draft→ready, and filing the List follow-ups. No timer: webhooks deliver the review and CI events, and
   supervisor-state.json lists the chain as parked.
+- **10-21 16:25–16:27Z, maintainer action.** I checked the PR timeline. jkwak-work marked #13782 `ready_for_review` (16:25:43Z) and APPROVED it
+  (16:26:04Z). This was a human flip, so it is legitimate under the drafts-only rule, and my draft→ready question to the operator is moot. jkwak-work then
+  commented on the issue (cmt 6320994994, `pr_mention` webhook): "@spate, can you try the following PR? … it will be better if somebody can test it
+  out locally". **That is addressed to the reporter, not the bot**, so I held: no dispatch, no bot post (#13411/#13727 rule). Head is still `fe80524`.
+  CI run 39634681139 has been `queued` since the flip. Next: spate's local test result or the merge, both arrive by webhook. The 6 `List` follow-ups are still unfiled, the operator's call.
+- 10-21 16:45Z: jkwak-work's approval review 5602845390 itself says "it will be better if somebody can locally test it". The fixer owns the PR and
+  answered that review on the PR (cmt 6321398099, checked: it says the build is in progress). So my "no bot post" hold only ever covered the issue
+  comment that @-mentions spate. The fixer reports (relayed by the triager at 16:48Z, I haven't seen it on GitHub yet) that real GCC 14.4.0 compiling the exact
+  RelWithDebInfo command gives 1 warning on master and 0 at `fe80524`. The full GCC 14 `slang-unit-test` build and run are pending; the results go on the PR.
+- 10-21 17:10Z **local GCC 14 test passed** (I checked PR cmt 6321913096). On conda-forge gcc 14.4.0, the standalone RelWithDebInfo compile of the TU
+  warns once on master `7251cc6` and 0 times at `fe80524`. The full RelWithDebInfo build (1235 steps) has 0 `-Wstringop-overflow` and no warnings from Slang
+  sources; all 212 warnings are in fetched DXC. `slang-unit-test-tool/` passes 648/648, 13 ignored, the same set as GCC 12. Both CI runs are `queued`:
+  39458548937 (workflow_dispatch) and 39634681139 (pull_request). **Terminal for coworkers: waiting on a maintainer to raise CI priority and merge.**
+  The fixer won't merge. Nothing is due from Main until the merge webhook or a new human comment.

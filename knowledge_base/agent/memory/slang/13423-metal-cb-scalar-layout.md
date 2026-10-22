@@ -1,10 +1,12 @@
 ---
 type: chain
 title: slang#13423 — Metal ConstantBuffer ignores ScalarDataLayout / -fvk-use-scalar-layout
-description: Triaged + reproduced, enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A (explicit ScalarDataLayout only) via the triager 2026-10-03
+description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (3 so far)
 ---
 
 # slang#13423 (external reporter mellinoe, 2026-10-03)
+
+Dated re-chase readings: [[slang/13423-metal-cb-scalar-layout-rechase-log.md]] — new re-chases append **there**, not here.
 
 **Triage (slang-triager, comment 5972827172, master `6ba151dcf`):** on Metal,
 `getTypeLayoutRuleNameForBuffer` returns `Natural` (lower-buffer-element-type.cpp:2416-2417) before it reads
@@ -17,91 +19,54 @@ Sampled v2025.17 through v2026.19: all emit `float3`.
 ## Decision (mine)
 - 10-03 ~19:50Z: **GO on Approach A, through the triager** (precedent #13409: external reporter, no assignee,
   no maintainer routing). Scope: honor an explicit `ConstantBuffer<T, ScalarDataLayout>` on Metal in IR and
-  reflection together, Tier-2 argument-buffer rules included, plus a regression test. Default CB/cbuffer/PB/EP
-  uniforms stay byte-identical. **A' (`-fvk-use-scalar-layout` changing the default Metal CB) is NOT implemented**; it goes in the
-  PR as a design question for maintainers (cbuffer-vector-native-layout.slang pins native). Approach B (diagnostic) is
-  out of scope.
-- Overlap: draft bot PR #13300 (`feat/layout-rules-version`, last updated 10-01) touches
-  lower-buffer-element-type.cpp, type-layout.cpp, ir-layout. Instruction: don't touch #13300's branch, keep the
-  shared-file diff minimal, and whichever PR lands second rebases.
-- 10-03 23:00Z: the triager amended the GO, and I accept the amendment. (1) **Tier-2 :2869 is dropped.**
-  `MetalArgumentBufferTier2LayoutRulesFamilyImpl::getConstantBufferRules` is reachable only from :3076, which
-  passes `containerType=nullptr`. All `kMetalTier2*LayoutRulesImpl_` point at `kMetalLayoutRulesFamilyImpl`
-  (:2765 etc.), so nested CBs route through Tier-1 :2799 via :4328. **I verified this at `6ba151dcfc`.** Tier-2 is covered by a
-  `getTypeLayout(…, MetalArgumentBufferTier2)` unit test instead. (2) `MetalConstantBuffer` gets real Metal-native IR
-  rules and keeps the "natural" name hint, so default MSL stays byte-identical. (3) The Metal-only EP-uniforms guard
-  stays, because without it `-fvk-use-scalar-layout` would pack IR while reflection stays native, which is a miscompile.
-  The fixer is building in `wt-slang-13423`; nothing is pushed yet.
+  reflection together, plus a regression test. Default CB/cbuffer/PB/EP uniforms stay byte-identical.
+  **A' (`-fvk-use-scalar-layout` changing the default Metal CB) is NOT implemented**; it is a maintainer design question in the
+  PR body (cbuffer-vector-native-layout.slang pins native). Approach B (diagnostic) is out of scope.
+- 10-03 23:00Z, triager amendment, accepted and verified at `6ba151dcfc`: (1) **Tier-2 :2869 dropped** —
+  `MetalArgumentBufferTier2LayoutRulesFamilyImpl::getConstantBufferRules` is reachable only from :3076 with `containerType=nullptr`;
+  all `kMetalTier2*LayoutRulesImpl_` point at `kMetalLayoutRulesFamilyImpl` (:2765), so nested CBs route through Tier-1 :2799 via :4328.
+  Tier-2 is covered by a `getTypeLayout(…, MetalArgumentBufferTier2)` unit test instead. (2) `MetalConstantBuffer` gets real Metal-native
+  IR rules with the "natural" name hint, so default MSL stays byte-identical. (3) The Metal-only EP-uniforms guard stays: without it
+  `-fvk-use-scalar-layout` would pack IR while reflection stays native — a miscompile.
+- **Overlaps, my order decision (10-04):** #13386 (older, reviewed, closes #13379 + #13385) **lands first**; both rewrite the store-path
+  hunks at master ~:1923/~:2105 of lower-buffer-element-type.cpp. #13425 keeps its `canCopyStorageValueDirectly` copy gate (which also
+  fixes #13379) so it stands alone; if #13386 lands first, #13425 merges master, drops the gate and keeps its tests. Draft bot PR #13300
+  (`feat/layout-rules-version`) touches the same files: don't touch its branch, whichever lands second rebases. The PR body carries a
+  "Related to #13379 / overlaps #13386" note.
 
-## PR #13425 (draft, opened 10-04, head `ac70249886`, nv-slang-bot)
-`fix/issue-13423` → master. Label `pr: non-breaking`, closes #13423, 10 files +275/−15. **I checked all of this live on 10-04.**
-New `MetalConstantBuffer` IR rule name (appended + stable name), reflection honours `ScalarDataLayoutType`,
-Metal-only EP-uniforms guard, test `tests/metal/constant-buffer-scalar-layout.slang`, and the Tier-2 unit test
-`unit-test-metal-scalar-constant-buffer-tier-2-reflection.cpp`. CI on the draft: 4 pass, 56 skipping; macOS
-`metallib` only runs once it's un-drafted. A' is raised in the PR body as a maintainer question. The triager reported
-byte-identity 25/25 and slang-test 4268/4269 (gfx-smoke fails on master too).
+## PR #13425 (draft, nv-slang-bot, `fix/issue-13423` → master)
+Label `pr: non-breaking`, closes #13423, 14 files +541/−24. New `MetalConstantBuffer` IR rule name (appended + stable name), reflection
+honours `ScalarDataLayoutType`, Metal-only EP-uniforms guard, copy gate, docs line, test `tests/metal/constant-buffer-scalar-layout.slang`
+and unit test `unit-test-metal-scalar-constant-buffer-tier-2-reflection.cpp`. slang-reviewer r2 APPROVE_WITH_NITS (0 bugs); Codex CODE +
+OUTPUT approve. The fixer merges master (never force-pushes — not authorized); worktree `wt-slang-13423`.
+**No GPU CI has ever run:** the dispatch run 404'd by 10-12 and pull_request CI skips drafts, so macOS `metallib`/vk/mtl run only on un-draft.
 
-## 10-04 17:07Z — Triage Resolution (head `278cdfaa01`)
-I checked live: draft, 14 files +540/−24, 4 incremental commits, closes #13423. slang-reviewer r2 APPROVE_WITH_NITS (0 bugs). The r1 🔴
-(copying a scalar CB into an RWStructuredBuffer let `IRCopyLogical` reach a non-SPIR-V emitter, an ICE) was fixed at the producer with
-`canCopyStorageValueDirectly`. Codex CODE and OUTPUT approve. Adds a docs line and bumps `k_maxSupportedModuleVersion` from 33 to 34.
-The dispatch run 37218415580 is `waiting`, and pull_request CI is skipped because the PR is a draft.
-**Overlap with #13386, which I verified:** both PRs rewrite the store-path hunks at master ~:1923 and ~:2105 of
-lower-buffer-element-type.cpp. #13425's copy gate also fixes #13379, which #13386 fixes more broadly (`storeLogicalValue`).
-**My order decision: #13386 lands first** (it is older, already reviewed, and closes #13379 + #13385). #13425 keeps its gate so it stands
-alone and does not depend on an unmerged draft. If #13386 lands first, #13425 rebases and drops the gate, and keeps its tests as regression coverage.
-The PR body gets a "Related to #13379 / overlaps #13386" note with no code change. Re-chase `rechase-13425-maintainer-540f` (2026-10-06 09:00Z, done).
+**Stable-id / module-version collisions** (master keeps taking the PR's numbers; each one costs a merge round):
 
-## 10-06 09:00Z re-chase: no change on the PR
-Still a draft at `278cdfaa01`, now `BEHIND` master with no conflicts. 0 human reviews and 0 human comments on #13425/#13423. Run 37218415580 is still
-`waiting`. #13386 (`8d509354cd`, no commits since 10-02) and #13300 are both still unmerged drafts. The PR body already carries the #13386 overlap note.
-**New owner:** on 10-05 jhelferty-nv reassigned #13423, #13379 and #13386 to **jkwak-work** (milestone Q4 2026 Fall). The #13425 assignee and review
-request are still kaizhangNV, which doesn't match. I sent a reminder to the dashboard (msg 7). Next: `rechase-13425-maintainer-c1f3`, 10-09 09:00Z.
+| # | found | master PR | master took | PR moved to |
+|---|---|---|---|---|
+| 1 | 10-09 | #13445 `e2e217dd24` | id 907, min=max 34 | 908 / max 35 → head `465250e5ac` |
+| 2 | 10-15 | #13116 `c538debef6` | id 908, max 35 | 909 / max 36 → head `c994d094e1` |
+| 3 | 10-21 | #13078 `9e17a9e850` | id 909 (`glslPatch`), max 36 | 910 / max 37 → head `3a41ab51a0` (verified 10-21 13:00Z) |
 
-## 10-09 09:00Z re-chase: CONFLICTING, rebase dispatched
-Head is still `278cdfaa01`, but the PR is now **CONFLICTING** (it was BEHIND on 10-06). Master `e2e217dd24` (#13445, -Gec uniform temporaries, merged
-10-07) took IR stable id **907** (`Decoration.fileOrNamespaceScopeStaticVar`) and set module version **min=max=34** (AST node renumbering). #13425 used
-907 for `Type.MetalConstantBufferLayout` and bumped max to 34. `git merge-tree` shows conflicts only in stable-names.lua and slang-ir.h.
-⭐ **Lesson:** a draft PR that adds an IR inst can go stale on *id/version collision* with no text overlap on its own hunks. "BEHIND, no conflicts"
-can flip to CONFLICTING within days, so check `mergeable` on every re-chase. I sent the rebase to the triager (msg 13): use id 908, max 35, min 34, and
-keep the gate. Still 0 human reviews or comments. #13386 and #13300 are still unmerged drafts, and run 37218415580 is still `waiting`. Dashboard 5-bullet
-sent (msg 15). Next: `rechase-13425-maintainer-641e` 10-12 09:00Z.
-At 09:07Z the triager (msg 18) had the fixer **merge `origin/master` instead of rebasing**, because nobody had authorized a force-push (the same incremental-commit
-practice as #13436). I accepted that silently: a merge is enough, and no force-push authorization was given. The re-chase checks for a new head and that the PR is no longer CONFLICTING.
+Rival claimants on the same numbers: #13564 (draft) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
+[[slang/13555-ignore-capabilities-caseless-target-switch.md]]. Whoever merges second renumbers; never renumber early.
 
-At 09:39Z the triager (msg 20) reported the merge landed: new head **`465250e5ac`** ("Merge origin/master into fix/issue-13423", authored by
-nv-slang-bot[bot], no force-push). I verified it live: still a draft, MERGEABLE, 0 behind / 5 ahead of master, 14 files, closes #13423; id **908** and
-max version **35** confirmed in the diff. mergeStateStatus is BLOCKED only because of the draft and unrun checks. The gate is kept. The 10-12 re-chase
-prompt was updated to the new head.
+## Lessons
+1. A draft PR that adds an IR inst goes stale on **id/version collision** with no text overlap on its own hunks. "BEHIND, no conflicts"
+   flips to CONFLICTING within days, so check `mergeable` on every re-chase; each week as a draft costs a merge round, which is the
+   cost argument for the un-draft ask.
+2. **`slang-ir.h` can auto-merge to a wrong version.** In collision 3 both sides made the same `35→36` edit, so git merged it cleanly and the
+   PR's "Version 36 adds MetalConstantBufferLayout" comment rode along — silently reusing master's version. Always compare the PR's
+   version and ids against master's directly; `merge-tree` conflict output alone is not enough.
 
-## 10-12 09:00Z re-chase: no change
-Head is still `465250e5ac`, a draft, MERGEABLE, BEHIND master by 5 (#13483/#13479/#13502/#13481/#13503). **None of them touch the PR's 14 files or the
-stable-names/version files**, so there's no new collision. Still 0 human reviews or comments on #13425/#13423, and the assignee/review request is still kaizhangNV.
-#13386 and #13300 are still unmerged drafts. **Dispatch run 37218415580 now 404s** (gone), so no metallib/vk/mtl CI has run on any head. The pull_request CI at
-`465250e5ac` was skipped (draft). Dashboard 5-bullet sent (msg 5). Next: `rechase-13425-maintainer-506e` 10-15 09:00Z.
+## Current state (10-21 13:00Z, verified)
+Head `3a41ab51a0` (merge of master `25fc396601`, pushed 10-21 09:05Z), draft, **MERGEABLE**/BEHIND, `merge-tree` clean vs master
+`965284957c`. The diff vs master shows id 910 and max 37 (min 34), and master is still at 909 / 36, so no collision. The gate is present (#13386 unmerged).
+The head contains #13078, #13715 and #13724. PR comment 6078307404 was edited 10-21 09:23Z for this head: L40S build, PR tests 15/15 (mtl/metallib skipped),
+unit 650/650, master-adjacent 19/19, suites 2572/2572. No message to the triager was needed. 0 human reviews or comments; assignee/review request is
+kaizhangNV although jkwak-work owns #13423/#13386 since 10-05. Next: `rechase-13425-maintainer-e658` 10-24 09:00Z (prompt updated with this head).
 
 ## Resumes on
-A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then rebases); a human comment on #13423; any maintainer objection on the #11578 design.
-
-## 10-15 09:00Z re-chase: CONFLICTING again (second id/version collision)
-Head is still `465250e5ac`, but the PR is **CONFLICTING/DIRTY**, ahead 5 / behind 30. Master `c538debef6` (#13116, per-invocation resource globals, merged 10-14)
-appended `Decoration.uninitializedGlobalCheckFoundPossibleWrite` = **908**, renamed 907 to `fileOrNamespaceScopeMutableVar`, and set max version **35**
-(min 34). Those are exactly #13425's values. `merge-tree` against master `6597ec9202` conflicts only in stable-names.lua and slang-ir.h. (#13371's 467/468 key rename auto-merges.)
-I dispatched the triager (msg 7, pinned to `sess-1791054731206-u100ia`): merge origin/master, id **909**, max **36**, keep the gate. Still 0 human reviews or comments,
-the assignee/review request is still kaizhangNV, and 0 workflow runs exist on the branch. #13386 and #13300 are still unmerged drafts. Dashboard 5-bullet sent (msg 13).
-⭐ This is the second collision in 6 days. Every week as a draft costs a merge round, so the un-draft ask carries a cost argument.
-Next: `rechase-13425-merge-verify` 10-15 13:00Z (verify the merge, chase the fixer `sess-1791056648478-l10syj` if the triager is silent), then the 3-day cadence.
-
-## 10-15 13:00Z merge-verify: resolved, MERGEABLE
-New head **`c994d094e1`** (merge of master `6597ec9202`, no force-push, pushed 09:04Z). I verified it live: draft, MERGEABLE, 0 behind / 6 ahead, 14 files +541/−24.
-The diff vs master shows **909** and max **36** (min 34). The gate is kept (3 hits). The triager reported it at 09:19Z (msg 37), so I didn't need to chase the fixer. The PR 5-bullet
-(comment 6078307404) was edited in place: tests 12/12, unit tests 648/648, 4345/4345 across 12 suites (their claim; I didn't re-run). GitHub ran only REUSE and PR Maintenance;
-CI, Claude review and labels were skipped (draft). Still 0 human reviews or comments, and the assignee/review request is still kaizhangNV. #13386 and #13300 are still unmerged drafts.
-Dashboard 5-bullet sent (msg 15). Next: `rechase-13425-maintainer-9a08` 10-18 09:00Z.
-
-**10-15 14:15Z: version collision, found on the #13555 chain.** Draft #13564 also claims stable id **909** and max=**36**. Non-draft #13406 (jhelferty-nv) sets min=max=36. Whichever PR merges second renumbers, and git flags it as a conflict. Don't renumber early. The cross-reference is now in `rechase-13425-maintainer-9a08`. Details: [13555 chain](13555-ignore-capabilities-caseless-target-switch.md).
-
-## 10-18 09:00Z re-chase: no change
-Head is still `c994d094e1`, a draft, MERGEABLE, BEHIND master `60a7c8c88c` by 11 commits. `merge-tree` is clean. None of the 11 commits touch the PR's 14 files, and master's stable ids still max out at 908 with version 34/35, so there's no new collision.
-Still 0 human reviews or comments on #13425/#13423, and the assignee/review request is still kaizhangNV. No new workflow runs. #13386 and #13300 are still unmerged drafts, so the gate stays. On the collision watch, #13564 is still a draft and MERGEABLE, and #13406 is open but CONFLICTING with CHANGES_REQUESTED.
-Dashboard 5-bullet sent (msg 3). Next: `rechase-13425-maintainer-d9e9` 10-21 09:00Z.
+A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human
+comment on #13423; any maintainer objection on the #11578 design.

@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13627_extension_conformance_not_imported_hint
-description: "slang#13627 (HildarTheDorf, external, 10-14 20:03Z): E38029 'float does not conform to IScalarFractional' when the conformance comes from an extension in a module the CALLER doesn't import (srgb imports slang.numerics, consumer imports only srgb). Triaged 10-14 (cmt 6177812514): diagnostic UX, not a lookup bug, since visibility follows caller imports per the spec and tests/diagnostics/extension-visibility.slang. Rec A = a 'conformance exists in loaded-but-unimported module X' note. Fixer HELD; operator go/no-go asked. Re-check recheck-13627-import-hin-bf8f on 10-21."
+description: "slang#13627 (HildarTheDorf, external, 10-14 20:03Z): E38029 'float does not conform to IScalarFractional' when the conformance comes from an extension in a module the CALLER doesn't import (srgb imports slang.numerics, consumer imports only srgb). Triaged 10-14 (cmt 6177812514): diagnostic UX, not a lookup bug, since visibility follows caller imports per the spec and tests/diagnostics/extension-visibility.slang. Rec A = a 'conformance exists in loaded-but-unimported module X' note. Fixer HELD; operator go/no-go asked. Re-checked 10-21: assigned tangent-vector + Q1 2027 milestone, no comment; operator re-asked."
 metadata:
   node_type: memory
   type: project
@@ -34,3 +34,7 @@ C: change the visibility rule (spec call; overlaps RFCs #12972/#12973). D: docs 
 **Resume:** an operator "go" → tell slang-triager on this thread to hand off A to slang-fixer, never dispatching the fixer
 directly ([[feedback_triage_memo_is_not_my_cue_to_dispatch_the_fixer]]). A maintainer or reporter comment → slang-triager.
 One-shot re-check `recheck-13627-import-hin-bf8f` on 10-21T20:45Z.
+**10-21 re-check (done, not re-armed).** Still open with no human comment and no linked PR. jhelferty-nv assigned it to
+**tangent-vector** (10-15), who added it to the **Q1 2027 (Winter)** milestone (10-21 17:33Z) without commenting. Searched the dashboard
+for an operator answer: none. Re-asked both questions on `orchestrator-dashboard` (msg 25). Option (1) now reads "draft A, or wait
+on tangent-vector". The next trigger is a webhook comment → slang-triager, or an operator answer.

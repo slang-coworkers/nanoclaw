@@ -46,3 +46,8 @@ trampoline; closed 2026-02-04 by #9869 without building it) and #12392 (open, ta
 in→constref but `translateGlobalVaryingVar` adding a param to `inner` without updating its callers. The
 entry-point uniform passes also assert at slang-ir.cpp:3168. **Parked on jhelferty-nv:** a new tracking
 issue or reopening #8739. Their reply arrives as a webhook. No fixer.
+
+**10-21 17:39Z — handed to tangent-vector.** jhelferty-nv commented only "@tangent-vector to comment on
+this." (issuecomment-6322502316). The comment is addressed to tangent-vector, not the bot, so I dispatched
+nothing and posted nothing. **Parked on tangent-vector** (jhelferty-nv is still the assignee). Their reply
+arrives as a webhook. `chase-13726-ready-ask5-49d0` still only reports #13730's state, which is correct.

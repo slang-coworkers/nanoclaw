@@ -91,3 +91,10 @@ you name the ref: read via `gh api contents/<path>?ref=<sha>`, which is
 edge-independent (same rule as ANCHOR C for per-container `/workspace/**` paths, on
 the git-ref axis). What was right and worth keeping: **flagging beat proceeding** — a
 collision rule that only fires when a collision is real is untestable.
+
+## Maintainer follow-up issues (2026-10-21)
+
+jhelferty-nv filed and self-assigned #13835 (borrow param given groupshared storage: copy on HLSL,
+reference on SPIR-V/WGSL — the argument side of E30712) and #13836 (a reference param's signature
+does not say whether its storage may be groupshared — about E30709). Both are their work items:
+held, no dispatch. Both depend on diagnostics that exist only on this PR's head.

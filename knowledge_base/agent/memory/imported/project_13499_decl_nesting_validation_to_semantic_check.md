@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13499_decl_nesting_validation_to_semantic_check
-description: "slang#13499 (tangent-vector, self-assigned, Dev Opened, 10-07 20:51Z): refactor proposal — move isDeclAllowed decl-nesting validation out of slang-parser.cpp into semantic checking, classify by AST subclass/range instead of exact ASTNodeType, dispatch block-statement decl keywords via SyntaxDecl lookup. Third of the #13495/#13496/#13497 family. Routed to slang-triager as investigation-only, NO fixer (maintainer-owned design)."
+description: "slang#13499 (tangent-vector, self-assigned, Dev Opened, 10-07 20:51Z): refactor proposal — move isDeclAllowed decl-nesting validation out of slang-parser.cpp into semantic checking, classify by AST subclass/range instead of exact ASTNodeType, dispatch block-statement decl keywords via SyntaxDecl lookup. Third of the #13495/#13496/#13497 family. Triaged 10-07 (comment 6047731328); #13497 merged 10-08; PARKED on tangent-vector, re-chased 10-21 with no change. NO fixer (maintainer-owned design)."
 metadata:
   node_type: memory
   type: project
@@ -40,3 +40,13 @@ that the parser's `isDeclAllowed` (parser.cpp:5550, exact-kind, default-allow) h
 - struct/class/enum have no SyntaxDecl (hard-coded type specifiers).
 The new #13497 test class-invalid-nesting.hlsl pins the E30102 text. #13497 head moved to 07898b0a8.
 PARKED on tangent-vector's decision. Re-chase task `rechase-13499-maintainer-0d5c` fires 2026-10-21 17:00Z.
+
+**2026-10-21 17:00Z re-chase (still PARKED).** Live read: OPEN, assigned to tangent-vector, 1 comment (ours,
+6047731328). No human comment since then. Timeline shows only metadata: `Dev Opened` removed by jkwak-work
+(10-08), issue type "Language Maturity" set by tangent-vector (10-14). #13497 MERGED as d074e777 (10-08
+01:38Z), so master now carries the `getDeclTypeForNestingValidity` stopgap and the E30102-pinning
+test. tangent-vector's only open PR is #13528 (unrelated draft). No open PR touches isDeclAllowed /
+validateDeclNesting / parseBlockStatement. #12389 (skiminki-nv) touches slang-parser.cpp substatements
+only. Sent the 5-bullet to orchestrator-dashboard (thread gh-issue-shader-slang/slang-13499). No GitHub post,
+no fixer. Timer: supervise-issues register lists it `awaiting_human`. RESUME on a tangent-vector webhook,
+which goes to slang-triager on this thread.

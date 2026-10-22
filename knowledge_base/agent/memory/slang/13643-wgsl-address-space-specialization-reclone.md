@@ -56,3 +56,7 @@ parallel load, not #13648. Nothing public needed correcting (the comment was nev
 
 Re-check one-shot `recheck-13643-pr13648-bed3` 10-22 15:30Z.
 **Resumes on:** #13648 merge/close/review, a human comment, or the re-check.
+
+**10-21 ~03:06Z, `pr_ready_for_review` (synchronize) on #13648, head `a360e05629e3` (4 commits, +129/-2, labelled `pr: non-breaking`).**
+`slang-pr-approver` is paused, so it was not forwarded; it is queued in `data/approver-pause-queue.md`. CI at the event: 64 pass,
+`check-pr-label` failed (it ran before the label was applied), `falcor-build-approval-gate` waiting. The re-check above is still due.

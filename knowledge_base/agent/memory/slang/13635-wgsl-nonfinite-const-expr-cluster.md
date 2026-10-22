@@ -14,7 +14,7 @@ initializers can't call user functions, so a `_slang_getNan()` helper call doesn
 
 | issue | filed by | fix | state (2026-10-16 11:37Z — all fixer chains closed, watch-only) |
 |---|---|---|---|
-| #13635 `asfloat(<const NaN bits>)` | albertrodriguezclo 13:15Z | ~~reporter PR #13645~~ **closed unmerged 10-21 00:12Z by jkwak-work** ("complete hack", inline on the `intrinsicDefinition == toSlice("bitcast<$TR>($0)")` match) | **REOPENED 10-21 00:13Z: jkwak-work asked the bot "Please make a PR for this issue"** (cmt 6304728461) → triager → fixer. Bot cmt 6194445036 now stale |
+| #13635 `asfloat(<const NaN bits>)` | albertrodriguezclo 13:15Z | ~~reporter PR #13645~~ closed unmerged 10-21 by jkwak-work ("complete hack"). **Bot draft #13816 @ `1c4a1531ed`** (stacked on #13669, base `fix/issue-13658`): IR-visible `bit_cast` + WGSL-only min-opt peephole + `_slang_getNan(bits)` + spec-const-rate non-const; no string matching | **RESOLVED 10-21 15:44Z**: R1 REQUEST_CHANGES (2 WGSL regressions, fixed) → R2 APPROVE_WITH_NITS (A/C not re-run in R2, for budget). Reporter Tint check ran at R1 head `2624613`, not the final head. cmt 6194445036 edited 15:44Z. Assignee/reviewer now **kaizhangNV**. Doc-regen follow-up #13821 (unlabelled). Held for operator un-draft |
 | #13657 `f16tof32(<const Inf>)` | bot (triager) 15:01Z | bot draft #13670 `410a1b3d1b` | R1+R2 REQUEST_CHANGES, all applied; resolved 22:48Z (cmt 6199231398). Held for operator un-draft + maintainer design call (per-intrinsic vs general `@const` rule) |
 | #13658 runtime-indexed static-const NaN table | bot 15:01Z | bot draft #13669 `f70ea437da` | RESOLVED 10-16 11:37Z: G3 driver crash fixed via bit-pattern helper bodies (GPU-verified L40S), delta R2 APPROVE_WITH_NITS, G4 anchors applied. cmt 6199105712 edited 11:36Z (⚠️ dropped). Held for operator un-draft. Perf follow-up #13682 |
 | #13671 spec-constant with NaN default | bot 18:17Z | none — maintainer picks (a) drop default / (b) diagnose | design Q cmt 6199222995; one-shot `rechase-13671-override-d-c939` 10-17 15:00Z |
@@ -25,6 +25,10 @@ Shepherd: jkwak-work. Un-drafting any of #13669/#13670/#13680 is operator-gated.
 ## 2026-10-21 maintainer reversal
 
 jkwak-work closed #13645 and asked the bot for a proper PR. The objection was aimed at matching on the intrinsic **string** in the emitter. **Bot draft #13670 uses the same pattern** (`intrinsicDefinition.startsWith("unpack2x16float")`), so it is probably exposed to the same objection. I flagged that to the triager as my inference, not as the maintainer's words. #13669 and #13680 change helper bodies and legalization instead, which is a different layer.
+
+**10-21 07:41Z re-triage (after a ~7 h triager stall, session at $57.54 of $60):** cmt 6194445036 edited 07:40:41Z (#13645 closed by the maintainer, bot draft coming). Recommended **R**: WGSL `asfloat` lowers to the IR BitCast op (visible to SCCP), plus one bit-exact WGSL emit rule for non-finite f32 FloatLits keyed on IR op + value, building on #13669's helper bodies. R must prove the NaN payload survives (`asfloat(0x7FC00001u)` through IRFloatLit's double). Handed to fixer gj2lyx (row 64, now running; $115/$180). #13670's string match is to be raised in the new PR, not changed silently. The reporter offered Tint runs (cmt 6310655076).
+
+**10-21 22:38Z: #13816 parked on reporter PR #13846** (fixes #13845, base master; assignees jkwak-work + reporter). #13846 adds `DoubleToFloatBits`/`FloatBitsToDouble` so constant bit-cast folds keep signaling-NaN bits. That quieting is **not WGSL-only**: SPIR-V quiets sNaNs on master too (fixer confirmed `0x7F800001` → `0x7FC00001`), so #13816's "WGSL only" caveat was wrong. Fixer agreed publicly (PR cmt 6328093368) to merge master once #13846 lands, make the one-line `DoubleToFloatBits` change at `slang-emit-wgsl.cpp:1226`, and take the reporter's `asfloat-signaling-nan.slang`. The fixer's one-shot re-check is 10-23 16:00Z. Merge order is now #13669 → #13846 → #13816 (+ #13680).
 
 ## Lessons from this chain
 
@@ -49,7 +53,7 @@ Triager memo `memory/issues/gpu-reverify-2026-10-16-wgsl-nonfinite.md`; fixer re
 
 ## Operator decisions outstanding (asked 2026-10-15, unanswered at 22:50Z)
 
-1. Un-draft #13670, #13669 (`f70ea437da`), #13680 (`c77365d9be`) — all review-complete as of 10-16 11:37Z (operator-gated `gh pr ready`).
+1. Un-draft #13669 (`f70ea437da`), #13680 (`c77365d9be`), #13816 (`1c4a1531ed`, after #13669). #13670 HOLD: same string-match shape jkwak-work rejected on #13645.
 1b. File the NVIDIA/Dawn Vulkan pipeline crash upstream? (operator call)
 2. `perf` label on #13682.
 3. Fixer `instructions.prepend.md` rule: edit an existing bot status comment instead of posting a new one.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#12627 — CUDA/PTX component-masked RWTexture2D store emits a subscript on CUsurfObject
-description: Fix is in draft PR #13363 (surface read-modify-write + warning, now E56020-E56022). It was reconciled with #13563 at 6f4e01b249 on 10-15. #13537 then made it dirty, but #13712 reverted #13537 (10-16), so it is BEHIND only. Held on jkwak-work's answer to the CUDA coherency question and on the operator's go. Follow-ups #13361/#13362/#13364/#13365.
+description: Fix is in draft PR #13363 (surface read-modify-write + warning, codes E56020-E56022). 10-21 the operator hold was lifted as over-gating; the fixer is merging master (plain merge, no force-push) and will post one #12627 comment re-asking jkwak-work (a)/(b) and the warning scope. Follow-ups #13361/#13362/#13364/#13365.
 tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-maintainer]
 ---
 
@@ -9,6 +9,10 @@ tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-mai
 
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
+
+## 2026-10-21 re-chase (`rechase-12627-plain-merg-44de`): hold lifted, no operator gate
+
+The operator never answered the 6th ask (dashboard rows 505798–506566). **The ask was over-gating.** A plain merge pushed to our own `fix/issue-12627` and a verified comment are not gated; only `gh pr ready`, `gh pr merge`, and closing issues or other people's PRs are ([feedback leaf](../imported/feedback_github_writes_operator_authorized.md); dashboard msg 506145, 10-20). The 10-20 sweep that withdrew five asks of this kind missed this one. Checked live at 08:0xZ: #13363 @`6f4e01b249`, ahead 10 / behind 35, no human activity anywhere. #13537 hasn't re-landed, and #13717 is still open with no shared files. `git merge-tree` is clean (tree `7ee6e7d56b`). 5 files overlap and auto-merge: `hlsl.meta.slang`, `slang-diagnostics.lua`, `slang-emit-c-like.{cpp,h}`, `slang-emit.cpp`. E56020–E56022 are unique; master's highest code is 56109. I sent the fixer a pinned go (my msg id 19): merge with no force-push, rebuild, L40S tests, push, refresh the explanation, no CI dispatch, no `gh pr ready`. Then one #12627 comment through OUTPUT_REVIEW that re-asks (a)/(b) and the scope question, with no @-mention. **Fixer row 79 (08:09Z):** merged locally as `cebafb34a5`, clean, build running, and it pushes only after the tests pass.
 
 ## 2026-10-18 re-chase (`rechase-12627-13537-conf-14f1`)
 
@@ -18,7 +22,7 @@ Checked live 08:0xZ. The operator hasn't answered the 10-15 ask (dashboard rows 
 
 #13537 was fully reverted by #13712 (kaizhangNV, merged 2026-10-16 21:01:48Z, `8c81b8bdaf`). `_tryGetImageFormat` is gone from master; `slang-intrinsic-expand.cpp` is back to `_findImageFormatDecoration` (4 sites). #13363 @`6f4e01b249` is now `MERGEABLE`/`BEHIND` (diverged: ahead 10, behind 13). So operator ask (1) shrinks to a plain merge of master, with no reroute. The prompt of `rechase-12627-13537-conf-14f1` carries this context.
 
-## State (checked live 2026-10-15 08:05Z, re-checked 10-18 08:0xZ; still no human reply on #12627/#13363 since 10-01)
+## State (checked live 2026-10-15 08:05Z, re-checked 10-18 and 10-21 08:0xZ; still no human reply on #12627/#13363 since 10-01; the operator hold was lifted 10-21, see above)
 
 - **2026-10-15 update:** #13563 merged at 02:16Z (`788be3144e`). On the dashboard Main's 02:12Z go-ahead, the fixer reconciled #13363
   (merge `0baf65e696` + reconcile `6f4e01b249`, pushed 02:33Z, no force-push). #13116 had taken E56006–E56019, so this PR's codes are now
@@ -46,7 +50,7 @@ Checked live 08:0xZ. The operator hasn't answered the 10-15 ask (dashboard rows 
   or (b) make it a compile-time error on CUDA. The warning-scope question
   ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all RMW targets.
   Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 in.
-- **Re-chase:** `rechase-12627-plain-merg-44de` (2026-10-21 08:00Z). Previous: `rechase-12627-13537-conf-14f1` (10-18, 6th ask sent). Operator asks were sent 10-07, 10-09, 10-12 and 10-15 02:1xZ; none
+- **Re-chase:** `rechase-12627-post-merge-a776` (2026-10-24 08:00Z). It verifies the fixer's push and #12627 comment, then watches for jkwak-work's reply. Previous: `rechase-12627-plain-merg-44de` (10-21, hold lifted), `rechase-12627-13537-conf-14f1` (10-18, 6th ask sent). Operator asks were sent 10-07, 10-09, 10-12 and 10-15 02:1xZ; none
   answered. The 02:1xZ reconcile half went ahead on the dashboard Main's own go-ahead. The **5th ask (10-15 08:1xZ)**: may the fixer (1) merge
   master again for #13537 and (2) post one comment on #12627 that reports the update and re-asks (a)/(b) and the scope question? I don't post it myself.
 - **Interacts with #13563 (new 10-10).** minco3 filed #13554: a formatted `RWTexture2DArray` store is silently dropped on CUDA.
@@ -69,6 +73,14 @@ Checked live 08:0xZ. The operator hasn't answered the 10-15 ask (dashboard rows 
   fixer's planned `getCUDASurfaceAccessInfo` re-route is moot. The next reconcile is a plain `git merge origin/master`, still
   held on the operator's go (the decisions asked 10-15: reconcile + one combined #12627 comment re-asking (a)/(b)).
 
+- **2026-10-21 update:** the hold was lifted by the 08:00Z re-chase (a plain merge to our own branch plus one verified comment is
+  not operator-gated). The fixer merged master (`cebafb34a5`, clean, no #13537 API) and fixed this PR's own vk test check
+  (`6c110229f7`). That test had never run on a GPU, and its `// BUF: 2` matched inside `uint32_t`. Pushed as a fast-forward:
+  head **`6c110229f7`**, still a draft, MERGEABLE (verified). L40S: cuda 144/144, hlsl-intrinsic 670/670, compute 660/661 → 6/6
+  after the check fix. One #12627 comment re-asks (a)/(b) and the warning scope:
+  [6311568042](https://github.com/shader-slang/slang/issues/12627#issuecomment-6311568042) (bot, no @-mentions, 08:28Z).
+  Waiting on jkwak-work.
+
 ## Follow-ups (bot-filed, not dispatched, `doNotNudge` in supervisor-state.json)
 
 On 2026-10-05, maintainers triaged all four (re-checked 10-09, 10-12 and 10-15 08:05Z: no comments, unchanged): they assigned owners and set milestones. A follow-up that a human now owns is not
@@ -80,6 +92,8 @@ dispatched unless that assignee or the operator asks.
 - #13365 C++/CPU `*(tex[coord]).w` compile failure. jkwak-work self-assigned, Q4 2026.
 
 ## Lessons
+
+- **When a gating belief is corrected, sweep every parked ask, and search for the chain-specific wording.** The 10-20 sweep withdrew five "close our draft / post a verified comment" asks, but #12627 was phrased as "may the fixer merge and post", so the sweep missed it. It stayed parked 3 more days. Parked asks that include "may X push/post" are the same class.
 
 - **Reconciling with one sibling merge doesn't keep a draft clean.** Within 3h of the #13563 reconcile, #13537 touched the same
   helpers. When a draft parks for weeks, a re-chase should check `mergeable_state` and diff overlap against new master commits,

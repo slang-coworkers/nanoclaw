@@ -57,3 +57,22 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
   nv-slang-bot). Verified live: the PR is OPEN, `BEHIND` master, assigned kaizhangNV and
   albertrodriguezclo, with a review requested from dshreiner-nv; the issue is assigned to jkwak-work.
   **Now waiting on maintainer review; the triager only watches.** Re-check `-54b2` on 10-21 15:00Z is unchanged.
+- 2026-10-21 15:00Z re-check `-54b2` (live read): the PR is OPEN and not merged. The head **moved to
+  ae4db91cd7** ("Member loads: load each member once, move a read across a branch only in bounds",
+  pushed 10-19 22:25Z, after the triager's 21:47Z verify). The reporter answered the github-actions[bot]
+  review on 28bf262e96 (🔴 0 bugs, 1 gap: no test for the read moved across a branch) with 10 inline
+  replies at 22:29–22:30Z (new `guardedConstantIndex` case, `isKnownAvailableAt` rename, shared
+  `hasWholeAccessAttr` in slang-ir-util). It is `BEHIND` master, CI is 7/7 pass, and there are still no
+  human maintainer reviews (dshreiner-nv still requested). No issue comments since 6278114155. The
+  triager session was idle since 21:47Z.
+  - Decision row (4): I asked slang-triager to re-verify ae4db91cd7 and edit 6278114155 in place
+    (pinned to `sess-1792248984408-me86v2`, thread `gh-issue-shader-slang/slang-13732`, a2a msg id 7).
+    No fixer and no approver. Re-check `-54b2` was consumed by this fire, so the successor `rechase-13732-pr13734-ae-bd35` (one-shot, 10-23 15:00Z) is keyed on ae4db91cd7.
+- 2026-10-21 15:26Z triager `[Report]` (their findings): no regression at ae4db91cd7. The attributed
+  loads match master 045300d41 at -O0 and -O1. Revert drill on `hasWholeAccessAttr(load)` (:1309): 1/5
+  with it disabled, 5/5 restored. `guardedConstantIndex` plus the cross-block gate (:1323-1328) are
+  covered by the GUARD case. Untestable gap: the literal in-bounds check (the front end rejects it
+  first, E30029). Subset 1280/1280 on the PR; merged locally onto master 045300d41 (incl. #13715,
+  same file) it is conflict-free and passes 1295/1295. Comment 6278114155 was edited in place
+  (verified: updated_at 15:25:49Z, still the newest comment). PR is OPEN, `BEHIND`, and dshreiner-nv
+  is still requested. Still parked on maintainer review; successor re-check `-ae-bd35` on 10-23 15:00Z.

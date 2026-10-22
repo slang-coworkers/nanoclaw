@@ -19,3 +19,5 @@ tags: [slang, ci, merge-queue, priority-gate, open-question]
 - (a) Drop `waiting` from the set this bot checks. A run parked on an approval environment doesn't compete for runners.
 - (b) Have a maintainer approve or cancel the backlog of stale waiting runs.
 - (a) fixes the cause and (b) clears it once. Raised with the operator 2026-10-12.
+
+**2026-10-21 recheck:** still unresolved. `ci.yml?status=waiting` = **85** (78 `nv-slang-bot[bot]`, oldest 09-16). Second 30-day falcor-gate expiry on a bot draft: slang#13201 (run 35629836846, 09-21 17:06Z → 10-21 17:06Z, 0 build steps), after #13127 on 10-16. Both drafts parked with a status comment, not rerun: a rerun only re-requests `falcor-ci` approval.

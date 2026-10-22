@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13491: one try covers every throwing call in its operand"
-description: "Feature request from skiminki-nv (self-assigned), triaged 10-07 as feature + correctness bug, P2, and NO-GO until maintainers decide the design. PARKED on two maintainer decisions; skiminki-nv wants to wait for Yong. spec#63 (merged 10-14) documents the current narrow rule, which is not a decision. Re-chase task rechase-13491-try-covera-ad54 runs 10-21 17:00Z."
+description: "Feature request from skiminki-nv (self-assigned), triaged 10-07 as feature + correctness bug, P2, and NO-GO until maintainers decide the design. PARKED on two maintainer decisions; skiminki-nv wants to wait for Yong. spec#63 (merged 10-14) documents the current narrow rule, which is not a decision. Next re-chase rechase-13491-try-covera-b893 runs 10-28 17:00Z."
 ---
 
 # slang#13491: let one `try` cover every throwing call in its operand
@@ -37,3 +37,10 @@ holds a reverted prototype at `scratch-13491/prototype.diff`.
   Discord thread has been quiet on `try` since 10-07; the 10-08/09 posts discuss the panic-vs-throw taxonomy. Yong
   hasn't posted. Still parked. Told dashboard and created `rechase-13491-try-covera-ad54` for 10-21. The firing row
   can't be updated (`no live task matched`), so each re-arm is a new `create`.
+- 2026-10-21 17:00Z re-chase: still parked. #13491, #13490 and #13492 have had no comments since 10-07/08, and the
+  Discord channel has been silent since 10-09 16:34Z. Yong hasn't posted. spec has no new PR or issue on `try`
+  coverage; the only spec activity is #64 (`this`) and #65 (explicit receivers). One change: **#13514 merged
+  10-16 10:04Z** (skiminki-nv approved) and closed #13489. The narrow rule is now enforced, so `try g(f())` is an
+  E30094 error and no longer miscompiles. The correctness-bug half of #13491 is therefore gone; what remains is the
+  pure design question. The fixer's `scratch-13491/prototype.diff` predates #13514 and needs a rebase if this ever
+  goes ahead. Told dashboard and created `rechase-13491-try-covera-b893` for 10-28.

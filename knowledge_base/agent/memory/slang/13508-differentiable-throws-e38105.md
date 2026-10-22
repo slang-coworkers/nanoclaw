@@ -36,3 +36,9 @@ description: slang#13508 — `[Differentiable]` functions declared `throws` fail
   proposal, and no human PR references #13508. His only new open PR, #13677 (function-extension synthesis), doesn't reference it. Nothing
   posted, nothing dispatched. Scheduled `rechase-13508-sai-2-8423` for 2026-10-21 16:00Z as re-chase 2 of 3. Re-chase 3 is the last one,
   and then the operator gets told it is parked on Sai.
+- **10-21 16:00Z re-chase 2 (`rechase-13508-sai-2-8423`): Sai still silent.** The issue was last updated 10-14 16:48:13Z. No human comment or
+  timeline event came after the proposal, and no open PR references #13508. Nothing posted, nothing dispatched. **Code collision found:** open
+  bot PR #11709 (groupshared, #10641) also takes E38038, for `cannot-use-groupshared-on-differentiable-function-parameter`. E38038 is still free
+  on master `a801f2685c`. Whichever PR lands second has to renumber, so the fixer must pick a free code. Scheduled the final re-chase 3,
+  `rechase-13508-sai-3`, for 2026-10-26 16:00Z. If he is still silent then, create no further task and tell the operator on
+  orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13508`) that the chain is parked on Sai.

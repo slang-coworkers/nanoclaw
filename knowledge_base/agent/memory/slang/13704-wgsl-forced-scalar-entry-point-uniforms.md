@@ -31,4 +31,15 @@ description: External report (albertrodriguezclo), reproduced and triaged 10-16;
   explicit-layout question (DX layout, `ConstantBuffer<T, ScalarDataLayout>`) to the maintainers. I forwarded the comment to the
   triager on the canonical thread, without a post marker (no bot mention).
 - **2026-10-19 21:39Z:** the triager reported that it moved re-check `t-158372` to 2026-10-26 14:00Z. The re-check now only watches whether #13706 merges or closes. On merge: final report to me, no post. On close: report, and a fixer only if a maintainer asks. Still open: one more re-check. This is the triager's claim; I can't see its tasks from Main.
-- **Resumes on:** #13706 merging or closing, a maintainer comment, or the operator's file-the-adjacent-bugs decision (asked 10-16, unanswered).
+- **2026-10-21 23:44Z:** the assignee jkwak-work @-mentioned the bot ([6329079064](https://github.com/shader-slang/slang/issues/13704#issuecomment-6329079064)).
+  They question the direction: scalar layout means 4-byte alignment, so should `-force-glsl-scalar-layout` be an
+  error on WGSL? And is `@align(16)` in the emitted std140 wrapper the problem (`@align(4)` instead)? They asked
+  for help understanding the issue. I routed it to the triager on the canonical thread with `<github-post-authorized />`.
+  #13706 is still open at `c3a4119126`, with no human review, and its direction now depends on the answer.
+- **2026-10-21 23:57Z:** the triager answered ([6329245722](https://github.com/shader-slang/slang/issues/13704#issuecomment-6329245722); I checked it live, nv-slang-bot, 5704 chars).
+  - `@align(4)` can't fix it: WGSL §14.4.5 requires a 16-byte array *stride* in uniform memory, and WGSL has no stride attribute. naga rejects every variant.
+  - Making the flag an error would break SlangPy/WebGPU, because SGL sets it for every device. Other targets ignore it already.
+  - New: the `uniform_buffer_standard_layout` extension (Dawn has it, naga doesn't) makes stride 4 legal.
+  - Options: A ignore (what #13706 does), B a warning, C honour it via the extension. It recommended A, with B optional, and left the decision to jkwak-work.
+  - `t-158372` (10-26 14:00Z) now also watches for a jkwak-work reply (the triager's claim).
+- **Resumes on:** #13706 merging or closing, a maintainer comment, jkwak-work's A/B/C decision, or the operator's file-the-adjacent-bugs decision (asked 10-16, unanswered).

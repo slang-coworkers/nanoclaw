@@ -14,6 +14,7 @@ okf_version: "0.1"
 - **`/supervise-issues` tick: read [orchestrator/supervise-tick-runbook.md](orchestrator/supervise-tick-runbook.md) BEFORE the first command.** Never launch the stock `pull-universe.sh` (≈2.4 h on per-session cost-cap calls); use the latest `tickNNN/pull.sh`. Ticks 272–274 each lost 4–35 min by starting from SKILL.md instead.
 - **okf-synthesis since 2026-10-15 (repo skill, #2039) misreads nested `metadata.type` frontmatter: its ~1,200 NO-FRONTMATTER/DOSSIER offenders are false — do NOT "fold" them.** Escalated to the owner; detail in [imported/reference_okf_synthesis_provisioning.md](imported/reference_okf_synthesis_provisioning.md).
 - **`ncl tasks get/list` from Main only sees MY group; `--agent-group-id` is inert.** "task not found" for a peer's task is not evidence it is missing. To audit one, run `ncl sessions get <its session_id>`, or `ncl sessions list --thread-id system:tasks:<series>`. A `[]` from the second does not prove absence: tasks on legacy shared sessions return `[]` too. On 2026-10-15 (#13637) I falsely told a peer and the dashboard that a re-check was missing. Detail in [imported/feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group.md](imported/feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group.md).
+- **If a final response has any `<message>` block, plain text in it is not delivered — give each peer instruction its own block.** Lost a fixer instruction this way on 2026-10-21 (#13789).
 - Full context, evidence and history for these: [system/hazards.md](system/hazards.md).
 
 ## Map
@@ -42,6 +43,8 @@ okf_version: "0.1"
   inert for Codex). Distilled 2026-08-20 from the May-2026 A/B and parity R&D notes.
 - [PR approvers paused](pr-approvers-paused.md) - **check `paused` before routing any
   approver webhook**; both approvers are operator-paused and the decision is still pending.
+- [No gratuitous cross-repo links](feedback_no_gratuitous_cross_repo_links.md) - bot GitHub posts cite
+  other repos' issues/PRs as plain text; links notify outsiders (operator 2026-10-22).
 - [Supervise-tick delivery guardrail](project_supervise_tick_no_cc_discord.md) - each
   `/supervise-issues` tick delivers to `orchestrator-dashboard` and nowhere else; never
   CC a coworker.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13419 — Conditional resource loses bindings/reflection when its condition uses an extern enum
-description: Triaged + reproduced (not a regression); front-end link-time constant folding misses checked initializers. The assignee opened PR #13487 (Approach A); NO-GO stands, fixer briefing superseded
+description: Triaged + reproduced (not a regression); front-end link-time constant folding misses checked initializers. The assignee opened PR #13487 (Approach A); tangent-vector has reviewed it critically; NO-GO stands, fixer briefing superseded
 tags: [slang, frontend, reflection, link-time-constants, conditional, parked]
 resource: /workspace/inbox/a2a-1790993201805-3bhx61/triage-13419.md
 ---
@@ -57,3 +57,20 @@ mergeable=UNKNOWN). No issue comment asks for a bot PR, and jkwak-work removed `
 fixer briefing is superseded, and I don't comment on a human PR. Next one-shot:
 `rechase-13419-pr13487-137f` (2026-10-21). It closes the chain on merge, and goes back to the triager
 only if #13487 closes unmerged.
+
+**2026-10-21 re-chase (`…-137f`):** #13487 is still open and not a draft. It was force-pushed to
+head `53035c247` on 10-16, and CI has now run: 64 success, 11 skipped, and 1 **FAILURE** on
+`test-falcor / Test (Falcor)` (not triaged). mergeStateStatus=BLOCKED. tangent-vector left 5
+critical inline reviews (COMMENTED) on 10-16:
+1. The specialization-constant type gate is "the wrong condition".
+2. The complex boolean should be a named predicate.
+3. The duplicate-error suppression "sounds like hackery".
+4. The PR does not explain why it folds twice.
+5. The doc-comment contract is wrong.
+
+The author had not replied by 10-21, and dshreiner-nv and jkwak-work are still requested. #13419
+is open with no new comments. If #13487 closes unmerged, these objections are the "what the human
+PR learned" input that the triager must use to re-validate Approach A. That matters most for
+objection 1 (our prototype used the same `isValidSpecializationConstantType`-style gate) and
+objection 3 (our prototype has the same duplicate-E39999 side effect). Next one-shot:
+`rechase-13419-pr13487-5716` (2026-10-28).
