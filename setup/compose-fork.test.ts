@@ -47,6 +47,9 @@ function buildOrigin(root: string, withNvMain = true): string {
   );
   fs.writeFileSync(path.join(seed, 'pnpm-lock.yaml'), 'lock: base\n');
   fs.copyFileSync(SETUP_SH, path.join(seed, 'setup.sh'));
+  // setup.sh sources this before it does anything else.
+  fs.mkdirSync(path.join(seed, 'setup', 'lib'), { recursive: true });
+  fs.copyFileSync(path.join(HERE, 'lib', 'node-version.sh'), path.join(seed, 'setup', 'lib', 'node-version.sh'));
   git(seed, 'add', '-A');
   git(seed, 'commit', '-qm', 'base');
 
