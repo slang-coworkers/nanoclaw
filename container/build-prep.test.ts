@@ -129,9 +129,9 @@ describe('container/build-prep.sh', () => {
     const res = run({ NANOCLAW_DOCKERHUB_MIRROR: 'registry.example/hub/' });
     expect(res.status).toBe(0);
     const log = fs.readFileSync(calls, 'utf-8');
-    expect(log).toContain('pull -q registry.example/hub/library/node:22-slim\n');
-    expect(log).toContain('tag registry.example/hub/library/node:22-slim node:22-slim\n');
-    // The pinned syntax frontend: pulled by digest, tagged without it.
+    // Both pinned bases (node, the syntax frontend): pulled by digest, tagged without it.
+    expect(log).toMatch(/pull -q registry\.example\/hub\/library\/node:[\d.]+-slim@sha256:[0-9a-f]{64}\n/);
+    expect(log).toMatch(/tag registry\.example\/hub\/library\/node:[\d.]+-slim@sha256:[0-9a-f]{64} node:[\d.]+-slim\n/);
     expect(log).toMatch(/pull -q registry\.example\/hub\/docker\/dockerfile:[\d.]+@sha256:[0-9a-f]{64}\n/);
     expect(log).toMatch(
       /tag registry\.example\/hub\/docker\/dockerfile:[\d.]+@sha256:[0-9a-f]{64} docker\/dockerfile:[\d.]+\n/,
@@ -147,7 +147,7 @@ describe('container/build-prep.sh', () => {
     );
     const res = run({ NANOCLAW_DOCKERHUB_MIRROR: 'registry.example/hub', CONTAINER_RUNTIME: flaky });
     expect(res.status).toBe(0);
-    expect(fs.readFileSync(calls, 'utf-8')).toContain('tag registry.example/hub/library/node:22-slim node:22-slim');
+    expect(fs.readFileSync(calls, 'utf-8')).toMatch(/tag registry\.example\/hub\/library\/node:\S+ node:[\d.]+-slim\n/);
   });
 
   it('reads settings from .env when the environment does not set them', () => {
