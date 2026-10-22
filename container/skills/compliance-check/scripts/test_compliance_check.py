@@ -482,14 +482,16 @@ class ComplianceCheckTest(unittest.TestCase):
         path = os.path.join(self.root, "d.jsonl")
         with open(path, "w") as fh:
             fh.write(json.dumps({"id": "1", "channel_id": "c", "channel_type": "text", "thread_id": None, "created_at": ts(1), "content": "(part 1/2) hi"}) + "\n")
-        saved = m._gh_fetch
+        saved, saved_now = m._gh_fetch, m.utcnow
         m._gh_fetch = self.fake
+        # main() windows from the wall clock; the fixture's post is dated from NOW.
+        m.utcnow = lambda: NOW
         try:
             buf = io.StringIO()
             with contextlib.redirect_stdout(buf):
                 code = m.main(["--no-report", "--quiet", "--since-days", "7", "--repos", FakeGitHub.REPO, "--discord-export", path])
         finally:
-            m._gh_fetch = saved
+            m._gh_fetch, m.utcnow = saved, saved_now
         self.assertEqual(code, 1)
         self.assertIn("discord-thread", buf.getvalue())
         self.assertIn("1 of 1 item(s) fail", buf.getvalue())
