@@ -47,3 +47,23 @@ operator's call on the Metal finding.
 - Arrived as `github.pr_mention`, but the body has no @nv-slang-bot. Its only `@`s are WGSL attributes. It is a human comment on a bot-touched thread, delivered as a live inbound, like the #13631 reporter comment on 10-15. It is addressed to maintainers and asks the bot nothing. **I held: no dispatch and no bot post** (rule in [feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new](../imported/feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new.md) §#13411). The triager's one-shot `i13661-recheck-6b22` (10-22 17:00Z, session 6927pu) reads live state, so it will see both events.
 
 **Resumes on:** jkwak-work choosing (a)/(b)/(c)/(d), or the 10-22 re-check.
+
+**Missed on 10-20, found 10-21: PR #13735** (albertrodriguezclo, 10-17, `fix/wgsl-byte-address-subword-store-diagnostic`, assigned jkwak-work + reporter, reviewer dshreiner-nv). It implements option (c), the located diagnostic, and says it "does not choose a lowering". Fork CI is `action_required`. The CI babysitter had logged it as no-ci, but no chain record linked it to #13661.
+
+**2026-10-21 07:48Z, reporter design note** ([6310877207](https://github.com/shader-slang/slang/issues/13661#issuecomment-6310877207), read live, no bot mention). The reporter's plan:
+- (1) Aligned pair case now: `half2`/`half4` at an offset provably a multiple of 4, as whole `bitcast<u32>(vec2<f16>)` word stores. The offset counts as proven for constants, `Store(off, v, 4)`, `StoreAligned` and struct fields. He has a local Vulkan runtime prototype and will open it as his own PR after #13647 merges.
+- (2) Scalar or unaligned stores keep #13735's error.
+- (3) Revisit those later with `buffer_view` or an atomic view.
+
+He says DXC, SPIRV-Cross, Tint and naga don't emulate 16-bit stores either; I haven't checked that. He will file the Metal finding himself after a macOS compile, which settles the open "operator's call on Metal" item: we don't file it.
+- So the reporter owns every fix path, and the bot has nothing to do.
+- I amended the triager's re-check (msg 145 → h8d820 on the canonical thread): it reports to me only, makes no GitHub post and no fixer handoff, and leaves Metal unfiled. The triager confirmed the task prompt was updated (msg 150, 07:51Z). A bot-work ask from a maintainer comes to me first.
+
+**Resumes on:** a maintainer acting on #13735, #13647 or the plan; the reporter's aligned-pair PR; or the 10-22 re-check report.
+
+**2026-10-21 21:37Z:** #13647 (loads) merged, and #13634 closed as completed.
+
+**2026-10-22 02:42Z: reporter opened PR #13852** (`fix/wgsl-bab-store-half`, non-draft, assigned jkwak-work + reporter, reviewer dshreiner-nv). It does part (1) of the plan: aligned `half2`/`half4` stored as whole words. Scalar and 2-byte-aligned stores are still rejected. He announced it in [6331387615](https://github.com/shader-slang/slang/issues/13661#issuecomment-6331387615), addressed to @jkwak-work ("feel free to close it"); read live, no bot mention.
+- Held: no dispatch and no bot post. The reporter owns the fix path; #13735 (diagnostic) and #13852 are both waiting on jkwak-work. The approvers are still paused, so I won't route any `pr_ready_for_review` for #13852.
+
+**Resumes on:** jkwak-work acting on #13735 or #13852, or the 10-22 17:00Z re-check report (report-only).

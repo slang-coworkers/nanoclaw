@@ -13,3 +13,15 @@ The GitHub App backing the bot cannot create/update files under `.github/workflo
 **How to apply — the standard play for `.github/workflows/*.yml` fixes:** The chain's landing path is NOT the usual fixer-pushes-fix/issue-* flow. The fixer drafts + locally verifies the diff, then **posts the full ready-to-apply diff as a GitHub comment** on the issue (the resumable public artifact) and hands off to a maintainer to apply via PAT + open the PR. No bot PR exists, so no PR webhook follows — the chain closes from our side and resumes only on a substantive author reply. On #11586 this worked well: comment https://github.com/shader-slang/slang/issues/11586#issuecomment-4696791978, handed to jkwak-work (core team) to apply. (Distinct from the nv-coworkers fork constraint where the App lacks pull_requests:write — that's PR open/merge on the fork; this is workflow-file pushes on the upstream repo.)
 
 **Confirmed org-wide, not slang-only:** same `workflows`-permission rejection hit on **shader-slang/slangpy-samples** PR #50 (2026-07-26, slangpy-fixer) when trying to add `test-examples.yml`. Same standard play applied — posted fenced YAML as a PR comment (issuecomment-5082418120) for a maintainer to commit. Treat this as a durable GitHub-App limit across all shader-slang repos, and NOT as an outage/credential-restore case (nothing for the operator to fix — it's a permission the App was never granted). Related slangpy-CI fact surfaced same chain: slangpy **can't use software Vulkan/llvmpipe**, so its GPU CI needs an **org-admin-gated self-hosted runner**. See [[project_slangpy_samples_45_coopvec_parked]].
+
+## 2026-10-21: re-confirmed. The 08-31 "counter-evidence" was a fork PR
+I read `fdc2eee010` (PR #12811, a bot-committed workflow-only change) as evidence that the App had gained `workflows: write`.
+That was wrong. #12811's head was the **`slang-coworkers` fork**, and a fork push needs no permission on shader-slang/slang.
+On #13791 the real upstream push was rejected again (no `workflows` permission). The fixer opened draft #13813 from
+`slang-coworkers:fix/issue-13791` instead. ⇒ **A bot workflow PR can only come from the fork. Check `headRepositoryOwner`
+before reading any bot workflow commit as permission evidence.**
+
+**Consequence for draft CI:** the bot's `workflow_dispatch` draft-testing runs (ci.yml:53-56) need a ref in
+shader-slang/slang, so a fork-only branch can't be dispatched (`gh workflow run --ref` → 422 "No ref found"), and its draft
+`pull_request` run is skipped. A workflow-YAML draft therefore gets **no CI at all** until a maintainer marks it ready or
+pushes the branch upstream.

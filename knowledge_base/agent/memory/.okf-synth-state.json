@@ -2,42 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-10-04T18:14:29Z",
-   "backlog": 83,
-   "defects": 0,
-   "offenders": 2,
-   "top": {
-    "path": "imported/project_9661_cuda_getdimensions_scrub.md",
-    "class": "OVERSIZE",
-    "size": 16060
-   }
-  },
-  {
-   "at": "2026-10-05T06:03:19Z",
-   "backlog": 500,
-   "defects": 1,
-   "offenders": 1,
-   "top": {
-    "path": "imported/index.md",
-    "class": "INDEX-STALE",
-    "size": 147199
-   }
-  },
-  {
-   "at": "2026-10-05T06:03:36Z",
-   "backlog": 0,
-   "defects": 0,
-   "offenders": 0,
-   "top": null
-  },
-  {
-   "at": "2026-10-05T18:03:03Z",
-   "backlog": 0,
-   "defects": 0,
-   "offenders": 0,
-   "top": null
-  },
-  {
    "at": "2026-10-06T00:09:58Z",
    "backlog": 0,
    "defects": 0,
@@ -305,6 +269,50 @@
    "backlog": 1473931,
    "defects": 1119,
    "offenders": 1184,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-21T06:03:45Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-21T12:03:18Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-21T18:00:56Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-22T00:05:12Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
    "top": {
     "path": "imported/MEMORY-full-archive-2026-08-05.md",
     "class": "DOSSIER",

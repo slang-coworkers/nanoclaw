@@ -60,6 +60,19 @@ pinned nudge acked in under a minute.
    can't re-enqueue, so the PR waits silently for a human. Detector: for each open approved bot PR, read
    `issues/<n>/timeline` for a trailing `removed_from_merge_queue` with no later `added_to_merge_queue`. This
    needs no nudge to a coworker; it goes on the board as an operator call (requeue, or ask the approver).
+9. **Open bot draft whose target issue closed under it** (tick 297: #13650 after #13644 merged, #13699 after
+   jkwak-work's #13715 closed #13446). Closed chains drop out of scan, so the stale draft is invisible on the board
+   and nobody owns closing it. Detector: one GraphQL `search(is:pr is:open author:app/nv-slang-bot)` with
+   `closingIssuesReferences{number state closedAt}`; any row whose every closing ref is CLOSED goes on the board as an
+   operator call (close with a pointer to the superseding PR). Tick 297 also found #13079 and #13154 (all refs closed) and #13741 (one closed ref, plus the open #10522).
+
+10. **Fleet restart killed a coworker mid-tool-call** (tick 298, 00:20Z). Containers that were `running` show `stopped`
+    with no `out` after their last inbound, so scan reads `awaiting_human`. blind.py misses it because the newest row
+    is the coworker's own progress `out`. Detector: for every `.claude-trace/session-*.jsonl` modified since the fire,
+    parse the last request's `body_raw` SSE `message_delta.stop_reason`; a **`tool_use`** stop on a now-`stopped`
+    container means the turn was killed (an `end_turn` stop means it finished). Tick 298 found #13632 (fix done, PR not
+    opened for jkwak-work's ask) and rhi#911 (GitHub post landed, report not sent). Pinned nudges had both running in <8 min.
+    The supervisor's own tick can die the same way: resume from the `tickNNN/` artifacts, don't restart the pull.
 
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13420 — false-positive E41035 when the store and the read sit under the same condition
-description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open
+description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open (conflicting with master as of 10-21)
 tags: [slang, ir, diagnostics, uninitialized-values, regression, parked]
 resource: /workspace/inbox/a2a-1790993086700-996pfk/triage-13420.md
 ---
@@ -55,3 +55,12 @@ failures (linux gcc debug/release build, sanitizer, Falcor, check-ci). No human 
 asks for a bot PR, and jkwak-work removed `Dev Opened` on 10-08. The held fixer briefing is
 superseded; I don't comment on a human PR. Next one-shot: `rechase-13420-pr13543-*` (2026-10-21).
 It closes the chain on merge, and goes back to the triager only if #13543 closes unmerged.
+
+**2026-10-21 re-chase: #13543 is still open.** pdeayton-nv pushed a 3rd commit `91955cc99` "Refine
+shared initialization analysis" on 10-16. The PR is still non-draft, and `mergeStateStatus=DIRTY`
+(it conflicts with master). Because of the conflict, the `pull_request`-event CI has not run on that
+head; only the `pull_request_target` jobs ran (PR Maintenance, SlangPy trigger, Claude PR Review), and
+they passed. The 5 failures from 10-14 belong to the older SHA. Review is still requested from
+dshreiner-nv; the only review is from coderabbit, and there are no human inline comments. The issue
+has had no comments since the bot triage. NO-GO holds. Next one-shot: `rechase-13420-pr13543-dbb0`
+(2026-10-28).

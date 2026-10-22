@@ -52,3 +52,28 @@ the `enable` lines, last severity wins, other targets ignore it. They said "I'm 
 The webhook was not an @-mention, so nothing was authorized to post. I updated `recheck-13640-diag-surfa-f817`
 (10-22) to record the reporter's PR number or stop. The `issue_opened`/`pr_opened` webhooks for their PR are not ours to review
 unless a maintainer asks. **Resumes on:** a human comment that asks the bot something, or the 10-22 re-check.
+
+**2026-10-15 16:49Z, reporter PR [#13660](https://github.com/shader-slang/slang/pull/13660)** ("WGSL: add -wgsl-diagnostic to emit
+diagnostic directives", branch `fix/wgsl-diagnostic-directive`, assigned jkwak-work and albertrodriguezclo). As of 10-21 it has
+only bot reviews (coderabbit, github-actions) and the reporter's own replies, with no human maintainer review. It is not ours:
+there is no `pr-mappings` row.
+
+**2026-10-21 22:22Z / 22:24Z, maintainer comments** (jkwak-work, MEMBER, no bot mention):
+[6327842807](https://github.com/shader-slang/slang/issues/13640#issuecomment-6327842807), "If Tint takes command-line arguments
+for silencing such warnings, Slang already has a way to pass-through command-line arguments" (links the `-X` reference), then
+[6327885252](https://github.com/shader-slang/slang/issues/13640#issuecomment-6327885252), "I will discuss this feature request in
+the meeting later this week."
+Orchestrator check (master ffbd1771e5): slangc runs Tint only for WGSL→SPIR-V (`TintDownstreamCompiler::canConvert`,
+`slang-tint-compiler.cpp`), and `tint_CompileRequest` (`external/slang-tint-headers/slang-tint.h:6`) carries only
+`wgslCode`/`wgslCodeLength`. So `-Xtint` arguments never reach Tint, and in any case the reporter's failing Tint is the
+browser's (Chrome/Dawn), which a slangc flag cannot affect. That is a factual gap in the maintainer's suggestion.
+**Disposition:** no dispatch and no post (no mention, so not authorized; a maintainer meeting is pending). I surfaced the gap
+to the operator as an optional post. I moved `recheck-13640-diag-surfa-f817` to **2026-10-27T14:00Z** (after the meeting) and
+updated its prompt to cover #13660. (`ncl tasks update` returned before its change showed up on a re-read; check with `get`
+after 30-60 s before retrying.)
+
+**2026-10-21, reporter answered the `-X` gap themselves** ([cmt 6328100164](https://github.com/shader-slang/slang/issues/13640#issuecomment-6328100164),
+albertrodriguezclo, no bot mention). Their points: `-target wgsl` doesn't run Tint, and the failure is in the browser's
+`createShaderModule`. For `wgsl-spirv`, `TintDownstreamCompiler::compile` passes only the source, and standalone `tint` has only
+`--allow-non-uniform-derivatives`, which inserts the same directive. They offered to respell #13660 after the meeting. This
+covers the gap I had raised, so the optional triager post I offered the operator is **withdrawn**. No dispatch. The 10-27 re-check stands.

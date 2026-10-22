@@ -89,3 +89,8 @@ comments, reviews or timeline events on #13617 or #13619 since 10-14 17:08Z. **C
 has no runs (other repo runs list normally), so it probably expired at the priority gate. That's harmless; the full matrix runs at ready. Neither operator
 decision has an answer (bounded dashboard read; no operator row mentions 13617/13619 after msg 505608). I listed both as pending and didn't re-ask
 (dashboard msg 7, canonical thread). Re-armed one-shot `rechase-13617-primitive-320f` (2026-10-21T10:30Z). No GitHub posts.
+**2026-10-21 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. No human
+comments, reviews or timeline events on #13617 or #13619 since 10-19 10:30Z. There are no runs on `fix/issue-13617` or `-ci`. Neither operator decision has an
+answer (bounded dashboard reads `--reverse --limit 300` plus `--since-seq 505608 --limit 400`: no operator row mentions 13617/13619; the Main canonical
+session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask (dashboard msg 9, canonical thread). Re-armed one-shot `rechase-13617-primitive-73cf`
+(2026-10-23T10:30Z). No GitHub posts.

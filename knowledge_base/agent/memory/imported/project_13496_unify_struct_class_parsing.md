@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13496_unify_struct_class_parsing
-description: "slang#13496 (tangent-vector, self-assigned, Dev Opened, 10-07 19:59Z): refactor proposal — one core parser for struct / HLSL class / Slang class (ParseStruct vs ParseClass drifted: generics, where, anonymous, bodyless, link-time wrappers, attrs); construct-specific limits move to semantic checking. Companion of #13495 / her PR #13497. TRIAGED 10-07 20:49Z (cmt 6046591267, enhancement/low/P3), NO fixer; parked on tangent-vector; re-chase task rechase-13496-maintainer-2a24 2026-10-21. UNFILED side finding (class B : A → E30832) awaits operator."
+description: "slang#13496 (tangent-vector, self-assigned, Dev Opened, 10-07 19:59Z): refactor proposal — one core parser for struct / HLSL class / Slang class (ParseStruct vs ParseClass drifted: generics, where, anonymous, bodyless, link-time wrappers, attrs); construct-specific limits move to semantic checking. Companion of #13495 / her PR #13497. TRIAGED 10-07 20:49Z (cmt 6046591267, enhancement/low/P3), NO fixer; parked on tangent-vector. Re-chased 2026-10-21: no change (#13497 merged 10-08; type→Refactoring 10-14; no human comment, no PR). UNFILED side finding (class B : A → E30832) re-asked 10-21 (2nd ask), still awaits operator; default hold."
 metadata:
   node_type: memory
   type: project
@@ -41,3 +41,16 @@ issue).
 
 **Parked** on tangent-vector. Re-chase task `rechase-13496-maintainer-2a24` fires 2026-10-21T17:00Z
 (dashboard-only, no GitHub post, no fixer). Reopen on a human comment (webhook).
+
+**2026-10-21 17:0xZ re-chase (task `rechase-13496-maintainer-2a24`).** I read the issue live: it is OPEN, still assigned to
+tangent-vector, and the only comment is our 6046591267, with no human comment since. Timeline since the park: on 10-08 jkwak-work
+removed `Dev Opened`; on 10-08 #13497 merged (`d074e7779e`) and undefdev's fork referenced that commit; on 10-14 tangent-vector set
+the issue type to `Refactoring`. tangent-vector's only open PR is draft #13528 (clarity self-review), and PR search for `13496` /
+`ParseClass` finds only #13497. Delivered the 5-bullet to orchestrator-dashboard only (msg 49, thread gh-issue-shader-slang/slang-13496).
+No GitHub post, no fixer.
+
+Side finding: a page through the dashboard session from 10-07 to 10-21 found no operator reply, so I re-raised it (**2nd ask**).
+Re-checked at origin/master `a801f2685c`: `checkConformanceToType` (slang-check-decl.cpp:12095) still has only
+`InterfaceDecl` and `StructDecl` branches. `ClassDecl : AggTypeDecl`; #13497 moved only HLSL `class` to `HLSLClassDecl : StructDecl`.
+No issue is filed for it. Default is still hold. No further timer: the chain stays on the `/supervise-issues` `awaiting_human` register,
+and a webhook reopens it.

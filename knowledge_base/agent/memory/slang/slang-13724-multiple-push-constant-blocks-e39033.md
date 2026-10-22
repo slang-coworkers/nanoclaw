@@ -65,3 +65,11 @@ Parent chain: [[slangpy-1232-vulkan-module-push-constant.md]]. Branch `fix/issue
   the run conclusion reads `cancelled` only because of that gate. The fixer cleaned up its worktree and sentinel. **Chain TERMINAL on the Slang side.**
   The operator's auto-close decision was overtaken: option (c) happened by default, so B/C (layout contract) now has no open Slang tracker; only rhi#915 (jkwak-work, Q4) remains.
   Whether to file a B/C follow-up is still the operator's call.
+- 10-21 15:51Z jkwak-work @nv-slang-bot on **slang-rhi#915** (cmt 6320216701): thinks the #915 case now errors after #13724 and asks for a re-test. A sibling Main session routed it to the slang-triager owner
+  session `6lzbb3`, which acked at 15:59Z (placeholder cmt 6320398694, to be edited in place). **Watch:** the 10-20 measurements (reporter cmt 6303508603, fixer cmt 6303626365) already show
+  that #915's `unused` shape compiles clean with #13724 and still returns wrong values. The re-test should confirm that #915 stays open; it should not close it.
+- 10-21 16:11Z slang-triager's rhi#915 re-triage at ToT (master `a801f2685`, rhi `b856e635`; rhi main `a0619ac` has no push-constant change), cmt 6320398694 edited in place:
+  the 10-20 evidence is CONFIRMED. read push + EP uniform → E39033; `unused` (#915 repro) → wrong values `7 8 9 10` (VUID-10069); **VUID-00292 still fires** wherever
+  both blocks are declared. Refinement: read push only with `k` declared and unused → E39033 under default `-g` (by design, debug-info test), but correct with `-g0`. **#915 stays open**, with 2 rhi
+  defects: (1) the EP +16 offset, which needs a direction: (a) usage metadata slang#5685, (b) a Slang layout with reflected byte offsets (no tracker since #13713 closed; triager offered to file), (c) rhi-only (partial);
+  (2) the 00292 overlap, which rhi can fix alone. No fix dispatched; re-check t-83bd76 10-27.

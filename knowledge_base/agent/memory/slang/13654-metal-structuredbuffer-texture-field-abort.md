@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13654 — Metal StructuredBuffer<S> with a Texture2D field aborts slangc
-description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator (asked twice, final), re-check rechase-13654-pr13681-7db2 (10-21)."
+description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator (asked twice, final), re-check 10-24 08:00Z."
 ---
 
 # slang#13654
@@ -44,10 +44,12 @@ Waiting on:
    - the validator reports a struct-field E38204 at the struct's location, not the field's.
 
 Asked on orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13654`) at 10-16 07:49Z and again,
-as the final ask, at 10-18 08:0xZ. **Do not re-ask; list as pending.** 10-18 08:00Z re-check: GitHub
-unchanged (draft, 87c393d, 0 reviews, no human comments, CI still `waiting`). Timer: one-shot
-`rechase-13654-pr13681-7db2` (2026-10-21 08:00Z). Operator answers would land in Main session
-`sess-1792074637049-flailg` (canonical thread) or the dashboard session.
+as the final ask, at 10-18 08:0xZ. **Do not re-ask; list as pending.** Re-checks 10-18 08:00Z and
+10-21 08:0xZ: GitHub unchanged (draft, 87c393d, 0 reviews, no human comments, CI still `waiting`); the only
+event is jkwak-work milestoning #13654 **Q4 2026 (Fall)** on 10-19 15:54Z (no comment). No operator answer in the
+dashboard session through seq 506566 (10-21 08:01Z); Main session `sess-1792074637049-flailg` has had no rows
+since 10-16 10:39Z. 10-21 status line: dashboard msg 19. Timer: one-shot `rechase-13654-pr13681-e8c6`
+(2026-10-24 08:00Z).
 
 **Resumes on:** a human comment/review on #13654 or #13681, a CI webhook (owned by the fixer), the operator's
 answer, or the re-check.

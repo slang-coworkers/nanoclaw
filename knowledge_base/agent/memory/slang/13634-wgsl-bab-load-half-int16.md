@@ -110,3 +110,23 @@ It is one vendor/driver, so gap 1 is downgraded to a **defensive nit** (spec con
 - h8d820 has stood down on #13634 (msg 88). Its handover is `memory/issues/13634.md` "Handover 17:4xZ", and it gave `wt-13647` plus `pr13647-review` cleanup to fneziu.
 
 **Resumes on:** fneziu's 5-bullet, with a per-gap verdict marked "review input vs separate issue" and any in-place correction of cmt 6193510990. After that, the operator decides whether anything goes to #13647 or gets filed.
+
+**2026-10-21 08:08–08:09Z, PR #13647: maintainer approval and two filing asks** (Main session `sess-1792570089455-53xkte`, thread `gh-pr-shader-slang/slang-13647`).
+- jkwak-work APPROVED at 24107f7cf5 (review 5596722276).
+- Ask 1 (inline reply r4334450029): file an issue saying slang-test does not check wgpu feature support properly, and assign it to him. It came from the author's caveat that `-wgpu -render-feature half` reports "ignored" because Dawn's NVIDIA Vulkan adapter lacks shader-f16. My search for a duplicate found none.
+- Ask 2 (review body): file an issue tracking `store<half>()` for WGSL, assigned to him. This looks like a duplicate of #13661, which is OPEN, already his and milestoned Q4.
+- I posted 👀 on r4334450029 and dispatched both asks to `slang-triager` on `gh-pr-shader-slang/slang-13647` (msg 25, `<github-post-authorized />`). Ask 1: dedup, GPU repro, find the owning layer, file in slang, assign. Ask 2: point him to #13661 and ask before filing a duplicate.
+- **Resumes on:** the triager's report (issue number, assignee result, comment URLs).
+- **08:32Z, triager report (msg 24), verified live.** Ask 1 is filed as **#13807**: OPEN, author nv-slang-bot, assignee jkwak-work, label `reproduced`, Type Bug. Inline reply r4334638352 is on thread r4331856780. The triager's diagnosis: the pinned Dawn 7204 hard-disables ShaderF16 on NVIDIA. That means slang-rhi never reports Half, and every `-wgpu -render-feature half` row is ignored, CI's T4 included. The issue body keeps his "bug" framing and leaves any move to slang-rhi to him. Ask 2 got a pointer to #13661 ([6311604086](https://github.com/shader-slang/slang/pull/13647#issuecomment-6311604086)), asking whether he wants a narrower issue. No duplicate was filed. **Resumes on:** jkwak-work's reply, or the triager's one-shot `t-74f064` (10-23 09:00Z).
+- **10-21 ~15:30Z, first approver event: a synchronize (the author merged master, head 1cb0e55305).** `slang-pr-approver` is paused, so I didn't forward it. Queued in `data/approver-pause-queue.md`.
+
+**2026-10-21 21:37Z: #13647 MERGED, and #13634 closed as completed** (read live 10-22). I sent the post-merge cue to the canonical triager session fneziu (msg 161, pin + `in_reply_to=2`): remove `wt-13647`/`pr13647-review` and send the one-line [Report], with no GitHub post. The 10-16 GPU re-run on the L40S did not reproduce gap 1, which leaves it a defensive nit (now moot, since the PR has merged). Gaps 2 and 3 (struct `bit_cast` half, any-value half) are still unfiled; the operator's decision from 10-15 is still open.
+
+**10-22 02:45Z, fneziu [Report] (seq 47):** cleanup done. `wt-13647` had already been reaped (head saved on `wip/reap/wt-13647`); deleted `pr13647-review` and the `active-work` sentinel; nothing posted.
+
+**10-22 ~02:50Z, Main check:** origin/master `ffbd1771e5` contains merge 4cf967f035, and both gap producers are still there (code read only, no build).
+Gap 2 is `slang-ir-lower-bit-cast.cpp:211-217`, where `readObject` maps Half to UInt16. Gap 3 is `slang-ir-any-value-marshalling.cpp:422-433` and `:970-1002`.
+#13647 kept only the `vec2`/`vec4<f16>` bitcasts native (`isWGSLHalfVectorBitCast`). A sibling Main sent the closure report to the dashboard
+(row 507088, 02:47Z), so this session sent nothing.
+
+**CLOSED.** The only open item is the operator decision on filing gaps 2/3 (repros in the triager's `repro-13634/`).

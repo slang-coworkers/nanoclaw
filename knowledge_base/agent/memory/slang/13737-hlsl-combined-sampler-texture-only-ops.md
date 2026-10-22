@@ -68,5 +68,12 @@ description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR
 - Follow-up 3 may be weaker after R1: the trampoline compiles, so E30027 may only be a limit of member-call
   inference inside a generic extension, not a general bug. I told the operator on 10-18 02:2xZ.
 - **Parked on humans:** falcor-ci approval, the ready flip (operator), filing the 5 follow-ups (operator), and
-  maintainer review. One-shot re-check `rechase-13737-pr13741-a71d` on 10-21 08:00Z (duplicate `-f5e0` cancelled).
+  maintainer review. One-shot re-check `rechase-13737-pr13741-4d52` on 10-24 08:00Z (`-a71d` ran 10-21).
 - **Resumes on:** #13741 webhooks (CI, review, merge), the operator's answers, or the one-shot.
+- 10-21 08:0xZ re-check (`-a71d`): **Buriola closed #13737 themselves on 10-18 15:12Z** (COMPLETED, no
+  comment; GitHub links #13741 as the closer, but nothing merged). #10522 is still open. #13741: draft,
+  `ce23b34`, MERGEABLE, 0 reviews, no human comments; master +21 with 1 overlapping file
+  (`slang-emit-c-like.cpp`). CI 39107456646 still waiting on `falcor-ci`. No operator answer on any of the
+  three questions (dashboard read 10-16 23:26Z→10-21 08:01Z). No master-merge ask, because the operator said
+  10-20 that bot CI dispatches are deadlocked. Restated the decisions once on the dashboard (msg id 9).
+  The next re-check sends no repeat status line if nothing changes.

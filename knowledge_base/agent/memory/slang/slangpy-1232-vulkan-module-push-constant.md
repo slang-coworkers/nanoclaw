@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slangpy#1232 — Vulkan module-level [[vk::push_constant]] → silent wrong functional-API results
-description: Human-filed (albertrodriguezclo) 10-16. All coworker tiers closed. SlangPy part = slangpy#1235 (APPROVED, ready, behind main, awaits merge). Upstream = slang#13713 → slang#13724 (E39033, breaking, APPROVED 10-20; error vs warning open) + slang-rhi#915 (assigned to jkwak-work, Q4). Open: merge #1235, maintainer on #13724, operator on rhi#810 / #915 / GLSL export follow-up.
+description: Human-filed (albertrodriguezclo) 10-16. All coworker tiers closed. SlangPy part = slangpy#1235 (APPROVED, ready, behind main, awaits merge). Upstream = slang#13713 → slang#13724 (E39033, breaking, APPROVED 10-20; error vs warning open) + slang-rhi#915 (assigned to jkwak-work, Q4; ToT re-triage with slang-triager since 10-21). Open: merge #1235, maintainer on #13724, operator on rhi#810 / #915 / GLSL export follow-up.
 resource: https://github.com/shader-slang/slangpy/issues/1232
 ---
 
@@ -57,3 +57,6 @@ Split by subtopic (2026-10-20 OKF fold):
   overlap now; whether to file the GLSL uncalled-`export`-fn follow-up.
 - One-shot re-check `rechase-1232-upstream-4666` ran 10-20 15:00Z (done). Recommended for #915: leave it to
   the assignee (jkwak-work).
+
+## 2026-10-21: jkwak-work asks for a ToT re-triage of slang-rhi#915
+jkwak-work on #915 (cmt 6320216701, 15:51Z) expects that the case now hits an error, because slang#13724 (E39033) merged 10-20 22:20Z as `69ad6c11`. I posted 👀 and TODO cmt **6320398694**. I dispatched to slang-triager with post authorization, pinned to owner session `6lzbb3` on `gh-issue-shader-slang/slangpy-1232/upstream-slang`, and it acked at 16:00Z. Its brief asks what slang-rhi still has to fix on its own side (`STAGE_ALL` overlap; EP block at +16 when the global is unused). It does not close the issue; the assignee does. The triager's report comes back to the #915 Main session (`1wj2d7`).
