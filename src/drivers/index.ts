@@ -42,7 +42,7 @@ import os from 'os';
 import path from 'path';
 
 import { DATA_DIR, GROUPS_DIR } from '../config.js';
-import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork } from '../egress-lockdown.js';
+import { EGRESS_NETWORK, egressNetworkArgs, ensureEgressNetwork, onEgressNetworkOnly } from '../egress-lockdown.js';
 import { readEnvFile } from '../env.js';
 import { log } from '../log.js';
 import '../provider-contracts/index.js';
@@ -192,8 +192,12 @@ registerSessionDriver(
       ...policy,
       networkArgsFor: dockerNetworkArgs,
       hostDeviceArgs: dockerGpuArgs,
-      reconcileNetworkAccess: (access) => {
-        if (access.target.kind !== 'session-container') ensureEgressNetwork(access);
+      // An adopted container keeps the network it was spawned with. Under
+      // lockdown it must match what dockerNetworkArgs gives a new one.
+      reconcileNetworkAccess: (access, attachedNetworks) => {
+        if (access.target.kind === 'session-container') return 'kept';
+        if (!ensureEgressNetwork(access)) return 'kept';
+        return onEgressNetworkOnly(attachedNetworks()) ? 'kept' : 'restart';
       },
     }),
 );
