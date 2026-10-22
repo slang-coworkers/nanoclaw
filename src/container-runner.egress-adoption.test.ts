@@ -236,8 +236,10 @@ describe('adopting a running container under egress lockdown', () => {
     // before that touches the filesystem.
     const groups = await import('./db/agent-groups.js');
     const getAgentGroup = groups.getAgentGroup;
+    // Fork: wakeGuarded reads the group once more, for its pause check.
     const groupLookups = vi
       .spyOn(groups, 'getAgentGroup')
+      .mockImplementationOnce(getAgentGroup)
       .mockImplementationOnce(getAgentGroup)
       .mockResolvedValueOnce(undefined);
 
@@ -247,7 +249,7 @@ describe('adopting a running container under egress lockdown', () => {
     expect(state.alive).toBe(false);
     expect(isContainerRunning('sess-1')).toBe(false);
     expect(release).toHaveBeenCalledWith({ kind: 'session-ended', reason: 'network-policy-changed' });
-    expect(groupLookups).toHaveBeenCalledTimes(2);
+    expect(groupLookups).toHaveBeenCalledTimes(3);
   });
 
   it('a wake that arrives during the sweep retry goes on to the spawn path once the retry has stopped the container', async () => {
@@ -260,8 +262,10 @@ describe('adopting a running container under egress lockdown', () => {
     // ends at its group read, before it touches the filesystem.
     const groups = await import('./db/agent-groups.js');
     const getAgentGroup = groups.getAgentGroup;
+    // Fork: wakeGuarded reads the group once more, for its pause check.
     const groupLookups = vi
       .spyOn(groups, 'getAgentGroup')
+      .mockImplementationOnce(getAgentGroup)
       .mockImplementationOnce(getAgentGroup)
       .mockResolvedValueOnce(undefined);
 
@@ -271,7 +275,7 @@ describe('adopting a running container under egress lockdown', () => {
 
     expect(await woke).toBe(true);
     expect(state.alive).toBe(false);
-    expect(groupLookups).toHaveBeenCalledTimes(2);
+    expect(groupLookups).toHaveBeenCalledTimes(3);
   });
 
   it('a wake that arrives while the sweep retry is stopping the container waits, then goes on to the spawn path', async () => {
@@ -282,8 +286,10 @@ describe('adopting a running container under egress lockdown', () => {
     const session = (await getSession('sess-1'))!;
     const groups = await import('./db/agent-groups.js');
     const getAgentGroup = groups.getAgentGroup;
+    // Fork: wakeGuarded reads the group once more, for its pause check.
     const groupLookups = vi
       .spyOn(groups, 'getAgentGroup')
+      .mockImplementationOnce(getAgentGroup)
       .mockImplementationOnce(getAgentGroup)
       .mockResolvedValueOnce(undefined);
     // Wake while the retry has the survivor registered and is about to stop it.
@@ -296,7 +302,7 @@ describe('adopting a running container under egress lockdown', () => {
 
     expect(await woke).toBe(true);
     expect(state.alive).toBe(false);
-    expect(groupLookups).toHaveBeenCalledTimes(2);
+    expect(groupLookups).toHaveBeenCalledTimes(3);
   });
 
   it('the sweep retries a deferred adoption for an idle session, without spawning', async () => {
@@ -330,7 +336,8 @@ describe('adopting a running container under egress lockdown', () => {
 
     // Still registered with its teardown pending, no fresh spawn, no new claim.
     expect(isContainerRunning('sess-1')).toBe(true);
-    expect(groupLookups).toHaveBeenCalledTimes(1);
+    // The retry's group read plus the fork's wakeGuarded pause check.
+    expect(groupLookups).toHaveBeenCalledTimes(2);
     expect((await coordination.getSessionClaim('sess-1'))?.incarnation).toBe(1);
     state.stopFails = false;
     await vi.waitFor(() => expect(isContainerRunning('sess-1')).toBe(false));

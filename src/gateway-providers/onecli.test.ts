@@ -59,6 +59,7 @@ vi.mock('../env.js', () => ({
 }));
 
 import {
+  _resetEnsuredAgentsForTesting,
   contributionFromConfig,
   grantProviderCredentials,
   HEALTH_FAILURES_BEFORE_UNAVAILABLE,
@@ -92,6 +93,8 @@ const input = (sessionId: string): GatewaySessionInput => ({
 beforeEach(() => {
   vi.clearAllMocks();
   sdk.manualApproval = undefined;
+  // The fork's per-process agent-setup memo would otherwise carry g1 across tests.
+  _resetEnsuredAgentsForTesting();
 });
 
 afterEach(() => {
@@ -722,6 +725,27 @@ describe('OneCLI gateway package', () => {
     } finally {
       first.abort();
       second.abort();
+      fetchMock.mockRestore();
+    }
+  });
+
+  // Fork delta: agent setup is memoized per group and provider, so a later
+  // spawn makes no gateway calls, and a provider switch still grants.
+  it('sets a group up once per provider in this process', async () => {
+    writeRecord(ADAPTER_DATA, { claude: ['sec-model'], codex: ['sec-codex'] });
+    const gateway = fakeGateway();
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(gateway.fetch);
+    const signals = [new AbortController(), new AbortController(), new AbortController()];
+    try {
+      await provider.sessions.ensure(groupInput('g1'), signals[0].signal);
+      await provider.sessions.ensure(groupInput('g1'), signals[1].signal);
+      expect(sdk.ensureAgent).toHaveBeenCalledTimes(1);
+      expect(gateway.calls.filter((c) => c === 'GET /v1/agents/oc-g1/grants')).toHaveLength(1);
+      await provider.sessions.ensure(groupInput('g1', 'codex'), signals[2].signal);
+      expect(sdk.ensureAgent).toHaveBeenCalledTimes(2);
+      expect(gateway.calls).toContain('done /v1/agents/oc-g1/grants/secrets/sec-codex');
+    } finally {
+      for (const c of signals) c.abort();
       fetchMock.mockRestore();
     }
   });

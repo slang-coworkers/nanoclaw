@@ -357,8 +357,13 @@ describe('fail-closed adoption', () => {
 
     await wakeContainer(stale);
 
-    expect(controls.stopped).toEqual(['orphan-at-startup']);
+    // Fork: wakeGuarded refuses a closed session before spawnContainer (a Stop
+    // is final), so the survivor is stopped by the next sweep retry, not here.
+    expect(controls.stopped).toEqual([]);
     expect(groupLookups).not.toHaveBeenCalled();
+    await retryPendingAdoptions();
+    expect(controls.stopped).toEqual(['orphan-at-startup']);
+    expect(isContainerRunning('sess-1')).toBe(false);
     groupLookups.mockRestore();
   });
 
