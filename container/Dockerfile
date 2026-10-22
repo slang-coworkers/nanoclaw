@@ -16,7 +16,8 @@
 # runtime (see src/container-runner.ts; writable, so an agent can modify its
 # own runner). Source-only changes never require an image rebuild.
 
-FROM node:22-slim
+# Pinned by digest so a rebuild cannot reuse a cached older base; bump tag and digest together.
+FROM node:22.23.4-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
 # ---- Build-time arguments ----------------------------------------------------
 # Pass --build-arg ENABLE_GPU=1 for CUDA/Vulkan GPU support
@@ -30,7 +31,7 @@ ARG INSTALL_CJK_FONTS=false
 # all users. The global Node CLIs (claude-code, agent-browser, claude-trace,
 # codex) are pinned in cli-tools.json so a skill can add one with a json-merge;
 # Bun (the runtime) is pinned here because it installs from a different source.
-ARG BUN_VERSION=1.4.0
+ARG BUN_VERSION=1.4.4
 
 # ---- Restricted networks (no-ops by default) ---------------------------------
 # container/build-prep.sh stages certificates in extra-ca/ (otherwise it holds
@@ -70,6 +71,8 @@ RUN if [ "$ENABLE_GPU" = "1" ]; then \
 # ---- System dependencies -----------------------------------------------------
 # tini: correct PID 1 / signal forwarding so outbound.db writes finalize on
 # SIGTERM instead of being orphaned by the shell entrypoint.
+# poppler-utils: Claude Code's Read tool shells out to pdftoppm to open a PDF;
+# without it every PDF a user sends comes back as an error.
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -108,6 +111,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
         curl \
         jq \
         git \
+        poppler-utils \
         sudo \
         tmux \
         tini \
@@ -221,6 +225,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh \
 # ---- Bun runtime -------------------------------------------------------------
 # Install via the official script (handles multi-arch detection), then move
 # the binary to /usr/local/bin so the non-root `node` user can execute it.
+# The version check fails the build if either path installed anything but the pin.
 # Where github.com needs GITHUB_RELEASES_MIRROR, bun.sh is unreachable too, so
 # the release zip comes straight from the mirror (same target choice as the script).
 RUN if [ -n "$GITHUB_RELEASES_MIRROR" ]; then \
@@ -236,7 +241,8 @@ RUN if [ -n "$GITHUB_RELEASES_MIRROR" ]; then \
     curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" && \
     install -m 0755 /root/.bun/bin/bun /usr/local/bin/bun && \
     rm -rf /root/.bun; \
-    fi
+    fi && \
+    test "$(bun --version)" = "${BUN_VERSION}"
 
 # ---- pnpm + global Node CLIs -------------------------------------------------
 ENV PNPM_HOME="/pnpm"
@@ -248,13 +254,6 @@ ENV PATH="$PNPM_HOME/bin:$PNPM_HOME:$PATH"
 # installed". Keep this in lockstep with package.json's `packageManager`.
 ARG PNPM_VERSION=10.34.5
 RUN corepack enable && corepack prepare pnpm@${PNPM_VERSION} --activate
-
-# The npm bundled with node:22-slim (10.9.8) vendors tar <7.5.19, which
-# carries a fixable critical (GHSA-23hp-3jrh-7fpw) that the publish gate
-# refuses to ship. Patch-level bump only. Drop this once the base image
-# ships npm >= 10.9.9.
-ARG NPM_VERSION=10.9.9
-RUN npm install -g npm@${NPM_VERSION}
 
 # Global Node CLIs the agent invokes at runtime live in cli-tools.json so a
 # skill can add one with a json-merge instead of editing this Dockerfile.
