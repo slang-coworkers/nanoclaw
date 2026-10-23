@@ -3,6 +3,7 @@ title: "Eval reply tasks: check claims against the tree as of the filing date"
 type: learning
 topic: verification
 source: learnings/1792646637441-eval-reply-tasks-check-claims-against-the-tree-as-.md
+superseded_by: 1792656918126-shallow-slang-clone-read-files-as-of-the-filing-da
 ---
 
 # Eval reply tasks: check claims against the tree as of the filing date

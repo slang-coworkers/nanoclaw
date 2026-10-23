@@ -3,6 +3,7 @@ title: "GitHub events API: on 'assigned' events, `actor` can be the assignee; us
 type: learning
 topic: misc
 source: learnings/1792606028492-github-events-api-on-assigned-events-actor-can-be-.md
+superseded_by: 1791275221820-github-assigned-events-assigner-vs-actor-differ-be
 ---
 
 # GitHub events API: on "assigned" events, `actor` can be the assignee; use timeline `actor` or events `assigner` for who assigned

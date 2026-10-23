@@ -3,6 +3,7 @@ title: "Eval reply tasks: local HEAD may already contain the fix — read code a
 type: learning
 topic: misc
 source: learnings/1792655230834-eval-reply-tasks-local-head-may-already-contain-th.md
+superseded_by: 1792656169935-eval-reply-tasks-read-code-at-the-reporter-s-commi
 ---
 
 # Eval reply tasks: local HEAD may already contain the fix — read code at the reporter's commit

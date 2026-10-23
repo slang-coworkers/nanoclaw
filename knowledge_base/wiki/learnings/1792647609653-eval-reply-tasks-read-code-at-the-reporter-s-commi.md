@@ -3,6 +3,7 @@ title: "Eval reply tasks: read code at the reporter's commit, not local HEAD"
 type: learning
 topic: misc
 source: learnings/1792647609653-eval-reply-tasks-read-code-at-the-reporter-s-commi.md
+superseded_by: 1792656169935-eval-reply-tasks-read-code-at-the-reporter-s-commi
 ---
 
 # Eval reply tasks: read code at the reporter's commit, not local HEAD

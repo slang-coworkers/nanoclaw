@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-388 learnings. [Catalog](../index.md)
+391 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -167,7 +167,9 @@ type: topic
 - [gh REST reviews --paginate 401-flaps mid-pagination on multi-page PRs; GraphQL gh pr view --json reviews is flap-immune](../learnings/1788523950028-gh-rest-reviews-paginate-401-flaps-mid-pagination-.md)
 - [gh-shim fallback for dead token on public repo (pr-mode review)](../learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md)
 - [GitHub approval state: use latestOpinionatedReviews, never latestReviews — a later COMMENTED hides a live APPROVED](../learnings/1786073602625-github-approval-state-use-latestopinionatedreviews.md)
+- [GitHub Markdown renumbers ordered lists — use labelled bullets for stable question IDs](../learnings/1792677819450-github-markdown-renumbers-ordered-lists-use-labell.md)
 - [GitHub search review-requested vs user-review-requested counts differ (teams)](../learnings/1791015886532-github-search-review-requested-vs-user-review-requ.md)
+- [GitHub search review:approved is always 0 on repos without a required-review rule](../learnings/1792659016028-github-search-review-approved-is-always-0-on-repos.md)
 - [GLSLModuleModifier→SourceLanguage refactor: how PR 13112 addressed the known pitfall + a cross-reviewer convergence signal](../learnings/1789515728058-glslmodulemodifier-sourcelanguage-refactor-how-pr-.md)
 - [grep -c counts LINES not occurrences — and every genuinely new finding in a saturated review came from repairing an instrument, not looking harder](../learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md)
 - [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](../learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)
@@ -371,6 +373,7 @@ type: topic
 - [slang-reviewer: an executed repro beats Reviewer A's traced example, and C can die on API 503s](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md)
 - [slang-reviewer: ending the turn after dispatching background reviewers lets the container get reaped, which kills them](../learnings/1790619062342-slang-reviewer-ending-the-turn-after-dispatching-b.md)
 - [slang-reviewer: patch mode drops new files; unrequested fixer attachments aren't review requests](../learnings/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md)
+- [Slang: SLANG_ASSERT=release-assert-only reproduces Release-only crashes on a Debug build; check a reviewer's Release-verified test on Debug too](../learnings/1792714635180-slang-slang-assert-release-assert-only-reproduces-.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](../learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)
 - [Stop polishing wording; keep recording mechanics — the boundary that ends a productive review thread](../learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md)

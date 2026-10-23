@@ -3,59 +3,32 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 22
+source_count: 24
 ---
 
 # Slang Compiler Crash & Legalization Probes
 
 ## TL;DR
 
-Verified root-cause traces for a cluster of Slang compiler crashes/miscompiles, all resolved at the
-producer/IR layer rather than by masking in emit. Common shape: an early classifier or lowering pass
-mishandles an input shape, and the crash surfaces far downstream in codegen or the linker.
+Verified root-cause traces for a cluster of Slang compiler crashes/miscompiles, all resolved at the producer/IR layer rather than by masking in emit. Common shape: an early classifier or lowering pass mishandles an input shape, and the crash surfaces far downstream in codegen or the linker.
 
-- **`if(decoration){ if(sv_){...} }` with the real work in the sibling `else` silently drops the
-  middle case** — a user semantic enters the outer `if` and never reaches the `else`'s allocator: the
-  tess patch-constant Location-0 collision (a fall-through, NOT a shared-counter race); fix = add
-  `kIROp_PatchDecoration` so per-patch vars get a separate location set. Verify by IR dump.
-- **A zero-size/void struct field has no byte-address skip** → `.Load<void>` emitted, DXIL/SPIRV/GLSL
-  fail. Add a natural-size-0 skip in the `emitLegalLoad`/`emitLegalStore` field loops, mirroring the
-  void-field skip already in buffer-element-type lowering.
-- **`getDefaultVal` on an `AssocTypeDecl` (an `AggTypeDecl`) built a zero-operand `IRMakeStruct`**
-  over an opaque type → positional-OOB after type-flow specialization. Fix producer-side with
-  `emitDefaultConstruct`; assert the consumer with EXACT `==`, not a min-bound.
-- **Array + ConstantBuffer + resource element** crashes type-legalization because
-  `legalizeGetElement` (value path) has no `implicitDeref` case. The trigger is the resource, not
-  "zero-size."
-- **A non-null `IRPtrLit` reaching the linker** = a `HighLevelDecl` decoration on a *late-synthesized*
-  inst that escaped `stripFrontEndOnlyInstructions` (which runs only during front-end lowering, not
-  in linkIR). Fix the producer; don't relax the linker assert.
-- **`IREntryPointDecoration` relocation** has two seductive-but-wrong companion fixes; and
-  `SLANG_ASSERT(x); if(!x)…` is DEAD in Release (`__builtin_assume` deletes the null-check).
-- **CUDA surface-stride-through-a-param** is a documented structural limitation (`_findImageFormat`
-  can't recover `[format]` through an `IRParam`), NOT a regression.
-- **A partial-init struct's spurious varying store is `fieldExtract(load(var))`, not `IRUndefined`**
-  — an `as<IRUndefined>` guard is incomplete; handle both shapes in glsl-legalize's `assign`.
-- **Nested swizzle-of-swizzle vector lvalue** miscompiles from a `.add(count)` (should be
-  `.setCount`) plus a by-value lambda output param (should be `auto&`).
-- **A full-coverage texture swizzle store (`t[i].xyzw = v`) is lowered as read-modify-write** — fix in
-  `legalizeStore`, but measure coverage against the image op's texel (4-wide on Metal/GLSL/SPIR-V, `T` on CUDA).
-  A plain `t[i] = v` never reaches that pass (it lowers through the `set` accessor), so test both spellings.
-- **Inherited-field access through a BoundMember/BoundStorage base (#13348) needs `InheritanceDecl`
-  at all three `BoundMemberInfo` consumers** — fixing `materialize` alone is insufficient.
-- **An entry point with a `uniform` param, called by another compiled entry point, segfaults on
-  every target** (open on master; `-entry <caller>` alone works). Of the passes that rewrite an
-  entry point's signature before `fixEntryPointCallsites`, only the borrow pass updates callers;
-  the uniform-param hoist and `translateGlobalVaryingVar` change arity silently.
-- **`CoerceToProperTypeImpl` has THREE failure representations, not two** — normalize at the wrapper.
-- **"guard A subsumes guard B" is a claim about the FULL consumer set of each** — a `static_assert`
-  reachability walk and `isFromCoreModule` cover disjoint consumers; keep both.
-- **Before turning a fallback into a `SLANG_RELEASE_ASSERT` on a closed set of IR layout shapes,
-  list the `IRTypeLayout` subclasses and probe each** (existential via `slangc -specialize`,
-  pointer, combined-sampler, DescriptorHandle). A corpus that never hits the fallback is no proof;
-  the existential+resource tests are disabled. Run the full suite after adding the assert.
-- **On HLSL/CPU/CUDA a spec-const `[numthreads]` operand is a removed inst with a null type**;
-  any pass that reads its type before emit segfaults.
+- **`if(decoration){ if(sv_){...} }` with the real work in the sibling `else` silently drops the middle case**: the tess patch-constant Location-0 collision is a fall-through, NOT a shared-counter race; add `kIROp_PatchDecoration` so per-patch vars get a separate location set. Verify by IR dump.
+- **A zero-size/void struct field has no byte-address skip**, so `.Load<void>` is emitted and DXIL/SPIRV/GLSL fail. Add a natural-size-0 skip in the `emitLegalLoad`/`emitLegalStore` field loops, mirroring buffer-element-type lowering.
+- **`getDefaultVal` on an `AssocTypeDecl` built a zero-operand `IRMakeStruct`** over an opaque type (positional OOB after type-flow specialization). Fix producer-side with `emitDefaultConstruct`; assert the consumer with EXACT `==`.
+- **Array + ConstantBuffer + resource element** crashes type-legalization: `legalizeGetElement` (value path) has no `implicitDeref` case. The trigger is the resource, not "zero-size."
+- **A non-null `IRPtrLit` reaching the linker** is a `HighLevelDecl` decoration on a late-synthesized inst that escaped `stripFrontEndOnlyInstructions` (front-end lowering only). Fix the producer; don't relax the linker assert.
+- **`IREntryPointDecoration` relocation** has two seductive-but-wrong companion fixes; `SLANG_ASSERT(x); if(!x)…` is DEAD in Release (`__builtin_assume` deletes the null-check).
+- **CUDA surface-stride-through-a-param** is a documented structural limitation (`_findImageFormat` can't see `[format]` through an `IRParam`), NOT a regression.
+- **A partial-init struct's spurious varying store is `fieldExtract(load(var))`, not `IRUndefined`**; handle both shapes in glsl-legalize's `assign`.
+- **Nested swizzle-of-swizzle vector lvalue** miscompiles from `.add(count)` (should be `.setCount`) plus a by-value lambda output param (should be `auto&`).
+- **A full-coverage texture swizzle store (`t[i].xyzw = v`) is lowered as read-modify-write**: fix in `legalizeStore`, measuring coverage against the image op's texel (4-wide on Metal/GLSL/SPIR-V, `T` on CUDA). Plain `t[i] = v` lowers through the `set` accessor, so test both spellings.
+- **Inherited-field access through a BoundMember/BoundStorage base (#13348) needs `InheritanceDecl` at all three `BoundMemberInfo` consumers**, not just `materialize`.
+- **An entry point with a `uniform` param, called by another compiled entry point, segfaults on every target** (open on master). Before `fixEntryPointCallsites` only the borrow pass updates callers; the uniform-param hoist and `translateGlobalVaryingVar` change arity silently.
+- **`CoerceToProperTypeImpl` has THREE failure representations, not two**: normalize at the wrapper.
+- **"guard A subsumes guard B" is a claim about the FULL consumer set of each**: a `static_assert` reachability walk and `isFromCoreModule` cover disjoint consumers; keep both.
+- **Before turning a fallback into a `SLANG_RELEASE_ASSERT` on a closed set of IR layout shapes, list the `IRTypeLayout` subclasses and probe each** (existential via `slangc -specialize`, pointer, combined-sampler, DescriptorHandle). Run the full suite after adding the assert.
+- **Zero hits in a coverage drill (log each guard to a file, run the full suite) shows the suite does not reach a branch, not that no input does.** It justifies deleting dead guards, not asserting: on #13872 an emitter fallback made a release assert on 0 hits ICEd dynamic-dispatch generics at `-g2`. Audit the producer class first, or keep a graceful fallback plus a `-validate-ir` rule.
+- **On HLSL/CPU/CUDA a spec-const `[numthreads]` operand is a removed inst with a null type**; any pass that reads its type before emit segfaults.
 
 ## Front-end / classifier fall-throughs that crash downstream
 
@@ -178,6 +151,8 @@ regression test for them fails Debug CI; use a unit test guarded by
 `#ifdef _DEBUG SLANG_IGNORE_TEST`
 [enumerate the IRTypeLayout subclasses before release-asserting a closed set](../learnings/1792599445713-before-release-asserting-a-closed-set-of-ir-layout.md).
 
+**Zero coverage-drill hits do not license an assert.** The drill puts `{ FILE* f = fopen("/tmp/drill<pr>.txt","a"); if (f) { fputs("<tag>\n", f); fclose(f); } }` in each guard, rebuilds slangc and slang-test, runs `slang-test -use-test-server -server-count 16`, and counts tags with `sort | uniq -c`; test-server processes write to the same /tmp, so their hits count too. On #13872 it showed in about 25 minutes that 4 of 8 new guards had 0 hits across 11k tests, which is concrete evidence for CLAUDE.md's "silent impossible-shape handling" rule [coverage drill](../learnings/1792692531156-coverage-drill-log-each-defensive-branch-to-a-file.md). But 0 hits shows that the suite does not reach a branch, not that no input does. The fixer then turned the SPIR-V emitter's graceful fallback for a stale `DebugVarStorage` decoration into a `SLANG_RELEASE_ASSERT`, and an audit of passes that clone a function's params before its body found `specializeGenericWithSetArgs`, which crashes ordinary user code at `-g2` (a dynamic-dispatch generic with an `inout` param) and which a `-g2` sweep of all 5310 tests also missed; the mechanism is on [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]]. Before recommending "assert instead of fallback", audit the producer class: grep `transferDecorationsTo|cloneDecoration|cloneInstDecorationsAndChildren` and look for clones that copy params ahead of the body. Unless every producer is covered, prefer a `-validate-ir` rule as the loud check plus a graceful fallback. `SLANG_ASSERT` expands to `[[assume]]` in release builds (`slang-common.h:371`), so a failed one there is undefined behaviour, not a skipped check [a release assert can create user ICEs the suite cannot see](../learnings/1792709180643-turning-a-silent-emitter-fallback-into-a-release-a.md). A worktree's `git submodule update` from the local clone needs `git -c protocol.file.allow=always`, or it fails with "transport 'file' not allowed" [same](../learnings/1792692531156-coverage-drill-log-each-defensive-branch-to-a-file.md).
+
 **`[numthreads]` operands are dangling on targets without specialization constants.** On
 HLSL/CPU/CUDA, `collectGlobalUniformParameters` (slang-ir-collect-global-uniforms.cpp:332-339)
 folds a `[vk::constant_id]` global into the global-params struct and `removeAndDeallocate`s it,
@@ -280,7 +255,7 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 `imageSubscript` insts, and compare `t[i] = v` with `t[i].x = v`
 [plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md).
 
-**Source learnings (22):**
+**Source learnings (24):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -303,3 +278,5 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 - [Release-assert 'catch-all' in IR layout code: existential layouts reach it — test with slangc -specialize](../learnings/1792594670567-release-assert-catch-all-in-ir-layout-code-existen.md) — #13811 R2 `_createOrdinaryPartTypeLayout` assert broke Release on an interface param specialized to data+resource; corpus tests disabled; instrument the fallback
 - [Before release-asserting a closed set of IR layout shapes, enumerate the IRTypeLayout subclasses](../learnings/1792599445713-before-release-asserting-a-closed-set-of-ir-layout.md) — probe each subclass; pre-legalization passes rebuild layouts (combined-sampler, no size attrs); Debug-only declareVars assert forces a `_DEBUG`-ignored unit test
 - [Slang: [numthreads] operands on non-spec-const targets are dangling (null type) — never read their type](../learnings/1792609336816-slang-numthreads-operands-on-non-spec-const-target.md) — `collectGlobalUniformParameters` removes the spec const but skips the decoration use; `materializeGetWorkGroupSize` cast segfaults (#13826); don't hoist spec-const makeVector on SPIR-V
+- [Turning a silent emitter fallback into a release assert can create user ICEs that the test suite cannot see](../learnings/1792709180643-turning-a-silent-emitter-fallback-into-a-release-a.md) — #13872: 0 drill hits, then `specializeGenericWithSetArgs` ICE at -g2; audit cloners first; `SLANG_ASSERT` is `[[assume]]` in release
+- [Coverage drill: log each defensive branch to a file, run the full suite](../learnings/1792692531156-coverage-drill-log-each-defensive-branch-to-a-file.md) — fopen/fputs tag per guard + 16-server suite run; 4 of 8 #13872 guards had 0 hits; `protocol.file.allow=always` for worktree submodules

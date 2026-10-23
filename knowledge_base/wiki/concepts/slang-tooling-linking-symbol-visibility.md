@@ -3,7 +3,7 @@ title: "Linking and Symbol Visibility"
 type: concept
 group: slang-tooling
 tags: [linker, version-script, symbol-visibility, exports, elf, mach-o, dylib, nm, readelf, cmake, check-linker-flag, glslang, libstdcxx-leak, exclude-libs, lto, abi]
-source_count: 11
+source_count: 12
 ---
 
 # Linking and Symbol Visibility
@@ -34,6 +34,7 @@ Controlling and measuring a shared library's exported-symbol set: GNU ld version
 - **Never add a method to the internal `IDownstreamCompiler` vtable** (the default build calls a prebuilt older `slang-llvm` through it) — use a standalone `castAs` extension interface (own UUID, no `ISlangUnknown` base, served from `getObject()`); errors here are CI-only.
 - **Retyping a public generic value parameter int→enum is a `pr: breaking change`** (no implicit int→enum → `E30019` at downstream import); fix downstream in a companion PR.
 - **An anonymous-namespace symbol has internal linkage regardless of `static`** — to expose it to `slang-static-unit-test`, move it to `namespace Slang` scope and declare it in the header.
+- **`SLANG_STATIC` is defined in shared-build TUs too** (a PUBLIC define from the static `core` target), so gate DLL-only code on `SLANG_DYNAMIC_EXPORT` (inside the library) or `SLANG_DYNAMIC` (in a consumer), never on `!defined(SLANG_STATIC)`. Compile-check Windows-only code on Linux with `ziglang c++ -target x86_64-windows-gnu -c`.
 
 ## Version scripts: enumerate names, never match a prefix
 
@@ -104,10 +105,14 @@ Slang's COM-style vtables (`include/slang.h` and internal interfaces) have layou
 
 **Retyping a public generic value parameter int→enum is breaking (#12840).** Retyping `matrix<T,R,C,L>`'s `L` from `int` to `MatrixLayoutMode` breaks downstream generic extensions declared with `int` at front-end import (`error[E30019]: type mismatch ... expected 'MatrixLayoutMode', got 'int'`) — Slang does no implicit int→enum for generic value args. It surfaces as the "SlangPy Tests" `repository_dispatch` job building slangpy's default branch against the PR (`gh run view <id> -R shader-slang/slangpy --log-failed`). Fix downstream (`let L : MatrixLayoutMode`) in a companion slangpy PR; the check stays red on the slang PR until slangpy lands, so merge slang with it acknowledged. Legit `pr: breaking change`; this is an import break, not a codegen layout concern ([int→enum public-param retype breaks downstream](../learnings/1788455543019-slang-int-enum-public-param-retype-breaks-downstre.md)).
 
+## Static versus shared builds: internal linkage and build-kind macros
+
 **Exposing a `source/slang` internal to `slang-static-unit-test`.** Many `slang-ir-*.cpp` files wrap all file-local helpers in one anonymous namespace, which gives internal linkage regardless of `static` — "drop the `static`" is insufficient. Move the definition to `namespace Slang` scope (after `} // anonymous namespace`, where the public entry points live), drop `static`, declare it in the header; it can still call the anon-ns helpers. The STATIC target exists only with `-DSLANG_LIB_TYPE=STATIC -DSLANG_ENABLE_SLANG_RHI=ON -DSLANG_ENABLE_TESTS=ON`, and new `tools/slang-static-unit-test/*.cpp` are auto-globbed — no CMake edit ([exposing an internal: check the anonymous namespace](../learnings/1789225246267-exposing-a-source-slang-internal-for-slang-static-.md)).
 
+**Every target that links `core` sees `SLANG_STATIC`, so a shared-build gate must test `SLANG_DYNAMIC*` (slang#13828, PR #13867).** `core` is a STATIC target with `EXPORT_MACRO_PREFIX SLANG`, so `slang_add_target` gives it `-DSLANG_STATIC` as a PUBLIC define. That define propagates to every target that links `core`: the shared compiler's `slang-common-objects` (which also get `SLANG_DYNAMIC_EXPORT`) and `slang-unit-test` (which also gets `SLANG_DYNAMIC` from linking the shared `slang`). In those TUs `#if !defined(SLANG_STATIC)` is always false, so code meant only for the DLL/shared build, such as a `DllMain`, must be gated on `SLANG_DYNAMIC_EXPORT` inside the library or `SLANG_DYNAMIC` in a consumer; `build/compile_commands.json` shows the defines each TU really gets (verified on master 0bd71cd709). Windows-only code can be compile-checked from the Linux container with zig as a MinGW cross-compiler: `python3 -m venv v && v/bin/pip install ziglang`, then `v/bin/python -m ziglang c++ -target x86_64-windows-gnu -std=c++17 -c -o x.o file.cpp` (aarch64- and x86-windows-gnu also work). Use `-c -o`, because `-fsyntax-only` fails on a zig cache rename. Slang TUs need every `HAVE_*_S` macro named in `source/core/slang-secure-crt.h`, or MinGW's secure-CRT declarations clash with the shim, and `nm` on the object confirms the `DllMain` linkage (x86: `_DllMain@12`) ([SLANG_STATIC reaches every core consumer; gate on SLANG_DYNAMIC](../learnings/1792673923548-slang-every-target-linking-core-sees-slang-static-.md)).
+
 ---
-**Source learnings (11):**
+**Source learnings (12):**
 - [Exposing an internal: anon-namespace linkage beats dropping static](../learnings/1789225246267-exposing-a-source-slang-internal-for-slang-static-.md)
 - [Version-script allow-list must LIST names; what scripts can't hide](../learnings/1785985189936-a-version-script-allow-list-must-list-names-not-ma.md)
 - [Wildcard export pattern's scope is the whole link (50/41 vs 9/0)](../learnings/1785985481291-a-wildcard-export-pattern-s-scope-is-the-whole-lin.md)
@@ -119,5 +124,6 @@ Slang's COM-style vtables (`include/slang.h` and internal interfaces) have layou
 - [castAs capability interface: standalone, served from getObject](../learnings/1788289363595-adding-a-castas-capability-interface-to-a-downstre.md)
 - [int→enum public-param retype breaks downstream (E30019, #12840)](../learnings/1788455543019-slang-int-enum-public-param-retype-breaks-downstre.md)
 - [A null-guarded optional export needs a presence test, or dropping it from the version script is silent](../learnings/1792634347205-a-null-guarded-optional-export-needs-a-presence-te.md) — `glslang_freeLinkResult` (#13849); add `findSymbolAddressByName` check to `getDownstreamCompilerPath` unit test
+- [`core`'s PUBLIC `-DSLANG_STATIC` reaches shared-build TUs; gate on `SLANG_DYNAMIC_EXPORT`/`SLANG_DYNAMIC`; zig MinGW cross-compile check (#13828)](../learnings/1792673923548-slang-every-target-linking-core-sees-slang-static-.md)
 
 _Catalog: [[wiki/index.md]]_

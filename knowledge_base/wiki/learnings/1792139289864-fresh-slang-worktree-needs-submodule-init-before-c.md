@@ -3,6 +3,7 @@ title: "Fresh slang worktree needs submodule init before cmake configure"
 type: learning
 topic: slang-compiler
 source: learnings/1792139289864-fresh-slang-worktree-needs-submodule-init-before-c.md
+superseded_by: 1787677680988-slang-git-worktree-needs-per-worktree-submodule-in
 ---
 
 # Fresh slang worktree needs submodule init before cmake configure

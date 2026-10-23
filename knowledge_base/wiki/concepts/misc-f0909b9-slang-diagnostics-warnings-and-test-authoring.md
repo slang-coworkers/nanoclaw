@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -38,7 +38,7 @@ bounded region — use a `CHECK-DAG`/`CHECK-NOT`/`CHECK-DAG` barrier (it guards 
 between groups) or a separate `-NOT`-only run, and run the revert drill on negatives.
 
 **Harness/build facts.** `-warnings-disable` works on SIMPLE but not
-COMPARE_COMPUTE (forward via `-xslang -Wno-<code>`); slang-rhi's CPU backend is
+COMPARE_COMPUTE (forward via `-xslang -Wno-<code>`); slang-test puts directive options after the file, so `-lang glsl` needs SIMPLE_EX with an explicit path, and `.glsl`/`.hlsl` under `tests/` are gitignored; slang-rhi's CPU backend is
 harness-skipped on Linux; internal (non-`SLANG_API`) symbols are testable in
 `slang-static-unit-test` (not `slang-unit-test`) — but verify that target exists at
 the PR's head commit, not master.
@@ -196,6 +196,8 @@ order operands are reported at the same `sourceLoc` can emit two identical diagn
 [exhaustive DIAGNOSTIC_TEST: annotate code AND message](../learnings/1791550646372-slang-exhaustive-diagnostic-test-annotate-code-and.md)
 [legacy lexer diagnostics: one annotation per diag](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md).
 
+**Choosing the source language in a DIAGNOSTIC_TEST.** slang-test appends directive options AFTER the file path, and `-lang` applies only to files that follow it, so `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):-lang glsl ...` still parses the file as Slang and never sees a GLSL interface block. Adding `#version 450` to the `.slang` file does switch the language, but it adds two diagnostics ("source-language directive selects glsl and overrides the file-extension-implied slang source language"), which breaks an exhaustive test. What works is `//DIAGNOSTIC_TEST:SIMPLE_EX(diag=CHECK): -lang glsl tests/<path>/<file>.slang -target spirv -stage vertex -entry main`, with no `#version` line (precedent: `tests/glsl-intrinsic/compute-derivative/*.slang`). Keep the file `.slang`: `.gitignore` ignores `/tests/**/*.glsl` and `*.hlsl` as generated outputs, so a `.glsl` test passes locally and silently stays out of `git status` unless force-added. An HLSL-only option such as `-Gec` works as `-lang hlsl -Gec` in a plain SIMPLE directive, because no `#version`-style directive is involved [GLSL diagnostic tests: -lang glsl must precede the file (use SIMPLE_EX)](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md).
+
 For **real FileCheck** (e.g. SPIR-V absence assertions), a bare `CHECK-NOT` only
 guards a bounded region — if the forbidden text appears in the MIDDLE of output, a
 leading/trailing `CHECK-NOT` silently misses it and the test passes vacuously. The
@@ -262,8 +264,9 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 
+- [slang-test GLSL diagnostic tests: -lang glsl must precede the file (use SIMPLE_EX); .glsl/.hlsl under tests/ are gitignored](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md) — `#version 450` adds two diagnostics; precedent tests/glsl-intrinsic/compute-derivative
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
 - [Slang diag=CHECK DIAGNOSTIC_TEST is exhaustive](../learnings/1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and.md) — exhaustive substring matching; assert absence by leaving unannotated; use `warning[E30082]` bracket form.
