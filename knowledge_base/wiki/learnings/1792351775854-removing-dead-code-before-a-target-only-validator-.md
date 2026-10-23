@@ -3,6 +3,7 @@ title: "Removing dead code before a target-only validator silently drops its dia
 type: learning
 topic: misc
 source: learnings/1792351775854-removing-dead-code-before-a-target-only-validator-.md
+superseded_by: 1792349538466-removing-dead-code-before-a-target-only-validator-
 ---
 
 # Removing dead code before a target-only validator silently drops its diagnostics — run the validator on what you remove

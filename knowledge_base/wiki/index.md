@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7844 agent learnings**, synthesized into **486 concept pages**.
+Standalone wiki built from **7930 agent learnings**, synthesized into **488 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -217,7 +217,7 @@ Standalone wiki built from **7844 agent learnings**, synthesized into **486 conc
 - [Reproducing a Cause, Not a Story](concepts/general-misc-reproducing-a-cause.md)
 - [Resume and Compaction Drift: Re-Ground on Live State Before Acting](concepts/general-misc-resume-and-compaction-drift.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
-- [SlangPy / SGL Runtime and GPU Device-Loss Triage](concepts/general-misc-slangpy-runtime-and-gpu-triage.md)
+- [SlangPy / SGL Runtime, Device-Creation and GPU Device-Loss Triage](concepts/general-misc-slangpy-runtime-and-gpu-triage.md)
 - [Stale Pointers and Regression Checks](concepts/general-misc-stale-pointer-and-regression-checks.md)
 - [Tracker and Scheduler Hygiene](concepts/general-misc-tracker-and-scheduler-hygiene.md)
 - [Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision](concepts/general-misc-version-and-timestamp-reads.md)
@@ -424,6 +424,7 @@ Standalone wiki built from **7844 agent learnings**, synthesized into **486 conc
 - [SPIR-V legalization crashes — empty/opaque types, the error-count gate, and default-construct producers](concepts/slang-backends-f0909b0-spirv-legalization-crashes.md)
 - [SPIR-V validation gating and backend PR-review/CI-scope methodology](concepts/slang-backends-f0909b0-spirv-validation-and-review.md)
 - [SPIR-V varyings, tessellation patch decorations, pointer ArrayStride, and wave-op CSE](concepts/slang-backends-f0909b0-spirv-varyings-pointers-waveops.md)
+- [WGSL uniformity analysis and global-varying shadow forwarding (#8774)](concepts/slang-backends-wgsl-uniformity-and-shadow-globals.md)
 
 ### slang-grab-bag
 - [Slang Build Infrastructure, Tooling, and Language Server](concepts/slang-misc-build-infrastructure-and-tooling.md)
@@ -452,6 +453,7 @@ Standalone wiki built from **7844 agent learnings**, synthesized into **486 conc
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
 - [Slang Test — FileCheck Authoring and Opt-Levels](concepts/slang-test-filecheck-authoring-and-opt-levels.md)
 - [Slang Test — Output Assertions and Truncated Runs](concepts/slang-test-output-assertions-and-truncated-runs.md)
+- [Slang's mimalloc integration: one shared allocator, override and DLL-lifetime pitfalls, version-bump traps](concepts/slang-build-mimalloc-integration.md)
 - [slang-test #line directive and source-location checks: meta-module locations, inlining, and drills that keep their teeth](concepts/slang-test-line-directive-and-location-checks.md)
 - [slang-test False Greens and Verification Discipline](concepts/slang-test-false-greens-and-verification-traps.md)
 - [slang-test GPU lanes on the shared L40S: run suites serially, orphaned test-servers, 'ignored' that is contention, and what the GPU confirms](concepts/slang-test-gpu-lanes-on-shared-l40s.md)
@@ -472,7 +474,7 @@ Standalone wiki built from **7844 agent learnings**, synthesized into **486 conc
 - [Slang Front-End Design Review Principles (tangent-vector, #13406)](concepts/slang-compiler-frontend-design-review-principles.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
-- [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
+- [Slang Parser: tryParseGenericApp Classification, Parser-Time Lookup, and ?: Precedence](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
 - [Slang Scope Lookup, Function-Local Types, and Declaration Checking](concepts/slang-language-scope-lookup-and-declaration-checking.md)
@@ -542,10 +544,10 @@ Standalone wiki built from **7844 agent learnings**, synthesized into **486 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2445)
-- [NanoClaw / agent operations](topics/agent-ops.md) (914)
-- [CI, build & tooling](topics/ci-tooling.md) (575)
-- [Review & process](topics/review-process.md) (388)
+- [Slang compiler & language](topics/slang-compiler.md) (2490)
+- [NanoClaw / agent operations](topics/agent-ops.md) (921)
+- [CI, build & tooling](topics/ci-tooling.md) (583)
+- [Review & process](topics/review-process.md) (391)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (581)
-- [Uncategorized](topics/misc.md) (1522)
+- [Verification & evidence discipline](topics/verification.md) (582)
+- [Uncategorized](topics/misc.md) (1544)

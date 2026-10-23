@@ -3,6 +3,7 @@ title: "slang-test synthesizes a CUDA row from -vk compute rows ('syn (cuda)')"
 type: learning
 topic: slang-compiler
 source: learnings/1792584195301-slang-test-synthesizes-a-cuda-row-from-vk-compute-.md
+superseded_by: 1792694250314-slang-test-synthesizes-cuda-rows-by-default-no-cud
 ---
 
 # slang-test synthesizes a CUDA row from -vk compute rows ("syn (cuda)")

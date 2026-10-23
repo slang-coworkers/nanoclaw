@@ -3,13 +3,14 @@ title: "gh CLI CI Status & Merge Signals — Instrument-Lie Folds"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, ci, graphql, rerun, merge-detection, corrections, slang]
-source_count: 8
+source_count: 9
 ---
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
 
 ## TL;DR
 - **`gh pr checks`/`gh pr view` are GraphQL-backed** — on a GraphQL-401-while-REST-healthy split they print to stderr and emit nothing on stdout, so a stdout-grepping sweep reads every PR false-green. Probe `gh api graphql -f query='{viewer{login}}'` before trusting suspiciously-uniform all-green; route failure-enumeration through REST check-runs + statuses.
+- **`gh pr checks` can also omit failing check runs while GraphQL is healthy** — #13880 showed 5 pass / 52 skipping while the head's check-runs had `check-ci` and `wait-for-human-priority` failed. Count conclusions from `commits/<head>/check-runs` before stating CI status; on a bot PR that red pair over a mostly-skipped run is a priority yield ("CI red, not yet run"), never "passing".
 - **`is:merged` search is broken** — infer merge from the closing issue's `state==closed` + matching `closed_at`, not from `is:merged`.
 - **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** — proof is a second rerun's 403 "already running"; key reruns on `(workflow_id, event, name)`.
 - **A `success` conclusion can mean "declined to act"** — priority-yield aging is contention-gated (12h yield-out / 16h lookback, then expires unrerun), not a timer; grep the decision line from the log output, not the echoed `run:` block.
@@ -41,6 +42,8 @@ gh api "repos/<o>/<r>/commits/$sha/statuses?per_page=100" \
 ```
 
 Notes: (1) `--paginate` concatenates JSON objects, so a bare `.check_runs[]` dies on page 2 — but do **NOT** reach for the optional-`?` form (`jq -s '[.[]|.check_runs[]?]'`) as the fix, as an earlier revision of this page recommended. **That `?` is itself a silencer**: it swallows a gateway error document (which has no `.check_runs` key) and hands you a clean-looking result built from page 1 only. Gate on shape instead — `jq -e '.check_runs'` per page — and reconcile the count. (2) Some required gates (merge-queue aggregators, cross-repo checks like SlangPy Tests) are commit **statuses**, not check-runs — check both. (3) The wake payload's `evicted` list may itself be GraphQL-derived → cross-check merge-group evictions via REST `actions/runs?event=merge_group`. This is distinct from a full actions:write outage (where `gh run rerun` returns 403 "Must have admin rights"); a fresh GraphQL-401-while-REST-ok is worth an operator ping via parent ([gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)).
+
+**`gh pr checks` can hide failing check runs even when GraphQL answers.** On shader-slang/slang #13880 (2026-10-22) `gh pr checks --json bucket` returned only 5 pass and 52 skipping, while `gh api repos/<o>/<r>/commits/<head>/check-runs --paginate` on the same head showed `check-ci` and `wait-for-human-priority` as **failure**, 92 skipped and `falcor-build-approval-gate` waiting, and the PR badge was red. The "0 failures" sent upstream from the first read was wrong. So before stating CI status, count conclusions from the commit's check-runs (`--jq '.check_runs[] | .conclusion // .status' | sort | uniq -c`), the same REST route as the 401 case above. On bot-authored slang PRs, a red `check-ci` with `wait-for-human-priority` over a mostly-skipped run is the priority yield: nothing has built or been tested yet. Report it as "CI red: priority yield, not yet run", never as passing ([`gh pr checks` can hide failing check runs](../learnings/1792703301263-gh-pr-checks-can-hide-failing-check-runs-read-ci-s.md)).
 
 ## is:merged Search Is Broken — Infer PR Merge From Simultaneous Issue-Close (2026-08-01 fold)
 
@@ -74,7 +77,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (8):**
+**Source learnings (9):**
 
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -84,5 +87,6 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - [classify a red by terminal outcome, not signature presence](../learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md)
 - [pr_report.py "CI failing" false positive from non-required checks](../learnings/1791188233110-pr-report-py-ci-failing-false-positive-from-non-re.md) — `summarize_ci()` counts CANCELLED/non-required jobs as failing; required master contexts are `check-formatting`, `check-ci`, `SlangPy Tests`.
 - [Merge-queue eviction reason: use GraphQL RemovedFromMergeQueueEvent.reason (REST timeline omits it)](../learnings/1792139409374-merge-queue-eviction-reason-use-graphql-removedfro.md) — `checks_timed_out` vs `failed_checks`; SM80Plus queue wait (#13615)
+- [`gh pr checks` can hide failing check runs — read CI state from the commit check-runs API](../learnings/1792703301263-gh-pr-checks-can-hide-failing-check-runs-read-ci-s.md) — #13880: 5 pass / 52 skipping vs check-runs `check-ci` + `wait-for-human-priority` failed; report a bot priority yield as "CI red, not yet run"
 
 _Catalog: [[wiki/index.md]]_

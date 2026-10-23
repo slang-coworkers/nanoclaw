@@ -3,7 +3,7 @@ title: "Slang build configuration: DXC-from-source on old glibc, slim configure 
 type: concept
 group: slang-tooling
 tags: [build, cmake, configure, dxc, glibc, slangc-only, asan, tsan, valgrind, object-library, compile-flags, xcode, build-time, bisect, embed-core-module-source, fetchcontent]
-source_count: 18
+source_count: 20
 ---
 
 # Slang build configuration: DXC-from-source on old glibc, slim configure flags, sanitizers, CMake flag scope, and measured build costs
@@ -27,6 +27,9 @@ This page covers configuring and sizing a Slang build: which flags keep a probe 
 - **Sanitizer gotchas (ASan/TSan) are host-wide:** `LD_LIBRARY_PATH` must include the clang runtime dir; `ASAN_OPTIONS=detect_leaks=0` during the build. valgrind's glibc `ld.so`/`dlopen` `$ORIGIN` errors are false positives — triage by whether the stack references a slang frame.
 - **CMake grep-invariant guards must use `git grep`** (skips submodule trees), not `rg`/`grep -r`.
 - **Compile-time feature guards use the generated `SGL_HAS_*` define, not the cmake `option()`.**
+- **Never infer which conflicting `-D` wins from `target_compile_definitions` call order** —
+  Ninja/Makefiles emit definitions sorted. Remove the conflict at its source and check the effective
+  value with `-dM -E` on a command from `ninja -t commands <target>`.
 - **A PRIVATE compile flag (`-fno-exceptions`, a sanitizer flag) does NOT reach a target's
   linked OBJECT libraries** — apply it to each OBJECT target and verify in
   `build/compile_commands.json`; and `cmake --build --target X -k 0` silently no-ops
@@ -66,7 +69,11 @@ with `grep -c slang-rich-diagnostics.cpp build/CMakeFiles/impl-Debug.ninja > 0`
 [rebase stales the build graph](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md).
 Two gotchas there: this is Ninja **multi-config**, so the real per-config rules live in
 `build/CMakeFiles/impl-Debug.ninja` (and `build-Debug.ninja`), not the top-level `build.ninja`
-(grepping the top-level alone gives a false "0 references"); and the rule of thumb is that
+(grepping the top-level alone gives a false "0 references"; `build.ninja` holds no per-source
+compile edges at all, so grep `impl-<Config>.ninja` to confirm which sources and flags a config
+compiles, e.g. `slang-mimalloc.cpp.o` or `-march=...`
+[grep impl-Debug.ninja, not build.ninja](../learnings/1792697247314-slang-ninja-multi-config-grep-impl-debug-ninja-not.md));
+and the rule of thumb is that
 whenever a rebase/pull adds or removes a source file (check `git log --stat` for new `.cpp` in
 a `CMakeLists.txt`), reconfigure before building — CMake's file-level GLOB re-check does not
 reliably fire for explicitly-listed sources when only the build dir is stale.
@@ -175,6 +182,17 @@ and collects every failure instead of stopping at the first — the way to prove
 break is the *only* remaining one
 [per-target flags don't reach linked OBJECT libraries; `-k 0` must follow `--`](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md).
 
+**The order of `target_compile_definitions` calls does not decide which conflicting `-D` wins.**
+The Ninja and Unix Makefiles generators (CMake 3.25.1) emit a target's definitions sorted, not in
+the order they were added. On slang#13879 a reviewer argued that Slang's `MI_DEBUG=1`, added to
+`mimalloc-static` after `add_subdirectory`, comes last and beats mimalloc's own `MI_DEBUG=2`. The
+real command line reads `-DMI_DEBUG=1 -DMI_DEBUG=2`; GCC keeps the last one, warns "redefined", and
+`-dM -E` on that line gives `#define MI_DEBUG 2`. Remove the conflict at its source instead (here
+`set(MI_DEBUG ON)` before mimalloc is added, so mimalloc emits `MI_DEBUG=1` itself). To check a
+macro's effective value, take one compile command from `ninja -t commands <target>`, replace
+`-c -o …` with `-dM -E`, and grep the macro
+[CMake sorts compile definitions](../learnings/1792707403738-cmake-sorts-compile-definitions-a-later-target-com.md).
+
 ## The Xcode Generator Rejects Any `$<CONFIG>` Genex in a Per-Source `COMPILE_OPTIONS` (Presence, Not Value)
 
 `cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (`set_source_files_properties`) carries a `$<CONFIG:...>` generator expression. `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **presence** of the context-sensitive condition, not on whether the flags differ by config, so `$<$<NOT:$<CONFIG:Debug>>:-Os>` is rejected even though it yields `-Os` everywhere. Ninja Multi-Config (the `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner label, not the generator) tolerates it, and `CMakePresets.json` has no Xcode generator, so the regression is invisible to CI (slang#13240/#13241). The fix branches on `CMAKE_CXX_COMPILER_ID` at configure time and emits a plain flag on the Clang/AppleClang path, keeping the genex only where a real per-config difference exists (MSVC Debug `/RTC1`). Match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"`, not the `MSVC` variable, which is also true for clang-cl. To prove flag equivalence without a full build, compile a trivial two-target project with the same `set_source_files_properties` under `--config Debug`/`Release` verbose and grep the `-O` flags (`file(GENERATE)` can't evaluate `$<CXX_COMPILER_ID>` without a `TARGET`). A configure-only `buildtool: "Xcode"` macOS job in `check-cmake` would guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
@@ -189,7 +207,7 @@ break is the *only* remaining one
 
 **Non-embedded core-module source reproduces natively in about 5 min, no emsdk.** `cmake --preset default -B /tmp/b -DSLANG_EMBED_CORE_MODULE_SOURCE=OFF -DSLANG_ENABLE_DXIL=OFF -DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DFETCHCONTENT_BASE_DIR=<main>/build/_deps -DFETCHCONTENT_FULLY_DISCONNECTED=ON`, then build `slangd slangc slang-glsl-module`; `slangd --print-builtin-module core` goes through the same `Slang::getBuiltinModuleSource` as slang-wasm (slang#13664). Leaving out `-DSLANG_ENABLE_DXIL=OFF` makes every scratch tree that shares `FETCHCONTENT_BASE_DIR` rebuild DXC from source into the shared `_deps/dxc_source-build`, and two such builds collide (llvm-tblgen / `Intrinsics.gen` FAILED). That slangc lacks slang-glslang, so sanity-compile with `-target hlsl`. Deleting `lib/libslang-glsl-module-*.so` forces the `slang-api.cpp:244` compile-from-source fallback, which writes `lib/slang-glsl-module.bin` [SLANG_EMBED_CORE_MODULE_SOURCE=OFF repro](../learnings/1792085283366-repro-slang-embed-core-module-source-off-natively-.md).
 
-**Source learnings (18):**
+**Source learnings (20):**
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md)
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
@@ -208,5 +226,7 @@ break is the *only* remaining one
 - [Two-commit build bisect is cheap when the suspect touches one .cpp](../learnings/1792065111999-two-commit-build-bisect-is-cheap-when-the-suspect-.md) — <1 min rebuild for the second commit; #11430 byte-address float3 regression (#13603)
 - [Repro SLANG_EMBED_CORE_MODULE_SOURCE=OFF natively in ~5 min; avoid parallel DXC-from-source builds](../learnings/1792085283366-repro-slang-embed-core-module-source-off-natively-.md) — `slangd --print-builtin-module core`; shared `_deps` DXC collision (#13664)
 - [Bisecting a Slang commit locally: DXC off, or every git-bisect step exits 125](../learnings/1792572198277-bisecting-a-slang-commit-locally-use-dslang-enable.md) — FetchDXC tag check fails each reconfigure → probe exits 125 → all commits skipped; the real switch is `-DSLANG_ENABLE_DXIL=OFF`; #13724 in 9 builds
+- [per-TU compile rules live in `impl-<Config>.ninja`; also: Debug `mi_free` invalid-heap noise with mimalloc in ~10 DSOs (#13875)](../learnings/1792697247314-slang-ninja-multi-config-grep-impl-debug-ninja-not.md)
+- [generators sort `-D`s, so call order does not decide; `-dM -E` on `ninja -t commands` (#13879 `MI_DEBUG`)](../learnings/1792707403738-cmake-sorts-compile-definitions-a-later-target-com.md)
 
 _Catalog: [[wiki/index.md]]_

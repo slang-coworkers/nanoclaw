@@ -3,12 +3,12 @@ title: "Slang test authoring, FileCheck traps, unit-test linkage, and CI-infra t
 type: concept
 group: misc
 tags: [slang-test, filecheck, dump-ir, lang-server, unit-test, slang-static-unit-test, slang-api, visibility, ci, test-falcor, regression-test, revert-drill]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
 
-Twelve atoms on getting Slang regression tests to actually *catch* the thing, and
+Atoms on getting Slang regression tests to actually *catch* the thing, and
 on reading CI signal correctly.
 
 - **A regression test whose two paths are behaviorally identical can't distinguish a
@@ -34,6 +34,9 @@ on reading CI signal correctly.
   links `libslang` with hidden visibility → link error. Same visibility law means a
   **test-observability counter must be an `SLANG_API`-exported accessor**, not a
   plain class static (per-DSO copies).
+- **A green full `slang-test` does not cover `slang-static-unit-test`** (separate binary,
+  STATIC build only, skipped on draft PRs). Run it for any semantic-check change: its fixtures
+  hand-build AST shapes the parser never makes and catch over-strict new asserts.
 - **`SLANG_CHECK(x)` self-terminates with `;`** — brace `if/else` bodies.
 - **`test-falcor` red on an otherwise-green PR is usually external-CI infra** (403 /
   rate-limit at submit), not your code; a 403 won't self-heal via re-run.
@@ -108,6 +111,28 @@ A smaller unit-test-framework trap: `SLANG_CHECK(x)` expands with a trailing `;`
 an unbraced `if`/`else` body dangles the `else` — brace both branches
 [SLANG_CHECK carries a trailing semicolon — brace if/else bodies](../learnings/1788368280378-slang-check-macro-carries-a-trailing-semicolon-bra.md).
 
+**A green full `slang-test` does not cover `slang-static-unit-test`, so checker changes
+must run it.** It is a separate binary (CI job `ci-slang-static-unit-test.yml`) that exists
+only when `SLANG_LIB_TYPE=STATIC`, slang-test never runs it, and draft PRs skip CI, so a
+failure surfaces only at ready-for-review. Its fixtures build AST shapes by hand that the
+parser never makes, e.g. a synthesized struct whose `TransparentModifier` VarDecl has
+`type.type` but no `type.exp`, so they catch over-strict invariants in semantic-check
+changes. On PR #13880 a new `SLANG_RELEASE_ASSERT` passed 11142/11145 slang-test but failed
+`synthesizedDeclarationRegistryDrainsNewRoots` (master 61/0, head 60/1), because an
+invariant that holds for every parser-produced decl does not hold for these fixtures. The checker detail behind it: any `VarDeclBase` with `type.exp == nullptr`
+jumps straight to `DefinitionChecked` in `checkVarDeclCommon`, so a compiler-synthesized
+decl with a preset `type.type` skips the intermediate check states, which matters whenever a
+PR adds work to one of them. Reproduce the CI job in a separate build directory (about 5 min
+on 64 cores for Release; the normal build is untouched):
+
+```
+cmake --preset default -B build-static -DSLANG_LIB_TYPE=STATIC -DSLANG_SLANG_LLVM_FLAVOR=DISABLE -DSLANG_ENABLE_DXIL=OFF -DSLANG_DXC_BUILD_FROM_SOURCE=OFF -DSLANG_IGNORE_ABORT_MSG=ON
+cmake --build build-static --config Release --target slang-static-unit-test -j 30
+./build-static/Release/bin/slang-static-unit-test   # "N passed, M failed, K ignored"
+```
+
+[slang-static-unit-test is outside slang-test; checker changes must run it](../learnings/1792708046939-slang-static-unit-test-is-outside-slang-test-check.md).
+
 ## GPU-free test authoring and CI-infra triage
 
 You can author deterministic value-correctness tests for wave/subgroup changes
@@ -123,7 +148,7 @@ admin-merge past a persistent Falcor 403, and backtick-wrapped `Fixes #N` does N
 auto-close
 [test-falcor red is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [Nightly Slang Test red has TWO distinct causes — don't conflate](../learnings/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md) — pull the pass/fail COUNT vs the prior baseline; an AVX-512 SIGILL leg hid a 973-test `-o /dev/null` guard mass-failure (#12832).
 - [`-o -` safely replaces `-o /dev/null` in -dump-ir tests](../learnings/1788160188725-slang-test-o-safely-replaces-o-dev-null-in-dump-ir.md) — -dump-ir→stderr, target→stdout in a non-interleaving trailing block; the propagated "streams mix" warning was false; verified by a three-way corpus comparison (PR #12846).
@@ -135,6 +160,7 @@ auto-close
 - [Test-observability counters on libslang-internal classes need an SLANG_API accessor](../learnings/1788347873226-test-observability-counters-on-libslang-internal-c.md) — #12863 r2; -fvisibility=hidden → per-DSO copy; use an SLANG_API accessor defined in libslang; not every testsOnly* hook is exported.
 - [Test-observability counters must be SLANG_API-exported accessors, not plain class statics](../learnings/1788347896374-test-observability-counters-on-libslang-internal-c.md) — sibling of the above (#12863); a bare class static read cross-DSO always reads 0 → CI false-negative; the exported-singleton inline precedent misleads.
 - [Slang unit tests for non-exported source/slang symbols must live in slang-static-unit-test](../learnings/1788242011293-slang-unit-tests-for-non-exported-source-slang-sym.md) — #12861; libslang is -fvisibility=hidden so out-of-line methods are LOCAL; slang-static-unit-test links statically (auto-globbed, required CI on 3 platforms); SLANG_CHECK doesn't abort.
+- [slang-test and draft-PR CI skip it; hand-built AST fixtures catch over-strict asserts (#13880); STATIC build recipe; `checkVarDeclCommon` skips states when `type.exp` is null](../learnings/1792708046939-slang-static-unit-test-is-outside-slang-test-check.md)
 - [SLANG_CHECK macro carries a trailing semicolon — brace if/else bodies](../learnings/1788368280378-slang-check-macro-carries-a-trailing-semicolon-bra.md) — the macro's own `;` plus yours dangles the else; brace both branches; clang-format has no Insert/RemoveBraces so they survive.
 - [test-falcor red on an otherwise-green PR is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md) — fails at submit (403/rate-limit); a 403 won't self-heal; maintainers admin-merge past it; backtick `Fixes #N` doesn't auto-close.
 - [Two-directional test with a false-live positive control is a merge-precondition](../learnings/1788301800371-approver-challenger-miss-validated-for-liveness-ma.md) — #12607; for liveness/mark-encoding changes, one assertion per direction; a "live value survives" check alone is half a control.

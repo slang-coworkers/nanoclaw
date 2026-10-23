@@ -3,7 +3,7 @@ title: "Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission"
 type: concept
 group: slang-backends
 tags: [spirv, descriptor-handle, bindless, spvBindlessTextureNV, spvDescriptorHeapEXT, descriptor-heap, nonuniform, constantbuffer, std140, acceleration-structure]
-source_count: 33
+source_count: 34
 ---
 
 # Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission
@@ -27,7 +27,7 @@ How `DescriptorHandle<T>` lowers on SPIR-V under the default heap path, `spvBind
 - The heap `ConstantBuffer` StorageBuffer flip (#11647) was deliberate: the descriptor KIND (Uniform vs Storage) and the buffer-pointer addressing class are separate, and per spec the `OpTypeBufferEXT` and `OpBufferPointerEXT` storage classes are independent. PR #12256 (#12226) keeps a Uniform descriptor and uses an untyped Uniform data pointer.
 - `-capability spvDescriptorHeapEXT` changes only `DescriptorHandle<T>` lowering: a plain `ParameterBlock<T>` param keeps set/binding. Use `ConstantBuffer<T>.Handle` (needs `UntypedPointersKHR`), a `T*` BDA param, or `[vk::push_constant] ConstantBuffer<T>`.
 - A static emit-crash hypothesis needs a debug-build confirmation; an orphan inst reaching emit points at a clone/specialize pass.
-- An atomic on `RWTexture2D<uint>.Handle` still emits format `Unknown` and fails spirv-val on v2026.20 (#11130). The issue is closed, but its fix was reverted before the release, and no format attribute helps. A closed issue is not a shipped fix: check the fixing PR for a revert and compare against the release tag.
+- An atomic on `RWTexture2D<uint>.Handle` still emits format `Unknown` and fails spirv-val on v2026.20 and master. #11130 is closed, but its fix was reverted before the release, and no format attribute helps; point users at the OPEN tracker #10024. A closed issue is not a shipped fix: check the fixing PR for a revert and compare against the release tag.
 
 ## Descriptor-load coalescing (#12051, PR #12111)
 
@@ -80,9 +80,11 @@ The untyped path was estimated at ~5-8 new untyped-aware consumers, i.e. an emit
 
 **`-capability spvDescriptorHeapEXT` changes only `DescriptorHandle<T>` lowering.** Verified with release slangc v2026.20: a plain `uniform ParameterBlock<T>` entry-point param still gets `DescriptorSet 0`/`Binding 0` and no DescriptorHeapEXT capability, so Vulkan validation asks for `VkShaderDescriptorSetAndBindingMappingInfoEXT`. The native heap route is `uniform ConstantBuffer<T>.Handle h` (dereferenced as `*h`): a `uint2` handle in a PushConstant block, `OpTypeBufferEXT Uniform`, `OpBufferPointerEXT`, `OpUntypedAccessChainKHR`, and no set/binding. `ParameterBlock<T>.Handle` is rejected (E30027 member not found). That route needs `OpCapability UntypedPointersKHR` (SPV_KHR_untyped_pointers), so tell users so. Two routes without untyped pointers also compile on v2026.20: a `T*` buffer-device-address param needs only `PhysicalStorageBufferAddresses`, and `[vk::push_constant] ConstantBuffer<T>` needs only `OpCapability Shader`. The VK_EXT_descriptor_heap proposal lists VK_KHR_shader_untyped_pointers as a dependency (proposal only; the final spec was not checked). Spec access from the container: docs.vulkan.org and registry.khronos.org return 403 to WebFetch, while `raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/proposals/VK_EXT_descriptor_heap.adoc` works ([spvDescriptorHeapEXT does not remove set/binding from ParameterBlock/ConstantBuffer params](../learnings/1792525428195-spvdescriptorheapext-does-not-remove-set-binding-f.md)).
 
-## Texture atomics through a handle: format Unknown (#11130)
+## Texture atomics through a handle: format Unknown (#10024; closed #11130)
 
 Consider `RWTexture2D<uint>.Handle h;` used with `InterlockedOr(h[p], 1)` on SPIR-V. A plain `RWTexture2D<uint>` global gets format `R32ui`, but the handle's `OpTypeImage` still has format `Unknown` on v2026.20, so spirv-val fails it: VUID-04658 without `spvDescriptorHeapEXT`, VUID-11416 with it. `[format]` and `[vk::image_format]` do not help, whether they sit on the handle, on a local, or on `= ResourceDescriptorHeap[i]`. A buffer-handle atomic (`RWStructuredBuffer<uint>.Handle`) validates. The E41403 validator gap on the same shape (#11506) is a separate bug, on [[wiki/concepts/slang-backends-spirv.md]]. #11130 was closed on 2026-10-14 as fixed by #13537, but #13712 reverted #13537 on 2026-10-16, before v2026.20 was tagged on 10-17. The method generalizes: a closed issue is not a shipped fix, so check the fixing PR for a revert (look for commits that touch its test file) and compare the dates against the release tag ([#11130 closed but not fixed in any release](../learnings/1792612858405-slang-11130-handle-texture-atomics-format-unknown-.md)).
+
+The bug is unchanged at master 653bfdeef4 (2026-10-22), so do not point users at closed #11130. The OPEN tracker is #10024 ("[[format]] not propagated through DescriptorHandle", csyonghe, milestone Q1 2027, "requires a big refactoring"). The likely root cause is that format inference runs only when the variable type unwraps to `TextureTypeBase`: in `maybeApplyLayoutModifier` (`slang-check-decl.cpp:2585-2600`), and in `slang-ir-resolve-texture-format.cpp:134-154`, which handles only global texture and texture-array insts. A handle is neither, so it never gets a format. The workaround that validates is `RWStructuredBuffer<uint>.Handle` [DescriptorHandle textures get no image format: open tracker is #10024](../learnings/1792658643801-slang-descriptorhandle-textures-get-no-image-forma.md).
 
 ## Emit crashes on the heap path
 
@@ -100,7 +102,7 @@ Consider `RWTexture2D<uint>.Handle h;` used with `InterlockedOr(h[p], 1)` on SPI
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (33):**
+**Source learnings (34):**
 - [#12051 reload is emit artifact (OpCopyObject pin); glslang lib tip](../learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)
 - [CORRECTION #12051: OpLoad-per-use is emit-time, not dup helper](../learnings/1784075115135-correction-slang-12051-spir-v-descriptor-reload-is.md)
 - [#12111 pass order; isMovableInst rejects descriptor-heap loads](../learnings/1784269362740-slang-12111-spir-v-legalize-pass-ordering-removere.md)
@@ -134,3 +136,4 @@ Consider `RWTexture2D<uint>.Handle h;` used with `InterlockedOr(h[p], 1)` on SPI
 - [spvDescriptorHeapEXT does not remove set/binding from ParameterBlock/ConstantBuffer params; use ConstantBuffer<T>.Handle](../learnings/1792525428195-spvdescriptorheapext-does-not-remove-set-binding-f.md) — the capability affects only DescriptorHandle lowering; `.Handle` needs UntypedPointersKHR; BDA `T*` and `[vk::push_constant]` alternatives; #12226 fixed in v2026.20
 - [Slang #11496 SPIR-V SIGSEGV — static getFormatInst() triage hypothesis was wrong](../learnings/1780768927407-slang-11496-spir-v-sigsegv-static-getformatinst-tr.md)
 - [Slang #11130 (handle texture atomics, format Unknown) is closed but NOT fixed in any release](../learnings/1792612858405-slang-11130-handle-texture-atomics-format-unknown-.md) — `RWTexture2D<uint>.Handle` atomic stays `Unknown` on v2026.20; #13537 reverted by #13712 before the tag; buffer handles validate
+- [Slang DescriptorHandle textures get no image format: open tracker is #10024, not closed #11130](../learnings/1792658643801-slang-descriptorhandle-textures-get-no-image-forma.md) — still `Unknown` at master 653bfde; format inference only for `TextureTypeBase` globals; buffer-handle workaround

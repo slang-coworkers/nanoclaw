@@ -8,199 +8,303 @@ source_count: 27
 
 ## TL;DR
 
-GLSL/WGSL emit and front-end facts, plus the bindless-via-glsl CI leg, buffer layout defaults, and a GLSL-operator overload regression:
-
-- **The WGSL emitter has TWO type paths** — `_emitType` (routing) and `emitSimpleTypeImpl` (the actual name). A grep hit in the router tells you nothing about whether the name path handles a type; a new IR type usually needs a case in the latter.
-- **GLSL and Core are SEPARATE builtin modules**, so marking a core-module builtin `internal` makes it invisible to `glsl.meta.slang` call sites and breaks the core-module build. Verify cross-module references and MEASURE with a core-module rebuild before recommending a visibility fix.
-- **Slang's default Vulkan/SPIR-V buffer layout is std430 (StructuredBuffer) / std140 (ConstantBuffer), NOT natural/scalar/C** — there is no auto-scalar at Vulkan 1.4. And Slang "natural"/scalar is TIGHTER than C (packs into tail padding), so `scalar ≠ C`.
-- **On `-target wgsl-spirv(-asm)` (WGSL via Tint) the WGSL sub-context's format is WGSL, but `getTarget()` still reports `WGSLSPIRV*`**, so exact `== CodeGenTarget::WGSL` checks (buffer layout rule, `emitEntryPoints`, ir-link) are the bug class; use `isWGPUTarget()`. A layout fix there also changes matrix storage. Tint rows run only on Windows x64 CI and do not cover buffer lowering; capture Tint's input GPU-free with a stub `slang-tint` (`-tint-path <dir>`) or a fake shared-library loader.
-- **Bindless storage-buffer heaps with a dynamic index emit GLSL missing `GL_EXT_nonuniform_qualifier`** — glslang rejects it, and the "block operand" second error is a red herring (error-recovery cascade; a constant index compiles clean). `-vk` bindless-buffer tests MUST carry `-emit-spirv-directly` or they hard-fail the shared "Test Slang via glsl" CI step (appearing on dx+vk+cuda jobs).
-- **`early_fragment_tests` as a GLSL input qualifier was rejected (E31217)** though the entire backend already existed via `[earlydepthstencil]` — only front-end recognition was missing. PR #13033 adds it; first release v2026.18.2. Before that, put `[earlydepthstencil]` on the GLSL `main()` instead.
-- **`globallycoherent` on a function parameter is rejected in default mode** by a fall-through in `isModifierAllowedOnDecl` omitting `ParamDecl`; a second gate hides behind it. And "-allow-glsl permitted here" ≠ "the source language is GLSL."
-- **DXC duplicate-semantic behavior is backend-split** (DXIL errors, SPIR-V has an index-0 gap); Slang's silent re-index is Metal/WGSL-only.
-- **A GLSL-operator overload ambiguity under 202c** is caused by REDUNDANT equal-rank glsl spellings, not by unreachable `OverloadRank` — capture the actual surviving candidate set before theorizing.
-- **`import glsl;` (or `-lang glsl`) on WGSL/Metal hits E36107 from `glsl.meta.slang` `[require]` gates that predate WGSL** (matrix `operator*`/`*=` gated `cpp_cuda_glsl_hlsl_spirv_llvm`, #13350). Widening the gate alone suffices only when the body forwards to a callee that already has metal/wgsl cases (`mul`); 634 of 698 gates omit wgsl.
-- **GLSL interface blocks never compile for Metal/WGSL** — `Std140DataLayout` is `[require(spirv)] [require(glsl)]`, and uniform blocks default to std140.
-- **GLSL combined-sampler calls parenthesize every argument** (`texture((name_0), …)`), so check `texture({{.*}}name`. `-profile …+GL_EXT_X` / `-capability GL_EXT_X` never emit `#extension`; only a per-use `__requireCapability`/`__glsl_extension` does.
-- **The shader-visible `DescriptorHandle` `uint2` is `.x`=heap/array index, `.y`=0 for an ORDINARY handle — NOT a 64-bit low/high split.** The 64-bit-value reading holds ONLY for an acceleration structure (`__asuint64`, and only on some targets), and `.x`=texture / `.y`=sampler holds ONLY in the combined-sampler SPLIT lowering — scope every claim; this is distinct from the host/runtime `uint64` packing (D3D12 2×32-into-64, Metal 128b).
+- **WGSL emit has two type paths**: `_emitType` routes, `emitSimpleTypeImpl` emits the name. A router grep hit is not coverage; a new IR type usually needs a case in `emitSimpleTypeImpl`.
+- **GLSL and Core are separate builtin modules**: a core decl marked `internal` is invisible to `glsl.meta.slang` callers and breaks the core-module build. Measure visibility fixes with a rebuild.
+- **Default Vulkan/SPIR-V buffer layout is std430 (structured buffers, push constants) / std140 (ConstantBuffer)**; no auto-scalar at Vulkan 1.4. Scalar is tighter than C (packs into tail padding), so `scalar ≠ C`.
+- **A GLSL SSBO reflects as a simple type layout**: element and container var-layout accessors both return nullptr.
+- **On `-target wgsl-spirv(-asm)` (WGSL via Tint) the sub-context format is WGSL but `getTarget()` reports `WGSLSPIRV*`.** Exact `== CodeGenTarget::WGSL` checks are the bug class; use `isWGPUTarget()`. A layout-rule fix there also changes matrix storage.
+- **Tint rows run only on Windows x64 CI and skip WGSL buffer lowering.** Capture Tint's input GPU-free with a stub `slang-tint` (`-tint-path <dir>`) or a fake library loader; validate with naga, wgpu-py or Dawn null.
+- **A bindless storage-buffer heap with a dynamic index emits GLSL without `GL_EXT_nonuniform_qualifier`**; the "block operand" error after it is a glslang cascade. Test buffer-only: a texture heap masks the gap.
+- **`-vk` bindless tests that dynamically index a heap need `-emit-spirv-directly`**, or they fail the shared "Test Slang via glsl" step in every GPU job (dx+vk+cuda). That looks backend-agnostic but is not.
+- **Shader-visible `DescriptorHandle` `uint2`: ordinary handle = `.x` index, `.y` = 0, not a 64-bit split.** Only an acceleration structure is 64-bit (some targets); `.x`/`.y` = texture/sampler only in the split combined-sampler lowering.
+- **`early_fragment_tests` needed only front-end recognition** (backend exists via `[earlydepthstencil]`). PR #13033 first ships in v2026.18.2; before that, put `[earlydepthstencil]` on GLSL `main()`. Check every patch tag for a first fixed release.
+- **`globallycoherent` on a parameter is rejected in default mode** (`isModifierAllowedOnDecl` omits `ParamDecl`; a second gate hides behind it). "GLSL permitted" (`-allow-glsl`) ≠ "source is GLSL".
+- **DXC duplicate semantics are backend-split** (DXIL errors on `TEXCOORD`+`TEXCOORD0`, DXC SPIR-V does not); Slang's silent re-index is Metal/WGSL-only.
+- **A 202c GLSL-operator ambiguity comes from redundant equal-rank glsl spellings, not unreachable `OverloadRank`.** Capture the surviving candidates and ranks before theorizing.
+- **`import glsl;` on WGSL/Metal hits E36107 from `glsl.meta.slang` `[require]` gates that predate WGSL** (634 of 698 omit wgsl). Widening a gate alone works only if the body forwards to a callee with metal/wgsl cases.
+- **GLSL interface blocks never compile for Metal/WGSL**: `Std140DataLayout` is spirv/glsl-only and uniform blocks default to std140.
+- **GLSL combined-sampler calls parenthesize every argument**: CHECK `texture({{.*}}name`. `-profile …+GL_EXT_X` / `-capability` never emit `#extension`; only per-use `__requireCapability`/`__glsl_extension` does.
+- **Re-verify DeepWiki-sourced facts on your own instrument** (source, vendored DXC, a rebuild).
 
 ## Two type paths in the C-like emitters (WGSL example)
 
-The C-like emitter family splits type handling into `_emitType` (declarator/routing) and `emitSimpleTypeImpl` (the actual name), and a symbol present in one is not coverage in the other. During slang#12535, a claim that "WGSL already handles `AttributedType`" rested on a grep hit at `slang-emit-wgsl.cpp:933` — but that hit was in `_emitType`, whose `case kIROp_AttributedType:` only ROUTES the type to `emitSimpleTypeAndDeclarator`; the function that actually emits the type NAME (`emitSimpleTypeImpl`) had NO `AttributedType` case, so a `unorm float` reaching the name path emitted an EMPTY type → invalid WGSL (only Windows DX runners exercised it). The reusable guard: symbol-present ≠ path-covered — after a grep hit, identify the enclosing function and confirm it's the one on the path you care about; a new IR type/attribute usually needs a case in `emitSimpleTypeImpl`, not the router ([WGSL emit has TWO type paths — a grep hit in one is not coverage in the other](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md)).
+The C-like emitters split type handling into `_emitType` (declarator and routing) and
+`emitSimpleTypeImpl` (the type name). During slang#12535, a claim that WGSL "already handles
+`AttributedType`" rested on a grep hit at `slang-emit-wgsl.cpp:933`. That `case kIROp_AttributedType:`
+was in `_emitType` and only routed to `emitSimpleTypeAndDeclarator`; `emitSimpleTypeImpl` had no
+case, so a `unorm float` emitted an empty type and invalid WGSL (only Windows DX runners exercised
+it). After a grep hit, identify the enclosing function and confirm it is on the path you care about
+([WGSL emit has TWO type paths](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md)).
 
 ## Cross-module visibility: GLSL is a separate builtin module
 
-`internal` = visible only within the SAME module, and the builtin modules are NOT one module: the Core builtin module is `core.meta.slang`+`hlsl.meta.slang`+`diff.meta.slang` concatenated, while GLSL is a SEPARATE builtin module (separate `coreLanguageScope`/`glslLanguageScope`). So marking a `core.meta.slang` decl `internal` makes it invisible to any call site in `glsl.meta.slang` — measured: adding `internal` to `__getLegalizedSPIRVGlobalParamAddr` (called from 8 `case spirv:` arms in glsl.meta.slang) fails the core-module rebuild with 360× `E30600 declaration not accessible`. Before recommending a visibility/gating fix for a core-module builtin, check whether it is referenced from ANOTHER builtin module (`grep glsl.meta.slang`), and MEASURE the fix with a core-module rebuild (the effect is a build-time visibility failure invisible to source reading). Working alternatives: `[require(spirv)]` (builds clean, rejects non-spirv user calls at check time but a spirv-targeting user still reaches the emit ICE — necessary-not-sufficient), or move the declaration into `glsl.meta.slang` next to its callers (precedent: `__imageTexelPointer`) ([internal modifier breaks cross-builtin-module calls — GLSL is a separate module from Core](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md)).
+`internal` means visible within the same module only. The Core builtin module is
+`core.meta.slang`+`hlsl.meta.slang`+`diff.meta.slang`; GLSL is a separate module
+(`glslLanguageScope`, not `coreLanguageScope`). Adding `internal` to
+`__getLegalizedSPIRVGlobalParamAddr`, which 8 `case spirv:` arms in glsl.meta.slang call, fails the
+core-module rebuild with 360× `E30600 declaration not accessible` — a build-time failure that source
+reading does not show. Before a visibility or gating fix, grep `glsl.meta.slang` for callers and measure with a rebuild. Alternatives: `[require(spirv)]`
+builds and rejects non-spirv user calls at check time, but a spirv-targeting user still reaches the
+emit ICE (necessary, not sufficient); or move the declaration into `glsl.meta.slang` next to its
+callers (precedent: `__imageTexelPointer`)
+([internal breaks cross-builtin-module calls](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md)).
 
 ## Buffer layout defaults and reflection
 
-Slang's default Vulkan/SPIR-V buffer layout, with no option given, is **std430** for StructuredBuffer/RWStructuredBuffer elements, **std140** for ConstantBuffer, std430 for push constants — there is NO code path that auto-enables scalar layout at Vulkan 1.4 (the 1.4 code in spirv-legalize is storage-class, unrelated to element layout). Scalar/C/DX are reached ONLY via explicit `-fvk-use-scalar-layout`/`-fvk-use-c-layout`/`-fvk-use-dx-layout` or the per-buffer generic `StructuredBuffer<T, ScalarDataLayout|...>`. Tightness ordering (non-obvious): scalar/natural ⊂ C ⊂ std430 ⊂ std140 — Slang's "natural"/scalar layout is TIGHTER than C (it packs a trailing field into a prior struct field's tail padding), so `scalar ≠ C` for nested structs; don't assume `-fvk-use-scalar-layout` gives C-compatible layout. The Vulkan tutorial's "Slang auto-scalar at 1.4 / default==natural" claims are inaccurate ([Slang default Vulkan/SPIR-V buffer layout is std430/std140, not natural/scalar; scalar≠C](../learnings/1787601323178-slang-default-vulkan-spir-v-buffer-layout-is-std43.md)). The tutorial's own example cannot show any difference either (#12714, v2026.20): `struct MyData { float3 a; float b; }` in a `RWStructuredBuffer` gets `b`@12 and stride 16 under default std430, `-fvk-use-scalar-layout` and `-fvk-use-c-layout` alike. A discriminating type is `struct S{double x; int y;}; struct U{S z; float w;}`: std430 and C give `w`@16 with stride 24, scalar gives `w`@12 with stride 16. Check without the reflection API by grepping `slangc -target spirv-asm` output for `OpMemberDecorate ... Offset` and `ArrayStride` ([MyData{float3; float} cannot tell std430 from scalar](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md)).
+With no option given, Slang's Vulkan/SPIR-V layout is **std430** for StructuredBuffer and
+RWStructuredBuffer elements and push constants, and **std140** for ConstantBuffer. No code path
+auto-enables scalar layout at Vulkan 1.4 (the 1.4 code in spirv-legalize is about storage class).
+Scalar, C and DX layouts come only from `-fvk-use-scalar-layout` / `-fvk-use-c-layout` /
+`-fvk-use-dx-layout` or a per-buffer `StructuredBuffer<T, ScalarDataLayout|...>`. Tightness order:
+scalar/natural ⊂ C ⊂ std430 ⊂ std140. Scalar packs a trailing field into a prior struct field's tail
+padding, so it is not C-compatible for nested structs. The Vulkan tutorial's "auto-scalar at 1.4" claim is wrong
+([default layout is std430/std140; scalar≠C](../learnings/1787601323178-slang-default-vulkan-spir-v-buffer-layout-is-std43.md)).
+The tutorial's own `struct MyData { float3 a; float b; }` cannot show a difference (#12714,
+v2026.20): `b`@12, stride 16 under std430, scalar and C alike. A discriminating type is
+`struct S{double x; int y;}; struct U{S z; float w;}` — std430 and C give `w`@16, stride 24; scalar
+gives `w`@12, stride 16. Check without the reflection API by grepping `slangc -target spirv-asm` for
+`OpMemberDecorate ... Offset` and `ArrayStride`
+([MyData cannot tell std430 from scalar](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md)).
 
-A reflection subtlety: a `GLSLShaderStorageBuffer<T>` reflects with a plain simple type layout, NOT a `ParameterGroupTypeLayout` — so `spReflectionTypeLayout_GetElementVarLayout()` AND `spReflectionTypeLayout_getContainerVarLayout()` **both return `nullptr`** for it (both accessors return non-null only inside `if (auto pg = as<ParameterGroupTypeLayout>(typeLayout))`). An SSBO's type layout is a `SimpleLayoutInfo` via the standalone `GetObjectLayout` branch; only ConstantBuffer/TextureBuffer/ParameterBlock get a `ParameterGroupTypeLayout` with non-null element+container. The method lesson: a DeepWiki-sourced "high confidence" claim (that an SSBO has a non-null element var-layout and null container — the exact opposite) was flatly wrong; re-verify any load-bearing factual claim on your own instrument (read the accessor impls + the layout-construction branch + the AST class hierarchy) before relaying it ([GLSL SSBO reflection layout has null element AND null container var-layout](../learnings/1787660189955-glsl-ssbo-reflection-layout-has-null-element-and-n.md)).
+A `GLSLShaderStorageBuffer<T>` reflects as a plain `SimpleLayoutInfo` (the standalone
+`GetObjectLayout` branch), not a `ParameterGroupTypeLayout`. So
+`spReflectionTypeLayout_GetElementVarLayout()` and `spReflectionTypeLayout_getContainerVarLayout()`
+both return `nullptr`; they are non-null only inside `if (auto pg = as<ParameterGroupTypeLayout>(...))`,
+which ConstantBuffer/TextureBuffer/ParameterBlock reach. A DeepWiki "high confidence" answer claimed
+the opposite; read the accessors, the layout-construction branch and the AST hierarchy first
+([SSBO reflection: null element and container](../learnings/1787660189955-glsl-ssbo-reflection-layout-has-null-element-and-n.md)).
 
 ## WGSL via Tint (`-target wgsl-spirv(-asm)`): requested target vs. sub-context format
 
 On `-target wgsl-spirv`/`wgsl-spirv-asm`, Slang emits WGSL in a sub-CodeGenContext whose format
-comes from `_getDefaultSourceForTarget(WGSLSPIRV) == WGSL` (slang-code-gen.cpp:278, :509/:534), and
-then hands that WGSL to Tint. The sub-context shares `m_shared`, so `getTargetReq()->getTarget()`
-still reports `WGSLSPIRV`/`WGSLSPIRVAssembly`. Code that switches on
-`codeGenContext->getTargetFormat()` (`linkAndOptimizeIR` in slang-emit.cpp, the C-like emitter,
-lower-combined-texture-sampler) is therefore already correct on the Tint path. The bugs are exact
-comparisons against `TargetRequest::getTarget()` or against the outer context's format. Known
-instances: `getTypeLayoutRuleNameForBuffer` (slang-ir-lower-buffer-element-type.cpp:2414-2417)
-checks `== CodeGenTarget::WGSL`, then `isKhronosTarget` (GLSL/SPIR-V only), and returns Natural, so
-the WGSL std140 16-byte vec4 packing of cbuffer scalar arrays (:662-692) never runs even though the
-front end still applies WGSL layout rules (slang-type-layout.cpp:2984) (#13381/#13391);
-`emitEntryPoints` (slang-code-gen.cpp:1238-1302, the #8323 abort); and
-`doesTargetAllowUnresolvedFuncSymbol` in slang-ir-link.cpp, where an `-incomplete-library` extern
-gives E45001 on the Tint path only. The fix is `isWGPUTarget()`
-[WGSL-via-tint bugs: check the REQUESTED target](../learnings/1790934790391-wgsl-via-tint-bugs-check-the-requested-target-not-.md),
-[wgsl-spirv-asm rows do not exercise WGSL std140](../learnings/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md).
+comes from `_getDefaultSourceForTarget(WGSLSPIRV) == WGSL` (slang-code-gen.cpp:278, :509/:534) and
+hands it to Tint. The sub-context shares `m_shared`, so `getTargetReq()->getTarget()` still reports
+`WGSLSPIRV`/`WGSLSPIRVAssembly`. Code that switches on `codeGenContext->getTargetFormat()`
+(`linkAndOptimizeIR`, the C-like emitter, lower-combined-texture-sampler) is correct there; the bugs
+are exact comparisons against `getTarget()` or the outer context's format:
+`getTypeLayoutRuleNameForBuffer` (slang-ir-lower-buffer-element-type.cpp:2414-2417) checks
+`== CodeGenTarget::WGSL`, then `isKhronosTarget`, and returns Natural, so the WGSL std140 vec4
+packing of cbuffer scalar arrays (:662-692) never runs although the front end applies WGSL layout
+rules (slang-type-layout.cpp:2984) (#13381/#13391); `emitEntryPoints` (slang-code-gen.cpp:1238-1302,
+the #8323 abort); and `doesTargetAllowUnresolvedFuncSymbol` in slang-ir-link.cpp (an
+`-incomplete-library` extern gives E45001 on the Tint path only). The fix is `isWGPUTarget()`
+([WGSL-via-tint: check the REQUESTED target](../learnings/1790934790391-wgsl-via-tint-bugs-check-the-requested-target-not-.md)).
+Coverage is thin: slang-tint is fetched only on Windows x64 (CMakeLists.txt:527-539,
+`SLANG_SLANG_TINT_BINARY_URL`), elsewhere the rows fail to load 'tint' and report as ignored, and
+even where it runs a `-target wgsl-spirv-asm` row does not cover WGSL buffer-element lowering; only
+`-target wgsl` rows do
+([wgsl-spirv-asm rows skip WGSL std140](../learnings/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md)).
 
-A layout-rule fix there changes matrices too, not only scalar arrays. With `isWGPUTarget` (PR
-#13402) the Tint targets' storage buffers also move from Natural to Std430, so buffer matrices now go
-through `shouldLowerMatrixType`, which Natural skipped for default-layout matrices.
-`RWStructuredBuffer<float2x2>` on wgsl-spirv-asm went from a native `mat2x2` (bytes 1,2,3,4) to
-`_MatrixStorage_*ColMajorstd430` (1,3,2,4), and `float2x3` from 32 to 24 bytes, which now matches
-reflection. Review any layout-rule change for matrices as well as scalar arrays
-[Tint-path layout fixes also change matrix storage](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md).
+A layout-rule fix there changes matrices too. With `isWGPUTarget` (PR #13402) Tint storage buffers
+move from Natural to Std430, so buffer matrices go through `shouldLowerMatrixType`:
+`RWStructuredBuffer<float2x2>` went from native `mat2x2` (bytes 1,2,3,4) to
+`_MatrixStorage_*ColMajorstd430` (1,3,2,4), and `float2x3` from 32 to 24 bytes, now matching
+reflection. Review layout-rule changes for matrices as well as scalar arrays
+([Tint-path layout fixes change matrix storage](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md)).
 
-Test coverage is thin. slang-tint is fetched only on Windows x64 (CMakeLists.txt:527-539,
-`SLANG_SLANG_TINT_BINARY_URL`). Elsewhere `-target wgsl-spirv-asm` fails with "failed to load
-downstream compiler 'tint'" and the rows are reported as ignored. Even where it runs, a
-`//TEST:SIMPLE: -target wgsl-spirv-asm` "tint validates the fix" row does not cover WGSL
-buffer-element lowering bugs; only `-target wgsl` rows do
-[wgsl-spirv-asm rows do not exercise WGSL std140](../learnings/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md).
+Capturing the WGSL that Slang hands to Tint, on any platform, without a GPU:
 
-Ways to capture the WGSL that Slang hands to Tint, on any platform and without a GPU:
-
-- **CLI stub.** Build a ~10-line `libslang-tint.so` exporting
-  `int tint_compile(tint_CompileRequest*, tint_CompileResult*)` (write `req->wgslCode` to a file,
-  return 1) and `void tint_free_result(tint_CompileResult*)`, per
-  external/slang-tint-headers/slang-tint.h. Run `slangc … -target wgsl-spirv-asm -tint-path <dir>`.
-  Pass a directory; a full .so path fails to load. Diff the capture against `-target wgsl` over
-  every test that has a `-target wgsl` row. To make a `-target wgsl-spirv` SIMPLE row
-  FileCheckable, have the stub return real SPIR-V (from `-target spirv`) and copy it into
-  `build/Release/lib`; slang-test then reports tint as supported
-  [stub slang-tint to see the WGSL passed to tint](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md),
-  [Tint-path layout fixes also change matrix storage](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md).
-- **In-process unit test.** Use `IGlobalSession::setSharedLibraryLoader` with a loader that answers
-  names containing "slang-tint" with a fake `ISlangSharedLibrary` and forwards everything else to
+- **CLI stub.** A ~10-line `libslang-tint.so` exporting `tint_compile(tint_CompileRequest*,
+  tint_CompileResult*)` (write `req->wgslCode` to a file, return 1) and `tint_free_result`, per
+  external/slang-tint-headers/slang-tint.h. Run `slangc … -target wgsl-spirv-asm -tint-path <dir>`
+  (a directory; a full .so path fails to load) and diff against `-target wgsl`. A stub that returns
+  real SPIR-V (from `-target spirv`), copied into `build/Release/lib`, makes slang-test report tint
+  as supported and `-target wgsl-spirv` SIMPLE rows FileCheckable
+  ([stub slang-tint](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md),
+  [Tint-path layout fixes change matrix storage](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md)).
+- **In-process unit test.** `IGlobalSession::setSharedLibraryLoader` with a loader that answers
+  "slang-tint" with a fake `ISlangSharedLibrary` and forwards the rest to
   `DefaultSharedLibraryLoader::getSingleton()` (tools/slang-unit-test/unit-test-wgsl-spirv-tint-input.cpp,
-  PR #13402). An `SLANG_UNEXPECTED` inside getEntryPointCode is caught in
+  PR #13402). An `SLANG_UNEXPECTED` in getEntryPointCode is caught in
   `TargetProgram::getOrCreateEntryPointResult` and returned as SLANG_FAIL + E99997, so assert the
-  diagnostic text, not just failure. `IComponentType` holds a raw `Linkage*`, so keep the ISession
-  alive alongside the linked program
-  [capture the WGSL Slang hands to Tint (any platform)](../learnings/1790957231882-capture-the-wgsl-slang-hands-to-tint-without-tint-.md).
-- **Validate the captured WGSL.** `pip install --target /tmp/x wgpu`: wgpu-py bundles wgpu-native
-  and naga, `request_adapter_sync()` finds llvmpipe, and `create_shader_module(code=...)` raises
-  with naga's validation error
-  [stub slang-tint to see the WGSL passed to tint](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md).
-  A lighter node-only oracle is `npm install naga-wasm@30.2.0` + `validate(parseWgsl(src))`, no GPU,
-  adapter or Rust toolchain needed
-  [GPU-free WGSL check via naga-wasm](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md);
-  see [[wiki/concepts/slang-backends-wgsl-matrix-and-validation.md]].
-  For real Tint diagnostics on any platform, use Dawn's null backend (`npm install webgpu@0.6.2`, `backend=null`); naga rejects spec-valid f16 bitcasts and `enable subgroups;`. See [WGSL emit and GPU-free validation](slang-backends-wgsl-matrix-and-validation.md).
-Metal's constant-buffer path through the same `getTypeLayoutRuleNameForBuffer` is covered on [Metal buffer element lowering](../concepts/slang-backends-metal-buffer-lowering-and-layout-rules.md).
+  diagnostic text; `IComponentType` holds a raw `Linkage*`, so keep the ISession alive
+  ([capture the WGSL Slang hands to Tint](../learnings/1790957231882-capture-the-wgsl-slang-hands-to-tint-without-tint-.md)).
+- **Validate the capture.** `pip install --target /tmp/x wgpu` (bundles naga; `request_adapter_sync()`
+  finds llvmpipe; `create_shader_module` raises naga's error)
+  ([stub slang-tint](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md)),
+  or node-only `npm install naga-wasm@30.2.0` + `validate(parseWgsl(src))`
+  ([GPU-free WGSL check via naga-wasm](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md);
+  [[wiki/concepts/slang-backends-wgsl-matrix-and-validation.md]]). For real Tint diagnostics use
+  Dawn's null backend (`npm install webgpu@0.6.2`, `backend=null`); naga rejects spec-valid f16
+  bitcasts and `enable subgroups;`. See [WGSL emit and GPU-free validation](slang-backends-wgsl-matrix-and-validation.md).
+
+Metal's cbuffer path through `getTypeLayoutRuleNameForBuffer` is on
+[Metal buffer element lowering](../concepts/slang-backends-metal-buffer-lowering-and-layout-rules.md).
 
 ## Bindless descriptor heaps and the "Test Slang via glsl" CI leg
 
-See also [DescriptorHandle emit on bindless and non-bindless targets](slang-backends-descriptor-handle-emit-and-bindless-targets.md) for the WGSL handle-spelling bug, `bit_cast` lowering out of a handle, and WGSL resource tables (`getResource<T>`).
+See also [DescriptorHandle emit on bindless and non-bindless targets](slang-backends-descriptor-handle-emit-and-bindless-targets.md) for the WGSL handle-spelling bug, `bit_cast` out of a handle, and WGSL resource tables (`getResource<T>`).
 
-Four atoms converge on one gap. A bindless storage-buffer descriptor heap (`RWStructuredBuffer<T>.Handle` / `DescriptorHandle<RWStructuredBuffer<T>>`) read with a DYNAMIC heap index emits GLSL that glslang rejects: `error: 'variable index' : required extension not requested: GL_EXT_nonuniform_qualifier`, followed by a `'+' : wrong operand types ... block{... _data}` error. **The second error is a red herring** — glslang's error-recovery cascade: once it rejects the variable index into the unsized array it can't resolve the chained `._data[j]`, so the residual is the whole block; the emit is structurally fine (`_slang_resource_heap[idx]._data[j]` IS present). Decisive test to disprove the phantom second bug: make the heap index a compile-time CONSTANT (`[0]`) — it then compiles clean, so both errors were one defect ([GLSL bindless: variable descriptor-array index rejection produces a phantom "second bug"](../learnings/1788442267382-glsl-bindless-variable-descriptor-array-index-reje.md)). The root cause: `GLSLSourceEmitter::tryEmitGlobalParamImpl` requests `GL_EXT_nonuniform_qualifier` for any unsized resource array, but the request lived AFTER the structured/byte-address/param-group/SSBO early-returns (which `return true` and skip it); textures fall through and reach it, buffers don't — which is why texture heaps already emit the extension. Fix (Approach A): hoist the single extension-request block ABOVE the early-returns (one source of truth). Masking gotcha: a shader mixing a texture heap with a buffer heap compiles anyway (the texture path requests the extension file-wide and the buffer heap rides on it), so the regression test MUST be buffer-only. Do NOT add `nonuniformEXT(...)`-wrapping — that decoration-propagation question is separate (#12161) ([slang GLSL: bindless buffer heap misses GL_EXT_nonuniform_qualifier; texture heap masks it](../learnings/1788445078995-slang-glsl-bindless-buffer-heap-misses-gl-ext-nonu.md)).
+A bindless storage-buffer heap (`RWStructuredBuffer<T>.Handle` / `DescriptorHandle<RWStructuredBuffer<T>>`)
+read with a dynamic index emits GLSL that glslang rejects with
+`'variable index' : required extension not requested: GL_EXT_nonuniform_qualifier`, then
+`'+' : wrong operand types ... block{... _data}`. The second error is glslang's error-recovery
+cascade (it cannot resolve the chained `._data[j]`); the emitted `_slang_resource_heap[idx]._data[j]`
+is fine. A constant index (`[0]`) compiles clean, proving one defect
+([phantom "second bug"](../learnings/1788442267382-glsl-bindless-variable-descriptor-array-index-reje.md)).
+Root cause: `GLSLSourceEmitter::tryEmitGlobalParamImpl` requests the extension for an unsized
+resource array only after the structured/byte-address/param-group/SSBO early-returns, so textures
+reach it and buffers do not. Fix: hoist the single request above the early-returns. A shader mixing a
+texture heap with a buffer heap compiles anyway (the texture path requests the extension
+file-wide), so the regression test must be buffer-only. Do not add `nonuniformEXT(...)` wrapping;
+decoration propagation is the separate #12161
+([buffer heap misses the extension; texture heap masks it](../learnings/1788445078995-slang-glsl-bindless-buffer-heap-misses-gl-ext-nonu.md)).
 
-The CI consequence: any `-vk` bindless test that dynamically indexes a descriptor heap MUST add `-emit-spirv-directly` to its `COMPARE_COMPUTE` directive, or it fails CI's shared "Test Slang via glsl" cross-check (which re-runs `-vk` tests through the glslang reference path and runs in EVERY GPU `test-slang` job — dx/vk/cuda). So a single `-vk` bindless test failure shows up in all three jobs and LOOKS backend-agnostic/infra but is not; the direct-SPIR-V path (default on Linux/macOS `-vk`) is unaffected. `-emit-spirv-directly` overrides the injected `-emit-spirv-via-glsl` (`slang-test-main.cpp:4263`); precedent: `desc-handle-test-input.slang:1`. The triage meta-lessons: don't accept a "backend-agnostic failure → not my change" argument at face value — pull the failing job log (three runners failing the same step deterministically ⇒ real code, not a bad box); and separate the bot-PR priority-yield (all real jobs `skipped`) from actual failures ([bindless -vk tests need -emit-spirv-directly (via-glsl CI leg)](../learnings/1788440528410-bindless-vk-tests-need-emit-spirv-directly-via-gls.md), [bindless RWStructuredBuffer.Handle -vk tests must use -emit-spirv-directly](../learnings/1788441444776-bindless-rwstructuredbuffer-handle-vk-tests-must-u.md)).
+CI consequence (PR #12800, gap #12897): a `-vk` bindless test that dynamically indexes a heap must
+add `-emit-spirv-directly` to its `COMPARE_COMPUTE` directive. Otherwise it fails the shared "Test
+Slang via glsl" step, which re-runs `-vk` tests through glslang in every GPU `test-slang` job, so it
+fails on dx, vk and cuda alike; the direct-SPIR-V path (default on Linux/macOS) is unaffected. The
+per-directive flag overrides the injected `-emit-spirv-via-glsl` (`slang-test-main.cpp:4263`);
+precedent `desc-handle-test-input.slang:1`. Reproduce GPU-free with
+`slangc <test> -emit-spirv-via-glsl -target spirv-asm -stage compute -entry <e>`. Triage: pull the
+job log before accepting "backend-agnostic, not my change" (three runners failing one step
+deterministically is real code); `result code = 1` plus glslang errors is a real via-glsl failure;
+bot-PR reds with every real job `skipped` are the priority-yield
+([bindless -vk tests need -emit-spirv-directly](../learnings/1788440528410-bindless-vk-tests-need-emit-spirv-directly-via-gls.md),
+[RWStructuredBuffer.Handle -vk tests hard-fail via glsl](../learnings/1788441444776-bindless-rwstructuredbuffer-handle-vk-tests-must-u.md)).
 
-**Shader-visible `DescriptorHandle` `uint2` component semantics have three distinct cases, each needing explicit scoping** (verified against `hlsl.meta.slang` HEAD Sep 2026 while reviewing docs PR #12938; distinct from the host/runtime `uint64` packing — D3D12 2×32-into-64, Metal 128b — covered elsewhere). For an **ordinary** handle (single texture/sampler/buffer/CBV), `.x` = index into the resource *or* sampler heap/array and `.y` is unused; default heap-derived construction is literally `uint2(index, 0)` (`:27568`/`:27853` resource, `:27864` sampler), and every lookup reads only `.x` (Sampler `:27970`, Texture `:27976/78`, texel/constant/storage buffers `:27982–27997`, HLSL `:28026/30`, WGSL `:28049`, `spvDescriptorHeapEXT` `:28052/56`) — so for ordinary handles the `uint2` is **NOT** a 64-bit low/high split (a real reader misconception, issue #12937). An **acceleration structure** handle genuinely IS a 64-bit value on the default SPIR-V/GLSL path — `RaytracingAccelerationStructure(__asuint64((uint2)handleValue))` (`:28000`), used as a GPU address — but only "on some targets": HLSL loads AS from the resource heap by `.x` (`:28030`). A **combined texture-sampler** uses `.x`=texture (resource heap), `.y`=sampler (sampler heap) — but only in the SPLIT lowering (HLSL/`spvDescriptorHeapEXT` via `__makeCombinedTextureSamplerFromHandle`); the native SPIR-V combined-image-sampler path (VkMutable) indexes by `.x` alone (`:27972`). Reviewer takeaway for descriptor-handle docs: any blanket claim about `uint2` semantics will be wrong for one of the three cases — scope every statement ("ordinary", "on some targets", "the split representation") and cross-check against the `defaultGetDescriptorFromHandle` / `getDescriptorFromDynamicResourceHeap` target switches, which are the behavioral source of truth ([DescriptorHandle uint2 component semantics (shader-visible, HLSL/GLSL/SPIR-V)](../learnings/1788849400575-descriptorhandle-uint2-component-semantics-shader-.md)).
+**Shader-visible `DescriptorHandle` `uint2` has three cases** (`hlsl.meta.slang` HEAD, Sep 2026,
+docs PR #12938; distinct from host `uint64` packing — D3D12 2×32-into-64, Metal 128b):
+
+- **Ordinary handle** (texture, sampler, buffer, CBV): `.x` = resource- or sampler-heap index, `.y`
+  unused. Construction is `uint2(index, 0)` (`:27568`/`:27853`, sampler `:27864`) and every lookup
+  reads only `.x` (`:27970`–`:27997`, HLSL `:28026/30`, WGSL `:28049`, `spvDescriptorHeapEXT`
+  `:28052/56`). Not a 64-bit low/high split (the #12937 misconception).
+- **Acceleration structure**: a 64-bit GPU address on the default SPIR-V/GLSL path
+  (`RaytracingAccelerationStructure(__asuint64((uint2)handleValue))`, `:28000`); HLSL loads it from
+  the resource heap by `.x` (`:28030`).
+- **Combined texture-sampler**: `.x` = texture, `.y` = sampler only in the split lowering
+  (HLSL/`spvDescriptorHeapEXT`, `__makeCombinedTextureSamplerFromHandle`); native SPIR-V
+  combined-image-sampler (VkMutable) uses `.x` alone (`:27972`).
+
+Scope every statement; the `defaultGetDescriptorFromHandle` /
+`getDescriptorFromDynamicResourceHeap` target switches are the source of truth
+([DescriptorHandle uint2 semantics](../learnings/1788849400575-descriptorhandle-uint2-component-semantics-shader-.md)).
 
 ## Front-end recognition gaps and language-mode subtleties
 
-`layout(early_fragment_tests) in;` under `-allow-glsl` fails with E31217 because `parseLayoutModifier` recognizes bare GLSL layout qualifiers only via a hardcoded list, and `early_fragment_tests` is recognized nowhere — but the ENTIRE backend already exists via the HLSL `[earlydepthstencil]` attribute (which emits on ALL targets: SPIR-V `EarlyFragmentTests`, GLSL `layout(early_fragment_tests) in;`, HLSL, Metal). So a fix needs ONLY front-end recognition — no new IR op/decoration/emitter — mirroring the `local_size_*` path that synthesizes a `NumThreadsAttribute` from an `EmptyDecl` ([GLSL early_fragment_tests input qualifier rejected — backend already exists](../learnings/1787245492858-glsl-early-fragment-tests-input-qualifier-rejected.md)). That fix landed as PR #13033 (#12655, merge 161b0812f, 2026-09-17), and the first release with it is **v2026.18.2**, not v2026.19: `git merge-base --is-ancestor 161b0812f <tag>` is false for v2026.18.1 and true for v2026.18.2, whose tarball emits `OpExecutionMode %main EarlyFragmentTests` for the repro. Name the first fixed release by checking every patch tag that way, not the next minor release ([#12655 fix first ships in v2026.18.2](../learnings/1792422160153-12655-early-fragment-tests-fix-first-ships-in-v202.md)). On older releases the user workaround is to delete the `layout(early_fragment_tests) in;` line and put `[earlydepthstencil]` on the GLSL `void main()`; verified on v2026.14.1, the SPIR-V then carries `OpExecutionMode %main EarlyFragmentTests` ([early_fragment_tests workaround on old Slang](../learnings/1792400641518-glsl-early-fragment-tests-workaround-on-old-slang-.md)).
+`layout(early_fragment_tests) in;` under `-allow-glsl` failed with E31217: `parseLayoutModifier`
+recognizes bare GLSL layout qualifiers from a hardcoded list that lacked it. `[earlydepthstencil]`
+already emits it on all targets (SPIR-V, GLSL, HLSL, Metal), so the fix is front-end recognition
+only, mirroring how `local_size_*` synthesizes a `NumThreadsAttribute` from an `EmptyDecl`
+([early_fragment_tests: backend already exists](../learnings/1787245492858-glsl-early-fragment-tests-input-qualifier-rejected.md)).
+It landed as PR #13033 (#12655, merge 161b0812f, 2026-09-17); the first release is **v2026.18.2**,
+not v2026.19 (`git merge-base --is-ancestor 161b0812f <tag>` is false for v2026.18.1, true for
+v2026.18.2, whose tarball emits `OpExecutionMode %main EarlyFragmentTests`). Check every patch tag
+this way
+([#12655 first ships in v2026.18.2](../learnings/1792422160153-12655-early-fragment-tests-fix-first-ships-in-v202.md)).
+On older releases, delete the layout line and put `[earlydepthstencil]` on the GLSL `void main()`;
+verified on v2026.14.1
+([workaround on old Slang](../learnings/1792400641518-glsl-early-fragment-tests-workaround-on-old-slang-.md)).
 
-`globallycoherent RWByteAddressBuffer buffer` as a function PARAMETER is rejected in default `-lang slang` mode (E31201) but accepted with `-allow-glsl`: `isModifierAllowedOnDecl` has an `if (isGLSLInput) return ... || as<ParamDecl>(decl)` branch, but the non-GLSL fall-through omits `as<ParamDecl>(decl)`. The rejection cascades (a stripped modifier then trips a call-site check E30048 — fix gate #1, not the call-site check), and a second gate hides behind the first (`slang-check-decl.cpp` rejects memory qualifiers on non-`TextureType` params) — both must widen together ([globallycoherent on function params rejected in default Slang mode but allowed in -allow-glsl](../learnings/1787705000586-globallycoherent-on-function-params-rejected-in-de.md)). Relatedly, when refactoring the option-derived `bool isGLSLInput` into a `SourceLanguage`, do NOT resolve it as "prefer TU sourceLanguage first" — for a plain `.slang` file compiled with `-allow-glsl`, `TranslationUnitRequest::sourceLanguage` stays `Slang`, so that ternary would silently drop the `-allow-glsl` case and REJECT supported code. **"GLSL permitted here" (AllowGLSL compatibility mode) ≠ "the source language is GLSL"** — collapsing the two is a behavior decision for a maintainer, and `m_translationUnitRequest` is nullptr on reflection/language-server paths so the `GLSLModuleModifier` fallback is load-bearing ([converting option-derived GLSL bool to SourceLanguage: prefer-TU-first drops the -allow-glsl case](../learnings/1787774464819-converting-option-derived-glsl-bool-to-sourcelangu.md)).
+`globallycoherent RWByteAddressBuffer buffer` as a function parameter is rejected in default
+`-lang slang` mode (E31201) but accepted with `-allow-glsl`: `isModifierAllowedOnDecl` has an
+`if (isGLSLInput) return ... || as<ParamDecl>(decl)` branch, and the non-GLSL fall-through omits
+`ParamDecl`. The stripped modifier then trips a call-site check (E30048; fix the gate, not that
+check), and a second gate in `slang-check-decl.cpp` rejects memory qualifiers on non-`TextureType`
+params, so both must widen
+([globallycoherent on params](../learnings/1787705000586-globallycoherent-on-function-params-rejected-in-de.md)).
+When converting the option-derived `bool isGLSLInput` to a `SourceLanguage`, do not prefer the
+TU's `sourceLanguage` first: a `.slang` file with `-allow-glsl` keeps `sourceLanguage == Slang`, so
+supported code would be rejected. AllowGLSL mode is not "the source is GLSL" (collapsing them is a
+maintainer decision), and the `GLSLModuleModifier` fallback is load-bearing because
+`m_translationUnitRequest` is nullptr on reflection/language-server paths
+([prefer-TU-first drops -allow-glsl](../learnings/1787774464819-converting-option-derived-glsl-bool-to-sourcelangu.md)).
 
-DXC duplicate-semantic behavior is backend-split (verified against the vendored DXC sources under `build/_deps/dxc_source-src/`): on the mixed spelling `TEXCOORD`+`TEXCOORD0` (both index 0), DXIL/native errors (signature lowering normalizes both to `(TEXCOORD,0)`) but DXC SPIR-V does NOT catch the mixed spelling (`getSemanticStr()` returns the raw source string when index==0, so `"TEXCOORD"` ≠ `"TEXCOORD0"` in the dup-check set). Slang's own silent re-index (`fixFieldSemanticsOfFlatStruct`) runs ONLY for Metal/WGSL, not universal; HLSL/D3D output passes semantics through to DXC. Process lesson: read the vendored DXC source, don't state DXC behavior from DeepWiki inference ([CORRECTION: DXC duplicate-semantic behavior is backend-split](../learnings/1788388950993-correction-dxc-duplicate-semantic-behavior-is-back.md)).
+DXC duplicate-semantic behavior is backend-split (vendored DXC, `build/_deps/dxc_source-src/`). For
+`TEXCOORD`+`TEXCOORD0`, DXIL errors (signature lowering normalizes both to `(TEXCOORD,0)`); DXC
+SPIR-V does not (`getSemanticStr()` returns the raw string at index 0, so the dup-check sees two
+names). Slang's silent re-index (`fixFieldSemanticsOfFlatStruct`) is Metal/WGSL-only; HLSL passes
+semantics through. State DXC behavior from its source, not DeepWiki
+([CORRECTION: DXC duplicate semantics backend-split](../learnings/1788388950993-correction-dxc-duplicate-semantic-behavior-is-back.md)).
 
 ## A GLSL-operator overload regression: equal-rank spellings, not unreachable rank
 
-Gating off the generic-parameter-count tie-breaker in `compareOverloadCandidateSpecificity` for 202c regresses `builtin-operator-fastpath-glsl.slang` (`mat*mat`, `vec==vec` become ambiguous under `-std 202c -allow-glsl`). The tempting-but-WRONG diagnosis was "make `OverloadRank` reachable for generics" (the generic early-return supposedly skips it). Empirical candidate-set capture refutes it: for every failing call, BOTH ambiguous candidates live in `glsl.meta.slang`, same operator, IDENTICAL `[OverloadRank(15)]`, differing ONLY in generic-param count; both are FULLY SPECIALIZED at the compare step so the early-return does NOT fire and `OverloadRank` IS reached — but both ranks are equal. So "rank-first for generics" is a no-op here; the real root cause is REDUNDANT same-operator glsl spellings (a broad general form + a narrower specialized form) previously separated ONLY by the now-removed count heuristic. The fix requires a genuine language-design/core-module change (distinct ranks, merge the spellings, or a real structural-specificity rule), NOT the 202c gate alone. **General lesson: when a tie-breaker removal causes ambiguity, capture the ACTUAL surviving candidate set + each candidate's rank + flavor before theorizing about which fallback "should" fire** ([slang#12829: removing generic-param-count tie-breaker regresses glsl operators](../learnings/1787965868058-slang-12829-removing-generic-param-count-tie-break.md), [CORRECTION: slang 12829 glsl regression is equal-rank redundant spellings, not unreachable OverloadRank](../learnings/1787966040183-correction-slang-12829-glsl-regression-is-equal-ra.md)).
+Gating off the generic-parameter-count tie-breaker in `compareOverloadCandidateSpecificity`
+(`slang-check-overload.cpp:2214`) for 202c (#12829) regresses `builtin-operator-fastpath-glsl.slang`:
+`mat*mat`, `vec==vec`, `vec!=vec` become E39999 ambiguous under `-std 202c -allow-glsl`. The wrong
+diagnosis was "the generic early-return at :2420-2426 skips `OverloadRank`". The captured candidate
+set refutes it: both survivors are same-operator `glsl.meta.slang` overloads with identical
+`[OverloadRank(15)]`, differing only in generic-param count (`operator*<let N>(matrix<float,N,N>,…)` :231 vs `operator*<T,let L,C,R>(…)` :255;
+`operator==` :396 vs :344). Both are fully specialized at the compare step, so the early-return does
+not fire and rank is reached at :2433 (probes: ranks 5 vs 9 resolve, 15 vs 15 is ambiguous). The core
+component-wise operators drop out earlier on conversion cost. The root cause is redundant same-operator
+glsl spellings that only the count heuristic separated. The fix needs a core-module/language-design
+change (distinct ranks, merged spellings, or a structural-specificity rule), not the 202c gate
+alone; the maintainer moved spike PR #12830 back to draft over this. Capture the surviving
+candidates with their ranks, flavors and conversion-cost ties before theorizing
+([#12829 regresses glsl operators](../learnings/1787965868058-slang-12829-removing-generic-param-count-tie-break.md),
+[CORRECTION: equal-rank redundant spellings](../learnings/1787966040183-correction-slang-12829-glsl-regression-is-equal-ra.md)).
 
 ## `import glsl;` on WGSL/Metal: `glsl.meta.slang` require gates and std140 blocks
 
-Consider `import glsl;` (or `-lang glsl`, which imports the module implicitly) with a matrix
-`a * b` compiled `-target wgsl` or `-target metal`. It fails E36107 (#13350) because
-`glsl.meta.slang:226-287` gates the three `operator*` and four `operator*=` overloads with
-`[require(cpp_cuda_glsl_hlsl_spirv_llvm, sm_4_0_version)]`. That set predates WGSL support (#3912
-landed before #5006), and the later `*=` overloads (#9501) copied it; the sibling `==`/`!=`
-overloads use `cpp_cuda_glsl_hlsl_metal_spirv_wgsl_llvm`. Unlike the fwidth trap, where widening
-`[require]` also needs a `__target_switch` case (see
-[WGSL/Metal cross-target emission](../concepts/slang-backends-wgsl-metal.md)), widening the gate
-alone is enough here: the bodies only forward to `mul`, which already has metal/wgsl cases, and a
-prototype emitted native `a * b` identical to the GLSL target. The user workaround is that GLSL
-`a * b` equals `mul(b, a)`. Rebuilding only `slang-glsl-module slangc` after
-`cmake -E touch source/slang/glsl.meta.slang` takes a few minutes
-[matrix `*` E36107 is an operator gate, not an emit gap](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md).
-The class is large: 634 of 698 `glsl.meta.slang` `[require]` gates omit wgsl, and after PR #13356
-62 declarations (`mix`, `mod`, `atan(y,x)`, `inversesqrt`, …) are still gated to
-`cpp_cuda_glsl_hlsl_spirv_llvm` (tracked in #13355). Before widening one, check that its callees
-have metal/wgsl cases.
+`import glsl;` (or `-lang glsl`, which imports it implicitly) with a matrix `a * b` on `-target wgsl`
+or `-target metal` fails E36107 (#13350). `glsl.meta.slang:226-287` gates the three `operator*` and
+four `operator*=` overloads with `[require(cpp_cuda_glsl_hlsl_spirv_llvm, sm_4_0_version)]`, a set
+that predates WGSL (#3912 before #5006) and that the later `*=` overloads (#9501) copied; the sibling
+`==`/`!=` use `cpp_cuda_glsl_hlsl_metal_spirv_wgsl_llvm`. Unlike the fwidth trap, which also needs a
+`__target_switch` case (see [WGSL/Metal cross-target emission](../concepts/slang-backends-wgsl-metal.md)),
+widening the gate alone is enough: the bodies forward to `mul`, which has metal/wgsl cases, and a
+prototype emitted native `a * b` like the GLSL target. Workaround: GLSL `a * b` equals `mul(b, a)`.
+Rebuild `slang-glsl-module slangc` after `cmake -E touch source/slang/glsl.meta.slang` (minutes)
+([matrix `*` E36107 is an operator gate](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md)).
+The class is large: 634 of 698 `glsl.meta.slang` `[require]` gates omit wgsl, and after PR #13356, 62
+declarations (`mix`, `mod`, `atan(y,x)`, `inversesqrt`, …) are still gated to
+`cpp_cuda_glsl_hlsl_spirv_llvm` (#13355). Before widening one, check that its callees have
+metal/wgsl cases.
 
-A second gate sits on the layout types rather than on functions. `Std140DataLayout` is
-`[require(spirv)] [require(glsl)]` (`hlsl.meta.slang:41-45`) and `Std430DataLayout` is
-spirv/glsl/llvm only, so any GLSL `layout(std140) uniform {…}` or `buffer {…}` block gives E36107
-on `-target metal` and on wgsl. Dropping the `std140` qualifier doesn't help, because uniform
-blocks default to std140. One consequence is that `tests/glsl/matrix-mul.slang`'s METAL lane has
-never compiled; it passes only because its regex matches the diagnostic's quoted source (see
+A second gate sits on the layout types. `Std140DataLayout` is `[require(spirv)] [require(glsl)]`
+(`hlsl.meta.slang:41-45`) and `Std430DataLayout` is spirv/glsl/llvm only, so any GLSL
+`layout(std140) uniform {…}` or `buffer {…}` block gives E36107 on metal and wgsl. Dropping
+`std140` does not help, because uniform blocks default to std140. Consequently
+`tests/glsl/matrix-mul.slang`'s METAL lane has never compiled; it passes only because its regex
+matches the diagnostic's quoted source (see
 [test authoring](../concepts/slang-tooling-f0909b0-test-authoring-filecheck.md))
-[GLSL interface blocks never compile for Metal](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md).
+([GLSL interface blocks never compile for Metal](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md)).
 
 ## GLSL emit shape: combined-sampler parens and where `#extension` comes from
 
-Two facts from reviewing #13333 (Release build at a05023cd30). First, a combined-sampler call such
-as `SamplerCubeArrayShadow.SampleCmpBias(...)` on `-target glsl` emits
-`texture((combinedShadowCubeArray_0), (_S1), (0.5), (0.25))`, with every argument parenthesized,
-so `CHECK: texture(combinedShadowCubeArray` never matches even on correct output; use
-`texture({{.*}}name`. A separate Texture + `SamplerComparisonState` call emits
-`texture(samplerCubeArrayShadow(tex_0,samp_0), …)` with no extra paren. A reviewer bot's untested
-CHECK sketch had exactly this bug, so run any suggested CHECK at head before posting it. Second,
-`-profile glsl_460+GL_EXT_X` and `-capability GL_EXT_X` do NOT emit `#extension GL_EXT_X`; the
-directive comes only from a per-use `__requireCapability` / `__glsl_extension`
-(`IRRequireTargetExtension`). So a test asserting `#extension` is not made vacuous by a profile
-that already includes the extension, and choosing `glsl_460` over a richer profile is not
-load-bearing. To drill such a test's failability, break the compiler rather than the test: remove
-the wrapper's `__glsl_extension` + `__requireCapability`, or revert `SampleCmpBias`→`SampleCmp` in
-the `glsl.meta.slang` `default:` branch, then `cmake -E touch` the meta file and rebuild
-`generate_core_module_headers` + `slangc` (~3 min on Release). That drill showed the existing
-`sample-cmp.slang` and `intrinsic-texture.slang` passing under the regression while only the new
-per-form tests failed
-[combined-sampler parens; profile caps don't emit `#extension`](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md).
+From reviewing #13333 (Release, a05023cd30). A combined-sampler call such as
+`SamplerCubeArrayShadow.SampleCmpBias(...)` on `-target glsl` emits
+`texture((combinedShadowCubeArray_0), (_S1), (0.5), (0.25))`, so
+`CHECK: texture(combinedShadowCubeArray` never matches; use `texture({{.*}}name`. A separate
+Texture + `SamplerComparisonState` emits `texture(samplerCubeArrayShadow(tex_0,samp_0), …)`. A
+reviewer bot's untested CHECK had this bug; run a suggested CHECK at head before posting it.
+`-profile glsl_460+GL_EXT_X` and `-capability GL_EXT_X` do not emit `#extension GL_EXT_X`; only a
+per-use `__requireCapability` / `__glsl_extension` (`IRRequireTargetExtension`) does. So a profile that includes the extension does not make an `#extension` assertion vacuous. To drill
+failability, break the compiler, not the test: remove the wrapper's `__glsl_extension` +
+`__requireCapability`, or revert `SampleCmpBias`→`SampleCmp` in the `glsl.meta.slang` `default:`
+branch, then `cmake -E touch` the meta file and rebuild `generate_core_module_headers` + `slangc`
+(~3 min on Release). Under that drill `sample-cmp.slang` and `intrinsic-texture.slang` still passed;
+only the new per-form tests failed
+([combined-sampler parens; profile caps don't emit `#extension`](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md)).
 
 **Source learnings (27):**
 
-- [WGSL emit has TWO type paths — a grep hit in one is not coverage in the other](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md) — `_emitType` routes, `emitSimpleTypeImpl` names; a new IR type usually needs a case in the latter; identify the enclosing function after a grep hit.
-- [internal modifier breaks cross-builtin-module calls — GLSL is a separate module from Core](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md) — `internal` = same-module only; GLSL is a separate builtin module; measure with a core-module rebuild; alternatives are `[require(spirv)]` (necessary-not-sufficient) or relocating the decl.
-- [Slang default Vulkan/SPIR-V buffer layout is std430/std140, not natural/scalar; scalar≠C](../learnings/1787601323178-slang-default-vulkan-spir-v-buffer-layout-is-std43.md) — no auto-scalar at Vulkan 1.4; explicit flags/generics only; scalar⊂C⊂std430⊂std140, so scalar is tighter than C.
-- [GLSL SSBO reflection layout has null element AND null container var-layout](../learnings/1787660189955-glsl-ssbo-reflection-layout-has-null-element-and-n.md) — SSBO is a simple type layout, not a `ParameterGroupTypeLayout`, so both accessors return nullptr; a DeepWiki high-confidence claim was flatly wrong — re-verify on your own instrument.
-- [bindless -vk tests need -emit-spirv-directly (via-glsl CI leg)](../learnings/1788440528410-bindless-vk-tests-need-emit-spirv-directly-via-gls.md) — the GLSL emitter doesn't request `GL_EXT_nonuniform_qualifier` for a bindless SSBO heap index; the shared via-glsl step runs on every GPU runner; `-emit-spirv-directly` overrides the injected via-glsl.
-- [bindless RWStructuredBuffer.Handle -vk tests must use -emit-spirv-directly or hard-fail "Test Slang via glsl"](../learnings/1788441444776-bindless-rwstructuredbuffer-handle-vk-tests-must-u.md) — a `-vk` test failure shows up in dx+vk+cuda and looks backend-agnostic; pull the job log; separate priority-yield (`skipped` jobs) from real failures.
-- [GLSL bindless: variable descriptor-array index rejection produces a phantom "second bug"](../learnings/1788442267382-glsl-bindless-variable-descriptor-array-index-reje.md) — the `block` operand error is a glslang error-recovery cascade; a constant heap index compiles clean, proving one defect (the missing extension).
-- [slang GLSL: bindless buffer heap misses GL_EXT_nonuniform_qualifier; texture heap masks it](../learnings/1788445078995-slang-glsl-bindless-buffer-heap-misses-gl-ext-nonu.md) — the extension request lived after the SSBO early-returns; hoist it above them (one source of truth); test buffer-only (a texture heap masks it); don't add `nonuniformEXT` wrapping.
-- [GLSL early_fragment_tests input qualifier rejected — backend already exists](../learnings/1787245492858-glsl-early-fragment-tests-input-qualifier-rejected.md) — parser has a hardcoded qualifier list; the full `[earlydepthstencil]` backend exists on all targets; fix is front-end recognition only, mirroring `local_size_*`.
-- [GLSL early_fragment_tests workaround on old Slang: [earlydepthstencil]](../learnings/1792400641518-glsl-early-fragment-tests-workaround-on-old-slang-.md) — before PR #13033, drop the layout line and put `[earlydepthstencil]` on GLSL `main()`; verified v2026.14.1.
-- [Vulkan tutorial MyData{float3; float} cannot tell std430 from scalar layout](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md) — identical offsets under all three rules; use `U{S{double;int} z; float w;}` (w@16 vs @12) and grep spirv-asm `Offset`/`ArrayStride` (#12714).
-- [#12655 early_fragment_tests fix first ships in v2026.18.2, not v2026.19](../learnings/1792422160153-12655-early-fragment-tests-fix-first-ships-in-v202.md) — check each patch tag with `git merge-base --is-ancestor`.
-- [globallycoherent on function params rejected in default Slang mode but allowed in -allow-glsl](../learnings/1787705000586-globallycoherent-on-function-params-rejected-in-de.md) — a fall-through in `isModifierAllowedOnDecl` omits `ParamDecl`; the rejection cascades to a call-site error; a second non-`TextureType` gate hides behind it; both must widen together.
-- [converting option-derived GLSL bool to SourceLanguage: prefer-TU-first drops the -allow-glsl case](../learnings/1787774464819-converting-option-derived-glsl-bool-to-sourcelangu.md) — `.slang`+`-allow-glsl` keeps `sourceLanguage==Slang`; "GLSL permitted here" ≠ "source is GLSL"; the `GLSLModuleModifier` fallback is load-bearing on nullptr-TU paths.
-- [CORRECTION: DXC duplicate-semantic behavior is backend-split](../learnings/1788388950993-correction-dxc-duplicate-semantic-behavior-is-back.md) — DXIL errors on mixed `TEXCOORD`/`TEXCOORD0`, DXC SPIR-V has an index-0 gap; Slang's silent re-index is Metal/WGSL-only; read the vendored DXC source.
-- [slang#12829: removing generic-param-count tie-breaker regresses glsl operators](../learnings/1787965868058-slang-12829-removing-generic-param-count-tie-break.md) — the failing candidates are glsl-vs-glsl at identical rank 15; the "unreachable rank" theory is refuted by the captured candidate set; needs a language-design change.
-- [CORRECTION: slang 12829 glsl regression is equal-rank redundant spellings, not unreachable OverloadRank](../learnings/1787966040183-correction-slang-12829-glsl-regression-is-equal-ra.md) — capture the surviving candidates' flavor + ranks + conversion-cost ties before asserting a root cause; the real cause is redundant same-operator spellings.
-- [shader-visible `DescriptorHandle` `uint2`: ordinary handle = `.x` index / `.y`=0 (NOT a 64-bit split, #12937), AS = `__asuint64` GPU address on some targets, combined texture-sampler = `.x`/`.y` split only in the HLSL/`spvDescriptorHeapEXT` lowering; scope every claim and verify against the `getDescriptorFromHandle` target switches (docs PR #12938).](../learnings/1788849400575-descriptorhandle-uint2-component-semantics-shader-.md)
-- [GLSL emit: combined-sampler calls are `texture((name_0), …)`; profile/-capability GL_EXT_X don't emit `#extension` (#13333)](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md) — drill failability by breaking the compiler
-- [E36107 on wgsl/metal with `import glsl;` matrix `*` = glsl.meta.slang operator gate, not an emit gap (#13350)](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md) — widening the gate alone suffices because bodies forward to `mul`
-- [GLSL interface blocks never compile for Metal (Std140DataLayout gate); tests/glsl/matrix-mul.slang METAL is vacuous; 62 decls still gated (#13355)](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md)
-- [wgsl-spirv-asm test rows do not exercise WGSL std140 buffer lowering](../learnings/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md) — the sub-context still reports `WGSLSPIRVAssembly`, so `getTypeLayoutRuleNameForBuffer` returns Natural; only `-target wgsl` rows cover buffer lowering; tint is Windows-x64-only on CI.
-- [Slang: stub slang-tint library to see the WGSL -target wgsl-spirv-asm passes to tint](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md) — `tint_compile` writes `req->wgslCode`; `-tint-path <dir>` (not the .so path); validate with wgpu-py/naga on llvmpipe.
-- [WGSL-via-tint bugs: check the REQUESTED target, not the codegen sub-context format](../learnings/1790934790391-wgsl-via-tint-bugs-check-the-requested-target-not-.md) — exact `getTarget()` comparisons are the bug class (layout rule, `emitEntryPoints`, ir-link); fix with `isWGPUTarget()`.
-- [Capture the WGSL Slang hands to Tint without tint (any platform)](../learnings/1790957231882-capture-the-wgsl-slang-hands-to-tint-without-tint-.md) — CLI stub or in-process `setSharedLibraryLoader` fake; E99997 swallow and raw `Linkage*` gotchas.
-- [Tint-path layout fixes also change matrix storage on wgsl-spirv(-asm)](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md) — Natural→Std430 routes matrices through `shouldLowerMatrixType`; stub returning real SPIR-V makes wgsl-spirv rows FileCheckable.
-- [GPU-free WGSL parse/validate check: naga-wasm via npm (node)](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — node-only alternative to wgpu-py for validating emitted WGSL; main write-up on the WGSL matrix/validation page
+- [WGSL emit has TWO type paths](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md) — `_emitType` routes, `emitSimpleTypeImpl` names the type.
+- [internal breaks cross-builtin-module calls](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md) — GLSL is a separate builtin module; measure with a core-module rebuild.
+- [Default Vulkan/SPIR-V layout is std430/std140; scalar≠C](../learnings/1787601323178-slang-default-vulkan-spir-v-buffer-layout-is-std43.md) — no auto-scalar at Vulkan 1.4; scalar ⊂ C.
+- [SSBO reflection: null element and container var-layout](../learnings/1787660189955-glsl-ssbo-reflection-layout-has-null-element-and-n.md) — simple type layout; DeepWiki was wrong.
+- [bindless -vk tests need -emit-spirv-directly](../learnings/1788440528410-bindless-vk-tests-need-emit-spirv-directly-via-gls.md) — via-glsl step runs in every GPU job; per-directive flag overrides it.
+- [RWStructuredBuffer.Handle -vk tests hard-fail via glsl](../learnings/1788441444776-bindless-rwstructuredbuffer-handle-vk-tests-must-u.md) — PR #12800/#12897; read the job log.
+- [GLSL bindless phantom "second bug"](../learnings/1788442267382-glsl-bindless-variable-descriptor-array-index-reje.md) — block-operand error is a glslang cascade; a constant index compiles clean.
+- [buffer heap misses GL_EXT_nonuniform_qualifier](../learnings/1788445078995-slang-glsl-bindless-buffer-heap-misses-gl-ext-nonu.md) — hoist the request above the early-returns.
+- [early_fragment_tests: backend already exists](../learnings/1787245492858-glsl-early-fragment-tests-input-qualifier-rejected.md) — fix is front-end recognition only.
+- [early_fragment_tests workaround on old Slang](../learnings/1792400641518-glsl-early-fragment-tests-workaround-on-old-slang-.md) — `[earlydepthstencil]` on GLSL `main()`; verified v2026.14.1.
+- [MyData{float3; float} cannot tell std430 from scalar](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md) — use `U{S{double;int} z; float w;}`; grep `Offset`/`ArrayStride` (#12714).
+- [#12655 fix first ships in v2026.18.2](../learnings/1792422160153-12655-early-fragment-tests-fix-first-ships-in-v202.md) — check each patch tag with `git merge-base --is-ancestor`.
+- [globallycoherent on params rejected in default mode](../learnings/1787705000586-globallycoherent-on-function-params-rejected-in-de.md) — `isModifierAllowedOnDecl` omits `ParamDecl`; a second gate hides behind.
+- [prefer-TU-first drops -allow-glsl](../learnings/1787774464819-converting-option-derived-glsl-bool-to-sourcelangu.md) — "GLSL permitted" ≠ "source is GLSL"; `GLSLModuleModifier` fallback needed.
+- [CORRECTION: DXC duplicate semantics backend-split](../learnings/1788388950993-correction-dxc-duplicate-semantic-behavior-is-back.md) — DXIL errors, DXC SPIR-V index-0 gap; Slang re-index Metal/WGSL-only.
+- [#12829 regresses glsl operators](../learnings/1787965868058-slang-12829-removing-generic-param-count-tie-break.md) — glsl-vs-glsl at equal rank 15.
+- [CORRECTION: #12829 is equal-rank redundant spellings](../learnings/1787966040183-correction-slang-12829-glsl-regression-is-equal-ra.md) — rank is reached; capture candidates first.
+- [DescriptorHandle uint2 semantics](../learnings/1788849400575-descriptorhandle-uint2-component-semantics-shader-.md) — ordinary `.x`/`.y`=0; AS 64-bit on some targets; split sampler only (#12938).
+- [combined-sampler parens; no `#extension` from profile](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md) — `texture((name_0), …)`; drill by breaking the compiler (#13333).
+- [matrix `*` E36107 is an operator gate](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md) — `import glsl;` on wgsl/metal; widen gate, bodies forward to `mul` (#13350).
+- [GLSL interface blocks never compile for Metal](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md) — `Std140DataLayout` gate; matrix-mul METAL vacuous; 62 decls gated (#13355).
+- [wgsl-spirv-asm rows skip WGSL std140](../learnings/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md) — layout rule returns Natural there; only `-target wgsl` rows cover it.
+- [stub slang-tint to see its WGSL input](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md) — `tint_compile` writes `req->wgslCode`; `-tint-path <dir>`; validate via wgpu-py.
+- [WGSL-via-tint: check the REQUESTED target](../learnings/1790934790391-wgsl-via-tint-bugs-check-the-requested-target-not-.md) — exact `getTarget()` checks are the bug class; use `isWGPUTarget()`.
+- [capture the WGSL Slang hands to Tint](../learnings/1790957231882-capture-the-wgsl-slang-hands-to-tint-without-tint-.md) — fake library loader; E99997; raw `Linkage*`.
+- [Tint-path layout fixes change matrix storage](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md) — Natural→Std430 routes matrices via `shouldLowerMatrixType`.
+- [GPU-free WGSL check via naga-wasm](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — node-only alternative to wgpu-py.

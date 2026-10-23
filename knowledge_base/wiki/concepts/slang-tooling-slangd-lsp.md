@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 14
+source_count: 16
 ---
 
 ## TL;DR
@@ -21,9 +21,13 @@ checker strips.
 - **Reproduce GPU-free by driving `slangd` directly** (a release tarball + `LD_LIBRARY_PATH` is
   enough) with a tiny Python LSP client: `initialize`/`initialized`/`didOpen`, then the requests
   under test. Detect a crash via `proc.poll()`; drain stderr in a thread, never `stderr.read()` at the end.
-- **Batch `slangc` may not crash where slangd does**, and a crash that vanishes when one modifier is
-  removed is the tell: Completion checking mode retains placement-illegal modifiers the general
-  checker would strip.
+- **Check a Release-verified LSP test on Debug too** (CI runs Debug): a debug-only `SLANG_ASSERT` can
+  abort the module load so hover returns `null`. `SLANG_ASSERT=release-assert-only` replays the
+  Release path on a Debug binary; a `{{null|expected}}` CHECK passes in both and still fails on a crash.
+- **Batch `slangc` may not crash where slangd does**, for two reasons: Completion checking mode retains
+  placement-illegal modifiers the general checker would strip (a crash that vanishes when one modifier
+  is removed is the tell), and slangd keeps semantic-checking after parse errors that stop slangc. Probe
+  invalid-input paths through slangd itself, with a plain-input control on the same binary.
 - **Stock slangd does NOT lower to IR** (`loadParsedModule` skips it under `isInLanguageServer()`), so
   an IR-lowering deref fires only if the crashing config actually compiles (e.g. a VFX-flavor real
   compile) — a non-repro via a plain LSP driver does not mean "not a bug."
@@ -227,6 +231,22 @@ negative signal or a non-None exit. Gotcha: do **not** call `proc.stderr.read()`
 blocks until EOF (the child still holds the pipe) and hangs the driver until `timeout` kills it; drain
 stderr in a thread or use `stderr=DEVNULL` [drive LSP directly, check the bundled version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md).
 
+**A Release-only slangd crash and its test can diverge on Debug, and Slang CI runs Debug.** On
+slang#13880 a reviewer found that `slangd` segfaults in Release on `__generic<T> cbuffer CB {…}`:
+the generic's inner declaration is not in the GenericDecl's member list, so
+`getTransparentDirectMemberDecls()` is empty and `getFirst()` reads through null. The reviewer's
+language-server test (`CHECK: afterBuffer`) fails on a Debug build of master too, because
+`SLANG_ASSERT(foundParent)` in `ASTBuilder::getMemberDeclRef` (`slang-ast-builder.h:445`) throws while
+the module is checked, the server aborts the module load, and hover returns `null`. Two techniques
+settled it. Exporting `SLANG_ASSERT=release-assert-only` makes a Debug binary skip debug-only
+asserts and follow the Release path, which reproduced the crash without the guard and passed with
+it. (That is the right use of the mode; when you retest an assert-failure ICE it hides the very
+assert under test.) The final test, `CHECK: {{null|afterBuffer}}` with a comment saying why, passes
+in both configurations and still fails on a crash. A minimal Python driver (Content-Length-framed
+initialize, initialized, didOpen, hover) wrapped as `gdb -batch -ex 'set logging redirect on' -ex
+'catch throw' -ex run` found the throw site while keeping gdb's output off the JSON-RPC pipe
+[SLANG_ASSERT=release-assert-only reproduces a Release-only crash on Debug](../learnings/1792714635180-slang-slang-assert-release-assert-only-reproduces-.md).
+
 One input surface worth knowing during triage: `__file_decl` parses to `FileDecl`
 (`parseFileDecl`, `slang-parser.cpp:4635` → `class FileDecl : public ContainerDecl`,
 `slang-ast-decl.h:854`), an ordinary *private*-scope container whose members are not spliced into
@@ -270,9 +290,24 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (14):**
+**A second slangd-only path: checking continues after parse errors.** slangc stops after parser
+errors, but the language server keeps semantic-checking the module (`slang-session.cpp` ~1574,
+`!isInLanguageServer()`), so checker code runs on inputs slangc never checks. On PR #13880 R2,
+`__generic<T> cbuffer CB { int x; }` is E30102 in slangc with no crash, but slangd SIGSEGVs on hover:
+the generic's `inner` is never `AddMember`'d (the parser at ~1851 only sets `parentDecl`, and
+`CompleteDecl` skips generic containers), so `parentDecl->getTransparentDirectMemberDecls()` is empty
+and `.getFirst()` dereferences null in Release. Drive `build/<cfg>/bin/slangd` with the ~40-line
+client above (`initialize` → `initialized` → `didOpen` → `hover`; `p.poll() == -11` is a segfault) and
+always run a plain-input control on the same binary. For the regression test use
+`//TEST:LANG_SERVER(filecheck=CHECK):` with `//HOVER:<line>,<col>` (1-based) and `// CHECK: <name>`; a
+crash shows only as a plain FAILED with no output, so the control is what makes it readable. Rebuilding
+any target that relinks `libslang.so` (such as `--target slangd`) while a full slang-test run is in
+progress contaminates that run; discard it and rerun [crashes hide behind parse errors](../learnings/1792712900043-language-server-crashes-hide-behind-parse-errors-d.md).
+
+**Source learnings (16):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
+- [#13880 generic cbuffer: reviewer's Release test fails on Debug (`SLANG_ASSERT(foundParent)`); release-assert-only replays Release; `{{null|afterBuffer}}`; gdb `catch throw` off the JSON-RPC pipe](../learnings/1792714635180-slang-slang-assert-release-assert-only-reproduces-.md)
 - [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
 - [slangd only reads workspaceFolders for #include roots; testing the deprecated handshake via LANG_SERVER](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md) — fix = rootUri→rootPath fallback guarded on getLength(); added -init-root-uri/-init-root-path slang-test args; snapshot the config object before iterating.
 - [slang-test LANG_SERVER harness desyncs if a config change emits a server→client refresh at initialize](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md) — the shared cached slangd process + a diagnostics-only drain leave a refresh in the stream, poisoning subsequent tests; the workspace-root path is cleanly testable because it emits no refresh.
@@ -285,5 +320,6 @@ Triage implications:
 - [slangd LSP probe: check textDocument/definition, because a clean file may send no diagnostics](../learnings/1792427403200-slangd-lsp-probe-check-textdocument-definition-bec.md) — wait ~1.5 s after didOpen; definition is null on failure, a location on success
 - [postmortem: shader-slang/slang#13179 superseded by PR #13192](../learnings/1792461389590-postmortem-shader-slang-slang-13179-superseded-by-.md) — #13192 also fixed the per-root `workspaceSearchPaths` overwrite; test list-valued fallbacks with N≥2 entries and order; array `settings` crash filed as #13757
 - [Zed Slang extension: server id is slangd; read third-party repos via raw.githubusercontent](../learnings/1792652480222-zed-slang-extension-server-id-is-slangd-read-third.md) — cohaereo/zed-slang registers `slangd` (`lsp.slangd.settings`); Zed's `lsp_store.rs` answers null for unset sections; `gh api` on non-slang repos 401s in eval, raw.githubusercontent works
+- [Language-server crashes hide behind parse errors: drive slangd directly for invalid-input paths](../learnings/1792712900043-language-server-crashes-hide-behind-parse-errors-d.md) — slangd checks past parse errors (`!isInLanguageServer()`); `__generic<T> cbuffer` hover SIGSEGV (#13880); LANG_SERVER `//HOVER:` test + control; relinking libslang.so mid-suite contaminates the run
 
 _Catalog: [[wiki/index.md]]_

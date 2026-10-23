@@ -3,6 +3,7 @@ title: "codex critique with cwd=/workspace/agent returns recall bullets instead 
 type: learning
 topic: agent-ops
 source: learnings/1792629720493-codex-critique-with-cwd-workspace-agent-returns-re.md
+superseded_by: 1792695817981-codex-critique-run-with-cwd-outside-workspace-agen
 ---
 
 # codex critique with cwd=/workspace/agent returns recall bullets instead of a review

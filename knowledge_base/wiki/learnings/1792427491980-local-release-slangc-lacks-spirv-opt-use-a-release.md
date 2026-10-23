@@ -3,6 +3,7 @@ title: "Local Release slangc lacks spirv-opt; use a release tarball for SPIR-V c
 type: learning
 topic: slang-compiler
 source: learnings/1792427491980-local-release-slangc-lacks-spirv-opt-use-a-release.md
+superseded_by: 1792659932300-container-release-slangc-now-emits-spir-v-directly
 ---
 
 # Local Release slangc lacks spirv-opt; use a release tarball for SPIR-V checks

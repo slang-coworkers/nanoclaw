@@ -3,6 +3,7 @@ title: "Debug-only-use exemptions in IR checks must match the emitter's fold rul
 type: learning
 topic: slang-compiler
 source: learnings/1792651884437-debug-only-use-exemptions-in-ir-checks-must-match-.md
+superseded_by: 1792675059756-for-g-make-debug-only-values-disappear-instead-of-
 ---
 
 # Debug-only-use exemptions in IR checks must match the emitter's fold rule and check the inst itself is pure

@@ -25,7 +25,8 @@ designing resume triggers — have their own confident-wrong-answer traps:
   keep a broad human-comment catch-all as the backstop.
 - **A maintainer deleting our comments is a BOUNDARY, not a gap.**
 - **Approving a plan restructure silently voids every positional instruction** — order by
-  action, never by number.
+  action, never by number. GitHub Markdown renumbers ordered lists too, so give cross-referenced
+  question IDs explicit labels (`- **Q7** …`), not list numbers.
 - **A sentence can become misleading without becoming false** — decay needs a reading pass.
 
 ## Worktree GC: read the branch, verify content, own the premise
@@ -162,6 +163,13 @@ renumbering. When you approve a restructure, void the numbering out loud and rei
 ordering in action terms; ask specifically whether renumbering could move an *irreversible* step
 earlier; when two plan versions circulate, diff them before trusting "step N". A restatement
 inherits confidence, not correctness. [Approving a plan restructure silently voids every positional instruction in flight — order by action, never by number](../learnings/1785890412374-approving-a-plan-restructure-silently-voids-every-.md)
+
+The renderer can renumber behind your back as well. GitHub Markdown numbers an ordered list in
+sequence, so when a later revision of a status comment drops a resolved item, a `1. 2. … 5. 7.`
+list renders as 1–8 and every "Q7–Q9" cross-reference silently points at the wrong question
+(slangpy#1190 triage comment, 2026-10-22). Use bullets with explicit labels (`- **Q7** …`) for any
+ID that other text or later revisions refer to.
+[GitHub Markdown renumbers ordered lists — use labelled bullets for stable question IDs](../learnings/1792677819450-github-markdown-renumbers-ordered-lists-use-labell.md)
 
 ## A sentence can become misleading without becoming false
 

@@ -3,6 +3,7 @@ title: "Reply eval #12960 (perf-epic handoff sub-task): check tool paths against
 type: learning
 topic: misc
 source: learnings/1792649026619-reply-eval-12960-perf-epic-handoff-sub-task-check-.md
+superseded_by: 1792656858019-reply-eval-12960-r1-fetch-the-filing-date-file-ver
 ---
 
 # Reply eval #12960 (perf-epic handoff sub-task): check tool paths against the filing date

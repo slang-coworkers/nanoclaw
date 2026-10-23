@@ -2,8 +2,8 @@
 title: "Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen"
 type: concept
 group: slang-backends
-tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073]
-source_count: 28
+tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073, ldg, immutable-load, vectorized-load]
+source_count: 29
 ---
 
 # Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen
@@ -37,6 +37,7 @@ The CUDA and CPU/C++ targets share one code path — `CPPSourceEmitter` (`source
 - **Global templated CUDA vector operators must be SFINAE-gated** to registered vector types; keep `__half2` packed intrinsics as non-template overloads. Verify with `nvcc -std=c++17`.
 - **CPU/CUDA operator typing belongs in the preludes, not in IR casts** (#13684).
 - **`__exp2f` does not exist,** so F32 exp2 stays precise under `-fp-mode fast`. Verify each `__*f` name against nvcc.
+- **nvcc never merges scalar `__ldg` into wide loads, even with `__builtin_assume_aligned`.** A load that must be both wide and read-only-cached has to be emitted as explicit vector-chunk `__ldg((const uint4*)p)`. A plain aligned deref vectorizes but loses `.nc`/`.CONSTANT`.
 
 ## The float3/swizzle-base re-evaluation perf bug (slang#12073, from slangpy#1059)
 
@@ -51,6 +52,19 @@ The CUDA and CPU/C++ targets share one code path — `CPPSourceEmitter` (`source
 **Superseded: the vec3-layout hypothesis.** The first triage blamed `float3`'s 12/4 CUDA layout (vs `float4` 16/16) for defeating NVRTC register allocation and called it CUDA-only ([float3 loop arithmetic ~3x slower than float4](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)). Both claims are false: emitted-`.cu` inspection proved base re-evaluation on CUDA **and** CPU/C++, and `f3_epi` falsifies the layout cause. Its ownership rule stands: SlangPy is transparent to vector types and does not vendor Slang, so the bug is upstream.
 
 **Reusable rules.** Confirm with `slangc repro.slang -target cuda -entry <e> -stage compute -o k.cu`, then `grep -o tex2Dfetch | wc -l`. A layout fact being true does not make it the cause; count operations in the emitted code before recording a mechanism. Unrelated to Metal PR #10031 packed-vec3 (a buffer-stride concern).
+
+## Wide Read-Only Loads: nvcc Never Merges Scalar `__ldg` (#13877/#13878)
+
+Consider a 32-byte, 16-aligned record such as `{ float[3], uint[3], float[2] }` read from immutable memory. Slang's CUDA immutable-load lowering emits one `__ldg` per field, and the question is whether an alignment hint lets nvcc fuse them. It does not. Measured with nvcc 12.6, `-O3`, sm_89, in both PTX and SASS (`cuobjdump -sass`):
+
+| Emitted form | Result |
+|---|---|
+| Scalar `__ldg` per field + `__builtin_assume_aligned(p,16)` | 8× `ld.global.nc` / `LDG.E.CONSTANT` (NVVM does not combine the ldg builtins) |
+| Plain struct copy through `const T* __restrict__`, same hint | 2× `ld.global.v4` / `LDG.E.128`, but the read-only `.nc`/`.CONSTANT` path is lost |
+| Plain struct copy, no hint | 8× `LDG.E.CONSTANT` |
+| Explicit `__ldg((const uint4*)p)` / `(const float4*)` chunks | 2× `ld.global.nc.v4` / `LDG.E.128.CONSTANT` |
+
+So on CUDA, a load that is both wide and immutable needs the emitter to produce the widest aligned vector-chunk `__ldg` itself and reassemble the fields by bit-cast; an `assume_aligned` hint in the emitted code is not enough. Honoring an `IRAlignedAttr` in `emitImmutableLoad` (`slang-ir-cuda-immutable-load.cpp`) therefore means chunked vector loads. On current master, the CUDA emit ignores `IRAlignedAttr` entirely; only SPIR-V (`Aligned N` on PhysicalStorageBuffer) and LLVM consume it. The per-element split that a fix must undo comes from three places: `deferBufferLoad` (`slang-ir-defer-buffer-load.cpp`, all targets), `lowerImmutableBufferLoadForCUDA::createLoadFuncForType` (`slang-ir-cuda-immutable-load.cpp:107`, arrays per element and structs per field), and `createArrayUnpackFunc` (`slang-ir-lower-buffer-element-type.cpp:527`, SPIR-V). A quick SASS check needs no runtime: `nvcc -cubin -arch=sm_89 -O3 -I<slang>/prelude x.cu && cuobjdump -sass x.cubin | grep -oE 'LDG[.A-Z0-9]*' | sort | uniq -c` ([CUDA: nvcc won't merge scalar __ldg into wide loads, even with assume_aligned](../learnings/1792700658146-cuda-nvcc-won-t-merge-scalar-ldg-into-wide-loads-e.md)). The correctness guard on the same pass (when `__ldg` must be skipped for the `__constant__` launch-parameter group) is on [[wiki/concepts/misc-f0909b5-cuda-codegen-triage.md]].
 
 ## CPU/C++ Host Targets: Struct Layout, `-target hpp`/`cpp` Rooting, Header-Only Prototypes (#9401/#9403)
 
@@ -102,7 +116,7 @@ Slang capability-checks ALL `[shader]` entry points at module load, so one EP wi
 
 **Fast-math (slang#12619).** Under `-fp-mode fast` nine F32 wrappers redirect (`__sinf, __cosf, __tanf, __sincosf, __logf, __log2f, __log10f, __expf, __powf`) plus `__exp10f`. nvcc 12.6 rejects `__exp2f`, so exp2 stays `::exp2f` with atan2/asin/acos/atan/sqrt. Verify with a `__device__` harness: `nvcc -std=c++17 -c` with and without `-DSLANG_CUDA_ENABLE_FAST_MATH=1`, then `-ptx` and `grep -cE '\.approx\.'` (nvcc at `/usr/local/cuda-12.6/bin/nvcc`, 2 min) ([__exp2f does NOT exist](../learnings/1787147170237-cuda-fast-math-redirectable-transcendentals-exp2f-.md)).
 
-**Source learnings (28):**
+**Source learnings (29):**
 - [CUDA #12635 workaround: flat static const arrays compile to PTX on 2026.14.1](../learnings/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md) — nested literal arrays fail NVRTC dynamic `__device__` init before #12688; flatten to `v[4]`
 - [`-capability cuda_sm_NN` is not a usable CUDA arch selector (#13198): bounded to {1_0..9_0}/ceiling 9.0, a FLOOR via max() not a pin, double `-arch` with a user `-Xnvrtc --gpu-architecture=`, and linkWithOptions-inert; new atoms deferred in #12839](../learnings/1790003555136-slang-cuda-capability-cuda-sm-nn-is-not-a-usable-a.md)
 - [post-#13286 an explicit `-Xnvrtc -arch` skips the derived-arch block, so SM minimums go unchecked (rc 0)](../learnings/1791190691660-slang-nvrtc-explicit-xnvrtc-arch-post-13286-bypass.md)
@@ -131,5 +145,6 @@ Slang capability-checks ALL `[shader]` entry points at module load, so one EP wi
 - [CPU C++ prelude: unused resource types with no prelude struct (RTAS, RasterizerOrdered*) break host-callable; GlobalParams fields are never DCE'd](../learnings/1792162041270-cpu-c-prelude-unused-resource-types-with-no-prelud.md) — add a sized prelude type (#13705); CPU user atomics are a non-feature
 - [NVRTC DownstreamArgs repro: don't use --gpu-architecture as the neutral arg](../learnings/1792155142006-nvrtc-downstreamargs-repro-don-t-use-gpu-architect.md) — `-DFOO=1` + `--this-option-must-fail` sentinel; fixed by PR #12900 (#12861)
 - [Mixed-type vector shifts: maintainer preferred prelude operators + own-type scalar splat over IR result-type cast](../learnings/1792165281967-mixed-type-vector-shifts-maintainer-preferred-prel.md) — #13562 closed for #13684 (#13553)
+- [scalar `__ldg` + assume_aligned stays 8× scalar; only explicit vector-chunk `__ldg` gives `LDG.E.128.CONSTANT`; CUDA emit ignores `IRAlignedAttr`; three per-element split sites](../learnings/1792700658146-cuda-nvcc-won-t-merge-scalar-ldg-into-wide-loads-e.md)
 
 _Catalog: [[wiki/index.md]]_

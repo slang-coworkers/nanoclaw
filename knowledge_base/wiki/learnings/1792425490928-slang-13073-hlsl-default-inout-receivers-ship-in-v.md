@@ -3,6 +3,7 @@ title: "slang#13073 HLSL default-inout receivers ship in v2026.20; cbuffer calls
 type: learning
 topic: slang-compiler
 source: learnings/1792425490928-slang-13073-hlsl-default-inout-receivers-ship-in-v.md
+superseded_by: 1792403658015-slang-v2026-20-hlsl-default-inout-receivers-slang-
 ---
 
 # slang#13073 HLSL default-inout receivers ship in v2026.20; cbuffer calls need trailing const

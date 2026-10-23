@@ -36,12 +36,12 @@ issues. Grouped by subsystem:
 - **Language semantics**: `if(let)` desugars entirely in the parser; `BottomType`/
   `Never` is only the throws-error type, not a noreturn marker (its intent is
   unwired).
-- **CUDA/NVRTC**: masked texture stores aren't legalized for CUDA; NVRTC's PCH heap
-  is process-global (no program-reuse refactor needed); `[ForceInline]` isn't
-  target-gated for CUDA emit. Deferring it to NVCC as `__forceinline__` (#12623)
-  saves compile time only where NVCC would inline anyway (small helpers); on large
-  callees the hint costs as much as Slang's pre-inline, so benchmark both sizes.
-  Re-grep `performForceInlining` call sites before citing their line numbers.
+- **CUDA/NVRTC**: masked texture stores aren't legalized for CUDA; NVRTC's PCH heap is process-global
+  (no program-reuse refactor needed); `[ForceInline]` isn't target-gated for CUDA emit. Deferring it to
+  NVCC as `__forceinline__` (#12623) saves compile time only where NVCC would inline anyway (small
+  helpers); on large callees the hint costs as much as Slang's pre-inline, so benchmark both sizes.
+  Re-grep `performForceInlining` call sites before citing their line numbers. The IR inliner never
+  reads `[noinline]`, so a new heuristic inliner (#13177) must check it itself.
 - **Test harness**: diagnostic tests dedup identical error+span rows and match by
   exact column (exhaustive); `-vk` without `-output-using-type` prints hex;
   `CHECK-NOT: error` false-matches the harness wrapper; slangc integer options are
@@ -221,6 +221,13 @@ stale: on master e26354b (2026-10-19) `performForceInlining` is called at
 `ForceInliningPass::shouldInline` is at `slang-ir-inline.cpp:1157`, and the only CUDA
 inline hint emitted is still `__noinline__` (`slang-emit-cuda.cpp:515`). Re-grep before
 citing or gating them ([performForceInlining call sites moved](../learnings/1792399843258-slang-12623-performforceinlining-call-sites-moved-.md)).
+No IR pass reads `[noinline]`: at b6e7d3b9 (Sep 2026) and 653bfdee (Oct 2026)
+`slang-ir-inline.cpp` never checks `NoInlineDecoration`, and `shouldInline` tests only
+ForceInline, UnsafeForceInlineEarly and IntrinsicOp, so the attribute acts only at
+emit (CUDA writes `__noinline__`). A new heuristic inlining pass, such as late-IR
+inlining of large-state helpers on OptiX (#13177), must add its own NoInline check;
+the late `performForceInlining` call runs just before the final `simplifyIR`, and
+`-O<n>` never changes Slang IR inlining ([the IR inliner never reads [noinline]](../learnings/1792658399913-slang-ir-inliner-never-reads-noinline-only-the-cud.md)).
 **The #12623 premise "NVCC inlines it regardless" holds only for small callees.**
 Measured on v2026.20 with NVCC 12.6 `-ptx -arch=sm_89` (L40S): with 12-line float4
 helpers (no transcendentals, H=40, C=20) the plain build took 10.8 s, Slang
@@ -290,3 +297,4 @@ positive-control CHECK that the output actually changed.
 - [Release-binary bisect beats a bot-filed 'pre-existing' claim; CopyLogical is emitted on all targets but lowered only for SPIR-V](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md) — #13379; fix the producer, not by running lowerCopyLogical everywhere
 - [Slang release tags live on release branches; `&local` is UserPointer on CPU/CUDA](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — #13405/#8526: a global UserPointer pointee rewrite splits `&local` from the param type
 - [HLSL: AppendStructuredBuffer<matrix> wrapper mismatch (#13388) and the user-struct workaround](../learnings/1792433454462-hlsl-appendstructuredbuffer-matrix-wrapper-mismatc.md) — `wrapStructuredBuffersOfMatrices` skips Append/Consume and wraps per buffer type → DXC X3017; use `struct Mat { float4x4 m; }`
+- [Slang IR inliner never reads [noinline]; only the CUDA emitter does (13177)](../learnings/1792658399913-slang-ir-inliner-never-reads-noinline-only-the-cud.md) — `shouldInline` tests ForceInline/UnsafeForceInlineEarly/IntrinsicOp only; a heuristic inliner (#13177) must add its own NoInline check

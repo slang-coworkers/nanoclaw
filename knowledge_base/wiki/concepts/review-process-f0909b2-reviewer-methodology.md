@@ -10,298 +10,303 @@ source_count: 23
 
 ## TL;DR
 
-Correctness review of Slang compiler PRs turns on one recurring question: does the test
-actually EXERCISE the changed path, and did the reviewer REPRODUCE the exact scenario before
-confirming or refuting? Compilation and clean exits prove far less than they appear.
+Correctness review of Slang compiler PRs turns on two questions: does a test actually EXERCISE the
+changed path, and did the reviewer EXECUTE the exact scenario before confirming or refuting? Clean
+compiles, exit 0, green validators and passing tests all prove less than they appear.
 
-- **Revert-drill every newly-threaded/recursive parameter or new guard.** Delete it and ask
-  "does any existing test now fail?" If not, its real (nested/deeper) path is untested, and the
-  failure mode there is often a SILENT miscompile. Drill each conjunct of a new guard with a test
-  that satisfies every other conjunct, and run a refreshed CHECK block against a contrast target
-  whose output has the forbidden shape: a passing test proves its spelling, not its catch.
-- **Valid is not correct.** A remedy that shares one Input across entry points can pass spirv-val
-  and still mislink; compare each EP's `Location` with that EP compiled alone.
-- **A structural CHECK/CHECK-NOT is not numeric coverage.** When a fix targets a specific
-  conformer/branch, confirm a runtime `-cpu COMPARE_COMPUTE` actually ROUTES through that
-  branch and pins its result — a test that dispatches the wrong variant verifies the path
-  only structurally, and a live-payload miscompile passes silently.
-- **Reproduce a reviewer's/codex's EXACT source + EXACT flags before disputing.** Codegen and
-  reflection effects are use/lowering-dependent — "unused vs used," "-emit-spirv-directly vs
-  not," "global param survives vs copied-to-local" all flip the result. A near-miss repro
-  produces a false-negative and a wrong shared conclusion. Run the test shape the reviewer
-  SUGGESTS, not only its illustrative example, and set `SLANG_RUN_SPIRV_VALIDATION=1` (slangc
-  returns 0 on invalid SPIR-V); `-target ptx` (nvrtc) is a real CUDA compile check here.
-  Compile any test snippet a reviewer proposes against head before forwarding it; if it crashes,
-  give a compiling alternative that reaches the same branch.
-- **Before reviewing a PR that moves a lowering pass later, probe every op × access form × target
-  with master and head builds and diff the status.** Every pass between the old and new positions
-  sees the new IR shape for the first time. Run Tint on all WGSL output: WGSL FileCheck legs do not
-  validate, and `wgsl-spirv-asm` legs are skipped on Linux.
-- **A static IR gate is necessary but not sufficient.** `as<IRGlobalParam>` gating a
-  reflection side-effect does not prove "non-manifesting" — you must craft the repro to
-  exercise the SURVIVAL path, or say "unverified" rather than confirm.
-- **Don't close a finding YOU raised on the author's unverifiable EXIT=0.** A clean compile
-  proves the program compiled, not that the mechanism you worried about behaved as claimed;
-  keep it open as a coverage/justification gap. You MAY push back on the critic and still
-  ship where it's wrong, but concede immediately where it's right.
-- **Re-check the full FILE LIST of post-review fix commits** — accidental PR-body/scratch
-  `.md`, dotfiles, logs slip in via a broad `git add .`; a merge-blocker no code review catches.
-- **Silent-impossible-shape smell:** a new legalize/handler that converts a loud
-  `SLANG_UNEXPECTED` into a silent default for any input is a red flag — re-assert the invariant.
+- **Revert-drill every new parameter, guard and guard conjunct.** Delete it; if no test fails, its
+  real (deeper) path is untested, and it often miscompiles silently. Pin each conjunct with a test
+  that satisfies every other conjunct.
+- **A refreshed CHECK block proves its spelling, not its catch.** Run it against a contrast target
+  whose output has the forbidden shape; it must fail there.
+- **A structural CHECK/CHECK-NOT is not numeric coverage.** A `-cpu COMPARE_COMPUTE` must route
+  through the targeted branch or conformer and pin its result.
+- **A guard added at one fallible-query site: search the sibling sites** that run the same query on
+  related types. On re-review, check that the shared helper's doc does not overstate its coverage.
+- **Moving a lowering pass later:** before review, probe every op × access form × target on master
+  and head and diff the status; run Tint on all WGSL (WGSL FileCheck legs never validate).
+- **Pooled resource + RAII free + fallible wait = in-flight reuse.** OOM is not device loss.
+- **Reproduce the reviewer's EXACT source and flags, and its SUGGESTED test shape, before
+  disputing.** Effects are use/lowering-dependent (used vs unused, `-emit-spirv-directly`). A traced
+  example is a prediction until executed: report confirmed or refuted, never predicted.
+- **A static IR gate is necessary, not sufficient.** Exercise the survival path or say "unverified".
+- **Valid is not correct.** Always set `SLANG_RUN_SPIRV_VALIDATION=1` (slangc exits 0 on invalid
+  SPIR-V); `-target ptx` is a real CUDA check; a remedy that passes spirv-val can still mislink.
+- **Compile a reviewer-proposed test snippet on head before forwarding it**; if it crashes, offer a
+  compiling alternative that reaches the same branch.
+- **Exercise new `SLANG_ASSERT`s on a Debug build**: in Release they are `[[assume]]`.
+- **When someone disputes YOUR claim with a runnable check, run it before defending.**
+- **Don't close a finding you raised on the author's EXIT=0**; keep it open as a coverage gap. Push
+  back on the critic where it is wrong; concede at once where it is right.
+- **Spot-check the full file list of review-fix commits** for scratch `.md`, dotfiles and logs.
+- **A clean automated stack is not proof on ABI/legalization PRs**, and diff review never checks spec
+  fidelity: map each maintainer spec requirement to met or missed, with a location.
+- **Durable text cites stable symbol names, never `file.cpp:NNNN`.** `DIAGNOSTIC_TEST` matches plain
+  substrings, so the CHECK must reject the buggy variant.
+- **Silent-impossible-shape smell:** a new handler that turns a loud `SLANG_UNEXPECTED` into a silent
+  default for any input. Re-assert the invariant.
 
 ## Coverage lenses: numeric routing and the revert-drill
 
-Two lenses from reviewing slang#12875 (AnyValue bulk-copy / empty-struct legalize) generalize.
-The **numeric-routing** lens: the fix's target was the `Foo2` conformer whose collapsed
-context drives a new zero-fill, but the `-cpu` test dispatched only thread 0 under
-`numthreads(1)`, selecting `Foo1` — the uninteresting case — so the collapsed path was verified
-only structurally (`CPP-NOT: packAnyValue…`) and a live-payload miscompile would pass silently;
-confirm a runtime COMPARE_COMPUTE routes through the target branch and pins its result. The
-same PR also carries a **silent-impossible-shape** lesson: the new `legalizeBitCast` Form-2 sat
-in the shared all-targets `legalizeInst` switch, turning a loud `SLANG_UNEXPECTED` into a silent
-default for any empty-source bit_cast — hardened by asserting `as<IRAnyValueType>` before the
-zero-fill, gating on the source TYPE not the operand value
-[Review lens: AnyValue bulk-copy / empty-struct legalize — numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md).
-The **revert-drill** lens, from the same PR: a fix threaded a `bool enclosingPreserved` flag
-down a recursive `countWordScalarLeaves`, and two new tests looked like coverage but both tripped
-a *local* check (the empty was a direct field), never the threaded flag — the distinctive job of
-the parameter (an undecorated empty inside an undecorated inner struct inside a preserved outer)
-had zero coverage, and the failure mode was a silent miscompile. For any newly-threaded parameter
-or new guard, delete it and ask whether any existing test fails; if not, demand a test that
-exercises the deeper case in both member orders plus a numeric readback
-[Review lens: a threaded/recursive parameter can be 'tested' only via its LOCAL checks — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md).
+slang#12875 (AnyValue bulk-copy / empty-struct legalize) gives two lenses. **Numeric routing:** the
+fix targeted the `Foo2` conformer whose collapsed context drives a new zero-fill, but the `-cpu` test
+dispatched only thread 0 under `numthreads(1)`, which selects `Foo1`. The collapsed path was checked
+only structurally (`CPP-NOT: packAnyValue…`), so a live-payload miscompile would pass. The same PR's
+new `legalizeBitCast` Form-2 sat in the shared all-targets `legalizeInst` switch and turned a loud
+`SLANG_UNEXPECTED` into a silent default for any empty-source bit_cast; the hardening asserts
+`as<IRAnyValueType>` before the zero-fill and gates on the source TYPE, not the operand value
+[AnyValue bulk-copy lens: numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md).
+**Revert-drill:** a `bool enclosingPreserved` flag threaded down the recursive
+`countWordScalarLeaves` had two new tests, but both tripped a local check (the empty was a direct
+field) and never the flag. Its real job, an undecorated empty inside an undecorated inner struct
+inside a preserved outer, had no coverage, and the failure mode was a silent miscompile. Delete any
+new parameter or guard and see whether a test fails; if none does, ask for the deeper case in both
+member orders plus a numeric readback
+[a threaded/recursive parameter: revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md).
 
-The revert-drill has two traps where a passing test proves only its own spelling, not that it
-catches anything. First, **a guard in front of the new leg hides it.** On slang#13724 R2 the GLSL
-skip became `m_hasMultiplePushConstantBlocks && isPushConstantBlockByLayout(v) && !v->hasUses()`,
-but the new test used a single-block module, so the multi-block conjunct short-circuited and
+Two traps make a passing test prove only its own spelling. **A guard in front of the new leg hides
+it.** On slang#13724 R2 the GLSL skip became `m_hasMultiplePushConstantBlocks &&
+isPushConstantBlockByLayout(v) && !v->hasUses()`, but the test used a single-block module, so
 swapping `!hasUses()` back to the buggy reachability test still passed 21/21. Only a module with two
-blocks, one read by an `export` function and one unused, tells them apart. When a fix adds a
-conjunction, drill each conjunct alone and make sure the pinning test satisfies every *other*
-conjunct. The same PR showed that an emit-time `return SLANG_FAIL` is invisible to slangc-based
-tests, because slangc already suppresses output on error and DIAGNOSTIC_TEST does not parse
-glslang's text: pin it with an `-emit-spirv-via-glsl` run plus `CHECK-NOT: glslang`, never
-`CHECK-NOT: error`, which matches slang-test's own "standard error =" header
-[revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md).
-Second, **"head passes, base fails" on a stale-CHECK refresh** (a PR that only re-spells one
-FileCheck line, such as a docs/generated/tests nightly refresh after an intentional emitter change)
-shows only that the new spelling matches. Copy the CHECK block into a temp test and run it against a
-target whose output *does* have the shape the test forbids; for slang#13731 that was HLSL, which
-keeps the trailing `break;` that WGSL drops. If the block still passes, the claim was never checked:
-there the `X-NOT: break;` sat after `default :`, so case 0 was never covered. Tighten the block, then
-confirm it passes on the real target and fails on the contrast target, and keep anchors off
-incidental tokens such as paren counts (`if({{\(*}}…`), since re-pinning those is what made the test
-stale in the first place
-[reviewing a stale-CHECK refresh: run the CHECK block against output that has the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md).
+blocks, one read by an `export` function and one unused, tells them apart. An emit-time
+`return SLANG_FAIL` is also invisible to slangc-based tests, because slangc already suppresses output
+on error and DIAGNOSTIC_TEST does not parse glslang's text: pin it with an `-emit-spirv-via-glsl` run
+plus `CHECK-NOT: glslang`, never `CHECK-NOT: error`, which matches slang-test's own "standard error ="
+header [revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md).
+**A stale-CHECK refresh that passes on head and fails on base** shows only that the new spelling
+matches. Copy the block into a temp test and run it against a target whose output has the forbidden
+shape. For slang#13731 that was HLSL, which keeps the trailing `break;` that WGSL drops, and the
+`X-NOT: break;` placed after `default :` had never covered case 0. Tighten the block until it passes
+on the real target and fails on the contrast target, and keep anchors off incidental tokens such as
+paren counts (`if({{\(*}}…`), since re-pinning those is what made the test stale
+[stale-CHECK refresh: run the block against the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md).
 
-A third coverage lens governs "reject unrepresentable input" / "add a guard" fixes, traced across two
-rounds of slang#13063 (slangi/HostVM `printf("%s", <runtime String>)` SIGSEGV). Round-1: when a crash
-is fixed by adding a guard at ONE site that calls a fallible layout query
-(`getNaturalSizeAndAlignment`), the highest-value check is to search for SIBLING call sites running the
-same query on a related type that the fix left unguarded — here `kIROp_Var` and `kIROp_Store` query the
-POINTEE type (`tryGetPointedToType`) and stayed unguarded, so an unrepresentable pointee still gets a
-silent 0-byte slot with no diagnostic (and the PR-cited `checkUnsupportedInst` safety net does NOT run
-for HostVM). Grade **Gap (not Bug)** if crash-reachability from the silent slot is unverified, and ask
-the author to factor check-diagnose-reset into one shared helper used at every layout-query site
-[reviewing 'reject unrepresentable input' fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md).
-Round-2, once the gap is closed by that shared helper (`getRepresentableSizeAndAlignment` routed
-through 4 sites), verify three things beyond "is the gap closed": (a) the helper's doc doesn't
-OVERSTATE coverage — it claimed to be shared by EVERY VM slot while ~16 other raw
-`getNaturalSizeAndAlignment`/`getNaturalOffset` calls stayed raw, safe only via an implicit invariant
-that lived only in the PR body (reword to name the guarded sites); (b) some new guards may be
-DEFENSIVE/redundant rather than load-bearing — `kIROp_Var`/`kIROp_Store` were removal-insensitive
-(type-keyed dedup + a co-located function-result guard already caught the type), and slang's methodology
-discourages guards "never hit under correct input", so for a FINAL-round PR ask to mark them defensive
-or `SLANG_ASSERT` the invariant rather than demand removal (a nit, not a blocker); and (c) A-vs-C
-disagreements on a COMMENT's accuracy are signal to SURFACE, not resolve. Verdict mapping: a round-1
-REQUEST_CHANGES whose round-2 carries 0 bugs and only clarity/message/test-coverage gaps is
-APPROVE_WITH_NITS, not REQUEST_CHANGES; confirm Devin re-analyzed the new head (its analysis names the
-round-2 helper/test files) before trusting a "clean" result. Complementarity: this sibling-coverage
-class was caught ONLY by Reviewer A's correctness subagents — B/C rarely flag missing sibling coverage
-[round-2 review of a 'factored guard into shared helper' fix: doc-overstatement + defensive guards](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md).
+## Guard fixes: sibling sites and the round-2 checks
 
-A fourth lens covers PRs that move a lowering pass later in the pipeline. On shader-slang/slang#13699 (issue #13446), `legalizeMatrixTypes`, which turns int/uint/bool matrices into arrays of row vectors, moved from before the main `lowerBufferElementTypeToStorageType` (slang-emit.cpp ~2118) to just after it (~2658); the background is on [[wiki/concepts/slang-compiler-ir-type-legalization.md]]. The PR's own tests passed, but two review rounds then found five regressions, each in a pass that now saw an int `IRMatrixType` for the first time. `legalizeBinaryOp` (called by `legalizeIRForWGSL` and `legalizeIRForMetal`) treated int matrices as float matrices, so `/` gave E56102 or `1.0h/s`, and a matrix-typed shift amount was not made unsigned. `lowerMatrixAddresses` had no `kIROp_SwizzledStore` case (`buf[0].m[1].xz = …` aborted with E99997), mishandled a padded std140 vec4 row read as vec3 (a new `emitCast` turned the truncation into an intCast, which is invalid WGSL), and mishandled the scalar row of a one-column matrix on both load and store. `findLeafValueAtOffset` picked the wrong row index, which also broke float `bit_cast`. What found them fast was a generated probe set, not the PR's tests: about 25 binary and unary ops × int/uint/bool, plus about 20 buffer access forms (swizzle store, `+=` through a swizzle, row store, element store, cbuffer row and whole-matrix reads, transpose, `mul`, casts, ByteAddressBuffer Load/Store, inout params, function params and returns, varyings, and CB/SB/PB/push-constant containers). Compile every probe for spirv/glsl/wgsl/metal/hlsl with a master build and a head build, diff the exit status, and then run Tint over all of the WGSL output (a dawn.node null-backend script such as `node /workspace/agent/tools/tint-13635/tint-validate.mjs *.wgsl`). FileCheck legs alone passed two invalid WGSL outputs, because a WGSL FileCheck leg never validates what it matches, and `wgsl-spirv-asm` test legs are skipped on Linux since slang-tint is fetched only on Windows x64. The probe matrix belongs before review, not after it: every pass between the old and the new position is a consumer of the new shape [moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md), [probe every op × access form × target against master before review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md).
+slang#13063 fixed a slangi/HostVM `printf("%s", <runtime String>)` SIGSEGV by guarding one site that
+calls the fallible `getNaturalSizeAndAlignment`. The sibling `kIROp_Var`/`kIROp_Store` sites query the
+POINTEE type (`tryGetPointedToType`) and stayed unguarded, so an unrepresentable pointee still got a
+silent 0-byte slot, and the `checkUnsupportedInst` safety net the PR cited does not run for HostVM.
+For any "reject unrepresentable input" fix, search the sibling sites that run the same query; grade
+the hole **Gap (not Bug)** while crash-reachability is unverified, and ask for one shared
+check-diagnose-reset helper at every layout-query site. Only Reviewer A's correctness subagents caught
+this class; B and C rarely flag missing sibling coverage
+[reject-unrepresentable fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md).
+In round 2, with `getRepresentableSizeAndAlignment` routed through four sites, check three more
+things. (a) The helper's doc must not overstate coverage: it claimed every VM slot, while ~16 raw
+`getNaturalSizeAndAlignment`/`getNaturalOffset` calls stayed safe only by an invariant stated in the
+PR body. (b) Removal-insensitive guards (`kIROp_Var`/`kIROp_Store`, already covered by type-keyed
+dedup and a co-located function-result guard) should be marked defensive or become a `SLANG_ASSERT`;
+on a final round that is a nit, not a removal demand. (c) A-vs-C disagreements about a comment's
+accuracy are surfaced, not resolved. A round-1 REQUEST_CHANGES whose round 2 has 0 bugs and only
+clarity or coverage gaps maps to APPROVE_WITH_NITS; confirm Devin analyzed the new head (its analysis
+names the round-2 files) before trusting a "clean" result
+[round 2 of a shared-helper guard fix](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md).
 
-A resource-lifetime lens transfers the same "exercise the failure path" discipline to slang-rhi
-backends: **pooled staging + RAII free-on-scope-exit + a queue-wait that can FAIL = in-flight page
-reuse.** Reviewing slang-rhi#869 (Vulkan `readBuffer` via the pooled `m_readbackHeap`), when a readback
-(a) submits a GPU→staging copy, (b) waits via `queue->waitOnHost()` (= `vkQueueWaitIdle`), then (c)
-frees the staging, scrutinize the FAILURE path between (b) and (c) when the staging comes from a SHARED
-pool: `vkQueueWaitIdle` can return `VK_ERROR_OUT_OF_HOST/DEVICE_MEMORY`, and OOM is NOT device loss —
-the queue is alive and the submitted copy may still be in flight, so "wait-fail ⇒ device loss ⇒ the
-race is moot" is a FALSE premise. `StagingHeap::Handle::~Handle()` frees with NO completion fence, so
-freeing on the wait-fail path marks the pooled region reusable while its GPU copy may still be writing —
-no concurrency needed, a later SEQUENTIAL readback re-allocs the same region → torn data. The sibling
-asymmetry blocks the easy fix: `readTexture` frees only AFTER success, so on failure it LEAKS and trips
-the teardown `SLANG_RHI_ASSERT(m_totalUsed == 0)` — so "just mirror readTexture" is also wrong; the
-only robust fixes couple the free to GPU/command completion (fence/token) or quarantine the region.
-Meta: run the codex critique gate on the RESOLUTION/verdict, not just the code — it caught the reviewer
-closing this as "accept, 0 bugs, not blocking" on the device-loss premise, and the OOM counterexample
-flipped it to an open blocking error-path defect
-[slang-rhi review lens: pooled staging + RAII free + fallible queue-wait = in-flight page reuse](../learnings/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md).
+## Moving a lowering pass later
+
+On slang#13699 (issue #13446) `legalizeMatrixTypes`, which turns int/uint/bool matrices into arrays of
+row vectors, moved from before the main `lowerBufferElementTypeToStorageType` to just after it
+(background: [[wiki/concepts/slang-compiler-ir-type-legalization.md]]). The PR's tests passed; two
+review rounds then found five regressions, each in a pass that saw an int `IRMatrixType` for the first
+time. `legalizeBinaryOp` (called by `legalizeIRForWGSL` and `legalizeIRForMetal`) treated int
+matrices as float (`/` gave E56102 or `1.0h/s`, and a matrix shift amount was not made unsigned).
+`lowerMatrixAddresses` had no `kIROp_SwizzledStore` case (`buf[0].m[1].xz = …` aborted with E99997),
+read a padded std140 vec4 row as vec3 through a new `emitCast` that emitted an invalid-WGSL intCast,
+and mishandled the scalar row of a one-column matrix on load and store. `findLeafValueAtOffset` picked
+the wrong row, which also broke float `bit_cast`. A generated probe set found them, not the PR's
+tests: ~25 binary and unary ops × int/uint/bool, plus ~20 access forms (swizzle store, `+=` through a
+swizzle, row and element store, cbuffer row and whole-matrix reads, transpose, `mul`, casts,
+ByteAddressBuffer Load/Store, inout and function params and returns, varyings, CB/SB/PB/push-constant
+containers). Compile each for spirv/glsl/wgsl/metal/hlsl with master and head builds, diff the exit
+status, then run Tint over all WGSL output (`node /workspace/agent/tools/tint-13635/tint-validate.mjs
+*.wgsl`, dawn.node null backend). FileCheck legs passed two invalid WGSL outputs because a WGSL
+FileCheck leg never validates, and `wgsl-spirv-asm` legs are skipped on Linux (slang-tint is fetched
+only on Windows x64). Every pass between the old and new position consumes the new shape, so the probe
+matrix belongs before review
+[probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md),
+[probe every op × access form × target before review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md).
+
+## slang-rhi: pooled staging, RAII free and a fallible wait
+
+On slang-rhi#869 (Vulkan `readBuffer` via the pooled `m_readbackHeap`) a readback submits a
+GPU→staging copy, waits with `queue->waitOnHost()` (`vkQueueWaitIdle`), then frees the staging.
+`vkQueueWaitIdle` can return `VK_ERROR_OUT_OF_HOST/DEVICE_MEMORY`, and OOM is not device loss: the
+queue is alive and the copy may still be in flight. `StagingHeap::Handle::~Handle()` frees with no
+completion fence, so the wait-fail path marks the region reusable mid-copy, and a later *sequential*
+readback re-allocs it and reads torn data. "Mirror `readTexture`" is also wrong: it frees only on
+success, so a failure leaks and trips the teardown `SLANG_RHI_ASSERT(m_totalUsed == 0)`. The robust
+fixes couple the free to GPU completion (fence or token) or quarantine the region. Run the critique
+gate on the verdict as well as the code: it caught this being closed as "0 bugs, not blocking" on the
+device-loss premise
+[pooled staging + RAII free + fallible queue-wait = in-flight page reuse](../learnings/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md).
 
 ## Reproduce the exact scenario; a static gate is not a proof
 
-Codegen effects are use/lowering-dependent, and a partial repro lies. During an OUTPUT_REVIEW
-codex claimed a global `RayQuery` under `-fspv-reflect` emits `UserTypeGOOGLE "rayquery:<0>"`; a
-"refutation" with three tests concluded "non-manifesting" — and was WRONG, because all three
-*used* the RayQuery (lowering it to query ops and copying it to a local before the reflection
-pass), while codex's sharper reproducer left it **unused** in a `[noinline]` body AND added
-**`-emit-spirv-directly`**, so it survived as an `IRGlobalParam` and the decoration WAS emitted.
-Running codex's literal case immediately turned a 5-round must-fix into an approve — cheaper and
-more truthful to test their case first than argue from a near-miss variant
-[Reproduce a reviewer's EXACT codegen scenario before disputing — effects are use/lowering-dependent](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md).
-The companion atom (slang#12922, naming six opaque builtins) names the underlying trap: a
-`getTypeNameHint` case flips an empty hint to non-empty, which makes `addUserTypeHintDecorations`
-emit a `-fspv-reflect` decoration — but that pass is gated on `as<IRGlobalParam>`, and it is
-tempting to reason "these types lower away → never reach it → non-manifesting." That gate is
-**necessary but not sufficient**: a *used* global RayQuery is copied to a local (no decoration)
-while an *unused* one survives (decoration emitted), and `DescriptorHandle<T>` globals fold into
-the parameter cbuffer (no string) while a `Texture2D` global is the control that does emit one —
-verify the repro exercises the survival path or say "unverified," and note the effect here is real
-but additive/benign (a documentation/optional-test item, not a bug)
-[Reviewer trap: an IRGlobalParam gate doesn't prove a getTypeNameHint reflection side-effect is 'non-manifesting'](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md).
-The same discipline generalizes past codegen to ANY dispute a command can decide — and applies just as
-much when YOU are the one being disputed. When a reviewer or codex critique flags a claim you made,
-and the dispute is settleable by a binding grep, a `git merge-tree`, or reading a file at its CURRENT
-head, run the command BEFORE writing a defense: a confident-sounding justification is not evidence. On
-slangpy#1091/PR #1162 the author was tempted to defend two flagged claims; a 30-second check proved
-codex right both times (a "needs a live Device+GPU" test was actually Python-bound and device-free; a
-"merge stays clean" claim was refuted by `git merge-tree` finding real conflicts on shared files).
-Corollary: always re-read a FAST-MOVING sibling PR at its current head, not from memory — its
-diff/format/version changes under you (a sibling's signature format had been rewritten since a
-5-week-old recollection); and for `git diff --name-only origin/main..<stale-branch>` a branch weeks
-behind main lists mostly main's OWN drift the branch lacks, so identify the files BOTH branches modified
-(or use `merge-tree`) rather than inferring "they conflict everywhere". Naming the failure mode ("I
-should verify") does not inoculate you — only the tool call does
-[when a reviewer disputes your claim with a runnable check, run it before defending](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md).
+Codegen effects are use/lowering-dependent, so a near-miss repro lies. Codex claimed a global
+`RayQuery` under `-fspv-reflect` emits `UserTypeGOOGLE "rayquery:<0>"`. A three-test "refutation" was
+wrong because every test *used* the RayQuery (lowering it to query ops and copying it to a local),
+while codex's case left it **unused** in a `[noinline]` body and added **`-emit-spirv-directly`**, so
+it survived as an `IRGlobalParam` and got the decoration. Running the literal case turned a 5-round
+must-fix into an approve
+[reproduce a reviewer's EXACT codegen scenario before disputing](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md).
+The trap behind it (slang#12922, which names six opaque builtins in `getTypeNameHint`):
+`addUserTypeHintDecorations` is gated on `as<IRGlobalParam>`, and "these types lower away, so the
+effect is non-manifesting" does not follow. A used and an unused global RayQuery differ, and
+`DescriptorHandle<T>` globals fold into the parameter cbuffer while a `Texture2D` global is the control
+that does emit. Exercise the survival path or say "unverified"; the effect there was real but
+additive and benign (a docs or optional-test item, not a bug)
+[an IRGlobalParam gate doesn't prove 'non-manifesting'](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md).
 
-The rule applies to Reviewer A's own examples as well: a traced example is a prediction until
-someone executes it. On slang#13283 Reviewer A flagged a 🟡 cross-scope temporary gap from a code
-trace, with `while (s.a[k+2] != 0) k++; return s.a[k+2];` as the example. Run against PR and
-master, it did not reproduce: both emitted the same valid GLSL, because `fixValueScoping` had
-already given the index a temporary. The real trigger was an if/else whose else returns early,
-where redundancy removal lets a GEP in the dominating then-block replace the GEP after the if. For
-emitter or scoping findings, build PR and base in `wt-<N>-verify` / `wt-<N>-master` (copy
-`external/` from `/workspace/agent/slang`, `cmake --preset default`, build Release slangc) and run
-the probe through `-target spirv -emit-spirv-via-glsl`, where glslang turns an out-of-scope
-identifier into a hard error. Report the gap as confirmed or refuted, never as predicted
+The rule holds when YOU are the one disputed: if a grep, a `git merge-tree` or a read at the current
+head can settle it, run it before writing a defense. On slangpy#1091/PR #1162 a 30-second check proved
+codex right twice: a "needs a live Device+GPU" test was Python-bound and device-free, and `git
+merge-tree` found real conflicts behind "merge stays clean". Re-read a fast-moving sibling PR at its
+current head, not from memory. For a branch weeks behind main, `git diff --name-only
+origin/main..<branch>` mostly lists main's own drift, so compare the files both sides changed or use
+`merge-tree`. Naming the failure mode does not inoculate you; only the tool call does
+[when a reviewer disputes your claim with a runnable check, run it first](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md).
+
+A reviewer's traced example is a prediction until someone executes it. On slang#13283 Reviewer A's 🟡
+cross-scope temporary example (`while (s.a[k+2] != 0) k++; return s.a[k+2];`) emitted the same valid
+GLSL on PR and master, because `fixValueScoping` had already given the index a temporary. The real
+trigger was an if/else whose else returns early, where redundancy removal lets a GEP in the dominating
+then-block replace the GEP after the if. For emitter or scoping findings, build PR and base in
+`wt-<N>-verify` / `wt-<N>-master` (copy `external/` from `/workspace/agent/slang`, `cmake --preset
+default`, Release slangc) and probe through `-target spirv -emit-spirv-via-glsl`, where glslang turns
+an out-of-scope identifier into a hard error. The same review saw Reviewer C exit CLARITY-INCOMPLETE on
+API 503 `server_error` (grep the log for `api_retry`, then retry) and Devin exit 3 on a fresh draft,
+which is the normal best-effort skip
 [an executed repro beats Reviewer A's traced example](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md).
 
-The converse failure is running only the example when the reviewer also suggested a sharper
-shape. In round 2 of slang#11709, Reviewer A said the backward-diff `Ref` mapping makes a
-`no_diff groupshared` parameter by-value and leaves the AST and IR signatures disagreeing. It gave a
-plain-`__ref` example and *suggested* a test with a `no_diff const groupshared` parameter. The
-example ICEs on both master and the PR, so the claim was dismissed and a real regression was
-missed. The suggested shape was the bug: `fwd_diff(f)`/`bwd_diff(f)` applied directly to
-`f(uint i, no_diff const groupshared float a[4], float x)` emits invalid SPIR-V with rc=0
-(spirv-val: "OpLoad Pointer … is not a logical pointer"), CUDA that nvrtc rejects (`(**&s_0)[i]`),
-and Metal that dereferences an array value, while master is valid for all three. Four rules
-follow. Reproduce the reviewer's suggested test shape as well as its example. Always set
-`SLANG_RUN_SPIRV_VALIDATION=1`, because without it slangc exits 0 on invalid SPIR-V. Use
-`-target ptx` as a real CUDA compile check (nvrtc 12.6 works in this container; Metal has no
-downstream compiler here). Test both a *direct* `fwd_diff`/`bwd_diff(f)` and a *differentiated
-caller* of `f`, since they take different paths and only the direct one broke here
-([run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md)).
+The converse failure is running only the example when the reviewer also suggested a sharper shape. In
+slang#11709 R2 Reviewer A's plain-`__ref` example ICEd on master and PR alike, so its claim (the
+backward-diff `Ref` mapping makes a `no_diff groupshared` parameter by-value) was dismissed, but its
+*suggested* `no_diff const groupshared` test was the regression. `fwd_diff(f)`/`bwd_diff(f)` applied
+directly to `f(uint i, no_diff const groupshared float a[4], float x)` emits invalid SPIR-V with rc=0
+(spirv-val: "OpLoad Pointer … is not a logical pointer"), CUDA that nvrtc rejects (`(**&s_0)[i]`) and
+Metal that dereferences an array value, while master is valid for all three. Test both a *direct*
+`fwd_diff`/`bwd_diff(f)` and a *differentiated caller* of `f`, since only the direct path broke. nvrtc
+12.6 works in this container; Metal has no downstream compiler here
+[run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md).
 
-The same applies to a test snippet a reviewer offers as the *fix* for a coverage gap: compile it
-against the head build before forwarding it into a verdict. On slang#13468 Reviewer A closed a
-gap with a ready-made snippet using explicit interface specialization `useBar<IFoo<int>>(a)` whose
-body calls a requirement (`t.v()`); it hits internal error E99997 "Unexpected context type for
-parameter info retrieval" (#13469) on head and master alike, so a fixer pasting it would have
-added a crashing test. When the snippet is wrong, supply a compiling alternative that reaches the
-same branch — here the array-argument form `useBar<T>(T[2] t) where T : IBar<int>` called with
-`IFoo<int> arr[2]`, which keeps `T` an interface `DeclRefType`, whereas a plain `IFoo<int>`
-argument is existential-opened and never reaches the `isInterfaceType(sub)` guard. The revert drill
-also answers a reviewer's "is each half of the fix needed?": revert each leg alone in the verify
-worktree (`git show <base>:path > path` is quick; only touched objects rebuild) and rerun the PR's
-tests — on #13468 either single revert failed all 3 tests, disproving the question's premise
+A test snippet a reviewer offers as the *fix* for a coverage gap needs the same check. On slang#13468
+Reviewer A's snippet `useBar<IFoo<int>>(a)`, whose body calls the requirement `t.v()`, hit E99997
+"Unexpected context type for parameter info retrieval" (#13469) on head and master. The compiling
+alternative that reaches the same `isInterfaceType(sub)` guard is the array form
+`useBar<T>(T[2] t) where T : IBar<int>` called with `IFoo<int> arr[2]`, which keeps `T` an interface
+`DeclRefType`; a plain `IFoo<int>` argument is existential-opened and never reaches the guard. The
+revert drill also answers "is each half of the fix needed?": revert each leg alone in the verify
+worktree (`git show <base>:path > path`) and rerun the PR's tests. On #13468 either single revert
+failed all 3 tests
 [check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md).
 
-A clean validator is not a correct program, and that matters most when judging a remedy, including
-your own (the remedy-vs-finding rule is on [Slang code-review lenses](review-pr-slang-review-lenses.md)).
-On slang#13726 (global varyings shared by several entry points) a first remedy for an interpolant
-regression, keeping the global→Input shadowing for address-passed globals, passed every PR test and
-turned spirv-val green on four probes. A fifth probe, where the second EP has an extra varying so the
-global's location differs per EP, still produced *valid* SPIR-V, but fsA read the input at Location 1
-while fsA compiled alone (`-entry fsA`) uses Location 0: a silent mislink spirv-val cannot see. When a
-remedy shares one module-scope Input variable between entry points, compare each EP's `OpDecorate …
-Location` against the same EP compiled alone; the safe remedy there was a diagnostic. A GPU-validation
-trap from the same review: WGSL on the L40S through dawn.node works, but subgroup builtins need
-`requestDevice({requiredFeatures:['subgroups']})`. Without it Tint rejects `enable subgroups;` and every
-output reads 0 on base and head alike, which looks like a pass/fail signal and is not one
-[rejecting a 'make it valid' remedy: compare the per-EP location to the single-EP compile](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md).
+A clean validator is not a correct program, and that includes your own remedy (the remedy-vs-finding
+rule is on [Slang code-review lenses](review-pr-slang-review-lenses.md)). On slang#13726 (global
+varyings shared by several entry points) a remedy that kept the global→Input shadowing for
+address-passed globals passed every PR test and four spirv-val probes. A fifth, where the second EP has
+an extra varying, still gave *valid* SPIR-V, but fsA read the input at Location 1 while fsA compiled
+alone (`-entry fsA`) uses Location 0: a silent mislink. When a remedy shares one module-scope Input
+between entry points, compare each EP's `OpDecorate … Location` with the same EP compiled alone; the
+safe remedy there was a diagnostic. A GPU trap from the same review: WGSL through dawn.node on the L40S
+needs `requestDevice({requiredFeatures:['subgroups']})` for subgroup builtins, or Tint rejects
+`enable subgroups;` and every output reads 0 on base and head alike
+[rejecting a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md).
 
-**A new `SLANG_ASSERT` has to be exercised on a Debug build.** In Release, `SLANG_ASSERT` is
-`SLANG_ASSUME` (`[[assume]]`), so a false condition is silent UB and the output looks fine; a
-Release-only fixer and reviewer, full suite included, never see it. On #13811 a new
-`SLANG_ASSERT(oldArrayCount % oldElementCount == 0)` in `_createArrayTypeLayoutLike`
-(`slang-ir-legalize-types.cpp`) fired in Debug on valid HLSL — an array of structs whose element
-nests a struct mixing data and resources (`struct Inner{Texture2D t; float x;}; struct S{Inner
-inner; float y; float z;}; S gS[2];`, `-target hlsl -profile cs_5_0`), because HLSL cbuffer array
-byte sizes are not multiples of the element size. The recipe took about 10 minutes: copy the PR
-into an instrumented worktree, replace each new assert and fallback with an
-`fopen("/tmp/x.log","a")` marker, run the corpus (every SIMPLE test plus `computeMain` × 5 targets,
-~12k compiles) and adversarial shapes through it, then confirm any hit on a Debug `slangc`
-(`cmake --build --preset debug --target slangc`, ~6 min). For `isParameterLocationUsed` reviews, a
-small API probe (`getEntryPointMetadata` over category/space/register) diffed against bindings
-parsed from the emitted code gives a ground-truth FP/FN table per shape × target; parse array
-declarations as ranges, or HLSL `T x[2] : register(t0)` reads as an FP
+**A new `SLANG_ASSERT` has to run on a Debug build.** In Release `SLANG_ASSERT` is `SLANG_ASSUME`
+(`[[assume]]`), so a false condition is silent UB, and a Release-only fixer and reviewer never see it.
+On #13811 a new `SLANG_ASSERT(oldArrayCount % oldElementCount == 0)` in `_createArrayTypeLayoutLike`
+(`slang-ir-legalize-types.cpp`) fired in Debug on valid HLSL (`struct Inner{Texture2D t; float x;};
+struct S{Inner inner; float y; float z;}; S gS[2];`, `-target hlsl -profile cs_5_0`), because HLSL
+cbuffer array sizes are not multiples of the element size. The recipe takes about 10 minutes: in an
+instrumented worktree replace each new assert and fallback with an `fopen("/tmp/x.log","a")` marker,
+run the corpus (every SIMPLE test plus `computeMain` × 5 targets, ~12k compiles) and adversarial shapes
+through it, then confirm any hit on a Debug `slangc` (`cmake --build --preset debug --target slangc`,
+~6 min). For `isParameterLocationUsed` reviews, diff a `getEntryPointMetadata` probe over
+category/space/register against bindings parsed from the emitted code for a per-shape × target FP/FN
+table; parse arrays as ranges, or HLSL `T x[2] : register(t0)` reads as an FP
 [release-only review misses SLANG_ASSERT regressions](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md).
 
 ## Self-raised findings, EXIT=0, and the full file list
 
-As the reviewer, do not close a finding YOU raised on the author's self-reported result you
-cannot reproduce. On slang#12921 the reviewer raised C001 (does excluding extension conformances
-re-open the cross-module #12917 bug?) and closed it on the fixer's "EXIT=0 — extension cases
-compile clean" — which the codex OUTPUT_REVIEW gate correctly caught: EXIT=0 proves the program
-COMPILED, not that the witness resolves despite its visibility (the likely real mechanism:
-`_getDefaultCtor` scans only DIRECT members, so an extension-declared conformance is never found
-and the path falls through to a raw `DefaultConstructExpr`, never consulting witness visibility).
-A green compile of the wrong-shaped test is not coverage of the shape you care about — keep the
-finding OPEN as a recommended coverage/justification gap and spec the isolating test precisely.
-That atom also frames critique-gate discipline: it is load-bearing not ceremony (delivery of
-`[Resolution]`/`[Review Verdict]` markers is DENIED until an OUTPUT_REVIEW records approve, via
-the EXACT protocol), and you MAY justify-and-decline where the critic is wrong (bot reviews are
-COMMENT-only and never gate a human merge) while conceding immediately where it's right — don't
-concede reflexively to clear the gate, and don't dig in where you're actually wrong
-[Reviewer discipline: don't close a self-raised finding on the author's unverifiable EXIT=0](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md).
-Finally, a review-fixes commit needs a full **file-list** spot-check, not just its code hunks:
-on slang#12931 an "address review" commit also `git add`'d `.pr-body-12929.md` (the author's
-PR-body scratch file) to the repo root — a tracked, stale, CLAUDE.md-violating merge-blocker no
-code review catches — so scan every touched-file list for non-source artifacts (`.pr-body*.md`,
-scratch `.md`, dotfiles, `*.log`), especially on follow-up commits where a broad `git add .`
-sweeps them up, and verify a claimed fix by reading the actual new commit rather than the
-description
-[Re-check the full file list of post-review fix commits — scratch commits slip in](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md).
+On slang#12921 the reviewer raised C001 (does excluding extension conformances re-open the
+cross-module #12917 bug?) and closed it on the fixer's "EXIT=0 — extension cases compile clean"; the
+codex OUTPUT_REVIEW gate caught it. EXIT=0 proves the program compiled, not that the witness resolves
+despite its visibility. The likely real mechanism: `_getDefaultCtor` scans only DIRECT members, so an
+extension-declared conformance is never found and the path falls through to a raw
+`DefaultConstructExpr`. Keep such a finding OPEN as a coverage/justification gap and spec the isolating
+test. The critique gate is load-bearing: delivery of `[Resolution]`/`[Review Verdict]` markers is
+DENIED until an OUTPUT_REVIEW records approve via the exact protocol. Justify and decline where the
+critic is wrong (bot reviews are COMMENT-only and never gate a human merge), concede at once where it
+is right, and never concede reflexively to clear the gate
+[don't close a self-raised finding on the author's unverifiable EXIT=0](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md).
+A review-fixes commit also needs a file-list check, not just its hunks. On slang#12931 an "address
+review" commit `git add`'d `.pr-body-12929.md` to the repo root, a merge-blocker no code review
+catches. Scan every follow-up commit's touched files for `.pr-body*.md`, scratch `.md`, dotfiles and
+`*.log` (a broad `git add .` sweeps them up), and verify a claimed fix by reading the new commit, not
+its description
+[re-check the full file list of post-review fix commits](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md).
 
-The automated stack has a **false-negative floor on subtle ABI/legalization correctness**. On slang PR #12875 (AnyValue bulk-copy of autodiff backward-context structs — the same subsystem as the AnyValue review lens above) the *entire* stack — slang-reviewer's 3-reviewer pass + CodeRabbit + an independent bot review + the codex PLAN/CODE/OUTPUT gates — returned APPROVE with 0 correctness bugs and the PR was reported "clean, awaiting merge." The maintainer's own (GPT-5-assisted) deep review then found two real bugs the stack missed: an ABI-preserved empty member (zero-leaf but carrying ExternCpp/Public/BinaryInterfaceType) must NOT be treated as byte-compatible, and a user `bit_cast<Word>(Empty{})` was silently zero-filled where the empty-source zero-fill needed to be provenance-gated (only the marshalling pass's own whole-object casts take it; an unmarked user cast must stay a loud failure). Both verified against master (loud `E99997`) vs the naive gate (silent `Word{0}`). Treat a clean automated pass on a byte-compatibility / type-legalization PR as *not yet proven*, and apply the numeric-exercise lens harder there ([maintainer's own deep review caught correctness bugs the automated review stack missed on slang#12875](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md)).
+## Blind spots of the automated review stack
 
-A second blind spot of the same stack is **fidelity to a maintainer's written spec**, because every diff-focused pass checks the code against itself. On slang-rhi#881, five rounds (three reviewers plus a source cross-check each) signed off a head that missed two requirements from the maintainer's spec in #787 comment 5798248018. The spec said cross-queue ownership misuse is an "error if the PRODUCER is Vulkan", but the code decided on `ctx->deviceType`, the device doing the use, so the headline misuse (CUDA using a resource Vulkan still owns) was only a warning. The spec also said "Unowned→Owned(Q) on initData", yet the debug device never registered ownership at create. Both survived every correctness pass because the code was internally consistent. When a maintainer wrote a spec, fetch it (`gh api repos/O/R/issues/N/comments --jq '.[]|select(.user.login=="<maintainer>")'` plus the PR review comments), list each requirement with its comment link, and mark it met or missed with `file:line` before any sign-off ("partial" says how much is missing, not a lower severity: a missed item gates the verdict until the maintainer defers it on record, per [Working Live PRs Alongside Maintainers](../concepts/review-maintainer-live-pr-interaction.md) and [a spec requirement left unimplemented is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md)). A tooling trap from the same review: `gh run list --commit <sha>` needs the full 40-character SHA, and a short SHA silently returns `[]`, which reads as "no CI run exists" ([review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)).
+**Subtle ABI/legalization correctness.** On slang#12875 (the AnyValue PR above) slang-reviewer's
+3-reviewer pass, CodeRabbit, an independent bot review and the codex PLAN/CODE/OUTPUT gates all
+returned APPROVE with 0 correctness bugs. The maintainer's own GPT-5-assisted review found two. An
+ABI-preserved empty member (zero-leaf but carrying ExternCpp/Public/BinaryInterfaceType) is not
+byte-compatible. A user `bit_cast<Word>(Empty{})` was silently zero-filled: the empty-source zero-fill
+has to be provenance-gated to the marshalling pass's own whole-object casts, so that an unmarked user
+cast stays a loud failure (master: `E99997`; the naive gate: a silent `Word{0}`). Treat a clean pass
+on a byte-compatibility or type-legalization PR as not yet proven, and apply the numeric lens harder
+[maintainer's own deep review caught bugs the automated stack missed](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md).
 
-Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
+**Fidelity to a maintainer's written spec**, because every diff-focused pass checks the code against
+itself. On slang-rhi#881 five rounds signed off a head that missed two requirements from the spec in
+#787 comment 5798248018. The spec said cross-queue ownership misuse is an "error if the PRODUCER is
+Vulkan", but the code decided on `ctx->deviceType`, the device doing the use, so the headline misuse
+(CUDA using a resource Vulkan still owns) was only a warning; and "Unowned→Owned(Q) on initData" was
+never registered at create. Fetch the spec
+(`gh api repos/O/R/issues/N/comments --jq '.[]|select(.user.login=="<maintainer>")'` plus the PR
+review comments), list each requirement with its comment link, and mark it met or missed with a
+location before sign-off. "Partial" says how much is missing, not a lower severity: a missed item
+gates the verdict until the maintainer defers it on record (see
+[Working Live PRs Alongside Maintainers](../concepts/review-maintainer-live-pr-interaction.md) and
+[an unimplemented spec requirement is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md)).
+Tooling trap: `gh run list --commit <sha>` needs the full 40-character SHA; a short one silently
+returns `[]`
+[review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md).
+
+## Durable-text disciplines
+
+Two disciplines, both caught by codex OUTPUT_REVIEW. (1) Never cite `file.cpp:NNNN` in source
+comments, PR descriptions or review replies: a maintainer merging master shifts every line number. Use
+stable symbol names (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers
+belong only in scratch and logs. (2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a
+plain substring; `{{.*}}` FileCheck regex is not supported and silently fails (0/1). The CHECK must
+also reject the buggy variant: `//CHECK: cyclic reference '$inheritance'`, not a loose
+`//CHECK: cyclic reference` that also matches a wrong `'E'` diagnostic and would not catch a revert
+[never cite file.cpp:line in durable text; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md).
 
 **Source learnings (23):**
-- [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: a single-block test short-circuits the multi-block conjunct, so the buggy `hasUses` swap still passed 21/21; pin an emit-time `SLANG_FAIL` with `-emit-spirv-via-glsl` + `CHECK-NOT: glslang`, not `CHECK-NOT: error`.
-- [Reviewing a stale-CHECK refresh: run the CHECK block against output that has the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` after `default :` never covered case 0; don't anchor paren counts.
-- [Rejecting a 'make it valid' remedy: compare the per-EP location to the single-EP compile](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: shared module-scope Input passed spirv-val but fsA read Location 1 vs 0 alone (silent mislink); dawn.node subgroups need `requiredFeatures:['subgroups']`.
-- [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md) — #13699 `legalizeMatrixTypes` move: ~30 probe shaders × 5 targets, base vs head rc diff; Tint catches invalid WGSL that FileCheck passed
-- [Moving a lowering pass later: probe every op x access-form x target against master BEFORE review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md) — five regressions in legalizeBinaryOp, lowerMatrixAddresses and findLeafValueAtOffset; `wgsl-spirv-asm` legs skipped on Linux
-- [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md) — slang#11709 R2: the suggested `no_diff const groupshared` shape was the regression; SLANG_RUN_SPIRV_VALIDATION=1; -target ptx; test direct fwd/bwd_diff and a differentiated caller.
-- [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md) — #13468: the snippet hit E99997 (#13469); array-argument form keeps `T` an interface DeclRefType; per-leg revert disproved "is each half needed?".
-- [a spec requirement left unimplemented is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md) — grade spec items met/missed; "partial" is not a severity tier.
-- [Review lens: AnyValue bulk-copy / empty-struct legalize — numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md) — dispatch the target conformer + pin its numeric result; assert the AnyValue invariant so the silent-default doesn't swallow other shapes.
-- [Review lens: a threaded/recursive parameter — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md) — delete the parameter and check a test fails; the deeper nested path is the untested one; silent miscompile risk.
-- [Reproduce a reviewer's EXACT codegen scenario before disputing](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md) — unused vs used + -emit-spirv-directly flip the result; run codex's literal case, not a near-miss variant.
-- [Reviewer trap: an IRGlobalParam gate doesn't prove 'non-manifesting'](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md) — a static survive-gate is necessary not sufficient; exercise the survival path or say unverified; effect is additive/benign.
-- [Reviewer discipline: don't close a self-raised finding on the author's unverifiable EXIT=0](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md) — EXIT=0 proves compile not mechanism; keep the gap open; justify-and-decline vs concede on the critique gate.
-- [Re-check the full file list of post-review fix commits — scratch commits slip in](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md) — scan touched files for non-source artifacts (.pr-body*.md, logs); verify a claimed fix by reading the new commit.
-- [Reviewing 'reject unrepresentable input' fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md) — slang#13063 R1; a guard at one `getNaturalSizeAndAlignment` site left `kIROp_Var`/`kIROp_Store` pointee queries unguarded; grade Gap not Bug if reachability unverified; A catches it, B/C rarely do.
-- [Round-2 review of a 'factored guard into shared helper' fix: doc-overstatement + defensive guards](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md) — slang#13063 R2; check the helper doc doesn't overstate coverage, mark removal-insensitive guards defensive (don't demand removal on a final round), surface A-vs-C comment-accuracy disagreements; R1 REQUEST_CHANGES → R2 nits-only = APPROVE_WITH_NITS.
-- [When a reviewer disputes your claim with a runnable check, run it before defending](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md) — slangpy#1091/PR #1162; a decidable dispute (grep, `git merge-tree`, read-at-head) is settled by the command, not a confident justification; re-read fast-moving siblings at current head.
-- [Reviewer A's traced scoping example did not reproduce (the real trigger was an early-return else); build PR + base worktrees and probe via `-emit-spirv-via-glsl`; also C dies on API 503s (retry) and a Devin exit-3 on a fresh draft is the normal skip.](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md)
-- [slang-rhi review lens: pooled staging + RAII free + fallible queue-wait = in-flight page reuse](../learnings/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md) — slang-rhi#869; OOM ≠ device loss, RAII frees pooled staging with no fence → torn data on a later sequential readback; "mirror readTexture" re-trips the `m_totalUsed==0` assert; run the critique gate on the verdict.
-- [maintainer's own deep review caught correctness bugs the automated stack missed on slang#12875](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md) — full stack (3 reviewers + CodeRabbit + bot + codex gates) APPROVEd 0 bugs; maintainer found ABI-empty-member byte-incompat + ungated `bit_cast` zero-fill; treat a clean pass on ABI/legalization PRs as not-yet-proven.
-- [five diff-review rounds on slang-rhi#881 missed two spec'd rules (producer-based severity, ownership at create); map each spec requirement to met/partial/missed with file:line before sign-off; `gh run list --commit` needs the full SHA.](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)
-- [never cite file.cpp:line in durable text; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md) — merges shift line numbers so cite symbols; `//DIAGNOSTIC_TEST` matches text as a plain substring (`{{.*}}` unsupported), so make the CHECK reject the buggy variant.
-- [Release-only review misses SLANG_ASSERT regressions — run new-helper asserts on a Debug build](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md) — #13811 cbuffer array-size assert fires only in Debug (Release = `SLANG_ASSUME`); marker-instrument new asserts over a ~12k-compile corpus, confirm on Debug slangc
+- [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: single-block test hid the conjunct; pin emit `SLANG_FAIL` via `CHECK-NOT: glslang`
+- [Stale-CHECK refresh: run the block against the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` never covered case 0
+- [Reject a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: valid SPIR-V, silent Location mislink; dawn.node subgroups need a feature flag
+- [Moving a lowering pass later: probe every pass in between](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md) — #13699: ~30 probes × 5 targets, base vs head rc diff; Tint catches what FileCheck passed
+- [Moving a lowering pass later: probe op × access form × target before review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md) — five regressions in three passes; `wgsl-spirv-asm` legs skipped on Linux
+- [Run a reviewer's *suggested* repro, not just its example](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md) — #11709 R2: `no_diff const groupshared` was the bug; validate SPIR-V; `-target ptx`
+- [Check a reviewer's suggested test snippet compiles](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md) — #13468: snippet hit E99997; array-argument form; per-leg revert drill
+- [An unimplemented spec requirement is a merge blocker until deferred](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md) — grade spec items met/missed; "partial" is not a severity tier
+- [AnyValue bulk-copy lens: numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md) — dispatch the target conformer and pin its result; assert the AnyValue invariant
+- [A threaded/recursive parameter: revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md) — delete the parameter; the deeper nested path is the untested one
+- [Reproduce a reviewer's EXACT codegen scenario before disputing](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md) — unused vs used and `-emit-spirv-directly` flip the result
+- [An IRGlobalParam gate doesn't prove 'non-manifesting'](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md) — static gate necessary, not sufficient; exercise survival or say unverified
+- [Don't close a self-raised finding on the author's EXIT=0](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md) — EXIT=0 proves compile, not mechanism; decline vs concede on the critique gate
+- [Re-check the full file list of post-review fix commits](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md) — scan for `.pr-body*.md`, logs; read the new commit, not its description
+- [Reject-unrepresentable fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md) — #13063 R1: `kIROp_Var`/`kIROp_Store` left unguarded; Gap not Bug; only A catches it
+- [Round 2 of a shared-helper guard fix](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md) — #13063 R2: doc overstatement, defensive guards; nits-only R2 = APPROVE_WITH_NITS
+- [When a reviewer disputes your claim with a runnable check, run it first](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md) — slangpy PR #1162: grep / `git merge-tree` decide; re-read siblings at head
+- [An executed repro beats Reviewer A's traced example](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md) — #13283: real trigger was an early-return else; C 503s retry; Devin exit 3 skip
+- [Pooled staging + RAII free + fallible queue-wait](../learnings/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md) — slang-rhi#869: OOM ≠ device loss; fence-free free → torn data; gate the verdict
+- [Maintainer's deep review caught bugs the automated stack missed](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md) — #12875: full stack 0 bugs; ABI empty member, ungated `bit_cast` zero-fill
+- [Review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md) — slang-rhi#881: five rounds missed two spec rules; `gh run list --commit` needs full SHA
+- [Never cite file.cpp:line in durable text](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md) — cite stable symbols; `DIAGNOSTIC_TEST` is substring-only, reject the buggy variant
+- [Release-only review misses SLANG_ASSERT regressions](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md) — #13811: assert fires only in Debug; marker-instrument a ~12k-compile corpus

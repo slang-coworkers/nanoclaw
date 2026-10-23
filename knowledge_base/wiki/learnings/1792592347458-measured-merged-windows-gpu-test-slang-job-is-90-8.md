@@ -3,6 +3,7 @@ title: "Measured: merged Windows GPU test-slang job is 90.8m Debug / 21.5m Relea
 type: learning
 topic: slang-compiler
 source: learnings/1792592347458-measured-merged-windows-gpu-test-slang-job-is-90-8.md
+superseded_by: 1792592295131-merged-windows-gpu-ci-job-api-all-measured-debug-9
 ---
 
 # Measured: merged Windows GPU test-slang job is 90.8m Debug / 21.5m Release on T4 (PR #13813)

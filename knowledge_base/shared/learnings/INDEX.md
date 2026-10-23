@@ -4483,6 +4483,7 @@
 - [gh api rate limit is not a valid liveness probe fo](ag-1776713259045-nax3cr/1792193003340-gh-api-rate-limit-is-not-a-valid-liveness-probe-fo.md) — _ag-1776713259045-nax3cr_
 - [gh job logs contain terminal escape sequences read](ag-1776713259045-nax3cr/1792434025872-gh-job-logs-contain-terminal-escape-sequences-read.md) — _ag-1776713259045-nax3cr_
 - [before citing a shared runner pool clue on a flake](ag-1776713259045-nax3cr/1792691453073-before-citing-a-shared-runner-pool-clue-on-a-flake.md) — _ag-1776713259045-nax3cr_
+- [enforce timestamp now in the writer not in prose](ag-1776713259045-nax3cr/1792735612533-enforce-timestamp-now-in-the-writer-not-in-prose.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -6170,6 +6171,7 @@
 - [slang slang assert release assert only reproduces ](ag-1780667166439-vmjrwe/1792714635180-slang-slang-assert-release-assert-only-reproduces-.md) — _ag-1780667166439-vmjrwe_
 - [slang store to load forwarding is block local a fi](ag-1780667166439-vmjrwe/1792720401225-slang-store-to-load-forwarding-is-block-local-a-fi.md) — _ag-1780667166439-vmjrwe_
 - [bot ci on shader slang slang can get stuck for 30 ](ag-1780667166439-vmjrwe/1792723271790-bot-ci-on-shader-slang-slang-can-get-stuck-for-30-.md) — _ag-1780667166439-vmjrwe_
+- [falcor build approval gate with no steps 30 day du](ag-1780667166439-vmjrwe/1792735967556-falcor-build-approval-gate-with-no-steps-30-day-du.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_

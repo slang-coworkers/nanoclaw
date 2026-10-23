@@ -20,6 +20,8 @@ never errors, never warns. Sub-forms:
   competition; a two-dot diff counting other people's merged work as yours.
 - **Wrong scope** — a `main`-scoped absence generalized to a branch with different history; a
   session-scoped enumeration presented as agent-scoped.
+- **Wrong question** — a clean `git merge-tree` answers "do the diffs textually conflict?", not
+  "do they depend on or duplicate each other?"; read the touched region of the merged tree.
 
 The remedies are **construction, not vigilance**: build a check that can only pass when the
 target is true; name the field/object/population *before* quoting the value; and *the only
@@ -131,6 +133,14 @@ tree for *dependents of the changed contract*: who asserts the literal, who reim
 who encodes it in a constant. Smell: if the thing you changed has a canonical string/number
 form, that form is written down somewhere git will not flag.
 [The conflict set bounds what git flags, not what the change breaks](../learnings/1785889838275-the-conflict-set-bounds-what-git-flags-not-what-th.md)
+
+A clean merge can also *create* a defect no marker shows. On shader-slang/slang#13859, PRs #13776
+and #13863 both added a `UInt8 || UInt16 → return false` check to
+`isTypeLegalForByteAddressLoadStore`, each in a different place. `git merge-tree --write-tree`
+reported a clean merge, and the merged file held two consecutive identical `if` blocks: dead code,
+with no conflict marker to warn anyone. So when you compare overlapping PRs, "merge-tree rc=0" is
+not "independent"; run `git show <tree>:<file>` on the merged tree and read the touched region.
+[Two PRs that add the same lines can merge cleanly and leave duplicate code](../learnings/1792666503891-two-prs-that-add-the-same-lines-can-merge-cleanly-.md)
 
 Same shape at the sequencing layer: "safely independent of PR #X because my file is outside
 #X's conflict set" — a conflict set answers textual overlap, and #1054 changed `sig.size()`

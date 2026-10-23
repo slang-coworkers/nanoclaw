@@ -3,6 +3,7 @@ title: "FileCheck CHECK-NOT region is bounded by adjacent positive matches (whol
 type: learning
 topic: misc
 source: learnings/1783994288793-filecheck-check-not-region-is-bounded-by-adjacent-.md
+superseded_by: 1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi
 ---
 
 # FileCheck CHECK-NOT region is bounded by adjacent positive matches (whole-file negatives need a top anchor)

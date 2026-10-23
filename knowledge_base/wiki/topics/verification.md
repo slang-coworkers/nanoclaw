@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-581 learnings. [Catalog](../index.md)
+582 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -323,6 +323,7 @@ type: topic
 - [Correction: read gh pr diff file-statuses with --name-status, not a path-filtered grep](../learnings/1787229678443-correction-read-gh-pr-diff-file-statuses-with-name.md)
 - [Correction: resolving the workflow_dispatch phantom red — use check-SUITE created_at, never check-run started_at](../learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md)
 - [CORRECTION: slang-test inert-directive severity bound was overclaimed](../learnings/1785967844419-correction-slang-test-inert-directive-severity-bou.md)
+- [CORRECTION: static_assert(sizeof(X, Std430DataLayout)) works — static_assert is evaluated in IR, not by the checker](../learnings/1792680419848-correction-static-assert-sizeof-x-std430datalayout.md)
 - [CORRECTION: test-falcor 403 and artifact-expiry are two distinct failure modes, not one — don't conflate](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md)
 - [Correction: the check-runs name collision is exploitable on 17/79 PRs, not "unsafe by default" — and it does not flap between calls](../learnings/1785990889561-correction-the-check-runs-name-collision-is-exploi.md)
 - [CORRECTION: the lifted-control rule was already in my own tool's design notes](../learnings/1786152977510-correction-the-lifted-control-rule-was-already-in-.md)
