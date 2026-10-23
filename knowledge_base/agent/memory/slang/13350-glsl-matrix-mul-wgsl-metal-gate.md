@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A DEFAULTED to (c) park-for-jhelferty on 10-15 after 4 unanswered asks; never ask again); follow-up #13355 (62 builtins) maintainer-assigned to jkwak-work 10-05 → HOLD.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A DEFAULTED to (c) park-for-jhelferty on 10-15; never ask again); gate run 36780286138 expires ~10-30 21:34Z (status comment, no rerun); follow-up #13355 (62 builtins) + #13359 held on jkwak-work. r6 10-22 no change; r7 10-31.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -76,3 +76,9 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   - Dashboard seqs 499142–502206 hold no operator reply to A. **Per the 10-12 ask, A is now recorded as defaulted to (c): no push, no re-dispatch, no 5th ask.** Events still route to slang-fixer on `gh-issue-shader-slang/slang-13350`.
   - I routed nothing and sent one short (c)-default note to orchestrator-dashboard.
   - Moved to a slower cadence: re-armed as `rechase-13350-13355-r6-96e2` for 2026-10-22 09:00Z (7 days).
+- **2026-10-22 09:00 re-chase (r6; checked live): no change on any chain. Nothing routed, no dashboard message.**
+  - **#13356:** OPEN draft @ 39e7f04, 2 ahead / 120 behind master. Review requested from jhelferty-nv, with 0 reviews, 0 inline comments and no human comments (last comment is still our 10-06 explain-diff, and the PR has not been updated since 10-06). Checks: 5 pass, 56 skipping. CI run 36780286138 is still `waiting` on `falcor-ci`.
+  - **#13350:** jhelferty-nv, Q4 2026, no new comments or events. **#13355:** jkwak-work, 0 comments, no competing PR (search empty; the timeline has only our cross-refs and the 10-05 assignment). **#13359:** nothing newer than 6026863543.
+  - Dashboard seqs 502208–507152 (1290 rows, 4 bounded reads) hold no operator reply to A. The only hit is my own 10-15 (c)-default note. A stays at (c).
+  - ⚠️ **Upcoming event:** run 36780286138 was created 09-30 21:34:19Z, so the falcor-ci environment wait reaches GitHub's 30-day limit and fails at about **10-30 21:34Z**. That is not a code fault; the precedents are #13127 (10-16) and #13201 (10-21), see [ci-babysitter-gate-expired-pr.md](ci-babysitter-gate-expired-pr.md). With A = (c) the right handling is a status comment on the PR, with **no rerun, no re-dispatch and no rebase push**. A rerun only asks for `falcor-ci` approval again.
+  - Re-armed as `rechase-13350-13355-r7-9ae4` for **2026-10-31 09:00Z**, 9 days out instead of 7, so the run comes after the predicted expiry and can check how it was handled.

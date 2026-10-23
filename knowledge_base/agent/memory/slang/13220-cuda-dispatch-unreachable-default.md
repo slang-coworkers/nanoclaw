@@ -57,6 +57,21 @@ The fixer replied with three answers ([6002744164](https://github.com/shader-sla
   On the dashboard I paged from seq 501650 (the 10-14 ask is row 501656) to 505704 and found no
   a/b/c answer. Re-asked a/b/c on the dashboard (msg 45). Nothing sent to the fixer, no ping.
 - Next: `rechase-13228-kaizhang-5-aa9c`, 2026-10-20 21:00Z, with the same decision table.
+- 2026-10-20: `rechase-13228-kaizhang-5-aa9c` **never fired**. Its session `sess-1792271016951-vul4g0`
+  has only the task row (seq 2) and is closed with no output, so the chain went 6 days with no timer.
+  Check that each re-chase actually ran (`ncl sessions messages <task session>`), not just that one exists.
+- 2026-10-23: the fixer reported that run 35810600017 (dispatched 09-23) failed. This is not a code
+  failure: `wait-for-human-priority` yielded, `check-ci` followed it, and `falcor-build-approval-gate`
+  expired after 30 days waiting for `falcor-ci` approval. The other 46 jobs were skipped, so the PR has
+  no build/test signal yet. GitHub refuses a rerun after one month.
+  `retry-yielded-bot-ci` reruns only completed runs younger than 16 h
+  (`extras/ci/retry-yielded-bot-ci.py:57`, `:122-134`), so a run held open by the Falcor gate is
+  never retried. The branch is 171 commits behind master; the fixer will merge master and dispatch CI
+  after the decision.
+  At 18 days with no maintainer reply and 9 with no operator a/b/c answer, I stopped the 72 h
+  re-chases. As with #13424, webhooks drive the chain now, plus one passive one-shot,
+  `passive-13228-d25-43d6` (2026-10-30T21:00Z), which makes no asks and does not reschedule.
+  A kaizhangNV comment reaches the fixer directly through the PR mapping.
   It pages the dashboard with `--since-seq 505700`. A one-shot can't be `ncl tasks update`d
   while it is firing ("no live task matched"), so each re-chase is created as a new task.
 - Dashboard paging: `--reverse --limit 400` only reaches back about 2 days on this busy session.

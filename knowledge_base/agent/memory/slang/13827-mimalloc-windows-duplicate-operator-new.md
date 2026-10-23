@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13827 — duplicate operator new/delete with newer mimalloc on Windows
-description: "Reporter/assignee pdeayton-nv. Fix: MI_OVERRIDE OFF once in the SLANG_BUILD_MIMALLOC block of external/CMakeLists.txt. DRAFT PR #13850 @aedafd686 (pr: non-breaking), R1 APPROVE_WITH_NITS applied. Triage resolved 10-22 01:26Z. PARKED on pdeayton-nv running the Windows MSVC /MT reproducer + maintainer ready. Covered by webhooks + /supervise-issues; no timer."
+description: "Reporter/assignee pdeayton-nv. Fix: MI_OVERRIDE OFF once in the SLANG_BUILD_MIMALLOC block of external/CMakeLists.txt. DRAFT PR #13850 @aedafd686 (pr: non-breaking), R1 APPROVE_WITH_NITS applied. Triage resolved 10-22 01:26Z. MERGED 10-22 17:41Z by pdeayton-nv via merge queue (80e4385a4); #13827 closed. TERMINAL."
 tags: [slang, cmake, mimalloc, windows, build]
 ---
 
@@ -30,3 +30,7 @@ progress, 14 done). It re-dispatches 00:40Z run 39701043294, which it cancelled.
 (39702920501) is queued behind it. The run covers only the pinned v2.1.7, so it does not test the v2.5.2 path the fix
 targets. I told slang-fixer to cancel it and not to re-dispatch the full matrix on a draft.
 Cancelled by slang-fixer at 01:36:10Z (I confirmed it live). Cancelled the fallback task cancel-check-13850-cmake-0239. #13839 merge-queue run 39702920501 was still queued at 01:37Z; slang-discord-support checks the drain on its next wake.
+
+**10-22 01:52–02:10Z, human pickup.** pdeayton-nv reviewed the PR at 01:52Z. The bot pushed comment-only `c7f9bb061` at 01:54Z, and pdeayton-nv marked the PR ready for review at 02:09:53Z. It is in the paused-approver queue (`data/approver-pause-queue.md`). **04:00Z:** the fixer classified 2 failures in CI run 39709852440 as infra: a lost Windows self-hosted runner and GitLab Falcor pipeline 75736658. It started rerun 1/3; attempt 2 was queued when I checked. The fixer owns the reruns, capped at 3. If Falcor fails again, a human needs to read the internal GitLab pipeline.
+
+**10-22 17:41Z — MERGED (terminal).** pdeayton-nv merged #13850 through the merge queue (merge-group CI 39813693263 passed) as `80e4385a4`. #13827 auto-closed. PR CI 39709852440 attempt 2 passed, so the earlier failures were flakes. The fixer removed `wt-slang-13827` and its sentinel.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13424 — Missing constant folding for loops (constant trip count not folded at -O3)
-description: Triaged + reproduced P3 enhancement; SPIR-V-only gap; assigned saipraveenb25 10-05. Option A (1-line BlockMerge before spirv-opt LoopUnroll) — final operator ask sent 10-08 (row 478682), ask budget exhausted, default HOLD; passive check 10-22
+description: Triaged + reproduced P3 enhancement; SPIR-V-only gap; assigned saipraveenb25 10-05. Option A (1-line BlockMerge before spirv-opt LoopUnroll) — final operator ask sent 10-08 (row 478682), ask budget exhausted, default HOLD; 10-22 passive check: no reply, HOLD stands, SPIRV-Tools#6930 merged 10-14, reassigned to jkwak-work; no timer left
 tags: [slang, spirv, optimization, loop-unroll, spirv-opt, held]
 resource: /workspace/inbox/a2a-1791074879332-d9xk98/triage-13424.md
 ---
@@ -83,8 +83,23 @@ every row from seq 453602 to 478676 with `--since-seq`. I sent the final ask wit
 **The ask budget is exhausted. The default is HOLD, so do not ask again.** Nothing went to slang-triager: the
 assignment isn't a comment, and there's no GO.
 
+**2026-10-22T09:00Z passive check (task `passive-13424-d14-de2e`).** No action was taken and nothing was sent.
+- **Issue:** open, still 3 comments, nothing new since 10-08 (`/comments?since=10-08T09:00Z` returned empty).
+  Labels are reproduced + SPIR-V. jkwak-work added `Office-Sai` on 10-13 and removed it on 10-14. On 10-14 16:45Z
+  they **reassigned the issue from saipraveenb25 to jkwak-work**. No slang PR is linked.
+- **SPIRV-Tools#6930 MERGED on 10-14** (s-perron approved and squash-merged it as `c47a797`). juliusikkala added
+  vector SAbs/FAbs tests on 10-08, so the vector request is handled. The merge created a `referenced` timeline
+  event on #13424. **The fold is not in Slang yet:** the `external/spirv-tools` submodule is at `7a88476`, and no
+  commit has touched that path since 10-14. After the next SPIRV-Tools bump, the `abs` half (option D, spirv-opt
+  side) lands for free, and only the LoopUnroll half (option A) remains open.
+- **Dashboard:** I paged rows 478682→507154 with `--since-seq`, 2227 rows. None mention 13424, and there is no
+  GO, HOLD or DROP. **HOLD stands.**
+
+**No timer is left.** The task said do not reschedule. From here the chain is driven only by webhooks (a new comment,
+closure, or a linked PR) and the `/supervise-issues` parked-chain register.
+
 **Resume on:** a late operator GO / HOLD / DROP reply (dashboard rows after 478682), a maintainer comment or
-design input on B/C/D, closure, a linked PR (saipraveenb25 may fix it themselves), or movement on SPIRV-Tools#6930.
+design input on B/C/D, closure, a linked PR (saipraveenb25 may fix it themselves), or a slang SPIRV-Tools submodule bump that picks up `c47a797` (re-measure the SH repro: only the LoopUnroll half should remain).
 A GO goes through slang-triager on `gh-issue-shader-slang/slang-13424` and releases option A only. The passive
 one-shot task **`passive-13424-d14-de2e`** (2026-10-22T09:00Z) makes no asks, does not reschedule, and stays
 silent if nothing changed. A gate script for it was blocked by a PreToolUse hook, so the task runs ungated.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13643 — WGSL address-space specialization re-clones its own specializations
-description: "albertrodriguezclo, human-filed WGSL code-size bug: specializeAddressSpace keys its cache on the call's current callee, so a caller revisited once per call site re-clones an existing specialization (N identical Span_load copies). Reporter supplies a repro + candidate diff. Triaged 10-15 15:30Z P2; reporter PR #13648 is the fix (watch-only)."
+description: "albertrodriguezclo, human-filed WGSL code-size bug: specializeAddressSpace keys its cache on the call's current callee, so a caller revisited once per call site re-clones an existing specialization (N identical Span_load copies). Reporter supplies a repro + candidate diff. Triaged 10-15 15:30Z P2; fixed by reporter PR #13648, MERGED 10-21 05:20Z (f96c0d829e). TERMINAL."
 ---
 
 # slang#13643
@@ -55,8 +55,14 @@ passes 3/3 on `-vk -O0`, `-vk` and `-cuda` on both master and #13648. Full GPU s
 parallel load, not #13648. Nothing public needed correcting (the comment was never posted). The GO-issue/GO-PR draft is still held.
 
 Re-check one-shot `recheck-13643-pr13648-bed3` 10-22 15:30Z.
-**Resumes on:** #13648 merge/close/review, a human comment, or the re-check.
+**Resumes on:** nothing — chain is terminal (see the end of this file).
 
 **10-21 ~03:06Z, `pr_ready_for_review` (synchronize) on #13648, head `a360e05629e3` (4 commits, +129/-2, labelled `pr: non-breaking`).**
 `slang-pr-approver` is paused, so it was not forwarded; it is queued in `data/approver-pause-queue.md`. CI at the event: 64 pass,
 `check-pr-label` failed (it ran before the label was applied), `falcor-build-approval-gate` waiting. The re-check above is still due.
+
+**10-22 15:30Z, re-check `recheck-13643-pr13648-bed3` — TERMINAL.** Read live: #13648 **MERGED 10-21 05:20:00Z** by jkwak-work,
+merge commit `f96c0d829e65`, final head `a360e05629e3` (jkwak-work APPROVED 10-21 00:56Z, after github-actions review rounds on
+10-18/10-19 that the reporter answered). #13643 was CLOSED 10-21 05:20:02Z by that PR (ClosedEvent closer = PR #13648), with 0 comments.
+No human asked the bot anything on either. Nothing dispatched. The triager's held GO-issue/GO-PR draft is moot, and so is the
+pause-queue row (annotated). #12563 conflict note stands for whoever resumes that PR: rebase onto the merged origin-keyed cache.

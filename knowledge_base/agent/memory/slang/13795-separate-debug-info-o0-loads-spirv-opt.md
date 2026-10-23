@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#13795 — `-O0 -separate-debug-info` loads slang-glslang and calls its optimizer
-description: MEMBER-filed (pdeayton-nv), assigned to the reporter. Bot PR #13801 @2f08561b31 APPROVED by the assignee; API question settled 10-21 17:55Z (preserve current behavior, body updated). BLOCKED only on the jkwak-work CODEOWNERS review. Operator call pending on filing the out-of-scope link+split+optimizer crash.
-tags: [slang, spirv, debug-info, downstream-compiler, triage]
+description: CLOSED 2026-10-22 — bot PR #13801 (requested by the assignee pdeayton-nv) merged 17:55Z as e485e78611; API behavior kept as-is at the assignee's direction. Terminal, apart from an operator call on filing the out-of-scope link+split+optimizer crash.
+tags: [slang, spirv, debug-info, downstream-compiler, closed]
 ---
 
 # slang#13795 — separate debug info at -O0 goes through the spirv-opt wrapper
@@ -126,3 +126,11 @@ pdeayton-nv ([6322830847](https://github.com/shader-slang/slang/pull/13801#issue
 "With a required optimizer missing, the API still returns the unoptimized module plus E00100, as without the split." It also updated the explanation comment. Its reply is
 [6322975440](https://github.com/shader-slang/slang/pull/13801#issuecomment-6322975440) (18:03Z), with no code change; head is still `2f08561b31`. The PR is `BLOCKED` only on the
 **jkwak-work** CODEOWNERS review. CI: 61 pass, 1 pending. The bot side is done.
+
+
+## 10-22 17:55Z: MERGED, issue closed (verified). Terminal.
+
+pdeayton-nv merged PR #13801 at 17:55:31Z (merge commit `e485e78611`). The only review was pdeayton-nv's APPROVED. The jkwak-work CODEOWNERS request
+did not block the merge. #13795 closed as completed at 17:55:32Z. The fixer removed `wt-slang-13795` and the `active-work/slang-13795` sentinel, and
+edited status comment 6307703577 in place (17:58Z). **The one open item is not part of this chain:** the operator has not yet decided whether to file the
+out-of-scope crash (`_operatorSteerPending.13795_link_split_opt_crash`).

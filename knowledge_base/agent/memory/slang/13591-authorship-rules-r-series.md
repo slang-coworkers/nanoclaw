@@ -36,3 +36,10 @@ Each Main session routed its webhook to **no coworker and posted nothing**.
 
 A later human comment on any of these is a live inbound. Route it by its content; don't triage
 the issue itself.
+
+- **R4 #13594** (one review workflow), 2026-10-22 dashboard "New issue to triage" re-ask, answered from live state
+  with no dispatch and no post. Open with 0 comments. Assigned to szihs by jhelferty-nv (not self-assigned).
+  jkwak-work milestoned it **Q4 2026 (Fall)** on 10-19. Unlike the other R-items it has **no backing PR**: no szihs PR
+  touches `claude-pr-review.yml`, which at blob `0f4d3ec0` still fires on `pull_request_target`. Its gate is the
+  replay-harness eval in #13602 (open, 0 comments). The fleet part is "slang-reviewer reviews new PRs". Turning that
+  on is an operator decision, made once parity is shown.

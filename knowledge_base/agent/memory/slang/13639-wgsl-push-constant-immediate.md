@@ -53,3 +53,11 @@ The triager re-reproduced it on Debug `6597ec9202`. Its controls all exit 0: a `
 local copy. Nearest neighbour is #8002 (`__constref ParameterBlock<T>`, open, an emit-time error and not a dup). **Unrouted**, following the
 #13620 precedent: the fix-layer choice (front-end reject / coerce / typeflow) belongs to maintainers, and fixer dispatch is an operator GO.
 Its issue_opened webhook is a self-echo owned by the triager session on this thread; dispatch nothing from it.
+
+## 10-22 16:20Z — #13646 merged; #13639 closed
+
+- **Checked on GitHub:** #13646 merged 10-21 05:12:05Z (`1299e871`, approved by jkwak-work). #13639 auto-closed COMPLETED at 05:12:07Z. #13715 merged 10-21 04:06Z (the triager wrote "10-20", which is wrong). The newest #13666 comment is still ours (6198651539). Generated-test regen is in our draft #13810.
+- **#13666:** told slang-triager (msg 15, thread `…-13666`) to PATCH 6198651539 in place with its refresh draft, with #13715's date fixed and `gpuweb#5555` as inline code. I checked the draft's line refs against `0bd71cd70`.
+- **#13639:** Decisions 1 and 2 are now mostly moot. The one open question, sent to the dashboard: may the bot edit the stale "A draft PR will follow" line in 6193417129? If yes, the fixer also deletes local `fix/issue-13639`, `wt-slang-13639` and `scratch-13639`. The fixer has no active-work sentinel. The triager's sentinel `active-work/shader-slang-slang-13639` stays until the operator answers.
+- One-shot re-check `rechase-13639-stale-comm-d4d7` is set for 10-24 12:00Z.
+- **10-22 16:32:33Z:** the triager PATCHed #13666 comment 6198651539. I checked it live: `updated_at` matches, there are 0 `@` mentions and no new comment, #13715 now reads "merged 2026-10-21", and both `gpuweb/gpuweb#5555` references are in backticks. Part (2) of the 10-24 re-check is already satisfied. Only the operator's #13639 decision is still open.

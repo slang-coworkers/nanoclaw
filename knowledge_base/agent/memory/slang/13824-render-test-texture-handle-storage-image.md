@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13824 — render-test binds a Texture2D.Handle input as a Vulkan storage image
-description: "External (albertrodriguezclo) 10-21 18:31Z. render-test's assignTexture reads the handle access from the reflected type; on SPIR-V the handle reflects as uint2, so access is NONE → ReadWrite → VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, and reads return 0. Test-harness bug, not a compiler emit bug. TRIAGED 18:51Z (cmt 6323929737, reproduced, Type=Bug, P2, regression since #8814 but not labelled). Fix A (assignTexture uses textureDesc.isRWTexture) handed to slang-fixer (sess pz3euq). FIX REPORTED 21:14Z: DRAFT PR #13829 @4e83699fd (+81/−6, 4 commits, pr: non-breaking, pr-mapping → pz3euq), R1 APPROVE_WITH_NITS applied. PARKED on maintainer (jkwak-work assigned + review-requested); CI run 39676660520 status=waiting (gate). Reviewer v2 correction (uint64/spvBindlessTextureNV comment) landed in fixer inbox after the report and may add a commit. Covered by webhooks + /supervise-issues; no timer. Operator filing question on the CUDA RWTexture2D side bug asked once 10-21 ~18:5xZ."
+description: "External (albertrodriguezclo) 10-21 18:31Z. render-test's assignTexture reads the handle access from the reflected type; on SPIR-V the handle reflects as uint2, so access is NONE → ReadWrite → VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, and reads return 0. Test-harness bug, not a compiler emit bug. TRIAGED 18:51Z (cmt 6323929737, reproduced, Type=Bug, P2, regression since #8814 but not labelled). Fix A (assignTexture uses textureDesc.isRWTexture) handed to slang-fixer (sess pz3euq). FIX REPORTED 21:14Z: DRAFT PR #13829 @4e83699fd (+81/−6, 4 commits, pr: non-breaking, pr-mapping → pz3euq), R1 APPROVE_WITH_NITS applied. READY FOR REVIEW 10-22 16:29Z (jkwak-work flipped it). dx12 CI failed on the new test (pre-existing slang-rhi D3D12 root-sig b0 off-by-one); fixer split the test → head 2a6ef6abd, CI run 39829158775 in flight 18:13Z. Second unfiled side bug (slang-rhi root-sig) added to the operator filing question 10-22. Reviewer v2 correction (uint64/spvBindlessTextureNV comment) landed in fixer inbox after the report and may add a commit. Covered by webhooks + /supervise-issues; no timer. Operator filing question on the CUDA RWTexture2D side bug asked once 10-21 ~18:5xZ."
 tags: [slang, render-test, vulkan, descriptor-handle, bindless, triage]
 ---
 
@@ -64,3 +64,13 @@ dispatch, no bot post). The live body matches the payload. They applied head `4e
 The repro gives vk `1,1,1`; the AnyValue+100 variant gives `101` on both vk lanes and on cuda; there is no VUID-00339; related suites
 pass 148/148. dx12 is not checked on their machine either, so CI is still the only dx12 check. PR still draft @4e83699fd,
 checks 5 pass / 52 skipped. I sent one FYI to the dashboard.
+
+**10-22 16:29:54Z, jkwak-work marked #13829 ready for review** (timeline `ready_for_review`, actor jkwak-work). The CI that followed
+failed `desc-handle-texture-test-input-gh-13824.slang.1 (dx12)` on both Windows GPU jobs. **10-22 18:13Z, fixer [Report]**
+(cmt 6347905064): the fixer says the cause is a pre-existing slang-rhi D3D12 root-signature off-by-one: with global uniforms next to
+`ConstantBuffer` params, `addAsConstantBuffer` counts `b0` twice, so the root signature has b0,b2,b3 and the shader uses b0,b1,b2. The fixer split the test (struct-field and AnyValue
+cases → `desc-handle-texture-test-input-nested-gh-13824.slang`, no globals); the render-test fix is unchanged. I checked it: head
+`2a6ef6abd`, 3 files, non-draft, run `39829158775` on 2a6ef6a `waiting`, PR checks 12 pass / 18 pending / 1 skipped.
+The fixer reports, but I did not check: L40S vk+cuda 0 VUIDs, master fails both files, related suites pass 920/920, and a dx12 root-sig probe predicts both files are valid.
+**Second unfiled side bug:** the slang-rhi D3D12 root-signature off-by-one. I added it to the open operator filing question 10-22,
+the same way #13789 bundled its second side bug. Both are pending; do not re-ask.

@@ -54,3 +54,10 @@ description: "Human-filed (spate) 2026-10-20 build-warning issue: GCC flags List
   sources; all 212 warnings are in fetched DXC. `slang-unit-test-tool/` passes 648/648, 13 ignored, the same set as GCC 12. Both CI runs are `queued`:
   39458548937 (workflow_dispatch) and 39634681139 (pull_request). **Terminal for coworkers: waiting on a maintainer to raise CI priority and merge.**
   The fixer won't merge. Nothing is due from Main until the merge webhook or a new human comment.
+- 10-22 03:11Z **CI green** (I checked): pull_request run 39634681139 on `fe80524` finished `success` at 10-21 22:03Z. The manual run 39458548937 shows
+  `failure`, but only `wait-for-human-priority` and `check-ci` failed. That's the priority gate yielding, not code, so no rerun. Issue now assigned to spate and
+  jkwak-work, milestone Q4 2026 (Fall). Fixer status cmt 6331735841 (03:10Z). PR `mergeable_state: blocked`, open and unmerged. **Waiting on humans only:**
+  spate's local check and the maintainer merge, both delivered by webhook.
+- **10-22 19:05Z MERGED, chain closed** (I checked): jkwak-work merged #13782 as `ea4b88f` at 19:05:27Z, and the issue closed `completed` at 19:05:28Z.
+  The fixer cleaned up its worktree and active-work marker and appended a resolution note to cmt 6331735841 (edited 19:06:55Z). Observe-only from now on,
+  re-opened only by a human comment webhook. **The one open item is the operator's call:** whether to file the 6 pre-existing `List` issues (see the 16:38Z entry).

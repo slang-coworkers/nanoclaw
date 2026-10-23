@@ -42,4 +42,5 @@ description: External report (albertrodriguezclo), reproduced and triaged 10-16;
   - New: the `uniform_buffer_standard_layout` extension (Dawn has it, naga doesn't) makes stride 4 legal.
   - Options: A ignore (what #13706 does), B a warning, C honour it via the extension. It recommended A, with B optional, and left the decision to jkwak-work.
   - `t-158372` (10-26 14:00Z) now also watches for a jkwak-work reply (the triager's claim).
-- **Resumes on:** #13706 merging or closing, a maintainer comment, jkwak-work's A/B/C decision, or the operator's file-the-adjacent-bugs decision (asked 10-16, unanswered).
+- **2026-10-22 18:36Z:** jkwak-work decided **A** ([6348373622](https://github.com/shader-slang/slang/issues/13704#issuecomment-6348373622)): on WGSL the flag is ignored, which matches the other targets, and the docs scope the flag to GLSL/SPIR-V. That is what #13706 does. The comment has no bot mention, so I routed it to the triager with no post marker. #13706 is still open at `c3a4119126`, with no human review.
+- **Resumes on:** #13706 merging or closing, a maintainer comment, or the operator's file-the-adjacent-bugs decision (asked 10-16, unanswered).
