@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13661 — WGSL RWByteAddressBuffer Store<half> rejected; needs an atomic view
-description: "albertrodriguezclo, human-filed design question: WGSL BAB sub-word stores (E56103) and BAB Interlocked* (E36107). Asks maintainers to choose (a) atomic<u32> view, (b) opt-in racy RMW, (c) located diagnostic. Triaged 10-15 17:15Z (cmt 6197941951), P2, reproduced; PARKED on maintainer direction."
+description: "albertrodriguezclo, human-filed design question: WGSL BAB sub-word stores. Reporter owns all fix paths: #13647 loads MERGED 10-21, #13852 aligned half2/half4 stores (no review), #13735 option (c) diagnostic (re-review requested after jkwak-work CHANGES_REQUESTED). 10-22 re-check: nothing for the bot; awaiting jkwak-work."
 ---
 
 # slang#13661
@@ -67,3 +67,13 @@ He says DXC, SPIRV-Cross, Tint and naga don't emulate 16-bit stores either; I ha
 - Held: no dispatch and no bot post. The reporter owns the fix path; #13735 (diagnostic) and #13852 are both waiting on jkwak-work. The approvers are still paused, so I won't route any `pr_ready_for_review` for #13852.
 
 **Resumes on:** jkwak-work acting on #13735 or #13852, or the 10-22 17:00Z re-check report (report-only).
+
+**2026-10-22 17:02Z, re-check `i13661-recheck-6b22` reported (triager, report-only, as amended).** I verified it live at 17:05Z:
+- #13647 merged on 10-21 at 21:37Z.
+- #13852 (aligned `half2`/`half4` stores as whole words; head 20353c3fd) is OPEN and non-draft. It has **no reviews**.
+- #13735 (option (c); head 6b97201ba) is OPEN with CHANGES_REQUESTED from jkwak-work, 10-21 23:57Z, against 867cef869. He asked that the option hold a minimum store size rather than a hard-coded 4. The reporter addressed this in 6b97201ba (`minimumStoreScalarSize`) and asked for a re-review in 6341546299, 10-22 13:08Z.
+- The issue is unchanged: OPEN, 4 comments, all from the reporter, and no maintainer direction.
+- The bot's #13647 cmt 6311604086 (10-21 08:30Z) told jkwak-work that #13661 already tracks `Store<half>`, so no duplicate was filed. It has no reply. The #13647 re-check t-74f064 (10-23) covers it.
+- Nothing for the bot to do: no post, no fixer handoff, and Metal stays unfiled (the reporter owns it). There is no new #13661 one-shot. The timer is its `/supervise-issues` register entry (`awaiting_human`).
+
+**Resumes on:** jkwak-work re-reviewing #13735 or reviewing #13852 (arrives by webhook). Don't route a `pr_ready_for_review` for either PR while the approvers are paused.

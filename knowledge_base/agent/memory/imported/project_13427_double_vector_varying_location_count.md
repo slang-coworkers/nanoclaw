@@ -1,6 +1,6 @@
 ---
 name: project_13427_double_vector_varying_location_count
-description: "slang#13427 (georgeouzou, 10-04; fixer HELD, operator decision pending since 10-16 (reminded 10-19), recheck rechase-13427-fourth-3f9b 10-22 defaults to hold): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
+description: "slang#13427 (georgeouzou, 10-04; fixer HELD; operator never answered 1/2/3, so the default hold was applied 10-22; last recheck rechase-13427-fifth-5d28 11-05, then parked): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
 metadata:
   node_type: memory
   type: project
@@ -117,3 +117,13 @@ operator did not set it.
 **Cross-link (10-20 21:05Z, from #13330 re-chase 4):** no operator answer for either chain in dashboard rows up to 506432 (10-20 20:52Z).
 **#13078 MERGED 10-19 23:47Z** at `b7c4b3d9be`. Re-check its merged leaf for `double3` before acting, because the PR-overlap argument for holding is gone.
 #13330 took the default hold (one line on `orchestrator-dashboard` id 15). Its next check is `rechase-13330-fifth-e954` (11-03).
+
+**10-22 17:00Z — fourth re-chase: no answer, so I applied the default hold.** Dashboard rows 506010–507392 (10-19 17:01Z to 10-22 16:56Z) contain
+no operator reply on #13427 or #13330. The operator did write three times in that window, on other topics: 506932, which asked for triage of `bot-ok` issues;
+506954, which said `bot-ok` authorizes a bot PR; and 507066, which said not to link other repos. #13427 is unchanged: no comments since 6045519879,
+no timeline events since 10-19, tangent-vector is the only assignee, and the labels are GLSL/reproduced/SPIR-V with **no `bot-ok`**. #13078 merged
+as `9e17a9e850`. On master, `GLSLVaryingLayoutRulesImpl` (slang-type-layout.cpp ~:1048) still has no `GetVectorLayout` override, the `Default…`
+TODO is still there, and the patch-constant leaf is still `fromRaw(1)` (slang-ir-glsl-legalize.cpp :1299). So the bug is not fixed, and no human PR
+overlaps a fix. Rules A–C did not apply. I sent no reminder. I sent one line to `orchestrator-dashboard` (id 15, thread
+`gh-issue-shader-slang/slang-13427`). The fixer stays HELD. **One-shot `rechase-13427-fifth-5d28` fires 2026-11-05T17:00Z.** If it is silent too, it
+parks the chain indefinitely with no more re-checks, the same as #13330's fifth. It also treats a newly added `bot-ok` label as rule A.

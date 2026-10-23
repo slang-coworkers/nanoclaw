@@ -74,6 +74,13 @@ pinned nudge acked in under a minute.
     opened for jkwak-work's ask) and rhi#911 (GitHub post landed, report not sent). Pinned nudges had both running in <8 min.
     The supervisor's own tick can die the same way: resume from the `tickNNN/` artifacts, don't restart the pull.
 
+11. **Gateway key budget hit killed a turn** (tick 299, #13828). For 22 s (10-22 07:42:25–47Z) every model call got HTTP 422
+    `budget_exceeded`: LiteLLM key `slang_coworkers-prod-svc_slang_dev` was at $32.7k against a $25k max. The agent SDK
+    retried 5× across models, then the turn ended. Shape 10's detector misses this, because the last trace line has no
+    `stop_reason`. Scan read "fixer owns this chain, no PR, silent". Detector: grep traces modified since the fire for
+    `"status_code": 422` with `budget` in the body. Sessions with no later 200 are dead (`tick299/budget.py`). Pinned
+    nudge → resumed in 3 min. Escalate the key budget to the operator, because a longer window stalls the whole fleet.
+
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
 `prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned

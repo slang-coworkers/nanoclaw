@@ -35,3 +35,7 @@ still unmerged drafts, unless it says otherwise.
   (`8aabff120f`, `legalizeMatrixTypes` after buffer lowering, lower-buffer-element-type.cpp) and #13724 (`69ad6c11de`, entry-point-uniforms.cpp).
   No CI runs since 10-15. #13406 now `e5ac28a647` min=max=**37**, MERGEABLE + CHANGES_REQUESTED; #13564 draft CONFLICTING. Dashboard msg 11.
   Next: `rechase-13425-merge-veri-b035` 10-21 13:00Z, then `rechase-13425-maintainer-e658` 10-24 09:00Z.
+- **10-22 16:35Z** — this is a three-way collision on **910**. #13425 (`3a41ab51a`, `Type.MetalConstantBufferLayout` = 910, max 37) is
+  CONFLICTING/DIRTY again and was last updated 10-21 09:23Z. Draft #13872 (#13841, `DebugVarStorage` = 910, v38) and draft #13564 (#13555,
+  `noTargetCase` = 910, v38) claim the same id. Master is at 909 / v37. #13564's PR body now records the merge order. Rule: whichever merges later
+  takes the next free id; don't renumber early. The 10-24 re-chase should re-read master's max id and version before dispatching a merge.

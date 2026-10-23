@@ -54,13 +54,12 @@ blocker. Held: no dispatch, no bot post; re-chase unchanged.
 **Resume:** if a comment @-mentions nv-slang-bot (webhook). **Terminal** when #13532 merges or closes.
 
 **10-15 18:00Z re-chase: still held.** #13532 is OPEN (head `c91704bc`, non-draft, `BEHIND` master, last updated 10-09). DXC still has no release
-with both SM 6.10 and DXC#8644. The newest release is `v1.9.2609` (09-29), which is on the SM 6.9 line and whose notes don't mention SM 6.10 or
-linalg. The newest SM 6.10 preview is still `v1.10.2605.37` (08-12), which has the old order. No non-bot comment on #13527 or #13532 since
-6069079805, and none mentions the bot. Re-chase re-armed for 10-22 18:00Z. (The `gh api` call to microsoft/DXC releases returned 401 through the
-gateway, so the release list came from the public `releases.atom` feed.)
-
-**10-15 18:00Z re-chase: still held.** #13532 is OPEN (head `c91704bc`, non-draft, `BEHIND` master, last updated 10-09). DXC still has no release
 with both SM 6.10 and DXC#8644. The newest release is `v1.9.2609` (09-29, SM 6.9 line), and its notes don't mention SM 6.10 or linalg. The newest
 SM 6.10 preview is still `v1.10.2605.37` (08-12, old order). No non-bot comment on #13527/#13532 since 6069079805, and none mentions the bot.
 Notes: `gh api` against microsoft/DXC returns 401 through the gateway, so read the public `releases.atom` instead. The firing one-shot refused
 `update` (`no live task matched`), so I re-armed it as a fresh one-shot `rechase-13527-dxc8644-b744` for 10-22 18:00Z.
+
+**10-22 18:00Z re-chase: still held.** #13532 is OPEN (head `c91704bc`, non-draft, last updated 10-09). The only comments and reviews on it are
+from bots. The DXC `releases.atom` feed is the same as the 10-15 baseline: the newest release is `v1.9.2609` and the newest SM 6.10 preview is
+`v1.10.2605.37`. No comment on #13527 since 6069079805 and no timeline event since 10-08. The issue's `updatedAt` of 10-12 matches no timeline
+event. `update` again refused the firing one-shot (`no live task matched`), so I re-armed it as `rechase-13527-dxc8644-0383` for 10-29 18:00Z.

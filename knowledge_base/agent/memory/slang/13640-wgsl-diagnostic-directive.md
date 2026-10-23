@@ -77,3 +77,13 @@ albertrodriguezclo, no bot mention). Their points: `-target wgsl` doesn't run Ti
 `createShaderModule`. For `wgsl-spirv`, `TintDownstreamCompiler::compile` passes only the source, and standalone `tint` has only
 `--allow-non-uniform-derivatives`, which inserts the same directive. They offered to respell #13660 after the meeting. This
 covers the gap I had raised, so the optional triager post I offered the operator is **withdrawn**. No dispatch. The 10-27 re-check stands.
+
+**2026-10-22 13:01Z, maintainer questions to the reporter** ([cmt 6341402001](https://github.com/shader-slang/slang/issues/13640#issuecomment-6341402001),
+jkwak-work, MEMBER, no bot mention). They ask (1) "Do you mean `-X` is not working for Tint? If that's the case, we should fix
+it." and (2) whether Tint's CLI flag is too coarse to limit the behavior to subgroup. They also raise a concern: `diagnostic(...)`
+"sounds like `#pragma` in DXC and Slang doesn't support DXC specific `#pragma`", some rules "will be Tint version dependent and
+it will be difficult for us to test in the current testing framework". So the maintainer now leans skeptical of #13660's shape.
+**Disposition:** no dispatch and no post. The questions are addressed to the reporter, and there is no mention.
+**Possible follow-up (not ours unless asked):** if the reporter confirms (1), "`-Xtint` arguments are silently dropped" is a
+separate, real gap. Orchestrator receipt: `tint_CompileRequest` has only `wgslCode`/`wgslCodeLength`. If a maintainer asks for
+an issue, file it then. The 10-27 re-check stands.

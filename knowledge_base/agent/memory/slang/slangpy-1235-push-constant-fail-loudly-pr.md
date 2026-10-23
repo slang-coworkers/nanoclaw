@@ -44,3 +44,8 @@ Parent chain: [[slangpy-1232-vulkan-module-push-constant.md]]. Branch `fix/issue
   the reporter: EP-uniform + `read` → E39033 (SlangPy raises RuntimeError at dispatch); `unused` still wrong (`[0.851,0,0,0]`); user-PB raw dispatch writes nothing; resource-only correct.
   The #1235 tests pass on 69ad6c1 (84 passed, 8 skipped). Verdict: no simplification now; a follow-up after rhi#915 and #12349 are fixed and SlangPy picks them up, rerunning the matrix. No code pushed.
   Artifacts on the fixer FS: `repro-1232/e39033_matrix.py`, the logs, `slang-69ad6c1`, `wt-slangpy-1232-e39033`. #1235 is still open at `52e815d6`, waiting on a maintainer merge.
+- **10-22 16:35Z jkwak-work (MEMBER) reassigned #1232 to kaizhangNV** (cmt 6345963399, **edited 16:36:18Z**; the webhook payload lacked the 2nd paragraph). Live text: "I am assigning to @kaizhangNV
+  because this is related to, or block by, the issue assigned to him: slang#12349. Note that the proposed PR for this issue is already approved. But I think it will be a good idea to resolve
+  the slang and slang-rhi side problems before put the bandaid/error-handling on slangpy." ⇒ **#1235 is HELD by maintainer direction** (still approved, open, behind main; no merge expected).
+  The comment @-mentions a human, so there is no bot post. The critical path is now upstream: #12349 → **slang-rhi#810** (our bot draft, kaizhangNV) and the rhi#915 offset (jkwak-work direction).
+  Told slangpy-fixer to hold #1235 as-is (no rebase, no nudges); re-raised #810 to the operator as now blocking.

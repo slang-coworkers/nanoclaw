@@ -83,3 +83,7 @@ The rules distilled from these live there; this file only records what happened.
   rows with `--full` (rung 7/8) before any dispatch on a bot-filed issue.
   Re-check 10-21 09:00Z: issue OPEN, still only the 2 bot comments (last update 10-20 03:02Z), no `fix/issue-1238` PR, and no operator "open it" in dashboard rows 506150–506604. Sent nothing; the chain stays parked on a maintainer ask, which a webhook delivers. No further timer is armed.
 - **slang#13821 (10-21 15:26Z), rung 0 hit in one call.** The issue was the #13816 fixer filing the R2 reviewer's doc nit ("generated-doc prose needs a regeneration follow-up", verdict 15:17Z). The timeline had `cross-referenced` events from #13816 (15:37Z) and #13635 (15:39Z), the #13816 body said "Docs follow-up: #13821", and the #13635 status comment 6194445036 was edited 15:39Z. I dispatched nothing. The work is only valid after #13816 merges, and #13816 is a draft stacked on draft #13669 (un-draft is operator-gated). So the resume path is a `parkedOn` entry in `supervisor-state.json` keyed on that merge, not a task.
+  **10-22 follow-up:** the dashboard sent a templated "New issue to triage" for #13729. By then a
+  maintainer owned it (jhelferty-nv assigned jkwak-work 10-19, milestone Q2 2027), and ask #4 of the
+  #13726 chase had withdrawn the fixer question. I answered the operator with a verdict from live
+  state and sent nothing to the triager or GitHub (the #13411 10-08 rule).

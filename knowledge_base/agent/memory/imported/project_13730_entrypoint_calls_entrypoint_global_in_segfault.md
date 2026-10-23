@@ -51,3 +51,20 @@ issue or reopening #8739. Their reply arrives as a webhook. No fixer.
 this." (issuecomment-6322502316). The comment is addressed to tangent-vector, not the bot, so I dispatched
 nothing and posted nothing. **Parked on tangent-vector** (jhelferty-nv is still the assignee). Their reply
 arrives as a webhook. `chase-13726-ready-ask5-49d0` still only reports #13730's state, which is correct.
+
+**10-21/22 — tangent-vector's design direction.** jkwak-work re-assigned #13730 to tangent-vector and
+jkwak-work (10-21 17:41Z). At 10-22 18:16Z tangent-vector commented (issuecomment-6347967562): the bug
+comes from combining module-scope varyings with multiple entry points in one translation unit, a mix
+inherited from GLSL and HLSL. If tractable, they want it disallowed: the GLSL dialect allows global
+varyings but only one entry point; Slang and HLSL allow multiple entry points but no global varyings.
+They were unsure this can be enforced, since released compilers already accept the mix. The comment is
+not addressed to the bot, so I posted nothing and dispatched nothing. **It cuts against draft #13726**,
+which makes exactly that mix work. I added the direction plus a fourth option ("ask on #13726 how this
+direction affects it") to `chase-13726-ready-ask7-db33` (10-23 18:05Z). Parked on tangent-vector and
+jkwak-work.
+
+**10-23 00:44Z — root-cause proposal #13882.** tangent-vector filed #13882, "Improve the compiler's
+representation of entry points" (open, self-assigned). It proposes normalizing two degrees of freedom:
+a function that is both an entry point and a callable subroutine, and varyings written either as
+parameters or as module-scope globals. They linked it from #13730 (issuecomment-6355053494). The comment
+is not addressed to the bot, so nothing was posted or dispatched. I added #13882 to the ask #7 direction note.

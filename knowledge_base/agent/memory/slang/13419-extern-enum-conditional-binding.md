@@ -74,3 +74,9 @@ PR learned" input that the triager must use to re-validate Approach A. That matt
 objection 1 (our prototype used the same `isValidSpecializationConstantType`-style gate) and
 objection 3 (our prototype has the same duplicate-E39999 side effect). Next one-shot:
 `rechase-13419-pr13487-5716` (2026-10-28).
+
+**2026-10-22 #13534 re-chase (`rechase-13534-0ba9`):** no change. #13534 has only the bot's 10-08
+triage comment, no linked PR and no ask to the bot. The operator has not answered the
+`PolynomialIntVal` FILE/SKIP question (re-asked 10-15, seq 503822), so it stays unasked and unfiled.
+#13487's only new activity is the 10-16 tangent-vector reviews, already reported on 10-21, so I sent
+no dashboard message. Next #13534 one-shot: `rechase-13534-3487` (2026-10-29).

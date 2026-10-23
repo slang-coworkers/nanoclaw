@@ -2,38 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-10-06T00:09:58Z",
-   "backlog": 0,
-   "defects": 0,
-   "offenders": 0,
-   "top": null
-  },
-  {
-   "at": "2026-10-09T06:19:46Z",
-   "backlog": 0,
-   "defects": 0,
-   "offenders": 0,
-   "top": null
-  },
-  {
-   "at": "2026-10-13T06:05:06Z",
-   "backlog": 0,
-   "defects": 0,
-   "offenders": 0,
-   "top": null
-  },
-  {
-   "at": "2026-10-15T12:08:52Z",
-   "backlog": 1765478,
-   "defects": 1119,
-   "offenders": 1205,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
    "at": "2026-10-15T18:23:54Z",
    "backlog": 1704361,
    "defects": 1119,
@@ -310,6 +278,50 @@
   },
   {
    "at": "2026-10-22T00:05:12Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-22T06:00:49Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-22T12:02:15Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-22T18:02:17Z",
+   "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-23T00:01:26Z",
    "backlog": 1473431,
    "defects": 1118,
    "offenders": 1183,

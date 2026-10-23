@@ -89,3 +89,11 @@ Where the PR's wording actually exposes the ambiguity: `docs/design/coding-conve
 Documentation" section, so there "comment" is source code. But the `AGENTS.md` line ("Comments state contracts...") and the
 skill's "every touched name and comment" don't say so, and the batch also sets rules for PR descriptions, reviews and
 Discord. **Held: no dispatch, no bot post.** szihs owns the issue and the PR, so the reply is theirs. These facts went to the operator only.
+
+### 10-22 11:33Z: dashboard re-triage ask on #13602 (replay-harness eval), answered from live state
+Correction to the header: the batch was not self-assigned. The timeline shows **jhelferty-nv assigned szihs** on every
+issue checked (#13591, #13592, #13596, #13601, #13602). #13602 was milestoned "Q4 2026 (Fall)" by jkwak-work on 10-19.
+It still has 0 comments and 0 labels, and no PR names it. Not a compiler issue: it is process and review tooling, with no
+defect and no severity. It is blocked because its candidate bundle is all drafts: #13589 (REVIEW.md trim), #13585 (clarity
+checklist) and slang-skills#63 (STE skill, last updated 10-15). The harness `~/slang-review-eval` is szihs's own and is
+not on our mounts. Held: no dispatch, no bot post.

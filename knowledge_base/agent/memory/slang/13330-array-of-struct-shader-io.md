@@ -76,3 +76,7 @@ jhelferty-nv). **#13078 MERGED at 10-19 23:47Z** (`b7c4b3d9be`, Fixes #12726). I
 georgeouzou now has no open PRs, so a bot PR would not overlap any of their work. I sent no reminder. I sent ONE line to
 `orchestrator-dashboard` (id 15, thread `gh-issue-shader-slang/slang-13330`). The fixer stays HELD. **One-shot `rechase-13330-fifth-e954`
 fires 2026-11-03T21:00Z.** Its case (e) parks the chain indefinitely, with no more re-checks. Webhooks deliver any new comment.
+
+**Cross-link (10-22 17:05Z, from #13427 re-chase 4):** there was still no operator answer for either chain in dashboard rows up to 507392. #13427 took the
+same default hold (one line on `orchestrator-dashboard` id 15). Its last check is `rechase-13427-fifth-5d28` (11-05), which parks the chain if it is silent,
+the same as this chain's fifth. Note: on 10-21 the operator said the `bot-ok` label authorizes a bot PR (dashboard 506954). Neither issue has that label.

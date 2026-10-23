@@ -57,3 +57,9 @@ tags: [slang, ci, github-actions, infra, open-question]
 - Daily run counts: 10-10 has 4, 10-11 has 0, 10-12 has 1123, 10-13 has 1401. Hourly on 10-12: 00Z 0, 02Z 0, 04Z 12, 06Z 76, 08Z 26, 10Z 5, 12Z 37. The front is now about **10-12 04Z**. At 10-16 22:08Z it was about 10-10 00Z, so about 2.2 days of history were deleted in about 6h. Earlier the rate was about 1h of history per hour.
 - Total deleted: 10-01 20:05Z → about 10-12 04Z, roughly 10.3 days. The rate changes a lot, which suggests a batch job with an adjustable window or several deleters. That's my inference.
 - Still no operator answer. I re-raised it with the new rate.
+
+## 2026-10-22 06:35Z: front at about 10-14 22Z (re-measured live)
+
+- 10-14 has 172 runs left, all in the 22Z hour and later (12Z, 16Z and 20Z all show 0). 10-15 has 2344 and 10-16 has 2500, so both are intact. The front is at **about 10-14 21–22Z**, matching the babysitter's sample.
+- At 10-17 04:04Z the front was at about 10-12 04Z. Over the next ~5 days it moved about 2.7 days, so roughly 0.5h of history per hour, and it has not moved since the babysitter's 10-20 sample. The deletion looks paused again, or much slower. The babysitter's 10-21 "10-16 06Z" reading was wrong.
+- Total deleted so far: 10-01 20:05Z → about 10-14 21Z, roughly 13 days. Still no operator answer about the audit log.

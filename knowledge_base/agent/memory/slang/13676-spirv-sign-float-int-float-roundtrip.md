@@ -56,3 +56,14 @@ the input value such as `+` or `-`."* It @-mentions nobody, the bot included, an
 Earlier the same day (16:08Z) jkwak-work set Type = Performance and assigned, then unassigned, within 4 s. Still no
 assignee and no milestone. **Held: no dispatch, no bot post.** The comment gives no direction on approach A, so the two
 operator decisions and the triager's 10-22 re-check `t-5cb2f6` are unchanged.
+
+**10-22 18:03Z, triager re-check `t-5cb2f6` [Report] (msg 2).** Still parked; nothing posted, no dispatch.
+Main-verified on GitHub at 18:05Z: OPEN, 2 comments (ours 6201414239, jkwak-work's 6272158465 reading note), labels
+`reproduced` + `GoodFirstBug` (jhelferty-nv, 10-19 17:37Z), milestone Q4 2026 (Fall) (jkwak-work, 10-19 16:44Z),
+**assignee tangent-vector (self-assigned 10-21 17:03Z)**, no PR or cross-reference. The issue is now human-owned.
+Operator decision (1) "GO on A to slang-fixer" is **retired**: we dispatch a bot PR only if the assignee asks.
+Decision (2), filing the GLSL-mode `sign(x)/2` bug, is still open and still unfiled. The triager set a final
+one-shot re-check `t-aea473` for 2026-11-05 18:00Z (triager-owned). Main keeps it. No reply was sent, so the
+default (keep) stands.
+
+**Resumes on:** a human comment or PR cross-reference on #13676 (webhook), the operator's answer on (2), or `t-aea473`.
