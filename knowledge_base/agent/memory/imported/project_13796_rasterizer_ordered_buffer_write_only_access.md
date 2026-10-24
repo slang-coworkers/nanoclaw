@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13796_rasterizer_ordered_buffer_write_only_access
-description: "slang#13796 (bot-filed 10-20 23:51Z by slang-triager as a side finding of #13771 / PR #13792, on the #13771 Main's order): RasterizerOrderedBuffer<T> gets the write-only access on every target (HLSL RWBuffer, Metal access::write, GLSL writeonly, SPIR-V NonReadable + spirv-val fail). Regression from #5454 (v2024.14.5): hlsl.meta.slang buffer typealias passes loop index aa as the _Texture access arg; #5454 inserted WriteOnly=2. Owned by the issue's own webhook Main (sess-1792540289870-fun2vl); NO fixer yet, operator decision asked 10-21 00:07Z; one-shot recheck-13796-rovbuffer-f0fa 10-23 09:00Z."
+description: "slang#13796 (bot-filed 10-20 23:51Z by slang-triager as a side finding of #13771 / PR #13792, on the #13771 Main's order): RasterizerOrderedBuffer<T> gets the write-only access on every target (HLSL RWBuffer, Metal access::write, GLSL writeonly, SPIR-V NonReadable + spirv-val fail). Regression from #5454 (v2024.14.5): hlsl.meta.slang buffer typealias passes loop index aa as the _Texture access arg; #5454 inserted WriteOnly=2. Owned by the issue's own webhook Main (sess-1792540289870-fun2vl). MAINTAINER-OWNED since 10-21 17:11Z: jhelferty-nv (admin) self-assigned; no fixer dispatched, none planned. Re-check recheck-13796-rovbuffer-f0fa ran 10-23 09:00Z (case b); no timer re-armed."
 metadata:
   node_type: memory
   type: project
@@ -33,3 +33,18 @@ Timer: one-shot `recheck-13796-rovbuffer-f0fa` (10-23 09:00Z).
 
 **Compliance note:** like the other bot-filed issues (#13603, #13620, #13695, #13729), #13796 has no `bot` label (Contributor AI
 Standard R9). That is a fleet-wide gap in the filing path, not specific to this issue.
+
+## Re-check 2026-10-23 09:00Z (`recheck-13796-rovbuffer-f0fa`): maintainer took it, no dispatch
+
+- **State:** OPEN. Labels `regression`, `reproduced`. No milestone, no comments.
+- **Assignee:** `jhelferty-nv` (repo admin) **self-assigned 10-21 17:11:30Z**. That is a maintainer taking ownership, so the
+  operator dispatch question is moot. Do not send a `[Triage handoff]` or a fixer, because a bot PR would duplicate the maintainer's work.
+- **Other timeline since 10-21 00:10Z:** a #13792 cross-reference (00:25Z), a reference from #13792 commit `c403c566` (02:00Z, a docs commit about MSL fences), and
+  calkwong subscribed (03:19Z).
+- **PRs:** no open PR references #13796, and none touches `kBaseBufferAccessLevels`. jhelferty-nv has no open PR for it yet. The
+  hlsl.meta.slang PRs that are open are unrelated, and #13792 is a different hunk.
+- **Operator:** no answer. The dashboard rows from 10-20 19:11Z to 10-23 08:32Z (seq ≤507588) mention #13796 only in my 00:07Z ask
+  (seq 506472). The owner session `sess-1792540289870-fun2vl` has no inbound after 00:07Z.
+- **Next:** none. Webhooks deliver any maintainer PR or close event. If jhelferty-nv opens a PR, the interaction with #13792 (see
+  above) is the only cross-chain note worth giving.
+

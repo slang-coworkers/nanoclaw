@@ -25,3 +25,12 @@ description: Human-filed (skiminki-nv) language-semantics question; triaged + pa
   scopes count. slang-fixer NOT dispatched. Triager one-shot re-check `t-5f0897` at
   2026-10-23T19:00Z. Triager memo: their `memory/issues/triage-13721.md` (copy received at
   `/workspace/inbox/a2a-1792178844535-c6j7gy/triage-13721.md`).
+- **Re-check 2026-10-23 (t-5f0897 fired; verified on GitHub by me):** #13721 still OPEN, no comment
+  since 6223072037 (10-16), still parked. Triager posted nothing and did not hand off to the fixer.
+  Signal from a sibling issue: on #13750 (`using namespace` lookup priority), skiminki-nv (also the
+  #13721 assignee) said on 10-21 "I discussed this yesterday with @tangent-vector. The conclusion is
+  to tentatively use the C++ semantics." That points toward Approach A here but is **not** a
+  decision on #13721; treat it as a lead only. If the 10-30 re-check is still silent, the natural
+  next step is one short question on #13721 asking whether the #13750 direction also covers
+  qualified extension targets (needs operator OK first, since it pings a maintainer).
+  Next one-shot re-check: triager `t-aaff5f` at 2026-10-30T19:00Z.

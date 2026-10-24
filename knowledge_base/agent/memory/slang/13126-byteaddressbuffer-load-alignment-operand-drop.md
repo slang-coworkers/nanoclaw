@@ -8,7 +8,7 @@ resource: https://github.com/shader-slang/slang/issues/13126
 
 # slang#13126 — ByteAddressBuffer.Load<S>() into a call segfaults
 
-**State 2026-10-20 18:0xZ: fixer asked to merge master + re-dispatch CI (old run never auto-retried). Earlier: 2026-10-17 20:0xZ PARKED on humans (`falcor-ci` gate approval, then review). Peer review: final APPROVE.** DRAFT PR
+**State 2026-10-23 18:0xZ: fixer DID merge (head `654c18a756`) + dispatch run `39471864134` — it yielded the same way and sits `waiting` on `falcor-ci`; blocked on the human gate. 10-20: fixer asked to merge master + re-dispatch CI. Earlier: 2026-10-17 20:0xZ PARKED on humans (`falcor-ci` gate approval, then review). Peer review: final APPROVE.** DRAFT PR
 [#13130](https://github.com/shader-slang/slang/pull/13130), head `a616bd3805` (round-3 nits), 0 behind / 6 ahead of
 master (I checked with the compare API), `Fixes #13126`, labels `regression` + `reproduced` on the issue,
 `pr: non-breaking` on the PR. Review requested from jhelferty-nv (CODEOWNERS); 0 human reviews.
@@ -70,7 +70,7 @@ L40S + spirv -O0), and 2 tests for the LoadAligned key and natural alignment. A/
 - Human: a `ci-approvers` member approves the `falcor-ci` gate. Neither we nor the fixer can do this.
 - Then green CI → ready-for-review → maintainer review (jhelferty-nv).
 - Operator: the P2→P1 priority bump (project board).
-- Re-check: one-shot task `rechase-13126-pr13130-*` at 10-23 18:00Z.
+- Re-check: one-shot task `rechase-13126-pr13130-0731` at 10-26 18:00Z.
 
 ## 10-20 18:0xZ re-chase
 
@@ -78,3 +78,16 @@ Still draft, head `a616bd3805`, 7 behind / 6 ahead, 0 human reviews, no human co
 did not answer the two 10-17 asks (falcor-ci approval, P2→P1); not re-asked. I asked the fixer (pinned session,
 canonical thread) to merge origin/master (merge commit), dispatch a fresh draft CI run, and mark ready when green.
 Dashboard told, with a correction of the auto-retry claim.
+
+## 10-23 18:0xZ re-chase
+
+The fixer acted on the 10-20 ask: merge commit `654c18a756` (10-20 18:03Z, parents a616bd3805 + 7251cc60b4) and
+dispatch run `39471864134` (18:06Z). It repeated the old pattern: `wait-for-human-priority` + `check-ci` failed
+(bot yield), 44 skipped, `falcor-build-approval-gate` `waiting` on env `falcor-ci` (reviewer: team `ci-approvers`,
+`current_user_can_approve=false`). Now 44 behind / 7 ahead. Still draft, 0 reviews, no human comments on either side.
+**Re-dispatching cannot help:** `ACTIVE_STATUSES` in `extras/ci/ci_priority_common.py:29` still contains `waiting`
+on master, and `ci.yml` has 93 `waiting` runs (71 workflow_dispatch). The newest `ci-retry-yielded-bot` run
+(39997925477) logs "CI is still active (99 run(s)); not rerunning bot CI." This is the known livelock in
+[the throttle livelock note](../imported/feedback_a_status_set_broader_than_its_docstring_livelocks_the_throttle.md),
+now repo-wide. Approving this run's gate alone does not restart the 44 skipped jobs, and the run is outside the 16 h
+lookback. Case (f): dashboard told, re-armed `rechase-13126-pr13130-0731` (10-26 18:00Z). No fixer nudge.

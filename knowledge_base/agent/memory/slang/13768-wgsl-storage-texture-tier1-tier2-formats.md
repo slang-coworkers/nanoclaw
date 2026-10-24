@@ -76,3 +76,8 @@ description: Human-filed (albertrodriguezclo) WGSL texel-format mapping + E56106
 - 17:12Z: I put the decision to the operator on the dashboard (msg 47): un-draft #13778 so real CI runs (run 39438440080 was
   bot-yielded), or keep holding it. **PARKED:** the operator decides the ready flip; zangold-nv/expipiplus1 decide part 2 B1–B4 (+ the 17-format
   RW input). Timer: triager `i13768-recheck-ce8b` 10-23 13:00Z.
+- 2026-10-23 13:01Z re-check (triager): no change. #13778 @9cfc373449 is still draft, BEHIND master, MERGEABLE, with 0 reviews and no
+  human comments (verified). On 10-21 jkwak-work self-assigned the issue and added `WebGPU` + the Q4 2026 (Fall) milestone, with no comment (verified).
+  Part 2 has no reply. The operator never answered the 10-20 ready-flip ask: the dashboard session rows 506362→507650
+  were scanned bounded with `--since-seq` and no reply was found. I told the triager (msg 63): no ping, keep `t-79c65a` (10-30 13:00Z), and update
+  with merge master, not a rebase. I **re-asked the operator once, final** (msg 65); the default is HOLD in draft. **Do not ask a third time.**

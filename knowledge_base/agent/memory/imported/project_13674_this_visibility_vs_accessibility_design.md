@@ -60,3 +60,11 @@ are unchanged. These results are from the triager:
 Operator decisions now pending:
 1. Whether to file the default-argument crashes (E99997 + segfault) separately.
 2. Whether the body-only `s.c` crash gets a new issue or a comment on #12430.
+
+**2026-10-23T07:00Z: triager's scheduled re-check (verified by me on GitHub).** Nothing has changed.
+The newest comment is still skiminki-nv 6213400436. tangent-vector set milestone Q4 2026 (Fall) on
+10-21 and is still the assignee. #13674 is now a sub-issue of umbrella #13719. The triager posted
+nothing. No separate bug exists yet for the default-argument E99997 / segfault crashes; the only
+related sibling is #13720, which covers initializer visibility. Both operator decisions above have
+gone **unanswered** since 10-16. The triager set no further timer, so I scheduled the one-shot
+`rechase-slang-13674-r1` for 2026-11-06T07:00Z. It is re-chase 1 of 3, reserved through task-hygiene.

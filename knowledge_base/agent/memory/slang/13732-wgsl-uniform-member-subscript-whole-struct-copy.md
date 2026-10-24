@@ -76,3 +76,11 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
   same file) it is conflict-free and passes 1295/1295. Comment 6278114155 was edited in place
   (verified: updated_at 15:25:49Z, still the newest comment). PR is OPEN, `BEHIND`, and dshreiner-nv
   is still requested. Still parked on maintainer review; successor re-check `-ae-bd35` on 10-23 15:00Z.
+- 2026-10-23 15:00Z re-check `-ae-bd35` (live read): no change. The PR is OPEN and not merged. The head is still
+  ae4db91cd7. It is `BEHIND` master, CI is 7/7 pass, and dshreiner-nv is still the requested reviewer. There is
+  no human maintainer review: all reviews are from coderabbitai, github-actions, or the author. There are no issue
+  or PR comments since 10-21 15:00Z. The triager's re-verify of ae4db91cd7 is on GitHub: comment 6278114155 was
+  edited in place, updated_at 10-21 15:25:49Z, and it names ae4db91cd7.
+  - Decision row (2): I sent one row to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13732`) to say
+    the PR is waiting on maintainer review. I did not message the triager, dispatch the fixer, or contact an approver.
+    Successor one-shot `rechase-13732-pr13734-ae-26` runs on 10-26 15:00Z.

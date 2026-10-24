@@ -86,3 +86,10 @@ gone**: it's not on disk and not in the triager's `slang` worktree list, and I c
 prototype slangd survives in `scratch-vsext-42/proto/bin`, which I kept. I reported to the dashboard (msg 19, thread
 `gh-issue-…-vscode-extension-78`) and armed the final one-shot `rechase-78-post-decision-62d1` for 10-27 16:00Z. If
 nothing has changed then, it parks #78 in supervisor-state and re-arms nothing.
+
+**10-23 20:36Z: the assignee backs a filesystem-config direction.** jhelferty-nv (MEMBER, self-assigned #78 on 10-19)
+commented on #78 (cmt 6374236840): *"Yeah, we should try to figure out a standard way for the package/environment to
+communicate config information through the filesystem to `slangd`."* That agrees with tessfactor's Discord preference
+(a config file `slangd` discovers), but it is direction, not a decision on name, format or semantics, so nothing is
+released. v5 (`87afd90f`, the VSIX packaging gap only) is still relevant: the std-module directory is missing whatever
+the config design becomes. The operator was asked again with a "post after a fresh OUTPUT_REVIEW" recommendation.

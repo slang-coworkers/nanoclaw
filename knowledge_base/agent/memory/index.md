@@ -45,6 +45,8 @@ okf_version: "0.1"
   approver webhook**; both approvers are operator-paused and the decision is still pending.
 - [No gratuitous cross-repo links](feedback_no_gratuitous_cross_repo_links.md) - bot GitHub posts cite
   other repos' issues/PRs as plain text; links notify outsiders (operator 2026-10-22).
+- [Update reviewed PRs by merge, not rebase](feedback_update_reviewed_pr_by_merge_not_rebase.md) - dispatch "merge master" for a
+  human-reviewed PR; never ask for a rebase + force-push (maintainer direction, #12194).
 - [Supervise-tick delivery guardrail](project_supervise_tick_no_cc_discord.md) - each
   `/supervise-issues` tick delivers to `orchestrator-dashboard` and nowhere else; never
   CC a coworker.

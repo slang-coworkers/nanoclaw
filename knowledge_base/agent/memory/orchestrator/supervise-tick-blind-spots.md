@@ -81,6 +81,13 @@ pinned nudge acked in under a minute.
     `"status_code": 422` with `budget` in the body. Sessions with no later 200 are dead (`tick299/budget.py`). Pinned
     nudge → resumed in 3 min. Escalate the key budget to the operator, because a longer window stalls the whole fleet.
 
+12. **Fixer waits on a CI-rerun webhook that never comes** (tick 302, #13876 / PR #13880). `test-falcor` failed; the fixer
+    judged it infra (public-Falcor compile showed no diff), started a rerun and ended its turn saying "the webhook will
+    report the result". The rerun (attempt 2) failed 1 h later, but `ci_failed` did not fire again for the same check
+    suite, so the fixer waited 9 h. Detector: a stopped fixer whose last turn text promises a rerun/webhook result;
+    check `actions/runs/<id>` `run_attempt` + `attempts/<n>/jobs`, and compare the same job on other runs (merge-queue
+    runs passing → not infra). Pinned nudge with the attempt-2 result.
+
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
 `prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned

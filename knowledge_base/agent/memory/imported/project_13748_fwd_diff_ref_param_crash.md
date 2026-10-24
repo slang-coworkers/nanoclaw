@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13748_fwd_diff_ref_param_crash
-description: "slang#13748 (jhelferty-nv, 10-19 15:47Z, self-assigned + saipraveenb25, label Autodiff): fwd_diff of a fn with a __ref param segfaults (Release rc 139) / asserts index < getParamCount() in TypeFlowSpecializationContext::getParamInfos during finalizeAutoDiffPass. Forward counterpart of #12393; blocks a #13406 regression test. Repro CONFIRMED on master 68438b5e18. HELD: no dispatch, no bot post; operator asked whether to triage. One-shot re-check rechase-13748-fwd-diff-r-8dd5 on 10-23 12:00Z."
+description: "slang#13748 (jhelferty-nv, 10-19 15:47Z, self-assigned + saipraveenb25, label Autodiff): fwd_diff of a fn with a __ref param segfaults (Release rc 139) / asserts index < getParamCount() in TypeFlowSpecializationContext::getParamInfos during finalizeAutoDiffPass. Forward counterpart of #12393; blocks a #13406 regression test. Repro CONFIRMED on master 68438b5e18. HELD: no dispatch, no bot post; operator asked whether to triage. Re-checked 10-23 12:00Z: still open, no fix PR, still held; saipraveenb25 unassigned 10-21; no reschedule."
 ---
 
 # slang#13748: `fwd_diff` on a `__ref` parameter crashes in `finalizeAutoDiffPass`
@@ -26,3 +26,13 @@ gate in nanoclaw draft #1993) also says the bot waits on human-filed issues. The
 hold. Re-check task `rechase-13748-fwd-diff-r-8dd5` (10-23 12:00Z) re-reads live state. Resume on an @nv-slang-bot
 mention, an operator ask, or a linked PR. Related: [[project_12393_bwddiff_ref_param_abort]],
 [[slang/11709-groupshared-param-by-reference.md]] (the #13406 hold).
+
+**10-23 12:00Z re-check (`rechase-13748-fwd-diff-r-8dd5`).** The issue is still open with 0 comments, and no
+@nv-slang-bot mention. Assignee is now `jhelferty-nv` only, because they unassigned `saipraveenb25` on 10-21 17:52Z.
+Other changes: `jkwak-work` added milestone "Q4 2026 (Fall)" on 10-19, and an issue type was set on 10-21. The
+10-22 `referenced` event is commit `0bd71cd709`, the squash of bot PR #13406 (merged 10-22 08:47Z; the copy that
+referenced the issue is in `jkiviluoto-nv`'s fork). That commit message lists #13748 as a known limitation
+("`fwd_diff` of a function with a reference parameter crashes (#13748), as `__ref` already does on master"). It is
+not a fix. No linked fix PR exists. The last 400 dashboard rows have no operator answer. The only coworker session is
+the stopped webhook session. Still held: the operator has not decided between triage and keeping the hold. No
+reschedule (per the task). Resume on an @nv-slang-bot mention, an operator ask, or a linked PR.

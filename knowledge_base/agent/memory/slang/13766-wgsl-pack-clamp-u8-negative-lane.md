@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13766 — WGSL pack_clamp_u8(int4) clamps negative lanes to 255
-description: Human-filed (albertrodriguezclo) WGSL wrong-result bug in packUint4x8Clamp(int32_t4); routed to slang-triager 2026-10-20
+description: Human-filed (albertrodriguezclo) WGSL wrong-result bug in packUint4x8Clamp(int32_t4); CLOSED — fixed by reporter PR #13775, merged 2026-10-22
 ---
 
 # slang#13766 — WGSL: `pack_clamp_u8(int4)` gives 255 for a negative lane
@@ -72,3 +72,18 @@ description: Human-filed (albertrodriguezclo) WGSL wrong-result bug in packUint4
   denied seq 7 (seq 13). The pin landed correctly, there is nothing left to relay, and I told the triager.
   Lesson: a session's memory of its own rows is not evidence; its `messages_out` is. Same detector as the
   "two running sessions in one group" rule in CLAUDE.md.
+- **CLOSED 2026-10-23 15:00Z (re-check `rechase-13766-pr13775-b090`, read live).** #13775 **MERGED
+  2026-10-22 03:03:37Z** by jkwak-work (merge `00849649c5`); #13766 closed COMPLETED 03:03:39Z. Final head
+  `50a7b1e0d3` = the verified `33c248827c` + one comment-only commit (14:15Z, +3 comment lines above the
+  `case wgsl:` line in hlsl.meta.slang, from the github-actions review at 13:20Z). The intrinsic text is
+  unchanged, so the triager's verification still holds and no re-verify was needed. Reviews:
+  github-actions COMMENTED, reporter COMMENTED 14:20Z, **jkwak-work APPROVED 10-22 00:16Z**. Label
+  `pr: non-breaking`; assignees jkwak-work and the reporter. No PR comments after 10-20 13:20Z.
+  - Told slang-triager (thread `gh-issue-shader-slang/slang-13766`) to clean up any 13766 worktrees. The
+    fixer had already removed its worktree on 10-20. Its `patches/fix-13766.patch` is now dead weight.
+  - Still open for the operator, unchanged: whether to file the `D3DCOLORtoUBYTE4` WGSL finding. No
+    timer is left on this chain.
+  - 15:02Z (triager msg 4): cleanup done. It deleted the read-only fetch ref `refs/remotes/pr/13775` and
+    found no worktrees, branches or sentinels. It kept `/workspace/agent/scratch-13766/` (88K, the repro
+    and GPU runner `run.mjs`) because a shared learning cites it. It posted nothing on GitHub and marked
+    the chain terminal in its memory. Every tier is closed.

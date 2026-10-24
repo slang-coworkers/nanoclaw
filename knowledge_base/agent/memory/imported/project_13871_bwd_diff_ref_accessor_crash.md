@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13871_bwd_diff_ref_accessor_crash
-description: "slang#13871 (jhelferty-nv, 10-22 15:49Z, self-assigned + saipraveenb25, label Autodiff): bwd_diff through a `ref` subscript accessor with a __func_extension bwd derivative segfaults (Release rc 139 on cpp/hlsl/spirv/cuda) / asserts index < getParamCount() (debug). Asks: bridge ref→value derivative, or diagnose like E38036. Repro CONFIRMED on master 0bd71cd709. HELD: maintainer-owned, no dispatch, no bot post; operator asked whether to triage. One-shot re-check rechase-13871-4887 on 10-23 12:00Z."
+description: "slang#13871 (jhelferty-nv, 10-22 15:49Z, self-assigned + saipraveenb25, label Autodiff): bwd_diff through a `ref` subscript accessor with a __func_extension bwd derivative segfaults (Release rc 139 on cpp/hlsl/spirv/cuda) / asserts index < getParamCount() (debug). Asks: bridge ref→value derivative, or diagnose like E38036. Repro CONFIRMED on master 0bd71cd709. HELD: maintainer-owned, no dispatch, no bot post; operator asked whether to triage. Re-check rechase-13871-4887 ran 10-23 12:01Z: no change, still held; no further timer."
 metadata:
   node_type: memory
   type: project
@@ -37,3 +37,9 @@ would deliver it, so the call is the operator's.
 
 **Resume on:** an @nv-slang-bot mention, an operator ask, a linked PR, or the issue being unassigned. Re-check task
 `rechase-13871-4887` (10-23 12:00Z) re-reads live state.
+
+**2026-10-23 12:01Z re-check (`rechase-13871-4887`): no change.** Live: OPEN, 0 comments, assignees jhelferty-nv +
+saipraveenb25, `updated_at` still 10-22 15:49Z; timeline = only the label/assign events, no cross-referenced PR. No
+coworker session on the issue (only Main's `6c53u1` and the task session). Dashboard (bounded read, 400 rows to
+11:58Z): no operator answer on #13871 or #13748. Reported one line to `orchestrator-dashboard`; not rescheduled (the
+task said not to). Still resumes on the triggers above.

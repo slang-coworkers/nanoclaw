@@ -62,3 +62,35 @@ description: Human-filed (albertrodriguezclo) WGSL/Metal/HLSL codegen-quality is
     (10-20) whether to file it separately; do not re-ask.
   - Re-check `rechase-13739-fixer-deci-60dd` moved to 10-23 15:00Z (CI approval / review stall check).
   - Triager worktrees: /workspace/agent/wt-13764, wt-13764-base (clean up after merge).
+- 2026-10-23 15:00Z re-check (`rechase-13739-fixer-deci-60dd`, all read live): PR #13764 is OPEN with a **new head
+  `b4f6056a08`**. That head is `0ec0a72e9b` plus 2 master merges by jkwak-work (`d86ef271d2` 10-22 16:45Z, `b4f6056a08`
+  18:53Z → master `e485e78611`). Label `pr: non-breaking` added.
+  - **jkwak-work APPROVED** on 10-22 00:46Z ("revisit the memory aliasing later. Looks good to me.").
+  - The merge queue failed twice (runs 39714766320, 39772089784) on `tests/wgsl/byte-address-buffer-load-half.slang`.
+    That test came from #13647 (merged 10-21) and expects separate `_S<n> : u32` word temps, which the PR now folds
+    into their single use. nv-slang-bot posted a diagnosis (cmt 6342865236, from session `sess-1792636777666-efoxhm`
+    on thread `gh-pr-shader-slang/slang-13764`).
+  - PR CI on `b4f6056a08` (run 39835336499): **FAILED** on all 11 `test-slang` legs plus `check-ci`; Formatting,
+    REUSE and Labels pass. I did not check whether the half test is the only failure.
+  - jkwak-work posted a replacement `CONST` block for the test on 10-23 01:57Z (cmt 6355543437). It is not on the
+    branch yet. The reporter or jkwak-work must apply it.
+  - Action: asked slang-triager (thread gh-issue-shader-slang/slang-13739) to re-verify on `b4f6056a08`, list
+    the CI failures, and test jkwak-work's diff locally. No GitHub post, no push. No dashboard row (per the
+    re-check table) and no new re-check scheduled. The next wake is the triager's report.
+  - 10-23 15:03Z triager (interim): the PR diff against the new merge base `e485e7861` has the same hunks as
+    `0ec0a72e9` (the one `mightHaveSideEffects` case + the same 5 test files), so the merges did not change it.
+    wt-13764-base had been removed by someone else; the triager re-created it. Builds are running (about 20 min).
+    Still waiting on: the CI failure list and the result of jkwak-work's CONST diff.
+- 2026-10-23 15:12Z `[Report]` (triager): **#13764 re-verified at `b4f6056a0`; the fix is still correct.**
+  - The diff against merge base `e485e7861` matches `0ec0a72e9` hunk for hunk.
+  - All acceptance criteria re-pass: vec 4→1, struct 17→1, subscript 34→2, a load before an aliasing store is kept,
+    and the new tests fail on base and pass on the PR.
+  - CI 39835336499: every `test-slang` leg fails ONLY `tests/wgsl/byte-address-buffer-load-half.slang.1`, the
+    stale CONST run. There are no other failures.
+  - jkwak-work's CONST block (cmt 6355543437) applies cleanly and passes 4/4 on the PR. Two mutation tests show it
+    still pins the 0/16 shifts.
+  - **Parked on a human action:** the reporter or jkwak-work applies that block, then re-runs CI or re-enqueues.
+    There is no compiler-side blocker. No GitHub post.
+  - Triager scratch: /workspace/agent/scratch-13764/v2/. Someone else removed wt-13764-base twice (the triager
+    re-created it); clean up wt-13764, wt-13764-base and scratch-13764 after merge.
+  - The old one-shot `rechase-13739-fixer-deci-60dd` is spent. A new one-shot `rechase-13739-const-bloc-b084` is set for 10-27 15:00Z.
