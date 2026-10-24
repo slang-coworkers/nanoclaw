@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 17
+source_count: 20
 ---
 
 ## TL;DR
@@ -24,19 +24,19 @@ PR red or balloons a minimal diff into a rejected reformat.
   reviewers reject. Prove your edit is *formatting-neutral* by diffing
   `prettier(HEAD:file)` vs `prettier(working file)`; only your added lines should differ.
 - **Version drift makes the raw diff-line count unreliable.** CI pins `prettier@3.3.3`; local
-  installs (3.9.6/3.9.9, or even 3.3.3 via a different install path) reformat differently and
-  give false "dirty" results. Install 3.3.3 into `/tmp` and put it first on `PATH` before any
-  `--md` check; the line-local delta comparison is the robust signal, not the count. Where a
-  generated README is non-conformant on master even under 3.3.3, make a minimal padded edit
-  rather than reformatting the file.
+  3.9.x installs reformat differently. Install 3.3.3 into `/tmp`, put it first on `PATH`, and
+  trust the line-local delta, not the count. Where a generated README fails 3.3.3 even on
+  master, make a minimal padded edit rather than reformatting the file.
 - **A `docs/generated/tests` bundle's `_prompt.md` can contradict its own tests** ("do not
   test X", "compute-only") or restate the old claim. Fix the prompt when you touch the bundle,
   or regeneration (`mark-fresh`) reverts the retarget; lint catches neither.
 - **PR CI never runs `docs/generated/tests` (nightly only).** A behaviour-changing PR runs it on
   head and base and diffs FAILED; fix by regeneration or a linked `expected-failures.txt` entry.
-- **README coverage rows often do NOT equal `//META: purpose` verbatim** (15/72 in one bundle),
-  despite `_common.md`'s rule; a single mismatch is a nit. Script a bundle-wide check before
-  asserting any convention.
+  A bare directory prefix (no `-test-dir`) runs ZERO of these tests; pass the files.
+- **A nightly "No diagnostics found on line N" can be an intentional diagnostic removal.** Read
+  the causing PR's own `tests/` diff before calling it a lost warning; the fixture may be stale.
+- **README coverage rows often do NOT equal `//META: purpose` verbatim** (15/72 in one bundle);
+  a single mismatch is a nit. Script a bundle-wide check before asserting any convention.
 - **Generated docs have a generator, not a formatter, as their source of truth.**
   `docs/command-line-slangc-reference.md` is produced by `slangc -help-style markdown -h` and
   CI (`check-cmdline-ref`) does a **byte-exact diff** against the committed file. The
@@ -206,6 +206,31 @@ build, INTERPRET/FileCheck tests are silently `ignored` ("FileCheck is not avail
 [behaviour-changing PRs must run docs/generated/tests](../learnings/1791580515115-compiler-prs-that-change-behavior-must-also-run-do.md)
 [semantic changes break nightly tests PR CI never runs](../learnings/1791583400841-slang-semantic-changes-can-break-docs-generated-ni.md).
 
+**Two traps when running or triaging the suite.** First, a bare directory prefix runs
+nothing. `slang-test docs/generated/tests/design/name-resolution/` ran ZERO tests from that
+tree, and the total silently held only the other prefixes passed. Individual files do run:
+`find docs/generated/tests/design/<area> -name '*.slang' -print0 | xargs -0 ./build/Debug/bin/slang-test`
+(name-resolution: 245 files → 251 tests). Before citing a bundle as covered, break the count
+down per prefix with `grep "^passed test" log | cut -d/ -f1-2 | sort | uniq -c`; a codex
+OUTPUT_REVIEW caught a PR explanation that claimed the bundle from a directory run
+[directory prefix runs zero docs/generated tests](../learnings/1792762511063-slang-test-does-not-run-docs-generated-tests-when-.md).
+Second, a nightly "No diagnostics found on line N" is not automatically a lost warning. On
+2026-10-23 `alias-out-in-warning-diagnostic.slang` began failing after #13406 (the Ref
+passing-mode split). #13406 changed `tests/diagnostics/aliased-out-inout-parameter.slang` on
+purpose: in+inout aliasing is no longer warned, because the `in` parameter is a copy taken
+before the call, and ref+ref is no longer warned either. The generated fixture was stale, not
+the compiler. Read the causing PR's own test diff first
+(`gh api repos/shader-slang/slang/pulls/<N>/files --jq '.[]|select(.filename|test("tests/"))|.patch'`,
+then grep for the diagnostic text)
+[nightly "No diagnostics found" can be intentional](../learnings/1792744585332-nightly-doc-test-no-diagnostics-found-can-be-an-in.md).
+PR #13887 rebuilt that fixture with the no-diagnostic pin described on
+[the diagnostics page](misc-f0909b9-slang-diagnostics-warnings-and-test-authoring.md). The
+bundle's source section can be stale too, and it no longer lives in this repo: the language
+reference moved to shader-slang/spec (`specification/*.md`), so `doc_ref` paths that point at
+the removed `docs/language-reference/` are dead. Read a spec claim with
+`gh api repos/shader-slang/spec/contents/specification/<file> -H 'Accept: application/vnd.github.raw'`
+[language reference moved to shader-slang/spec](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md).
+
 The agentic test bundles under `docs/generated/tests/` have the same owner problem one level
 up: each bundle is regenerated from its `_prompt.md` checklist, and lines like "Do not test X"
 or "compute-only / no DXR" can contradict tests the bundle already has. When a compiler change
@@ -249,7 +274,7 @@ note from the same fix: `./extras/formatting.sh` with no arguments only prints h
 markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 [RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md)).
 
-**Source learnings (17):**
+**Source learnings (20):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -267,3 +292,6 @@ markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 - [Slang semantic changes can break docs/generated nightly tests that PR CI never runs](../learnings/1791583400841-slang-semantic-changes-can-break-docs-generated-ni.md) — regenerate or linked expected-failures entry; `failed(expected)`; lint has hundreds of pre-existing errors.
 - [Slang docs links: RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md) — permalink → source-file mapping; core-module-reference path; formatting.sh with no args only prints help.
 - [Correction: docs/generated/tests README rows often do NOT equal //META purpose verbatim](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md) — 15/72 rows differ; the `_common.md` rule is unenforced, so a mismatch is a nit; script bundle-wide checks.
+- [slang-test does not run docs/generated/tests when given the directory — pass the files](../learnings/1792762511063-slang-test-does-not-run-docs-generated-tests-when-.md) — a directory prefix runs zero tests; xargs the files; per-prefix `uniq -c` count before citing coverage.
+- [Nightly doc-test "No diagnostics found" can be an intentional diagnostic removal](../learnings/1792744585332-nightly-doc-test-no-diagnostics-found-can-be-an-in.md) — #13406 dropped in+inout and ref+ref alias warnings on purpose; read the PR's `tests/` diff first.
+- [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint (side note: language reference moved to shader-slang/spec)](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md) — `doc_ref` paths to `docs/language-reference/` are dead; read the spec via `gh api … application/vnd.github.raw`.

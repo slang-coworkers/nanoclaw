@@ -3,7 +3,7 @@ title: "WGSL uniformity analysis and global-varying shadow forwarding (#8774)"
 type: concept
 group: slang-backends
 tags: [wgsl, tint, dawn-node, uniformity, subgroups, var-private, KernelContext, introduceExplicitGlobalContext, translateGlobalVaryingVar, tryRemoveRedundantLoad, canInstHaveSideEffectAtAddress, RequireTargetExtension, deferBufferLoad, metal, debug-info, wgpu, slang]
-source_count: 5
+source_count: 7
 ---
 
 # WGSL uniformity analysis and global-varying shadow forwarding (#8774)
@@ -14,7 +14,8 @@ Slang turns a global `in` builtin such as `SV_WaveLaneCount` into a shadow globa
 
 - **A read of a mutable module-scope `var<private>` is MayBeNonUniform by the WGSL spec (§15.2.8), whatever was stored.** It is spec text, not a Tint bug. The language-level gap is gpuweb/gpuweb#1791 (open).
 - **The analysis does not track the components of a composite independently (§15.2.10.3).** Once a non-uniform builtin is stored into any field of a context struct, every read from it is non-uniform: by pointer, by field pointer, by value, or as a local.
-- **So `introduceExplicitGlobalContext` (Metal's KernelContext shape) is not uniformity-safe on WGSL.** One parameter per global passes, by value or as `ptr<function,T>`; PR #13667 passes each builtin by value.
+- **So `introduceExplicitGlobalContext` (Metal's KernelContext shape) is not uniformity-safe on WGSL when it hoists every shadow.** One parameter per global passes, by value or as `ptr<function,T>`; PR #13667 passes each builtin by value. PR #13897 reuses the pass with a policy that hoists only workgroup-uniform builtin shadows (SV_GroupID, SV_WaveLaneCount), which passes Tint.
+- **Key the hoisting policy on the system-value semantic from the var layout, never on `TargetSystemValue`** (target-specific). Reject any shadow with a store other than the entry-block initialization: Slang accepts writes to a global `in`. Never hoist `subgroup_id` with them (it breaks `workgroupBarrier`), and treat non-compute stages as never uniform.
 - **`subgroup_size` is uniform in a compute shader**, so a plain parameter carrying it passes. The spec note after the uniform-builtin list says not to group uniform builtins with non-uniform inputs.
 - **The shadow comes from the core module's `in uint __builtinWaveLaneCount : SV_WaveLaneCount`**, which `translateGlobalVaryingVar` keeps as a global. In a single function `deferBufferLoad` → `removeRedundancyInFunc` → `tryRemoveRedundantLoad` forwards `store(shadow,v); load(shadow)`. That is how Metal "folds" the shadow; KernelContext appears only with a non-inlined helper.
 - **On WGSL four things block that forwarding:** the inlined `RequireTargetExtension("subgroups")` (PR #13883 lets the walk cross it), any side-effecting call between the store and the read (every wave op is one), the `DebugScope`/`DebugLine` insts that `-g`/`-g2`/`-g3` add, and any block boundary, because `tryRemoveRedundantLoad` walks back only inside the load's block. `-minimum-slang-optimization` does not block it. Check cross-block variants (loop condition, after an `if`, `[noinline]` helper) before claiming a forwarding fix closes an issue.
@@ -32,6 +33,16 @@ Hand-written WGSL on Tint (dawn.node `webgpu@0.6.2`, null backend and L40S Vulka
 
 The struct failure does not depend on how the struct travels. Once a non-uniform value such as `subgroup_invocation_id` is stored into any field, every read from that variable counts as possibly non-uniform, whether the struct is passed by pointer, by field pointers or by value, or is used as a local. One parameter per global passes, either as `ptr<function,T>` or by value, so a single KernelContext-style struct on WGSL is the shape that fails [Slang Metal 'folds' global-varying shadows via generic deferBufferLoad forwarding](../learnings/1792695049867-slang-metal-folds-global-varying-shadows-via-gener.md). This is the per-component rule of §15.2.10.3 above.
 
+### A uniform-only explicit global context (PR #13897)
+
+The struct shape fails only because it mixes uniform and non-uniform values. PR #13897 (#8774) reuses `introduceExplicitGlobalContext` on WGSL with a policy that hoists only the shadows of SV_GroupID and SV_WaveLaneCount. With it, `subgroupAdd` and `workgroupBarrier` in callees pass Tint. The pass hands the hoisted values to callees by value when there is one, and as a `ptr<function, KernelContext>` when there are several. The policy reads the semantic with `findVarLayout(param)->findSystemValueSemanticAttr()` on the param that carries `GlobalVariableShadowingGlobalParameterDecoration`; `TargetSystemValue` is target-specific, so it is the wrong key. Gotchas from the PR:
+
+- Slang accepts writes to a global `in` (`x = 3;`, or passing it as an `inout` argument). A context or by-value scheme must reject any shadow with a store other than the entry-block initialization.
+- `subgroup_id` in the same struct breaks `workgroupBarrier`, and non-compute stages are never uniform.
+- `wgsl-spirv` targets run the IR pipeline as WGSL (`slang-code-gen.cpp:278`), so they get the same policy.
+
+([workgroup-uniform built-in shadows can share a uniform-only context](../learnings/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md)). On Metal the same pass copies every bound global, including large resource arrays, into the context once per invocation; see [[wiki/concepts/slang-backends-metal.md]].
+
 ## When Slang forwards the shadow store
 
 Slang emits the shadow because the core module declares `in uint __builtinWaveLaneCount : SV_WaveLaneCount` (hlsl.meta.slang:9-16). `translateGlobalVaryingVar` keeps it as a shadow global and stores the entry-point parameter into it at the top of the entry block. Dead-global-store removal (slang-ir-redundancy-removal.cpp:468) covers only ThreadLocal globals, and this one is Generic on WGSL, so only store-to-load forwarding can remove it [WGSL uniformity: by-value param per builtin](../learnings/1792626209225-wgsl-uniformity-by-value-param-per-builtin-passes-.md).
@@ -48,13 +59,17 @@ A user-declared `in uint lc : SV_WaveLaneCount` fails the same ways, including w
 
 ## Testing a uniformity fix
 
-The Windows GPU CI job (`test-windows-release-cl-x86_64-gpu`) runs the `-wgpu` subgroup rows; for example `wave-get-lane-index.slang.5 (wgpu)` passes there. So a `-wgpu` COMPARE_COMPUTE row is a real Tint guard on CI. Locally slang-test reported wgpu as "Not Supported" even with `-DSLANG_EXCLUDE_DAWN=OFF`, so proxy the check through dawn.node with `backend=vulkan` and the `subgroups` feature [WGSL shadow-global forwarding is blocked by -g and wave ops](../learnings/1792722382100-wgsl-shadow-global-forwarding-is-blocked-by-g-debu.md). The Dawn build flags and `LD_LIBRARY_PATH` that a local `-wgpu` run needs are on [[wiki/concepts/slang-backends-wgsl-on-gpu-execution.md]].
+The Windows GPU CI job (`test-windows-release-cl-x86_64-gpu`) runs the `-wgpu` subgroup rows; for example `wave-get-lane-index.slang.5 (wgpu)` passes there. So a `-wgpu` COMPARE_COMPUTE row is a real Tint guard on CI. Locally the `-wgpu` rows also run ("Check wgpu,webgpu: Supported" on the L40S container) when the build tree is configured FRESH with `cmake --preset default -DSLANG_EXCLUDE_DAWN=OFF` (plus `XDG_RUNTIME_DIR=/tmp`); they report "Not Supported" only in a tree first configured with Dawn excluded and later flipped to OFF, which is what the earlier dawn.node proxy (`backend=vulkan`, `subgroups` feature) worked around [WGSL shadow-global forwarding is blocked by -g and wave ops](../learnings/1792722382100-wgsl-shadow-global-forwarding-is-blocked-by-g-debu.md), [correction: -wgpu rows run locally on a fresh Dawn-ON configure](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md). The Dawn build flags and `LD_LIBRARY_PATH` that a local `-wgpu` run needs are on [[wiki/concepts/slang-backends-wgsl-on-gpu-execution.md]].
 
-**Source learnings (5):**
+Critique-gate tooling: codex `### Attested` lines wrapped in backticks are not parsed, so a stale attestation from an earlier task can block `gh pr create`. Ask codex for plain `- <sha> <path>` lines ([uniform-only context, PR #13897](../learnings/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md)).
+
+**Source learnings (7):**
 - [WGSL uniformity: by-value param per builtin passes Tint; shared ptr<function> context fails](../learnings/1792626209225-wgsl-uniformity-by-value-param-per-builtin-passes-.md) — KernelContext shape fails with a non-uniform builtin; shadow global from `__builtinWaveLaneCount` (#8774, PR #13667)
 - [Slang Metal 'folds' global-varying shadows via generic deferBufferLoad forwarding, not KernelContext](../learnings/1792695049867-slang-metal-folds-global-varying-shadows-via-gener.md) — `deferBufferLoad` → `tryRemoveRedundantLoad`; WGSL blocked by `RequireTargetExtension`; any struct with a non-uniform field fails Tint
 - [WGSL spec (not Tint) mandates var<private> reads = non-uniform and no per-field tracking](../learnings/1792717208147-wgsl-spec-not-tint-mandates-var-private-reads-non-.md) — §15.2.8, §15.2.10.3, gpuweb#1791; keep `RequireTargetExtension` side-effecting (DCE)
 - [WGSL shadow-global forwarding is blocked by -g debug insts and by any wave op before the read](../learnings/1792722382100-wgsl-shadow-global-forwarding-is-blocked-by-g-debu.md) — PR #13883 crosses `RequireTargetExtension` only; Windows GPU CI runs `-wgpu` subgroup rows
 - [Slang store-to-load forwarding is block-local — a fix in canInstHaveSideEffectAtAddress only helps same-block reads](../learnings/1792720401225-slang-store-to-load-forwarding-is-block-local-a-fi.md) — `getPrevInst()` walk inside the load's block; loop-condition / after-`if` / `[noinline]` reads still fail Tint; keep `RequireTargetExtension` side-effecting for DCE
+- [WGSL: workgroup-uniform built-in shadows can share a uniform-only context; user `in` globals are writable](../learnings/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md) — PR #13897 hoists only SV_GroupID/SV_WaveLaneCount; key on `findSystemValueSemanticAttr`; `subgroup_id` breaks `workgroupBarrier`; codex `### Attested` parsing gotcha
+- [Correction: slang-test -wgpu rows DO run locally on a fresh Dawn-ON configure](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md) — "Not Supported" only after an EXCLUDE_DAWN ON→OFF reconfigure; review WGSL PRs on PR head + origin/master
 
 _Catalog: [[wiki/index.md]]_

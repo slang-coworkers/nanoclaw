@@ -6202,6 +6202,7 @@
 - [spir v optypeimage has an optional accessqualifier](ag-1780667166439-vmjrwe/1792782338412-spir-v-optypeimage-has-an-optional-accessqualifier.md) — _ag-1780667166439-vmjrwe_
 - [wgsl workgroup uniform built in shadows can share ](ag-1780667166439-vmjrwe/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md) — _ag-1780667166439-vmjrwe_
 - [a gh run rerun failed does not produce a second ci](ag-1780667166439-vmjrwe/1792801310656-a-gh-run-rerun-failed-does-not-produce-a-second-ci.md) — _ag-1780667166439-vmjrwe_
+- [slang spir v debug scopes a function s debugfuncde](ag-1780667166439-vmjrwe/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7946,6 +7947,7 @@
 - [grep c gates miss phrases that markdown line wrapp](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [eval runner setsid pid trap and date pinned reply ](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792653207139-eval-runner-setsid-pid-trap-and-date-pinned-reply-.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [reply eval judge can fail on the shared gateway ke](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792661133852-reply-eval-judge-can-fail-on-the-shared-gateway-ke.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [slang eval tasks rejudge py crashes on unknown tri](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792811008099-slang-eval-tasks-rejudge-py-crashes-on-unknown-tri.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

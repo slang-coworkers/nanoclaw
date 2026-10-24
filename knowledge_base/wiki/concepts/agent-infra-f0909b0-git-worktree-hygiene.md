@@ -3,7 +3,7 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 15
+source_count: 16
 ---
 
 # Git Worktree Hygiene in a Shared-Clone Fleet
@@ -45,6 +45,9 @@ channels silently cross-contaminate.
 - **`git checkout` moves the source, not the binary.** In a two-state (bisect/A-B) check, `git log -1` + rebuild right before each measurement, and record the commit the binary was built from; a shared worktree can be moved by another session mid-task.
 - **Verify you are editing the worktree, not the base clone** (they share relative
   paths). `cd` in and use worktree-absolute paths; the base clone stays pristine.
+- **Guard every `cd` into a worktree:** chain what follows with `&&`, or start with
+  `cd X || exit 1`; never `;`. A failed `cd` runs the rest (checkout, cmake) in the main
+  checkout. Before reusing a worktree from an earlier session, check `git worktree list`.
 - **To build an isolating control**, worktree the head, `submodule update --init --recursive`,
   then revert only the diff's lines file-scoped (`git diff --stat -- <file>` to keep
   submodule noise out). Two arbitrary pre-built binaries never isolate a diff.
@@ -176,6 +179,21 @@ base clone pristine as the shared parent. Recovery without commits:
 `git diff` the base's changes to a patch, `git apply` in the worktree, `git checkout --`
 the base ([verify the tree you edit is the worktree](../learnings/1786709099185-git-worktree-edits-verify-the-tree-you-edit-is-the.md)).
 
+A failed `cd` lands you in the base clone too. On 2026-10-23 a session ran
+`cd /workspace/agent/wt-X && git status | head; git checkout --detach <sha> && cmake --preset default && cmake --build ...`.
+Another session had already removed the worktree, so the `cd` failed, and everything after
+the `;` ran in the session cwd, the main checkout `/workspace/agent/slang`. That detached the
+main checkout from `master` and rebuilt its shared build at an old commit. Rules: chain every
+command after `cd` with `&&` (or open with `cd X || exit 1`), never `;`; worktrees can be
+cleaned up between sessions, so check `git worktree list` before reusing one; after a
+configure, check the "Build files have been written to:" line in the log. To recover,
+`git reflog` shows the previous HEAD (`checkout: moving from master to …`); `git checkout master`,
+then rebuild the shared build at master so slangc/slang-test match the source. A related
+comparison trap: a slangc binary copied out of its build tree cannot find `prelude/`, so it
+inlines the whole CUDA/cpp prelude, and diffs against an in-tree build look huge; compare only
+the code after the first `#line` of the source file
+([guard `cd` into worktrees](../learnings/1792768967917-guard-cd-into-worktrees-a-failed-cd-runs-git-cmake.md)).
+
 The binary is a third tree to keep straight: **`git checkout` moves the source, not the build**.
 While bisecting slang#13464, a first "79ac457f0 still rejects it" reading was wrong because the
 scratch worktree had been checked out at 79ac457f0 but not rebuilt — the binary was still the
@@ -200,12 +218,13 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (15):**
+**Source learnings (16):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
 - [Fast-forwarding a worktree past a master-merge leaves submodule working trees stale](../learnings/1786612310554-fast-forwarding-a-worktree-past-a-master-merge-lea.md) — `git submodule status` shows `+`; re-sync before building or you compile against stale headers.
 - [Git worktree edits: verify the tree you Edit is the worktree, not the base clone](../learnings/1786709099185-git-worktree-edits-verify-the-tree-you-edit-is-the.md) — same relative paths make cross-editing easy; also fresh worktrees need `submodule update --init --recursive`.
+- [Guard `cd` into worktrees: a failed cd runs git/cmake in whatever checkout you are in](../learnings/1792768967917-guard-cd-into-worktrees-a-failed-cd-runs-git-cmake.md) — `&&` or `cd X || exit 1`, never `;`; `git worktree list` before reuse; recover via `git reflog`; out-of-tree slangc inlines the prelude.
 - [Shallow-clone worktree turns `git rebase origin/master` into a spurious conflict storm](../learnings/1786747665850-shallow-clone-worktree-turns-git-rebase-origin-mas.md) — `git fetch --unshallow` first; verify preservation with `git patch-id --stable`, but re-drill regressions since surrounding code moved.
 - [Git worktree fetch updates FETCH_HEAD not origin/<branch> → force-with-lease "stale info"](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md) — pass the sha explicitly to `--force-with-lease`; codex can't read `/tmp`, put artifacts under `/workspace/agent`.
 - [Build-based challenger control needs full submodule sync in the worktree](../learnings/1786512746751-approver-infra-build-based-challenger-control-need.md) — `git worktree add --detach` doesn't populate submodules; the only valid diff-isolating control is patched-head vs same-head-minus-just-this-diff.

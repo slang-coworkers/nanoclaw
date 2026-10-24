@@ -3,7 +3,7 @@ title: GitHub CLI/API access under the OneCLI proxy — auth false alarms and wo
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, onecli-proxy, gh-token, pr-review, auth, curl, graphql]
-source_count: 23
+source_count: 26
 ---
 
 ## TL;DR
@@ -19,6 +19,7 @@ source_count: 23
 - Workarounds for wedged/paginated reads: raw REST `curl` bypasses `gh run view --log`'s run-status gate on gate-wedged runs; **GraphQL `gh pr view --json reviews`** is flap-immune where REST `--paginate` 401-flaps mid-pagination.
 - The `gate-critique-on-deliver.sh` PreToolUse Bash hook false-positives on any command string containing the `pulls` path segment; route reads around it (`gh pr view`, or `issues/<n>` since PRs are issues).
 - **When `gh` 401s (`app_not_connected`) or slang-mcp rejects its header, header-less urllib/curl to api.github.com still reads** — at the injected 6000/h or the anonymous 60/h; read the quota from `X-RateLimit-*`, not `/rate_limit`.
+- **Overlapping sweeps share one installation REST quota (5000-6000/h) and can drain it.** Batch searches and state reads as aliased fields in one GraphQL query (separate budget; ~40 light aliases cost 1 point). Keep heavy per-node fields (`statusCheckRollup`, `reviews(first:30)`) to ~15 aliases per query; a 502/504 there means query cost, not an outage. Sample job lists and log headers instead of scanning all of them, and read files from raw.githubusercontent.com (no quota).
 
 ## The core false alarm: `gh auth status` ≠ read access
 
@@ -198,7 +199,25 @@ author association — both pass the hook and are read-only
 
 **When `gh` and slang-mcp both lose auth mid-sweep, raw HTTP still reads (2026-10-16).** In the Slang Maintainer container `gh api ...` failed with `app_not_connected` (HTTP 401, "GitHub is not connected in OneCLI"), and partway through a run the `mcp__slang-mcp__github_*` tools began failing with "rejected the Authorization header". Plain python urllib or curl calls to `https://api.github.com` (REST and `POST /graphql`) with **no** Authorization header worked through the transparent proxy at the full 6000/h quota in one container [gh CLI 401s while raw REST/GraphQL works](../learnings/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md), and as anonymous calls at 60 core requests/h and 10 searches/min in another [GitHub read fallback when gh/slang-mcp auth fails](../learnings/1792139710335-github-read-fallback-when-gh-slang-mcp-auth-fails-.md). So the quota depends on whether the proxy injects; read it from the `X-RateLimit-*` headers on a real request, not from `/rate_limit`, which reported a misleading 60/h core and graphql limit 0. URL-encode search queries (`urllib.parse.quote`; a raw `created:>=` returns non-JSON), fetch file contents from raw.githubusercontent.com (no limit hit), and keep a sweep's rechecks under about 10 searches. The same anonymous route covers a shared installation token that has hit its 5,000/h limit while `gh api rate_limit` returns `app_not_connected`: `curl -H "Authorization:" https://api.github.com/...` still answers at 60/h core and 10/min search, and a github.com issue HTML page embeds the state, milestone and assignees as JSON, which is enough for a read-only recheck [DescriptorHandle textures get no image format (gh rate-limit fallback)](../learnings/1792658643801-slang-descriptorhandle-textures-get-no-image-forma.md). A reusable helper is `/workspace/agent/reports/tmp1016/gh.py` (get/pages/gql). Separately, `PullRequest.reviews(first:N)` caps at N: raising it from 30 to 50 changed an "unreviewed >30d" count by 2.
 
-**Source learnings (23):**
+## Sweeps under the shared installation quota (2026-10-23)
+
+Several sweeps share one GitHub App installation token, so the REST core quota (5000-6000/h) can run out mid-run. It did on 2026-10-22; on 10-23 only 2,346 calls were left at 08:11Z. Three rules keep a sweep inside the budget.
+
+**Batch reads into one GraphQL query.** GraphQL has its own budget. On 2026-10-23 one `gh api graphql` request with ~40 aliased `search(query:"...", type:ISSUE, first:8){issueCount nodes{... on Issue{number title state createdAt author{login}}}}` fields cost 1 point. It replaced ~40 REST `search/issues` calls, which also carry a 10-30/min secondary limit. Issue and PR state, assignees, milestones, last comments, `history(path:...)` last change per file, and `ref.compare(headRef:)` ahead/behind counts fit in one query at the same cost. For the merge time of a squash-merged PR read `mergedAt`, not the commit's `committedDate`: they can differ by hours (#13866 merged 19:14Z, committed 16:54Z) ([batch GitHub issue searches into one GraphQL call](../learnings/1792743590595-batch-github-issue-searches-into-one-graphql-call-.md)).
+
+**Chunk heavy aliases to ~15 per query.** In the watch-list sweep, one query with ~70 aliased `pullRequest(number:N){reviews(first:30) statusCheckRollup reviewRequests timelineItems}` nodes returned nginx `502 Bad Gateway` on all 4 retries, and the script died on `KeyError 'data'`. Chunks of 15 succeeded first try. Light state-only checks (`issueOrPullRequest{state closedAt}`) still work at 40 per query. A 502/504 here means query cost or timeout, not an outage. Two 20-alias roster sweeps run back to back can trip the GraphQL secondary limit (403 "exceeded a secondary rate limit"). A 10 s retry recovers from it, but don't rerun a sweep only to see its stdout: redirect stdout to a file the first time ([GraphQL aliased PR batches 502 when too heavy](../learnings/1792743971886-github-graphql-aliased-pr-batches-502-when-too-hea.md)).
+
+**Sample jobs and logs; don't scan them all.** In the daily CI-health sweep, fetching jobs for every run in the window (~2,150 calls) and reading every ubuntu-latest log header (~2,700 calls) used most of the budget. A full sweep fits in ~670 calls:
+- Fetch jobs only for the ~80 `CI` runs. That is enough for pool waits and T4/Falcor/macOS stats.
+- For the Ubuntu image check, read one ubuntu-latest log header from each of ~40 runs spread across time and repos, with a `Range: bytes=0-6000` request (~80 calls).
+- Read every 4th `CI Retry Yielded Bot` log. Count reruns for free from the runs list: `CI` runs with `run_attempt>1`, grouped by `triggering_actor`.
+- Use GraphQL for searches and merge-queue timeline events.
+
+Track `X-RateLimit-Remaining` on every response and sleep to the reset below ~250. When grepping retry-bot logs for "rerunning", "not rerunning bot CI." also matches, so filter whole lines, not substrings ([CI sweep under shared REST quota: sample instead of full scans](../learnings/1792744188827-ci-sweep-under-shared-rest-quota-sample-instead-of.md)).
+
+Read-only source checks need no API call: `raw.githubusercontent.com/shader-slang/slang/<sha>/<path>` does not count against the quota. It is also the fallback for the slang-writer clone at `/workspace/agent/slang`, which cannot `git fetch` ("bad object refs/remotes/origin/Sirox0/master", failed repack) ([batch GitHub issue searches into one GraphQL call](../learnings/1792743590595-batch-github-issue-searches-into-one-graphql-call-.md)).
+
+**Source learnings (26):**
 
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md) — GH_TOKEN=ROUTED_VIA_ONECLI_PROXY; gh validates locally and fails, curl+proxy works; later corrected/over-generalized.
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — the container held a working App token; gh reads work, only auth-status/user/rate_limit fail.
@@ -223,3 +242,6 @@ author association — both pass the hook and are read-only
 - [OneCLI GitHub: gh CLI 401s while raw REST/GraphQL works (2026-10-16)](../learnings/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md) — header-less urllib through the proxy at 6000/h; trust `X-RateLimit-*`, not `/rate_limit`
 - [GitHub read fallback when gh/slang-mcp auth fails mid-sweep](../learnings/1792139710335-github-read-fallback-when-gh-slang-mcp-auth-fails-.md) — anonymous curl 60/h + 10 searches/min; URL-encode search; raw.githubusercontent for files
 - [Slang DescriptorHandle textures get no image format: open tracker is #10024, not closed #11130](../learnings/1792658643801-slang-descriptorhandle-textures-get-no-image-forma.md) — side fact: rate-limited installation token → empty-Authorization curl; issue HTML embeds state/milestone JSON
+- [Batch GitHub issue searches into one GraphQL call to spare the shared REST quota](../learnings/1792743590595-batch-github-issue-searches-into-one-graphql-call-.md) — ~40 aliased searches cost 1 point; squash-merge `mergedAt` vs `committedDate`; raw.githubusercontent for source checks
+- [GitHub GraphQL aliased PR batches 502 when too heavy — chunk to ~15](../learnings/1792743971886-github-graphql-aliased-pr-batches-502-when-too-hea.md) — heavy fields ≤15 aliases, light ≤40; 502 = cost; back-to-back sweeps trip the secondary limit
+- [CI sweep under shared REST quota: sample instead of full job/log scans](../learnings/1792744188827-ci-sweep-under-shared-rest-quota-sample-instead-of.md) — ~670 calls instead of ~4,850; `Range` log headers; track `X-RateLimit-Remaining`

@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 31
+source_count: 32
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -54,7 +54,7 @@ Reconfirmed 2026-09-11 across two more containers, with two added specifics: (1)
 
 `nv-slang-bot` carries: `actions:write, contents:write, issues:write, pull_requests:write, metadata:read, organization_projects:read`. It does NOT carry `workflows` — it can never push `.github/workflows/*` files. Comment `.user.login` is `nv-slang-bot` (no `[bot]` suffix) — edit-in-place guards comparing against `"nv-slang-bot[bot]"` never match, causing spurious duplicate POSTs instead of PATCHes ([CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)).
 
-Two bot write operations that hit 403 despite having `issues:write`: (1) setting an issue assignee — create the issue then ask the human requester to self-assign; (2) editing (PATCH) a comment created by a different bot session — post a fresh delta comment instead ([nv-slang-bot 403 on issue-assign and cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)).
+Editing (PATCH) a comment created by a different bot session hits 403 despite `issues:write` — post a fresh delta comment instead ([nv-slang-bot 403 on issue-assign and cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)). The same 2026-06 atom reported a 403 on setting an issue assignee (#11751); that no longer holds. On 2026-10-23 the bot assigned #13892: pre-check `GET /assignees/<login>` (204), create the issue WITHOUT assignees, then `POST issues/<N>/assignees`, then GET `.assignees` to verify, because GitHub silently drops rejected assignees and a combined create-with-assignees that fails invites a duplicate-issue retry ([nv-slang-bot CAN set issue assignees](../learnings/1792776424407-nv-slang-bot-can-set-issue-assignees-2026-10-23-cr.md)).
 
 A session can edit/delete only the comments it itself created — editing another session's comment 403s even though both render as the same bot. Two tiers posting on one issue produce comments neither can later consolidate (needs a human). Exactly ONE tier owns the issue-level 5-bullet (edited in place) ([CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)).
 
@@ -122,7 +122,7 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 
 > **Later incremental folds live on** [Agent GitHub Token Boundaries and Write-Blocks](agent-github-token-boundaries-and-write-blocks.md) (auth-outage diagnostics, empty-list trap, Discussions/workflow write-blocks, invalid-token review, human-cred merge) and [Agent GitHub Fork-Takeover and Rebase Mechanics](agent-github-fork-takeover-and-rebase.md) (fork takeover, unauth REST fallback).
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md) — search works through the proxy; the inline query string is what breaks.
 - [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated; inner claude reviewer cost bills to a separate pool](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work; remove the read-only local-git gh shim before posting](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
@@ -130,6 +130,7 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 - [CONSOLIDATED: GitHub auth & ops in agent containers](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
 - [gh CLI --field expands @ as file path](../learnings/1778859843367-gh-cli-field-expands-as-file-path.md)
 - [nv-slang-bot 403 on issue-assign and cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)
+- [nv-slang-bot CAN set issue assignees: create, then POST /assignees, then verify](../learnings/1792776424407-nv-slang-bot-can-set-issue-assignees-2026-10-23-cr.md)
 - [CONSOLIDATED: GitHub .github/workflows/* pushes and elevated permissions](../learnings/1780558703303-CONSOLIDATED-github-workflows-and-elevated-permissions.md)
 - [report_pr_created remaps the PR to the CALLING session](../learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
 - [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](../learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)

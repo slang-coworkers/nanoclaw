@@ -3,7 +3,7 @@ title: "Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction rep
 type: concept
 group: slang-backends
 tags: [spirv, debug-info, nonsemantic, IRDebugFunction, DebugFunctionDefinition, autodiff, copyDebugInfo, cloneDecoration, fixUpDebugFuncType]
-source_count: 8
+source_count: 9
 ---
 
 # Slang SPIR-V DebugFunction / NonSemantic debug-info
@@ -19,6 +19,7 @@ The NonSemantic.Shader.DebugInfo `DebugFunction`/`DebugFunctionDefinition` famil
 - **Consequence of shared records is debug-info QUALITY (misleading names / stale types), not a miscompile and not invalid SPIR-V.** The emitter's per-record dedup guard prevents the invalid two-definitions-per-record case. Latent whenever the sharing producer only feeds a non-SPIR-V target (C-like/Metal emitters skip `DebugFuncDecoration`).
 - **Producer-side fix = `fixUpDebugFuncType(IRFunc*)`** (`slang-ir.cpp`): if the func's data type differs from the record's `getDebugType()`, mint a fresh distinct `IRDebugFunction` (preserving name/line/col/file/scope) and swap the decoration — fixes BOTH the sharing AND a stale debug type in one call.
 - **NonSemantic debug info is NOT validated by spirv-val** — these defects ship silently at rc=0; only a GPU debugger (RenderDoc/Nsight) notices. Reproduce/confirm by source trace or by grepping the ext-inst stream, never by trusting a clean spirv-val.
+- **A function's `DebugFuncDecoration` record is not always the root of its body's debug-scope tree** (after #13219 lexical scopes). Function cloning, autodiff and the inliner can each leave a different or second root. Audit from the spirv-asm, excluding scopes that carry an inlinedAt operand.
 - **fwd_diff of a CONCRETE generic specialization does NOT hit `copyDebugInfo`'s generic path** — a concrete `fwd_diff(gen<float>)` resolves to a module-scope `IRFunc` first, so no hoisted name-hint-less `IRGeneric` reaches `copyDebugInfo`. Check generic-vs-concrete before flagging an autodiff-of-generics debug-info abort.
 
 ## IRDebugFunction representation (operands are IR-carried)
@@ -37,6 +38,16 @@ A `cloneDecoration(&cloneEnv, decor, newFunc, ...)` with an **empty** clone env 
 
 Whether the sharing is a **live bug** depends on whether the original function *survives*: if the pass removes/replaces the original (only one live reference) the sharing is transient/harmless; if both stay alive (out-param lowering keeps the original when hoisted `uniform` params carry `IREntryPointParamDecoration`s referencing it) you get two live functions sharing one record → misleading debug names, and — because the replacement wrapper has a **different signature** — a stale debug type. The severity is **debug-info QUALITY (P3), never a miscompile / never invalid SPIR-V**: the emitter caches per-`IRDebugFunction` inst AND dedups the per-body definition per record (emitter comment at `slang-emit-spirv.cpp:10819-10822` documents exactly this reverse-mode-autodiff sharing), so the residual is only stale names/types; C-like/Metal emitters don't consume `DebugFuncDecoration` at all, so a sharing producer wired only to a non-SPIR-V target (out-param lowering is Metal-only via `legalizeShaderOutputParamsForMetal`) is fully latent. Triage discipline: don't over-severity a shared-record report, don't mark `reproduced` without a wired SPIR-V path (it is source-trace-confirmable only), and place the fix producer-side. The in-tree producer-side fix is **`fixUpDebugFuncType(newFunc)`** (`slang-ir.cpp:854-884`): when the func's data type differs from the record's `getDebugType()` it mints a FRESH distinct `IRDebugFunction` (preserving name/line/col/file/scope), removes the old decoration, adds a new one — breaking the sharing AND refreshing the stale type in one call, early-returning when the type is unchanged. Its sole caller today is specialization (`slang-ir-specialize.cpp:2600`); the natural fix for a new producer is to call it right after the decoration copy. (For an autodiff derivative — a genuinely different function — build a fresh record with its own name instead, PR #13239's approach; `fixUpDebugFuncType` keeps the source name, correct when the wrapper is the same source function ABI-rewritten.) Cluster: #13235 (emit-consumer, MERGED PR #13237) / #13238 (autodiff producer, draft PR #13239) / #13251 (out-param-lowering producer).
 
+## Lexical debug scopes: the decoration record is not always the body's scope root (#13219)
+
+Since #13219 added SPIR-V lexical debug scopes, a function body's `DebugScope`, `DebugVar` and `DebugInlinedAt` operands name a tree of `IRDebugFunction` and `IRDebugLexicalBlock` insts. The root of that tree is not always the function's own `DebugFuncDecoration` record. Three producers break the assumption:
+
+1. `cloneInst` of a function calls `cloneDebugScopesForFunc` (`slang-ir-clone.cpp`), which gives the clone a private copy of the tree. Reverse-mode autodiff's temporary primal clone (`slang-ir-autodiff-rev.cpp:200`) therefore leaks a second record, named after the original, into every derived body (`s_apply_`, `s_bwdProp_`, `s_remat_`).
+2. Inside autodiff, even the forward source function's decoration record can differ from its body's root: `s_fwd_` bodies kept a stray root.
+3. The inliner (`slang-ir-inline.cpp:627-640`) copies a callee's `DebugScope`s WITHOUT inlinedAt when the call site has no preceding `DebugLine`. So "the root of the non-inlined DebugScopes" is not guaranteed to be unique.
+
+To audit, parse the spirv-asm, map each `OpFunction`'s `DebugScope` operands up the `DebugLexicalBlock` parent chain, and compare each root with the record bound by that function's `DebugFunctionDefinition`. Exclude scopes that have an inlinedAt operand ([a function's DebugFuncDecoration record is not always its body's scope root](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md)).
+
 ## Review-scoping: concrete generic specialization is module-scope, not a nested generic
 
 A plausible-but-usually-wrong autodiff debug-info 🔴: "fwd_diff of a named generic at `-g2` aborts because `copyDebugInfo` gets a hoisted, name-hint-less `IRGeneric` as destFunc while srcFunc has a hint (firing the no-name-hint assert)." For a CONCRETE call like `fwd_diff(genPoly<float>)` this is wrong: `specialize(genPoly, float)` resolves to a MODULE-SCOPE cloned `IRFunc` first (non-module-scope translation is rejected at `slang-ir-translate.cpp:430`; `slang-ir-specialize.cpp:4094` clones beside the module-scope specialization), so in `maybeTranslateForwardDerivative` (`slang-ir-autodiff-fwd.cpp:3518`) the generic-base branch (`base = getGenericReturnVal(base)`) is NOT taken, `targetFunc` is a module-scope `IRFunc`, `findOuterGeneric(fwdDiffFunc)` is null, `hoistValueFromGeneric` returns the `IRFunc`, and `copyDebugInfo` takes the `if (nameHint)` branch — the release assert is never reached. When reviewing autodiff-of-generics claims, always check generic-vs-concrete: a concrete specialization is a module-scope func, not a nested generic ([Autodiff: fwd_diff of a CONCRETE generic specialization does not hit copyDebugInfo's generic path](../learnings/1790220192127-autodiff-fwd-diff-of-a-concrete-generic-specializa.md)).
@@ -45,8 +56,10 @@ A plausible-but-usually-wrong autodiff debug-info 🔴: "fwd_diff of a named gen
 
 `awk 'length>100'` for column checks counts **bytes**; an em-dash `—` is 3 bytes / 1 char, so it false-flags ≤100-column comment lines as over-length. `clang-format` (display columns) is the authority — if it reports NO CHANGES, the line is within the limit.
 
+In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. Use `= OpFunction %` ([debug-scope roots; FileCheck gotcha](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md)).
+
 ---
-**Source learnings (8):**
+**Source learnings (9):**
 - [IRDebugFunction has a parentScope operand (idx 5) at HEAD; supersedes the "no scope operand" learning](../learnings/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md)
 - [getDebugType() returns a raw IRType, not a debug-type record](../learnings/1790164801529-irdebugfunction-getdebugtype-returns-a-raw-irtype-.md)
 - [#13235: DebugFunctionDefinition dropped when a callee is inlined (record/definition cache conflation)](../learnings/1790151769234-spir-v-debugfunctiondefinition-dropped-when-a-call.md)
@@ -55,4 +68,5 @@ A plausible-but-usually-wrong autodiff debug-info 🔴: "fwd_diff of a named gen
 - [bare cloneDecoration re-references (not deep-copies) IRDebugFunction; #13238/#13251](../learnings/1790223022890-bare-clonedecoration-of-debugfuncdecoration-re-ref.md)
 - [shared IRDebugFunction is a recurring quality-only class; fix producer-side with fixUpDebugFuncType](../learnings/1790223703724-shared-irdebugfunction-via-bare-clonedecoration-is.md)
 - [fwd_diff of a concrete generic specialization is module-scope, doesn't hit copyDebugInfo's generic path](../learnings/1790220192127-autodiff-fwd-diff-of-a-concrete-generic-specializa.md)
+- [SPIR-V debug scopes: a function's DebugFuncDecoration record is not always its body's scope root](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md) — `cloneDebugScopesForFunc`, autodiff stray roots, inliner drops inlinedAt; spirv-asm audit; `= OpFunction %` FileCheck label
 _Catalog: [[wiki/index.md]]_

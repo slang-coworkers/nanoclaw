@@ -3,6 +3,7 @@ title: "-output-using-type value CHECKs can match the type header"
 type: learning
 topic: misc
 source: learnings/1790973538630-output-using-type-value-checks-can-match-the-type-.md
+superseded_by: 1790980781348-output-using-type-makes-check-3-vacuous-use-check-
 ---
 
 # -output-using-type value CHECKs can match the type header

@@ -2,13 +2,13 @@
 title: "Slang Generics & Type System"
 type: concept
 group: slang-language-core
-tags: [generics, specialization, inference, overload-resolution, diagnostics, entry-point]
-source_count: 27
+tags: [generics, specialization, inference, overload-resolution, diagnostics, entry-point, IRAttributedType, vector-t-1]
+source_count: 28
 ---
 
 # Slang Generics & Type System
 
-Generic specialization, inference, overload resolution and checker recursion. Witness tables, extensions, coercion, visibility and codegen live in [[wiki/concepts/slang-language-witness-and-conformance.md]].
+Generic specialization, inference, overload resolution, checker recursion, and two IR type-shape facts (`as<T>` through `IRAttributedType`, `vector<T,1>` erasure). Witness tables, extensions, coercion, visibility and codegen live in [[wiki/concepts/slang-language-witness-and-conformance.md]].
 
 ## TL;DR
 
@@ -28,6 +28,8 @@ Generic specialization, inference, overload resolution and checker recursion. Wi
 - Recursion that builds a NEW type per level defeats identity guards: skip the converse join for interface subjects (except concrete equalities), carry a budget across the extension candidate search, cap type walkers at `kMaxTypeNestingDepth`, key seen-sets on instantiated `Type*`.
 - `where X == Concrete` reduces a fresh `X.A` but not a substituted one (no congruence). Workaround: state the nested equality.
 - Through `where X : I`, `X.Assoc` stays symbolic; `where X.Assoc == Y` feeds coercion, not member lookup. Do not route public aliases through associated types.
+- IR `as<T>`/`dynamicCast<T>` look through `IRAttributedType` by default; type-pointer equality does not, so unwrap before comparing.
+- Every backend lowers `vector<T,1>` to a scalar, so only an IR-dump check, not an emitted-code FileCheck, can pin whether it survived.
 
 ## Generic Specialization and Inference
 
@@ -85,7 +87,13 @@ The flag alone does not keep widening out of the solver: `TryJoinVectorAndScalar
 
 **Member lookup through a generic constraint is weaker still.** `_tryLookUpExistingRequirementWitnessRec` (slang-ast-decl-ref.cpp ~407) resolves `X.Assoc` from a concrete conformance's `InheritanceDecl::witnessTable`, which has associated-type entries; for `where X : I` it reads `GenericTypeConstraintDecl::pathResolutionTable`, which holds only inherited-interface paths (slang-check-decl.cpp ~12350), so `X.Assoc` stays opaque. The checker does not search for a more concrete conformance either: a core-module `extension<int N> vector<float,N> : I` cannot match `vector<T,1>` while `T` is abstract. `where X.Assoc == Y` is consumed by coercion (slang-check-conversion.cpp), not lookup: `Y v = x; v.m` compiles but `x.m` fails "not a member of 'X.Assoc'", on master too (`where T.A == float2` with `a.x`). Routing a public alias through an associated type (`_Texture<T.DataType, …>`) therefore broke SlangPy's generic code on slang #13537 [associated types through a generic constraint stay symbolic](../learnings/1791916553178-slang-associated-types-through-a-generic-constrain.md). The same alias defeats inference of `f<T>(Texture2D<T>)`; see [[wiki/concepts/slang-language-core-f0909b0-generics-overload-inference.md]].
 
-**Source learnings (27):**
+## IR type casts look through `IRAttributedType`; `vector<T,1>` is erased at emit
+
+`as<T>` and `dynamicCast<T>` default to `IRDynamicCastBehavior::Unwrap` (`slang-ir.h:822-836`) and look through `kIROp_AttributedType`. So `as<IRVectorType>(unorm float2)` succeeds, and no `unwrapAttributedType` call is needed before it. Type-pointer equality still needs the unwrap, because `getDataType()` strips only the rate qualifier. A review of #13342 (R3) wrongly flagged a "release-assert asymmetry" by missing this.
+
+User code reaches a `vector<T,1>`-typed swizzle through `__vectorReshape<1>(uint3(...))`. The hlsl, cpp, cuda, metal and spirv backends all legalize `vector<T,1>` to a scalar and all emit `return x_0;` for it, so a FileCheck on emitted code cannot tell "kept the `vector<T,1>` type" from "replaced it with a scalar". Only an IR-dump check can pin that. In a verify worktree, `git submodule update --reference /workspace/agent/slang` fails because that clone is shallow and `file` transport is blocked; use `git -c protocol.file.allow=always submodule update --init --recursive` [as<T> unwraps IRAttributedType; vector<T,1> is erased on every backend](../learnings/1792750703434-slang-ir-as-t-unwraps-irattributedtype-vector-t-1-.md).
+
+**Source learnings (28):**
 - [Slang equality constraints lack congruence: substituted X.A never reduces even when X == Concrete](../learnings/1791443571566-slang-equality-constraints-lack-congruence-substit.md) — resolve() is context-free; workaround = nested constraint
 - [Slang interface __init requirements cannot have default bodies (E30317)](../learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md) — bare __init(float) gives per-conformer value-preserving satisfaction
 - [Generic (T)float-literal cast floors to 0 (#12311)](../learnings/1785559222590-generic-t-float-literal-cast-floors-to-0-iarithmet.md) — IArithmetic lacks __init(float); fork A/B
@@ -113,5 +121,6 @@ The flag alone does not keep widening out of the solver: `TryJoinVectorAndScalar
 - [Slang: a "seen types" cycle guard does not terminate a generic struct that grows its own arguments](../learnings/1791547431780-slang-a-seen-types-cycle-guard-does-not-terminate-.md) — `kMaxTypeNestingDepth` cap (E39997)
 - [Slang: associated types through a generic constraint stay symbolic](../learnings/1791916553178-slang-associated-types-through-a-generic-constrain.md) — pathResolutionTable has no assoc entries; broke SlangPy #13537
 - [New front-end errors can break the nightly agentic suite — run docs/generated/tests too](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md) — Type*-keyed recursion guards
+- [Slang IR as<T> unwraps IRAttributedType; vector<T,1> is erased on every backend](../learnings/1792750703434-slang-ir-as-t-unwraps-irattributedtype-vector-t-1-.md) — no unwrap needed before `as<IRVectorType>`; emitted-code tests can't pin `vector<T,1>`; submodule `protocol.file.allow` tip
 
 _Catalog: [[wiki/index.md]]_

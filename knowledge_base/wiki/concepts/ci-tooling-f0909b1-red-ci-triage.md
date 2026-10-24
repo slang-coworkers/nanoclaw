@@ -3,7 +3,7 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 20
+source_count: 21
 ---
 
 # Classifying red Slang CI — infra/flake vs. real regression
@@ -14,12 +14,13 @@ source_count: 20
 - **`test-falcor / Test (Falcor)` is an external-CI bridge**, not a test runner. It fails on infra (`run-external-ci: trigger failed: HTTP Error 403: Forbidden`, or an expired Slang artifact) far more often than on a real regression. A bail in ~15s with no shader diagnostics ⇒ infra, your compiler change is cleared. It is typically **non-required**.
 - **`test-falcor` is not required and is not in `check-ci`'s `needs`, and on `merge_group` it always skips** (its approval-gate grand-parent is skipped there), so the merge queue never runs the Falcor bridge test. Read required contexts from `branches/master`, not the 403ing `/protection` endpoint.
 - Falcor has **≥2 distinct infra modes** (403 auth wall, expired artifact). Don't propagate "artifact-TTL is THE Falcor cause" — re-read the log each time. A `--failed` rerun does NOT regenerate an expired artifact; a full `gh run rerun <id>` does. A 403 wall is not rerun-fixable — stop after ~2 attempts.
+- When the Falcor log says only "external CI failed" (the internal GitLab pipeline is unreadable from the container), triage with a **public-Falcor differential compile** (baseline vs PR `slangc`, diff the diagnostics). A clean diff only *supports* infra, because the internal Falcor can differ.
 - GPU jobs (`test-windows-*-gpu-vk / test-slang`) flake/timeout: a step stuck `in_progress` at completion with an empty `--log-failed` is a timeout/cancellation, not an assertion failure. React to the current head only (a new push auto-cancels prior runs).
 - **Uniform** failure across *every* `test-slang` job (all OSes/arches, incl. CPU) ⇒ a deterministic `.slang` failure. Separate three causes: the PR's own new test, a PR-introduced regression of a pre-existing test, or inherited master-side breakage.
 - Known flaky/benign reds: `##[error]slang-test left generated or modified files` (leftover `moduleG####.slang` from a module test) when `100% of tests passed`; and the `build-windows-debug-cl-aarch64` job's `verify-documented-compiler-version.sh` **exit 4** — a `set -e`/`pipefail` command-substitution trip in that best-effort script (fix: `|| true`), NOT a `docs/building.md` allowlist gap.
 - **An ERR trap does not see everything:** without `set -E` it misses failures inside functions, and `trap '…; exit 0' ERR` turns the step green, which hides a broken check the way `|| true` does; prefer `exit "$status"` plus `continue-on-error`, and raise the trade-off with the maintainer.
 - A **manual `ci.yml` dispatch on a DRAFT PR** makes `test-falcor` fail fast (~15s, `failed_steps: []`) because the draft-gated *build* jobs that produce its artifact are skipped — it is not a code failure and clears on `gh pr ready`, not on a rerun.
-- **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — recover with a fresh `gh workflow run ci.yml --ref <branch>` dispatch (same SHA, no push) or a push (usually a master merge). A bot run that *fails* at exactly 30 days is a different event: an expired `falcor-ci` approval, not code.
+- **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — recover with a fresh `gh workflow run ci.yml --ref <branch>` dispatch (same SHA, no push) or a push (usually a master merge). On a non-draft PR use the push: a bot dispatch yields, and its red `check-ci` blocks merge. A bot run that *fails* at exactly 30 days is a different event: an expired `falcor-ci` approval, not code.
 - `gh run view --log-failed --job <id>` is the reliable log fetch; the `/actions/jobs/<id>/logs` REST endpoint often returns empty, and needs `gh api --allow-escape-sequences` to print ANSI-laden logs. `check-ci` failing is just the aggregate — find the real failing job.
 
 ## The overriding rule: read the fresh log, classify, then act
@@ -95,6 +96,22 @@ shortcut: **if Falcor bails in seconds with no shader diagnostics in the log, it
 compiler change is cleared**; only treat it as a real regression if the log shows Falcor actually
 compiled shaders and hit a compile/validation error
 ([multiple infra modes, re-read the log](../learnings/1788545708307-test-falcor-ci-failures-have-multiple-infra-modes-.md)).
+
+**When the log says only "external CI failed", do a public-Falcor differential compile.** The job
+delegates to an internal GitLab pipeline (`run-external-ci`, gitlab-master.nvidia.com); the GitHub
+log gives no shader diagnostics, and the GitLab API returns 502 from coworker containers. To decide
+whether a frontend PR breaks Falcor: shallow-clone the public NVIDIAGameWorks/Falcor; compile every
+`Source/**/*.slang` with both the baseline and the PR `slangc` (`-I Source/Falcor -I Source
+-I Source/RenderPasses -I Source/Falcor/Shaders -target spirv -no-codegen`) under `xargs -P 32`,
+with a per-file wrapper that ends `exit 0` so xargs does not abort on a compile that fails with 255;
+then diff the sorted `error[`/`warning[` lines per file. It takes about 2 minutes on 64 cores. On
+#13880, 441 files gave zero differences (252 compile cleanly). The internal Falcor can differ from
+the public one, so a clean diff only *supports* treating the red as infra. Also check whether
+`test-falcor` failed on other PRs the same day, then rerun with `gh run rerun <id> --failed`
+([public-Falcor differential compile](../learnings/1792769226659-slang-ci-test-falcor-failures-can-t-be-read-from-t.md)).
+That rerun is not watched for you: on #13880 attempt 2 failed while another frontend PR (#13889)
+passed its attempt 2 in the same window, and no second webhook arrived (see
+[rerun decision rules](ci-flake-rerun-decision-rules.md)).
 
 Also distinct from a real Falcor red: on a **draft** PR a manual `workflow_dispatch` run yields
 a cosmetic **priority-yield** (`filter=success, wait-for-human-priority=failure,
@@ -210,7 +227,9 @@ The 30-day refusal bites slow PRs in particular, because `falcor-build-approval-
 720h (30 days) for a manual approval: when it times out and fires a `ci_failed` webhook, the run is
 already too old to rerun. A fresh run comes from one of two moves. (1) Dispatch on the same branch
 head, `gh workflow run ci.yml -R shader-slang/slang --ref <branch>`; no commit is needed, so the
-reviewer's target SHA does not change (on a bot draft that run yields again, see below). (2) Push,
+reviewer's target SHA does not change (on a bot draft that run yields again, see below; on a
+non-draft PR the yielded dispatch's red `check-ci` blocks merge, so push instead — see
+[draft-PR CI](ci-b-draft-pr-ci-and-conditional-claims.md)). (2) Push,
 which on a long-idle branch usually means merging current master, since the branch is also BEHIND.
 Before pushing, check whether master touched your files (`git diff <merge-base> origin/master --
 <your files>`), rebuild, and re-run the affected suites; also check that the worktree still has a
@@ -270,7 +289,7 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md) — slang#13352: no `set -E` = top-level only; `$BASH_COMMAND` splits annotations; `exit 0` ≈ `|| true`, below `continue-on-error`; `gh api --allow-escape-sequences` for job logs.
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
@@ -292,3 +311,4 @@ pass there is predicted, not proven; confirm via a CI re-run
 - [Bot CI run 'failure' after exactly 30 days = expired falcor-ci environment approval, not code](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md) — distinct from the 30-day rerun refusal; no code ran
 - [gh run rerun fails on runs older than one month — dispatch a fresh workflow_dispatch instead](../learnings/1792219533913-gh-run-rerun-fails-on-runs-older-than-one-month-di.md) — 720h falcor gate timeout lands past the rerun window; `gh workflow run --ref` keeps the SHA; `check-ci` `needs` excludes the gate.
 - [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md) — merge master (branch is BEHIND), check master's diff to your files, rebuild; reaped `build/` on #12443.
+- [Slang CI: test-falcor failures can't be read from the container, so do a public-Falcor differential compile to triage](../learnings/1792769226659-slang-ci-test-falcor-failures-can-t-be-read-from-t.md) — GitLab 502; baseline vs PR `slangc` over public Falcor `Source/**/*.slang`; #13880 441 files, 0 diffs; clean diff only supports infra

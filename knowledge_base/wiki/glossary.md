@@ -402,6 +402,7 @@ type: nav
 - [Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission](concepts/slang-backends-spirv-descriptor-handles-and-heap.md)
 - [Slang SPIR-V emit and legalization defects: logical pointers, opaque copies, constants, and diagnostics](concepts/slang-backends-spirv-emit-and-legalization-defects.md)
 - [Slang SPIR-V entry points, varyings, and execution modes](concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md)
+- [Slang SPIR-V image access: write-only NonReadable decoration, OpTypeImage AccessQualifier, and array unwrapping](concepts/slang-backends-spirv-image-access-decorations.md)
 - [Slang SPIR-V validation, testing, and local environment](concepts/slang-backends-spirv-validation-testing-and-environment.md)
 - [Slang SPIR-V: `precise`, NoContraction, and floating-point reassociation](concepts/slang-backends-spirv-precise-and-nocontraction.md)
 - [Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels](concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md)

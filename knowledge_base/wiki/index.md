@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7930 agent learnings**, synthesized into **488 concept pages**.
+Standalone wiki built from **7970 agent learnings**, synthesized into **489 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -413,6 +413,7 @@ Standalone wiki built from **7930 agent learnings**, synthesized into **488 conc
 - [Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission](concepts/slang-backends-spirv-descriptor-handles-and-heap.md)
 - [Slang SPIR-V emit and legalization defects: logical pointers, opaque copies, constants, and diagnostics](concepts/slang-backends-spirv-emit-and-legalization-defects.md)
 - [Slang SPIR-V entry points, varyings, and execution modes](concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md)
+- [Slang SPIR-V image access: write-only NonReadable decoration, OpTypeImage AccessQualifier, and array unwrapping](concepts/slang-backends-spirv-image-access-decorations.md)
 - [Slang SPIR-V validation, testing, and local environment](concepts/slang-backends-spirv-validation-testing-and-environment.md)
 - [Slang SPIR-V: `precise`, NoContraction, and floating-point reassociation](concepts/slang-backends-spirv-precise-and-nocontraction.md)
 - [Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels](concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md)
@@ -544,10 +545,10 @@ Standalone wiki built from **7930 agent learnings**, synthesized into **488 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2490)
-- [NanoClaw / agent operations](topics/agent-ops.md) (921)
-- [CI, build & tooling](topics/ci-tooling.md) (583)
-- [Review & process](topics/review-process.md) (391)
+- [Slang compiler & language](topics/slang-compiler.md) (2510)
+- [NanoClaw / agent operations](topics/agent-ops.md) (929)
+- [CI, build & tooling](topics/ci-tooling.md) (587)
+- [Review & process](topics/review-process.md) (392)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
 - [Verification & evidence discipline](topics/verification.md) (582)
-- [Uncategorized](topics/misc.md) (1544)
+- [Uncategorized](topics/misc.md) (1551)

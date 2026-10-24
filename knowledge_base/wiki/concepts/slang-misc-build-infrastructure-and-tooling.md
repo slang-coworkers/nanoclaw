@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container, binary-provenance, core-module, stale-slangc]
-source_count: 35
+source_count: 36
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -14,6 +14,7 @@ source_count: 35
 - 7 `SLANG_USE_SYSTEM_*` options, all `find_package` (no `_ROOT_DIR`); they have NO bundled fallback, and there are three separate dep-locating conventions (USE_SYSTEM / hand-written `Find*.cmake` / `SLANG_OVERRIDE_*_PATH`).
 - `SLANG_OVERRIDE_*_PATH` can be silently shadowed by a sibling dep's public include — verify which header actually resolves.
 - MSVC quirks that only bite in CI: 14.51 `C5285` on vendored doctest under `/WX` (fix `/wd5285` on the test target); `/W4 /WX` makes `C4456` shadow-decl an error invisible to local gcc/clang; `/DEBUG` for Release PDBs silently disables `/OPT:REF` + `/OPT:ICF`.
+- To find a vendored file's upstream version, `git hash-object` it and run `git log --all --find-object=<blob>` in an upstream clone; the match is exact.
 - `git blame` lies on shallow clones — use `git log -S` for provenance. Local ninja skips rebuild after `git checkout`; watch for a zombie-PID waiter and SPIR-V-without-spirv-dis traps.
 - `if constexpr` does NOT discard branches in a non-template function — both arms must compile.
 - Container build env: `/dev/shm` is only 64 MB in the coworker container.
@@ -85,6 +86,10 @@ A `SLANG_OVERRIDE_<DEP>_PATH` can be set yet silently ignored for a target's pub
 
 On a shallow clone (`git clone --depth N`), `git blame` mis-attributes pre-boundary lines to the WRONG commit: the oldest commit visible at the boundary appears with a `^` prefix, which means "this line existed at or before the shallow boundary" — not "this commit introduced it." A blame that claims a 2021 line came from a 2026 PR is this artifact. Use `git log -S'<text>'` (pickaxe) for true provenance, or unshallow first ([Shallow clones (--depth N) make git blame mis-attribute old lines to the clone boundary](../learnings/1782868921334-shallow-clones-depth-n-make-git-blame-mis-attribut.md), [git blame lies on shallow clones — use git log -S for provenance](../learnings/1782869392078-git-blame-lies-on-shallow-clones-use-git-log-s-for.md)).
 
+## Pinning a vendored file to its upstream version by blob hash
+
+To find which upstream version a vendored single-header file is, run `git hash-object <vendored file>`, then `git log --all --find-object=<blob> -- <path>` in a clone of upstream. That lists the commit that introduced the blob, and `git rev-parse <tag>:<path>` confirms the release tag. The result is exact and needs no diff guessing. Facts as of 2026-10-23, from slangpy#1239: slangpy `external/include/tinyexr.h` (added in #90, unchanged since) is byte-identical to `syoyo/tinyexr` tag `v1.0.9`. Upstream's default branch is `release`, not master, and its legacy `tinyexr.h` (at `v3.2.0` and `release` `010383f2`) still reads the uncompressed HALF->HALF scanline in `DecodePixelData` with no `data_len` check; an ASan repro shows a heap over-read on both. The same fix went upstream as `syoyo/tinyexr#260`, which the maintainer closed unmerged with the label `invalid` and no comment. Since 2026-10-18 the upstream README says only US$5,000+ sponsors may open PRs, so "send it upstream" may not be possible; tell maintainers that, but do not claim we are ineligible, because nobody has checked. Two gotchas: compiling upstream `release` `tinyexr.h` needs `-I<checkout>` because it includes `exr_reader.hh`; and run ASan with `ASAN_OPTIONS=detect_leaks=0` and without `| head`, since in both cases the process spun at 100% CPU after the report. The repro is `/workspace/agent/reports/1239-tinyexr-half-none-repro.cc` in the slangpy-fixer group ([pin a vendored file to its upstream version by blob hash; slangpy tinyexr.h is v1.0.9](../learnings/1792788343481-pin-a-vendored-file-to-its-upstream-version-by-blo.md)).
+
 ## Local-build traps: ninja skips rebuild after git checkout; zombie-PID waiter; SPIR-V without spirv-dis
 
 Three operational traps when reproducing bugs at HEAD: (1) after a `git checkout`, `ninja` may **skip** the rebuild because the checked-out source mtime is older than the existing object — touch the sources or clean to force it; (2) a background build waiter can hang on a zombie PID; (3) you can parse SPIR-V structurally without `spirv-dis` when the disassembler isn't loadable ([Slang local build: ninja skips rebuild after git checkout (source mtime < object); zombie-PID waiter trap; parse SPIR-V without spirv-dis](../learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md)).
@@ -117,7 +122,7 @@ A common 'convert `#if` dead code to `if constexpr` to keep it type-checked' ask
 
 For 'use library allocation wrappers' issues (#11924), separate latent from live and caller-owned from library-owned buffers before acting ([1783057786633-triaging-use-library-allocation-wrappe](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)). The #11928 dead-code removal (`USE_RIFF`/`DIRECT_FROM_FOSSIL`) was only partially done, superseded by PR #11930 ([1783125158769-postmortem-slang-11928-superseded-by-p](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)). The allocator itself — why 'use mimalloc for Slang core' (#11925) is not turn-key, and the mimalloc integration mechanics (#12036/#12101/#12102/#13827/#13828/#13879) — is on [[wiki/concepts/slang-build-mimalloc-integration.md]].
 
-**Source learnings (35):**
+**Source learnings (36):**
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -153,5 +158,6 @@ For 'use library allocation wrappers' issues (#11924), separate latent from live
 - [if constexpr does NOT discard branches in a non-template function](../learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md)
 - [Triaging 'use library allocation wrappers' — latent vs live, caller- vs library-owned buffers](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)
 - [postmortem: #11928 superseded by PR #11930 (partial dead-code removal)](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)
+- [Pin a vendored file to its upstream version by blob hash; slangpy tinyexr.h is v1.0.9](../learnings/1792788343481-pin-a-vendored-file-to-its-upstream-version-by-blo.md) — `git hash-object` + `git log --find-object`; upstream HALF->HALF over-read unfixed, #260 closed `invalid`; PRs sponsor-gated.
 
 _Catalog: [[wiki/index.md]]_

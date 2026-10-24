@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 25
+source_count: 27
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -28,8 +28,8 @@ state. The hooks are content-based and hash-based, which creates a family of sel
   prose. Paraphrase; keep the `ABSTAIN_POLICY` token present.
 - **`mkdir -p /workspace/.claude` at session start** — the hook writes its state there and, if it is
   missing, denies even read-only commands.
-- **Read-only `gh api .../pulls/N` GETs trip the PR-creation Bash arm.** Use `gh pr view --json` or run the
-  skill's python scripts (subprocess `gh api` isn't inspected). The arm matches raw command text (heredocs
+- **Read-only `gh api .../pulls/N` GETs trip the PR-creation Bash arm**, for any repo. Use
+  `gh pr view N --repo <owner>/<repo> --json ...` or run the skill's python scripts (subprocess `gh api` isn't inspected). The arm matches raw command text (heredocs
   included); after three denials it escalates to an admin bypass. Read inline comments via the MCP
   `github_get_pull_request_comments` tool.
 - **Recorded rounds require a FRESH `mcp__codex__codex` call** with the verbatim reviewer
@@ -180,6 +180,15 @@ The read-only-`gh-api-pulls` over-match recurs beyond the approver context: even
 harvesting live PR state for a stale-webhook check trips it, so use
 `gh pr view --json ...` or the `.../issues/<n>` endpoint for reads
 ([recorded rounds require fresh codex](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md)).
+The pattern is in the hook's `BASH_PATTERNS` (line 65 of `/app/hooks/gate-critique-on-deliver.sh`, read
+2026-10-23), and any match is refused as "CRITIQUE REQUIRED before PR creation" whatever the repo: a GET of
+`.../pulls/N/reviews` and a GET of another repo's `.../pulls/260` were both denied on 2026-10-23.
+`gh pr view <n> --repo <owner>/<repo> --json reviews,comments,statusCheckRollup` reads the same state
+ungated, and a `gh api .../issues/comments/<id>` PATCH under 1,000 bytes passes without an OUTPUT_REVIEW.
+For an external repo, `gh api .../issues/<n>/events` returned 401 through the gateway; a WebFetch of the
+github.com PR page gave the timeline facts (who closed it, its labels)
+([read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md),
+[cross-repo pulls GET treated as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)).
 The arm matches the command *text*, so it also fires on a GET of one inline
 review comment and on a heredoc memory note that merely contains the PR-open
 verb or a `/pulls/` path. After three denials the hook opens an admin bypass
@@ -344,7 +353,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (25):**
+**Source learnings (27):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -371,3 +380,5 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [Delivery gate: any edit after an OUTPUT_REVIEW approve re-arms it; codex must emit plain Attested lines](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md) — slang#13567: memory edit after approve re-armed; backtick-wrapped Attested hashes not recorded; PR body ≠ 5-bullet shape.
 - [codex-critique gotchas: wiki-recall first replies, backticked Attested hashes, byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md) — the enforcer counts chars after dropping the disclaimer and `Fixes` lines; answer with `description_problems(...)`; recall/backtick parts on the gate-mechanics page
 - [codex-critique: first call on a fresh thread often returns a wiki recall, not the review](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md) — `[Fix Report]` needs `in_reply_to=<triage handoff seq>`, found via `ncl sessions messages`; recall/Verdict parts on the gate-mechanics page
+- [gate-critique-on-deliver blocks read-only gh api calls to PR REST routes](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — `gh api [^|]*pulls\b` (BASH_PATTERNS line 65) refuses a `.../pulls/N/reviews` GET; use `gh pr view --json`; issue-comment PATCH < 1,000 bytes passes
+- [gate-critique-on-deliver treats read-only `gh api .../pulls/N` GET as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md) — other repos' PRs too; `gh pr view --repo` is ungated; external `issues/<n>/events` 401s, WebFetch the PR page for timeline facts
