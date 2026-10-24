@@ -280,8 +280,8 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
   // Issues: action must be 'opened'; no mention check (a fresh issue
   // can't tag the bot — the bot is the audience here, not the actor).
   if (eventType === 'issues') {
-    // `labeled` is accepted only for the bot-ok label: a maintainer releasing a
-    // parked human issue to the bot early (contributor standard R6).
+    // `labeled` is accepted only for the bot-ok label: a maintainer handing a
+    // newcomer-labeled issue to the bot (contributor standard R6).
     const labeledName =
       payload.action === 'labeled' && typeof (payload.label as Record<string, unknown> | undefined)?.name === 'string'
         ? String((payload.label as Record<string, unknown>).name).toLowerCase()

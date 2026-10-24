@@ -62,7 +62,6 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -189,7 +188,6 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -261,7 +259,6 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -334,7 +331,6 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'lego', // receiver: ROUTE_ISSUES_TO !== own slug guard not triggered
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -400,7 +396,6 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -460,7 +455,6 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -520,7 +514,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -594,7 +587,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: true,
@@ -659,7 +651,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: true,
@@ -727,7 +718,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -798,7 +788,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -864,7 +853,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -930,7 +918,6 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -990,7 +977,6 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1053,7 +1039,6 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1131,7 +1116,6 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1193,7 +1177,6 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1254,7 +1237,6 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1310,7 +1292,6 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1368,7 +1349,6 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1421,7 +1401,6 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1473,7 +1452,6 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1539,7 +1517,6 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1619,7 +1596,6 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 0,
       ISSUE_NEWCOMER_LABELS: [],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1699,13 +1675,11 @@ describe('deliverGitHubIssueOpened — the bot leaves room for people (R6)', () 
   });
   const setup = () => {
     const insertCalls: unknown[] = [];
-    const scheduled: unknown[] = [];
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: {},
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
-      ISSUE_BOT_WAIT_DAYS: 4,
       ISSUE_NEWCOMER_LABELS: ['goodfirstbug', 'helpwanted', 'no-bot'],
       ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
@@ -1738,58 +1712,31 @@ describe('deliverGitHubIssueOpened — the bot leaves room for people (R6)', () 
       initSessionFolder: () => undefined,
     }));
 
-    vi.doMock('./modules/scheduling/create.js', () => ({
-      prepareScheduledTask: (input: unknown) => input,
-      createScheduledTask: async (_g: string, task: unknown) => {
-        scheduled.push(task);
-        return { session: { id: 's', agent_group_id: 'g-admin' }, row: {} };
-      },
-    }));
-    return { insertCalls, scheduled };
+    return { insertCalls };
   };
 
   it('never delivers an issue that carries a newcomer label', async () => {
-    const { insertCalls, scheduled } = setup();
+    const { insertCalls } = setup();
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     expect(await deliverGitHubIssueOpened(event({ labels: ['GoodFirstBug'] }))).toBe('skipped');
+    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4322, labels: ['bug', 'HelpWanted'] }))).toBe('skipped');
+    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4323, labels: ['no-bot'] }))).toBe('skipped');
     expect(insertCalls).toHaveLength(0);
-    expect(scheduled).toHaveLength(0);
   });
 
-  it('parks a fresh human-filed issue behind a one-shot re-check task', async () => {
-    const { insertCalls, scheduled } = setup();
+  it('delivers every other issue at once, with no wait', async () => {
+    const { insertCalls } = setup();
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
-    const before = Date.now();
-    expect(await deliverGitHubIssueOpened(event({}))).toBe('parked');
-    expect(insertCalls).toHaveLength(0);
-    expect(scheduled).toHaveLength(1);
-    const task = scheduled[0] as { name: string; prompt: string; processAfter: string };
-    expect(task.name).toBe('issue-wait shader-slang/slang#4321');
-    expect(task.prompt).toContain('gh issue view 4321 -R shader-slang/slang');
-    const dueIn = Date.parse(task.processAfter) - before;
-    expect(dueIn).toBeGreaterThan(4 * 86_400_000 - 5_000);
-    expect(dueIn).toBeLessThan(4 * 86_400_000 + 60_000);
+    expect(await deliverGitHubIssueOpened(event({}))).toBe('local');
+    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4322, labels: ['bug'] }))).toBe('local');
+    expect(insertCalls).toHaveLength(2);
   });
 
-  it('delivers at once when a maintainer added bot-ok, for a bot filer, or for a crash with a reproducer', async () => {
-    const { insertCalls, scheduled } = setup();
+  it('bot-ok hands a newcomer-labeled issue to the bot, as a label or as the labeled event', async () => {
+    const { insertCalls } = setup();
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
-    expect(await deliverGitHubIssueOpened(event({ labels: ['bot-ok'] }))).toBe('local');
-    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4322, botOkLabeled: true }))).toBe('local');
-    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4323, author: 'nv-slang-bot[bot]' }))).toBe('local');
-    expect(
-      await deliverGitHubIssueOpened(
-        event({ issueNumber: 4324, title: 'Crash in lowerGenerics', body: 'Repro:\n```slang\nvoid main() {}\n```' }),
-      ),
-    ).toBe('local');
-    expect(insertCalls).toHaveLength(4);
-    expect(scheduled).toHaveLength(0);
-  });
-
-  it('a crash word without a code block is not a reproducer and still waits', async () => {
-    const { scheduled } = setup();
-    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
-    expect(await deliverGitHubIssueOpened(event({ title: 'Crash on startup', body: 'It crashes.' }))).toBe('parked');
-    expect(scheduled).toHaveLength(1);
+    expect(await deliverGitHubIssueOpened(event({ labels: ['GoodFirstBug', 'bot-ok'] }))).toBe('local');
+    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4322, labels: ['HelpWanted'], botOkLabeled: true }))).toBe('local');
+    expect(insertCalls).toHaveLength(2);
   });
 });
