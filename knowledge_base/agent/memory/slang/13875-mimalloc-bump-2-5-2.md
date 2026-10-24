@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13875 — update mimalloc v2.1.7 → v2.5.2
-description: "pdeayton-nv (MEMBER) filed 10-22 17:53Z, self-labelled bot-ok. Triaged 18:06Z (P2; approach B: bump to 2406cc5f + MI_NO_OPT_ARCH + /Zc:__cplusplus on slang-mimalloc.cpp; bump before #13867). DRAFT PR #13879 @ce18ba9f9, review done; PARKED on a maintainer (priority gate on CI 39864443867 or mark ready; MI_NO_OPT_ARCH; cmake-options). Re-chase r1 2026-10-26T16:00Z."
+description: "pdeayton-nv (MEMBER) filed 10-22 17:53Z, self-labelled bot-ok. Triaged 18:06Z (P2; approach B: bump to 2406cc5f + MI_NO_OPT_ARCH + /Zc:__cplusplus on slang-mimalloc.cpp; bump before #13867). PR #13879 @ce18ba9f9 READY + APPROVED by pdeayton-nv 10-23 17:31Z, CI green incl. Windows MSVC x64/aarch64; mergeState BLOCKED (maintainer merge). Re-chase r1 2026-10-26T16:00Z."
 tags: [slang, mimalloc, dependency, build, submodule]
 ---
 
@@ -70,3 +70,11 @@ at `wait-for-human-priority`. Issue status cmt 6350528875 updated 22:27:34Z; exp
 `libraryUnloadReleasesMemory`; its MinGW question stands).
 **Resume:** webhooks (human comment, ready_for_review, merge/close) + one-shot `rechase-slang-13875-r1` at
 2026-10-26T16:00Z (task-hygiene slot r1 of 3).
+
+**10-23 17:31–17:34Z, ready + APPROVED + green** (verified live): pdeayton-nv marked #13879 ready and APPROVED at
+17:31:19Z; head `ce18ba9f9`; PR CI 39880239802 (`pull_request`) success, checks 60 pass / 43 skipping — Windows MSVC
+x64 + aarch64 passed, so `/Zc:__cplusplus`, the `SOURCES` check and the /MT link all hold. `mergeStateStatus BLOCKED`,
+`reviewDecision` empty, `mergeable MERGEABLE`. Rulesets show only deletion/non_fast_forward/copilot_code_review; classic
+protection is 403 to us; CODEOWNERS `* @shader-slang/dev` ⇒ likely a second / code-owner approval (unverified). Merge
+is the maintainer's. Re-chase r1 prompt updated: on merge, it hands #13867's rebase to the #13828 fixer thread.
+⚠️ Approvers are paused — do not forward any `pr_ready_for_review` for #13879 to slang-pr-approver.

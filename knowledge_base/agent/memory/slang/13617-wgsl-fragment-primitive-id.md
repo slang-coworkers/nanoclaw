@@ -94,3 +94,8 @@ comments, reviews or timeline events on #13617 or #13619 since 10-19 10:30Z. The
 answer (bounded dashboard reads `--reverse --limit 300` plus `--since-seq 505608 --limit 400`: no operator row mentions 13617/13619; the Main canonical
 session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask (dashboard msg 9, canonical thread). Re-armed one-shot `rechase-13617-primitive-73cf`
 (2026-10-23T10:30Z). No GitHub posts.
+**2026-10-23 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. No human
+comments, reviews or timeline events on #13617 or #13619 since 10-21 10:30Z (latest human event is still the 10-14 17:08Z milestone). There are no runs on `fix/issue-13617`.
+Neither operator decision has an answer (bounded dashboard reads `--reverse --limit 300` plus `--since-seq 506600 --limit 400`, which together cover 10-21 10:30Z→10-23 10:30Z:
+no row mentions 13617/13619/WaveLane/subgroups other than my own 10-21 status; the Main canonical session `sess-1791952546270-bc3zew` was last active 10-14 10:26Z).
+I listed both as pending and didn't re-ask (dashboard msg 9, canonical thread). Re-armed one-shot `rechase-13617-primitive-6dc8` (2026-10-25T10:30Z). No GitHub posts.

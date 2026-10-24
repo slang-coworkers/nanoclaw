@@ -85,7 +85,10 @@ PASSED, `does not currently own` = 0, FATAL/crash = 0.
 
 ## Open items
 
-1. jhelferty's answer on R4/R5 (5907630393) and skallweitNV's review.
+1. jhelferty's answer on R4/R5 (5907630393) and skallweitNV's review. Still silent at the 10-23 check (23 days; she
+   is active on slang, and skallweitNV merged ~20 other rhi PRs). Head `00fb748`, BEHIND main +36, trial merge with
+   `8c97b91` had 0 conflicts. The operator never answered the reminder question, so default (3) wait holds. Next
+   one-shot re-check is `rhi-881-review-rechase-cc7d` on 10-27.
 2. **After the fix lands:** file the dedicated-allocation asymmetry. `cuda-buffer.cpp:129` sets
    `CUDA_EXTERNAL_MEMORY_DEDICATED` unconditionally, while `cuda-texture.cpp:545` threads `isDedicated`. ⚠️ The
    evidence is an NVIDIA-staff forum post, not docs, so state it as such. It isn't firing today.

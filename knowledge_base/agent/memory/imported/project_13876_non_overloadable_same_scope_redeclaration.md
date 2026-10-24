@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13876_non_overloadable_same_scope_redeclaration
-description: "slang#13876 (skiminki-nv, MEMBER, 10-22 18:22Z, self-assigned, sub-issue of umbrella #13719): no redeclaration diagnostic when a global `static const` collides with an [UnscopedEnum] case, a cbuffer member or a tbuffer member; order-dependent (static const after the enum does error). Bug-report shape, so ROUTED to slang-triager like siblings #13720/#13750/#13752. 18:25Z the assignee asked @nv-slang-bot to reproduce and propose a PR, so the fix is authorized; 18:37Z triaged (two root causes; A+B fix), handed to slang-fixer sess-1792694206953-sgt9at; 10-23 00:17Z resolution: draft PR #13880 @776bfc5d9 (12 files, R1+R2 applied, pr: breaking change). PARKED on assignee 2-part question (cbuffer/tbuffer gating; enum Mode{Mode} exemption) + review; OPERATOR decision pending on 3 found pre-existing bugs; one-shot rechase-13876-pr-13880-c876 10-29 12:00Z."
+description: "slang#13876 (skiminki-nv, MEMBER, 10-22 18:22Z, self-assigned, sub-issue of umbrella #13719): no redeclaration diagnostic when a global `static const` collides with an [UnscopedEnum] case, a cbuffer member or a tbuffer member; order-dependent (static const after the enum does error). Bug-report shape, so ROUTED to slang-triager like siblings #13720/#13750/#13752. 18:25Z the assignee asked @nv-slang-bot to reproduce and propose a PR, so the fix is authorized; 18:37Z triaged (two root causes; A+B fix), handed to slang-fixer sess-1792694206953-sgt9at; 10-23 00:17Z resolution: draft PR #13880 @776bfc5d9 (12 files, R1+R2 applied, pr: breaking change). 10-23 10:08Z assignee decided (cbuffer/tbuffer hard error; enum Mode{Mode} warning all versions), 11:57Z implemented @174a0319b (new warning 30203; reviewer APPROVE_WITH_NITS applied); 10-23 13:24Z marked READY by skiminki-nv; test-falcor FAILED twice (internal logs unreachable; public-Falcor differential clean); PARKED on skiminki-nv checking Falcor pipeline logs 76144253/76164426; OPERATOR decision pending on 3 found pre-existing bugs; one-shot rechase-13876-pr-13880-c876 10-29 12:00Z."
 ---
 
 # slang#13876 — diagnose non-overloadable declarations in the same scope
@@ -78,3 +78,35 @@ status 6351304001:
 - `[[vk::push_constant]] static let` gets no E31219.
 `rechase-13876-pr-13880-c876` (10-29 12:00Z) has been updated with the new head, both questions, and a step to re-ask
 the operator.
+
+**10-23 10:08Z, MAINTAINER DECIDED** (skiminki-nv, PR comment
+[6362500485](https://github.com/shader-slang/slang/pull/13880#issuecomment-6362500485); Main checked live):
+"Let's follow the DXC behavior. That is, cbuffer/tbuffer part should be a hard error." On `enum Mode { Mode, Other }`:
+"This should trigger a warning on all language versions including 202c." The fixer pushed `4365b25af`
+(14 files +888/−2, 15 commits, still a draft). Peer review of that push is in progress, and no human review yet.
+The triager holds its own re-check `t-29e011` for 10-27. My `rechase-13876-pr-13880-c876` (10-29) is updated:
+the chain is now parked on maintainer review, the ready flag and CI approval. The operator decision on the 3
+side bugs is still pending and has not been answered.
+
+**10-23 11:57Z, RESOLUTION UPDATED** (slang-triager; Main checked live). Head `174a0319b` (15 files +931/−2,
+17 commits, still a draft). Both decisions are implemented: cbuffer/tbuffer conflicts stay E30200 everywhere, with
+no code change needed, and a case named like its own unscoped enum gets the new warning 30203 in every version. The
+slang-reviewer verdict on the decision change was APPROVE_WITH_NITS, and the nits are applied. The fixer reports
+slang-test 11150/11153 locally (3 fp8-cuda failures that are pre-existing) and slang-static-unit-test 62/0. CI is
+unchanged: 2 failing priority-yield checks, 92 skipped, falcor gate waiting. One known divergence from DXC was put
+to skiminki-nv in issue status comment 6351304001: `struct Light {}; cbuffer CB { Light Light; }` gets E30200, where
+DXC accepts it. This matches master's E30200 for `static const Light Light;`. Now parked on maintainer
+review, the ready flag and CI approval. The operator decision on the 3 side bugs is still pending. Task prompt updated.
+
+**10-23 13:24Z, skiminki-nv marked #13880 READY** and requested review. This is in the timeline, and Main checked it
+live 10-24 00:3xZ. CI ran at `174a0319b`: 53 passed. **`test-falcor / Test (Falcor)` FAILED on both attempts** of run
+39960878492. The internal GitLab pipelines were 76144253 and 76164426; the GitHub job log has only "pipeline finished
+with status 'failed'", and the log host is unreachable from containers. The Falcor build and `test-falcor-perf` passed.
+The fixer first called it infra and waited for a rerun webhook that never fires; a supervisor nudge at 10-24 00:14Z
+caught this. The fixer then compiled all 441 public Falcor `.slang` files (Falcor 759aad0) with master and PR
+`slangc`: 0 diagnostic differences, no E30200/E30203. #13889 passed its rerun in an overlapping window, so infra is a
+weak explanation. A regression in non-public Falcor code is still possible.
+The fixer asked skiminki-nv to check both pipeline logs in PR comment
+[6377443007](https://github.com/shader-slang/slang/pull/13880#issuecomment-6377443007), and will fix the PR if they
+show E30200/E30203. **PARKED on that log check**, then review/approval. `rechase-13876-pr-13880-c876` updated.
+The operator decision on the 3 side bugs is still pending.

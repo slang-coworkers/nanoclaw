@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13688 — Metal inline RayQuery fixed to triangle_data/instancing (no curves, no multi-level)
-description: "Human-filed (albertrodriguezclo) Metal feature/design question. Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 does NOT cover inline queries. PARKED on kaizhangNV direction (tag source A/B/C, accessors i/ii); kaizhangNV assigned + Q4 2026 milestone 10-19. Reporter addendum 10-20 (cmt 6291687104, per-primitive data + intersector curve workaround) held, no bot post. Re-check t-2c3ce2 10-23 08:30Z. Sibling of #13690."
+description: "Human-filed (albertrodriguezclo) Metal feature/design question. Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 does NOT cover inline queries. PARKED on kaizhangNV direction (tag source A/B/C, accessors i/ii); kaizhangNV assigned + Q4 2026 milestone 10-19. Reporter addendum 10-20 (cmt 6291687104, per-primitive data + intersector curve workaround) held, no bot post. Re-check t-2c3ce2 fired 10-23 08:31Z: no change; no further one-shot, parked in supervisor-state (awaiting_human). Sibling of #13690."
 ---
 
 # slang#13688 — Metal: inline RayQuery can't traverse curves or multi-level instances
@@ -63,4 +63,10 @@ need only match the instancing/motion tags (§6.19.2, §2.17.7, §2.17.1). The p
 and no extra tag. Both probes compile on 7251cc6. The memo is the triager's `memory/issues/triage-13688.md` › "Addendum
 2026-10-20". Re-check t-2c3ce2 drafts any reply first and needs an Orchestrator go before posting.
 
-**Resumes on:** a maintainer comment on #13688, or re-check t-2c3ce2.
+**2026-10-23 08:31Z, re-check t-2c3ce2 (triager msg 2): no change.** Orchestrator verified it live: the issue is open, has 2
+comments (the newest is still 6291687104), assignee kaizhangNV, `raytracing` label, Q4 2026 milestone, updated_at
+10-20T13:13:28Z. #12691 is still a draft at head 40667840 (updated 10-08). Nothing was posted and the HOLD stands. No new
+one-shot was scheduled: the timer is the `supervisor-state.json` entry (`awaiting_human`, advisory:maintainer-decision),
+which `/supervise-issues` walks. Webhooks deliver any maintainer comment.
+
+**Resumes on:** a maintainer comment on #13688 (webhook), or a `/supervise-issues` stale flag.

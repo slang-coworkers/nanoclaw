@@ -41,3 +41,22 @@ description: "Human-filed (albertrodriguezclo) 2026-10-20 WGSL codegen-quality i
 - 14:21Z: the triager acked. Acceptance criteria they will check on the reporter's PR: `r_vec.slang` and the probe `half.slang` compile to WGSL with 0 loops;
   Dawn adds 0 counters; scalar and vector `rsqrt` emit `inverseSqrt`; vector `fmod` emits `%`; isnan/isinf results unchanged for NaN, ±inf and denormals;
   the FileCheck lines are in place. Pending: the operator's answer on accepting the reporter's offer to file the 2 side issues (asked 14:2xZ, dashboard msg 25).
+- **2026-10-23 15:00Z one-shot re-check `recheck-13765-fixer-95b6` (live read):** the reporter's PR
+  [#13781](https://github.com/shader-slang/slang/pull/13781) was opened 10-20 14:51Z, `fix/wgsl-vector-math-no-loop`. It **MERGED 10-22 22:31:50Z**
+  (by jkwak-work, merge `7036ae6dfd25`; jkwak-work requested changes, then approved). `Fixes #13765`, and the issue is **CLOSED** 10-22 22:31:52Z (assignee jkwak-work).
+  No issue comments after 14:20Z. Files: `hlsl.meta.slang` +27/-7, `tests/wgsl/{math-scalar,math-vector}.slang`, new
+  `tests/wgsl/vector-{math,half-conversion}-no-loop.slang`, and an edit to `generic-minmax-vector-codegen-11075.slang` (the PR unrolls the
+  default `VECTOR_MAP_UNARY`, so check for an effect on other targets). Per the decision table I asked slang-triager (thread `gh-issue-shader-slang/slang-13765`) to
+  verify it after the merge against the 6 acceptance criteria, to check the cross-target effect of the unroll, and then to clean up `wt-13765-pr13740`. No GitHub post, no fixer.
+  Side findings (isnan(half3) E41400 and the one-trip inline wrapper): **still unfiled**. The reporter filed 15 other issues 10-20..22, but not these.
+  The operator decision is still pending (dashboard msg 25). **Next:** the triager's verification report. Then the chain is terminal, unless a regression is found (then file or route it).
+- 10-23 15:02Z triager progress (their claim, unverified): #13781 puts `[ForceUnroll(4)]` on **every** `VECTOR_MAP`/`MATRIX_MAP`
+  fallback on all targets. A loop with more than 4 iterations then fails to unroll, and the unroll pass reports that as a hard error. They are building
+  7036ae6^ vs 7036ae6 to diff codegen and to find out whether any vector or matrix shape can reach that error. If one can, this is a post-merge regression and needs a new issue (operator / maintainer jkwak-work).
+- **10-23 15:22Z: TERMINAL.** The triager's report (msg 8) compared 5311fe859 with master d29325a7f, which contains 7036ae6. **All 6 criteria pass.** WGSL loops: `r_vec` 5→0, `half` probe 8→0.
+  Dawn robustness counters went to 0. isnan/isinf/isfinite runtime results are identical over 16 bit patterns on WebGPU/L40S. `rsqrt` differs only in the last bit. Cross-target: `[ForceUnroll(4)]`
+  on every `VECTOR_MAP`/`MATRIX_MAP` (I confirmed it myself at `hlsl.meta.slang:8004-8016` @7036ae6) unrolls the loops on all targets. The slang-test sweep on cpu/cuda/vk/llvm passed 7453/7453, and downstream compiles were OK.
+  **No regression.** The only change: matrices with more than 4 rows (e.g. `sin(matrix<float,5,4>)` on cpp/cuda) were already rejected, with E38206. They now fail with the less clear E40020 "loop
+  unrolling failed". A possible small follow-up, the operator's call, not filed. Side findings (isnan(half3) E41400 and the one-trip inline wrapper) are still unfiled; the operator decides.
+  Triager incident (theirs, fixed): the worktree `wt-13765-pr13740` had already been removed. Their `git checkout --detach` then ran in their own main checkout and left it detached for about 25 min. They restored master
+  and rebuilt Release. Worktree pruned, temp branch deleted. A gateway 401 on one paginated `gh` call looked transient. Nothing left to do on the chain.

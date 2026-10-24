@@ -20,3 +20,4 @@ description: Bot-filed 10-21 08:29Z by slang-triager on jkwak-work's #13647 ask;
   Next step is jkwak-work's (transfer or file in slang-rhi). The bot holds unless asked.
 - **Resume:** an @nv-slang-bot mention on #13807, or an operator GO to file the slang-rhi issue.
   No timer (owned by a maintainer; webhooks deliver).
+- **Re-check 10-23 09:00Z (triager, t-74f064), verified live:** still OPEN, 1 comment (jkwak-work 10-21 15:29Z), not transferred, no slang-rhi issue. Unchanged. Moving it to slang-rhi needs an operator GO and jkwak-work's agreement.

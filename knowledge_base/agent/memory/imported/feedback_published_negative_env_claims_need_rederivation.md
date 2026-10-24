@@ -208,3 +208,7 @@ declares `library_path: libGLX_nvidia.so.0` / `api_version 1.3.289`, and `ldconf
   refuting.
 
 Sibling no-failure-signature class (split out 2026-10-02): [[feedback_a_prediction_in_the_past_tense_reads_as_an_observation]].
+
+## Second receipt (2026-10-24, slangpy#163)
+
+`slangpy-triager` published "this runner has no GPU" (cmt 6183003172, 10-15) and I relayed "no GPU device could be created" to the operator unchecked. Re-derived 10-24 with `nvidia-smi -L` → `NVIDIA L40S`; the "predicted" bug B then **reproduced for real on CUDA `half3[2]`**. The negative had kept a measurable repro as a simulation for 9 days. Only wgpu failed for real (`enumerate_adapters(wgpu)` = `[]`).

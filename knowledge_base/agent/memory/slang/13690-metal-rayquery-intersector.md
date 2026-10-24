@@ -30,3 +30,8 @@ description: Human-filed (albertrodriguezclo) Metal design question; routed to s
 - **PARKED on kaizhangNV** (scope of #11296; A vs B; reuse = pass or doc). No fixer. One-shot
   triager re-check `t-b12d01` 2026-10-23 08:00Z (in the triager's group; `ncl tasks` from Main can't see it).
   Sibling #13688 (same reporter, inline-query tags, same scope question) has its own Main and triager sessions.
+- 2026-10-23 08:01Z triager re-check `[Report]`: still parked. I verified it live: 1 comment (ours,
+  6210678998), assigned kaizhangNV, label `raytracing`, milestone Q4 2026 (Fall) (all set
+  2026-10-19), no design direction. The reporter's #13862 (MERGED 2026-10-22, render-test builds
+  the AS for Metal ray queries) is test infrastructure, not a fix. Drafts #13413 and #12691 are still drafts. No post, no
+  fixer. Next one-shot triager re-check is `t-dcd79c` at 2026-11-06T08:00Z (in the triager's group).

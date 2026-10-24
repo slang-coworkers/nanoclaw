@@ -81,3 +81,12 @@ and so is a global `ConstantBuffer<P>` on all 4 targets. **Caveat to carry:** on
 push-constant block, and its stale layout is how the false positive arises there. Whether `isParameterLocationUsed` should
 report push-constant usage itself is a separate question (#5685, #13713), which #13811 does not change. A short factual reply is ready if
 someone asks or @-mentions the bot.
+
+**10-23 18:18Z reporter reply (verified live):** fuchstraumer (NONE), cmt 6371755333, to jkwak-work: "Gotcha, thanks for the
+clarification! I was unsure about `isParameterLocationUsed` as well, but was crossing my fingers that it would work…". There is no bot
+mention. The issue is now **assigned to jkwak-work**, with label `Office-Tess` added. PR #13811 is still a draft at 8921fd5 with 0 reviews.
+Risk: the thread may settle on "push constant, maybe expected" even though the bug is target-independent. Those facts are
+already public in triage cmt 6298782357. I asked the operator once whether the bot should post a short factual pointer.
+My recommendation: stay silent, since the assignee has the facts.
+**10-23 18:20Z triager:** agrees with no-post. **Trigger to escalate:** if the thread moves to close as "not supported for push
+constants", the pointer to 6298782357 becomes important, so put it to the operator then. Until then, no post.

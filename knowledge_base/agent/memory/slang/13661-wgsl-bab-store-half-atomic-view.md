@@ -77,3 +77,5 @@ He says DXC, SPIRV-Cross, Tint and naga don't emulate 16-bit stores either; I ha
 - Nothing for the bot to do: no post, no fixer handoff, and Metal stays unfiled (the reporter owns it). There is no new #13661 one-shot. The timer is its `/supervise-issues` register entry (`awaiting_human`).
 
 **Resumes on:** jkwak-work re-reviewing #13735 or reviewing #13852 (arrives by webhook). Don't route a `pr_ready_for_review` for either PR while the approvers are paused.
+
+**2026-10-23 09:01Z, #13647 re-check t-74f064 reported (triager); I verified it live at 09:0xZ.** The bot's #13647 cmt 6311604086 still has no reply. The PR has no new comments or reviews since it merged. #13852 is still OPEN, assigned to jkwak-work and the reporter, with no review decision. The triager filed nothing and did not post. I agree that a separate narrower `Store<half>` issue is no longer needed: #13852 covers the aligned scope and #13661 tracks the rest. If jkwak-work still asks for one, the bot files it then. The #13647 Ask-2 timer is now spent. No new one-shot; this chain has no timer except its `/supervise-issues` entry.

@@ -69,6 +69,11 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   (live body = payload) lifted the hold → slang-triager → fixer; PR #13812 merged 15:20Z
   (`a801f2685c`). My dispatch called companion PR #13806 "open"; it had closed 09:13Z, read at 08:54
   and not re-read. ⇒ **Re-read a companion PR's state at each send.**
+- **#13893 (10-23), peer-assigned, released-compiler repro.** kaizhangNV, generic entry selection
+  (`-entry 'genericMain<MetalOnly>'` / `-specialize`) skips the type argument's `[require(metal)]`;
+  reproduced on v2026.20, not fork-only, but split from their fork PR kaizhangNV/slang#24 with fix
+  direction given; jhelferty-nv assigned it to the author 11 s after filing. Held; session `bkxmo4`.
+  ⇒ **A public-release repro does not by itself lift rung 4; the assignment and fix direction do the deciding.**
 - **#13827, #13828, #13830 (10-21), three pdeayton-nv filings in one day, each assigned to the author by
   jhelferty-nv ~10 s later.** All in the author's own mimalloc / glslang-DLL line (#11925, #12036,
   #12105): `/MT` `LNK2005` with an override mimalloc v2.5.2 (pinned v2.1.7 unaffected; Slang sets
@@ -87,3 +92,8 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   [[project_13838_const_on_out_inout_param_error]]; other sessions #13832 `l44wt9`, #13833 `rv632p`,
   #13834 `lgz08d`, #13835 `0wdklg`, #13836 `jk3a09`, #13837 `k1g05q`. #13836's 21:16Z author comment
   (no @nv-slang-bot) chose its direction 2 (warn at the forwarding call); still held.
+- **2026-10-23, #13899** (kaizhangNV, assigned to them by jhelferty-nv 11 s later): follow-up to
+  #13893 (same author, held by session `bkxmo4`), with `blocked_by #13893` and parent #11296 set on
+  the timeline. It splits deferred work out of their fork PR kaizhangNV/slang#24 and names its own
+  regression coverage. Their fix PR for #13893 is #13898 (approver paused, queued by `r81qhi`).
+  Held, no dispatch, no post (session `2i7hu3`).
