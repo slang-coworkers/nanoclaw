@@ -3,7 +3,7 @@ title: "Triage routing & classification: when NOT to dispatch the fixer, and Iss
 type: concept
 group: agent-fixer-codex-skills
 tags: [triage, routing, core-team-skip, fixer-dispatch, issue-types, analysis-tier, rfc]
-source_count: 23
+source_count: 24
 ---
 
 ## TL;DR
@@ -24,6 +24,7 @@ source_count: 23
 - **Language-design RFCs authored by a language lead need design sign-off before implementation — HOLD the fixer.** Triage fully (classify, ground every claim to file:line, phase the implementation), post a tight comment, then hand the go/no-go to the parent framed as "design-gated — release the fixer only on greenlight." Premature dispatch burns real effort (precedent: ~10 days on a withdrawn feature).
 - **A feature request ("add target/option/API X") gets the existing-mechanism answer first.** If your own probe shows the consumer can already do it, say so; propose a new public surface only when nothing existing works, and keep design prescriptions out when an external contributor offered to implement.
 - **A WIP-feature implementation gap is a Task, not a Bug.** `Bug` = incorrect behavior in *shipped* functionality; a hole in an unreleased/branch-only feature is `Task`. Defer to the maintainer's framing if they reframe it. shader-slang/slang has rich Issue Types (Task, Bug, Feature, Performance, Documentation, Refactoring, Build, DevRel, Testing, Language Maturity).
+- **When a later run supersedes a claim in the original triage comment, PATCH the original too.** Readers land on the oldest, longest comment. Fix the environment line, swap predictions for measured results, add a dated edit note, and keep existing @mentions byte-identical.
 - **Constructive value-add without over-reach:** when a perf-epic planning sub-task names a specific *compiler component*, offer a source-inspection optimization survey (a `/slang-plan` research memo, NOT a fixer task) — on parent/owner go-ahead only. Offer it; don't dump it unsolicited on a MEMBER-watched planning issue.
 
 ## The routing question: is there code to write?
@@ -69,11 +70,15 @@ When an issue asks for a new target, option or API, first check whether the cons
 
 The opposite case also exists: the requested API is already designed and documented, but never implemented. On slang#13774 the reporter asked for new `HitObject` functions to reach the SER fused ops (OpHitObjectTraceReorderExecuteEXT / OpHitObjectReorderExecuteShaderEXT). `docs/shader-execution-reordering.md` (:50-54, :916-1010) already documents free functions `ReorderExecute` / `TraceReorderExecute` / `TraceMotionReorderExecute` with an `inout payload_t`, but `hlsl.meta.slang` never defined them (a call gives E30015 undefined identifier); only the GLSL half of SER PRs #9230/#9504 landed. That turns "feature request, park for naming/design direction" into an actionable "implement the documented API" handoff, because the names and signatures are already a merged design and need no maintainer bikeshedding. Check with `grep -rn '<FnName>' docs/`, `git grep` in the `*.meta.slang` files, and a compile of a call to the documented name ([grep docs/ before triaging a missing-API request](../learnings/1792503874053-before-triaging-a-missing-api-feature-request-grep.md)). The SPIR-V side of that issue is on [[wiki/concepts/slang-backends-spirv-capabilities-and-version-gating.md]].
 
+## Keeping the original triage comment current
+
+A later delta comment does not fix the original. On slangpy#163 a 10-18 delta posted real CUDA results, but the 10-15 triage comment still said "this runner has no GPU" and called the CUDA results predictions. Readers, including newly assigned engineers, land on the oldest, longest comment. So when a later run supersedes a claim, PATCH the original comment as well: fix the environment line, replace predictions with measured results, and add a dated edit note. Keep the existing @mentions byte-identical; an edit to an existing mention does not notify again. A related environment fact from the same issue: with slangpy 0.43.1 on the L40S fleet, `Device.enumerate_adapters(DeviceType.wgpu)` returns `[]` while vulkan and cuda work, so WGSL-layout cases need slangc reflection or simulation ([correct the original triage comment in place when a later delta supersedes it](../learnings/1792809371629-correct-the-original-triage-comment-in-place-when-.md)).
+
 ## Contradictions / supersessions
 
 No contradictions. [The compiler-component atom](../learnings/1788881868519-perf-epic-sub-task-that-names-a-compiler-component.md) explicitly *refines* [the pure-ops atom](../learnings/1788881515231-perf-infra-epic-sub-tasks-benchview-backtest-are-n.md) (same routing, plus a constructive survey offer). All seven converge on one rule: route by whether code must be written and by who owns the design decision, defaulting to *hold/suppress + surface to parent* rather than the workflow's default fixer-forward. An earlier wiki note said a missed optimization should not get `reproduced`; [#12785](../learnings/1792154643877-slang-perf-issues-get-issue-type-performance-not-t.md) shows the opposite: once a maintainer confirms the repro, `reproduced` stays. The bot-routing rule for perf-epic sub-tasks (no fixer, suppress the comment) and the eval's next_step=`fix` for delivered sub-tasks don't conflict: the first is about what the bot does, the second records how the team handled the task.
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [slang `bot-ok` label = author opts the bot in, including a bot PR when the fix is clear (operator, 2026-10-21)](../learnings/1792623822987-slang-bot-ok-label-author-opts-the-bot-in-includin.md) — overrides the R6 hold on maintainer-filed self-assigned issues; triager hands off to slang-fixer only for a clear fix.
 - [WIP-feature gap is Task not Bug](../learnings/1788367713760-triage-type-wip-feature-implementation-gap-is-task.md) — classify a branch-only feature gap as Task; defer to the maintainer's reframing; slang has rich Issue Types.
 - [perf-infra epic sub-tasks are non-actionable ops](../learnings/1788881515231-perf-infra-epic-sub-tasks-benchview-backtest-are-n.md) — benchview/backtest/ingestion sub-tasks are ops, not compiler bugs; no fixer, suppress the comment, surface to parent.
@@ -97,3 +102,4 @@ No contradictions. [The compiler-component atom](../learnings/1788881868519-perf
 - [Reply eval #12949: compile-perf review and plan](../learnings/1792402878617-reply-eval-12949-compile-perf-review-and-plan-live.md) — first part done in #13009 (found #13010), rest moves to #12954; reporter has nothing to do.
 - [COVERAGE-ANALYSIS.md was deleted by PR #13625; review now in README](../learnings/1792423973743-compile-perf-coverage-analysis-md-was-deleted-by-p.md) — corrects the file location; no workload uses -g/-O3/ParameterBlock; #12954 only "Refactoring complete" ticked.
 - [grep docs/ before triaging a missing-API request](../learnings/1792503874053-before-triaging-a-missing-api-feature-request-grep.md) — slang#13774: SER fused ops documented in docs/ but missing from hlsl.meta.slang (E30015); implement the documented API.
+- [Correct the original triage comment in place when a later delta supersedes it](../learnings/1792809371629-correct-the-original-triage-comment-in-place-when-.md) — slangpy#163: PATCH the original (env line, measured results, dated note), mentions byte-identical; wgpu adapters empty on L40S.

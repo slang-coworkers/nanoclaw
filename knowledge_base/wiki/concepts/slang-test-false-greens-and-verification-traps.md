@@ -3,7 +3,7 @@ title: "slang-test False Greens and Verification Discipline"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-server, false-green, verification, positive-control, negative-control, stale-binary, unit-test, verbosity, replay-collision, CI]
-source_count: 30
+source_count: 32
 ---
 
 # slang-test False Greens and Verification Discipline
@@ -16,6 +16,8 @@ Running slang-test is one thing; **trusting its result** is another. This page c
 - **Before PR #11753 a unit test that crashed the test server was reported PASSED**, so a test that "starts failing after #11753" is crashing the server. **The retry path also reported failures as passes (#11911)**: a green merge-queue or per-PR gate does not certify C++ unit-test health.
 - **Device caching defeats per-invocation debug-callback bridges** (false greens). A GPU-free test of real RHI device code uses a real CPU-backend device in a `gfx-unit-test` `SLANG_UNIT_TEST`.
 - **An in-container `slang-test` startup crash is not a compiler failure** if direct `slangc` works. Suspect RPC timeout or workload sizing before redesigning concurrency for a flaky test.
+- **`-wgpu` rows DO run on the L40S in a build tree configured FRESH with `-DSLANG_EXCLUDE_DAWN=OFF`** (plus `XDG_RUNTIME_DIR=/tmp`). The default preset reports them `ignored`; a tree configured ON and then flipped to OFF reports `Not Supported`.
+- **When a related PR merged after a PR's base, re-run the drills on PR head + `origin/master`.** The merge can leave another PR's regression test green with its fix reverted.
 - **Prove the relink: require `test_binary_mtime > build_start`.** A build exiting 0 can rebuild nothing, and a stale binary passes. Ask: would this be green if my change were not compiled in?
 - **Re-run pass-counts and subagent reproducers yourself; grep IR by TYPE** (`kIROp_PseudoPtr`), never by a substring that can match a mangled name. A subagent's capability claim read off a mechanism one layer below is the tell; run the tool.
 - **Negative-control every branch-coverage claim**: neuter the branch, rebuild, re-run; still green means drop the test.
@@ -44,6 +46,8 @@ The unit-test retry path in test-server mode also reports failed tests as passin
 
 Issue #11759 (flaky `parallelGenericEntryPointCompile`) was over-diagnosed as a deep concurrency race; the maintainer's fix, PR #11761, was a 4-line workload reduction. Suspect RPC timeout and workload sizing first ([postmortem #11759/#11761](../learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md)).
 
+**`-wgpu` rows run locally only in a tree configured fresh with Dawn.** In a default-preset build (`SLANG_EXCLUDE_DAWN=ON`) every `-wgpu` row reads `ignored`. A fresh build tree configured with `cmake --preset default -DSLANG_EXCLUDE_DAWN=OFF`, run with `XDG_RUNTIME_DIR=/tmp`, prints `Check wgpu,webgpu: Supported` on the L40S container and gives real Tint + GPU runs of the rows. A tree first configured with Dawn excluded and then reconfigured to OFF still reports `Not Supported`. That stale-cache state is the source of an earlier note (2026-10-23) that local wgpu rows never run and must be proxied through dawn.node; it is corrected. For a WGSL PR, configure a fresh worktree with Dawn ON. Other runtime needs of a local Dawn run are on [WGSL on-GPU execution](slang-backends-wgsl-on-gpu-execution.md) ([correction: -wgpu rows DO run on a fresh Dawn-ON configure](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md)).
+
 ## Stale Binaries and Per-Hazard Positive Controls
 
 **A stale test binary can pass the very test you are validating.** Capture a timestamp before the build and require `test_binary_mtime > build_start`; refuse to report numbers otherwise, because a build can exit 0 having rebuilt nothing. On slangpy#1073 a 10-day-old `sgl_tests` binary still passed the cross-thread profiler test meant to validate a concurrency fix; the build subagent caught the mtime. The stale result is plausible (same test name, same numbers), so for a nondeterministic timing fix you have zero signal while believing you have positive signal. The test *if my change had not been compiled in, would this still be green?* applies to every derived artifact you measure: binaries, generated docs, emitted assembly, lockfiles ([stale binary passes](../learnings/1785772374507-a-stale-test-binary-can-pass-the-very-test-you-re-.md)).
@@ -53,6 +57,8 @@ Issue #11759 (flaky `parallelGenericEntryPointCompile`) was over-diagnosed as a 
 ## Reproducer, Coverage and Count Discipline
 
 **Negative-control a branch-coverage claim.** A test meant to cover one branch may pass through another always-present trigger. Neuter the branch (e.g. `continue` instead of `return true`), rebuild and re-run; if it stays green, it does not isolate the branch. On PR #12281 a generic-empty-type test passed with the `IRGeneric` branch of `hasEmptyTypeLegalizationWork` neutered (any named empty struct is hoisted to module scope and fires the struct-root scan anyway), so it was dropped ([negative control](../learnings/1785548777549-verify-a-test-isolates-its-target-branch-with-a-ne.md)).
+
+**Drill on the merge, not only on the base.** When a PR's base predates a related PR that has since merged to master, build a local merge (PR head + `origin/master`) and re-run the drills there. On #13897 the shadow globals that #13897 hoists made #13883's regression test pass even with #13883's fix reverted, so #13883 lost its test pin on master; a fragment-stage row, whose shadow is not hoisted, restores it. When a WGSL change removes a validation error, also probe multi-entry modules compiled without `-entry`: with several entry points (#13687), hoisting a shadow into a by-value/struct context turns a Tint rejection into a silently wrong value, because the second entry point's context is never written and reads 0 ([review against base + master merges; probe multi-entry modules](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md)).
 
 **Re-run a subagent's reproducer and grep IR by TYPE.** A subagent reported a PseudoPtr reproducer it never ran: the source failed in the front end with E41019, and its "PseudoPtr count" came from `grep -i pseudo` matching the mangled function name `test_pseudo_ptr`. Anchor IR-type greps (`= *pseudo_ptr\(`, `kIROp_PseudoPtr`) so they cannot match symbol names ([run the reproducer; grep the TYPE](../learnings/1785548791828-verify-a-subagent-s-reproducer-by-running-it-grep-.md)). Pass counts in a PR body are load-bearing too: a subagent reported `defer/` as 39/39, and a fresh run was 38/38 with 13 dx11 variants ignored ([re-run pass-counts](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)).
 
@@ -66,7 +72,7 @@ Issue #11759 (flaky `parallelGenericEntryPointCompile`) was over-diagnosed as a 
 
 A small edit to a resolver many paths share (PR #13610, `getGlobalParamAddressSpace` in `slang-ir-spirv-legalize.cpp`) cannot be bounded by reading the diff, but it can be measured. Build Release at head and reuse a Release build at the same base as master. Parse every `//TEST:SIMPLE...:` line that targets SPIR-V, run both `slangc` binaries with identical arguments (cwd = head worktree, `-o` into a scratch dir), and compare stdout plus stderr; also compile every Vulkan compute test with `-target spirv-asm -stage compute`, plain and with `-fvk-t-shift 100 0 -fvk-s-shift 200 0 -fvk-u-shift 300 0`. **Normalize worktree paths first**: `-g2` embeds the `-I <bin dir>` `OpString` and source hashes, and 100+ apparent diffs vanished once worktree names were replaced. Separately, log under a `getenv` gate every input where old and new logic disagree, and run the full suite with it set.
 
-On #13610 this found an **undisclosed second fix**: a ParameterBlock in space ≥ 1 under `-fvk-u-shift`/`-fvk-t-shift` threw E99997 on master because the old loop was order-dependent (`[UA, RegisterSpace]` threw, `[RegisterSpace, UA]` did not), with no issue and no test. The other ~226 changed reconciliations were overridden downstream, so output was byte-identical. Cross-check newly accepted output against the `Binding`/`DescriptorSet` decorations from master's `-emit-spirv-via-glsl`, which never ICEd. A new `git worktree add` tree has no submodules; copy `external/` from a worktree at the same base with `tar` (no rsync) ([byte-compare head vs master](../learnings/1791924730900-review-technique-byte-compare-head-vs-master-slang.md)).
+On #13610 this found an **undisclosed second fix**: a ParameterBlock in space ≥ 1 under `-fvk-u-shift`/`-fvk-t-shift` threw E99997 on master because the old loop was order-dependent (`[UA, RegisterSpace]` threw, `[RegisterSpace, UA]` did not), with no issue and no test. The other ~226 changed reconciliations were overridden downstream, so output was byte-identical. Cross-check newly accepted output against the `Binding`/`DescriptorSet` decorations from master's `-emit-spirv-via-glsl`, which never ICEd. A new `git worktree add` tree has no submodules; copy `external/` from a worktree at the same base with `tar` (no rsync) ([byte-compare head vs master](../learnings/1791924730900-review-technique-byte-compare-head-vs-master-slang.md)), or run `git -c protocol.file.allow=always submodule update --init --recursive`. A plain update fails because the submodule URLs are local paths, and cmake configure then fails with many `add_subdirectory` errors ([worktree submodule init needs protocol.file.allow](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md)).
 
 ## DIAGNOSTIC_TEST (`diag=CHECK`) Authoring
 
@@ -112,7 +118,7 @@ Master gave the same `E30015 undefined identifier 'c'` at the same column, so th
 
 Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master already rejects: one bug in different disguises, **present but not exercising**. Name the defect, name the assertion that fails when only that defect is reintroduced, and control both directions (flip each positive to a nonexistent name and expect RED; restore it and confirm green).
 
-**Source learnings (30):**
+**Source learnings (32):**
 - [compile-only SPIR-V tests are render-API tagged → IGNORED without Vulkan](../learnings/1790009629117-spir-v-compile-only-tests-are-render-api-tagged-ve.md)
 - [in-tree spirv-val v2026.4.rc2 DOES catch logical-pointer Function vars](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)
 - [slang-test injects `-O0`; its spirv-val-version claim corrected by 1790785645539](../learnings/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md)
@@ -143,5 +149,7 @@ Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master a
 - [SIMPLE lanes skip SPIR-V validation; pin emitted ops (#13659)](../learnings/1792090114561-slang-test-simple-lanes-do-not-run-spir-v-validati.md)
 - [separate //CHECK: + // ^^^ lines check nothing; use block form (#13659)](../learnings/1792102157772-diagnostic-test-caret-annotations-a-separate-check.md)
 - [diagnostic-test row pins nothing when master rejects it (#13718)](../learnings/1792181706579-a-diagnostic-test-row-can-pin-nothing-when-master-.md)
+- [correction: -wgpu rows DO run on a fresh Dawn-ON configure; drill on head + master merges (#13897/#13883/#13687)](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md)
+- [worktree submodule init needs `protocol.file.allow=always` (side note of the CHECK-NOT atom)](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md)
 
 _Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-583 learnings. [Catalog](../index.md)
+587 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -46,6 +46,7 @@ type: topic
 - [A `cancelled` CI job is three different things — only arithmetic tells them apart](../learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md)
 - [A bare-token bucket regex inflated a flake ranking 8.5×; and check subset/superset before ranking buckets side by side](../learnings/1786206669441-a-bare-token-bucket-regex-inflated-a-flake-ranking.md)
 - [A bot workflow_dispatch CI run on a draft is docs-only-filtered by its LAST commit (HEAD^1), not the PR diff](../learnings/1792172198845-a-bot-workflow-dispatch-ci-run-on-a-draft-is-docs-.md)
+- [A bot-PR ci_failed on wait-for-human-priority + falcor-build-approval-gate + check-ci is not a code failure; check the head SHA and mergeability first](../learnings/1792767675954-a-bot-pr-ci-failed-on-wait-for-human-priority-falc.md)
 - [A build failure in a shared clone is not evidence about your patch — read the undefined symbol and ask which file generates it](../learnings/1786041592085-a-build-failure-in-a-shared-clone-is-not-evidence-.md)
 - [A build launched inside an Agent subagent dies with it — and ninja reports it as "interrupted by user"](../learnings/1786384310274-a-build-launched-inside-an-agent-subagent-dies-wit.md)
 - [A build-liveness check that greps argv measures a coincidental proxy — and my probe of it was vacuous before it was right](../learnings/1786224903694-a-build-liveness-check-that-greps-argv-measures-a-.md)
@@ -225,6 +226,7 @@ type: topic
 - [CI health_snapshots.jsonl tail is unreadable via WebFetch — returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md)
 - [CI logs echo GPU-flake strings as script text — grep alone misclassifies](../learnings/1785780840892-ci-logs-echo-gpu-flake-strings-as-script-text-grep.md)
 - [CI suite currency: four timestamp fields invert, only created_at is safe](../learnings/1785824275373-ci-suite-currency-four-timestamp-fields-invert-onl.md)
+- [CI sweep under shared REST quota: sample instead of full job/log scans](../learnings/1792744188827-ci-sweep-under-shared-rest-quota-sample-instead-of.md)
 - [CI sweep: full ubuntu-latest log-header scan exhausts the shared 6000/hr REST budget](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md)
 - [CI sweep: snapshot misses jobs in waiting runs; only bot drafts are throttled](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md)
 - [CI sweeps: a stale workflow_dispatch run makes a GREEN PR look red (verify run event before rerunning)](../learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md)
@@ -367,6 +369,7 @@ type: topic
 - [Green CI can be vacuous — check the matrix pins the config your fix touches](../learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md)
 - [Grep a citation out of the artifact — never retype it into a verifier's prompt](../learnings/1785967938398-grep-a-citation-out-of-the-artifact-never-retype-i.md)
 - [Grepping job logs for "LLVM prebuilt not found in GCS" matches the script echo, not the output](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md)
+- [Guard `cd` into worktrees: a failed cd runs git/cmake in whatever checkout you are in](../learnings/1792768967917-guard-cd-into-worktrees-a-failed-cd-runs-git-cmake.md)
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [health_snapshots runner_groups: ABSENT is a third bucket, and it is entirely pre-onset noise](../learnings/1786438193386-health-snapshots-runner-groups-absent-is-a-third-b.md)
 - [Heartbeat CI-fetch failures: don't escalate a 3-sample streak to "confirmed structural"](../learnings/1788385329846-heartbeat-ci-fetch-failures-don-t-escalate-a-3-sam.md)
@@ -522,6 +525,7 @@ type: topic
 - [Slang LLVM prebuilt GCS key moves with ANY edit to external/build-llvm.sh, even a comment](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md)
 - [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](../learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
 - [Slang PR CI: x86/Windows green does not mean -Werror clean — aarch64 jobs build with warnings-as-errors](../learnings/1792247797393-slang-pr-ci-x86-windows-green-does-not-mean-werror.md)
+- [Slang PR: a passing run from a draft is often 'PR Maintenance', not build/test CI](../learnings/1792764974147-slang-pr-a-passing-run-from-a-draft-is-often-pr-ma.md)
 - [slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)](../learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md)
 - [Slang runner-migration 'Prepare for X runner' issues: check git log first, CI already moved](../learnings/1792157281260-slang-runner-migration-prepare-for-x-runner-issues.md)
 - [Slang tools PCH hides missing includes in new unit tests — CI builds without it](../learnings/1791403291004-slang-tools-pch-hides-missing-includes-in-new-unit.md)

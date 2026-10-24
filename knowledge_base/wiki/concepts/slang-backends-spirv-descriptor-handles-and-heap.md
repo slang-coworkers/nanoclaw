@@ -94,6 +94,7 @@ The bug is unchanged at master 653bfdeef4 (2026-10-22), so do not point users at
 
 - [[wiki/concepts/slang-backends-spirv.md]] — emitter overview: entry points, builtin variables, descriptor-heap specialization, VariablePointers, atomics
 - [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] — DebugFunction / DebugFunctionDefinition records
+- [[wiki/concepts/slang-backends-spirv-image-access-decorations.md]] — write-only `NonReadable`, `OpTypeImage` AccessQualifier, array unwrapping
 - [[wiki/concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md]] — slang-glslang loading, -O levels, spirv-opt aborts, folding/unroll/CSE limits
 - [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]] — `precise`, NoContraction, fp-mode, spirv-opt reassociation
 - [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] — -g levels, DebugSource/DebugLine, debug types and variables, OpName

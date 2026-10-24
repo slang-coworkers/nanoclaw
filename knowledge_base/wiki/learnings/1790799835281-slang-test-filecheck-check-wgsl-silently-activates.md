@@ -3,6 +3,7 @@ title: "slang-test `filecheck=CHECK,WGSL` silently activates only CHECK; the ext
 type: learning
 topic: slang-compiler
 source: learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md
+superseded_by: 1790800525677-correction-slang-test-does-not-support-multiple-fi
 ---
 
 # slang-test `filecheck=CHECK,WGSL` silently activates only CHECK; the extra prefixes are dead

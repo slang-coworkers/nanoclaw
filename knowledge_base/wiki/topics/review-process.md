@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-391 learnings. [Catalog](../index.md)
+392 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -170,6 +170,7 @@ type: topic
 - [GitHub Markdown renumbers ordered lists — use labelled bullets for stable question IDs](../learnings/1792677819450-github-markdown-renumbers-ordered-lists-use-labell.md)
 - [GitHub search review-requested vs user-review-requested counts differ (teams)](../learnings/1791015886532-github-search-review-requested-vs-user-review-requ.md)
 - [GitHub search review:approved is always 0 on repos without a required-review rule](../learnings/1792659016028-github-search-review-approved-is-always-0-on-repos.md)
+- [GitHub search: org-scoped author/reviewer queries can be false-empty for some users](../learnings/1792744116860-github-search-org-scoped-author-reviewer-queries-c.md)
 - [GLSLModuleModifier→SourceLanguage refactor: how PR 13112 addressed the known pitfall + a cross-reviewer convergence signal](../learnings/1789515728058-glslmodulemodifier-sourcelanguage-refactor-how-pr-.md)
 - [grep -c counts LINES not occurrences — and every genuinely new finding in a saturated review came from repairing an instrument, not looking harder](../learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md)
 - [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](../learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)

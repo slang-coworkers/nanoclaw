@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 21
+source_count: 22
 ---
 
 ## TL;DR
@@ -30,7 +30,9 @@ and exact float representability = odd-part significant-bit count, not raw bit s
 **DIAGNOSTIC_TEST + FileCheck mechanics.** `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK)` is
 **exhaustive substring matching**, not FileCheck: every emitted diagnostic must be
 annotated (an un-annotated source line asserts NO diagnostic there — that's how you
-assert absence; there is no `//CHECK-NOT:`). Each rich diagnostic emits TWO
+assert absence). A `//CHECK-NOT:` line is an inert comment that still satisfies the
+`docs/generated` lint, so a no-diagnostic pin needs a nearby one-token control that still
+warns. Each rich diagnostic emits TWO
 records. Match by bare code (`30133`) or message substring, never the rendered
 `error[E…]:` header. Matching is a literal substring of ONE field (no `{{.*}}`; code and message are
 never concatenated), and an unlocated `E99997` (location `0:0`) cannot be caret-anchored. Rich diagnostics take a code line plus a message line; legacy lexer diagnostics (E10002/E10003) take exactly one (`^ error E10003`). For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
@@ -152,6 +154,24 @@ unnecessary one). Front-end diagnostics need no target/entrypoint; unused locals
 don't warn
 ([DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no CHECK-NOT](../learnings/1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and.md),
 [diagnostic severity is per-definition; diag=CHECK is exhaustive](../learnings/1788902941686-slang-diagnostic-severity-is-per-definition-diag-c.md)).
+
+**Pinning "no diagnostic here" needs a live control.** The annotation parser reads only
+`//CHECK:` and `/*CHECK:` lines (`tools/slang-test/diagnostic-annotation-util.cpp:83-89`), so
+`//CHECK-NOT: W30051` is a plain comment, including the ones in
+`tests/diagnostics/aliased-out-inout-parameter.slang`. It still satisfies the
+`docs/generated/tests` lint, because `_meta/regenerate.py` (~2620-2700) only needs a
+`CHECK[^:]*:…\b[EWNI]\d+\b` match; lint rejects only a DIAGNOSTIC_TEST with no code and no
+caret CHECK. A file with zero annotations passes slang-test whenever the compiler emits
+nothing, so it stays green even if the warning is deleted outright. The robust pin has two
+parts. Leave the negative call unannotated, so exhaustive mode fails on any diagnostic there.
+Add a control call that differs by one token, still warns, and carries caret CHECKs copied
+from "Suggested annotations"; it proves the warning still exists. Adding `non-exhaustive` to
+such a file fails with "Unnecessary 'non-exhaustive'", so the pin cannot be switched off
+silently. In-tree precedent: `aliased-out-inout-parameter.slang:117-119`; PR #13887 used the
+pattern for the in+out alias fixture after #13406
+([CHECK-NOT is inert; exhaustive mode + one-token control](../learnings/1792744742040-diagnostic-test-check-not-is-inert-assert-no-warni.md),
+[CHECK-NOT is inert but passes lint; a no-diagnostic pin needs a live control](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md)).
+
 Assert `warning[E30082]` (bracket form), never `warning 30082` (vacuous); a
 comment-line echo of a bare code can self-match, so prefer message-text carets.
 Boundary tests must use an ODD value (`16777217`) — powers of two strip to one
@@ -264,7 +284,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
 
 - [slang-test GLSL diagnostic tests: -lang glsl must precede the file (use SIMPLE_EX); .glsl/.hlsl under tests/ are gitignored](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md) — `#version 450` adds two diagnostics; precedent tests/glsl-intrinsic/compute-derivative
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
@@ -287,3 +307,4 @@ target, file, helper) must be checked at the exact reviewed ref
 - [Slang legacy lexer diagnostics: one annotation per diag; pin code as `^ error E10003`](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md) — no span row, a second annotation fails "(already matched)"; `E` prefix matches output `10003`.
 - [Search for a community PR before opening a bot fix PR; FileCheck `-NOT` covers only its gap](../learnings/1792079739619-search-for-a-community-pr-on-the-issue-before-open.md) — interleave a `-NOT` between every positive line, add a whole-output `-NOT`-only row, drill each gap
 - [Core-module bootstrap aborts on any warning; worktree submodule init needs protocol.file.allow](../learnings/1792436239104-core-module-bootstrap-aborts-on-any-warning-worktr.md) — `addBuiltinSource` SLANG_UNEXPECTED on any sink output; prototype widened warnings against the core module; E30515 value-param hit at core.meta.slang:2242
+- [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint; a no-diagnostic pin needs exhaustive mode plus a live control](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md) — lint regex accepts `//CHECK-NOT: W30051`; one-token control with caret CHECKs; `non-exhaustive` fails "Unnecessary" (#13887)

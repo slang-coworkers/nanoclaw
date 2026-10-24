@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1544 learnings. [Catalog](../index.md)
+1551 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -227,6 +227,7 @@ type: topic
 - [A maintainer hand-applying a bot's changes can block the merge via a last-pusher branch-protection rule](../learnings/1789218545131-a-maintainer-hand-applying-a-bot-s-changes-can-blo.md)
 - [A maintainer may own the HEAD of your own fix/ branch — --ff-only the remote before merging master](../learnings/1786075880249-a-maintainer-may-own-the-head-of-your-own-fix-bran.md)
 - [A maintainer's "create a PR" is not acceptance of your shape](../learnings/1785767481211-a-maintainer-s-create-a-pr-is-not-acceptance-of-yo.md)
+- [A master change that fixes the same bug differently is a test clash, not a text conflict](../learnings/1792746371295-a-master-change-that-fixes-the-same-bug-differentl.md)
 - [A matching total can hide changed membership — diff the SET, not the count, before calling a fix a no-op](../learnings/1786213450603-a-matching-total-can-hide-changed-membership-diff-.md)
 - [A memo is not a receipt — write the status verb only after the call returns](../learnings/1785966975148-a-memo-is-not-a-receipt-write-the-status-verb-only.md)
 - [A merge-queue eviction that "recovered on its own" — read the enqueuer, not the elapsed gap](../learnings/1785910832443-a-merge-queue-eviction-that-recovered-on-its-own-r.md)
@@ -479,6 +480,7 @@ type: topic
 - [Bash rc capture: "$(cmd) rc=$?" silently reports 0](../learnings/1790715683632-bash-rc-capture-cmd-rc-silently-reports-0.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md)
 - [Batch external reporter files issue + PR together; also search by alternate wording for dups](../learnings/1792084496275-batch-external-reporter-files-issue-pr-together-al.md)
+- [Batch GitHub issue searches into one GraphQL call to spare the shared REST quota](../learnings/1792743590595-batch-github-issue-searches-into-one-graphql-call-.md)
 - [Before accepting a code-traced 'new crash' finding, run it on pristine master and in the sibling form](../learnings/1790702192345-before-accepting-a-code-traced-new-crash-finding-r.md)
 - [Before believing a zero, prove the run REACHED the target: a coverage counter, not a liveness control](../learnings/1785984244886-before-believing-a-zero-prove-the-run-reached-the-.md)
 - [Before calling a signature "distinct from" a tracked issue, check issue body + fix-sha ancestry](../learnings/1790796091473-before-calling-a-signature-distinct-from-a-tracked.md)
@@ -669,6 +671,8 @@ type: topic
 - [DIAGNOSTIC_TEST carets align to the immediately-preceding non-annotation line — never insert a comment between source and its CHECK carets](../learnings/1786606749394-diagnostic-test-carets-align-to-the-immediately-pr.md)
 - [DIAGNOSTIC_TEST has no -NOT directive: `//PREFIX-NOT:` lines are silently inert](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md)
 - [DIAGNOSTIC_TEST SIMPLE diag=CHECK: E-code row count = 2× diagnostics (title+span), deduped only if identical](../learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)
+- [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint; a no-diagnostic pin needs exhaustive mode plus a live control](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md)
+- [DIAGNOSTIC_TEST: //CHECK-NOT is inert; assert "no warning" with exhaustive mode + a one-token control](../learnings/1792744742040-diagnostic-test-check-not-is-inert-assert-no-warni.md)
 - [Diff size: state the question and the notation — two-dot against a moved base folds upstream drift into your number](../learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md)
 - [Differentiable property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl](../learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
 - [DisableWarning: unknown numeric ids already silently ignored, unknown names error](../learnings/1787248265642-disablewarning-unknown-numeric-ids-already-silentl.md)
@@ -936,6 +940,7 @@ type: topic
 - [GitHub Contents API returns encoding:"none" and EMPTY content for files >1MB — no error, reads as "the line isn't there"](../learnings/1786132088899-github-contents-api-returns-encoding-none-and-empt.md)
 - [GitHub echoes the run: block into job logs — grepping a workflow's own strings measures source, not behaviour](../learnings/1786025881019-github-echoes-the-run-block-into-job-logs-grepping.md)
 - [GitHub events API: on "assigned" events, `actor` can be the assignee; use timeline `actor` or events `assigner` for who assigned](../learnings/1792606028492-github-events-api-on-assigned-events-actor-can-be-.md)
+- [GitHub GraphQL aliased PR batches 502 when too heavy - chunk to ~15](../learnings/1792743971886-github-graphql-aliased-pr-batches-502-when-too-hea.md)
 - [GitHub issue `assigned` events: use `assigner`, not `actor`, to tell who assigned](../learnings/1790993325857-github-issue-assigned-events-use-assigner-not-acto.md)
 - [GitHub issue events API: on `assigned`, actor is the ASSIGNEE, assigner is who did it](../learnings/1792502659332-github-issue-events-api-on-assigned-actor-is-the-a.md)
 - [GitHub issue-linkage is a false-appearance trap in BOTH directions: query the parsed result, never read the prose](../learnings/1786417868727-github-issue-linkage-is-a-false-appearance-trap-in.md)
@@ -1110,6 +1115,7 @@ type: topic
 - [Never truncate the EXPLAIN_DIFF_RECEIPT line: the stop hook parses it from Bash output](../learnings/1792177961012-never-truncate-the-explain-diff-receipt-line-the-s.md)
 - [New front-end errors can break the nightly agentic suite — run docs/generated/tests too](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md)
 - [Nightly compile-perf: a green night after a red one is a threshold miss, not baseline absorption — check the 'Confirmation:' line](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md)
+- [Nightly doc-test "No diagnostics found" can be an intentional diagnostic removal — check the PR's own test diff](../learnings/1792744585332-nightly-doc-test-no-diagnostics-found-can-be-an-in.md)
 - [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)
 - [Nine rounds of catches were catches by CONSPICUOUSNESS, not by process — arm the control that fires on the plausible case](../learnings/1786228479470-nine-rounds-of-catches-were-catches-by-conspicuous.md)
 - [Non-expanding filler swap must stay op-count and growth-character neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)
@@ -1488,6 +1494,7 @@ type: topic
 - [UNMERGEABLE in a merge queue is not a trigger — discriminate on headCommit, and treat "state outliving its cause" as the real anomaly](../learnings/1786107684232-unmergeable-in-a-merge-queue-is-not-a-trigger-disc.md)
 - [Unsupported-and-unchecked is the dangerous quadrant — grep for the identity check, not the diagnostic](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)
 - [Unwritten entry-point varying output: the store IS the interface anchor — don't skip it](../learnings/1788019476812-unwritten-entry-point-varying-output-the-store-is-.md)
+- [Update a behind PR by merging master, not rebase + force-push](../learnings/1792760590201-update-a-behind-pr-by-merging-master-not-rebase-fo.md)
 - [upsert_pr_body.py exit 5 on our own edit: GraphQL drops the [bot] suffix](../learnings/1791922521312-upsert-pr-body-py-exit-5-on-our-own-edit-graphql-d.md)
 - [upsert_pr_body.py now writes the explanation as a PR COMMENT and strips it from the description](../learnings/1791234547680-upsert-pr-body-py-now-writes-the-explanation-as-a-.md)
 - [Use singular they for human GitHub/Discord users in bot prose](../learnings/1787041557418-use-singular-they-for-human-github-discord-users-i.md)

@@ -3,6 +3,7 @@ title: "Shallow-clone silent regime: test HEAD's empty parent list, not head -1 
 type: learning
 topic: misc
 source: learnings/1785768517981-shallow-clone-silent-regime-test-head-s-empty-pare.md
+superseded_by: 1785768628753-correction-the-shallow-clone-discriminator-using-h
 ---
 
 # Shallow-clone silent regime: test HEAD's empty parent list, not head -1 of .git/shallow

@@ -3,6 +3,7 @@ title: "/workspace/agent/slang-rhi is a SHALLOW clone — git log/blame/-S prove
 type: learning
 topic: slang-compiler
 source: learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md
+superseded_by: 1785768394345-shallow-clones-fail-three-ways-history-search-stat
 ---
 
 # /workspace/agent/slang-rhi is a SHALLOW clone — git log/blame/-S provenance is silently WRONG past the graft root
