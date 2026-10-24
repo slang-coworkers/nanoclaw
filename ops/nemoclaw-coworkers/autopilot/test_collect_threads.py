@@ -173,8 +173,9 @@ class CollectThreadsTest(unittest.TestCase):
         arch = next(s for s in out["threads"]["LOOP-F35"]["sessions"] if s["id"] == "s-arch-f35")
         self.assertEqual(arch["role"], "hermes-architect")
         self.assertEqual(arch["cost_status"], "ok")
-        self.assertEqual(arch["messages"][1]["text"].split("\n")[0], "[Spec handoff] LOOP-F35: Lego coworker composition")
-        self.assertEqual(arch["messages"][1]["direction"], "out")
+        msgs = sorted(arch["messages"], key=lambda m: m["seq"])  # read newest-first (`--reverse`); order is pull-state's job
+        self.assertEqual(msgs[1]["text"].split("\n")[0], "[Spec handoff] LOOP-F35: Lego coworker composition")
+        self.assertEqual(msgs[1]["direction"], "out")
 
     def test_fallback_scan_attributes_unthreaded_role_by_mention(self):
         out = self.run_collect()
@@ -257,6 +258,16 @@ class CollectThreadsTest(unittest.TestCase):
         self.assertEqual((len(read), len(unread)), (1, 1))
         self.assertTrue(any("deadline 0.2s reached; 1 sessions not read" in e["error"] for e in out["collector_errors"]))
         self.assertEqual(out["counts"]["sessions_unread"], 1)
+
+    def test_no_cost_read_for_a_session_the_deadline_skipped(self):
+        """A session the deadline left unread gets no cost-cap read: no ncl call runs past the transcript budget."""
+        self.fixtures["sleep_s"] = 0.6
+        out = self.run_collect("--deadline-s", "0.2", "--scan-fallback", "0")
+        unread = [s["id"] for s in out["threads"]["LOOP-F35"]["sessions"] if s.get("messages_error", "").startswith("not read: deadline")]
+        self.assertEqual(len(unread), 1)
+        cost_calls = [c for c in self.calls() if c[:2] == ["cost-cap", "status"]]
+        self.assertNotIn(unread[0], [c[c.index("--session") + 1] for c in cost_calls])
+        self.assertEqual(out["counts"]["cost_status_read"], 1)
 
     def test_max_sessions_cap_marks_the_session_unread(self):
         out = self.run_collect("--max-sessions", "1", "--scan-fallback", "0")
@@ -385,7 +396,7 @@ class OperatorThreadsTest(CollectThreadsTest):
     def test_a_long_lived_dm_is_read_newest_first_so_the_ask_at_its_end_is_kept(self):
         """The incident DM was past seq 384 ("Open it" msg 290, "operator ruling B" msg 384). `ncl sessions messages --limit 200`
         returns the OLDEST 200 rows, so without `--reverse` the ask at the end never entered the frame — counted read, no
-        error, silently absent. Pass 3 reads newest-first; the row reads keep the plain form."""
+        error, silently absent. Pass 3 reads newest-first, and so do the row reads."""
         (self.dir / "sessions.json").write_text(json.dumps(SESSIONS + [ORCH_DM]))
         rows = [{"seq": i, "direction": "out", "kind": "chat", "timestamp": f"2026-09-09 {6 + i // 60:02d}:{i % 60:02d}:00", "sender": "orchestrator",
                  "text": ASK_A if i == 300 else f"status line {i}"} for i in range(1, 301)]
@@ -397,9 +408,9 @@ class OperatorThreadsTest(CollectThreadsTest):
         self.assertEqual(dm["messages"][-1]["text"], ASK_A)
         calls = self.calls()  # (the Ncl wrapper appends --json to every call)
         self.assertIn(["sessions", "messages", "s-orch-dm", "--limit", "200", "--full", "--reverse", "--json"], calls)
-        self.assertIn(["sessions", "messages", "s-arch-f35", "--limit", "200", "--full", "--json"], calls)
-        operator_ids = {"s-orch-dm", "s-orch-p0"}  # the pass-3 sessions in this fixture
-        self.assertFalse(any("--reverse" in c and c[2] not in operator_ids for c in calls if c[:2] == ["sessions", "messages"]))
+        # the row reads are newest-first too: a role session past --limit rows must still show its newest work
+        self.assertIn(["sessions", "messages", "s-arch-f35", "--limit", "200", "--full", "--reverse", "--json"], calls)
+        self.assertTrue(all("--reverse" in c for c in calls if c[:2] == ["sessions", "messages"]))
 
     def test_the_autopilots_own_task_series_is_never_an_operator_thread(self):
         """`system:tasks:hermes-ap-*` (install.sh ensure_series) carries the supervise tick's run output, which quotes the
@@ -426,7 +437,7 @@ class OperatorThreadsTest(CollectThreadsTest):
         }
         out = self.run_collect()
         arch = next(s for s in out["threads"]["LOOP-F35"]["sessions"] if s["id"] == "s-arch-f35")
-        self.assertEqual([m["seq"] for m in arch["messages"]], [1, 3])  # the dict rows; the junk dropped, the read counted
+        self.assertEqual(sorted(m["seq"] for m in arch["messages"]), [1, 3])  # the dict rows; the junk dropped, the read counted
         self.assertNotIn("messages_error", arch)
         dm = next(e for e in out["operator_threads"] if e["session_id"] == "s-orch-dm")
         self.assertEqual([m["text"] for m in dm["messages"]], ["12345", "", ASK_A])
