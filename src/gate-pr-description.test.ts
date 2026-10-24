@@ -1,7 +1,7 @@
 // Integration tests for container/hooks/gate-pr-description.sh (+ lib/pr_description.py).
 //
 // A PR description stays short because squash merges copy it into git log: each
-// section at most 2 lines, at most 1,000 characters, no tables. The hook reads
+// section at most 3 lines after its label, at most 1,500 characters, no tables. The hook reads
 // the description from the Bash command (inline, heredoc, $(cat …), or a file)
 // and refuses one that breaks the limits with one line on stderr.
 
@@ -81,9 +81,9 @@ describe('gate-pr-description.sh', () => {
     const r = run(heredocCreate(LONG));
     expect(r.status).toBe(2);
     expect(r.stderr.split('\n')).toHaveLength(1);
-    expect(r.stderr).toContain('Risk has 5 lines, max 2');
+    expect(r.stderr).toContain('Risk has 4 lines after its label, max 3');
     expect(r.stderr).toContain('it contains a table');
-    expect(r.stderr).toMatch(/total [\d,]+ chars, max 1,000/);
+    expect(r.stderr).toMatch(/total [\d,]+ chars, max 1,500/);
     expect(r.stderr).toContain('explanation comment (/explain-diff-html)');
   });
 
@@ -98,16 +98,16 @@ describe('gate-pr-description.sh', () => {
     expect(r.stderr).toContain('it contains a table');
   });
 
-  it('refuses a section with 3 lines and allows one with 2', () => {
-    const three = '**Risk.** One.\n- two\n- three';
-    expect(run(heredocCreate(three)).stderr).toContain('Risk has 3 lines, max 2');
-    expect(run(heredocCreate('**Risk.** One.\n- two')).status).toBe(0);
+  it('refuses a section with 4 lines after its label and allows one with 3', () => {
+    const four = '**Risk.** One.\n- two\n- three\n- four\n- five';
+    expect(run(heredocCreate(four)).stderr).toContain('Risk has 4 lines after its label, max 3');
+    expect(run(heredocCreate('**Risk.** One.\n- two\n- three\n- four')).status).toBe(0);
   });
 
   it('counts ## headings as sections too', () => {
-    const r = run(heredocCreate('## Summary\nline one\nline two\n'));
+    const r = run(heredocCreate('## Summary\nline one\nline two\nline three\nline four\n'));
     expect(r.status).toBe(2);
-    expect(r.stderr).toContain('Summary has 3 lines, max 2');
+    expect(r.stderr).toContain('Summary has 4 lines after its label, max 3');
   });
 
   it('reads --body-file from a file, and a file this same command writes', () => {
@@ -127,7 +127,9 @@ describe('gate-pr-description.sh', () => {
   });
 
   it('reads an inline --body and a $(cat FILE) body', () => {
-    expect(run(`gh pr edit 5 --body "**Risk.** a\n- b\n- c"`).stderr).toContain('Risk has 3 lines');
+    expect(run(`gh pr edit 5 --body "**Risk.** a\n- b\n- c\n- d\n- e"`).stderr).toContain(
+      'Risk has 4 lines after its label',
+    );
     const f = path.join(tmp, 'd.md');
     fs.writeFileSync(f, LONG);
     expect(run(`gh pr edit 5 --body "$(cat ${f})"`).status).toBe(2);
@@ -207,9 +209,9 @@ describe('gate-pr-description.sh', () => {
   });
 
   it('excludes only a final <sub> disclaimer and exact closing lines (#9)', () => {
-    const sub = `<sub>${'x'.repeat(1200)}</sub>`;
+    const sub = `<sub>${'x'.repeat(1700)}</sub>`;
     expect(run(heredocCreate(`${sub}\n\n**Summary.** Short.`)).status).toBe(2);
-    expect(run(heredocCreate(`Fixes the entire analysis in #1 ${'y'.repeat(1200)}`)).status).toBe(2);
+    expect(run(heredocCreate(`Fixes the entire analysis in #1 ${'y'.repeat(1700)}`)).status).toBe(2);
     expect(run(heredocCreate('**Summary.** Short.\n\nFixes #1, closes o/r#2.\n\n<sub>bot</sub>')).status).toBe(0);
   });
 
