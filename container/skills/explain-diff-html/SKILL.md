@@ -95,12 +95,12 @@ Squash merges copy the description into git log, so it is the commit message mai
 
 The limits, stated here once. The PreToolUse gate (`container/hooks/lib/pr_description.py`) refuses a `gh pr create`, `gh pr edit` or `gh api …/pulls` that breaks them with one line naming what is over, and the script above prints a `NOTE:` for a description already over them:
 
-- **2 lines per section.** A section starts at a line with a bold label (`**Summary.**`) or a `## Heading` and holds at most 2 non-empty lines, the label line included; blank lines do not end a section.
-- **1,000 characters in total**, not counting the final `<sub>` disclaimer line and `Fixes|Closes|Resolves #N` lines.
+- **3 lines per section.** A section starts at a line with a bold label (`**Motivation.**`) or a `## Heading` and holds at most 3 non-empty lines after the label line; blank lines do not end a section. slang's template names four: Motivation, Approach, Key choices, Evidence.
+- **1,500 characters in total**, not counting the final `<sub>` disclaimer line, `Fixes|Closes|Resolves #N` lines and the one-line `AI assistance:` disclosure.
 - **No tables.** Tables, per-case details and long risk lists go in the explanation comment.
 - **Open questions are one line:** `Open question (blocks merge): <the question> — details in the explanation comment.`
 
-Pre-check a description offline before `gh pr edit`: `cd /home/node/.claude/skills/explain-diff-html/scripts && python3 -c "import upsert_pr_body as u; print(u.description_problems(open('<file>').read(), 1000, 2))"` prints `[]` when it passes.
+Pre-check a description offline before `gh pr edit`: `cd /home/node/.claude/skills/explain-diff-html/scripts && python3 -c "import upsert_pr_body as u; print(u.description_problems(open('<file>').read(), 1500, 3))"` prints `[]` when it passes.
 
 ## Deliver
 

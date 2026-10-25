@@ -169,7 +169,7 @@ def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]
     """What in a description breaks the limits, as short phrases; empty when it is fine.
 
     The hook's check_body, kept under this name as the offline pre-check entry point
-    (`python3 -c "import upsert_pr_body as u; print(u.description_problems(open(F).read(), 1000, 2))"`).
+    (`python3 -c "import upsert_pr_body as u; print(u.description_problems(open(F).read(), 1500, 3))"`).
     """
     return rules().check_body(body, max_chars, max_lines)
 
@@ -180,11 +180,11 @@ def description_core(body: str) -> str:
 
 
 def has_summary(body: str) -> bool:
-    """True when the description has a Summary section (bold label or heading)."""
+    """True when the description has a Summary or Motivation section (bold label or heading)."""
     r = rules()
     for ln in r.counted_lines(body):
         m = r.BOLD_LABEL_RE.match(ln) or r.HEADING_RE.match(ln)
-        if m and m.group("label").strip().rstrip(".:").lower().startswith("summary"):
+        if m and m.group("label").strip().rstrip(".:").lower().startswith(("summary", "motivation")):
             return True
     return False
 
@@ -552,8 +552,8 @@ def run(a: argparse.Namespace) -> int:
     notes = []
     if desc_status.startswith("kept:"):
         notes.append(f"NOTE: the old explanation block stays in the description for now ({desc_status[6:]}); "
-                     "this script never empties a description. Write the concise description (Summary / Root cause / "
-                     "Tests / Risk, within the limits in SKILL.md § The PR description, plus the Fixes line and the "
+                     "this script never empties a description. Write the concise description (Motivation / Approach / "
+                     "Key choices / Evidence, within the limits in SKILL.md § The PR description, plus the Fixes and AI assistance lines and the "
                      f"<sub> disclaimer) with `gh pr edit {a.pr} -R {a.repo} --body-file <absolute path>`: that replaces "
                      "the whole description, old block included.")
     elif desc_status.startswith("left:"):
