@@ -245,23 +245,28 @@ class ComplianceCheckTest(unittest.TestCase):
         self.assertEqual(self.verdicts(rep, "bot-label"), {"slang#10": "fail", "slang#11": "pass", "slang#20": "pass"})
         self.assertEqual(self.rule(rep, "pr-description")["state"], "DRIFT")
 
-    def test_r6_wait_newcomer_and_exemptions(self):
+    def test_r6_newcomer_labels_and_bot_ok(self):
         rep, _, _ = self.run_all()
-        v = self.verdicts(rep, "issue-wait")
-        self.assertEqual(v, {"slang#30": "fail", "slang#31": "fail", "slang#32": "pass", "slang#33": "pass", "slang#34": "pass"})
-        reasons = {x["id"]: x["reason"] for x in self.rule(rep, "issue-wait")["results"]}
-        self.assertIn("1.0 h", reasons["slang#30"])  # the FIRST bot comment, not the later one
+        v = self.verdicts(rep, "issue-newcomer")
+        self.assertEqual(v, {"slang#30": "pass", "slang#31": "fail", "slang#32": "pass", "slang#33": "pass", "slang#34": "pass"})
+        reasons = {x["id"]: x["reason"] for x in self.rule(rep, "issue-newcomer")["results"]}
         self.assertIn("goodfirstbug", reasons["slang#31"])
         self.assertIn("bot-ok", reasons["slang#32"])
-        self.assertIn("reproducer", reasons["slang#33"])
+        # A one-hour-old plain issue passes: there is no wait, only the label rule.
+        self.assertIn("may comment", reasons["slang#30"])
         # The bot's own issue and the PR comments are not R6 items.
         self.assertNotIn("slang#20", v)
         self.assertNotIn("slang#10", v)
 
+    def test_r6_bot_ok_wins_over_a_newcomer_label(self):
+        self.fake.issues[31]["labels"] = labels("GoodFirstBug", "bot-ok")
+        rep, _, _ = self.run_all()
+        self.assertEqual(self.verdicts(rep, "issue-newcomer")["slang#31"], "pass")
+
     def test_r6_skips_issues_opened_before_the_window(self):
         self.fake.issues[30]["created_at"] = ts(10 * 24)
         rep, _, _ = self.run_all()
-        self.assertNotIn("slang#30", self.verdicts(rep, "issue-wait"))
+        self.assertNotIn("slang#30", self.verdicts(rep, "issue-newcomer"))
 
     def test_r8_density_threshold_and_disclaimer_stripping(self):
         rep, _, _ = self.run_all()
@@ -688,7 +693,7 @@ class MetricsTest(unittest.TestCase):
                 "ok": 1, "drift": 4, "unknown": 3, "findings": 119, "items": 248,
                 "perRule": {
                     "pr-description": {"pass": 0, "fail": 22, "unknown": 0, "total": 22, "rate": 0.0},
-                    "issue-wait": {"pass": 4, "fail": 34, "unknown": 0, "total": 38, "rate": 0.1053},
+                    "issue-newcomer": {"pass": 4, "fail": 34, "unknown": 0, "total": 38, "rate": 0.1053},
                     "discord-thread": {"pass": 0, "fail": 0, "unknown": 0, "total": 0, "rate": None},
                 },
             },
@@ -702,7 +707,7 @@ class MetricsTest(unittest.TestCase):
         self.assertTrue(line.startswith("nanoclaw_compliance,judge=null,status=findings "), line)
         for frag in ("findings=119i", "unknown=3i", "items=248i", "complete=false", "exit_code=1i",
                      "r_pr_description_pass=0i", "r_pr_description_total=22i", "r_pr_description_rate=0,",
-                     "r_issue_wait_pass=4i", "r_issue_wait_rate=0.1053", "r_discord_thread_total=0i"):
+                     "r_issue_newcomer_pass=4i", "r_issue_newcomer_rate=0.1053", "r_discord_thread_total=0i"):
             self.assertIn(frag, line)
         self.assertNotIn("r_discord_thread_rate", line)  # no items: no rate, rather than a fake zero
 

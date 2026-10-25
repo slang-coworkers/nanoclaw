@@ -1429,7 +1429,7 @@ describe('PLAN_REVIEW verdict gate (fixer path)', () => {
 });
 
 describe('description gate step-aside (gate-pr-description.sh refuses the description)', () => {
-  const LONG_BODY = ['**Risk.** One.', '- two', '- three', '- four'].join('\n');
+  const LONG_BODY = ['**Risk.** One.', '- two', '- three', '- four', '- five'].join('\n');
   const createWith = (file: string) => ({
     tool_name: 'Bash',
     tool_input: { command: `gh pr create --title t --body-file ${file}` },
