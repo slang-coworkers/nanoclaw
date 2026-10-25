@@ -3,14 +3,14 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 32
+source_count: 33
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
 
 ## TL;DR
 - Put a PR-watcher's change detection in the task's `script` guard with a state file, not in the agent prompt. Don't key on `mergeStateStatus`. After `report_pr_created`, schedule no watcher: webhooks already route to you.
-- External-dependency tracking issue: check that the suppression PR merged, find the upstream tracker and fix, give the verdict "tracking, P3, handed off", and still post the verified state.
+- External-dependency tracking issue: check that the suppression PR merged, find the upstream tracker and fix, give the verdict "tracking, P3, handed off", and still post the verified state. Read a Chromium/Dawn bug's status from the `issues.chromium.org/action/issues/<id>` JSON, and a fork commit through the upstream repo's `commits/<sha>`.
 - In maintainer design discussions, offer verified evidence only when it is wanted. On "stop / let us discuss", go quiet with no acknowledgment. Re-engage only on an explicit @-mention routed by the orchestrator.
 - One maintainer's "go ahead" is not a converged decision while another maintainer objects and a third person's sign-off gates it. Not implementing is correct restraint.
 - On a design fork, surface and defer: never merge an intermediate approach. CI-green never resolves a scope objection.
@@ -42,6 +42,8 @@ A coworker that has called `report_pr_created` schedules no watcher at all. The 
 ## External-Dependency Tracking Issues
 
 A "re-enable this test once upstream is fixed" issue needs two cheap checks. First, confirm the suppression PR actually merged, since it may still be open. Second, find the upstream tracker and fix with `gh issue/pr list -R <upstream> --search "<keywords>" --state all`. Also look for a companion issue filed at about the same time. The verdict is enhancement/tracking, P3, "handed off, awaiting external dependency". Don't forward to the fixer, but still post the verified state with an ordered trigger for resuming ([Triaging external-dependency tracking issues](../learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md)).
+
+Two reads make that check possible without a browser. **Chromium/Dawn bugs:** `issues.chromium.org/issues/<id>` is only a JS shell, but `curl -s https://issues.chromium.org/action/issues/<id>` returns JSON (strip the `)]}'` prefix) with no auth. The state tuple precedes the title, `[componentId, type, status, priority, severity, "title", ...]`, with status 1=New, 2=Assigned, 3=Accepted, 4=Fixed, 5=Verified, 10=Duplicate; the `[epochSec, nanos]` pairs are the created/modified times. **Commits from a user fork:** an issue-timeline `referenced` event whose `commit_url` sits under `<user>/slang` can 401 Bad credentials on `gh api repos/<user>/slang/commits/<sha>`, because the gateway token is scoped to the org. Ask `gh api repos/shader-slang/slang/commits/<sha>` instead; the fork network shares objects. Such events are often just the user syncing an upstream merge commit into the fork, not new work ([Read Chromium issue status and fork commits without a browser](../learnings/1792854175172-read-chromium-issue-status-and-fork-commits-withou.md)).
 
 ## Maintainer Design Discussions
 
@@ -111,7 +113,7 @@ Standing down from off-lane drift on a handled thread (say, a trusted maintainer
 
 A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2026-10-08 sweep a #slang-support user with a `bit_cast`→`PrimalTensor` ICE (later slang#13480, reproduced on 7 targets) said the bot "could not resolve it well, but I wasn't sure if it was a bug/issue or a coding error from my side". The bot's "worth filing" sat in a sub-bullet below the workarounds, and the user filed only after a maintainer nudged them 3 days later; the user in a `[Differentiable]` no-op thread still hadn't filed after 16 days. So when the diagnosis is a compiler bug (any E99997 or ICE), make line 1 "This is a Slang compiler bug, not your code. Please file it at github.com/shader-slang/slang/issues", follow with a ready-to-paste minimal repro, and give the workarounds after that ([Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md)).
 
-**Source learnings (32):**
+**Source learnings (33):**
 - [Obsidian-link gap is nav-only; triage by target, recompute counts](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [A correction isn't applied until every surface is fixed; grep old+new](../learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md)
 - [append_learning injects title as H1; never start content with one](../learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md)
@@ -144,5 +146,6 @@ A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2
 - [Search issue comments, not just issues, before calling a bug 'untracked'](../learnings/1791148129234-search-issue-comments-not-just-issues-before-calli.md) — the #13421 "untracked" bug was already a comment on #13412; list candidate issues' comments before saying "should be filed".
 - [they/them until stated; fix live misgendering via PATCH](../learnings/1790197020671-default-to-they-them-for-a-person-until-pronouns-a.md)
 - [#13296: a handle or old note is not a stated pronoun](../learnings/1790625520308-default-to-they-them-for-maintainers-and-reporters.md)
+- [Read Chromium issue status and fork commits without a browser](../learnings/1792854175172-read-chromium-issue-status-and-fork-commits-withou.md) — `action/issues/<id>` JSON status tuple (4=Fixed); fork commit 401 → query `shader-slang/slang/commits/<sha>`
 
 _Catalog: [[wiki/index.md]]_

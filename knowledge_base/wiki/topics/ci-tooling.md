@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-587 learnings. [Catalog](../index.md)
+588 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -471,6 +471,7 @@ type: topic
 - [Release CI zero-lag now the modal case, not the exception](../learnings/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md)
 - [Release-CI last-success harvest: pin event=workflow_dispatch — the tag-run hazard is real but NOT for the stated reason (tags are ahead of master, not off-branch)](../learnings/1785808857180-release-ci-last-success-harvest-pin-event-workflow.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
+- [Repo-wide "queued" stall = count JOBS not runs (Saturday cmake-options matrix); gh --paginate 401s](../learnings/1792836417682-repo-wide-queued-stall-count-jobs-not-runs-saturda.md)
 - [Report review status UPSTREAM only when settled or when an operator decision is needed — not per round](../learnings/1789445127469-report-review-status-upstream-only-when-settled-or.md)
 - [Reporter's issue-body proposal is not "maintainer direction", even with MEMBER association](../learnings/1792678793845-reporter-s-issue-body-proposal-is-not-maintainer-d.md)
 - [Rerunning a known-flake signature doesn't help until the fix is rebased in](../learnings/1787084165975-rerunning-a-known-flake-signature-doesn-t-help-unt.md)

@@ -3,7 +3,7 @@ title: "Agent Routing: Message Routing & Gating"
 type: concept
 group: agent-routing
 tags: [routing, chain, dispatch, in_reply_to, a2a, orchestrator, triage, fixer, provenance, echo-loop, credit]
-source_count: 43
+source_count: 44
 ---
 
 # Agent Routing: Message Routing & Gating
@@ -11,7 +11,7 @@ source_count: 43
 > **Split 2026-08-12** to stay under the 40 KB read cap. This page owns chain topology, `in_reply_to`/edge mechanics, dispatch hazards, echo loops, and credit/provenance. Sibling: [Agent Routing: Holds, Authorization, Gates & CI Currency](agent-routing-holds-authorization-gates.md) — HOLDS, authorization for gated writes, critique-gate, CI-verdict currency, worktree GC, budget caps.
 
 ## TL;DR
-- **Canonical shape `Orchestrator → Triage → Fixer → Reviewer`; replies hop back ONE tier along the dispatch path.** A fixer's `[Fix Report]` flows to its parent (orchestrator), not across the peer triager→fixer edge. Direct edges only — parent (minted at session birth) + children you opened.
+- **Canonical shape `Orchestrator → Triage → Fixer → Reviewer`; replies hop back ONE tier along the dispatch path.** A fixer's `[Fix Report]` flows to its parent (orchestrator), not across the peer triager→fixer edge — so an empty triager inbox is "no report received here", never proof a chain stalled (a quiet draft may be waiting on the operator's un-draft decision). Direct edges only — parent (minted at session birth) + children you opened.
 - **Any `<message>` carrying a bracketed delivery marker (`[Fix Report]`, `[Triage Resolution]`, `[Report]`) MUST carry `in_reply_to=<id>`** — even a fresh peer delegation. The gate keys on the marker in text; the runtime picks the EDGE from `in_reply_to` — the two must agree. A `[Triage Resolution]` uses a PARENT inbound id, never the fix-report id (that routes back to the fixer).
 - **When a sender name is unaddressable, reply via the `send_message` TOOL with bare `in_reply_to`** (routes to the inbound's `source_session_id`, bypassing name resolution) — `<message to="name">` fails name-lookup *before* `in_reply_to` is consulted. `send_file(to="parent")` and the final-response `<message>` block still route the parent edge even when the `send_message` tool 404s.
 - **No double-dispatch / no tier-skip.** A `[Triage]` report NAMING a handoff is STATUS, not a cue to act — the orchestrator must NOT also dispatch to the fixer. Two dispatches on one thread (peer wire + direct) spawn two fixer sessions sharing one branch/worktree → index corruption. Issue webhooks route to TRIAGER ONLY.
@@ -24,7 +24,7 @@ source_count: 43
 
 ## Chain Topology and Tier Rules
 
-The canonical shape is `Orchestrator → Triage → Fixer → Reviewer`; replies hop back one tier at a time along the dispatch path. A fixer's `[Fix Report]` flows to its parent (the orchestrator), not across the peer triager→fixer edge, so watching only the direct edge misses the outcome ([slang triage [Fix Report] may route via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)). Each coworker reaches only its parent (minted at session birth) and children it opened; reaching a peer on separate wiring risks the ancestor-edge hazard ([Strict reply-routing in 4-tier issue chain](../learnings/legoop-feedback_chain_shape_strict.md)). The triager→slang-fixer edge IS real: the triager owns the spawned fixer session as a child and forwards `[Triage Resolution]` to its parent. The real hazard is the inverse — the orchestrator also dispatching the same fix ([RETRACTION: triager→slang-fixer edge DOES work — real lesson is no double-dispatch](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)).
+The canonical shape is `Orchestrator → Triage → Fixer → Reviewer`; replies hop back one tier at a time along the dispatch path. A fixer's `[Fix Report]` flows to its parent (the orchestrator), not across the peer triager→fixer edge, so watching only the direct edge misses the outcome ([slang triage [Fix Report] may route via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)). The same blind spot makes a quiet draft PR look stalled. On slang#13773 (2026-10-24) the triager found no `[Fix Report]` for draft #13779 in its own inbox and reported the fixer chain as stalled, but slang-fixer had already reported to Orchestrator on 10-20 after applying the APPROVE_WITH_NITS nits, and the PR stayed a draft only because the operator had not yet decided to un-draft it. Ask the parent before calling a chain stalled, and word the finding as "no `[Fix Report]` received here", not "the fixer is stalled" ([Fix Report may route to Orchestrator, not the triager](../learnings/1792829026301-fix-report-may-route-to-orchestrator-not-the-triag.md)). Each coworker reaches only its parent (minted at session birth) and children it opened; reaching a peer on separate wiring risks the ancestor-edge hazard ([Strict reply-routing in 4-tier issue chain](../learnings/legoop-feedback_chain_shape_strict.md)). The triager→slang-fixer edge IS real: the triager owns the spawned fixer session as a child and forwards `[Triage Resolution]` to its parent. The real hazard is the inverse — the orchestrator also dispatching the same fix ([RETRACTION: triager→slang-fixer edge DOES work — real lesson is no double-dispatch](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)).
 
 ## Chain-Routing Gate and `in_reply_to`
 
@@ -93,7 +93,7 @@ A Discord summon row is stamped at click time, so an un-clicked "Click below for
 - "No wired triager→slang-fixer edge" is **RETRACTED** — the edge works; the rule is no double-dispatch ([retraction](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)).
 - CI-verdict currency, critique-gate false trips, worktree GC, budget caps, and authorization/hold rules live on [Holds, Authorization, Gates & CI Currency](agent-routing-holds-authorization-gates.md).
 
-**Source learnings (43):**
+**Source learnings (44):**
 - [Operator-gated vs mention-authorized GitHub replies: post codex-corrected text directly if mention-authorized; re-show to operator if operator-gated and materially changed](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)
 - [bare send_message is refused on a long-lived cron session (677 unresponded inbounds) — pass in_reply_to](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
@@ -137,4 +137,5 @@ A Discord summon row is stamped at click time, so an un-clicked "Click below for
 - [retraction momentum: a retraction must end at the boundary of what it establishes; ncl system rows carry emission facts only; filter your own tool rows](../learnings/1785788144509-retraction-momentum-i-over-claimed-inside-the-mess.md)
 - [an action a peer attributes to you is not an action you hold — handshake or decline it back](../learnings/1785831422368-an-action-a-peer-attributes-to-you-is-not-an-actio.md)
 - [send_message to "orchestrator" can fail on a stale peer thread with hundreds of unresponded rows — don't force with an arbitrary id; use dashboard/send_card for routine status](../learnings/1789375133715-send-message-to-orchestrator-can-fail-on-a-stale-p.md)
+- [Fix Report may route to Orchestrator, not the triager](../learnings/1792829026301-fix-report-may-route-to-orchestrator-not-the-triag.md) — slang#13773: empty triager inbox ≠ stalled chain; draft awaited operator un-draft; ask parent first
 _Catalog: [[wiki/index.md]]_

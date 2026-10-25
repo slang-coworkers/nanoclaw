@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-929 learnings. [Catalog](../index.md)
+935 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -269,6 +269,7 @@ type: topic
 - [codex-critique gateway outage: gpt-5.6-sol rejects client_metadata (400), overrides 403](../learnings/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md)
 - [codex-critique gotchas: wiki-recall first replies, backticked Attested hashes, byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md)
 - [codex-critique needs danger-full-access; AI-disclaimer goes on comments not PR bodies](../learnings/1781129788679-codex-critique-needs-danger-full-access-ai-disclai.md)
+- [codex-critique OUTPUT_REVIEW recording pitfalls for slang-fixer deliveries](../learnings/1792831235444-codex-critique-output-review-recording-pitfalls-fo.md)
 - [codex-critique reads the /workspace/agent/memory OKF copy, not ~/.claude](../learnings/1785469241189-codex-critique-reads-the-workspace-agent-memory-ok.md)
 - [codex-critique rounds go untracked unless the prompt carries the literal STAGE: token](../learnings/1786050089767-codex-critique-rounds-go-untracked-unless-the-prom.md)
 - [codex-critique rounds need sandbox=danger-full-access, or nothing records](../learnings/1786055180841-codex-critique-rounds-need-sandbox-danger-full-acc.md)
@@ -479,6 +480,7 @@ type: topic
 - [Fetch a fork-based WIP PR checkpoint via pull/N/head, not the branch name](../learnings/1787668787779-fetch-a-fork-based-wip-pr-checkpoint-via-pull-n-he.md)
 - [Final-response [Resolution] refused twice by chain-routing-gate — send it through the send_message tool, and run codex-critique first](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md)
 - [findmnt -T settles cross-container path identity; matching HEAD does not](../learnings/1786033956026-findmnt-t-settles-cross-container-path-identity-ma.md)
+- [Fix Report may route to Orchestrator, not the triager — don't call a fixer chain stalled from triager inbox alone](../learnings/1792829026301-fix-report-may-route-to-orchestrator-not-the-triag.md)
 - [Fix Review Request can bounce/misroute into a reviewer's stale-labeled reused session](../learnings/1788468324330-fix-review-request-can-bounce-misroute-into-a-revi.md)
 - [Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
 - [Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
@@ -559,6 +561,7 @@ type: topic
 - [GitHub writes: gh GH_TOKEN is invalid in-container; use OneCLI gateway via curl](../learnings/1789373604516-github-writes-gh-gh-token-is-invalid-in-container-.md)
 - [github.pr_merged webhook head_sha is the PR BRANCH TIP, not the squash-merge commit — resolve the real master SHA before citing it](../learnings/1787138985818-github-pr-merged-webhook-head-sha-is-the-pr-branch.md)
 - [globallycoherent on resource params: two front-end gates + an emit gap](../learnings/1787706145739-globallycoherent-on-resource-params-two-front-end-.md)
+- [GraphQL ref.compare(headRef:) returns NOT_FOUND for fork-headed PRs — use REST compare with the head SHA](../learnings/1792830642441-graphql-ref-compare-headref-returns-not-found-for-.md)
 - [grep -c gates miss phrases that Markdown line-wrapping splits](../learnings/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md)
 - [grep -n gives you the line, not the interface that encloses it — verifying a member's line number is not verifying its owner](../learnings/1785991826742-grep-n-gives-you-the-line-not-the-interface-that-e.md)
 - [grep absence ladder — run every rung including contractions before claiming a phrase is missing](../learnings/1785875073603-grep-absence-ladder-run-every-rung-including-contr.md)
@@ -591,6 +594,7 @@ type: topic
 - [Keep task scratch out of /tmp — container restarts wipe it mid-task](../learnings/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md)
 - [Khronos Vulkan validation layer in the coworker container: chromium's .so + VK_ADD_LAYER_PATH](../learnings/1792613432297-khronos-vulkan-validation-layer-in-the-coworker-co.md)
 - [Late ci_failed webhook from falcor-build-approval-gate 30-day expiry (slang)](../learnings/1792533255133-late-ci-failed-webhook-from-falcor-build-approval-.md)
+- [Late ci_failed webhook on a draft PR = 30-day approval-gate timeout, not a code failure](../learnings/1792823927170-late-ci-failed-webhook-on-a-draft-pr-30-day-approv.md)
 - [learnings-wiki fold: single-source→single-page is the failure-robust unit; citation-superset gate makes deletes safe](../learnings/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md)
 - [learnings-wiki serial path: never sub-delegate to a fork; forks re-enact the orchestrator and burn ~1M tokens](../learnings/1789713862648-learnings-wiki-serial-path-never-sub-delegate-to-a.md)
 - [Legoop project buddy not using codex](../learnings/legoop-project_buddy_not_using_codex.md)
@@ -633,6 +637,7 @@ type: topic
 - [ncl tasks reads from inside Main are scoped to Main's own group — another group's task is invisible](../learnings/1792072189568-ncl-tasks-reads-from-inside-main-are-scoped-to-mai.md)
 - [ncl tasks update on own series applies instantly, no approval gate](../learnings/1787250785428-ncl-tasks-update-on-own-series-applies-instantly-n.md)
 - [ncl tasks: list has no owner column and cannot filter by group, but `get <id>` returns agent_group_id — attribute with get, never list](../learnings/1785982710624-ncl-tasks-list-has-no-owner-column-and-cannot-filt.md)
+- [ncl/send_message "database is locked" is transient; ncl tasks get takes positional id](../learnings/1792857731218-ncl-send-message-database-is-locked-is-transient-n.md)
 - [Never background a long build in a fixer session — foreground it; ninja resumes incrementally across reaps](../learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md)
 - [Never bundle a git push with a critique-gated command in one bash block](../learnings/1787846612049-never-bundle-a-git-push-with-a-critique-gated-comm.md)
 - [Never forward webhook payload labels/assignees/milestone — delete the slot, don't stamp it](../learnings/1786442851025-never-forward-webhook-payload-labels-assignees-mil.md)
@@ -704,6 +709,7 @@ type: topic
 - [Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files](../learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md)
 - [Re-verify a triaged draft-PR issue at PR HEAD before investing in a fix](../learnings/1787669928995-re-verify-a-triaged-draft-pr-issue-at-pr-head-befo.md)
 - [Re-verify git state after any session interruption — amends and edits can silently vanish](../learnings/1786024353751-re-verify-git-state-after-any-session-interruption.md)
+- [Read Chromium issue status and fork commits without a browser](../learnings/1792854175172-read-chromium-issue-status-and-fork-commits-withou.md)
 - [Read CI conclusions and failing job logs — the skip pattern can't tell you why a check went red](../learnings/1785784732188-read-ci-conclusions-and-failing-job-logs-the-skip-.md)
 - [Read cli_scope with `ncl groups config get` (works bare in-container) — and its documented "rejected" behavior is actually silent substitution](../learnings/1785980538648-read-cli-scope-with-ncl-groups-config-get-works-ba.md)
 - [Read the lines around a file:line you cite — and a rule filed only in per-container memory is invisible to every peer](../learnings/1786128826682-read-the-lines-around-a-file-line-you-cite-and-a-r.md)

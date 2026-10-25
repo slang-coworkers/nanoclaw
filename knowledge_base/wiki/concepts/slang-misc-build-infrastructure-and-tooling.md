@@ -3,7 +3,7 @@ title: "Slang Build Infrastructure, Tooling, and Language Server"
 type: concept
 group: slang-grab-bag
 tags: [build, CMake, MSVC, slangd, LSP, language-server, build-tag, version, downstream-compilers, NVRTC, VK_KHR_shader_abort, SPIR-V, IRTextureType, imgui, dev-shm, coworker-container, binary-provenance, core-module, stale-slangc]
-source_count: 36
+source_count: 37
 ---
 
 # Slang Build Infrastructure, Tooling, and Language Server
@@ -92,7 +92,7 @@ To find which upstream version a vendored single-header file is, run `git hash-o
 
 ## Local-build traps: ninja skips rebuild after git checkout; zombie-PID waiter; SPIR-V without spirv-dis
 
-Three operational traps when reproducing bugs at HEAD: (1) after a `git checkout`, `ninja` may **skip** the rebuild because the checked-out source mtime is older than the existing object — touch the sources or clean to force it; (2) a background build waiter can hang on a zombie PID; (3) you can parse SPIR-V structurally without `spirv-dis` when the disassembler isn't loadable ([Slang local build: ninja skips rebuild after git checkout (source mtime < object); zombie-PID waiter trap; parse SPIR-V without spirv-dis](../learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md)).
+Three operational traps when reproducing bugs at HEAD: (1) after a `git checkout`, or after restoring files with `tar xf` (which keeps the archived mtimes), `ninja` may **skip** the rebuild because the source mtime is older than the existing object — touch the restored sources or clean to force it ([Slang specialize pass: compiler-dictionary values are weak, and typeflow uses fresh SpecializationContexts](../learnings/1792832560264-slang-specialize-pass-compiler-dictionary-values-a.md)); (2) a background build waiter can hang on a zombie PID; (3) you can parse SPIR-V structurally without `spirv-dis` when the disassembler isn't loadable ([Slang local build: ninja skips rebuild after git checkout (source mtime < object); zombie-PID waiter trap; parse SPIR-V without spirv-dis](../learnings/1782871600830-slang-local-build-ninja-skips-rebuild-after-git-ch.md)).
 
 ## `slangc -v` version string is a cached CMake value — bisect trap
 
@@ -122,7 +122,7 @@ A common 'convert `#if` dead code to `if constexpr` to keep it type-checked' ask
 
 For 'use library allocation wrappers' issues (#11924), separate latent from live and caller-owned from library-owned buffers before acting ([1783057786633-triaging-use-library-allocation-wrappe](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)). The #11928 dead-code removal (`USE_RIFF`/`DIRECT_FROM_FOSSIL`) was only partially done, superseded by PR #11930 ([1783125158769-postmortem-slang-11928-superseded-by-p](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)). The allocator itself — why 'use mimalloc for Slang core' (#11925) is not turn-key, and the mimalloc integration mechanics (#12036/#12101/#12102/#13827/#13828/#13879) — is on [[wiki/concepts/slang-build-mimalloc-integration.md]].
 
-**Source learnings (36):**
+**Source learnings (37):**
 - [MSVC C5285 on doctest fixed by /wd5285](../learnings/1781056304699-slang-rhi-msvc-14-51-c5285-on-doctest-fixed-by-wd5.md)
 - [MSVC 14.51 C5285 on vendored doctest](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [slang-rhi submodule pin lags feature PRs](../learnings/1781118704722-verifying-slang-rhi-claims-at-slang-head-the-submo.md)
@@ -159,5 +159,6 @@ For 'use library allocation wrappers' issues (#11924), separate latent from live
 - [Triaging 'use library allocation wrappers' — latent vs live, caller- vs library-owned buffers](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)
 - [postmortem: #11928 superseded by PR #11930 (partial dead-code removal)](../learnings/1783125158769-postmortem-slang-11928-superseded-by-pr-11930-part.md)
 - [Pin a vendored file to its upstream version by blob hash; slangpy tinyexr.h is v1.0.9](../learnings/1792788343481-pin-a-vendored-file-to-its-upstream-version-by-blo.md) — `git hash-object` + `git log --find-object`; upstream HALF->HALF over-read unfixed, #260 closed `invalid`; PRs sponsor-gated.
+- [Slang specialize pass: compiler-dictionary values are weak, and typeflow uses fresh SpecializationContexts](../learnings/1792832560264-slang-specialize-pass-compiler-dictionary-values-a.md) — here only the tooling note: `tar xf` restores keep old mtimes, so ninja skips them; compiler content is on slang-compiler-type-flow-set-specialization-diamonds
 
 _Catalog: [[wiki/index.md]]_

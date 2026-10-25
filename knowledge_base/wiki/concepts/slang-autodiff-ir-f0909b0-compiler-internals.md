@@ -3,7 +3,7 @@ title: Slang autodiff & IR internals — producer layers, SSA/VM invariants, and
 type: concept
 group: slang-autodiff-ir
 tags: [slang, autodiff, ir, ssa, slangi-vm, validation, codegen, hlsl-atomic, sroa, unit-test, triage]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -32,6 +32,9 @@ producer — trace the actual op back to its real origin before routing a fixer.
   element chain ends in a store.
 - **ForceInline `if/else-if` cascades lower to a chain of nested single-param merges**, not
   one common merge; `AFTER-legalizeEmptyTypes` is the last SSA-form state before phi-elim.
+- **A derivative's inherited debug-scope root is the temporary CLONE's `DebugFunction` record, not
+  `srcFunc`'s** (since #13219 every clone gets its own scope tree). Pass that record explicitly from
+  the producer; walking the body to rediscover it breaks on inlined callee scopes that lack `inlinedAt`.
 - **Two "verify the reviewer nit" corrections:** a `defaultArgSource` count-equality assert
   would fire on valid `bwd_diff` input (the guard is load-bearing), and `SLANG_CHECK_MSG`
   needs a compile-time string literal (use `addResultWithLocation` for dynamic messages).
@@ -191,6 +194,36 @@ is `…-simplifyIR → AFTER-legalizeEmptyTypes → AFTER-eliminatePhis` — so 
 is the last SSA-form (block-param/phi) state before `eliminatePhis` converts block params into
 `var`/`load`s. This is the shape any jump-threading / merge-coalescing pass must target.
 
+## Derivative debug scopes: the inherited root is the clone's record, passed explicitly (#13238)
+
+Issue #13238 reports that generated derivative functions share the original function's SPIR-V
+`DebugFunction`. The tempting fix is to re-root every derivative on `srcFunc`'s record, and it is
+wrong. Since PR #13219 (SPIR-V lexical debug scopes), `cloneInst` → `cloneDebugScopesForFunc` gives
+each function clone its own `DebugFunction` and lexical blocks, and autodiff transcribes derivative
+bodies from temporary clones. So the `DebugScope`/`DebugVar`/`DebugInlinedAt` operands inside a
+derivative name the clone's tree. In forward mode, `translateFunc` (slang-ir-autodiff-fwd.cpp)
+transcribes `primalFuncClone`, so the root is `primalFuncClone`'s `DebugFuncDecoration` record. In
+reverse mode, `s_apply_`/`s_bwdProp_`/`s_remat_` are split out of the unzipped forward derivative
+(the intermediate `s_fwd_f`), so the root is that function's record; read it before
+`unzippedFwdDiffFunc->removeAndDeallocate()` in slang-ir-autodiff-rev.cpp. Passing the clone's record
+explicitly from the producer is correct: in a 304-file `-g2` sweep it agreed with a body walk on
+1125/1125 functions. The body walk itself is the fragile alternative (the "context rediscovery by
+graph walking" smell). When the inliner copies a `[__unsafeForceInlineEarly]`/`[ForceInline]`
+callee that is called from a `?:`/`&&`/`||` branch block with no `DebugLine` before the call,
+`emitCalleeDebugInlinedAt` (slang-ir-inline.cpp) returns empty. The copied callee scopes then have
+no `inlinedAt`, and the body has two unmarked roots. Explicit provenance re-roots only the inherited
+tree and leaves the copied callee scopes alone. Run `copyDebugInfo` before `maybeHoist`:
+`hoistValueFromGeneric` clones every sibling in the generic up to the value, including the primal
+clone's record, so a root captured before the hoist no longer matches.
+
+To audit, compile with `-target spirv-asm -g2 -O0 -emit-spirv-directly`. For each `OpFunction`,
+follow every non-inlinedAt `DebugScope` operand up its `DebugLexicalBlock` parents, and compare the
+root with the record that its `DebugFunctionDefinition` binds (script:
+`/workspace/agent/runs/V-13238/scope-audit.py`). Master 52e29ab43 had 564 mis-rooted functions across
+176 test files. A probe whose derivative is eliminated before emit cannot show the residual, so keep
+the derivative alive (call `fwd_diff(f)` directly) or the probe is blind
+([Autodiff debug scopes: a derivative's inherited scope root is the CLONE's record, not srcFunc's; pass it explicitly instead of walking the body](../learnings/1792823534137-autodiff-debug-scopes-a-derivative-s-inherited-sco.md)).
+
 ## Two "verify the reviewer nit before applying it" corrections
 
 Both of these are concrete counterexamples to over-applying the codebase's "assert the invariant
@@ -222,7 +255,7 @@ failure messages" nit). The meta-lesson pairs with the assert case: verify a mac
 before applying a reviewer's "reuse it" suggestion, and always rebuild — a local debug build
 caught this before CI.
 
-**Source learnings (10):**
+**Source learnings (11):**
 
 - [HLSL float atomic-add is NVAPI-only and emitted silently; autodiff is not the producer](../learnings/1786551719062-slang-hlsl-float-atomic-add-is-nvapi-only-and-emit.md) — `InterlockedAddF32`→`NvInterlockedAddFp32` silent emit; grep autodiff for the atomic = 0 hits; the higher-order claim was true but the layer attribution wasn't.
 - [HLSL float atomic-add NVAPI-only; the tensor producer is not the autodiff pass](../learnings/1786552449501-hlsl-float-atomic-add-is-nvapi-only-and-emits-sile.md) — Sibling with the tensor `[BackwardDerivative]` → `AtomicAdd.load_backward` producer trace, the generic-vs-NVAPI diagnostic asymmetry, the unreachable `default:` arm, and the no-CAS-precedent constraint.
@@ -234,3 +267,4 @@ caught this before CI.
 - [Last-SSA pass before eliminatePhis is AFTER-legalizeEmptyTypes; ForceInline cascades lower to chained nested merges](../learnings/1787821210997-slang-last-ssa-pass-before-eliminatephis-is-after-.md) — N-way if/else-if → N-1 nested `IRIfElse` with per-level result-phi chain; pass ordering for phi-elim debugging.
 - [Correction: defaultArgSource count-equality assert is over-strict (autodiff bwd_diff)](../learnings/1787569981440-correction-defaultargsource-count-equality-assert-.md) — A `bwd_diff` callee's param list legitimately mismatches; the tolerant guard is load-bearing; document, don't assert.
 - [SLANG_CHECK_MSG requires a string-literal message — use addResultWithLocation for a dynamic one](../learnings/1788161608321-slang-check-msg-requires-a-string-literal-message-.md) — Adjacent-literal concatenation forces a compile-time literal; call the reporter overload directly for interpolated messages; verify the macro before reusing it.
+- [Autodiff debug scopes: a derivative's inherited scope root is the CLONE's record, not srcFunc's](../learnings/1792823534137-autodiff-debug-scopes-a-derivative-s-inherited-sco.md) — #13238: forward root = `primalFuncClone`'s record, reverse root = the unzipped `s_fwd_f`'s; body walk breaks on inlined scopes without `inlinedAt`; `copyDebugInfo` before `maybeHoist`; `-g2` scope-audit script.

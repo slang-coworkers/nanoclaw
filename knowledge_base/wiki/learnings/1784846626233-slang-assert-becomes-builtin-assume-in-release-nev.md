@@ -3,6 +3,7 @@ title: "SLANG_ASSERT becomes __builtin_assume in release — never pair it with 
 type: learning
 topic: slang-compiler
 source: learnings/1784846626233-slang-assert-becomes-builtin-assume-in-release-nev.md
+superseded_by: 1784847485639-slang-assert-x-if-x-is-a-release-build-ub-trap-ass
 ---
 
 # SLANG_ASSERT becomes __builtin_assume in release — never pair it with a runtime if() on the same condition

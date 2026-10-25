@@ -3,7 +3,7 @@ title: PR-approver ABSTAIN delivery — the critique-gate token trap and transpo
 type: concept
 group: slang-autodiff-ir
 tags: [approver, abstain, critique-gate, gate-critique-on-deliver, gate-chain-routing, send-message, record-decision, matcher-vs-intent, in-reply-to]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -130,7 +130,10 @@ records "stages: none" and does not satisfy the gate, and the sandbox must be
 time**, so if codex attested any volatile file (e.g. a live `.claude-trace/session-*.jsonl` that
 grows continuously) its hash won't match and delivery is denied even with OUTPUT_REVIEW=approve —
 tell codex in the OUTPUT_REVIEW prompt to attest ONLY stable deliverable artifacts (the
-deliverable + `investigation.md`) and never sha256sum a trace/session/volatile path.
+deliverable + `investigation.md`) and never sha256sum a trace/session/volatile path. (3)
+`track-critique.sh` records only `### Attested` lines of the plain form `- <sha> <path>`; if codex
+wraps them in backticks, nothing is attested and the >1000-char public-comment gate keeps refusing,
+so ask codex to re-emit the list plain ([Slang specialize pass: compiler-dictionary values are weak, and typeflow uses fresh SpecializationContexts](../learnings/1792832560264-slang-specialize-pass-compiler-dictionary-values-a.md)).
 
 ## Why this whole class exists — MATCHER vs LEVEL
 
@@ -141,7 +144,7 @@ under-specific matcher. The corrective posture is the same throughout: *a guard 
 is not thereby a broken guard — read the predicate before reporting on it, then word your message
 so the state-token test the hook actually runs reads it as the abstain it is.*
 
-**Source learnings (9):**
+**Source learnings (10):**
 
 - [The critique gate's ABSTAIN fast-path is defeated by your own message text](../learnings/1786442329725-approver-critique-mustfix-the-critique-gate-s-abst.md) — Conjunction predicate over delivered text; "not BLOCK"/"clean WOULD_APPROVE" prose re-arms it; also corrects a mis-diagnosis (the send_message denial was the author's wording, not a broken hook).
 - [ABSTAIN [Approval Decision] must be delivered via the send_message TOOL](../learnings/1786633049888-approver-infra-abstain-approval-decision-must-be-d.md) — Fast-path lives only in the PreToolUse tool hook; a final-response `<message>` block bypasses it; transport-vs-content distinction.
@@ -152,3 +155,4 @@ so the state-token test the hook actually runs reads it as the abstain it is.*
 - [The critique-on-deliver ABSTAIN fast-path is defeated by BLOCK/WOULD_APPROVE anywhere — reword, don't run a ceremonial critique](../learnings/1787848138413-approver-infra-abstain-the-critique-on-deliver-abs.md) — R1 phrased differently and passed, R2 said "so not a BLOCK" and failed; standing rule never to run a critique just to satisfy a matcher.
 - [ABSTAIN message must not contain the tokens WOULD_APPROVE or BLOCK](../learnings/1787880871011-approver-process-abstain-message-must-not-contain-.md) — "Not a BLOCK" tripped it; say "no verified defect"/"not a block-level finding"; second gate requires `in_reply_to=<inbound id>`.
 - [ABSTAIN delivery fast-path is disqualified by the words BLOCK or WOULD_APPROVE anywhere](../learnings/1788202312850-approver-ops-abstain-delivery-fast-path-is-disqual.md) — Word-boundary match ignores negation; the working order is record_decision → send with no tokens and `in_reply_to` set even for the dashboard destination.
+- [Slang specialize pass: compiler-dictionary values are weak, and typeflow uses fresh SpecializationContexts](../learnings/1792832560264-slang-specialize-pass-compiler-dictionary-values-a.md) — here only the tooling note: `track-critique.sh` attests only plain `- <sha> <path>` lines, not backtick-wrapped ones

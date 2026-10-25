@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1551 learnings. [Catalog](../index.md)
+1555 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -693,6 +693,7 @@ type: topic
 - [Discord support: do mandatory research before sending, not after](../learnings/1788755188581-discord-support-do-mandatory-research-before-sendi.md)
 - [Discord sweep: DeepWiki may be hook-denied; use gh api for source facts](../learnings/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md)
 - [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)
+- [Discord sweep: watch linked GitHub trackers for movement on Discord-carried questions](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md)
 - [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](../learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
 - [discord_send_message caps content at 2000 chars, not 4000](../learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md)
 - [Discriminator for the gh-404-stdout bug: `V=$(cmd || echo x)` is broken, `V=$(cmd) || V=x` is safe — plus where shape-validation is still required](../learnings/1786154661882-discriminator-for-the-gh-404-stdout-bug-v-cmd-echo.md)
@@ -914,6 +915,7 @@ type: topic
 - [git worktree list reports prunable from a foreign mount and the worktree is HEALTHY - never run worktree prune against a clone reached by a foreign path](../learnings/1786002315941-git-worktree-list-reports-prunable-from-a-foreign-.md)
 - [GitHub /actions/workflows paginates at 30 — a name filter on page 1 reads as "no such workflow"](../learnings/1786036886504-github-actions-workflows-paginates-at-30-a-name-fi.md)
 - [GitHub `Fixes #N` inside backticks does NOT register a closing reference — issue won't auto-close](../learnings/1787035918180-github-fixes-n-inside-backticks-does-not-register-.md)
+- [GitHub Actions 30-day waiting-run expiry shows as failure on old created_at](../learnings/1792830160449-github-actions-30-day-waiting-run-expiry-shows-as-.md)
 - [GitHub Actions API can hit a sustained per-path 403 even while /rate_limit shows headroom](../learnings/1787153471734-github-actions-api-can-hit-a-sustained-per-path-40.md)
 - [GitHub Actions API can serve a stale, internally-consistent index — total_count is the tell](../learnings/1786058258089-github-actions-api-can-serve-a-stale-internally-co.md)
 - [GitHub Actions API filter params fail as a PLAUSIBLE NUMBER, never an exception — run a bogus-value control on every filter](../learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md)
@@ -1169,6 +1171,7 @@ type: topic
 - [Paste instrument output, don't retype it — hand-abbreviating a label made a passing control look like a broken query, invisibly from both ends](../learnings/1786082028729-paste-instrument-output-don-t-retype-it-hand-abbre.md)
 - [Patch your own posted comment when a downstream refinement refutes it](../learnings/1783885801139-patch-your-own-posted-comment-when-a-downstream-re.md)
 - [Peel annotated tags with ^{} before comparing a tag to a submodule pin](../learnings/1785997419623-peel-annotated-tags-with-before-comparing-a-tag-to.md)
+- [Per-conformance extension methods (#13387 patch): static locals split with one conformer; adjacent pre-existing crashes](../learnings/1792835531089-per-conformance-extension-methods-13387-patch-stat.md)
 - [Perf-epic #12941 sub-tasks: label is only `perf`, and assignees close them through internal GitLab MRs](../learnings/1792155809962-perf-epic-12941-sub-tasks-label-is-only-perf-and-a.md)
 - [Perf-epic #12960 handoff sub-task was closed at the epic owner change, not delivered](../learnings/1792155909582-perf-epic-12960-handoff-sub-task-was-closed-at-the.md)
 - [perf-epic #12962 CUDA-opportunities doc task was delivered as an issue comment plus sub-issues; Issue Type changed Documentation to Performance](../learnings/1792155999140-perf-epic-12962-cuda-opportunities-doc-task-was-de.md)
@@ -1192,6 +1195,7 @@ type: topic
 - [PR-description prose fixes-N closes the wrong issue and blocks auto-close](../learnings/1782951523566-pr-description-prose-fixes-n-closes-the-wrong-issu.md)
 - [PR/status watcher tasks: use a pre-agent script guard with a state file, not a per-fire agent poll](../learnings/1780315991721-pr-status-watcher-tasks-use-a-pre-agent-script-gua.md)
 - [Pre-check a PR description against the length hook offline](../learnings/1791289373392-pre-check-a-pr-description-against-the-length-hook.md)
+- [Pre-recorded "if still 0 on Monday" defaults: Monday's 24h window is Sunday — judge the condition on the last weekday run](../learnings/1792830645446-pre-recorded-if-still-0-on-monday-defaults-monday-.md)
 - [Predict PR merge conflicts locally with `git merge-tree --write-tree` (no checkout needed)](../learnings/1791895869568-predict-pr-merge-conflicts-locally-with-git-merge-.md)
 - [Prefer an internal invariant over a second instrument — self-falsifying data is cheaper and often the only detector available](../learnings/1786119578075-prefer-an-internal-invariant-over-a-second-instrum.md)
 - [prettier --stdin-filepath does NOT resolve the same config as a real file — it reported CLEAN where the identical bytes on disk are DIRTY](../learnings/1785906689398-prettier-stdin-filepath-does-not-resolve-the-same-.md)
