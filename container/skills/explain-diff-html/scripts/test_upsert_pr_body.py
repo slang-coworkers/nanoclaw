@@ -608,11 +608,14 @@ class DescriptionLimits(Base):
         problems = U.description_problems(LONG_DESC, 1000, 2)
         # Everything after a label belongs to that section until the next label:
         # the bullets, the table rows and the trailing paragraph.
-        self.assertIn("Risk has 8 lines, max 2", problems)
+        self.assertIn("Risk has 7 lines after its label, max 2", problems)
         self.assertIn("it contains a table", problems)
         self.assertTrue(any(p.startswith("total ") and p.endswith("max 1,000") for p in problems))
         self.assertEqual(U.description_problems(OK_DESC, 1000, 2), [])
-        self.assertEqual(U.description_problems("## Summary\none\ntwo", 1000, 2), ["Summary has 3 lines, max 2"])
+        self.assertEqual(
+            U.description_problems("## Summary\none\ntwo\nthree", 1000, 2),
+            ["Summary has 3 lines after its label, max 2"],
+        )
 
     def test_long_description_gets_a_note_and_the_receipt_stays_last(self):
         self.know(BOT)
@@ -621,7 +624,8 @@ class DescriptionLimits(Base):
         self.assertEqual(code, 0)
         over = [n for n in notes(out) if "over the limits" in n]
         self.assertEqual(len(over), 1)
-        self.assertIn("Risk has 8 lines, max 2", over[0])
+        # The script reads the live defaults (3 lines, 1,500 chars) from the rules module.
+        self.assertIn("Risk has 7 lines after its label, max 3", over[0])
         self.assertTrue(self.receipt(out)["updated"])
 
     def test_compliant_description_gets_no_note(self):
