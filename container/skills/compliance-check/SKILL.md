@@ -2,7 +2,7 @@
 name: compliance-check
 license: MIT
 type: capability
-description: "Weekly read-only score of what the coworker fleet posted against the Contributor AI Standard (ten rules: PR description shape, AI disclosure, comment rationale, issue wait, docs, Simple Technical English, bot label, Discord threads). Exports the bot's Discord posts with the Discord read tool, runs scripts/compliance_check.py, and delivers the HTML report. Reads only; never posts, labels, comments or edits."
+description: "Weekly read-only score of what the coworker fleet posted against the Contributor AI Standard (ten rules: PR description shape, AI disclosure, comment rationale, newcomer issues, docs, Simple Technical English, bot label, Discord threads). Exports the bot's Discord posts with the Discord read tool, runs scripts/compliance_check.py, and delivers the HTML report. Reads only; never posts, labels, comments or edits."
 allowed-tools: Bash(python3:*), Bash(gh api:*), Bash(ls:*), Bash(cat:*), Bash(date:*), Read, Write, mcp__slang-mcp__discord_read_messages, mcp__nanoclaw__send_file, mcp__nanoclaw__send_message
 ---
 
