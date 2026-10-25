@@ -1736,7 +1736,9 @@ describe('deliverGitHubIssueOpened — the bot leaves room for people (R6)', () 
     const { insertCalls } = setup();
     const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
     expect(await deliverGitHubIssueOpened(event({ labels: ['GoodFirstBug', 'bot-ok'] }))).toBe('local');
-    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4322, labels: ['HelpWanted'], botOkLabeled: true }))).toBe('local');
+    expect(
+      await deliverGitHubIssueOpened(event({ issueNumber: 4322, labels: ['HelpWanted'], botOkLabeled: true })),
+    ).toBe('local');
     expect(insertCalls).toHaveLength(2);
   });
 });
