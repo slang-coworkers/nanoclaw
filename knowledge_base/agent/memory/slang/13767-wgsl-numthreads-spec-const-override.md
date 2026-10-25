@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13767 — WGSL `[numthreads]` with a specialization constant → `override` in `@workgroup_size`
-description: "External (albertrodriguezclo) 10-20 12:49Z feature request (E55205 on WGSL). Triaged 13:15Z (cmt 6291722864, reproduced, P2). jkwak-work GO 'let's go with A' 10-21 16:22Z (also self-assigned, WebGPU, Q4 milestone, Type→Bug). DRAFT PR #13826 (fixer sess kclwp6, pr-mapped). R1 @eda0728 REQUEST_CHANGES (V1: reused WorkgroupSize() emits WGSL const-of-override); V1 one-liner = the same isStaticConst line as draft #13816 (#13635), folded into #13826. Triage Resolution 10-21 22:59Z; PARKED on jkwak-work review + falcor-ci CI approval; Main recheck 10-24 16:00Z."
+description: "External (albertrodriguezclo) 10-20 12:49Z feature request (E55205 on WGSL). Triaged 13:15Z (cmt 6291722864, reproduced, P2). jkwak-work GO 'let's go with A' 10-21 16:22Z (also self-assigned, WebGPU, Q4 milestone, Type→Bug). DRAFT PR #13826 (fixer sess kclwp6, pr-mapped). R1 @eda0728 REQUEST_CHANGES (V1: reused WorkgroupSize() emits WGSL const-of-override); V1 one-liner = the same isStaticConst line as draft #13816 (#13635), folded into #13826. Triage Resolution 10-21 22:59Z; PARKED on jkwak-work review + falcor-ci CI approval; Main recheck 10-24 16:00Z found no change."
 tags: [slang, wgsl, spec-constant, numthreads, workgroup-size, triage]
 ---
 
@@ -33,4 +33,6 @@ tags: [slang, wgsl, spec-constant, numthreads, workgroup-size, triage]
 
 ## Next
 
-**PARKED** on jkwak-work review + ready flip, and on upstream CI (falcor-ci approval). My one-shot re-check `recheck-13767-pr13826-*` runs 10-24 16:00Z. Fixer `kclwp6` owns the PR, so route every PR event to that session.
+**PARKED** on jkwak-work review + ready flip, and on upstream CI (falcor-ci approval).
+
+- **10-24 16:00Z** Main one-shot re-check `recheck-13767-pr13826-b433`: **unchanged**. Still a draft @ a7070462d4, 0 reviews, 0 inline comments; the newest issue comment is still 6324249050 (10-21 19:07Z). CI 39688261676 is still `waiting`. I sent one line to the dashboard (thread `gh-issue-shader-slang/slang-13767`) naming the blockers and the 3 pending filing GOs. I did not ping jkwak-work. No further one-shot was scheduled, because the chain is in the supervise-issues register (`awaiting_human`), which serves as its timer. Fixer `kclwp6` owns the PR, so route every PR event to that session.

@@ -1108,6 +1108,7 @@ Migrated 2026-08-30; /okf-synthesis distills over time.
 - [project_13878_aligned_immutable_ptr_loads](project_13878_aligned_immutable_ptr_loads.md)
 - [project_13882_entry_point_representation_proposal](project_13882_entry_point_representation_proposal.md)
 - [project_13890_aarch64_slangpy_cuda_pinned_host_oom](project_13890_aarch64_slangpy_cuda_pinned_host_oom.md)
+- [project_13900_metal_top_level_descriptor_handle_layout](project_13900_metal_top_level_descriptor_handle_layout.md)
 - [project_6319_dup_sysval_pr11885](project_6319_dup_sysval_pr11885.md)
 - [project_6434_nthsetbit_intrinsic_scrub](project_6434_nthsetbit_intrinsic_scrub.md)
 - [project_6471_combined_sampler_register_space](project_6471_combined_sampler_register_space.md)

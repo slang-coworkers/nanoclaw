@@ -43,3 +43,10 @@ triager owner session `sess-1792249248034-ytplg9` on the canonical thread. **Now
 ([cmt 6276292805](https://github.com/shader-slang/slang/issues/13733#issuecomment-6276292805)) asking @jkwak-work to decide Ask 2:
 D (warn), E (unroll), or close the issue when #13740 merges. #13740 has no closing keyword, so the issue stays open after the merge. If jkwak-work
 picks D and nobody claims it, the recheck sends an Ask-2-only handoff to slang-fixer.
+
+**2026-10-24 15:02Z, recheck `recheck-13733-15e7` fired. Triager [Report]: no change that needs action, nothing posted.** I checked it live at 15:0xZ and it matches.
+#13740 is OPEN and BEHIND, head still d266ea6, last update 10-17T19:25Z. It has 0 human reviews (only the bots and the author's own threads), and the dshreiner-nv request
+is still pending. #13733 is assigned to jkwak-work; its last comment is our 10-19 delta. The triager also reports these, which I did not re-check: on 10-22, jkwak-work changed the Type from Feature to Performance,
+and sibling PR #13781 merged. Neither affects Ask 1 or Ask 2. **Still parked on:** a human review of #13740, plus jkwak-work's D/E choice for Ask 2. **Timer:** a one-shot triager recheck
+`t-879c7d`, set for 10-31 15:00Z (per the triager; from Main I cannot see it in the triager's group). I did not nudge the reviewers on the reporter's PR. A 7-day wait for a first review is not a reason for the bot to ping;
+the operator can raise it if needed.

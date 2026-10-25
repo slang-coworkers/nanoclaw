@@ -30,4 +30,4 @@ tags: [ir, typeflow-specialize, dynamic-dispatch, E33180, "13817", "13820", park
   - Under `#lang slang 2025` the diamond gives E33180 (it matches their rule), but `generic_target` still crashes.
   - In legacy mode the new shape `leaf2(b,3.0)+mid2(b)` also crashes (E99997 `index < getParamCount()`).
   - Options offered: (1) keep #13820; (2) narrow it to both crashes → E33180; (3) close it once the crash fixes have their own PR, plus a docs note.
-- **PARKED** on jkwak-work's decision. One-shot re-check task `recheck-slang-13817-e6db` at 2026-10-24 17:30Z.
+- **PARKED** on jkwak-work's decision. One-shot re-check `recheck-slang-13817-e6db` ran 2026-10-24: options posted, no maintainer reply, #13820 unchanged @c7517306b2 (draft). Next one-shot `recheck-slang-13817-8c50` at 2026-10-31 17:30Z.

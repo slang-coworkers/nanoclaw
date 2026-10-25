@@ -2,50 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-10-16T18:06:00Z",
-   "backlog": 1524661,
-   "defects": 1119,
-   "offenders": 1188,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
-   "at": "2026-10-17T00:06:40Z",
-   "backlog": 1473931,
-   "defects": 1119,
-   "offenders": 1184,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
-   "at": "2026-10-17T06:02:39Z",
-   "backlog": 1473931,
-   "defects": 1119,
-   "offenders": 1184,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
-   "at": "2026-10-17T12:00:52Z",
-   "backlog": 1473931,
-   "defects": 1119,
-   "offenders": 1184,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
    "at": "2026-10-17T18:01:34Z",
    "backlog": 1473931,
    "defects": 1119,
@@ -323,6 +279,50 @@
   {
    "at": "2026-10-24T00:01:52Z",
    "backlog": 1473431,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-24T06:01:24Z",
+   "backlog": 1473886,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-24T12:00:43Z",
+   "backlog": 1473886,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-24T18:01:34Z",
+   "backlog": 1473886,
+   "defects": 1118,
+   "offenders": 1183,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-25T00:01:16Z",
+   "backlog": 1473886,
    "defects": 1118,
    "offenders": 1183,
    "top": {

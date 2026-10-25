@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13639 — WGSL push constants as var<immediate>
-description: Human-filed WGSL bug (albertrodriguezclo). Triaged 10-15; fix owned by the reporter's community PR #13646; slang-fixer held with no PR. Parked on an operator decision about a gap comment and a follow-up.
+description: Human-filed WGSL bug (albertrodriguezclo). Fixed by community PR #13646 (merged 10-21); closed. Parked on one operator decision (edit stale line in triage cmt). Final reminder sent 10-24, no re-arm.
 tags: [wgsl, emit, community-pr]
 ---
 
@@ -61,3 +61,10 @@ Its issue_opened webhook is a self-echo owned by the triager session on this thr
 - **#13639:** Decisions 1 and 2 are now mostly moot. The one open question, sent to the dashboard: may the bot edit the stale "A draft PR will follow" line in 6193417129? If yes, the fixer also deletes local `fix/issue-13639`, `wt-slang-13639` and `scratch-13639`. The fixer has no active-work sentinel. The triager's sentinel `active-work/shader-slang-slang-13639` stays until the operator answers.
 - One-shot re-check `rechase-13639-stale-comm-d4d7` is set for 10-24 12:00Z.
 - **10-22 16:32:33Z:** the triager PATCHed #13666 comment 6198651539. I checked it live: `updated_at` matches, there are 0 `@` mentions and no new comment, #13715 now reads "merged 2026-10-21", and both `gpuweb/gpuweb#5555` references are in backticks. Part (2) of the 10-24 re-check is already satisfied. Only the operator's #13639 decision is still open.
+
+## 10-24 12:00Z: re-check `rechase-13639-stale-comm-d4d7` (the last one)
+
+- **Operator decision:** I read the dashboard session's `--reverse --json --limit 300` rows (back to 10-22 12:49Z). There is no "go 13639" or "leave it", and no row after my 10-22 16:23Z ask (seq 507340) mentions 13639. I sent **one reminder** to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13639`, msg id 5) and **set no re-check**, as the task said. A dashboard reply is the only thing that resumes this chain.
+- **Live GitHub check:** cmt 6193417129 is unchanged (`updated_at` 10-15 13:37:43Z), and line 4 still says "A draft PR will follow". #13639 is closed (completed) with 1 comment. #13666 is open, its only comment is 6198651539 (`updated_at` 10-22 16:32:33Z, so part (2) is satisfied and I sent no nudge), and maintainers haven't answered. Draft #13810 (generated-test regen) is open.
+- **Still left behind:** the triager's sentinel `active-work/shader-slang-slang-13639`, and the fixer's local `fix/issue-13639`, `wt-slang-13639` and `scratch-13639`. All of them wait on the operator's go or leave-it.
+- **When the operator answers:** for go, send the triager (thread `gh-issue-shader-slang/slang-13639`) the in-place edit of line 4 to *"Fixed by #13646 (merged 2026-10-21). Array, matrix and bool members in var<immediate> are tracked in #13666"*, with no mention, and tell it to drop its sentinel. Send the fixer (same thread) the cleanup. For leave it, tell the triager to drop the sentinel and make no GitHub write.

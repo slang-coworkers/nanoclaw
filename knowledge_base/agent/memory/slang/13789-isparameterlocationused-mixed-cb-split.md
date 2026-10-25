@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13789 — isParameterLocationUsed marks an unused resource used when its constant buffer also holds ordinary data
-description: External (fuchstraumer) 10-20. Triaged (cmt 6298782357, reproduced, P2). Root cause in type legalization (declareVars pair case), not the metadata pass. Draft PR #13811 @8921fd5 (fixer session 4lrs0a), Fix Report 10-21 16:17Z; PARKED on maintainer review + operator call on filing a pre-existing PB-in-CB binding bug. Re-check one-shot 10-24 15:00Z.
+description: External (fuchstraumer) 10-20. Triaged (cmt 6298782357, reproduced, P2). Root cause in type legalization (declareVars pair case). Draft PR #13811 @8921fd5 (fixer session 4lrs0a). PARKED on jkwak-work (assignee, Office-Tess) push-constant discussion + maintainer review + operator filing call. 10-24 15:00Z one-shot re-check found no change; no timer armed after it.
 tags: [slang, reflection, metadata, type-legalization, triage]
 ---
 
@@ -90,3 +90,11 @@ already public in triage cmt 6298782357. I asked the operator once whether the b
 My recommendation: stay silent, since the assignee has the facts.
 **10-23 18:20Z triager:** agrees with no-post. **Trigger to escalate:** if the thread moves to close as "not supported for push
 constants", the pointer to 6298782357 becomes important, so put it to the operator then. Until then, no post.
+
+**10-24 15:00Z one-shot re-check (all verified live): no change, so nothing was routed or posted.**
+- PR #13811: OPEN, draft, head `8921fd5`, `mergeStateStatus` BEHIND. 0 reviews, and no issue or inline comments since 10-21 16:20Z.
+- CI run 39632652685 is still `waiting` on the falcor gate. Checks: 4 pass, 52 skipping.
+- Issue #13789: OPEN, assigned to jkwak-work, labels `Office-Tess` and `reproduced`. The last comment is still the reporter's 6371755333 (10-23 18:18Z). jkwak-work's "later this week" discussion has produced nothing visible yet, and nobody has moved to close.
+- Dashboard `9fon2n`: I read seq 506700–507880 (10-21 13:01Z → 10-24 14:30Z) and found no operator answer on either filing (PB-in-CB, Debug tuple-case assert).
+- Fixer `4lrs0a`: the last row is 43 (10-21 16:46Z). It is holding.
+- **No timer is armed after this one-shot.** The next triggers are webhooks: a maintainer review or comment, a close, a merge, or an operator reply. The c2 rule still applies: if the thread moves to "not supported for push constants", tell the operator and recommend a pointer to 6298782357.
