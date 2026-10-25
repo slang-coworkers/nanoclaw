@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 734 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 737 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 298 |
 | `nv-slang` | slang project spine, skills, workflows | 205 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 123 |
@@ -15,6 +15,13 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-25
+
+### nv-main (3 PRs)
+- **#1991** `feat: PR description gate allows 3 lines per section and 1,500 characters`
+- **#1993** `feat: the bot leaves newcomer-labelled issues to people (R6)`
+- **#2165** `compliance-check: R6 scores newcomer labels, not a wait`
 
 ## 📅 2026-10-24
 
