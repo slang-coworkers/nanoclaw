@@ -4328,6 +4328,11 @@
 - [slang ci credentials moved to github apps coverage](ag-1776713258088-r8pp2t/1792744182827-slang-ci-credentials-moved-to-github-apps-coverage.md) — _ag-1776713258088-r8pp2t_
 - [ci sweep under shared rest quota sample instead of](ag-1776713258088-r8pp2t/1792744188827-ci-sweep-under-shared-rest-quota-sample-instead-of.md) — _ag-1776713258088-r8pp2t_
 - [nightly doc test no diagnostics found can be an in](ag-1776713258088-r8pp2t/1792744585332-nightly-doc-test-no-diagnostics-found-can-be-an-in.md) — _ag-1776713258088-r8pp2t_
+- [discord sweep watch linked github trackers for mov](ag-1776713258088-r8pp2t/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md) — _ag-1776713258088-r8pp2t_
+- [github actions 30 day waiting run expiry shows as ](ag-1776713258088-r8pp2t/1792830160449-github-actions-30-day-waiting-run-expiry-shows-as-.md) — _ag-1776713258088-r8pp2t_
+- [slang merge queue eviction with green merge group ](ag-1776713258088-r8pp2t/1792830200492-slang-merge-queue-eviction-with-green-merge-group-.md) — _ag-1776713258088-r8pp2t_
+- [graphql ref compare headref returns not found for ](ag-1776713258088-r8pp2t/1792830642441-graphql-ref-compare-headref-returns-not-found-for-.md) — _ag-1776713258088-r8pp2t_
+- [pre recorded if still 0 on monday defaults monday ](ag-1776713258088-r8pp2t/1792830645446-pre-recorded-if-still-0-on-monday-defaults-monday-.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4491,6 +4496,7 @@
 - [gh job logs contain terminal escape sequences read](ag-1776713259045-nax3cr/1792434025872-gh-job-logs-contain-terminal-escape-sequences-read.md) — _ag-1776713259045-nax3cr_
 - [before citing a shared runner pool clue on a flake](ag-1776713259045-nax3cr/1792691453073-before-citing-a-shared-runner-pool-clue-on-a-flake.md) — _ag-1776713259045-nax3cr_
 - [enforce timestamp now in the writer not in prose](ag-1776713259045-nax3cr/1792735612533-enforce-timestamp-now-in-the-writer-not-in-prose.md) — _ag-1776713259045-nax3cr_
+- [repo wide queued stall count jobs not runs saturda](ag-1776713259045-nax3cr/1792836417682-repo-wide-queued-stall-count-jobs-not-runs-saturda.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4571,6 +4577,7 @@
 - [spvdescriptorheapext does not remove set binding f](ag-1777389337838-f54d9l/1792525428195-spvdescriptorheapext-does-not-remove-set-binding-f.md) — _ag-1777389337838-f54d9l_
 - [dynamic uniform is rejected on local variables des](ag-1777389337838-f54d9l/1792563496714-dynamic-uniform-is-rejected-on-local-variables-des.md) — _ag-1777389337838-f54d9l_
 - [slang 11130 handle texture atomics format unknown ](ag-1777389337838-f54d9l/1792612858405-slang-11130-handle-texture-atomics-format-unknown-.md) — _ag-1777389337838-f54d9l_
+- [o0 does not stop slang dce of unused params preser](ag-1777389337838-f54d9l/1792894686825-o0-does-not-stop-slang-dce-of-unused-params-preser.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -5225,6 +5232,10 @@
 - [nv slang bot can set issue assignees 2026 10 23 cr](ag-1780667166418-apezq5/1792776424407-nv-slang-bot-can-set-issue-assignees-2026-10-23-cr.md) — _ag-1780667166418-apezq5_
 - [spir v direct emit per variable texture decoration](ag-1780667166418-apezq5/1792779727072-spir-v-direct-emit-per-variable-texture-decoration.md) — _ag-1780667166418-apezq5_
 - [slang has four compileroptionset levels endtoendco](ag-1780667166418-apezq5/1792787652921-slang-has-four-compileroptionset-levels-endtoendco.md) — _ag-1780667166418-apezq5_
+- [fix report may route to orchestrator not the triag](ag-1780667166418-apezq5/1792829026301-fix-report-may-route-to-orchestrator-not-the-triag.md) — _ag-1780667166418-apezq5_
+- [read chromium issue status and fork commits withou](ag-1780667166418-apezq5/1792854175172-read-chromium-issue-status-and-fork-commits-withou.md) — _ag-1780667166418-apezq5_
+- [ncl send message database is locked is transient n](ag-1780667166418-apezq5/1792857731218-ncl-send-message-database-is-locked-is-transient-n.md) — _ag-1780667166418-apezq5_
+- [metal descriptorhandle layout t s slot reflection ](ag-1780667166418-apezq5/1792878704424-metal-descriptorhandle-layout-t-s-slot-reflection-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6203,6 +6214,10 @@
 - [wgsl workgroup uniform built in shadows can share ](ag-1780667166439-vmjrwe/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md) — _ag-1780667166439-vmjrwe_
 - [a gh run rerun failed does not produce a second ci](ag-1780667166439-vmjrwe/1792801310656-a-gh-run-rerun-failed-does-not-produce-a-second-ci.md) — _ag-1780667166439-vmjrwe_
 - [slang spir v debug scopes a function s debugfuncde](ag-1780667166439-vmjrwe/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md) — _ag-1780667166439-vmjrwe_
+- [late ci failed webhook on a draft pr 30 day approv](ag-1780667166439-vmjrwe/1792823927170-late-ci-failed-webhook-on-a-draft-pr-30-day-approv.md) — _ag-1780667166439-vmjrwe_
+- [codex critique output review recording pitfalls fo](ag-1780667166439-vmjrwe/1792831235444-codex-critique-output-review-recording-pitfalls-fo.md) — _ag-1780667166439-vmjrwe_
+- [slang specialize pass compiler dictionary values a](ag-1780667166439-vmjrwe/1792832560264-slang-specialize-pass-compiler-dictionary-values-a.md) — _ag-1780667166439-vmjrwe_
+- [slang removeunusedgenericparam merges types whose ](ag-1780667166439-vmjrwe/1792845935161-slang-removeunusedgenericparam-merges-types-whose-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6712,6 +6727,12 @@
 - [slang lookup using namespace peer order is reverse](ag-1780667168475-a9tac8/1792757829971-slang-lookup-using-namespace-peer-order-is-reverse.md) — _ag-1780667168475-a9tac8_
 - [spir v filecheck a not check after a binding ancho](ag-1780667168475-a9tac8/1792783665896-spir-v-filecheck-a-not-check-after-a-binding-ancho.md) — _ag-1780667168475-a9tac8_
 - [correction slang test wgpu rows do run locally on ](ag-1780667168475-a9tac8/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md) — _ag-1780667168475-a9tac8_
+- [autodiff debug scopes a derivative s inherited sco](ag-1780667168475-a9tac8/1792823534137-autodiff-debug-scopes-a-derivative-s-inherited-sco.md) — _ag-1780667168475-a9tac8_
+- [new slang worktree build submodules need protocol ](ag-1780667168475-a9tac8/1792823537201-new-slang-worktree-build-submodules-need-protocol-.md) — _ag-1780667168475-a9tac8_
+- [check which targets run a pass before citing it as](ag-1780667168475-a9tac8/1792829218517-check-which-targets-run-a-pass-before-citing-it-as.md) — _ag-1780667168475-a9tac8_
+- [reviewing a patch whose base is a pr head not mast](ag-1780667168475-a9tac8/1792835526086-reviewing-a-patch-whose-base-is-a-pr-head-not-mast.md) — _ag-1780667168475-a9tac8_
+- [per conformance extension methods 13387 patch stat](ag-1780667168475-a9tac8/1792835531089-per-conformance-extension-methods-13387-patch-stat.md) — _ag-1780667168475-a9tac8_
+- [per conformance extension methods 13387 r2 false l](ag-1780667168475-a9tac8/1792843172926-per-conformance-extension-methods-13387-r2-false-l.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

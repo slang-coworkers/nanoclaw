@@ -39,3 +39,17 @@ still unmerged drafts, unless it says otherwise.
   CONFLICTING/DIRTY again and was last updated 10-21 09:23Z. Draft #13872 (#13841, `DebugVarStorage` = 910, v38) and draft #13564 (#13555,
   `noTargetCase` = 910, v38) claim the same id. Master is at 909 / v37. #13564's PR body now records the merge order. Rule: whichever merges later
   takes the next free id; don't renumber early. The 10-24 re-chase should re-read master's max id and version before dispatching a merge.
+- **10-24 09:00Z** — **CONFLICTING/DIRTY** (collision 4), head `3a41ab51a0` 7 ahead / 34 behind master `52e29ab43b`. Merge-tree conflicts:
+  `slang-ir.h` (#13406 `0bd71cd709`, merged 10-22, min=max=**37**, equal to the PR's max) and `slang-ir-entry-point-uniforms.cpp` (#13706
+  `340047a3ce`, WGSL std140 `isWGPUTarget` branch ahead of the scalar branch the PR guards with `!isMetalTarget`). This was the first real code
+  conflict; the earlier ones were numbers only. Master's max id is still 909, so stable-names auto-merges and 910 stays. #13564 / #13872 / #13386 / #13300 are all
+  still drafts. Triager msg 9 (pinned): merge origin/master, 910 / min 37 / max 38, WGPU branch first then the Metal guard, keep the gate, run the
+  #13706 WGSL test + unit tests. **Correction:** workflow_dispatch run 39575875464 on `3a41ab51a0` has been `waiting` (unapproved) since 10-21 09:18Z,
+  so "no dispatch run" was wrong. Dashboard msg 11. Next: `rechase-13425-merge-veri-9b68` 10-24 13:00Z, then `rechase-13425-maintainer-1a96` 10-27 09:00Z.
+- **10-24 13:00Z** — **collision 4 resolved, verified.** New head `4b7541ad55` is a real merge commit (parents `3a41ab51a0` + master
+  `52e29ab43b`, pushed 09:05Z, no rewrite); MERGEABLE (BLOCKED = draft), 8 ahead / 0 behind, merge-tree clean; master has not moved. Compared
+  directly against master: id 910 (master max 909), min 37 / max 38 (master min=max 37), `IRTypeLayoutRuleName::MetalConstantBuffer = 8` (master
+  ends `LLVM` = 7). The #13706 `isWGPUTarget` branch is first, then the `!isMetalTarget` guard on the scalar branch. Gate present. Comment
+  6078307404 edited 09:23Z for the new head (fixer-reported: 15/15 PR tests vk+cuda, 656/656 unit, #13706 WGSL test 3/3). Dispatch run
+  39575875464 was **cancelled** 09:17Z and replaced by 40081357382 on `4b7541ad55`, `waiting` (unapproved). #13564 / #13872 / #13386 / #13300 are still
+  open drafts with unchanged heads. 0 human activity. No nudge or dashboard post was needed. The 10-27 `rechase-13425-maintainer-1a96` prompt now has the verified numbers.

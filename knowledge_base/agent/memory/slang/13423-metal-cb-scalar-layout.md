@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13423 — Metal ConstantBuffer ignores ScalarDataLayout / -fvk-use-scalar-layout
-description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (3 so far)
+description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (4 so far, all resolved)
 ---
 
 # slang#13423 (external reporter mellinoe, 2026-10-03)
@@ -48,6 +48,7 @@ OUTPUT approve. The fixer merges master (never force-pushes — not authorized);
 | 1 | 10-09 | #13445 `e2e217dd24` | id 907, min=max 34 | 908 / max 35 → head `465250e5ac` |
 | 2 | 10-15 | #13116 `c538debef6` | id 908, max 35 | 909 / max 36 → head `c994d094e1` |
 | 3 | 10-21 | #13078 `9e17a9e850` | id 909 (`glslPatch`), max 36 | 910 / max 37 → head `3a41ab51a0` (verified 10-21 13:00Z) |
+| 4 | 10-24 | #13406 `0bd71cd709` (+ #13706 code conflict in entry-point-uniforms.cpp) | min=max 37 | 910 / min 37 / max 38 → head `4b7541ad55` (verified 10-24 13:00Z) |
 
 Rival claimants on the same numbers: #13564 (draft) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
 [[slang/13555-ignore-capabilities-caseless-target-switch.md]]. Whoever merges second renumbers; never renumber early.
@@ -60,12 +61,11 @@ Rival claimants on the same numbers: #13564 (draft) and #13406 (jhelferty-nv, mi
    PR's "Version 36 adds MetalConstantBufferLayout" comment rode along — silently reusing master's version. Always compare the PR's
    version and ids against master's directly; `merge-tree` conflict output alone is not enough.
 
-## Current state (10-21 13:00Z, verified)
-Head `3a41ab51a0` (merge of master `25fc396601`, pushed 10-21 09:05Z), draft, **MERGEABLE**/BEHIND, `merge-tree` clean vs master
-`965284957c`. The diff vs master shows id 910 and max 37 (min 34), and master is still at 909 / 36, so no collision. The gate is present (#13386 unmerged).
-The head contains #13078, #13715 and #13724. PR comment 6078307404 was edited 10-21 09:23Z for this head: L40S build, PR tests 15/15 (mtl/metallib skipped),
-unit 650/650, master-adjacent 19/19, suites 2572/2572. No message to the triager was needed. 0 human reviews or comments; assignee/review request is
-kaizhangNV although jkwak-work owns #13423/#13386 since 10-05. Next: `rechase-13425-maintainer-e658` 10-24 09:00Z (prompt updated with this head).
+## Current state (10-24 13:00Z)
+Head `4b7541ad55` (merge of master `52e29ab43b`), draft, **MERGEABLE**, 0 behind. Id 910 / min 37 / max 38 vs master 909 / 37 / 37. Gate kept (#13386
+unmerged). #13564 and #13872 (drafts) also claim 910/v38; whichever merges second moves. Comment 6078307404 is current. Dispatch run 40081357382
+(replaces cancelled 39575875464) is `waiting` for approval. 0 human reviews or comments; the assignee/review request is still kaizhangNV.
+Next: `rechase-13425-maintainer-1a96` 10-27 09:00Z.
 
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human

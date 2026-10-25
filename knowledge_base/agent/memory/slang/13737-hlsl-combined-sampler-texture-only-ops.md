@@ -68,7 +68,7 @@ description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR
 - Follow-up 3 may be weaker after R1: the trampoline compiles, so E30027 may only be a limit of member-call
   inference inside a generic extension, not a general bug. I told the operator on 10-18 02:2xZ.
 - **Parked on humans:** falcor-ci approval, the ready flip (operator), filing the 5 follow-ups (operator), and
-  maintainer review. One-shot re-check `rechase-13737-pr13741-4d52` on 10-24 08:00Z (`-a71d` ran 10-21).
+  maintainer review. One-shot re-check `rechase-13737-pr13741-0272` on 10-31 08:00Z (`-4d52` ran 10-24, `-a71d` ran 10-21).
 - **Resumes on:** #13741 webhooks (CI, review, merge), the operator's answers, or the one-shot.
 - 10-21 08:0xZ re-check (`-a71d`): **Buriola closed #13737 themselves on 10-18 15:12Z** (COMPLETED, no
   comment; GitHub links #13741 as the closer, but nothing merged). #10522 is still open. #13741: draft,
@@ -77,3 +77,11 @@ description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR
   three questions (dashboard read 10-16 23:26Z→10-21 08:01Z). No master-merge ask, because the operator said
   10-20 that bot CI dispatches are deadlocked. Restated the decisions once on the dashboard (msg id 9).
   The next re-check sends no repeat status line if nothing changes.
+- 10-24 08:0xZ re-check (`-4d52`): **no change.** #13741 draft, `ce23b34`, MERGEABLE, 0 reviews, no human
+  comments; #13737 closed, #10522 open, no new comments on either. CI 39107456646 still `waiting` on
+  `falcor-ci` (updated 10-18 07:23Z). Master +55. No operator answer on any question (dashboard read
+  10-21 00:34Z→10-24 07:30Z, no row names #13737/#13741/#10522). Bot CI dispatch is still deadlocked
+  (dashboard 10-21 19:00Z and 10-24 04:01Z), so no master-merge ask. No dashboard line sent.
+  ⚠️ The `falcor-ci` approval expires 30 days after the run was queued, about **11-17**. After that the
+  run fails with 0 build steps (as #13201 and #13127 did). Per the shared learning, an expiry alone is no
+  reason to merge master or re-dispatch.

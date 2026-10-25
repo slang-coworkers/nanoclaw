@@ -1,14 +1,18 @@
 ---
 type: chain
 title: slang#12627 — CUDA/PTX component-masked RWTexture2D store emits a subscript on CUsurfObject
-description: Fix is in draft PR #13363 (surface read-modify-write + warning, codes E56020-E56022). 10-21 the operator hold was lifted as over-gating; the fixer is merging master (plain merge, no force-push) and will post one #12627 comment re-asking jkwak-work (a)/(b) and the warning scope. Follow-ups #13361/#13362/#13364/#13365.
-tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-maintainer]
+description: Fix is in draft PR #13363 (surface read-modify-write + warning, codes E56020-E56022), head 6c110229f7 since 10-21. PARKED on jkwak-work's (a)/(b) + warning-scope answer (re-asked 10-21 in issuecomment-6311568042); no more scheduled re-chases, the supervisor tick watches it. Follow-ups #13361/#13362/#13364/#13365.
+tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, parked, awaiting-maintainer]
 ---
 
-# slang#12627 — CUDA masked RWTexture store (draft PR #13363, held on jkwak-work)
+# slang#12627 — CUDA masked RWTexture store (draft PR #13363, parked on jkwak-work)
 
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
+
+## 2026-10-24 re-chase (`rechase-12627-post-merge-a776`): verified, PARKED on jkwak-work
+
+Checked live 08:0xZ. #13363 head `6c110229f7` (parent `cebafb34a5`, a two-parent merge of `6f4e01b249` + master `25fc396601`): a fast-forward, no force-push. Still a draft, MERGEABLE/BEHIND (ahead 12, behind 34), 0 reviews. The #12627 comment [6311568042](https://github.com/shader-slang/slang/issues/12627#issuecomment-6311568042) matches the brief: it reports the update and the L40S results, says the vk test never ran on a GPU and only its check changed, re-asks (a)/(b) and the warning scope, and has no @-mention. Fixer rows 81 and 85 are its last; it waits on the webhook. No human comment on #12627, #13363 or #13361/#13362/#13364/#13365 since 10-21 08:00Z, and no operator note on the dashboard (rows 506566–507812). **Parked on jkwak-work only.** I don't re-ping them on GitHub before 10-28 08:28Z. No more re-chases are scheduled: I recorded the parked disposition in `supervisor-state.json` and replaced tick 302's stale "slang-12627 undraft/reconcile 13363" operator decision. `gh pr ready` waits for jkwak-work's answer, and it is operator-gated then.
 
 ## 2026-10-21 re-chase (`rechase-12627-plain-merg-44de`): hold lifted, no operator gate
 
@@ -22,7 +26,7 @@ Checked live 08:0xZ. The operator hasn't answered the 10-15 ask (dashboard rows 
 
 #13537 was fully reverted by #13712 (kaizhangNV, merged 2026-10-16 21:01:48Z, `8c81b8bdaf`). `_tryGetImageFormat` is gone from master; `slang-intrinsic-expand.cpp` is back to `_findImageFormatDecoration` (4 sites). #13363 @`6f4e01b249` is now `MERGEABLE`/`BEHIND` (diverged: ahead 10, behind 13). So operator ask (1) shrinks to a plain merge of master, with no reroute. The prompt of `rechase-12627-13537-conf-14f1` carries this context.
 
-## State (checked live 2026-10-15 08:05Z, re-checked 10-18 and 10-21 08:0xZ; still no human reply on #12627/#13363 since 10-01; the operator hold was lifted 10-21, see above)
+## State (checked live 2026-10-15 08:05Z, re-checked 10-18, 10-21 and 10-24 08:0xZ; no human reply on #12627/#13363 since 10-01. Hold lifted 10-21; PARKED on jkwak-work from 10-24, see above)
 
 - **2026-10-15 update:** #13563 merged at 02:16Z (`788be3144e`). On the dashboard Main's 02:12Z go-ahead, the fixer reconciled #13363
   (merge `0baf65e696` + reconcile `6f4e01b249`, pushed 02:33Z, no force-push). #13116 had taken E56006–E56019, so this PR's codes are now
@@ -50,7 +54,7 @@ Checked live 08:0xZ. The operator hasn't answered the 10-15 ask (dashboard rows 
   or (b) make it a compile-time error on CUDA. The warning-scope question
   ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all RMW targets.
   Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 in.
-- **Re-chase:** `rechase-12627-post-merge-a776` (2026-10-24 08:00Z). It verifies the fixer's push and #12627 comment, then watches for jkwak-work's reply. Previous: `rechase-12627-plain-merg-44de` (10-21, hold lifted), `rechase-12627-13537-conf-14f1` (10-18, 6th ask sent). Operator asks were sent 10-07, 10-09, 10-12 and 10-15 02:1xZ; none
+- **Re-chase:** none scheduled. Parked on jkwak-work since 10-24; the `/supervise-issues` tick watches it via `supervisor-state.json` (`disposition`, `noGitHubRepingBefore` 10-28 08:28Z). A jkwak-work reply arrives as a webhook to the fixer. Previous: `rechase-12627-post-merge-a776` (10-24, verified, parked), `rechase-12627-plain-merg-44de` (10-21, hold lifted), `rechase-12627-13537-conf-14f1` (10-18, 6th ask sent). Operator asks were sent 10-07, 10-09, 10-12 and 10-15 02:1xZ; none
   answered. The 02:1xZ reconcile half went ahead on the dashboard Main's own go-ahead. The **5th ask (10-15 08:1xZ)**: may the fixer (1) merge
   master again for #13537 and (2) post one comment on #12627 that reports the update and re-asks (a)/(b) and the scope question? I don't post it myself.
 - **Interacts with #13563 (new 10-10).** minco3 filed #13554: a formatted `RWTexture2DArray` store is silently dropped on CUDA.
