@@ -3,8 +3,9 @@
 The limits are stated once, in container/skills/explain-diff-html/SKILL.md § The PR
 description, and implemented once, here: `check_body` is what the gate refuses on
 and what explain-diff-html's upsert_pr_body.py imports for its NOTE lines. The env
-knobs PR_DESCRIPTION_MAX_SECTION_LINES (default 2) and PR_DESCRIPTION_MAX_CHARS
-(default 1000) tune them.
+knobs PR_DESCRIPTION_MAX_SECTION_LINES (default 3, counted after the label line) and
+PR_DESCRIPTION_MAX_CHARS (default 1500) tune them. `Fixes #N` lines, the one-line
+`AI assistance:` disclosure and a final `<sub>` disclaimer are trailers and are not counted.
 
 Reads the PreToolUse hook JSON on stdin. Finds every `gh pr create`, `gh pr edit`
 and `gh api …/pulls[/N]` in the Bash command that sets a description, resolves
@@ -52,6 +53,8 @@ CLOSING_RE = re.compile(
     re.IGNORECASE,
 )
 DISCLAIMER_RE = re.compile(r"^\s*<sub>.*</sub>\s*$", re.IGNORECASE)
+# The one-line AI assistance disclosure (slang CONTRIBUTING.md): a trailer, like a closing line.
+AI_LINE_RE = re.compile(r"^\s*(\*\*|__)?\s*AI assistance\s*(\*\*|__)?\s*[:.]\s*(None|Editorial|Substantive)\b", re.IGNORECASE)
 BOLD_LABEL_RE = re.compile(r"^\s*(\*\*|__)\s*(?P<label>[^*_\n]{1,80}?)\s*[.:]?\s*\1[.:]?(\s|$)")
 HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(?P<label>.+?)\s*#*\s*$")
 # A table's delimiter row, with or without outer pipes: `|---|:--:|` or `--- | ---`.
@@ -80,18 +83,18 @@ def env_int(name: str, default: int) -> int:
 
 
 def limits() -> tuple[int, int]:
-    return env_int("PR_DESCRIPTION_MAX_CHARS", 1000), env_int("PR_DESCRIPTION_MAX_SECTION_LINES", 2)
+    return env_int("PR_DESCRIPTION_MAX_CHARS", 1500), env_int("PR_DESCRIPTION_MAX_SECTION_LINES", 3)
 
 
 # ── the rules (the one implementation; upsert_pr_body.py imports this module) ──
 
 def counted_lines(body: str) -> list[str]:
-    """The body's lines minus a final `<sub>` disclaimer and exact closing-keyword lines."""
+    """The body's lines minus a final `<sub>` disclaimer, exact closing-keyword lines and the AI assistance line."""
     lines = body.replace("\r\n", "\n").split("\n")
     last = max((i for i, ln in enumerate(lines) if ln.strip()), default=-1)
     if last >= 0 and DISCLAIMER_RE.match(lines[last]):
         lines = lines[:last] + lines[last + 1:]
-    return [ln for ln in lines if not CLOSING_RE.match(ln)]
+    return [ln for ln in lines if not (CLOSING_RE.match(ln) or AI_LINE_RE.match(ln))]
 
 
 def has_table(lines: list[str]) -> bool:
@@ -114,12 +117,12 @@ def check_body(body: str, max_chars: int, max_lines: int) -> list[str]:
             continue
         m = BOLD_LABEL_RE.match(ln) or HEADING_RE.match(ln)
         if m:
-            sections.append([m.group("label").strip().rstrip(".:"), 1])
+            sections.append([m.group("label").strip().rstrip(".:"), 0])
         elif sections:
             sections[-1][1] += 1
     for label, n in sections:
         if n > max_lines:
-            problems.append(f"{label} has {n} lines, max {max_lines}")
+            problems.append(f"{label} has {n} lines after its label, max {max_lines}")
     if has_table(lines):
         problems.append("it contains a table")
     total = len("\n".join(lines).strip())
