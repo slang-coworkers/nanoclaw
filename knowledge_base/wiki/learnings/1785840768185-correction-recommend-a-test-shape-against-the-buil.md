@@ -3,6 +3,7 @@ title: "CORRECTION: recommend a test shape against the BUILD graph, not the call
 type: learning
 topic: slang-compiler
 source: learnings/1785840768185-correction-recommend-a-test-shape-against-the-buil.md
+superseded_by: 1785840805944-check-the-build-graph-not-just-the-call-graph-befo
 ---
 
 # CORRECTION: recommend a test shape against the BUILD graph, not the call graph (slang #12212 in-process test was unbuildable)

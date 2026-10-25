@@ -3,7 +3,7 @@ title: "A Verified Negative Has a Shelf Life"
 type: concept
 group: general-misc
 tags: [verified-negative, shelf-life, re-probe, unknown, workaround, carried-items, discord, gh-outage]
-source_count: 8
+source_count: 9
 ---
 
 # A Verified Negative Has a Shelf Life
@@ -13,7 +13,7 @@ source_count: 8
 - A blocked verification call means UNKNOWN, not unchanged.
 - No recurrence on a parked branch is unexercised, not fixed.
 - Re-test a claimed capability gap ("gh is down", "cannot read forums") at the top of every run before carrying it forward.
-- Before repeating "promised X, not delivered", search the other system of record (GitHub for a Discord promise) for X.
+- Before repeating "promised X, not delivered", search the other system of record (GitHub for a Discord promise) for X. Batch-read the latest comments of every GitHub tracker linked to a carried Discord item: the owner's reply often lands there, not in the thread.
 - Prove an empty window with a positive control: a read that returns nothing is a finding only after a known-busy read on the same path returns something.
 - Match the environment when verifying a workaround claim.
 
@@ -23,6 +23,8 @@ source_count: 8
 
 
 A negative carried in one channel goes stale when the fact lands in another. The maintainer Discord sweep repeated "a maintainer's AI-content plan is not published" for 7+ days, while the plan had been on GitHub since 10-13 as umbrella shader-slang/slang#13591 (sub-issues #13592–#13602, draft PRs #13584–#13589) and the same seat's GitHub sweep had already logged it. Nobody linked it back into the Discord thread, so reading Discord alone showed "no plan". Before carrying a "promised X, not delivered" item, run `org:shader-slang author:<person> created:>=<promise date>` and check the same day's GitHub scratch report. A "GitHub App not installed on repo R" claim can be checked the same way from Actions logs: `actions/create-github-app-token` with `owner`+`repositories` calls `GET /repos/{o}/{r}/installation`, so a passing token step proves the App is installed there ([Discord carried items: cross-check against GitHub before repeating "not done"](../learnings/1792225849116-discord-carried-items-cross-check-against-github-b.md)).
+
+The same split hides *replies*, not just deliveries. On the 2026-10-24 sweep, the only movement on a 7.6-day-unanswered #slang-dev question (a user asking a maintainer about a slangd config file) was on GitHub: the assignee of slang-vscode-extension#78 had commented there, and the Discord thread showed nothing new. So every GitHub tracker linked to a carried Discord item goes into the daily GraphQL batch with `comments(last:3){nodes{author{login} createdAt body}}` (one call, cost 1), and its `updatedAt` is compared with yesterday's; otherwise the sweep reports "no change" while the owner has answered elsewhere. A cheap way to carry yesterday's `file:line` citations forward: download today's raw file at the new master SHA and `cmp` it with yesterday's saved copy; identical bytes mean every citation still holds ([Discord sweep: watch linked GitHub trackers for movement](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md)).
 
 ## A blocked verification call means UNKNOWN, not unchanged
 
@@ -44,7 +46,7 @@ Test a claimed capability gap before carrying it into a second run. A monitoring
 
 The same applies to "gh is down": `gh` returned `app_not_connected` (401) on 10-17 and worked again (HTTP 200, 6000/h) on 10-18 with no action from anyone, so run `gh api repos/<o>/<r> -i` on every run instead of inheriting the outage. An empty Discord window can be proved cheaply. `GET /guilds/{id}/channels` returns every channel's `last_message_id` (28 in the Slang guild, unmonitored ones such as #showcase included), and `/guilds/{id}/threads/active` does the same for threads; comparing both against the window-start snowflake `((ms − 1420070400000) << 22)` answers "anything in the window?" in 2 calls. On 2026-10-18 (a weekend) both showed nothing, and a 5-message tail of a known channel and thread confirmed the reads worked, so the empty `after=` result was real and not a read failure ([Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)).
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [a verified negative has a shelf life — stamp it and re-probe](../learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md) — a verified negative has a shelf life — stamp it and re-probe
 - [a logged RECOVERED for a flaky gateway is a past observation, not current state](../learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md) — a logged RECOVERED for a flaky gateway is a past observation, not current state
 - [a blocked verification call means UNKNOWN, not unchanged](../learnings/1785781402300-a-blocked-verification-call-means-unknown-not-unch.md) — a blocked verification call means UNKNOWN, not unchanged
@@ -53,3 +55,4 @@ The same applies to "gh is down": `gh` returned `app_not_connected` (401) on 10-
 - [test a claimed capability gap before carrying it into a second run](../learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md) — test a claimed capability gap before carrying it into a second run
 - [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md) — `last_message_id` vs window snowflake in 2 calls, with a positive control; gh 401 on 10-17 cleared by itself on 10-18
 - [Discord carried items: cross-check against GitHub before repeating "not done"](../learnings/1792225849116-discord-carried-items-cross-check-against-github-b.md) — a 7-day "plan not published" was #13591 on GitHub; a passing create-github-app-token step proves the App is installed
+- [Discord sweep: watch linked GitHub trackers for movement on Discord-carried questions](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md) — the reply to a 7.6-day Discord question was on slang-vscode-extension#78; `comments(last:3)` in the daily batch; `cmp` raw file to carry line cites

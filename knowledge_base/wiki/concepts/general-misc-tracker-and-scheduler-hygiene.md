@@ -3,7 +3,7 @@ title: "Tracker and Scheduler Hygiene"
 type: concept
 group: general-misc
 tags: [trackers, scheduler, recurrence, nudge-scanner, watch-list, maintainer-reports, cron]
-source_count: 28
+source_count: 29
 ---
 
 # Tracker and Scheduler Hygiene
@@ -24,6 +24,7 @@ source_count: 28
 - **Enforce hard safety carve-outs (do-not-rerun / do-not-touch) in the deterministic script gate**, not memory/prompt. Default sweep tasks to `new_session:true`; keep cross-fire state in files.
 - **Durable scheduling is `ncl tasks create`** (`--recurrence '<cron>'` or `--process-after <ISO8601>`, optional `--script` guard); `mcp__nanoclaw__schedule_task` is unwired here, and a `Monitor`/`run_in_background` watch dies with its session.
 - **A gated task's prompt is conditional on the payload**, never asserting the gate's outcome. Test the gate with a scratch copy that injects a synthetic match.
+- **A 24h report window lags the run day by one:** the Monday run covers Sunday. Judge a "still 0 on Monday" default on the last weekday window (the Saturday run) and act on Monday.
 - **A `wakeAgent:false` gate consumes a ONE-SHOT task (ack'd `completed`), it does not defer it.** Never gate a one-shot on "wait until X"; wake it with the status in `data`, or use a recurring gated task the agent cancels.
 - Bi-weekly cadence: a weekly cron guard that skips off-weeks.
 - **A "skip now, the next fire will catch it" branch must survive everything that runs between fires.** Otherwise poll more often, dedupe per key per day, treat "overdue" as a finding, and never read a fetch failure as "in progress".
@@ -71,6 +72,8 @@ A long-running sweep can act on **stale context**, so a safety carve-out (do-not
 
 A guarded task's prompt is static text delivered on every fire, so "the gate returned wakeAgent=true, i.e. it found X" reads as true on every tick and misleads a parent reading the task rows. Write it as a condition on the payload ("act only if `scriptOutput.data.matches` is non-empty, otherwise do nothing"), and verify the gate with a scratch copy that injects one synthetic match: it should wake once, then dedup on the next tick, touching no real state. Weekend merge-queue gaps freeze per-job denominators, so quote an expected date, not a tick count, for when a threshold gate trips ([Scheduled-task prompts must not assert the gate outcome](../learnings/1791148386903-scheduled-task-prompts-must-not-assert-the-gate-ou.md)).
 
+Weekends also decide pre-recorded report defaults. The maintainer daily report covers the 24h ending 08:10Z on the run day, so the Saturday run covers Friday, the Sunday run covers Saturday, and the **Monday run covers Sunday**. A default written as "if merge throughput is 0/5 again on the Mon 10-26 run, stop the daily voice and make one ask to the rotation primary" would be decided by a weekend window, where 0/5 is near-automatic and says nothing. When a default is keyed to a Monday run, judge its condition on the last weekday window (the Saturday run) and record "condition met" there; the weekend runs carry the line silently, and the action executes on Monday. Applied 2026-10-24: the fifth weekday 0/5 met the Monday default ([Pre-recorded "if still 0 on Monday" defaults: Monday's window is Sunday](../learnings/1792830645446-pre-recorded-if-still-0-on-monday-defaults-monday-.md)).
+
 **A `wakeAgent:false` gate consumes a one-shot task; it does not defer it.** In the agent-runner, `applyPreTaskScripts` → `markScriptSkipped` writes `processing_ack.status = 'completed'` for a deliberate skip (`sqliteMarkScriptSkipped` in `container/agent-runner/src/mailbox/sqlite/operations.ts`); only `script-skip:error` re-arms. A recurring series resumes on its next tick, but a one-shot (`--process-after`, no `--recurrence`) is gone, with nothing going red. Example: `rerun-13378-ci-after-gh-9912` (2026-10-05) was gated on githubstatus Actions == `operational` during a `major_outage`, which would have silently ended the #13378 rerun chain. Either always print `wakeAgent:true` with the status in `data` and let the agent defer (the fix applied), or use a recurring gated task the agent cancels after acting. Gate on whether work is progressing: githubstatus stayed `degraded_performance` after runners were already clearing queued jobs ([A one-shot task gated by wakeAgent=false is consumed silently](../learnings/1791236533158-a-one-shot-task-gated-by-a-wakeagent-false-script-.md)).
 
 Express every-other-week recurrence with a cron guard that fires weekly but **skips the off-weeks**, so the agent wakes only on the alternating cadence ([Bi-weekly scheduling via cron guard](../learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md)).
@@ -89,7 +92,7 @@ When the gate was tightened to require `check-ci=SUCCESS` for `resolved`, the fi
 
 **Correction (supersedes that audit's #13451 finding).** The audit flagged #13451 ("payload checkCi=success", head with 0 check-runs) as unsupported. Wrong: the orchestrator had read 69 contexts with check-ci SUCCESS live; later the head had 0 check-runs and 0 workflow runs with unchanged `updatedAt`, so the runs were removed. Before calling a past green verdict a misclassification, look for an earlier live read of the same head. A head that had check-ci and lost it with no push is `ci-vanished` (in `sweeplib.LABELS`), not `no-ci-never-ran`: never-ran needs a maintainer to trigger CI, vanished needs someone to find who deleted the runs. The verdict stays `no-ci` either way ([A PR whose check-ci disappears with no push is 'ci-vanished'](../learnings/1791807339120-correction-a-pr-whose-check-ci-disappears-with-no-.md)).
 
-**Source learnings (28):**
+**Source learnings (29):**
 - [Watch-list size checks: wc -c counts bytes](../learnings/1792574037781-watch-list-size-checks-wc-c-counts-bytes-emoji-ros.md) — emoji roster ~5% over chars; dated H2s → sweep bullets
 - [d4.py: hardcoded slangpy list misroutes new numbers](../learnings/1792572844379-watch-list-d4-py-hardcoded-slangpy-list-misroutes-.md) — new slangpy numbers queried against slang silently; route by number range
 - [Recurring trackers must carry disposition + reasoning](../learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md) — disposition line, "do NOT re-flag" section; human de-escalation overrides re-derived state
@@ -118,3 +121,4 @@ When the gate was tightened to require `check-ci=SUCCESS` for `resolved`, the fi
 - [Correction: a PR whose check-ci disappears with no push is 'ci-vanished'](../learnings/1791807339120-correction-a-pr-whose-check-ci-disappears-with-no-.md) — find an earlier live read first; verdict stays `no-ci`
 - [Skip-now-catch-later guard branches must survive what runs between checks](../learnings/1791855993192-skip-now-catch-later-guard-branches-must-survive-w.md) — 00:00Z overwrite hid 4 failed nightlies; hourly + dedupe + overdue
 - [Gap catch-up runs must state-check every watch-list number](../learnings/1792139950368-gap-catch-up-runs-must-state-check-every-watch-lis.md) — batched `issueOrPullRequest` aliases over roster + parked; 6 missed closures
+- [Pre-recorded "if still 0 on Monday" defaults: Monday's 24h window is Sunday](../learnings/1792830645446-pre-recorded-if-still-0-on-monday-defaults-monday-.md) — judge the condition on the Saturday (last weekday) window, carry silently over the weekend, act Monday

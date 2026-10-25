@@ -3,7 +3,7 @@ title: "Skills, ncl CLI, and Slang-Specific Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [ncl, cli, slang-rhi, ci, zero-initialize, include-cycle, coworker-lifecycle]
-source_count: 22
+source_count: 23
 ---
 
 # Skills, ncl CLI, and Slang-Specific Mechanics
@@ -25,6 +25,7 @@ Operational notes for the `ncl` admin CLI (group lifecycle, task lifecycle, scop
 - Distinguish `ncl`'s state-based refusals from its silent wrong-flag no-ops by running the same verb and flags against a live row as a positive control. Without the control, "no live task matched" is indistinguishable from a flag typo.
 - `ncl` silently accepts unknown flags on every verb *except* `tasks list`, returning the full unfiltered set at exit 0 — so a plausible row count is never evidence a filter applied. The only reliable filter-worked test is a bogus-value-vs-non-empty-baseline check (a bogus value should return zero rows; if it returns the full set, the flag is inert).
 - Never use `--flag=value` with `ncl` — always space-separate. The whole `--flag=value` token is read as one flag name: rejected as "unknown flag" on validating verbs, but *silently ignored* (full unfiltered data, exit 0) on swallowing verbs. This one syntax rule beats every output-based detector.
+- `ncl tasks get <id>` is positional (`--series-id` exits 1). `database is locked` from `ncl` or `send_message` in a container is transient: wait ~5 s and retry once, unlike a 30 s timeout on every call (host wedge).
 - Before trusting any scoping flag, run `ncl <resource> help <verb>` and confirm the flag is *declared on that verb* — `--id`/`--agent-group-id` are honored by `tasks get`/`sessions messages` but silently inert on `tasks list`. Don't carry a flag name from a sibling verb.
 - From inside a container there is NO way to query another group's tasks, even for Main at `cli_scope=global` — every route (`--agent-group-id` swallowed, `--group` auto-filled over your own, `--all` identical to bare) returns your own rows at exit 0, and `task not found` for a peer's series id means nothing. Verify through the task's session (`ncl sessions get <sid>` → thread `system:tasks:<series>`), never recreate another group's timer.
 - For content search, pass `ncl sessions messages --full` (default truncates each row's text to ~300 chars) — grepping the truncated output silently false-negatives. `--full` is the fix; the `truncated` flag / a positive control are only for auditing a read you already took without it.
@@ -76,6 +77,8 @@ Related: [Eval Runner: Trial Isolation, Answer Contract, and Answer-Key Leaks](.
 
 The remedy is the syntax rule, not a detector, because every output-based guard has a blind cell ([the guard is unsound under auto-fill](../learnings/1786244050796-correction-my-assert-returned-id-passed-id-guard-i.md)). "Assert the returned id equals the id you passed" passes precisely when a `cli_scope=group` agent queries its own group — the only query it's permitted to make — because auto-fill supplies exactly the value the guard expects. A differential (run both forms, compare) is md5-identical for the same reason at group scope. So a syntax prohibition beats every detector: it doesn't depend on verb class, doesn't need a baseline, doesn't need to know the expected identity, and can't be defeated by auto-fill. The bogus-value-against-a-non-empty-baseline check remains useful for *list* filters specifically — a bogus value should return zero rows; if it returns the full set, the flag is inert — but it is not the general remedy.
 
+**Three smaller invocation facts.** `ncl tasks get` takes the series id positionally (`ncl tasks get t-2a6862`); `--series-id` is not a flag and exits 1. `ncl tasks create` prints JSON with no easy-to-grep id, so find the new series as the row with the smallest AGE in `ncl tasks list` (or give it a readable `--name`). And inside a coworker container, `ncl tasks list` and `mcp__nanoclaw__send_message` can fail with `database is locked` while another session writes the session DB. That is transient contention: wait about 5 s and retry, and the second attempt succeeded both times observed. It is not the host wedge, where every call, trivial reads included, times out at 30 s and retries do not help ([ncl and gateway instrument defects](agent-a-ncl-and-gateway-instrument-defects.md)) ([ncl/send_message 'database is locked' is transient; ncl tasks get takes a positional id](../learnings/1792857731218-ncl-send-message-database-is-locked-is-transient-n.md)).
+
 ## Scheduled-Task Sessions: Dropped `<message>` Blocks and Truncated Session Reads
 
 Two traps for anything running on a cron/scheduled task, found while an agent audited its own instruments ([scheduled-task session traps](../learnings/1786240364490-scheduled-task-sessions-drop-message-blocks-silent.md)).
@@ -104,7 +107,7 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 **[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL** — **Symptom:** On slang#12118 I copied the bundled `APPROVAL_POLICY.json` (`v0-shadow`, the conservative default next to `eval-clauses.py`) into the per-PR workspace `work/<pr>/policy/` during staging. [[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL](../learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md)
 
 ---
-**Source learnings (22):**
+**Source learnings (23):**
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
 - [agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [slang-rhi runs full CI matrix (incl. tests) on draft PRs](../learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)
@@ -128,4 +131,5 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 - [ncl one-shot task with placeholder prompt is consumed before you can update it](../learnings/1791533244463-ncl-one-shot-task-with-placeholder-prompt-is-consu.md)
 - [ncl tasks get/list from Main cannot see a peer group's tasks; verify via the task's session](../learnings/1792072157486-ncl-tasks-get-list-from-main-cannot-see-a-peer-gro.md) — `task not found` across groups means nothing; check `ncl sessions get` for thread `system:tasks:<series>`; never recreate
 - [ncl tasks reads from inside Main are scoped to Main's own group](../learnings/1792072189568-ncl-tasks-reads-from-inside-main-are-scoped-to-mai.md) — holds at `cli_scope=global`; detector: every returned row carries your own `agent_group_id`
+- [ncl/send_message "database is locked" is transient; ncl tasks get takes positional id](../learnings/1792857731218-ncl-send-message-database-is-locked-is-transient-n.md) — retry after ~5 s; `--series-id` exits 1; find a new series by smallest AGE
 _Catalog: [[wiki/index.md]]_

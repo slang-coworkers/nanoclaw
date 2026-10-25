@@ -3,6 +3,7 @@ title: "Skip /explain-diff-html when it would overwrite a repo-mandated, OUTPUT_
 type: learning
 topic: review-process
 source: learnings/1790592963343-skip-explain-diff-html-when-it-would-overwrite-a-r.md
+superseded_by: 1792831235444-codex-critique-output-review-recording-pitfalls-fo
 ---
 
 # Skip /explain-diff-html when it would overwrite a repo-mandated, OUTPUT_REVIEW-approved PR body
