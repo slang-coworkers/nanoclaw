@@ -28,6 +28,8 @@ const envConfig = readEnvFile([
   'INTERNAL_REGISTER_SECRET',
   'INSTANCE_FORWARD_TARGETS',
   'ROUTE_ISSUES_TO',
+  'ISSUE_NEWCOMER_LABELS',
+  'ISSUE_BOT_OK_LABEL',
   'ROUTE_READY_PRS_TO',
   'APPROVER_CI_GATE',
   'APPROVAL_LEDGER_WRITERS',
@@ -333,6 +335,23 @@ export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
 //
 // On lego (or any non-canonical instance), leave unset.
 export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_ISSUES_TO || '').trim();
+
+// The bot leaves room for people on new issues (contributor standard R6).
+// An issue carrying one of ISSUE_NEWCOMER_LABELS belongs to people and is never
+// delivered to the orchestrator, unless a maintainer adds ISSUE_BOT_OK_LABEL,
+// which hands it to the bot. Every other issue is delivered at once. The label
+// lists are comma-separated and case-insensitive.
+export const ISSUE_NEWCOMER_LABELS = (
+  process.env.ISSUE_NEWCOMER_LABELS ||
+  envConfig.ISSUE_NEWCOMER_LABELS ||
+  'GoodFirstBug,HelpWanted,no-bot'
+)
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+export const ISSUE_BOT_OK_LABEL = (process.env.ISSUE_BOT_OK_LABEL || envConfig.ISSUE_BOT_OK_LABEL || 'bot-ok')
+  .trim()
+  .toLowerCase();
 
 // Dev-route PR `ready_for_review` (draft→ready) events to a peer instance,
 // which hands them to a PR-approver coworker. Same trust-channel mechanism as
