@@ -3,7 +3,7 @@
 
 The Contributor AI Standard (shader-slang/slang#13591) holds people and the bot to the
 same ten rules about what they post: short four-section PR descriptions, an AI
-disclosure line, comments that say why, a wait before the bot takes a new human issue,
+disclosure line, comments that say why, newcomer-labelled issues left to people,
 Simple Technical English, a `bot` label, one Discord thread instead of numbered parts.
 The fleet posts hundreds of items a week under one GitHub App login, and nothing reports
 whether those items follow the rules. This tool scores every item the bot posted in a
@@ -98,10 +98,9 @@ DEFAULT_REPOS = ("shader-slang/slang", "shader-slang/slangpy", "shader-slang/sla
 DEFAULT_SINCE_DAYS = 30
 
 # Thresholds, each overridable by environment variable. The defaults encode the
-# decisions taken for the standard: R6 waits four days (nanoclaw ISSUE_BOT_WAIT_DAYS);
-# the R1 caps live in the vendored lint's own PR_TEXT_* variables.
+# decisions taken for the standard; the R1 caps live in the vendored lint's own
+# PR_TEXT_* variables.
 THRESHOLDS = {
-    "wait_days": ("COMPLIANCE_ISSUE_WAIT_DAYS", 4),
     "ste_max_per_100_words": ("COMPLIANCE_STE_MAX_PER_100_WORDS", 2),
     "discord_thread_window_min": ("COMPLIANCE_DISCORD_THREAD_WINDOW_MIN", 10),
     "judge_max_items": ("COMPLIANCE_JUDGE_MAX_ITEMS", 40),
@@ -109,8 +108,9 @@ THRESHOLDS = {
 }
 
 BOT_LABEL = "bot"
-# Labels that exempt an issue from the R6 wait (a maintainer invited the bot) and labels
-# that reserve an issue for people (the bot must not touch it at all). Compared
+# R6 is a label rule. A newcomer label reserves an issue for people and the bot must not
+# touch it; `bot-ok` is a maintainer handing such an issue to the bot after all, so it
+# wins over a newcomer label, exactly as the host's webhook gate decides. Compared
 # case-insensitively because GitHub labels are.
 BOT_OK_LABELS = {"bot-ok"}
 NEWCOMER_LABELS = {"goodfirstbug", "helpwanted", "no-bot"}
@@ -119,11 +119,6 @@ NEWCOMER_LABELS = {"goodfirstbug", "helpwanted", "no-bot"}
 # it is stripped before the STE checker runs.
 DISCLAIMER_RE = re.compile(r"^\s*<sub>.*?</sub>\s*$", re.IGNORECASE | re.MULTILINE | re.DOTALL)
 HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
-CODE_FENCE_RE = re.compile(r"```")
-CRASH_RE = re.compile(
-    r"\b(segfaults?|segmentation fault|crash(es|ed)?|assert(ion)?( failure| failed)?|internal (compiler )?error|abort(ed|s)?)\b",
-    re.IGNORECASE,
-)
 
 # One rule per check. `kind` says how the verdict is reached: a mechanical rule is
 # computed here, a judge rule asks the configured Judge, an external rule reads a
@@ -132,7 +127,7 @@ RULES = [
     {"rule": "R1", "check": "pr-description", "title": "PR description: four sections, three lines each, under 1,500 characters", "kind": "mechanical"},
     {"rule": "R2/R3", "check": "comment-rationale", "title": "Code comments state contracts and reasons, not narration or history", "kind": "judge"},
     {"rule": "R5", "check": "ai-disclosure", "title": "One-line AI assistance disclosure in the PR", "kind": "mechanical"},
-    {"rule": "R6", "check": "issue-wait", "title": "Bot waits on new human issues and skips newcomer issues", "kind": "mechanical"},
+    {"rule": "R6", "check": "issue-newcomer", "title": "Bot leaves newcomer-labelled issues to people", "kind": "mechanical"},
     {"rule": "R7", "check": "docs-updated", "title": "Documentation updated when behaviour changed", "kind": "judge"},
     {"rule": "R8", "check": "simple-english", "title": "Simple Technical English in posted text", "kind": "mechanical"},
     {"rule": "R9", "check": "bot-label", "title": "Bot-opened items carry the `bot` label", "kind": "mechanical"},
@@ -592,22 +587,14 @@ def check_bot_label(rep, items):
     rep.conclude("bot-label", results)
 
 
-def is_crash_with_repro(body):
-    """The standard exempts an issue that is a crash with a reproducer from the wait.
-    A crash word plus a fenced code block is the same approximation the host's webhook
-    gate uses, so this check agrees with what the bot was allowed to do."""
-    text = body or ""
-    return bool(CRASH_RE.search(text)) and len(CODE_FENCE_RE.findall(text)) >= 2
-
-
-def check_issue_wait(rep, items, since, bot_login=BOT_LOGIN):
+def check_issue_newcomer(rep, items, since, bot_login=BOT_LOGIN):
     """R6 over human-filed issues created in the window that the bot commented on.
-    One item per issue: a newcomer label means the bot should not have commented at
-    all; `bot-ok` or a crash with a reproducer exempts the wait; otherwise the first bot
-    comment must come at least `wait_days` after the issue was opened. Issues opened
-    before the window are skipped because their first bot comment may predate the feed
-    this run read, and a wrong "first" would be a wrong verdict."""
-    wait = threshold("wait_days")
+    One item per issue. The bot may comment on any issue except one a newcomer label
+    reserves for people, unless a maintainer also labelled it `bot-ok`, which hands the
+    issue to the bot and wins. Labels are read at run time, so an issue labelled after the
+    bot commented still fails; that is the intended reading, because the bot would have
+    had to leave once the label appeared. Issues opened before the window are skipped
+    because their first bot comment may predate the feed this run read."""
     by_issue = {}
     for it in items:
         if it["kind"] != "issue_comment" or not it.get("parent"):
@@ -627,24 +614,17 @@ def check_issue_wait(rep, items, since, bot_login=BOT_LOGIN):
     for (_repo, _n), it in sorted(by_issue.items()):
         parent = it["parent"]
         labels = {str(lb.get("name", "")).lower() for lb in parent.get("labels") or []}
-        created = parse_ts(parent["created_at"])
-        first = parse_ts(it["created_at"])
-        hours = (first - created).total_seconds() / 3600.0
         issue_item = dict(it, kind="issue", url=parent.get("html_url") or it["url"], title=parent.get("title") or it["title"])
         issue_item["id"] = f"{it['repo'].split('/')[-1]}#{it['number']}"
         issue_item["coworker"] = it["coworker"]
         newcomer = sorted(labels & NEWCOMER_LABELS)
-        if newcomer:
-            results.append(result(issue_item, FAIL, f"commented on an issue labelled {', '.join(newcomer)} (reserved for people)", first_comment=it["url"], hours=round(hours, 1)))
-        elif labels & BOT_OK_LABELS:
-            results.append(result(issue_item, PASS, "exempt: labelled bot-ok", first_comment=it["url"], hours=round(hours, 1)))
-        elif is_crash_with_repro(parent.get("body")):
-            results.append(result(issue_item, PASS, "exempt: crash with a reproducer", first_comment=it["url"], hours=round(hours, 1)))
-        elif hours >= wait * 24:
-            results.append(result(issue_item, PASS, f"first bot comment after {hours / 24:.1f} days", first_comment=it["url"], hours=round(hours, 1)))
+        if labels & BOT_OK_LABELS:
+            results.append(result(issue_item, PASS, "labelled bot-ok: a maintainer handed the issue to the bot", first_comment=it["url"]))
+        elif newcomer:
+            results.append(result(issue_item, FAIL, f"commented on an issue labelled {', '.join(newcomer)} (reserved for people)", first_comment=it["url"]))
         else:
-            results.append(result(issue_item, FAIL, f"first bot comment after {hours:.1f} h; the wait is {wait} days", first_comment=it["url"], hours=round(hours, 1)))
-    rep.conclude("issue-wait", results)
+            results.append(result(issue_item, PASS, "no newcomer label; the bot may comment", first_comment=it["url"]))
+    rep.conclude("issue-newcomer", results)
 
 
 def ste_allowance(words, per_100):
@@ -1071,7 +1051,7 @@ def run_all(rep, gh, repos, since, judge, discord_export=None, bot_login=BOT_LOG
     guarded("comment-rationale", lambda: check_judge_rules(rep, items, judge))
     if lint is not None:
         guarded("ai-disclosure", lambda: check_ai_disclosure(rep, items, lint))
-    guarded("issue-wait", lambda: check_issue_wait(rep, items, since, bot_login))
+    guarded("issue-newcomer", lambda: check_issue_newcomer(rep, items, since, bot_login))
     if ste is not None:
         guarded("simple-english", lambda: check_simple_english(rep, items, ste))
     guarded("bot-label", lambda: check_bot_label(rep, items))

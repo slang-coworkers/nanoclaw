@@ -34,6 +34,8 @@ import {
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
+  ISSUE_BOT_OK_LABEL,
+  ISSUE_NEWCOMER_LABELS,
   ROUTE_ISSUES_TO,
   ROUTE_READY_PRS_TO,
 } from './config.js';
@@ -119,6 +121,8 @@ export interface GitHubIssueOpenedEvent {
   eventType?: string;
   /** GitHub delivery id (idempotency tag). */
   deliveryId?: string;
+  /** True when this delivery is an `issues.labeled` event that added the bot-ok label, handing a newcomer-labeled issue to the bot. */
+  botOkLabeled?: boolean;
 }
 
 /**
@@ -156,6 +160,7 @@ export type DeliveryOutcome =
   | 'local'
   | 'forwarded'
   | 'dropped'
+  | 'skipped'
   | 'no-session'
   | 'no-admin-group'
   | 'parked'
@@ -553,6 +558,22 @@ export async function deliverGitHubMention(event: GitHubMentionEvent): Promise<D
 }
 
 /**
+ * Decide whether the bot may see a new issue (contributor standard R6: the bot
+ * leaves room for people).
+ *
+ * - `skip`: the issue carries a newcomer label (GoodFirstBug, HelpWanted, no-bot
+ *   by default). People own it; the bot does not see it.
+ * - `now`: everything else, and any issue a maintainer labels bot-ok, which
+ *   hands a newcomer-labeled issue to the bot after all.
+ */
+export function classifyIssueForBot(event: GitHubIssueOpenedEvent): 'skip' | 'now' {
+  const labels = (event.labels ?? []).map((l) => l.toLowerCase());
+  if (event.botOkLabeled || labels.includes(ISSUE_BOT_OK_LABEL)) return 'now';
+  if (labels.some((l) => (ISSUE_NEWCOMER_LABELS ?? []).includes(l))) return 'skip';
+  return 'now';
+}
+
+/**
  * Deliver a GitHub `issues` event (action=opened) to the orchestrator —
  * or forward to a peer instance when ROUTE_ISSUES_TO is set.
  *
@@ -598,6 +619,16 @@ export async function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): P
       haveBody: Boolean(event.rawBody),
     });
     return 'dropped';
+  }
+
+  const verdict = classifyIssueForBot(event);
+  if (verdict === 'skip') {
+    log.info('github-webhook: issue carries a newcomer label — left for people', {
+      repo: event.repo,
+      issue: event.issueNumber,
+      labels: event.labels,
+    });
+    return 'skipped';
   }
 
   const eventContent = JSON.stringify({
