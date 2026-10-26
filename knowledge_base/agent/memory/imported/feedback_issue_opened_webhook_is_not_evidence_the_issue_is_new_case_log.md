@@ -97,3 +97,10 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   the timeline. It splits deferred work out of their fork PR kaizhangNV/slang#24 and names its own
   regression coverage. Their fix PR for #13893 is #13898 (approver paused, queued by `r81qhi`).
   Held, no dispatch, no post (session `2i7hu3`).
+- **2026-10-25, slang-rhi#941** (albertrodriguezclo, CONTRIBUTOR; Metal `[SpecializationConstant]`
+  pipeline needs `newFunctionWithName:constantValues:`): the reporter opened their own non-draft fix
+  PR slang-rhi#942 (fork branch `fix/metal-function-constants`) 4 s after filing, and jhelferty-nv
+  assigned jkiviluoto-nv 24 s later. Reporter ≠ assignee, so rung 4's "maintainer-owned plan" did
+  not literally match, but a human report with its own fix PR and a human assignee is human-owned
+  work, and R6 (#13596) holds the bot off human issues for 4 days. Held, no dispatch, no post
+  (Main session `339i39`).

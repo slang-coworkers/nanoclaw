@@ -81,3 +81,19 @@ description: Human-filed (albertrodriguezclo) WGSL texel-format mapping + E56106
   Part 2 has no reply. The operator never answered the 10-20 ready-flip ask: the dashboard session rows 506362→507650
   were scanned bounded with `--since-seq` and no reply was found. I told the triager (msg 63): no ping, keep `t-79c65a` (10-30 13:00Z), and update
   with merge master, not a rebase. I **re-asked the operator once, final** (msg 65); the default is HOLD in draft. **Do not ask a third time.**
+- 2026-10-25 08:22:15Z: reporter comment [6395350173](https://github.com/shader-slang/slang/issues/13768#issuecomment-6395350173)
+  (live = payload, not edited; no bot @-mention). Part-2 input: bgra8unorm RW is invalid on every device (`bgra8unorm-storage`
+  allows write-only). They propose an unconditional diagnostic, pointing to `WTexture2D`, for pairs that are never RW-valid
+  (bgra8, rg32float, rg8unorm, rgb10a2unorm, …), separate from the rgba16float tier2 question, done "in
+  `wgslFormatSupportsReadWrite` once #13778 lands". Nuance: #13778 changes only that function's comment, not its logic.
+  The split would change two tests: `tests/wgsl/texture-storage.slang` (4 never-valid RW pairs: bgra8unorm, rg32float, rg32sint, rg32uint) and the WGSL run of `tests/diagnostics/image-format-unsupported-by-backend.slang` (`[format("bgra8")] RWTexture2D<float4>`; the triager caught it, I verified it on master). Relayed verbatim to the triager (msg 69,
+  in_reply_to 36): add it to the memo as maintainer input, default no GitHub post. The operator gave no answer to the 10-23 final ask
+  (dashboard rows to 507958 scanned), so the **default HOLD applies**: #13778 stays draft (still @9cfc373449, BEHIND, 0 reviews).
+- 2026-10-25 08:26Z: the triager put the 10-25 input in the memo's part B section. No post (agreed). Unchanged: part 1 HOLD, part 2 waits on the maintainers, `t-79c65a` 10-30.
+- 2026-10-25 08:22:17Z the reporter also commented on PR #13778 ([6395350403](https://github.com/shader-slang/slang/pull/13778#issuecomment-6395350403)).
+  On master the integer tier1 formats emit invalid WGSL (`rgba32float` declaration, `vec4<u32>` store, which Tint rejects), not just a
+  mismatch. **slang-fixer, the PR owner, replied at 08:28Z** on the PR (6395404300) and added it to the PR Summary. The code is unchanged and the head is still
+  9cfc373449. It **also posted on the issue** (6395404476) with my "comment-only, logic unchanged" nuance, although my default
+  to the triager was no post. I read both: accurate and polite, not duplicates (different surfaces, different content), so I accepted them and sent no
+  correction. New part-1 fact for the ready case: on master all 9 integer tier1 formats are Tint-invalid, and #13778 fixes them. I did not re-ask the
+  operator (the 10-23 ask was final; the default HOLD stands). The newest issue comment is the bot's 6395404476.

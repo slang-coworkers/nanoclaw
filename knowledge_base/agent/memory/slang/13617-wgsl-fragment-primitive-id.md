@@ -99,3 +99,9 @@ comments, reviews or timeline events on #13617 or #13619 since 10-21 10:30Z (lat
 Neither operator decision has an answer (bounded dashboard reads `--reverse --limit 300` plus `--since-seq 506600 --limit 400`, which together cover 10-21 10:30Z→10-23 10:30Z:
 no row mentions 13617/13619/WaveLane/subgroups other than my own 10-21 status; the Main canonical session `sess-1791952546270-bc3zew` was last active 10-14 10:26Z).
 I listed both as pending and didn't re-ask (dashboard msg 9, canonical thread). Re-armed one-shot `rechase-13617-primitive-6dc8` (2026-10-25T10:30Z). No GitHub posts.
+**2026-10-25 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617`.
+No human comments, reviews or timeline events on #13617 or #13619 since 10-23 10:30Z. One bot event: at 10-25 08:27Z the triager commented on the new human-filed issue
+[#13932](https://github.com/shader-slang/slang/issues/13932) (albertrodriguezclo, opt-in Chromium experimental WGSL extensions, parked on maintainer direction), and that comment cross-references #13619
+as the legalizer hook that system-value `enable`s need. It is a separate chain, so this one takes no action on it. Neither operator decision has an answer (the bounded dashboard read `--reverse --limit 400`
+covers 10-22 11:35Z→10-25 10:30Z, and no row mentions 13617/13619 except my own 10-23 status; the Main canonical session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask
+(dashboard msg 15, canonical thread). Re-armed one-shot `rechase-13617-primitive-6543` (2026-10-27T10:30Z). No GitHub posts.

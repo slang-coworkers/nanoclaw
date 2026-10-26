@@ -43,13 +43,22 @@ never touched this question. The fixer is still HELD and the author has not been
 
 **2026-10-18 22:00Z re-chase: still silent.** Checked live: the issue is open and still assigned to
 jhelferty-nv. The only comment is still the bot triage, and no PR references #13536. The issue text
-has not changed since 10-08 22:04Z. The author touched only metadata: on 10-14 she set the issue type to
-Language Maturity, and on 10-15 she removed the Office-Tess label. Neither answers the HLSL question.
-On 10-16 she posted "@nv-slang-bot stand down" on the sibling PR #13406. That instruction applies to
+has not changed since 10-08 22:04Z. The author touched only metadata: on 10-14 they set the issue type to
+Language Maturity, and on 10-15 they removed the Office-Tess label. Neither answers the HLSL question.
+On 10-16 they posted "@nv-slang-bot stand down" on the sibling PR #13406. That instruction applies to
 #13406 and not to this issue, so it does not hand this chain off. **Before the fixer is released here,
-check that she has not extended the stand-down to this issue.** The fixer is still HELD and the author
+check that they have not extended the stand-down to this issue.** The fixer is still HELD and the author
 has not been re-asked. A one-line note went to the dashboard. Re-armed as
 `rechase-13536-hlsl-choic-2675`, firing 2026-10-25T22:00Z.
+
+**2026-10-25 22:00Z re-chase: still silent.** Checked live: the issue is open and still assigned to
+jhelferty-nv, with no labels. The only comment is still the bot triage. The only timeline event since
+10-18 is a subscribe by Cyphall on 10-20. No PR references #13536: a full-text search finds only #13406
+and an unrelated #11418. The author's merged PRs #13728, #13756 and #13839 (10-17 to 10-22) are
+unrelated. Sibling PR #13406 (step 1) **merged 2026-10-22**, which unblocks this step 2. The
+stand-down on #13406 was not extended here. The fixer is still HELD and the author has not been
+re-asked. A one-line note went to the dashboard. Re-armed as `rechase-13536-hlsl-choic-02ca`, firing
+2026-11-01T22:00Z.
 
 **Resume:**
 - The author answers and asks for a bot PR → the triager releases the fixer (Approach A plus the

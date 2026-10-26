@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13828 — memory retained after unloading Slang DLLs with mimalloc
-description: "Triaged 10-21 23:48Z (slang-triager atznhk, P2). slang-fixer 4stbs2: DRAFT PR #13867 @2c13036b3 (pr: non-breaking, Fixes #13828), DllMain hooks set mi_option_destroy_on_exit on FreeLibrary, MSVC/clang-cl only. R1 APPROVE_WITH_NITS applied. Fix Report 10-22 16:01Z (partial: MinGW excluded). PARKED on pdeayton-nv's MinGW scope answer (cmt 6345115524) + Windows CI run 39807820023."
+description: "Triaged 10-21 23:48Z (slang-triager atznhk, P2). slang-fixer 4stbs2: DRAFT PR #13867 @2c13036b3 (pr: non-breaking, Fixes #13828), DllMain hooks set mi_option_destroy_on_exit on FreeLibrary, MSVC/clang-cl only. R1 APPROVE_WITH_NITS applied. Fix Report 10-22 16:01Z (partial: MinGW excluded). Windows CI gate CLEARED 10-25 (verified). PARKED only on pdeayton-nv's MinGW scope answer (cmt 6345115524); triager re-check t-cf6059 10-29T16:00Z."
 tags: [slang, mimalloc, windows, dll, memory]
 ---
 
@@ -24,3 +24,11 @@ forwarded the Fix Report to it for the `[Triage Resolution]`.
 for the new test.
 **10-22 16:05Z:** slang-reviewer approved the nit-check at 2c13036b38 (APPROVE, 0 bugs, 0 gaps). Still open: the Windows test `libraryUnloadReleasesMemory` must show PASSED in test-windows-release-cl-x86_64-gpu (run 39807820023, queued), and pdeayton-nv's MinGW scope answer.
 **10-22 16:18Z, triage resolved (partial).** The triager edited cmt 6345115524 in place and dropped the @-mention. The original 15:54Z post had already notified pdeayton-nv. One-shot re-check `i13828-recheck` is set for 10-25 16:00Z (triager-owned).
+**10-25 16:03Z, re-check (triager `[Report]`).** Gate 2 cleared. I checked the job logs myself through
+`gh api --allow-escape-sequences repos/.../actions/jobs/<id>/logs`, because `gh run view --log` refuses while the run
+waits on `falcor-build-approval-gate`. All 4 Windows test-slang jobs (x64 release/debug, aarch64 release/debug) print
+`passed test: 'slang-unit-test-tool/libraryUnloadReleasesMemory.internal'`. Gate 1 is still open: pdeayton-nv has not
+replied, and the last comment on the issue is still the bot's 6345115524 (PATCHed in place 16:02Z, so no new
+notification). #13879 (mimalloc v2.5.2) is open and not a draft. If it merges first, #13867 needs master merged in
+(merge, not rebase) and the unload test re-run. The triager's next one-shot is `t-cf6059` at 10-29T16:00Z; I did not
+verify it, because it is a peer task. The dashboard was already told about the park on 10-22, so nothing new went there.

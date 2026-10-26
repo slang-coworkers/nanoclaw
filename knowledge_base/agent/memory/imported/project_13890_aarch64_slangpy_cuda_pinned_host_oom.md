@@ -1,5 +1,6 @@
 ---
 type: project
+name: project-13890-aarch64-slangpy-cuda-pinned-host-oom
 description: "slang#13890→RE-FILED as #13891 (#13890 deleted, HTTP 410). (jkwak-work, 10-23, CI Stability, assigned jkwak by jhelferty-nv): nightly GitLab test-slangpy-linux-aarch64 CUDA_ERROR_OUT_OF_MEMORY from cuMemAllocHost (slang-rhi cuda-heap.cpp:395) in test_load_texture_from_bitmap r8_sint/r8_snorm. DELETED 15:31Z, re-filed as #13891; triaged 15:42Z: root cause = slang-rhi CUDA heap teardown leak, fixed by slang-rhi PR 923 (57018e3), slangpy pin d825f483 lacks it."
 ---
 

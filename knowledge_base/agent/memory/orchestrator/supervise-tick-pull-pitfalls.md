@@ -21,12 +21,15 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
   repo (`payload3r.json`), re-scan.
 
+- **`ncl sessions messages` truncates every row to 300 chars unless `--full` is passed** — hold reasons and operator asks get cut mid-sentence. `tick305/msgs.py` passes `--full`. Any `ncl` call made while `pull.sh` is running fails with `database is locked`; do GitHub-only checks (auto-merge sweep, closed-since) during the pull instead (tick 305).
+
 ## State
 
 - **scan's `delta=updated` overcounts** when a cache refresh moves stamps backwards (tick 269: 59 raw → 20 real). Filter
   real updates by activity after the previous pull's start (`real-why.json`). It can also be entirely real (tick 276).
 - **Merge state key-by-key:** scan's `state` drops closed chains, so after writing it back, re-add every pre-tick key
   the scan omitted (tick 284: 9 closed keys would have been lost).
+- **Not every state value is a dict:** `gh-issue-shader-slang/slang-12432_note` is a bare string, so a key-by-key merge that does `dict(old).update(new)` crashes. Merge dicts, assign anything else verbatim (tick 306).
 - **New-chain diff must union `_archived`.** State has ~830 top-level keys plus ~1,260 in `_archived`; diffing threads
   against top-level keys alone reports ~1,250 false "new" chains. Sub-thread sessions (`…-<n>/<suffix>`) need a
   `subthread:` journal entry by hand — scan never creates one (tick 288).
