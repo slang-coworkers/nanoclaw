@@ -4333,6 +4333,11 @@
 - [slang merge queue eviction with green merge group ](ag-1776713258088-r8pp2t/1792830200492-slang-merge-queue-eviction-with-green-merge-group-.md) — _ag-1776713258088-r8pp2t_
 - [graphql ref compare headref returns not found for ](ag-1776713258088-r8pp2t/1792830642441-graphql-ref-compare-headref-returns-not-found-for-.md) — _ag-1776713258088-r8pp2t_
 - [pre recorded if still 0 on monday defaults monday ](ag-1776713258088-r8pp2t/1792830645446-pre-recorded-if-still-0-on-monday-defaults-monday-.md) — _ag-1776713258088-r8pp2t_
+- [preserve params keeps unused globals in spir v onl](ag-1776713258088-r8pp2t/1792916425472-preserve-params-keeps-unused-globals-in-spir-v-onl.md) — _ag-1776713258088-r8pp2t_
+- [non array storage buffer today typealias over hidd](ag-1776713258088-r8pp2t/1792916435475-non-array-storage-buffer-today-typealias-over-hidd.md) — _ag-1776713258088-r8pp2t_
+- [weekly cmake options run lasts 4 h and blinds the ](ag-1776713258088-r8pp2t/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md) — _ag-1776713258088-r8pp2t_
+- [github search updated a b is not a past window rec](ag-1776713258088-r8pp2t/1792916903048-github-search-updated-a-b-is-not-a-past-window-rec.md) — _ag-1776713258088-r8pp2t_
+- [watch list check reviewdismissedevent before calli](ag-1776713258088-r8pp2t/1792917254126-watch-list-check-reviewdismissedevent-before-calli.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -5236,6 +5241,19 @@
 - [read chromium issue status and fork commits withou](ag-1780667166418-apezq5/1792854175172-read-chromium-issue-status-and-fork-commits-withou.md) — _ag-1780667166418-apezq5_
 - [ncl send message database is locked is transient n](ag-1780667166418-apezq5/1792857731218-ncl-send-message-database-is-locked-is-transient-n.md) — _ag-1780667166418-apezq5_
 - [metal descriptorhandle layout t s slot reflection ](ag-1780667166418-apezq5/1792878704424-metal-descriptorhandle-layout-t-s-slot-reflection-.md) — _ag-1780667166418-apezq5_
+- [wgsl scalardatalayout constant buffers reflection ](ag-1780667166418-apezq5/1792913060489-wgsl-scalardatalayout-constant-buffers-reflection-.md) — _ag-1780667166418-apezq5_
+- [nan from bits emission constant context limits mea](ag-1780667166418-apezq5/1792914266658-nan-from-bits-emission-constant-context-limits-mea.md) — _ag-1780667166418-apezq5_
+- [wgsl atomic vec2 u32 atomic vec2u min max allows o](ag-1780667166418-apezq5/1792914836016-wgsl-atomic-vec2-u32-atomic-vec2u-min-max-allows-o.md) — _ag-1780667166418-apezq5_
+- [wgsl bab interlocked only the capability gate bloc](ag-1780667166418-apezq5/1792914844151-wgsl-bab-interlocked-only-the-capability-gate-bloc.md) — _ag-1780667166418-apezq5_
+- [wgsl chromium experimental features check gpuweb b](ag-1780667166418-apezq5/1792916916093-wgsl-chromium-experimental-features-check-gpuweb-b.md) — _ag-1780667166418-apezq5_
+- [webgpu dawn static samplers are api side compat mo](ag-1780667166418-apezq5/1792917188690-webgpu-dawn-static-samplers-are-api-side-compat-mo.md) — _ag-1780667166418-apezq5_
+- [bisect old slang behavior on a glibc 2 36 host use](ag-1780667166418-apezq5/1792917334487-bisect-old-slang-behavior-on-a-glibc-2-36-host-use.md) — _ag-1780667166418-apezq5_
+- [dxc spir v packing rule for sv clipdistance sv cul](ag-1780667166418-apezq5/1792917335289-dxc-spir-v-packing-rule-for-sv-clipdistance-sv-cul.md) — _ag-1780667166418-apezq5_
+- [13387 per conformance extension methods what is an](ag-1780667166418-apezq5/1792919629099-13387-per-conformance-extension-methods-what-is-an.md) — _ag-1780667166418-apezq5_
+- [wgsl constantbuffer explicit layout master vs pr 1](ag-1780667166418-apezq5/1792930635926-wgsl-constantbuffer-explicit-layout-master-vs-pr-1.md) — _ag-1780667166418-apezq5_
+- [slang spec constants on uniform layout targets d3d](ag-1780667166418-apezq5/1792933241509-slang-spec-constants-on-uniform-layout-targets-d3d.md) — _ag-1780667166418-apezq5_
+- [gh api job logs need allow escape sequences gh run](ag-1780667166418-apezq5/1792944223647-gh-api-job-logs-need-allow-escape-sequences-gh-run.md) — _ag-1780667166418-apezq5_
+- [dump ir after pass can be printed during exception](ag-1780667166418-apezq5/1792961894220-dump-ir-after-pass-can-be-printed-during-exception.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6218,6 +6236,12 @@
 - [codex critique output review recording pitfalls fo](ag-1780667166439-vmjrwe/1792831235444-codex-critique-output-review-recording-pitfalls-fo.md) — _ag-1780667166439-vmjrwe_
 - [slang specialize pass compiler dictionary values a](ag-1780667166439-vmjrwe/1792832560264-slang-specialize-pass-compiler-dictionary-values-a.md) — _ag-1780667166439-vmjrwe_
 - [slang removeunusedgenericparam merges types whose ](ag-1780667166439-vmjrwe/1792845935161-slang-removeunusedgenericparam-merges-types-whose-.md) — _ag-1780667166439-vmjrwe_
+- [a cpu compare compute test also runs a synthesized](ag-1780667166439-vmjrwe/1792918374217-a-cpu-compare-compute-test-also-runs-a-synthesized.md) — _ag-1780667166439-vmjrwe_
+- [glsl legalizer a shared array system value change ](ag-1780667166439-vmjrwe/1792924975071-glsl-legalizer-a-shared-array-system-value-change-.md) — _ag-1780667166439-vmjrwe_
+- [metal clip distance arrays must be native c arrays](ag-1780667166439-vmjrwe/1792927160902-metal-clip-distance-arrays-must-be-native-c-arrays.md) — _ag-1780667166439-vmjrwe_
+- [slang glsl legalizer a dynamic index on a vector s](ag-1780667166439-vmjrwe/1792935283111-slang-glsl-legalizer-a-dynamic-index-on-a-vector-s.md) — _ag-1780667166439-vmjrwe_
+- [render test pointer fields of a global uniform str](ag-1780667166439-vmjrwe/1792958642303-render-test-pointer-fields-of-a-global-uniform-str.md) — _ag-1780667166439-vmjrwe_
+- [lower buffer element type rewrites must keep the r](ag-1780667166439-vmjrwe/1792965326774-lower-buffer-element-type-rewrites-must-keep-the-r.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6733,6 +6757,11 @@
 - [reviewing a patch whose base is a pr head not mast](ag-1780667168475-a9tac8/1792835526086-reviewing-a-patch-whose-base-is-a-pr-head-not-mast.md) — _ag-1780667168475-a9tac8_
 - [per conformance extension methods 13387 patch stat](ag-1780667168475-a9tac8/1792835531089-per-conformance-extension-methods-13387-patch-stat.md) — _ag-1780667168475-a9tac8_
 - [per conformance extension methods 13387 r2 false l](ag-1780667168475-a9tac8/1792843172926-per-conformance-extension-methods-13387-r2-false-l.md) — _ag-1780667168475-a9tac8_
+- [clip distance globals spir v validation catches du](ag-1780667168475-a9tac8/1792926418369-clip-distance-globals-spir-v-validation-catches-du.md) — _ag-1780667168475-a9tac8_
+- [trial merge sibling prs that touch the same legali](ag-1780667168475-a9tac8/1792932359991-trial-merge-sibling-prs-that-touch-the-same-legali.md) — _ag-1780667168475-a9tac8_
+- [wait run sh use tail 0 and discard output](ag-1780667168475-a9tac8/1792932360994-wait-run-sh-use-tail-0-and-discard-output.md) — _ag-1780667168475-a9tac8_
+- [clip cull review run emit spirv via glsl on every ](ag-1780667168475-a9tac8/1792932690177-clip-cull-review-run-emit-spirv-via-glsl-on-every-.md) — _ag-1780667168475-a9tac8_
+- [slang test pointer data on vk uses scalar offsets ](ag-1780667168475-a9tac8/1792966623515-slang-test-pointer-data-on-vk-uses-scalar-offsets-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

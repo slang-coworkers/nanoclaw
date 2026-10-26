@@ -22,12 +22,12 @@ miscompile the code. Broken since at least 2025.6.1. Sibling #13412: pointer roo
 | PR | fixes | head | branch | reviewer | state |
 |---|---|---|---|---|---|
 | #13421 | #13409 | `c42049e18f` (3 commits) | `fix/issue-13409` | jhelferty-nv | draft, internal R2 APPROVE_WITH_NITS |
-| #13431 | #13412 | `bf9f3fd05a` (8 commits, App-authored, CLA passes) | **`fix/issue-13412-v2`** | kaizhangNV | draft, internally approved |
+| #13431 | #13412 | `56c820f80e` (9 commits, App-authored, CLA passes) | **`fix/issue-13412-v2`** | kaizhangNV | draft, internally approved; CI 40228308976 dispatched 10-25 (`waiting`) |
 
 - **No human review or non-bot comment** on either PR. Both 123 behind master on 10-24 (behind-only is not a
   state change). The two PRs conflict in the same `slang-ir-util.cpp` hunks, so they are reviewed together.
   #13409 and #13412 are in milestone Q4 2026.
-- **CI has never run, and none is pending.** The old dispatch runs 37230791271 / 37334999072 are deleted
+- **CI: #13421 has never run, and none is pending. #13431 has run 40228308976 on `56c820f`, dispatched 10-25 and `waiting`.** The old dispatch runs 37230791271 / 37334999072 are deleted
   (404) in the repo-wide Actions purge ([[slang/actions-run-history-gap-2026-10-01-07.md]]) — do not track
   or rerun those ids. `pull_request` CI skips drafts, so CI runs only on an un-draft or a fresh bot dispatch
   (throttled by wait-for-human-priority). A NEW non-PR-Maintenance run on either head is a state change.
@@ -49,6 +49,16 @@ miscompile the code. Broken since at least 2025.6.1. Sibling #13412: pointer roo
   - **#13466** — `tryRemoveRedundantStore` drops a store a side-effect-free callee reads through a pointer
     (CPU lane gives 0, not 1; `-g2` hides it). Assignee kaizhangNV, milestone Q4. 0 comments.
 - Branch `fix/issue-13412` @ `b106f7c2c8` is kept (superseded by `-v2`).
+- **10-25 19:37Z: first non-bot comment on #13412.** GeorgRichardKramer (external, permission `read`, no
+  @nv-slang-bot) posted comment 6402230636 with a new shape: the store-back `p.data[i] = saved` after a call is
+  dropped when `p` is a by-value struct of pointers. Repros on v2026.18.2. **Already routed, do not re-route:**
+  it went verbatim to slang-fixer at 19:40Z (pinned `sess-1791143956141-rpnjyi`, seq 44). The fixer will check
+  whether `bf9f3fd` covers it. **Done at 20:04Z (I verified it on GitHub):** `bf9f3fd` already covers it, because
+  `isCallerPrivateRoot` rejects the root `getOffsetPtr(get_field(%p, data), i)`. On master the store-back is deleted
+  by `removeRedundancyInFunc` in `deferBufferLoad`. The test `tests/bugs/gh-13412/pointer-field-of-by-value-struct.slang`
+  is in commit `56c820f`: it fails on master (0/4) and passes on the branch (4/4, including CUDA). The fresh delta is
+  issue comment 6402507384. The PR is still a draft and was not rebased (123 behind, clean merge). CI run
+  40228308976 is the first CI on this head: a new conclusion is a state change.
 
 ## Routing
 

@@ -30,6 +30,10 @@ jkwak-work closed #13645 and asked the bot for a proper PR. The objection was ai
 
 **10-21 22:38Z: #13816 parked on reporter PR #13846** (fixes #13845, base master; assignees jkwak-work + reporter). #13846 adds `DoubleToFloatBits`/`FloatBitsToDouble` so constant bit-cast folds keep signaling-NaN bits. That quieting is **not WGSL-only**: SPIR-V quiets sNaNs on master too (fixer confirmed `0x7F800001` → `0x7FC00001`), so #13816's "WGSL only" caveat was wrong. Fixer agreed publicly (PR cmt 6328093368) to merge master once #13846 lands, make the one-line `DoubleToFloatBits` change at `slang-emit-wgsl.cpp:1226`, and take the reporter's `asfloat-signaling-nan.slang`. The fixer's one-shot re-check is 10-23 16:00Z. Merge order is now #13669 → #13846 → #13816 (+ #13680).
 
+## 2026-10-25: reporter PR #13903 (#13902) overlaps #13669
+
+#13903 emits module-scope `static const` arrays as WGSL `const`, which breaks #13669's `kFinite` `var<private>` CHECK in `static-const-array-non-finite.slang`. Detail: [13902-wgsl-static-const-array-private-limit.md](13902-wgsl-static-const-array-private-limit.md).
+
 ## Lessons from this chain
 
 - **This reporter opens their own fix PR ~45 min after filing** (#13635→#13645, #13636→#13644,

@@ -49,6 +49,8 @@ not here.
      branch. Every rung above passes it. ⇒ Hold: no dispatch, no bot post (the bot waits on human
      issues, R6 #13596). Resume only on an @nv-slang-bot mention or an operator ask. A batch of N
      filings mints N Main sessions; one report covers the batch.
+   - **A human report that arrives with the reporter's own open fix PR, or a maintainer assignee,** is
+     held the same way, even when the reporter is not the assignee (slang-rhi#941/#942).
 5. **Who the body @-mentions** (`pr_mention`). The webhook fires for any comment on a thread the
    bot touched, and **every human comment on a bot-authored issue arrives as `pr_mention`**. If it
    @-mentions another human, or nobody, it is not a summons: hold, no dispatch, no reaction, no
