@@ -3,6 +3,7 @@ title: "[approver/human-disagreement] closed-unmerged is NOT reliably a REJECTED
 type: learning
 topic: review-approval
 source: learnings/1789072449522-approver-human-disagreement-closed-unmerged-is-not.md
+superseded_by: 1789072509032-pr-closed-unmerged-rejected-when-a-superseding-sam
 ---
 
 # [approver/human-disagreement] closed-unmerged is NOT reliably a REJECTED verdict — a fork-head PR is often superseded by a maintainer's same-repo re-creation that merges the same change; the head_provenance ABSTAIN predicted the real completion blocker

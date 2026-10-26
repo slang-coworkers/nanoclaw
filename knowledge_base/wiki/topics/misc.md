@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1555 learnings. [Catalog](../index.md)
+1561 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -58,6 +58,7 @@ type: topic
 - [A "warns in both cases" premise can be false even when the pattern genuinely pre-exists](../learnings/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md)
 - [A 'non-breaking' check on a non-[sealed] interface must cover the open user-conformer set, not just in-tree conformers](../learnings/1789159225247-a-non-breaking-check-on-a-non-sealed-interface-mus.md)
 - [A (#N) in a commit subject is untrusted provenance — and /pulls/N resolving proves nothing](../learnings/1785960862161-a-n-in-a-commit-subject-is-untrusted-provenance-an.md)
+- [A -cpu COMPARE_COMPUTE test also runs a synthesized CUDA lane on GPU hosts](../learnings/1792918374217-a-cpu-compare-compute-test-also-runs-a-synthesized.md)
 - [A 0-hit grep for an API name may mean it's generated — grep the suffix, and never read an exit code through a pipe](../learnings/1786206828797-a-0-hit-grep-for-an-api-name-may-mean-it-s-generat.md)
 - [A 151 B / HTTP 410 job log makes its own control score 0 — the zero is unreadability, not absence](../learnings/1786097853694-a-151-b-http-410-job-log-makes-its-own-control-sco.md)
 - [A 2-hop index checker's real bug is usually the lossy basename() in its link extractor, not the hop-2 open — and it silently miscounts live content](../learnings/1786131676782-a-2-hop-index-checker-s-real-bug-is-usually-the-lo.md)
@@ -842,6 +843,7 @@ type: topic
 - [gh api contents/ path prefix mismatch caused a silent false-negative in a bash loop](../learnings/1787993108357-gh-api-contents-path-prefix-mismatch-caused-a-sile.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [gh api has no --arg flag: --jq --arg silently yields zero rows on every loop iteration](../learnings/1785868475644-gh-api-has-no-arg-flag-jq-arg-silently-yields-zero.md)
+- [gh api job logs need --allow-escape-sequences; gh run view --log refuses while any job waits](../learnings/1792944223647-gh-api-job-logs-need-allow-escape-sequences-gh-run.md)
 - [gh api job logs returns 0 bytes on escape sequences — and the zero control reads 0 too](../learnings/1786433135964-gh-api-job-logs-returns-0-bytes-on-escape-sequence.md)
 - [gh api job logs silently empty without --allow-escape-sequences](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md)
 - [gh api job logs silently fail without --allow-escape-sequences](../learnings/1792254266846-gh-api-job-logs-silently-fail-without-allow-escape.md)
@@ -1040,6 +1042,7 @@ type: topic
 - [LLVM FileCheck: unused-prefix error lives in readCheckFile (library), prefix validation only in the tool](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md)
 - [loadModuleFromSource supports null source + path (load-from-file); #10996 regressed it with an unconditional digest release-assert](../learnings/1788198536182-loadmodulefromsource-supports-null-source-path-loa.md)
 - [Loosening doFunctionSignaturesMatch also merges a prototype with a mismatched definition: test the body-less shape](../learnings/1790926235230-loosening-dofunctionsignaturesmatch-also-merges-a-.md)
+- [lower-buffer-element-type: rewrites must keep the replaced inst's type (pointer values are retyped early, field types late)](../learnings/1792965326774-lower-buffer-element-type-rewrites-must-keep-the-r.md)
 - [lowerCombinedTextureSamplers: getLoweredTypeInfo lowers ANY texture type, so the plain Texture2D gets retyped module-wide (#13326)](../learnings/1790707213244-lowercombinedtexturesamplers-getloweredtypeinfo-lo.md)
 - [ls-remote can't tell "branch deleted" from "remote unreachable" on stdout — and a memory note can go stale by becoming too pessimistic](../learnings/1786194591747-ls-remote-can-t-tell-branch-deleted-from-remote-un.md)
 - [macOS: hidden visibility breaks cross-dylib typed catch of C++ exceptions (libc++abi RTTI-identity)](../learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md)
@@ -1274,6 +1277,7 @@ type: topic
 - [render-test DescriptorHandle access is NONE on uint2 targets; validation layer manifest trick](../learnings/1792608693780-render-test-descriptorhandle-access-is-none-on-uin.md)
 - [render-test isDescriptorHandleType uint64 (spvBindlessTextureNV) arm never matches texture handles](../learnings/1792617340228-render-test-isdescriptorhandletype-uint64-spvbindl.md)
 - [render-test's default matrix layout is ROW-major; a "-matrix-layout-row-major" RUN line duplicates the bare line](../learnings/1790935550719-render-test-s-default-matrix-layout-is-row-major-a.md)
+- [render-test: pointer fields of a global `uniform` struct are not bound by `new S{ubuffer…}` — use ConstantBuffer<S>](../learnings/1792958642303-render-test-pointer-fields-of-a-global-uniform-str.md)
 - [Repairs that only look complete — fix the compose source, the prescription slot, and the summary](../learnings/1785930595909-repairs-that-only-look-complete-fix-the-compose-so.md)
 - [Repeat-runs-at-fixed-SHA in GitHub Actions: two traps (workflow_dispatch ref, cancel-in-progress)](../learnings/1785761300983-repeat-runs-at-fixed-sha-in-github-actions-two-tra.md)
 - [Reply eval #12960 (perf-epic handoff sub-task): check tool paths against the filing date](../learnings/1792649026619-reply-eval-12960-perf-epic-handoff-sub-task-check-.md)
@@ -1469,6 +1473,7 @@ type: topic
 - [Triaging "use library allocation wrappers" issues — latent vs live, and caller-owned vs library-owned buffers](../learnings/1783057786633-triaging-use-library-allocation-wrappers-issues-la.md)
 - [Triaging a maintainer's architectural RFC: source anchors, not answers — and check whether they already published the number you are about to lecture them about](../learnings/1786350576341-triaging-a-maintainer-s-architectural-rfc-source-a.md)
 - [Triaging an "add X support" feature issue — search for an existing Fixes-#N PR before treating it as fresh work](../learnings/1784739008680-triaging-an-add-x-support-feature-issue-search-for.md)
+- [Trial-merge sibling PRs that touch the same legalization code](../learnings/1792932359991-trial-merge-sibling-prs-that-touch-the-same-legali.md)
 - [Truncation is a defect in KIND, a stale snapshot a defect in TIME — total_count == length is the free assertion that separates them](../learnings/1786437649296-truncation-is-a-defect-in-kind-a-stale-snapshot-a-.md)
 - [Turning a silent emitter fallback into a release assert can create user ICEs that the test suite cannot see](../learnings/1792709180643-turning-a-silent-emitter-fallback-into-a-release-a.md)
 - [Two agent instances agreeing is duplicate dispatch, not corroboration](../learnings/1786208822877-two-agent-instances-agreeing-is-duplicate-dispatch.md)
@@ -1516,6 +1521,7 @@ type: topic
 - [Vulkan spec `undefined:` macro does NOT discriminate undefined-contents from undefined-behavior](../learnings/1785936587760-vulkan-spec-undefined-macro-does-not-discriminate-.md)
 - [Vulkan tutorial MyData{float3; float} cannot tell std430 from scalar layout](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md)
 - [Wait for the recall subagent before drafting an eval reply](../learnings/1792659215640-wait-for-the-recall-subagent-before-drafting-an-ev.md)
+- [wait-run.sh: use --tail 0 and discard output](../learnings/1792932360994-wait-run-sh-use-tail-0-and-discard-output.md)
 - [Waiting on a monitor notification is not waiting on the job — a torn-down monitor means the event can never arrive, while the job may have long since succeeded](../learnings/1786065233857-waiting-on-a-monitor-notification-is-not-waiting-o.md)
 - [Wake payload can mislabel an IN-QUEUE merge-group run as an eviction](../learnings/1785975600083-wake-payload-can-mislabel-an-in-queue-merge-group-.md)
 - [Wake payload evicted list measured 0-for-5: enumerate merge-queue evictions yourself every sweep](../learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md)

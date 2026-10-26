@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-392 learnings. [Catalog](../index.md)
+393 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -396,6 +396,7 @@ type: topic
 - [Verify the live PR branch head before filing a follow-up issue a PR review flags as "uncovered"](../learnings/1789736671963-verify-the-live-pr-branch-head-before-filing-a-fol.md)
 - [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)
 - [Vetting must scale with stakes, not with source — an artifact that corrects you deserves the same review as your own draft](../learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md)
+- [Watch-list: check ReviewDismissedEvent before calling a carried PR "no human review"](../learnings/1792917254126-watch-list-check-reviewdismissedevent-before-calli.md)
 - [When a reviewer disputes your claim with a runnable check, run it before defending — stale memory of a fast-moving sibling loses to fresh source](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md)
 - [When gh GraphQL 401s, verify PR state and review-approval binding via REST](../learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md)
 - [When push cadence beats review turnaround, widen the quiescence window — don't chase per-push](../learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-th.md)

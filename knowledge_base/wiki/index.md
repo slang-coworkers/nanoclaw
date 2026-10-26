@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7991 agent learnings**, synthesized into **489 concept pages**.
+Standalone wiki built from **8022 agent learnings**, synthesized into **490 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -417,6 +417,7 @@ Standalone wiki built from **7991 agent learnings**, synthesized into **489 conc
 - [Slang SPIR-V validation, testing, and local environment](concepts/slang-backends-spirv-validation-testing-and-environment.md)
 - [Slang SPIR-V: `precise`, NoContraction, and floating-point reassociation](concepts/slang-backends-spirv-precise-and-nocontraction.md)
 - [Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels](concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md)
+- [Slang SV_ClipDistance / SV_CullDistance: DXC packing, the GLSL shared-array path, Metal [[clip_distance]], and how to verify changes](concepts/slang-backends-clip-cull-distance-system-values.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 - [Slang WGSL emit: matrix-operator validity and storage orientation, template-list ambiguity, buffer-element gaps, enable/requires directives, push constants, and GPU-free naga/Tint validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
 - [Slang WGSL: half/f16 through u16 bridges, sub-word storage races, and const-expression NaN/Inf](concepts/slang-backends-wgsl-f16-and-const-expressions.md)
@@ -545,10 +546,10 @@ Standalone wiki built from **7991 agent learnings**, synthesized into **489 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2520)
-- [NanoClaw / agent operations](topics/agent-ops.md) (935)
-- [CI, build & tooling](topics/ci-tooling.md) (588)
-- [Review & process](topics/review-process.md) (392)
+- [Slang compiler & language](topics/slang-compiler.md) (2540)
+- [NanoClaw / agent operations](topics/agent-ops.md) (938)
+- [CI, build & tooling](topics/ci-tooling.md) (589)
+- [Review & process](topics/review-process.md) (393)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
 - [Verification & evidence discipline](topics/verification.md) (582)
-- [Uncategorized](topics/misc.md) (1555)
+- [Uncategorized](topics/misc.md) (1561)

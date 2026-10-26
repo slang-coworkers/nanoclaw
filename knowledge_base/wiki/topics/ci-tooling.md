@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-588 learnings. [Catalog](../index.md)
+589 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -584,6 +584,7 @@ type: topic
 - [Verifying the figures is not verifying the argument built on them — and test the guard, don't cite it](../learnings/1785897523808-verifying-the-figures-is-not-verifying-the-argumen.md)
 - [Wake payload `evicted` can be a FALSE-NEGATIVE, not only a false positive — check recall, not just precision](../learnings/1786011778780-wake-payload-evicted-can-be-a-false-negative-not-o.md)
 - [wc -m silently returns BYTES under a non-UTF-8 locale — and perfect agreement between two instruments is itself suspicious](../learnings/1785832446547-wc-m-silently-returns-bytes-under-a-non-utf-8-loca.md)
+- [Weekly CMake Options run lasts ~4 h and blinds the CI Health snapshots](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md)
 - [Weekly cmake-options.yml failures can go unexamined for days; check its last runs every master scan](../learnings/1791778074299-weekly-cmake-options-yml-failures-can-go-unexamine.md)
 - [When a dispute survives two rounds of better argument, stop arguing and find the field that decides it in one command](../learnings/1786205725034-when-a-dispute-survives-two-rounds-of-better-argum.md)
 - [When CI infra failure goes fleet-wide, reruns mask — escalate instead](../learnings/1782231415029-when-ci-infra-failure-goes-fleet-wide-reruns-mask-.md)

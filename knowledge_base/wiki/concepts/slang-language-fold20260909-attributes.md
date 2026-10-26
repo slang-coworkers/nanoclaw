@@ -2,8 +2,8 @@
 title: "Slang Attributes: Parsing, Name Resolution, and Target Whitelist"
 type: concept
 group: slang-language-core
-tags: [attributes, parser, string-literal, parseAttributeName, AttributeTargets, enum-members, namespaces, reflection, e31000, e20001]
-source_count: 3
+tags: [attributes, float-args, GetArgumentValueFloat, parser, string-literal, parseAttributeName, AttributeTargets, enum-members, namespaces, reflection, e31000, e20001]
+source_count: 4
 ---
 
 # Slang Attributes: Parsing, Name Resolution, and Target Whitelist
@@ -16,6 +16,7 @@ How `[Attr(...)]` attributes flow through the Slang front-end: the parser (`pars
 - `[Attr]` on an enum member (#12551) is a **two-layer** gap: `parseEnumCaseDecl` never calls `ParseModifiers`, and `EnumCaseDecl` isn't in `_AttributeTargets` — but the reflection half already works (enum members reflect as `VariableReflection`, so per-member attribute reflection comes for free once the front-end admits it).
 - A `::`-qualified attribute name is FOLDED to a flat underscore name in the parser by design (`[vk::binding]` → `vk_binding`), which is how builtin qualified attributes resolve. A fix for namespaced USER attributes must keep the flat lookup FIRST and add scoped resolution as a FALLBACK — never split the flat name on `_` (namespace/identifier names contain underscores). Today `[ns::Attr]` warns `E31000 unknown attribute 'ns_Attr'` and is silently dropped (#12668).
 - A `string` argument of a user attribute reflects back only when it is a raw string LITERAL: `spReflectionUserAttribute_GetArgumentValueString` returns `nullptr` for anything else, so `static const string X = "..."; [Attr(X)]` type-checks but reads back null. A `#define X "..."` macro round-trips (the parser sees a literal). Source-read inference, not yet compiled.
+- Float/half/double user-attribute arguments are likewise not folded (#13952): reflection reads only a bare float literal (or an int literal implicitly cast); `1.0/2.0`, `static const float`, `float(2)` and a literal passed to a `double`/`half` parameter all reflect as invalid. Only `-1.5` works, because the parser folds unary minus on a literal. The front end has no float constant folder.
 
 ## User Attributes on Enum Members: Two-Layer Front-End Gap (#12551)
 
@@ -36,8 +37,13 @@ static const string kName = "foo";
 
 The checker accepts this, but reflection returns nothing for the argument. `spReflectionUserAttribute_GetArgumentValueString` (`slang-reflection-api.cpp` ~L401) returns a value only when the stored argument expression is a `StringLiteralExpr`, and `nullptr` otherwise. On the checking side (`slang-check-modifier.cpp` ~L997), a `string` parameter of a user-defined attribute is only `CheckTerm`'d and coerced, never folded to a constant, because `isValidCompileTimeConstantType` accepts only scalar integers and enums. So the argument stays a `VarExpr` referring to `kName`, and the reflection accessor sees a non-literal. A `#define kName "foo"` macro should round-trip, because preprocessing hands the parser a real literal. This is an inference from reading source (2026-09-29, from a Discord question about named constant strings in attributes) and has not been confirmed by compiling; verify with a reflection probe before telling a user it is the behaviour ([User-attribute string args: reflection only returns raw string literals](../learnings/1790669546280-slang-user-attribute-string-args-reflection-only-r.md)).
 
-**Source learnings (3):**
+## Float Arguments of User Attributes Are Not Folded Either (#13952)
+
+The same literal-only rule holds for `float`, `half` and `double` parameters. User-attribute arguments are folded only for int, bool and enum parameters (`isValidCompileTimeConstantType` → `checkConstantIntVal` → `Attribute::intArgVals`, `slang-check-modifier.cpp` ~L1009); a floating-point parameter keeps the checked `Expr`, and `spReflectionUserAttribute_GetArgumentValueFloat` (`slang-reflection-api.cpp` ~L375) reads only a bare `FloatingPointLiteralExpr` or an `ImplicitCastExpr(IntegerLiteralExpr)`. On master 52e29ab43, `slangc -reflection-json` reports "invalid value" for `1.0/2.0`, a `static const float` reference, `-(1.5)`, `float(2)`, an int constant passed to a float parameter, and even a plain literal passed to a `double` or `half` parameter. `-1.5` works only because the parser folds unary minus on a literal (`_foldFloatPrefixOp`). The front end has no float `Val` and no float constant folder (float folding exists only in IR SCCP, and user attributes are never lowered to IR), and `GetDefaultValueFloat` has the same limit, so a fix for #13952 needs a front-end float constant path rather than a reflection-side tweak [Slang user-attribute float args: no frontend float folding (#13952)](../learnings/1792995287897-slang-user-attribute-float-args-no-frontend-float-.md).
+
+**Source learnings (4):**
 - [`[Attr]` on enum members (#12551) is a two-layer gap: `parseEnumCaseDecl` skips `ParseModifiers` (E20001) and `EnumCaseDecl` is absent from `_AttributeTargets`; reflection already works via `VariableReflection`](../learnings/1786742270900-user-attributes-on-enum-members-two-layer-front-en.md)
 - [`parseAttributeName` folds `::`-qualified attribute names to flat underscore names (`[vk::binding]`→`vk_binding`) so builtin attrs resolve; a namespaced user-attribute fix (#12668) must keep flat lookup first and add scoped fallback, never split on `_` (E31000 today)](../learnings/1787273970210-slang-attribute-qualified-names-are-folded-to-unde.md)
 - [User-attribute `string` args reflect only as raw `StringLiteralExpr`; a `static const string` argument type-checks but `GetArgumentValueString` returns null (source-read, unverified)](../learnings/1790669546280-slang-user-attribute-string-args-reflection-only-r.md)
+- [Slang user-attribute float args: no frontend float folding (#13952)](../learnings/1792995287897-slang-user-attribute-float-args-no-frontend-float-.md) — only bare float literals reflect; no front-end float folder, SCCP-only
 _Catalog: [[wiki/index.md]]_

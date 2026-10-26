@@ -2,8 +2,8 @@
 title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
-tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max]
-source_count: 31
+tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max, storage-buffer, GLSLShaderStorageBuffer, typealias]
+source_count: 32
 ---
 
 # Slang Intrinsics & Builtins
@@ -33,6 +33,7 @@ Slang exposes GPU intrinsics and builtin types as core-module declarations (`cor
 - **Renaming a shared capability atom is not behavior-neutral: ADD a new atom and RE-POINT**; public aliases need `///` docs and a doc regen. The shadow-LOD BIAS boundary is narrower than the LOD boundary.
 - **A family's latest-version atom is `getElements()[count-2]`** (`-1` is the stage atom). Capability predicates lack `SLANG_API`; test via `.slang`.
 - **`__requireCapability` and compound `alias` exist; no generic `IRRequireTargetCapability` op; generic-dependent `[require]` is unsupported.** A capability RFC under owner debate is not fix-eligible.
+- **A single-struct SSBO works today as `typealias RWStorageBuffer<T> = GLSLShaderStorageBuffer<T>;`** (hidden core type, all targets); omit the layout argument, since an explicit `Std430DataLayout` fails with E36107 off SPIR-V/GLSL.
 - **On CPU/LLVM `half` is the fallback `struct half` with only `explicit operator float()`**; add explicit scalar conversions, not native `_Float16`.
 - **A new texture access kind needs a case in EVERY emitter** (GLSL/WGSL fall to sampled; SPIR-V has no default). GLSL `image2D` IS `RWTexture2D<float>`, so key alias diagnostics on the spelling; `readonly RWTexture*` is not enforced.
 
@@ -67,6 +68,10 @@ The matrix sibling crashes the same way (`$P_max` on a matrix falls to `default:
 Builtin vector/matrix types are `DeclRefType<StructDecl>`, so init-list coercion goes through `createInvokeExprForExplicitCtor` (the struct branch of `_coerceInitializerList`), not `createCtorInvokeExprForAbstractType`. On #11730 its viability `return true` was nested under `if (outExpr)`; the `canCoerce` probe passes null, so `{float2, float}` failed as an argument but worked in a declaration. The fix reports viability independently of `outExpr` ([builtin vector is a DeclRefType&lt;StructDecl&gt;](../learnings/1782733705823-slang-11730-builtin-vector-is-a-declreftype-lt-str.md)).
 
 `float4(float2 barycentrics, 1.f)` splats `1.f` to `float2(1,1)` and resolves `__init(vector<T,2> xy, vector<T,2> zw)` → `(x,y,1,1)`, not a tail-pad. The slang-rhi#798 fix `float4(barycentrics, 1.f, 1.f)` resolves `__init(vector<T,2> xy, T z, T w)` to the identical value, keeping the ray-tracing test unchanged. It unblocks #12141, whose `static_assert(false)` on the `(vec2,T)` ctors for `vector<T,4>` would otherwise make the call E41400 ([float4(float2,1.f) splat vs tail-pad](../learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md)). The same design-gated divergence is #12093; see [[wiki/concepts/slang-language-generics-and-type-system.md]].
+
+## A single-struct SSBO today: `typealias` over the hidden `GLSLShaderStorageBuffer<T>` (#11028)
+
+Users keep asking for `RWStorageBuffer<T>` / `StorageBuffer<T>` as a single-struct SSBO (#11028: open, assigned to jkwak-work, no milestone). The core module already has a hidden type for it, `GLSLShaderStorageBuffer<T, L = DefaultDataLayout>` (`hlsl.meta.slang:73-77`, `//@hidden`), and `typealias RWStorageBuffer<T> = GLSLShaderStorageBuffer<T>;` lets user code write `buf.field` with no `[0]`. Checked compile-only on v2026.20: SPIR-V gets a StorageBuffer `Block` with std430 offsets and no runtime array, which passes spirv-val; GLSL gets a `layout(std430) buffer` block; HLSL gets a `RWStructuredBuffer<T>` indexed `[0]`, WGSL a storage `array<T>` indexed `[0]`, Metal a `device*`, and CUDA compiles too. Omit the layout argument: with an explicit `Std430DataLayout` only SPIR-V and GLSL compile, and the other targets fail with E36107. There is no read-only variant; the plan in #11028 is to rename the type to `RWStorageBuffer<T,L>` and add `StorageBuffer<T,L>` ([non-array storage buffer today: typealias over GLSLShaderStorageBuffer<T>](../learnings/1792916435475-non-array-storage-buffer-today-typealias-over-hidd.md)).
 
 ## Builtin operators: fast path, shared predicates, and flag enums
 
@@ -120,7 +125,7 @@ Current-system facts for capability RFC triage (#9210): statement-level `__requi
 
 Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays a runtime `OpSNegate` (#9382); extending `specializeAddressSpace` to DXIL fixes groupshared params (#10641).
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [__intrinsic_type/__intrinsic_op are accepted in user code; DeepWiki wrongly says core-only; bogus numeric opcode → E99997](../learnings/1792065241922-intrinsic-type-intrinsic-op-are-accepted-in-user-c.md) — E31229 covers only three modifiers; standard modules use them; spec sentence lives in the spec repo
 - [Emitter rules keyed on an intrinsic-string prefix must FILTER arity/type, not assert](../learnings/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md) — also filter operand type (`u32`-only helper vs `int` user intrinsic); revert-drilled test row
 - [float(int(FSign(x))) == FSign(x)+0.0 exactly; spirv-opt folds the +0.0 (sign() round-trip, #13676)](../learnings/1792095513009-float-int-fsign-x-fsign-x-0-0-exactly-spirv-opt-fo.md) — signed-zero hazard of the naive fold; per-target NaN semantics; peephole needs the cast outside the asm
@@ -152,5 +157,6 @@ Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a n
 - [broad generic scalar-decomposition overload loses native aggregate ops for generic callers; use a shared target-aware worker (#13139)](../learnings/1790642295187-slang-core-module-a-broad-generic-overload-that-de.md)
 - [texture access kinds: adding one needs every emitter; image2D == RWTexture2D; readonly RWTexture unenforced (#13536)](../learnings/1791500273983-slang-texture-access-kinds-adding-one-needs-every-.md)
 - [$q intrinsic strings must also be understood by the emitter's fold heuristic](../learnings/1792284128530-q-intrinsic-strings-must-also-be-understood-by-the.md) — `shouldFoldInstIntoUseSites` counts raw `$N`; 121 texture reads; shared `getIntrinsicArgOperandIndex()` (#13741); `TryUnifyTypes` part on the generics page
+- [Non-array storage buffer today: typealias over hidden GLSLShaderStorageBuffer<T> (omit the layout arg)](../learnings/1792916435475-non-array-storage-buffer-today-typealias-over-hidd.md) — per-target output; explicit `Std430DataLayout` → E36107 off SPIR-V/GLSL (#11028)
 
 _Catalog: [[wiki/index.md]]_

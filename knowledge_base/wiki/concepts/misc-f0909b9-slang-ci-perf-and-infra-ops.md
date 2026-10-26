@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 27
+source_count: 28
 ---
 
 ## TL;DR
@@ -47,7 +47,7 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
 - **A job-log grep can match the step's own echoed source** (`##[group]Run …`), e.g.
   "LLVM prebuilt not found in GCS" on a cache hit — drop `echo ` lines first.
 - **Size a nightly front-end step by per-timer geomeans over size-matched workloads from `perf-confirmation-*` artifacts**, not by the `analyze` flags; download them within a week.
-- **The Saturday CMake Options burst (~479 hosted jobs, Sat 08:00Z) is expected load** and leaves a ~2h `health_snapshots` gap (the health job can't get a runner); the next snapshot is a lower bound. In merge_group runs `test-falcor` is skipped, so check job conclusions before saying "MQ Falcor passed".
+- **The Saturday CMake Options burst (~479 hosted jobs, Sat 08:00Z) is expected load** and runs ~4 h, leaving a ~2–2.5 h `health_snapshots` gap (the health job can't get a runner); the next snapshot is a lower bound (see [Weekly CMake Options run lasts ~4 h and blinds the CI Health snapshots](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md)). In merge_group runs `test-falcor` is skipped, so check job conclusions before saying "MQ Falcor passed".
 
 ## Causation must be read at the failure site
 
@@ -262,13 +262,14 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 
 **Size a front-end step with per-timer geomeans from the perf-confirmation artifacts.** The `analyze` table lists only counters over the ratio≥1.1 / abs≥2 ms gate against a trailing-7 median, and chronic noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p 'perf-confirmation-*'`, read `results.json` (workloads with `timers.<name>.median` and `size`), keep workloads whose `size` matches between nights, and take the geomean ratio per timer against a fixed green night. A real front-end regression moves `SemanticChecking`/`frontEndExecute` broadly (39/54 workloads above the prior four nights' max) while `linkAndOptimizeIR` and `loadBuiltinModule` stay near 1.00; runner noise moves everything. The 10-16 nightly measured SemanticChecking 1.052 vs 10-12 (1.042 vs 10-15 alone), with only #13537/#13615/#13626 in the window. Artifacts expire after about a week (10-07/10-08 runs returned 404 on 10-16), so record the geomeans durably when sizing a step [MDL perf nightly per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md).
 
-**Source learnings (27):**
+**Source learnings (28):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
 - [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
 - [Heartbeat precheck workflow_failures fetch returned stale data for slang only](../learnings/1788404324277-heartbeat-precheck-workflow-failures-fetch-returne.md) — slang's field alone returned days-old runs while slangpy/slang-rhi were correct; spot-check against a live API call.
 - [slang CI: Saturday "CMake Options" queue saturation is expected weekly load, not Critical](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md) — a single-workflow spike on a `schedule`+`workflow_dispatch` cron (Saturday 08:00 UTC OS matrix, ~half the hosted-runner cap by design) is accepted weekly cost; check the dominant workflow's triggers before flagging jobs_queued/hosted_runner_usage 🔴.
 - [Slang CI: Saturday CMake Options burst blinds CI Health; MQ skips test-falcor](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)
+- [Weekly CMake Options run lasts ~4 h and blinds the CI Health snapshots](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md) — measured 4 h 08 min run, ~2.5 h snapshot gap
 - [Heartbeat precheck's slang workflow_failures staleness confirmed recurring (3rd occurrence)](../learnings/1788410539745-heartbeat-precheck-s-slang-workflow-failures-stale.md) — treat as a standing characteristic; distinguish recurring-same-shape from a single self-correcting anomaly.
 - [slang Nightly Slang Test agentic-tests: 2-night failure is a known, already-tracked cluster](../learnings/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md) — same 6 tests explained by open PR #12881 (expected-failures); diff `FAILED test:` lines across nights for a fingerprint.
 - [Post-rebase cross-platform test-slang failure on a PR is often a master semantic-merge break](../learnings/1788457867847-post-rebase-cross-platform-test-slang-failure-on-a.md) — deterministic failure on CPU/aarch64 unrelated to the diff ⇒ file against master; don't fix the innocent PR.

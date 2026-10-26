@@ -2,8 +2,8 @@
 title: "Slang Witness Tables, Conformance & Extensions"
 type: concept
 group: slang-language-core
-tags: [type-system, witness-tables, conformance, extensions, namespaces, subtype-witness]
-source_count: 26
+tags: [type-system, witness-tables, conformance, extensions, namespaces, subtype-witness, per-conformance-specialization, dynamic-dispatch]
+source_count: 27
 ---
 
 # Slang Witness Tables, Conformance & Extensions
@@ -28,6 +28,7 @@ How Slang represents interface conformance (witness tables and subtype-witness `
 - Extension headers resolve names before namespace fragments reach `ScopesWired` (E30015). Fix: pre-pass wiring ALL module-level `NamespaceDecl`s to `ScopesWired` — not enclosing-only, not whole-module `ensureAllDeclsRec`.
 - The core module DOES contain namespace-enclosed extensions (`namespace linalg` in `hlsl.meta.slang`). "No namespaced core extensions" is factually false.
 - Struct-vs-extension same-name member: direct access prefers the non-extension decl; interface dispatch front-loads the extension's member. Design-gated (undefined); `override` already exists. `InterfaceDecl : AggTypeDecl`, so a "just assert it" guard can abort on interface extensions.
+- #13387's per-conformance copies cover only the `extension<G:I> G` method spelling (value-generic variants included); a free generic `f<G:I>(G g)` keeps one shared body, and a signature that depends on `T` stays E33180 in Slang 2025 by design.
 
 ## Witness Tables and Conformance
 
@@ -67,7 +68,9 @@ When a struct and an extension both declare the same member name, two independen
 
 Which extensions count as conformance candidates at a call site depends on the caller's own imports (direct or through `__exported import`), not the callee's; the E38029 consequence for libraries over slang.numerics is on [[wiki/concepts/slang-language-core-f0909b0-fp-interface-tower-conformance.md]].
 
-**Source learnings (26):**
+**Per-conformance extension methods (#13387): only the extension spelling is covered.** The #13387 rework gives an `extension<T : I> T` method called on a dynamic object one copy per conformer plus a dispatcher; its specialize-pass mechanics are on [[wiki/concepts/slang-compiler-type-flow-set-specialization-diamonds.md]]. Measured on the #13268 RayQuery compact repro (DXIL commit/phi counts at -O3, SPIR-V validated; `-std 2025` selects Slang 2025 mode), master 52e29ab43 vs fixer head 8c5bb99eb: (1) `extension<G:IGeometry> G { void m(inout Handler, inout RayQuery<0>) }` called on `createDynamicObject` goes from 1/18 with one shared body in legacy mode and E33180 in 2025 mode to 2/13 in both modes, the same shape as a default-method callback. (2) The same method with `<let FLAGS:uint>` and `RayQuery<FLAGS>` goes from E99997 "unexpected set kind" in both modes to 2/13. (3) A FREE generic `f<G:IGeometry>(G g, …)` is NOT covered (still 1/18, and E33180 in 2025). (4) An extension method that returns `G` and has its own value generic goes from legacy E99997 to compiling in legacy mode, but stays E33180 in 2025 by design, because its signature depends on `T`. (5) A blanket `extension<G:I> G : J` with `-conformance` in the primary TU is still E00073. To build the fixer worktree, run `git -c protocol.file.allow=always submodule update --init --recursive`, and build the `slang-glslang` target for SPIR-V output (otherwise E00100, a spirv-opt load failure) ([#13387 per-conformance extension methods: what is and isn't covered](../learnings/1792919629099-13387-per-conformance-extension-methods-what-is-an.md)).
+
+**Source learnings (27):**
 - [`isSubtype` null while the facet prints identically (#13322)](../learnings/1790705562977-slang-issubtype-fails-although-the-facet-type-prin.md)
 - [phase-ordering fixes: the shared consumer often beats the producer](../learnings/1789483453715-phase-ordering-fixes-the-shared-consumer-choke-poi.md)
 - [optional-constraint ICE through interface inheritance](../learnings/1789135806162-slang-optional-constraint-ice-requirement-reached-.md)
@@ -94,4 +97,5 @@ Which extensions count as conformance candidates at a call site depends on the c
 - [conformance-witness core reference map @ 928f4010f](../learnings/1789068321840-slang-conformance-witness-core-strict-vs-query-mod.md)
 - [`_calcInheritanceInfo`: equality constraints resolve both endpoints (#12690)](../learnings/1789071218256-approver-challenger-miss-inheritance-constraint-ma.md)
 - [function-local interface conformance crashes at two stages](../learnings/1789483742996-function-local-interface-conformance-crashes-at-tw.md)
+- [#13387 per-conformance extension methods: what is and isn't covered at fixer head 8c5bb99eb](../learnings/1792919629099-13387-per-conformance-extension-methods-what-is-an.md) — extension spelling only; free generics not covered; 2025-mode E33180 by design
 _Catalog: [[wiki/index.md]]_
