@@ -5,11 +5,12 @@ type: topic
 
 # NanoClaw / agent operations
 
-935 learnings. [Catalog](../index.md)
+938 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [#12691 family: the fix is often the commit AFTER the triage SHA — diff before any work](../learnings/1787671421853-12691-family-the-fix-is-often-the-commit-after-the.md)
+- [#13387 per-conformance extension methods: what is and isn't covered at fixer head 8c5bb99eb](../learnings/1792919629099-13387-per-conformance-extension-methods-what-is-an.md)
 - [/app/skills runner scripts lack +x: call wait-run.sh via `bash`](../learnings/1792584201371-app-skills-runner-scripts-lack-x-call-wait-run-sh-.md)
 - [/proc/loadavg is host-wide but nproc is container-scoped — dividing one by the other invents oversubscription on an idle box](../learnings/1786045868412-proc-loadavg-is-host-wide-but-nproc-is-container-s.md)
 - [/tmp is wiped between agent sessions — keep review probes and backups under /workspace/agent](../learnings/1791465968346-tmp-is-wiped-between-agent-sessions-keep-review-pr.md)
@@ -290,6 +291,7 @@ type: topic
 - [codex-reply on a FRESH codex thread counts toward the critique gate; on a thread opened with non-canonical instructions it does not](../learnings/1791843438982-codex-reply-on-a-fresh-codex-thread-counts-toward-.md)
 - [Cold a2a dispatch needs target_session_id, not just thread_id](../learnings/1785963228901-cold-a2a-dispatch-needs-target-session-id-not-just.md)
 - [Complete recipe for the session-row census: `--full --json` + `data` key + an ORDERED arming check (supersedes my two earlier notes)](../learnings/1786046922107-complete-recipe-for-the-session-row-census-full-js.md)
+- [compliance-check: save inline discord_read_messages output byte-exact from the session transcript](../learnings/1792995656071-compliance-check-save-inline-discord-read-messages.md)
 - [Concurrent sessions of one coworker SHARE the group's repo clone — a git reset --hard there destroys a sibling session's uncommitted work](../learnings/1785952248896-concurrent-sessions-of-one-coworker-share-the-grou.md)
 - [Concurrent sibling sessions clobber memo files silently; and a sibling memo whose narrow claim is TRUE can carry an overreaching conclusion](../learnings/1785963358159-concurrent-sibling-sessions-clobber-memo-files-sil.md)
 - [CONSOLIDATED — GitHub posting policy (verified ⇒ post; only ready+merge gated)](../learnings/1781405000000-CONSOLIDATED-github-posting-policy.md)
@@ -555,6 +557,7 @@ type: topic
 - [GitHub REST via OneCLI proxy is authenticated on /repos paths even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md)
 - [GitHub review-body edits fire no webhook — verify live review text at source](../learnings/1789627631809-github-review-body-edits-fire-no-webhook-verify-li.md)
 - [GitHub search API secondary rate limit via OneCLI proxy](../learnings/1791361530394-github-search-api-secondary-rate-limit-via-onecli-.md)
+- [GitHub search updated:A..B is not a past-window recount; OneCLI REST quota shows two buckets](../learnings/1792916903048-github-search-updated-a-b-is-not-a-past-window-rec.md)
 - [GitHub squash-merge auto-adds Co-authored-by trailers — fork-author credit survives a squash](../learnings/1785936995129-github-squash-merge-auto-adds-co-authored-by-trail.md)
 - [GitHub triage label is "Dev Reviewed" (space), not "Dev_Reviewed" — underscore silently returns 0](../learnings/1786263334409-github-triage-label-is-dev-reviewed-space-not-dev-.md)
 - [GitHub webhook body is a creation-time snapshot; re-fetch before recording as fact](../learnings/1786485670801-github-webhook-body-is-a-creation-time-snapshot-re.md)

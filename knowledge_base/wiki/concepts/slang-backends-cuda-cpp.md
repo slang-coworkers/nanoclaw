@@ -2,8 +2,8 @@
 title: "Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen"
 type: concept
 group: slang-backends
-tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073, ldg, immutable-load, vectorized-load]
-source_count: 29
+tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073, ldg, immutable-load, vectorized-load, static-const, nan, bit-cast]
+source_count: 31
 ---
 
 # Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen
@@ -36,6 +36,7 @@ The CUDA and CPU/C++ targets share one code path — `CPPSourceEmitter` (`source
 - **Editing `hlsl.meta.slang` requires the core-module-header regen** before a built `slangc` shows the change.
 - **Global templated CUDA vector operators must be SFINAE-gated** to registered vector types; keep `__half2` packed intrinsics as non-template overloads. Verify with `nvcc -std=c++17`.
 - **CPU/CUDA operator typing belongs in the preludes, not in IR casts** (#13684).
+- **A bit-exact NaN/Inf in a CUDA `__device__ static const` table needs `__builtin_bit_cast(float, 0x...U)`;** `U32_asfloat`, `slang_bit_cast` and `SLANG_INFINITY` are not constant expressions. `asfloat(lit)` keeps its bits on C-like targets (SCCP does not fold it); `bit_cast` folds and loses them. SCCP's folded NaN takes the build host's sign, so FileCheck must accept either.
 - **`__exp2f` does not exist,** so F32 exp2 stays precise under `-fp-mode fast`. Verify each `__*f` name against nvcc.
 - **nvcc never merges scalar `__ldg` into wide loads, even with `__builtin_assume_aligned`.** A load that must be both wide and read-only-cached has to be emitted as explicit vector-chunk `__ldg((const uint4*)p)`. A plain aligned deref vectorizes but loses `.nc`/`.CONSTANT`.
 
@@ -98,9 +99,11 @@ With `groupshared` params by reference (#10641 / PR #11709), `getSharedBaseAddr`
 
 **`precise` on a local (#12279)** is emitted by shared `CLikeSourceEmitter::emitTempModifiers`: valid on HLSL+GLSL, invalid on CUDA/C++/Metal/WGSL. Guard at emit, not at the producer ([precise leaks to 4 C-like targets](../learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md)). The cluster reproduces GPU-free (Debug slangc + NVRTC 12.6).
 
-## Nested `static const` Arrays on Older Releases (#12635)
+## `static const` Array Initializers: Nested Arrays (#12635) and Bit-Exact NaN/Inf (#13909)
 
 Before PR #12688, nested `static const int v[2][2]` fails NVRTC on `-target ptx` ("dynamic initialization is not supported for a `__device__` variable"): each row becomes a `__device__` global because `shouldFoldInstIntoUseSites` returns Never for `MakeArray`. Flat `static const int v[4]` with manual indexing compiles on v2026.14.1, so give that workaround on older builds. The struct-element variant (#13107) is a different bug; see [CUDA codegen triage](misc-f0909b5-cuda-codegen-triage.md) ([CUDA #12635 workaround: flat static const arrays](../learnings/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md)).
+
+**Bit-exact NaN and Inf in a `static const` table (#13909, PR #13927).** Each target's constant context has its own limit (measured on master 52e29ab43, L40S). On CUDA, `U32_asfloat(...)` or `slang_bit_cast` in a `__device__ static const` initializer fails with the same "dynamic initialization" error, and so does +inf, because CUDA spells it `SLANG_INFINITY` = `((float)(1e+300 * 1e+300))`, which is not a constant expression. `__builtin_bit_cast(float, 0x7FC00001U)` compiles under nvcc/nvrtc 12.6 and reads back exact, but the sNaN 0xFF800001 comes back quieted as 0xFFC00001. glslang (`-emit-spirv-via-glsl`) rejects `uintBitsToFloat(...)` in a global `const` array ("global const initializers must be constant"); a non-const `static` global works because Slang moves its initializer into `main`. DXC keeps `static const float a[2] = { asfloat(0x7FC00001u), asfloat(0xFF800001u) }` bit-exact, sNaN included (read the constants from `-target dxil-asm`; no D3D needed), and g++ 12 does the same for a constexpr `__builtin_bit_cast`. The CPU target fails outright on master: the C++ emitter writes a folded NaN as `(0.0 / 0.0)`, a double, and clang rejects the narrowing in a brace init. Whether the bits survive at all depends on folding. `asfloat(lit)` is an `__intrinsic_asm`, which SCCP does not fold, so GLSL/HLSL/Metal/C++ keep its bits; `bit_cast` (`kIROp_BitCast`) folds to a `FloatLit` and loses them. SCCP folds `z / z` to the build host's default NaN, which is negative on x86 (0xFFC00000, SPIR-V `-0x1.8p+128`), so FileCheck patterns on NaN literals must accept either sign ([NaN-from-bits emission: constant-context limits per target](../learnings/1792914266658-nan-from-bits-emission-constant-context-limits-mea.md); +inf on CUDA from [a -cpu test also runs a synthesized CUDA lane](../learnings/1792918374217-a-cpu-compare-compute-test-also-runs-a-synthesized.md)).
 
 ## One CUDA-Illegal Entry Point Sinks Its Siblings: Guard It with `#ifndef __TARGET_CUDA__`
 
@@ -116,7 +119,7 @@ Slang capability-checks ALL `[shader]` entry points at module load, so one EP wi
 
 **Fast-math (slang#12619).** Under `-fp-mode fast` nine F32 wrappers redirect (`__sinf, __cosf, __tanf, __sincosf, __logf, __log2f, __log10f, __expf, __powf`) plus `__exp10f`. nvcc 12.6 rejects `__exp2f`, so exp2 stays `::exp2f` with atan2/asin/acos/atan/sqrt. Verify with a `__device__` harness: `nvcc -std=c++17 -c` with and without `-DSLANG_CUDA_ENABLE_FAST_MATH=1`, then `-ptx` and `grep -cE '\.approx\.'` (nvcc at `/usr/local/cuda-12.6/bin/nvcc`, 2 min) ([__exp2f does NOT exist](../learnings/1787147170237-cuda-fast-math-redirectable-transcendentals-exp2f-.md)).
 
-**Source learnings (29):**
+**Source learnings (31):**
 - [CUDA #12635 workaround: flat static const arrays compile to PTX on 2026.14.1](../learnings/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md) — nested literal arrays fail NVRTC dynamic `__device__` init before #12688; flatten to `v[4]`
 - [`-capability cuda_sm_NN` is not a usable CUDA arch selector (#13198): bounded to {1_0..9_0}/ceiling 9.0, a FLOOR via max() not a pin, double `-arch` with a user `-Xnvrtc --gpu-architecture=`, and linkWithOptions-inert; new atoms deferred in #12839](../learnings/1790003555136-slang-cuda-capability-cuda-sm-nn-is-not-a-usable-a.md)
 - [post-#13286 an explicit `-Xnvrtc -arch` skips the derived-arch block, so SM minimums go unchecked (rc 0)](../learnings/1791190691660-slang-nvrtc-explicit-xnvrtc-arch-post-13286-bypass.md)
@@ -146,5 +149,7 @@ Slang capability-checks ALL `[shader]` entry points at module load, so one EP wi
 - [NVRTC DownstreamArgs repro: don't use --gpu-architecture as the neutral arg](../learnings/1792155142006-nvrtc-downstreamargs-repro-don-t-use-gpu-architect.md) — `-DFOO=1` + `--this-option-must-fail` sentinel; fixed by PR #12900 (#12861)
 - [Mixed-type vector shifts: maintainer preferred prelude operators + own-type scalar splat over IR result-type cast](../learnings/1792165281967-mixed-type-vector-shifts-maintainer-preferred-prel.md) — #13562 closed for #13684 (#13553)
 - [scalar `__ldg` + assume_aligned stays 8× scalar; only explicit vector-chunk `__ldg` gives `LDG.E.128.CONSTANT`; CUDA emit ignores `IRAlignedAttr`; three per-element split sites](../learnings/1792700658146-cuda-nvcc-won-t-merge-scalar-ldg-into-wide-loads-e.md)
+- [NaN-from-bits emission: constant-context limits measured per target (glslang, nvcc, DXC) + SCCP host NaN](../learnings/1792914266658-nan-from-bits-emission-constant-context-limits-mea.md) — `__builtin_bit_cast` is the CUDA constant spelling; CPU `(0.0/0.0)` narrowing; host-sign NaN
+- [A -cpu COMPARE_COMPUTE test also runs a synthesized CUDA lane on GPU hosts](../learnings/1792918374217-a-cpu-compare-compute-test-also-runs-a-synthesized.md) — `SLANG_INFINITY` is not a CUDA constant expression
 
 _Catalog: [[wiki/index.md]]_

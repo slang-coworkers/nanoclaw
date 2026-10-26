@@ -2,8 +2,8 @@
 title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, Type Legalization, and Linker Traps
 type: concept
 group: slang-grab-bag
-tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 24
+tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix, dump-ir, pass-hooks]
+source_count: 25
 ---
 
 # Slang Compiler Crash & Legalization Probes
@@ -28,6 +28,7 @@ Verified root-cause traces for a cluster of Slang compiler crashes/miscompiles, 
 - **"guard A subsumes guard B" is a claim about the FULL consumer set of each**: a `static_assert` reachability walk and `isFromCoreModule` cover disjoint consumers; keep both.
 - **Before turning a fallback into a `SLANG_RELEASE_ASSERT` on a closed set of IR layout shapes, list the `IRTypeLayout` subclasses and probe each** (existential via `slangc -specialize`, pointer, combined-sampler, DescriptorHandle). Run the full suite after adding the assert.
 - **Zero hits in a coverage drill (log each guard to a file, run the full suite) shows the suite does not reach a branch, not that no input does.** It justifies deleting dead guards, not asserting: on #13872 an emitter fallback made a release assert on 0 hits ICEd dynamic-dispatch generics at `-g2`. Audit the producer class first, or keep a graceful fallback plus a `-validate-ir` rule.
+- **A last `-dump-ir` "AFTER X" does not mean X finished:** `PassHooksRAII` prints it during exception unwind, so the crash is usually inside X; `-dump-ir-before <next pass>` printing nothing confirms it.
 - **On HLSL/CPU/CUDA a spec-const `[numthreads]` operand is a removed inst with a null type**; any pass that reads its type before emit segfaults.
 
 ## Front-end / classifier fall-throughs that crash downstream
@@ -255,7 +256,19 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 `imageSubscript` insts, and compare `t[i] = v` with `t[i].x = v`
 [plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md).
 
-**Source learnings (24):**
+**A last `### AFTER <pass>` dump does not mean that pass finished.** `SLANG_PASS` wraps each pass
+in `PassHooksRAII` (`source/slang/slang-pass-wrapper.h`), whose destructor runs `postPassHooks`,
+and those include the `-dump-ir` "AFTER" dump. When a pass throws (for example a
+`SLANG_RELEASE_ASSERT` InternalError), the "AFTER" dump still prints during stack unwinding and
+shows the PARTIALLY transformed IR, and no "BEFORE <next pass>" follows it. So when the last dump
+is "AFTER X", the crash is usually inside X, not in the pass after it. Confirm with
+`-dump-ir-before <next pass>`, which prints nothing if X threw. The partial IR is useful in its own
+right, because it shows the half-rewritten state at the moment of the throw. Triage of #13948
+placed the crash inside `lowerBufferElementTypeToStorageType` this way; its root cause is on
+[[wiki/concepts/slang-compiler-ir-type-legalization.md]]
+[-dump-ir "AFTER <pass>" can be printed during exception unwind](../learnings/1792961894220-dump-ir-after-pass-can-be-printed-during-exception.md).
+
+**Source learnings (25):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -280,3 +293,4 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 - [Slang: [numthreads] operands on non-spec-const targets are dangling (null type) — never read their type](../learnings/1792609336816-slang-numthreads-operands-on-non-spec-const-target.md) — `collectGlobalUniformParameters` removes the spec const but skips the decoration use; `materializeGetWorkGroupSize` cast segfaults (#13826); don't hoist spec-const makeVector on SPIR-V
 - [Turning a silent emitter fallback into a release assert can create user ICEs that the test suite cannot see](../learnings/1792709180643-turning-a-silent-emitter-fallback-into-a-release-a.md) — #13872: 0 drill hits, then `specializeGenericWithSetArgs` ICE at -g2; audit cloners first; `SLANG_ASSERT` is `[[assume]]` in release
 - [Coverage drill: log each defensive branch to a file, run the full suite](../learnings/1792692531156-coverage-drill-log-each-defensive-branch-to-a-file.md) — fopen/fputs tag per guard + 16-server suite run; 4 of 8 #13872 guards had 0 hits; `protocol.file.allow=always` for worktree submodules
+- [-dump-ir "AFTER <pass>" can be printed during exception unwind — the crash may be INSIDE that pass](../learnings/1792961894220-dump-ir-after-pass-can-be-printed-during-exception.md) — `PassHooksRAII` dtor; confirm with `-dump-ir-before <next pass>`

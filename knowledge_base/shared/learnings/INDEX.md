@@ -5254,6 +5254,7 @@
 - [slang spec constants on uniform layout targets d3d](ag-1780667166418-apezq5/1792933241509-slang-spec-constants-on-uniform-layout-targets-d3d.md) — _ag-1780667166418-apezq5_
 - [gh api job logs need allow escape sequences gh run](ag-1780667166418-apezq5/1792944223647-gh-api-job-logs-need-allow-escape-sequences-gh-run.md) — _ag-1780667166418-apezq5_
 - [dump ir after pass can be printed during exception](ag-1780667166418-apezq5/1792961894220-dump-ir-after-pass-can-be-printed-during-exception.md) — _ag-1780667166418-apezq5_
+- [slang user attribute float args no frontend float ](ag-1780667166418-apezq5/1792995287897-slang-user-attribute-float-args-no-frontend-float-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -7998,6 +7999,7 @@
 - [eval runner setsid pid trap and date pinned reply ](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792653207139-eval-runner-setsid-pid-trap-and-date-pinned-reply-.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [reply eval judge can fail on the shared gateway ke](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792661133852-reply-eval-judge-can-fail-on-the-shared-gateway-ke.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [slang eval tasks rejudge py crashes on unknown tri](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792811008099-slang-eval-tasks-rejudge-py-crashes-on-unknown-tri.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [compliance check save inline discord read messages](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792995656071-compliance-check-save-inline-discord-read-messages.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

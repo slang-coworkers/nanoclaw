@@ -2,8 +2,8 @@
 title: GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution
 type: concept
 group: slang-backends
-tags: [glsl, wgsl, tint, wgsl-spirv, bindless, descriptor-heap, nonuniform, buffer-layout, std430, overload, dxc, reflection, cross-module]
-source_count: 27
+tags: [glsl, wgsl, tint, wgsl-spirv, bindless, descriptor-heap, nonuniform, buffer-layout, std430, overload, dxc, reflection, cross-module, ScalarDataLayout, uniform_buffer_standard_layout, requires]
+source_count: 30
 ---
 
 ## TL;DR
@@ -22,6 +22,8 @@ source_count: 27
 - **DXC duplicate semantics are backend-split** (DXIL errors on `TEXCOORD`+`TEXCOORD0`, DXC SPIR-V does not); Slang's silent re-index is Metal/WGSL-only.
 - **A 202c GLSL-operator ambiguity comes from redundant equal-rank glsl spellings, not unreachable `OverloadRank`.** Capture the surviving candidates and ranks before theorizing.
 - **`import glsl;` on WGSL/Metal hits E36107 from `glsl.meta.slang` `[require]` gates that predate WGSL** (634 of 698 omit wgsl). Widening a gate alone works only if the body forwards to a callee with metal/wgsl cases.
+- **On WGSL, `ConstantBuffer<T, ScalarDataLayout>` reflects std140 but lowers Natural** (stride-4 `array<f32,N>` in `var<uniform>`, #13904). naga rejects it; Dawn/Chrome 144+ accepts it and mis-reads the buffer, since a supported language extension needs no `requires`. PR #13935 maps Scalar→Std430 and emits `requires uniform_buffer_standard_layout;`, but for every explicit CB.
+- **Check a local build's commit before using it as a baseline**: `build/Release` can be hundreds of commits old and `slangc -v` can show a stale configure-time tag.
 - **GLSL interface blocks never compile for Metal/WGSL**: `Std140DataLayout` is spirv/glsl-only and uniform blocks default to std140.
 - **GLSL combined-sampler calls parenthesize every argument**: CHECK `texture({{.*}}name`. `-profile …+GL_EXT_X` / `-capability` never emit `#extension`; only per-use `__requireCapability`/`__glsl_extension` does.
 - **Re-verify DeepWiki-sourced facts on your own instrument** (source, vendored DXC, a rebuild).
@@ -73,6 +75,33 @@ both return `nullptr`; they are non-null only inside `if (auto pg = as<Parameter
 which ConstantBuffer/TextureBuffer/ParameterBlock reach. A DeepWiki "high confidence" answer claimed
 the opposite; read the accessors, the layout-construction branch and the AST hierarchy first
 ([SSBO reflection: null element and container](../learnings/1787660189955-glsl-ssbo-reflection-layout-has-null-element-and-n.md)).
+
+On WGSL an explicit per-buffer layout splits reflection from the shader (#13904). For
+`ConstantBuffer<T, ScalarDataLayout>` on `-target wgsl`, reflection comes from
+`WGSLLayoutRulesFamilyImpl::getConstantBufferRules` (slang-type-layout.cpp:2896), which always returns
+std140, but `getTypeLayoutRuleNameForBuffer` (slang-ir-lower-buffer-element-type.cpp:2571-2588)
+honours the explicit Scalar op and maps it to Natural. The std140 vec4 wrapper is skipped, so a
+`float[4]` field is emitted as `array<f32,4>` (stride 4) in `var<uniform>` while `-reflection-json`
+reports stride 16. naga rejects the module. Dawn/Chrome 144+ accepts it and silently mis-reads the
+buffer, because it supports `uniform_buffer_standard_layout`, and by WGSL §4.1.2 a supported
+language extension is available without `requires X;`, which only documents the use.
+`StructuredBuffer<S, ScalarDataLayout>` matches reflection only by luck, since WGSL storage layout is
+about std430. `ScalarDataLayout` has no `[require]` and compiles silently, while
+`Std140DataLayout`/`Std430DataLayout` give E36107 (the layout-type gate in the `import glsl;`
+section below) ([ScalarDataLayout CB: reflection std140, IR Natural](../learnings/1792913060489-wgsl-scalardatalayout-constant-buffers-reflection-.md)). PR #13935 (head
+a2ee40ce, open) adds `[require(wgsl)]` to both layouts, maps Scalar to Std430 on WebGPU targets,
+emits `requires uniform_buffer_standard_layout;` and makes reflection use std430 rules. Offsets
+agreed for `float[4]`+`float`, a vec3/vec2/`float3x3` mix, an array of CBs and an entry-point
+`uniform` CB, and default output stayed byte-identical to master. It emits `requires` for every
+explicit std430/scalar CB, even one whose std430 layout is already valid std140 (no scalar arrays),
+so naga and Safari reject such modules for no layout reason. Check a local build's commit before
+using it as a baseline: `/workspace/agent/slang/build/Release` was hundreds of commits behind master
+(3649fb982 on 2026-10-25), and `slangc -v` can print a stale configure-time tag (g3649fb982 on a
+build of 52e29ab43), so confirm top-of-tree with a recently merged behavior such as #13708's
+`binding_array` output. In a fresh worktree, `git -c protocol.file.allow=always submodule update
+--init --recursive` takes about 12 s, because the main checkout points submodule URLs at local
+paths ([ConstantBuffer explicit layout: master vs PR #13935](../learnings/1792930635926-wgsl-constantbuffer-explicit-layout-master-vs-pr-1.md),
+[check gpuweb before a chromium_* atom](../learnings/1792916916093-wgsl-chromium-experimental-features-check-gpuweb-b.md)).
 
 ## WGSL via Tint (`-target wgsl-spirv(-asm)`): requested target vs. sub-context format
 
@@ -255,7 +284,8 @@ metal/wgsl cases.
 
 A second gate sits on the layout types. `Std140DataLayout` is `[require(spirv)] [require(glsl)]`
 (`hlsl.meta.slang:41-45`) and `Std430DataLayout` is spirv/glsl/llvm only, so any GLSL
-`layout(std140) uniform {…}` or `buffer {…}` block gives E36107 on metal and wgsl. Dropping
+`layout(std140) uniform {…}` or `buffer {…}` block gives E36107 on metal and wgsl (PR #13935
+would add wgsl to both; see Buffer layout defaults above). Dropping
 `std140` does not help, because uniform blocks default to std140. Consequently
 `tests/glsl/matrix-mul.slang`'s METAL lane has never compiled; it passes only because its regex
 matches the diagnostic's quoted source (see
@@ -279,7 +309,7 @@ branch, then `cmake -E touch` the meta file and rebuild `generate_core_module_he
 only the new per-form tests failed
 ([combined-sampler parens; profile caps don't emit `#extension`](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md)).
 
-**Source learnings (27):**
+**Source learnings (30):**
 
 - [WGSL emit has TWO type paths](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md) — `_emitType` routes, `emitSimpleTypeImpl` names the type.
 - [internal breaks cross-builtin-module calls](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md) — GLSL is a separate builtin module; measure with a core-module rebuild.
@@ -302,6 +332,9 @@ only the new per-form tests failed
 - [combined-sampler parens; no `#extension` from profile](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md) — `texture((name_0), …)`; drill by breaking the compiler (#13333).
 - [matrix `*` E36107 is an operator gate](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md) — `import glsl;` on wgsl/metal; widen gate, bodies forward to `mul` (#13350).
 - [GLSL interface blocks never compile for Metal](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md) — `Std140DataLayout` gate; matrix-mul METAL vacuous; 62 decls gated (#13355).
+- [WGSL ScalarDataLayout constant buffers: reflection std140 vs IR Natural (#13904); requires-directive is documentation only](../learnings/1792913060489-wgsl-scalardatalayout-constant-buffers-reflection-.md) — `getConstantBufferRules` std140 vs `getTypeLayoutRuleNameForBuffer` Natural; Dawn accepts silently.
+- [WGSL ConstantBuffer explicit layout: master vs PR #13935 behavior, and verification gotchas](../learnings/1792930635926-wgsl-constantbuffer-explicit-layout-master-vs-pr-1.md) — Scalar→Std430 + `requires` for every explicit CB; stale build/Release; submodule init.
+- [WGSL Chromium-experimental features: check gpuweb before adding a chromium_* capability atom](../learnings/1792916916093-wgsl-chromium-experimental-features-check-gpuweb-b.md) — here for the stale `slangc -v` tag gotcha.
 - [wgsl-spirv-asm rows skip WGSL std140](../learnings/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md) — layout rule returns Natural there; only `-target wgsl` rows cover it.
 - [stub slang-tint to see its WGSL input](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md) — `tint_compile` writes `req->wgslCode`; `-tint-path <dir>`; validate via wgpu-py.
 - [WGSL-via-tint: check the REQUESTED target](../learnings/1790934790391-wgsl-via-tint-bugs-check-the-requested-target-not-.md) — exact `getTarget()` checks are the bug class; use `isWGPUTarget()`.

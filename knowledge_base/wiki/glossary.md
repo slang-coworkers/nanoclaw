@@ -406,6 +406,7 @@ type: nav
 - [Slang SPIR-V validation, testing, and local environment](concepts/slang-backends-spirv-validation-testing-and-environment.md)
 - [Slang SPIR-V: `precise`, NoContraction, and floating-point reassociation](concepts/slang-backends-spirv-precise-and-nocontraction.md)
 - [Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels](concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md)
+- [Slang SV_ClipDistance / SV_CullDistance: DXC packing, the GLSL shared-array path, Metal [[clip_distance]], and how to verify changes](concepts/slang-backends-clip-cull-distance-system-values.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 - [Slang WGSL emit: matrix-operator validity and storage orientation, template-list ambiguity, buffer-element gaps, enable/requires directives, push constants, and GPU-free naga/Tint validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
 - [Slang WGSL: half/f16 through u16 bridges, sub-word storage races, and const-expression NaN/Inf](concepts/slang-backends-wgsl-f16-and-const-expressions.md)

@@ -2,8 +2,8 @@
 title: "Slang Reflection API"
 type: concept
 group: slang-language-core
-tags: [reflection, reflection-json, type-layout, binding, program-layout, slang-deprecated-h]
-source_count: 24
+tags: [reflection, reflection-json, type-layout, binding, program-layout, slang-deprecated-h, specialization-constant, slang-rhi]
+source_count: 25
 ---
 
 # Slang Reflection API
@@ -28,6 +28,7 @@ Slang exposes a C reflection API (`spReflection*`) and C++ wrappers (`TypeReflec
 - **Entry-point uniform offsets are scope-relative**; `isParameterLocationUsed` needs the absolute (+ `EntryPointReflection::getVarLayout()->getOffset`). Combined multi-entry-point emit DOES accumulate binding indices (#13203, real bug).
 - **`"used"` = presence in final IR after DCE, not per-access liveness** — a resource-only `ParameterBlock` is legalized away, so its `subElementRegisterSpace` misreports `used:0` (#12349). Conversely a mixed data+resource ConstantBuffer keeps its original layout on the data-only remainder, so a DCE'd resource reports used (#13789).
 - **`getElementVarLayout()` is non-null ONLY for `ParameterGroupTypeLayout`** (CB/PB/TextureBuffer); `GLSLShaderStorageBuffer` is a pointer-like sibling (null); HLSL `StructuredBuffer` reflects as `Kind::Resource`.
+- **On HLSL/CPU/CUDA a spec-constant global reflects as an ordinary `Uniform`.** Find it with `findAttributeByName(gs, "SpecializationConstant")` or `"vk_constant_id"` (never `"vk::constant_id"`); `getDefaultValueBlob` sizes are target-independent (`bool` is 4 bytes vs a 1-byte CPU/CUDA layout).
 - **`findFieldIndexByName` returns the first match** but already supports qualified `Module.var`/`Module::var`; all duplicates are reachable by index.
 - **`include/slang-deprecated.h` holds the ACTIVE `spReflection*` C-API** (~168 functions) behind the C++ wrappers; only its `ICompileRequest` workflow is legacy.
 - **A new `spReflectionTypeLayout_*` accessor is append-only C-ABI** (free functions, no vtable), but it won't appear in `-reflection-json` without editing the emitter — pin it with a `slang-unit-test`; a draft PR is the artifact while the API name awaits sign-off.
@@ -87,6 +88,8 @@ The same container branch also errs the other way: a false *used* (#13789, repro
 
 **`findFieldIndexByName`.** Returns the first match, so a second same-named global from another module is unreachable by bare name; its `matchName` already handles `Module.var`/`Module::var` (last segment vs name, qualifiers via `getParentDecl`), and both are reachable via `getFieldCount`/`getFieldByIndex` ([findFieldIndexByName already supports qualified module.var](../learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)).
 
+**Specialization constants on uniform-layout targets (slang-rhi#943).** On HLSL/CPU/CUDA a `[SpecializationConstant]` / `[vk::constant_id]` global is an ordinary uniform: its category is `Uniform` (8), not `SpecializationConstant` (10), and no `SlangModifierID` marks it. `VariableReflection::findAttributeByName(globalSession, "SpecializationConstant")` and `findAttributeByName(gs, "vk_constant_id")` find the attribute on every target; the parser renames `vk::constant_id` to `vk_constant_id`, so a lookup of `"vk::constant_id"` returns null. `getDefaultValueBlob` returns target-independent bytes: a `bool` gives 4 bytes although the CPU/CUDA uniform layout size is 1, a non-literal initializer (`const int k = 3 * 4 + 1;`) gives no blob, and int/uint/float/half/double bytes match the layout size. slang-rhi has no API to set specialization-constant values on any backend. On Vulkan/WGPU, `ShaderCursor["k"].setData()` returns SLANG_OK and does nothing, because `ShaderObject::setData` clamps the write to the size of `m_data` (`src/shader-object.cpp:84-96`). To test this in slang-rhi (checked on main 7da55ec with pinned Slang 2026.17.1, L40S): its tests skip the CPU device on Linux (`tests/testing.cpp:900-904`; disable that `#if` in a scratch tree), `-check-devices` takes more than 4 min (use `-select-devices=cpu,cuda,vulkan`), and configure fails without Xinerama headers unless run as `cmake --preset gcc -DSLANG_RHI_BUILD_TESTS_WITH_GLFW=OFF -DSLANG_RHI_BUILD_EXAMPLES=OFF` ([spec constants on uniform-layout targets: reflection facts + slang-rhi harness](../learnings/1792933241509-slang-spec-constants-on-uniform-layout-targets-d3d.md)).
+
 ## The C-API surface and adding accessors
 
 `include/slang-deprecated.h` is NOT purely deprecated: PR #5301 (2024-10) moved the whole `sp*` C interface out of `slang.h` and included it just before the `namespace slang` wrapper block. Its `spReflection*` family (~168 functions) and `spGetReflection` are the active backing for the C++ wrappers; only the `ICompileRequest` workflow (`spCreateSession`, `spCompile`, …) is legacy ([slang-deprecated.h holds the ACTIVE reflection C-API](../learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md)).
@@ -95,7 +98,7 @@ The same container branch also errs the other way: a false *used* (#13789, repro
 
 **Changing what an accessor returns (PR #13535).** `TypeReflection::getElementCount()` for an unsized `T[]` changed from 0 to `SLANG_UNBOUNDED_SIZE`, which is what `slang.h` always documented, so on paper it was a doc-conformance fix. Downstream consumers use 0 as a marker, though. slangpy's `is_generic(){ return num_elements()==0; }` (`src/sgl/refl/type.h:231`), `any_generic_dims` (`type.cpp:625`), `slangpy/builtin/array.py:85` and `tensorcommon.py:285` treat 0 as "generic/unsized dimension" and store `int(element_count())`, so a function parameter like `float[] a` now reads -1. slang-rhi Metal's `collectPointerFields` (`metal-shader-object-layout.cpp:22`) does `if(count==0) return; for(i<count)`, which becomes an effectively infinite loop. When a reflection value changes, grep slangpy and slang-rhi for the old value used as a sentinel (`== 0`, `> 0`, `narrow_cast`, uint32 casts), not only for the accessor, and label the PR `pr: breaking change`. `CI SlangPy Trigger Test` is SKIPPED on bot-authored PRs, so dispatch it manually (`workflow_dispatch pr_number=N`). The fastest way to show the value change is a small C++ probe linked against `build/Release/lib/libslang-compiler.so`, run on master and on the PR: `m->getLayout()->findFunctionByName(...)->getParameterByIndex(0)->getType()->getElementCount()` ([reflection return-value fixes matching slang.h can still be breaking](../learnings/1791504997222-reflection-return-value-fixes-that-match-slang-h-d.md)).
 
-**Source learnings (24):**
+**Source learnings (25):**
 - [Entry-point offsets scope-relative; multi-EP binding bloat is real](../learnings/1790016065362-correction-entry-point-uniform-binding-bloat-acros.md)
 - [Two layout engines (AST vs IR); a layout flag must touch both](../learnings/1789151128965-slang-layout-has-two-independent-engines-reflectio.md)
 - [New dependency in a cached lookup must extend the key (#13020)](../learnings/1789172524588-threading-a-new-dependency-into-a-cached-parse-loo.md)
@@ -120,4 +123,5 @@ The same container branch also errs the other way: a false *used* (#13789, repro
 - [JSON dedup by TypeReflection* breaks with marker layouts (#13189)](../learnings/1789943171658-reflection-json-dedups-pointee-layout-by-typerefle.md)
 - [Dedup re-key risks self-referential stack overflow (#13190)](../learnings/1789944879524-reflection-json-dedups-pointee-layout-by-type-not-.md)
 - [reflection return-value fixes that match slang.h docs can still be breaking: grep slangpy/slang-rhi for the old sentinel (PR #13535)](../learnings/1791504997222-reflection-return-value-fixes-that-match-slang-h-d.md)
+- [Slang spec constants on uniform-layout targets (D3D/CUDA/CPU): reflection facts + slang-rhi test harness gotchas](../learnings/1792933241509-slang-spec-constants-on-uniform-layout-targets-d3d.md) — category Uniform; `vk_constant_id` attribute name; default-value blob sizes; no slang-rhi setter
 _Catalog: [[wiki/index.md]]_
