@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13888 — spurious outer-scope candidates for ambiguous non-overloadable lookup
-description: "MEMBER-filed (skiminki-nv) 10-23 10:36Z + bot mention 'reproduce and suggest a PR'. Reproduced, fixed in draft PR #13889 (pr: breaking change, head 7ac97a3 after the 10-23 maintainer review round). PARKED on skiminki-nv accepting the breaking cases + un-drafting. Re-chase rechase-slang-13888-r1 10-27 13:00Z."
+description: "MEMBER-filed (skiminki-nv) 10-23 + bot ask for a PR. Reproduced and fixed in PR #13889 (7ac97a3, pr: breaking change). CLOSED WNF 10-26 18:14Z by skiminki-nv (issue + PR): superseded by the 202c name-lookup/overload overhaul, tracked in #13956. Terminal."
 tags: [slang, name-lookup, slang-lookup, using-namespace, breaking-change]
 resource: https://github.com/shader-slang/slang/issues/13888
 ---
@@ -44,3 +44,11 @@ they pass 251/251 when run file by file.
 
 **State 10-23 12:49Z.** PARKED on maintainer decision. Re-chase `rechase-slang-13888-r1`
 (task-hygiene slot r1) set for 10-27 13:00Z.
+
+**10-26 18:14Z, CLOSED — will not fix.** skiminki-nv closed the issue (comment 6423847635: "I'll close
+this as will not fix. We'll do a larger overhaul for 202c, tracked by #13956.") and closed PR #13889
+at 18:15Z ("Closing as WNF. See the issue."). The PR had been marked ready 10-23 13:43Z. #13956 =
+"Name lookup and overload resolution overhaul for Slang 202c" (OPEN, skiminki-nv). Main cancelled
+`rechase-slang-13888-r1-d3cf` and sent the close to the triager for the final in-place comment edit.
+The branch `fix/issue-13888` is kept, because the closed PR's tests and breaking-case list are
+possible input for #13956.

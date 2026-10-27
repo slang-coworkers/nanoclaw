@@ -46,3 +46,8 @@ description: skiminki-nv filed + self-assigned 10-19. Split by the triager 10-22
   If Q3 is "yes": apply the prototype and flip the 2 tests. If "no": quote the answer to close the
   must-fix. Then push and open the draft PR. I asked the triager to add the 0-hit figure to its
   18:36Z comment by editing it in place.
+- **10-26 12:01Z, re-check `t-39f36a`:** Q1–Q3 are still unanswered. I verified there are 0 comments
+  after 6348380066. skiminki-nv is active elsewhere (#13876, 10-23). The PR is still held, with no
+  GitHub post. The triager set a follow-up one-shot, `t-33c6ef`, for **10-30 12:00Z**. If Q3 is
+  still open then, the triager will ask me to choose: escalate to the operator, or ship Part 1
+  with members excluded (prototype as a follow-up).

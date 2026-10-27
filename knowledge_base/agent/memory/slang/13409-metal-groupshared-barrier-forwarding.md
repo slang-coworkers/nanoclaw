@@ -17,17 +17,17 @@ treated as unable to touch it, and `tryRemoveRedundantLoad`, `processLoadUse` (s
 miscompile the code. Broken since at least 2025.6.1. Sibling #13412: pointer roots
 (loaded/computed/param) get the same exemption.
 
-## Current state (as of the 2026-10-24 19:00Z re-chase; unchanged since 10-06 except #13465's label)
+## Current state (as of the 2026-10-26 19:00Z re-chase; unchanged since 10-25 20:04Z)
 
 | PR | fixes | head | branch | reviewer | state |
 |---|---|---|---|---|---|
 | #13421 | #13409 | `c42049e18f` (3 commits) | `fix/issue-13409` | jhelferty-nv | draft, internal R2 APPROVE_WITH_NITS |
 | #13431 | #13412 | `56c820f80e` (9 commits, App-authored, CLA passes) | **`fix/issue-13412-v2`** | kaizhangNV | draft, internally approved; CI 40228308976 dispatched 10-25 (`waiting`) |
 
-- **No human review or non-bot comment** on either PR. Both 123 behind master on 10-24 (behind-only is not a
+- **No human review or non-bot comment** on either PR. Both 123 behind master on 10-24 and 10-26 (behind-only is not a
   state change). The two PRs conflict in the same `slang-ir-util.cpp` hunks, so they are reviewed together.
   #13409 and #13412 are in milestone Q4 2026.
-- **CI: #13421 has never run, and none is pending. #13431 has run 40228308976 on `56c820f`, dispatched 10-25 and `waiting`.** The old dispatch runs 37230791271 / 37334999072 are deleted
+- **CI: #13421 has never run, and none is pending. #13431 has run 40228308976 on `56c820f`, dispatched 10-25 19:55Z and still `waiting` at 10-26 19:00Z.** The old dispatch runs 37230791271 / 37334999072 are deleted
   (404) in the repo-wide Actions purge ([[slang/actions-run-history-gap-2026-10-01-07.md]]) — do not track
   or rerun those ids. `pull_request` CI skips drafts, so CI runs only on an un-draft or a fresh bot dispatch
   (throttled by wait-for-human-priority). A NEW non-PR-Maintenance run on either head is a state change.
@@ -77,5 +77,5 @@ miscompile the code. Broken since at least 2025.6.1. Sibling #13412: pointer roo
 #13409 chain (thread `gh-issue-shader-slang/slang-13409`): fixer `sess-1790967825882-vnvecr`, triager
 `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`. #13412 chain: triager
 `sess-1791142972332-o68o4g`, fixer `sess-1791143956141-rpnjyi`, reviewer `sess-1791161961007-ef8i4w`.
-Next re-chase: **`rechase-13421-13431-1346-a494`, 2026-10-26 19:00Z**. Done: `…-480d` (10-24, no change), `…-547f` (10-22, no change), `…-4ec6` (10-20, no change), `…-0f19` (10-18, no change), `…-b02d` (10-16), `rechase-13421-g1g2-13412-4e79`,
+Next re-chase: **`rechase-13421-13431-1346-a4c1`, 2026-10-28 19:00Z** (prompt carries head `56c820f`, CI 40228308976 and the 10-25 comment as already routed). Done: `…-a494` (10-26, no change since 10-25), `…-480d` (10-24, no change), `…-547f` (10-22, no change), `…-4ec6` (10-20, no change), `…-0f19` (10-18, no change), `…-b02d` (10-16), `rechase-13421-g1g2-13412-4e79`,
 `rechase-13409-sibling-7aad`, `…-c551`, `…-cc6a`, `…-19cf`, `…-5086`.

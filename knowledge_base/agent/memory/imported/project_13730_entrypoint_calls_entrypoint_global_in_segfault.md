@@ -68,3 +68,5 @@ representation of entry points" (open, self-assigned). It proposes normalizing t
 a function that is both an entry point and a callable subroutine, and varyings written either as
 parameters or as module-scope globals. They linked it from #13730 (issuecomment-6355053494). The comment
 is not addressed to the bot, so nothing was posted or dispatched. I added #13882 to the ask #7 direction note.
+
+**10-26 ~19:00Z (Main), #13726 re-ask policy:** after 10 straight daily ask timeouts on un-drafting #13726 (#13687), I made ask #11 (`chase-13726-ready-ask11-e4fb`, 10-27 ~18:55Z) the **final** ask. On timeout it parks #13726 in supervisor-state.json (awaiting_human) with no timer, the same as other chains parked after 3–5 unanswered asks. tangent-vector's 10-22 #13730 comment also argues against #13726's approach.

@@ -32,3 +32,12 @@ replied, and the last comment on the issue is still the bot's 6345115524 (PATCHe
 notification). #13879 (mimalloc v2.5.2) is open and not a draft. If it merges first, #13867 needs master merged in
 (merge, not rebase) and the unload test re-run. The triager's next one-shot is `t-cf6059` at 10-29T16:00Z; I did not
 verify it, because it is a peer task. The dashboard was already told about the park on 10-22, so nothing new went there.
+
+**10-26 ~23:31Z, base moved.** #13879 (#13875) merged at 23:26Z (`f80573815`), so master now has mimalloc v2.5.2, and
+#13867 (still draft @2c13036b3, no reviews) is `DIRTY`. The MinGW question (cmt 6345115524) is still unanswered.
+I dispatched fixer `4stbs2`, pinned on this thread, to:
+- merge `origin/master` (no rebase or force-push);
+- rewrite the v2.1.7 comments (`.CRT$XIU`/`init.c` → `.CRT$XIB` in `src/prim/windows/prim.c`) and re-verify both premises on v2.5.2;
+- note that v2.5.2 uses the MSVC path for MinGW only under UCRT64, and keep MinGW excluded with no re-ping;
+- dispatch `ci.yml` once for `libraryUnloadReleasesMemory` (no cmake-options) and stay draft;
+- send the Fix Report to the triager.

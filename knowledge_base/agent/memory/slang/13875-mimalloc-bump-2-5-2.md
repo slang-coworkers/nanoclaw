@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13875 — update mimalloc v2.1.7 → v2.5.2
-description: "pdeayton-nv (MEMBER) filed 10-22 17:53Z, self-labelled bot-ok. Triaged 18:06Z (P2; approach B: bump to 2406cc5f + MI_NO_OPT_ARCH + /Zc:__cplusplus on slang-mimalloc.cpp; bump before #13867). PR #13879 @ce18ba9f9 READY + APPROVED by pdeayton-nv 10-23 17:31Z, CI green incl. Windows MSVC x64/aarch64; mergeState BLOCKED (maintainer merge). Re-chase r1 2026-10-26T16:00Z."
+description: "TERMINAL. pdeayton-nv filed 10-22 (bot-ok). Fixed by PR #13879 (mimalloc v2.5.2 `2406cc5f` + MI_NO_OPT_ARCH + /Zc:__cplusplus + single-config MI_DEBUG), MERGED 10-26 23:26Z as f80573815; issue closed. Follow-on rebase of #13867 sent to the #13828 fixer."
 tags: [slang, mimalloc, dependency, build, submodule]
 ---
 
@@ -78,3 +78,17 @@ x64 + aarch64 passed, so `/Zc:__cplusplus`, the `SOURCES` check and the /MT link
 protection is 403 to us; CODEOWNERS `* @shader-slang/dev` ⇒ likely a second / code-owner approval (unverified). Merge
 is the maintainer's. Re-chase r1 prompt updated: on merge, it hands #13867's rebase to the #13828 fixer thread.
 ⚠️ Approvers are paused — do not forward any `pr_ready_for_review` for #13879 to slang-pr-approver.
+
+**10-26 16:00Z, re-chase r1: unchanged** (verified live). #13879 OPEN, ready, head `ce18ba9f9`, MERGEABLE, CI 58 pass /
+57 skipped / 0 fail, APPROVED by pdeayton-nv, BLOCKED, `reviewDecision` empty. No human comments on #13875 or #13879
+since 10-23 (only a bot cross-ref from #13828 on 10-25 16:02Z). **New detail:** pdeayton-nv requested a review from
+**jkwak-work** at 10-23 17:31:13Z, just before approving. That review is still pending, and the `dev` team request
+(00:47:50Z) is no longer in `reviewRequests`. So the blocker is likely a second required approval (protection is still
+403 to us). #13867 is still a draft @`2c13036b`. One dashboard line was sent; nothing was posted on GitHub and the fixer
+was not nudged. **Next:** webhooks, plus a one-shot `rechase-slang-13875-r2` at 2026-10-29T16:00Z (slot 2 of 3).
+
+**10-26 23:26Z — MERGED (terminal).** pdeayton-nv merged #13879 as `f80573815` at 23:26:27Z; #13875 closed
+`completed` 23:26:29Z (both verified live). r1 re-chase ran 16:00Z and armed r2 (10-29); I cancelled r2 at ~23:31Z
+as obsolete. Fixer worktree and triager sentinel removed. Follow-on: #13867 is `DIRTY`, so I dispatched the #13828
+fixer (`4stbs2`, pinned, thread `gh-issue-shader-slang/slang-13828`) to merge master, rewrite its v2.1.7 comments,
+dispatch `ci.yml` once and stay draft. See [13828](13828-mimalloc-dll-unload-memory.md).

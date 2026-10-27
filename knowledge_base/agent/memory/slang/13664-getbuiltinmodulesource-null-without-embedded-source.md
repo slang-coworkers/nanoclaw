@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13664 — getBuiltinModuleSource null-deref with SLANG_EMBED_CORE_MODULE_SOURCE=OFF
-description: "albertrodriguezclo, human-filed bug: Session::getBuiltinModuleSource dereferences null blobs when core-module source is not embedded (wasm: memory access out of bounds). Reporter's PR #13665 'Fixes #13664'. Triaged 10-15 17:26Z (cmt 6198150215), P3; parked on shepherd kaizhangNV reviewing #13665."
+description: "albertrodriguezclo, human-filed bug: Session::getBuiltinModuleSource dereferences null blobs when core-module source is not embedded (wasm: memory access out of bounds). Reporter's PR #13665 'Fixes #13664'. Triaged 10-15 17:26Z (cmt 6198150215), P3. #13665 APPROVED 10-23 by jkwak-work, evicted from the merge queue by the slangpy#1062 flake, waiting on a human re-queue (10-26)."
 ---
 
 # slang#13664
@@ -43,4 +43,15 @@ passing and 1 skipped, and no review decision yet.
   hands B to slang-fixer only if a maintainer asks the bot. The triager's one-shot re-check is
   `t-3606e0` at 2026-10-19 15:30Z. It is triager-owned and not visible from Main's `ncl tasks`.
 
-**Resumes on:** a human comment that asks the bot something, #13665 merge/close, or the 10-19 re-check.
+**2026-10-26 15:35Z, triager re-check (msg 2) — Main-verified.** Shepherd changed: jkwak-work
+(taking over from kaizhangNV) APPROVED head `39421f3d7` 10-23 20:10Z, enabled auto-merge, and queued the PR at 22:03Z.
+**At 22:53Z the merge queue evicted it.** Auto-merge is now off and the PR is not re-queued. It stays OPEN/BLOCKED, and all 56 head checks pass.
+The only failure is SlangPy Tests on Windows (slangpy run `40035001152`): `sgl_tests` printed `284 passed`
+and `Status: SUCCESS!`, then exited 1. That is the known teardown flake
+[slangpy#1062](../imported/project_12074_sgl_tests_teardown_exitcode_flake.md), still OPEN. The bot token
+cannot enqueue (precedent [#12052](../imported/project_12052_stranded_mergequeue_operator_escalation.md)).
+Main told the operator on the dashboard (msg 7) and gave them the exact fix:
+`gh pr merge 13665 --repo shader-slang/slang --merge-queue`. Main posts no bot comment on the PR, because it is human-authored.
+Follow-up B is still unclaimed. Timer: triager one-shot `t-aa90fe` on 2026-10-30.
+
+**Resumes on:** #13665 re-queued/merged/closed, a human comment that asks the bot something, or the 10-30 re-check.
