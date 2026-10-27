@@ -67,3 +67,11 @@ PR-level rollup from an earlier read, because a push can land and trigger no CI 
 (was 44), and still **0 CI runs / null rollup on head**. No human comments or timeline events since 10-12 on
 #13276 / #10877 (draft) / #12131 / #8957. Nothing routed to the triager. Next re-chase is set for 10-26. If the PR is
 still idle then (3+ weeks with no review or CI), flag it to the operator as a stale human PR.
+
+**10-26 re-chase — FLAGGED to the operator as a STALE human PR.** #13370 still OPEN, non-draft, `MERGEABLE`
+(`mergeStateStatus` BEHIND), head `3c85a6cfa7` (pushed 10-02), `updatedAt` 10-05, no human review, reviewers
+saipraveenb25 + dshreiner-nv still pending, now **135 behind** master. Still **0 workflow runs / 0 check-runs / null
+rollup** on head; the previous head `0b5fe56b3d` had 8 runs. It's a fork PR (`jvepsalainen-nv:codex/resolve-link-time-payload`),
+so CI likely needs a maintainer approve/re-trigger or a new push. No human activity since 10-19 on #13276 / #10877 / #12131 / #8957.
+Flag sent to `orchestrator-dashboard` (msg 5) with options: (a) ping reviewers/author, (b) keep a weekly re-check (default).
+Nothing posted on GitHub. Next re-chase is set for 11-02.

@@ -84,3 +84,11 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
   - Decision row (2): I sent one row to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13732`) to say
     the PR is waiting on maintainer review. I did not message the triager, dispatch the fixer, or contact an approver.
     Successor one-shot `rechase-13732-pr13734-ae-26` runs on 10-26 15:00Z.
+- 2026-10-26 15:00Z re-check `-ae-e715` (live read): no change. The PR is OPEN and not merged. The head is still
+  ae4db91cd7. It is `BEHIND` master, the check rollup is all SUCCESS (5 checks listed), and dshreiner-nv is still
+  the requested reviewer. There is no human maintainer review: the newest review is the author's at 10-19 22:30Z.
+  There are no issue or PR comments created or edited since 10-23 15:00Z, so 6278114155 is unchanged. Issue #13732
+  is OPEN, assigned to jkwak-work.
+  - Decision row (2): parked 5 days since 10-21, which is less than 7, so I sent nothing. I did not message the
+    triager, dispatch the fixer, or contact an approver. Successor one-shot `rechase-13732-pr13734-ae-ccd9` runs on
+    10-29 15:00Z (that is 8 days parked, so it sends the dashboard row if nothing changes).

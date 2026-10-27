@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13878_aligned_immutable_ptr_loads
-description: "slang#13878 (tdavidovicNV, MEMBER, 10-22 19:59Z, unassigned): loadAligned rejects ImmutablePtr<T> (needs ReadWrite); CUDA __ldg path drops alignment; D3D12 BAB LoadAligned alignment never reaches HLSL/DXIL. Companion #13877 (StructuredBuffer grouping) is a sibling Main's chain. Related: PR #10098, #11545/#11593/PR #11803, #13126/PR #13130. ROUTED to slang-triager 10-22 20:0xZ; triaged 20:12Z (cmt 6350271779, `reproduced`), PARKED on @csyonghe choosing (a) bot signature-only PR vs (b) revive #10098; triager re-check task i13878-recheck-9402 @ 10-26 16:00Z."
+description: "slang#13878 (tdavidovicNV, MEMBER, 10-22 19:59Z; HUMAN-OWNED @kaizhangNV since 10-23): loadAligned rejects ImmutablePtr<T> (needs ReadWrite); CUDA __ldg path drops alignment; D3D12 BAB LoadAligned alignment never reaches HLSL/DXIL. Companion #13877 (StructuredBuffer grouping) is a sibling Main's chain. Related: PR #10098, #11545/#11593/PR #11803, #13126/PR #13130. ROUTED to slang-triager 10-22 20:0xZ; triaged 20:12Z (cmt 6350271779, `reproduced`), PARKED on @csyonghe choosing (a) bot signature-only PR vs (b) revive #10098; re-check 10-26 closed the bot out — TERMINAL for bot."
 ---
 
 # slang#13878 — aligned immutable-pointer loads across CUDA / Vulkan / D3D12
@@ -30,3 +30,10 @@ vector-chunk `__ldg` (nvcc ignores `__builtin_assume_aligned`). D3D12 is blocked
 **Parked on csyonghe:** (a) bot signature-only PR (option A: access-generic `loadAligned`, with
 `storeAligned` kept ReadWrite), and #10098 rebases for CUDA; or (b) revive #10098. Only (a) leads
 to a fixer handoff; the brief is in the memo.
+
+**10-26 16:01Z — closed for the bot (terminal).** Re-check `i13878-recheck-9402` fired. Verified
+live: csyonghe never answered (a)/(b); 10-23 14:02Z jkwak-work labeled `RTR`, assigned
+@kaizhangNV, milestoned *Q4 2026 (Fall)*. Triager edited cmt `6350271779` in place (still the only
+comment) to hand off to the assignee and offer an option-(a) draft PR on request. PR #10098 unchanged
+(head `7ab09d4e`, last commit 06-26, CONFLICTING). No fixer handoff — a bot PR would collide with the
+assigned engineer. No timer: a reply from @kaizhangNV asking for (a) arrives by webhook.

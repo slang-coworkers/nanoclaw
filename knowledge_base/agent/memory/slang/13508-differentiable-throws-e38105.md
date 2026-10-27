@@ -42,3 +42,10 @@ description: slang#13508 — `[Differentiable]` functions declared `throws` fail
   on master `a801f2685c`. Whichever PR lands second has to renumber, so the fixer must pick a free code. Scheduled the final re-chase 3,
   `rechase-13508-sai-3`, for 2026-10-26 16:00Z. If he is still silent then, create no further task and tell the operator on
   orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13508`) that the chain is parked on Sai.
+- **10-26 16:00Z re-chase 3, FINAL (`rechase-13508-sai-3-c587`): Sai still silent; chain parked on him.** The issue was last updated
+  10-14 16:48:13Z. The only timeline events after the proposal are the 16:48:14Z `mentioned`/`subscribed`, which came from the bot's own
+  @-mention. No human comment, and no open PR references #13508. His open PRs (#13677 and older) don't touch it. E38038 is still free on master
+  `52e29ab43b` (10-23), and open bot PR #11709 still claims it. Nothing posted on GitHub, nothing dispatched, **no further task created**.
+  The operator was told on orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13508`, msg id 3) in a 5-bullet with the comment links.
+  Next step is the operator's or Sai's. A go-ahead from Sai arrives by webhook, and then goes to slang-fixer (MODE=fix-issue) with the
+  triager's memo and diff handoff, the three cleanup gaps, and the E38038 collision.

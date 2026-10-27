@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13793 — member typealias capability requirements don't propagate to the enclosing struct
-description: Opened 10-20 21:50Z by kaizhangNV (MEMBER, the assignee). Triaged in 31 min, so it fails R6. The fixer was dispatched. The reporter's own PR #13798 (10-21 02:47Z) superseded it, and the chain was abandoned 10-21 03:56Z. Terminal unless a webhook arrives. 10-21 17:32Z: jhelferty sent the design question to tangent-vector and skiminki-nv; held.
+description: Opened 10-20 21:50Z by kaizhangNV (MEMBER, the assignee). Triaged in 31 min, so it fails R6. The fixer was dispatched. The reporter's own PR #13798 (10-21 02:47Z) superseded it, and the chain was abandoned 10-21 03:56Z. Terminal unless a webhook arrives. 10-21 17:32Z: jhelferty sent the design question to tangent-vector and skiminki-nv; 10-26 17:08Z: kaizhangNV (sole assignee) to document the desired behavior. Both held.
 ---
 
 # slang#13793
@@ -40,6 +40,10 @@ slang-check-decl.cpp). P2, not a regression (2026.13.1 behaves the same).
   kaizhangNV and skiminki-nv. #13798 is still open at `743612712` with no review decision. **Held: I dispatched nothing
   and posted nothing.** The open semantics question (does a member alias restrict the struct's own extensions, conformances
   and methods, or only its use sites?) is now a design discussion among those three maintainers.
+- **10-26 17:08Z `pr_mention` from jhelferty-nv, comment [6422405634](https://github.com/shader-slang/slang/issues/13793#issuecomment-6422405634):**
+  *"next steps: @kaizhangNV to follow up on documenting desired behavior."* Again there is no @nv-slang-bot mention, and
+  this is the same maintainer-routing shape. tangent-vector and skiminki-nv are no longer assignees; kaizhangNV is the
+  only one. #13798 is still open at `743612712`, not merged and with no review decision. **Held: nothing dispatched, nothing posted.**
 - **Resume when:** a comment addresses @nv-slang-bot or asks the bot something, the design is decided and someone asks
   for the bot's help, or #13798 merges or closes.
 

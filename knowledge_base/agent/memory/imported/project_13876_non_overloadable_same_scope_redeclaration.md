@@ -110,3 +110,10 @@ The fixer asked skiminki-nv to check both pipeline logs in PR comment
 [6377443007](https://github.com/shader-slang/slang/pull/13880#issuecomment-6377443007), and will fix the PR if they
 show E30200/E30203. **PARKED on that log check**, then review/approval. `rechase-13876-pr-13880-c876` updated.
 The operator decision on the 3 side bugs is still pending.
+
+**10-26 18:00Z, `pr_mention` on the issue: HELD.** jhelferty-nv commented
+[6423554295](https://github.com/shader-slang/slang/issues/13876#issuecomment-6423554295) "Tagging @tangent-vector". Main
+checked the comment live and it matches the payload. It tags another human and does not mention the bot, so it is not a
+summons (rung 5): no dispatch, no reaction, no post. State is unchanged: #13880 ready, `174a0319b`, not merged, no reviews.
+The Falcor-log question from 10-24 00:21Z has no answer yet. A tangent-vector comment on #13880 will reach the fixer
+through its PR mapping.

@@ -8,7 +8,7 @@ resource: https://github.com/shader-slang/slang/issues/13126
 
 # slang#13126 — ByteAddressBuffer.Load<S>() into a call segfaults
 
-**State 2026-10-23 18:0xZ: fixer DID merge (head `654c18a756`) + dispatch run `39471864134` — it yielded the same way and sits `waiting` on `falcor-ci`; blocked on the human gate. 10-20: fixer asked to merge master + re-dispatch CI. Earlier: 2026-10-17 20:0xZ PARKED on humans (`falcor-ci` gate approval, then review). Peer review: final APPROVE.** DRAFT PR
+**State 2026-10-26 18:0xZ: unchanged since 10-23 — still blocked on the `falcor-ci` human gate (case f, re-armed `rechase-13126-pr13130-1c93` for 10-29 18:00Z).** 10-23 18:0xZ: fixer DID merge (head `654c18a756`) + dispatch run `39471864134` — it yielded the same way and sits `waiting` on `falcor-ci`; blocked on the human gate. 10-20: fixer asked to merge master + re-dispatch CI. Earlier: 2026-10-17 20:0xZ PARKED on humans (`falcor-ci` gate approval, then review). Peer review: final APPROVE. DRAFT PR
 [#13130](https://github.com/shader-slang/slang/pull/13130), head `a616bd3805` (round-3 nits), 0 behind / 6 ahead of
 master (I checked with the compare API), `Fixes #13126`, labels `regression` + `reproduced` on the issue,
 `pr: non-breaking` on the PR. Review requested from jhelferty-nv (CODEOWNERS); 0 human reviews.
@@ -70,7 +70,7 @@ L40S + spirv -O0), and 2 tests for the LoadAligned key and natural alignment. A/
 - Human: a `ci-approvers` member approves the `falcor-ci` gate. Neither we nor the fixer can do this.
 - Then green CI → ready-for-review → maintainer review (jhelferty-nv).
 - Operator: the P2→P1 priority bump (project board).
-- Re-check: one-shot task `rechase-13126-pr13130-0731` at 10-26 18:00Z.
+- Re-check: one-shot task `rechase-13126-pr13130-1c93` at 10-29 18:00Z (`ncl tasks update` on the running series fails with "no live task matched", so each re-arm creates a new id).
 
 ## 10-20 18:0xZ re-chase
 
@@ -91,3 +91,12 @@ on master, and `ci.yml` has 93 `waiting` runs (71 workflow_dispatch). The newest
 [the throttle livelock note](../imported/feedback_a_status_set_broader_than_its_docstring_livelocks_the_throttle.md),
 now repo-wide. Approving this run's gate alone does not restart the 44 skipped jobs, and the run is outside the 16 h
 lookback. Case (f): dashboard told, re-armed `rechase-13126-pr13130-0731` (10-26 18:00Z). No fixer nudge.
+
+## 10-26 18:0xZ re-chase
+
+No change: still draft, head `654c18a756`, now 48 behind / 7 ahead (master got only 2 commits since 10-23 18:00Z). 0 reviews, no
+human comments on #13126 or #13130 since 10-23 18:00Z, no operator answer on the dashboard. Run `39471864134` is still `waiting`
+(2 failed, 44 skipped, 1 success, 1 waiting); `falcor-ci` reviewer `ci-approvers`, `current_user_can_approve=false`. The livelock
+remains: `ACTIVE_STATUSES` (`ci_priority_common.py:29`) still includes `waiting`; `ci.yml` has 98 `waiting` runs; retry run
+`40368651580` (10-26 17:26Z) still lists `waiting` bot runs as active. Case (f): dashboard told, re-armed
+`rechase-13126-pr13130-1c93` (10-29 18:00Z). No fixer nudge.

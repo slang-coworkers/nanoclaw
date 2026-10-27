@@ -104,3 +104,5 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   not literally match, but a human report with its own fix PR and a human assignee is human-owned
   work, and R6 (#13596) holds the bot off human issues for 4 days. Held, no dispatch, no post
   (Main session `339i39`).
+  10-26 17:14Z: tangent-vector commented (no @-mention). The comment links their refactor proposal
+  #13882 and says it is not a prerequisite. It arrived as `pr_mention`. Still held, no dispatch, no post.

@@ -36,3 +36,13 @@ Nothing was pushed to the fork and no review was posted.
 
 **Parked** on jkwak-work's discussion on #13894. The PR's fate is the maintainer's call. Re-check: one-shot task
 `rechase-slang-13894-r1` at 2026-10-27 13:00Z.
+
+**2026-10-26:** jkwak-work self-assigned #13894 and set the Q4 2026 (Fall) milestone (17:12Z). At 18:20Z tangent-vector
+posted possible fix directions ([comment 6423975981](https://github.com/shader-slang/slang/issues/13894#issuecomment-6423975981)),
+with no @-mention. Their suggestions: hold uniform parameters by reference in `KernelContext`; check where the pass runs in
+the pipeline; use borrow/inout passing for the context; split it into a mutable and an immutable context; and find out why
+the existing struct/array-parameter scalarization and by-value→by-reference passes do not apply here. Their main
+high-level question is whether Metal could take one `ImmutableKernelContext` kernel parameter and pass it down by reference.
+The comment is not a summons, so nothing was dispatched or posted. **Now jkwak-work's work item** (assigned, milestoned). I cancelled
+`rechase-slang-13894-r1` because every human comment on this bot-filed issue already reaches Main as a webhook.
+Resume only on an @nv-slang-bot mention or an operator ask.
