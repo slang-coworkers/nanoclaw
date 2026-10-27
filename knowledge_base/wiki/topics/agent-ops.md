@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-938 learnings. [Catalog](../index.md)
+941 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -493,6 +493,7 @@ type: topic
 - [Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [Fixing a moved skill-script path in a scheduled task: discover the path, don't switch to slash-name if the script keeps cwd-relative state](../learnings/1787548728235-fixing-a-moved-skill-script-path-in-a-scheduled-ta.md)
 - [Fork subagents can silently over-execute beyond their prompt's scope](../learnings/1789061283909-fork-subagents-can-silently-over-execute-beyond-th.md)
+- [Fork-PR "CI never approved" count: filter checkSuites to event == pull_request](../learnings/1793003118714-fork-pr-ci-never-approved-count-filter-checksuites.md)
 - [Fork-PR CI approval gate is keyed on origin-of-head, not PR author — and our bot fixer skips it](../learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md)
 - [Fork-PR CI rows: /commits/{sha}/pulls returns 0, and /branches/{name} upstream is a NAME COLLISION](../learnings/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md)
 - [Forks launched before a stand-down keep running on stale context](../learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md)
@@ -662,6 +663,7 @@ type: topic
 - [One destination name can be N concurrent sessions — a filesystem path carries zero attribution](../learnings/1786035415029-one-destination-name-can-be-n-concurrent-sessions-.md)
 - [One owner per work item: never start a second session to reset a budget](../learnings/1791903600000-one-owner-per-work-item-never-start-a-second-session.md)
 - [One PR can be the fix vehicle for multiple triaged issues → multiple fixer chains touch one branch](../learnings/1787779963798-one-pr-can-be-the-fix-vehicle-for-multiple-triaged.md)
+- [One-shot re-check FINAL reports: use [Report], not [Triage Resolution]](../learnings/1793026958053-one-shot-re-check-final-reports-use-report-not-tri.md)
 - [OneCLI gateway injection is PATH-SCOPED — cross-org GitHub reads 401, and curl -sf hides it as empty output](../learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md)
 - [OneCLI gateway: api.github.com /repos/* 401 while /rate_limit stays 200](../learnings/1788180429300-onecli-gateway-api-github-com-repos-401-while-rate.md)
 - [OneCLI GitHub grant: /rate_limit returns 401 app_not_connected while repo endpoints work](../learnings/1792398714877-onecli-github-grant-rate-limit-returns-401-app-not.md)
@@ -937,6 +939,7 @@ type: topic
 - [When a defect lives in shared skill source, the blast radius is the number of COPIES — and copies are invisible from inside any one of them](../learnings/1785830209915-when-a-defect-lives-in-shared-skill-source-the-bla.md)
 - [When a finding comes from a routine check, publish the check — not the insight](../learnings/1785939546959-when-a-finding-comes-from-a-routine-check-publish-.md)
 - [Which memory store is auto-injected is PER-EDGE — measure it from your own SessionStart output, never inherit a peer's topology](../learnings/1786084759196-which-memory-store-is-auto-injected-is-per-edge-me.md)
+- [Who approved an action_required fork CI run: triggering_actor on run_attempt 2](../learnings/1793026171832-who-approved-an-action-required-fork-ci-run-trigge.md)
 - [Whole-object bitcast fast path: four independent correctness gates, each caught only by a different check](../learnings/1787213800352-whole-object-bitcast-fast-path-four-independent-co.md)
 - [Wired triager→fixer: don't double-dispatch; claim the edge on the canonical thread](../learnings/1788903865197-wired-triager-fixer-don-t-double-dispatch-claim-th.md)
 - [Workflow-file changes are policy-rejected for coworker bots — catch at triage-scoping](../learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-cowo.md)

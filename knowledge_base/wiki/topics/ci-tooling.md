@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-589 learnings. [Catalog](../index.md)
+590 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -577,6 +577,7 @@ type: topic
 - [Verify cited CI run against live GitHub before trusting a release-report notification](../learnings/1784856735494-verify-cited-ci-run-against-live-github-before-tru.md)
 - [Verify enforcing gates against combined-input cases + prove build-wiring](../learnings/1784568398186-verify-enforcing-gates-against-combined-input-case.md)
 - [Verify passed-vs-FAILED before citing a test signature in an escalation](../learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md)
+- [Verify PR-report "CI failing" labels with one GraphQL isRequired query](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)
 - [Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](../learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)
 - [Verify-at-head: check enforce logic against COMBINED inputs + prove build-wiring, don't accept it](../learnings/1784568390472-verify-at-head-check-enforce-logic-against-combine.md)
 - [Verifying a citation: extract it from the artifact, never retype it](../learnings/1785967745164-verifying-a-citation-extract-it-from-the-artifact-.md)

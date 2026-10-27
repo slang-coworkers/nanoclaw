@@ -89,6 +89,8 @@ frequently. Three distinct failure surfaces converge on this one path:
    pinned head — cannot round an abstain up to WOULD_APPROVE (self-review is
    forbidden), but they belong in the ledger for the human
    [submodule-bump blind spot](../learnings/1786485504819-approver-infra-abstain-slangpy-1103-submodule-bump.md).
+   The in-submodule checklist that computes them (ancestor check, header `diff --stat`, SGL grep)
+   is on [SlangPy build, CI and toolchain](slangpy-f0909b0-build-ci-toolchain.md).
 
 3. **Size caps are driven by the visible slangpy churn, not the submodule.** In the
    `base...head` compare, `external/slang-rhi` shows as only +1/-1, so `tier_eligible`

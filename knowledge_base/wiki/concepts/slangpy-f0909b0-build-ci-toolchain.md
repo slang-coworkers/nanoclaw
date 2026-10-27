@@ -2,8 +2,8 @@
 title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-repo breaking-change coordination
 type: concept
 group: slangpy
-tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change]
-source_count: 25
+tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change, slang-rhi]
+source_count: 28
 ---
 
 ## TL;DR
@@ -34,7 +34,13 @@ coordinating breaking changes with slang. Recurring facts:
   suppression path; slang's own sanitizer gate is clean.
 - **GPU device tests abort under ASan via NVIDIA `RTLD_DEEPBIND`**; a "0 project roots" pass there
   is VACUOUS. Use the CPU backend.
+- **The nightly's CUDA ray-tracing failures (`_optix_trace_typed_32` float-vs-i32 PTX error) are
+  specific to the asan-ubsan build, not to the b650 host.** Test a host guess against a
+  non-sanitizer job on the same `runner_name`.
 - **The `check-ascii-source` pre-commit hook fails on any non-ASCII char**; run full pre-commit.
+- **Review an `external/slang-rhi` bump inside the submodule**: ancestor check, `git diff --stat`
+  over `include/` and the touched backends, then grep SGL for each public-header change. A mid-list
+  enum insert or a namespace move matters only if SGL stores the values or calls qualified names.
 - **Breaking slang changes need a companion slangpy PR with pin-bump-last merge order** (a circular
   cross-repo CI dependency; production uses `SLANGPY_CHERRY_PICK_PR`).
 - **CPython 3.15 breaks `-Werror` slangpy_ext on Linux** (macro redefined): put `Python.h` first via
@@ -72,7 +78,12 @@ RuntimeError from nanobind suggests the C++ `what()` held garbage (e.g. a use-af
 submodule URLs at local paths); pass `git -c protocol.file.allow=always`. To populate offline add
 `-c submodule.external/X.url=<main>/.git/modules/external/X submodule update external/X` (nested
 nanobind `ext/robin_map` and nanothread `ext/cmake-defaults` need `--init` inside them; `data` is
-required because cmrc embeds its fonts). A repro script outside the worktree gets
+required because cmrc embeds its fonts). A slang-rhi commit the local clone lacks is fetched
+from GitHub inside the submodule (`git -C external/slang-rhi fetch
+https://github.com/shader-slang/slang-rhi.git main`, then check it out). If the init failed,
+`external/slang-rhi` is not a repo and `git -C external/slang-rhi ...` silently runs against the
+PARENT repo, so first confirm `git -C external/slang-rhi rev-parse --show-toplevel` names the
+submodule. A repro script outside the worktree gets
 `ModuleNotFoundError: No module named 'slangpy'` because `sys.path[0]` is the script's dir, not the
 cwd; set `PYTHONPATH=<worktree>`. The full build's stubgen imports numpy and `libcst`, which the
 venvs lack: set `PYTHONPATH=<worktree>/.venv/lib/python3.11/site-packages` on the first
@@ -80,6 +91,7 @@ venvs lack: set `PYTHONPATH=<worktree>/.venv/lib/python3.11/site-packages` on th
 skips stubgen, ~10 s per one-file change). Test with the venv python in `CMakeCache.txt`'s
 `Python_EXECUTABLE`
 [worktree submodule file-transport and /tmp repro sys.path](../learnings/1792462385307-slangpy-worktree-build-submodule-file-transport-an.md),
+[submodule fetch from GitHub; `git -C` falls through to the parent](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md),
 [incremental build without libcst: build only slangpy_ext](../learnings/1792421818732-slangpy-incremental-build-without-libcst-build-onl.md).
 
 **A resumed worktree goes stale in TWO independent ways.** (1) Stale `slangpy_ext.*.so`:
@@ -210,7 +222,7 @@ rewrites mapped chars in place (dashes → `-`, `→` → `->`, `≤` → `<=`, 
 zero-width/BOM); its `REPLACEMENTS` map is the source of truth and unmapped chars just fail
 [SlangPy CI forbids non-ASCII in source](../learnings/1787559507647-slangpy-ci-forbids-non-ascii-in-source-run-the-ful.md).
 
-## Sanitizers: the LSan leak that has never been green, and the ASan DEEPBIND wall
+## Sanitizers: the LSan leak that has never been green, the ASan DEEPBIND wall, and CUDA ray tracing
 
 slangpy's scheduled `sanitizers.yml` (cron `0 4 * * *`) has failed every `main` run since PR #1107
 added it (2026-08-15): 17/17 across 6 SHAs, deterministic. Cause: a real `sgl::ref` ownership-cycle
@@ -245,6 +257,20 @@ validates the fix mechanism (not GPU byte counts). Bookworm clang-14 ships no co
 runtime; PATH-prepend an LLVM release tarball (runtime at
 `<llvm>/lib/clang/22/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.so`)
 [GPU device tests abort under ASan (RTLD_DEEPBIND)](../learnings/1788168405905-slangpy-sgl-gpu-device-tests-abort-under-asan-on-n.md).
+
+**The nightly's six CUDA ray-tracing failures come with the asan-ubsan build, not the host.**
+`test_cluster_acceleration_structure_trace`, `test_opacity_micromap_trace`,
+`test_raytrace_simple/two_instance/closest_instance` and `test_raytracing` (all
+`[DeviceType.cuda]`) fail every night in `sanitizers`. On 2026-10-26 a PR
+`build (linux, x86_64, gcc, Debug)` job on the same runner (`2u1g-b650-0053`), with the same
+prebuilt slang 2026.20 and the same "Fetching OptiX headers" step, passed all six, and so did the
+nightly `Slang branch: master` build on b650-0825. The earlier "x570 passes, b650 fails" guess is
+wrong. The full driver error points at the PTX built under the clang sanitizer config:
+`Invalid PTX input ... Failed to translate PTX input to LLVM`, then `Argument[2] to function call
+_optix_trace_typed_32 is the incorrect type: expected ( float ), but got ( i32 )` and
+`Target architecture invalid`. To test a host-vs-config guess, find a non-sanitizer job with the
+same `runner_name` and grep its log for the test ids
+[CUDA ray-tracing failures are asan-ubsan-build specific](../learnings/1793003214651-slangpy-sanitizers-cuda-ray-tracing-failures-are-a.md).
 
 ## Cross-repo coordination: shipping a companion PR for a breaking slang change
 
@@ -286,7 +312,35 @@ dedicated pytest feasible). The PR can't land until `SGL_SLANG_VERSION` names a 
 enum: draft + pin-bump-last, a coordination gate, not a defect
 [reviewing SlangPy .slang downstream retypes for a breaking change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md).
 
-**Source learnings (25):**
+## Reviewing an `external/slang-rhi` bump: diff the submodule's public headers against SGL
+
+`gh pr diff` on a slangpy PR that bumps `external/slang-rhi` shows only the gitlink, so the review
+happens inside the submodule:
+
+1. `git merge-base --is-ancestor <old> <new>` (a fast-forward, no rewind) and
+   `git branch -r --contains <new>` (the commit is on slang-rhi `main`).
+2. `git diff --stat <old> <new> -- include/ src/cpu src/<backend touched> CMakeLists.txt` narrows
+   dozens of commits to the few files that can affect SGL.
+3. Grep SGL (`src/`) for each public-header change. An enum value inserted mid-list renumbers the
+   later values, which matters only if SGL switches on, stores or static_asserts them; SGL builds
+   `rhi::WindowHandle` only through the `from*()` factories (`src/sgl/device/surface.cpp`), so new
+   `WindowHandleType` values are harmless. A namespace move breaks only qualified calls or `extern`
+   redeclarations: slang-rhi#911 moved the `cu*` function pointers of `cuda-driver-api.h` into
+   `namespace rhi::cuda_driver` and added `using namespace rhi::cuda_driver;`, and SGL includes the
+   header in `cuda_utils.h` and `native_handle_traits.h` and calls `cu*` unqualified.
+4. Compare the `DeviceLimits` fields the backend commit sets with what SGL copies
+   (`src/sgl/device/device.cpp` ~308-318).
+
+On slangpy#1245 (d825f48→5a1d9da, 24 commits, 5 non-example files changed) this showed that the
+bump needed no slangpy source change, which the fixer confirmed on the same range (#854). One
+coverage side effect: the CPU backend's limits now read 4294967295, so no backend exercises
+slangpy's zero-limit fallback end to end anymore; a review should say so rather than call it tested
+[slang-rhi bump review checklist](../learnings/1793010441673-slangpy-slang-rhi-bump-review-diff-the-submodule-s.md),
+[d825f48→5a1d9da needed no slangpy changes](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md).
+Approver-side handling of the same class (the `no_protected_paths` abstain, reviewers blind to the
+gitlink) is on [SlangPy approver harness clauses](slangpy-f0909b0-approver-harness-clauses.md).
+
+**Source learnings (28):**
 
 - [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux (_POSIX_C_SOURCE/_XOPEN_SOURCE redefined)](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)
 - [Python 3.15 breaks -Werror C++ extensions on Linux; cross-fork REST PR needs maintainer_can_modify=false](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)
@@ -313,3 +367,6 @@ enum: draft + pin-bump-last, a coordination gate, not a defect
 - [SlangPy worktree build: submodule file-transport and /tmp repro script sys.path gotchas](../learnings/1792462385307-slangpy-worktree-build-submodule-file-transport-an.md) — `protocol.file.allow=always`; sys.path[0] is the script dir, so `PYTHONPATH=<worktree>`
 - [SlangPy reconfigure after Slang version bump needs --fresh (stale SGL_SLANG_VERSION cache)](../learnings/1792464723018-slangpy-reconfigure-after-slang-version-bump-needs.md) — CACHE STRING wins over a plain re-configure; `--fresh` needs `-DPython_EXECUTABLE=<uv venv>`
 - [slangpy tests: no device_type param => skipped under --device-types; App() closes its device](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md) — local `--device-types` silently skips non-parametrized GPU tests; CI runs them
+- [slangpy worktrees: submodule init needs protocol.file.allow=always; slang-rhi fetch from GitHub; critique-gate formats](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md) — `git -C external/slang-rhi` runs on the parent if init failed; d825f48→5a1d9da needed no slangpy change
+- [slangpy slang-rhi bump review: diff the submodule's public headers against SGL usage](../learnings/1793010441673-slangpy-slang-rhi-bump-review-diff-the-submodule-s.md) — ancestor check, `diff --stat include/`, grep SGL per header change, DeviceLimits copy (#1245)
+- [slangpy sanitizers CUDA ray-tracing failures are asan-ubsan-build specific, not b650-host specific](../learnings/1793003214651-slangpy-sanitizers-cuda-ray-tracing-failures-are-a.md) — same runner passes in a gcc Debug job; `_optix_trace_typed_32` float vs i32 PTX error

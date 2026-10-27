@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1561 learnings. [Catalog](../index.md)
+1566 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -513,6 +513,7 @@ type: topic
 - [Bot commits: never override git identity with -c user.name/email; it breaks the CLA check](../learnings/1791404650893-bot-commits-never-override-git-identity-with-c-use.md)
 - [Bot enqueue of workflow-touching PRs has a second blocker (workflows permission)](../learnings/1782727631172-bot-enqueue-of-workflow-touching-prs-has-a-second-.md)
 - [Bot PR merged with breaking label dropped spawned 2 P0 regressions within 13h](../learnings/1790929842221-bot-pr-merged-with-breaking-label-dropped-spawned-.md)
+- [Bot status changes can arrive as in-place comment edits: check lastEditedAt](../learnings/1793003521449-bot-status-changes-can-arrive-as-in-place-comment-.md)
 - [Bot workflows-permission guard is path-based: blocks even plain .md under .github/workflows](../learnings/1787261003461-bot-workflows-permission-guard-is-path-based-block.md)
 - [Bot-filed follow-up issue may describe not-yet-stripped work as already removed (preserve before trim)](../learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md)
 - [Bot-owned vs human-contributor PR: fix/issue-* branch name is NOT proof of ownership](../learnings/1780903497625-bot-owned-vs-human-contributor-pr-fix-issue-branch.md)
@@ -821,6 +822,7 @@ type: topic
 - [Four instrument-defect mechanisms: blind spot, contamination, staleness, non-comparability](../learnings/1785982846882-four-instrument-defect-mechanisms-blind-spot-conta.md)
 - [Fresh Agent() calls have zero context — resuming requires the agent ID, not a fresh Agent() call](../learnings/1787011549306-fresh-agent-calls-have-zero-context-resuming-requi.md)
 - [Fresh peer delegation carrying a chain-delivery marker still needs in_reply_to](../learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md)
+- [Front-end float folding of an int operand can double-report diagnostics for half targets (coerce already folds int→half)](../learnings/1793007390694-front-end-float-folding-of-an-int-operand-can-doub.md)
 - [Front-end stage-rejection for CPU-kernel targets is over-broad — graphics→CPU cross-compile is valid](../learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md)
 - [Full-coverage swizzle on RWTexture goes through the RMW path (false E56006 / E55204 on CUDA)](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md)
 - [Gap catch-up runs must state-check every watch-list number, not only window events](../learnings/1792139950368-gap-catch-up-runs-must-state-check-every-watch-lis.md)
@@ -1064,6 +1066,7 @@ type: topic
 - [merge-queue branch name is pr-N-BASEsha, not the PR's own sha — and the batch tip becoming the next batch's base proves the queue ADVANCED](../learnings/1786105103694-merge-queue-branch-name-is-pr-n-basesha-not-the-pr.md)
 - [Merge-queue checks_timed_out: an outage evicts PRs with zero failing checks](../learnings/1786054584563-merge-queue-checks-timed-out-an-outage-evicts-prs-.md)
 - [Merge-queue duplicate-case enum collision: two concurrent PRs appending to the same public enum](../learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md)
+- [Merge-queue eviction cause: check commit statuses, not just workflow runs](../learnings/1793028963721-merge-queue-eviction-cause-check-commit-statuses-n.md)
 - [Merge-queue eviction cause: read the merge-group run's failed jobs, not the PR-head rollup](../learnings/1792660635041-merge-queue-eviction-cause-read-the-merge-group-ru.md)
 - [Merge-queue eviction reason checks_timed_out = group ran 2h; look for a ceiling-bound job, not a red one](../learnings/1791484800264-merge-queue-eviction-reason-checks-timed-out-group.md)
 - [Merge-queue eviction reason: use GraphQL RemovedFromMergeQueueEvent.reason (REST timeline omits it)](../learnings/1792139409374-merge-queue-eviction-reason-use-graphql-removedfro.md)
@@ -1163,7 +1166,9 @@ type: topic
 - [ORPHANED=0 is inward reachability and does not measure outbound link health — two audits, run both](../learnings/1786365751580-orphaned-0-is-inward-reachability-and-does-not-mea.md)
 - [Outward-action guardrails must ride the initial dispatch, not a follow-up](../learnings/1788165792149-outward-action-guardrails-must-ride-the-initial-di.md)
 - [overrideDiagnostic numeric-id silent-ignore has a live severity-mismatch error branch](../learnings/1787315204452-overridediagnostic-numeric-id-silent-ignore-has-a-.md)
+- [Parked-issue re-check: a maintainer assigning a human counts as human ownership](../learnings/1793030545714-parked-issue-re-check-a-maintainer-assigning-a-hum.md)
 - [Parked-issue re-check: read the timeline, not just comments](../learnings/1792681430638-parked-issue-re-check-read-the-timeline-not-just-c.md)
+- [Parked-issue re-checks: read the timeline cross-references, not just the comments](../learnings/1793041485668-parked-issue-re-checks-read-the-timeline-cross-ref.md)
 - [Parked-issue re-checks: read the timeline, not just the comments](../learnings/1792681388552-parked-issue-re-checks-read-the-timeline-not-just-.md)
 - [Parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md)
 - [ParseModifiers on a decl whose NAME can be a bareword keyword breaks previously-valid code — use bracket-only ParseSquareBracketAttributes](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md)
