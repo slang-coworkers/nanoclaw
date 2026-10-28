@@ -73,3 +73,6 @@ Parent chain: [[slangpy-1232-vulkan-module-push-constant.md]]. Branch `fix/issue
   both blocks are declared. Refinement: read push only with `k` declared and unused → E39033 under default `-g` (by design, debug-info test), but correct with `-g0`. **#915 stays open**, with 2 rhi
   defects: (1) the EP +16 offset, which needs a direction: (a) usage metadata slang#5685, (b) a Slang layout with reflected byte offsets (no tracker since #13713 closed; triager offered to file), (c) rhi-only (partial);
   (2) the 00292 overlap, which rhi can fix alone. No fix dispatched; re-check t-83bd76 10-27.
+- 10-27 15:04Z slang-triager re-check t-83bd76: no movement since 10-22, verified (rhi#810 untouched since 08-05, #915 last activity is our 10-21 edit, #12349 since 08-26, #1235/#1232
+  unchanged). B/C has no open Slang tracker; #5685 (usage reflection) has been idle since 2025-05. Two operator decisions from 10-21/10-22 are still unanswered: (1) mark #810 ready + cross-link,
+  (2) file the B/C Slang tracker, plus the 00292 narrow rhi PR. Next triager one-shot: t-0df978 on 11-03 15:00Z.

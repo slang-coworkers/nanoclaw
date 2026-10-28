@@ -88,6 +88,15 @@ pinned nudge acked in under a minute.
     check `actions/runs/<id>` `run_attempt` + `attempts/<n>/jobs`, and compare the same job on other runs (merge-queue
     runs passing → not infra). Pinned nudge with the attempt-2 result.
 
+13. **Turn died on a context overflow, and the session had stopped since the last tick** (tick 309, #13828 / draft #13867).
+    The triager's 23:29Z "merge master" ask reached fixer `4stbs2`. Every main-thread call returned HTTP 400
+    (598–682 messages, 4.5–7 MB per request; the gzip body in `.claude-trace` can't be decoded). The turn ended with no `out`.
+    blind.py missed it, because the session was `running` at the previous re-list and its `last_active` never moved. Detector:
+    `tickNNN/runstop.py`, which flags open-chain sessions that went `running` → stopped since the previous `sessions2.json`
+    (copy that file to `prev-sessions2.json`). Check the trace for runs of 400s with message counts in the hundreds.
+    A pinned nudge recovered it: after about 4 min of 400s it compacted (~280 messages) and acked. **Wait at least 5 min
+    after a nudge before calling a session wedged.** Tick 309 posted a reset request and then had to send a correction.
+
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
 `prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned

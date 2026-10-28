@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang-rhi#928 — Vulkan ReadBack buffers land on uncached host memory (~0.27 GB/s CPU read)
-description: Human-filed (albertrodriguezclo, external) 10-20 13:06Z; reporter offered the PR. Routed to slang-triager 10-20 on gh-issue-shader-slang/slang-rhi-928. Couples to our draft rhi#869 (readBuffer → m_readbackHeap) and rhi#722 (VMA, HOST_CACHED preferred).
+description: CLOSED 10-21 via external PR #929 (merged 499ee0241); #869 update requested 10-27. Human-filed (albertrodriguezclo, external) 10-20 13:06Z; reporter offered the PR. Routed to slang-triager 10-20 on gh-issue-shader-slang/slang-rhi-928. Couples to our draft rhi#869 (readBuffer → m_readbackHeap) and rhi#722 (VMA, HOST_CACHED preferred).
 resource: https://github.com/shader-slang/slang-rhi/issues/928
 ---
 
@@ -56,5 +56,13 @@ This closes approach D as the reporter's call. No reply owed. #929 head moved to
 +16/−8, "fall back to the required-only memory type when the preferred one is out of memory". The triager's numbers are
 for 7577eea, and the comment says so. Nothing dispatched or posted.
 
-**RESUME:** #929 merges → slang-fixer rebases #869 on `gh-issue-shader-slang/slang-rhi-862` (keep #869's readBuffer body, drop #929's hunk) / #929 review routing is the operator's call (external PR;
-slang-reviewer only on request) / #929 merges → #869 rebase check / maintainer comment.
+**10-27 13:00Z, one-shot re-check (`rechase-rhi-928-pr929-86-5b26`): #929 MERGED** 10-21 08:31:04Z by skallweitNV
+(APPROVED 08:30:49Z after the CLA was signed 07:29Z). Final head 21fe0a7, squash on main **`499ee0241`**. #928 closed
+08:31:05Z. #869 at 183d01a (draft, last push 09-15) is now **CONFLICTING/DIRTY**. Decision-table branch (1): sent the
+update request to slang-fixer owner session `sess-1789372793210-bom859` on `gh-issue-shader-slang/slang-rhi-862`
+(msg id 13). The request: keep #869's readBuffer body, drop #929's staging-init hunk; merge main (no force-push) if #869
+has human review comments, otherwise rebase; test with vk on the L40S; keep the PR a draft; no posts on #928/#929.
+No GitHub post from me. No new timer: the reply comes back on the 862 thread.
+
+**RESUME:** #928/#929 are terminal. Open item: the slang-fixer report on the #869 update (new head + vk tests) on
+`gh-issue-shader-slang/slang-rhi-862`. #869 is still held for a maintainer.

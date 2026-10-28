@@ -93,3 +93,13 @@ communicate config information through the filesystem to `slangd`."* That agrees
 (a config file `slangd` discovers), but it is direction, not a decision on name, format or semantics, so nothing is
 released. v5 (`87afd90f`, the VSIX packaging gap only) is still relevant: the std-module directory is missing whatever
 the config design becomes. The operator was asked again with a "post after a fresh OUTPUT_REVIEW" recommendation.
+
+**10-27 16:00Z final re-check (`rechase-78-post-decision-62d1`): no operator answer; #78 parked on the operator; slang#13678 is visible again.**
+#78 has no comment after jhelferty-nv's 6374236840. The only new event is the `enhancement` label (10-23 20:36:59Z), and
+there is no release after v2.0.10. The Discord thread is unchanged (8 messages, last 10-16). No new slangd issue or PR,
+and HildarTheDorf has opened nothing. **slang#13678 returns 200 again** (open, labels reproduced + LSP, unassigned). Our
+triage comment 6201079293 is visible and already cites #78, and fukalous's #78 comment 6200365871 is back too. So the
+"hidden account" state of 10-16 has reversed, and the #78 evidence is already linked on the slangd issue, so the triager
+was not dispatched. v5 (`87afd90f`) is unchanged on disk but stale-by-default: it was written while #13678 was hidden, so
+any post needs a refresh (it can now cite #13678) plus a fresh OUTPUT_REVIEW. Parked in `supervisor-state.json`
+(`parkedOn` operator). No timer was re-armed. `scratch-vsext-42` is kept until the post question is settled.

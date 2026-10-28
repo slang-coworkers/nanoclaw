@@ -61,11 +61,11 @@ Rival claimants on the same numbers: #13564 (draft) and #13406 (jhelferty-nv, mi
    PR's "Version 36 adds MetalConstantBufferLayout" comment rode along — silently reusing master's version. Always compare the PR's
    version and ids against master's directly; `merge-tree` conflict output alone is not enough.
 
-## Current state (10-24 13:00Z)
-Head `4b7541ad55` (merge of master `52e29ab43b`), draft, **MERGEABLE**, 0 behind. Id 910 / min 37 / max 38 vs master 909 / 37 / 37. Gate kept (#13386
-unmerged). #13564 and #13872 (drafts) also claim 910/v38; whichever merges second moves. Comment 6078307404 is current. Dispatch run 40081357382
-(replaces cancelled 39575875464) is `waiting` for approval. 0 human reviews or comments; the assignee/review request is still kaizhangNV.
-Next: `rechase-13425-maintainer-1a96` 10-27 09:00Z.
+## Current state (10-27 09:00Z)
+Head `4b7541ad55` (merge of master `52e29ab43b`), draft, **MERGEABLE**, BEHIND 3 (master `9a4817c881`; the 3 new commits miss all 14 PR files and the
+stable-names/version files). Id 910 / min 37 / max 38 vs master 909 / 37 / 37. Gate kept (#13386 unmerged). #13564 and #13872 (drafts) also claim 910/v38;
+whichever merges second moves. Comment 6078307404 is current. Dispatch run 40081357382 has been `waiting` for approval since 10-24. 0 human reviews or comments;
+assignee/review request still kaizhangNV. Next: `rechase-13425-maintainer-fba7` 10-30 09:00Z.
 
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human

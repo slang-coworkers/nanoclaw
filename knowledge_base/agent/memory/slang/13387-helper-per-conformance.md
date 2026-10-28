@@ -46,3 +46,6 @@ description: "Fork PR by jvepsalainen-nv (head codex/helper-per-conformance, lin
   issue, and the operator has been asked about that. **State: partial, parked on saipraveenb25's answers to Q1–Q5.**
   Timer: `slang-13387-maintainer-r-c5d6`, a one-shot task at 2026-10-27 13:00Z. supervisor-state has no `gh-pr-*` keys,
   so supervise-issues does not cover this chain.
+- **10-27 13:00Z re-check (task `slang-13387-maintainer-r-c5d6`):** PR still OPEN, head `41e6e4fbe4db`. Bot branch is still
+  `8c5bb99ebc78`. No issue comment, review, or review comment after 10-24 12:45Z. Sent a 5-bullet to orchestrator-dashboard:
+  still waiting on saipraveenb25 for Q1–Q5. No further re-check scheduled; a reply reaches the fixer by webhook.

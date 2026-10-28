@@ -110,14 +110,15 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | [[index-project-7]] | `12430_existential_static_requirement_ice` … `13492_throws_on_accessors_ctors_lambdas` |
 | [[index-project-8]] | `13496_unify_struct_class_parsing` … `13678_slangd_experimental_feature_setting` |
 | [[index-project-9]] | `13701_reopened_nested_namespace_scope` … `13858_ast_natural_layout_static_members_sizeof` |
-| [[index-project-10]] | `13859_metal_subword_byte_address_load_store` … `8785_amplification_shader_payload_docs_wrong` |
-| [[index-project-11]] | `9062_diffptr_array_spirv_validation_parked` … `discord_gateway_401_outage` |
-| [[index-project-12]] | `discord_support_heartbeat_dead` … `nanoclaw_1096_funnel_review_cycles` |
-| [[index-project-13]] | `nanoclaw_1097_codex_one_copy` … `nanoclaw_1154_ownership_one_matcher` |
-| [[index-project-14]] | `nanoclaw_1157_mcp_allowlist_failopen` … `nanoclaw_pr875_approver_mounted_policy` |
-| [[index-project-15]] | `nanoclaw_pr876_slangpy_approver_mounted_policy` … `slang_triager_auth_outage` |
-| [[index-project-16]] | `slangpy_1001_build_time_kernel_compilation_scrub` … `track_critique_verdict_field_untrustworthy` |
-| [[index-project-17]] | `triager_clone_nine_concurrent_writers` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
+| [[index-project-10]] | `13859_metal_subword_byte_address_load_store` … `13944_target_desc_resets_session_fp_mode` |
+| [[index-project-11]] | `13946_metal_mesh_per_primitive_system_values` … `9085_glsl_samplecmp_takeover` |
+| [[index-project-12]] | `9146_glslang_stdlib_reexport_lto` … `docs_site_push_401_use_rest` |
+| [[index-project-13]] | `dup_pr_cross_instance` … `nanoclaw_1100_clamp_escalation_strip` |
+| [[index-project-14]] | `nanoclaw_1102_claude_trace_vendor` … `nanoclaw_1158_lease_claim_dropped_early` |
+| [[index-project-15]] | `nanoclaw_1159_deploy_validates_templates` … `nanoclaw_pr879_slangpy_approver_gap_severity` |
+| [[index-project-16]] | `nanoclaw_pr881_slangpy_approve_offline_launch` … `slangpy_1002_py314_wheels_abstain_policy` |
+| [[index-project-17]] | `slangpy_1014_scalar_layout_metal_vulkan` … `upstream_sync_incident` |
+| [[index-project-18]] | `workspace_deletion_incident` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
 | [[index-technique]] | Reusable measurement/tooling procedures. |
 | [[index-reference]] | Pointers to external resources. |
 | [[index-command]] | Exact command invocations with their traps. |

@@ -85,10 +85,15 @@ PASSED, `does not currently own` = 0, FATAL/crash = 0.
 
 ## Open items
 
-1. jhelferty's answer on R4/R5 (5907630393) and skallweitNV's review. Still silent at the 10-23 check (23 days; she
-   is active on slang, and skallweitNV merged ~20 other rhi PRs). Head `00fb748`, BEHIND main +36, trial merge with
-   `8c97b91` had 0 conflicts. The operator never answered the reminder question, so default (3) wait holds. Next
-   one-shot re-check is `rhi-881-review-rechase-cc7d` on 10-27.
+1. jhelferty's answer on R4/R5 (5907630393) and skallweitNV's review. Still silent at the 10-27 check (27 days; they
+   are active on slang, and skallweitNV merged ~20 other rhi PRs). The operator never answered the reminder question
+   (dashboard checked through seq 508306), so default (3) wait holds.
+   - **10-27: CONFLICTING.** Head `00fb748` vs main `70657ce4` (+40). Cause: `93ec788` (#940, resource heaps +
+     `aliasResources`). 4 additive hunks: `docs/api.md`, `debug-command-encoder.h`, and `debug-device.cpp`
+     createTexture/createBuffer (heap validate+unwrap vs tracker reset).
+   - Dispatched the merge-main (merge commit, no force-push) to fixer `sess-1783020456108-7pll4g` (a2a msg 11) at
+     10-27 09:02Z. Next one-shot re-check is `rhi-881-review-rechase-fc43` on 10-31 09:00Z; it verifies the merge
+     first.
 2. **After the fix lands:** file the dedicated-allocation asymmetry. `cuda-buffer.cpp:129` sets
    `CUDA_EXTERNAL_MEMORY_DEDICATED` unconditionally, while `cuda-texture.cpp:545` threads `isDedicated`. ⚠️ The
    evidence is an NVIDIA-staff forum post, not docs, so state it as such. It isn't firing today.

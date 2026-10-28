@@ -105,3 +105,7 @@ No human comments, reviews or timeline events on #13617 or #13619 since 10-23 10
 as the legalizer hook that system-value `enable`s need. It is a separate chain, so this one takes no action on it. Neither operator decision has an answer (the bounded dashboard read `--reverse --limit 400`
 covers 10-22 11:35Z→10-25 10:30Z, and no row mentions 13617/13619 except my own 10-23 status; the Main canonical session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask
 (dashboard msg 15, canonical thread). Re-armed one-shot `rechase-13617-primitive-6543` (2026-10-27T10:30Z). No GitHub posts.
+**2026-10-27 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617` or `-ci`.
+No human comments, reviews or timeline events on #13617 or #13619 since 10-25 10:30Z (latest human event is still the 10-14 17:08Z milestone). Neither operator decision has an answer
+(the bounded dashboard read `--reverse --limit 400` covers 10-23 06:09Z→10-27 10:30Z, and no row mentions 13617/13619/WaveLane/subgroups except my own 10-23 and 10-25 statuses; the Main canonical
+session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask (dashboard msg 11, canonical thread). Re-armed one-shot `rechase-13617-primitive-59fe` (2026-10-29T10:30Z). No GitHub posts.

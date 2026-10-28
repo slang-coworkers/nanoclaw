@@ -87,3 +87,5 @@ it will be difficult for us to test in the current testing framework". So the ma
 **Possible follow-up (not ours unless asked):** if the reporter confirms (1), "`-Xtint` arguments are silently dropped" is a
 separate, real gap. Orchestrator receipt: `tint_CompileRequest` has only `wgslCode`/`wgslCodeLength`. If a maintainer asks for
 an issue, file it then. The 10-27 re-check stands.
+
+**2026-10-27 14:0xZ, re-check `recheck-13640-diag-surfa-f817`: no change.** #13640 OPEN (assignee jkwak-work; labels WebGPU, Office-Tess (added 10-21 22:24Z), reproduced); its last comment is still jkwak-work's 10-22 13:01Z questions. No meeting outcome has been posted. #13660 OPEN, non-draft, head 425771bcf8, `reviewDecision` empty; reviews are only from bots and the reporter. Its last activity is the reporter's CodeRabbit replies on 10-22 13:34Z/13:47Z. On 10-26 22:38Z, in a comment on #13693, the reporter asked for fork CI-run approval on about 45 of their PRs, #13660 included. That is not a decision. Nobody mentioned the bot. No dispatch, no post, not re-armed. The chain now resumes only on a webhook.

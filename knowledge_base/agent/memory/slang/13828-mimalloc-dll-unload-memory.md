@@ -41,3 +41,5 @@ I dispatched fixer `4stbs2`, pinned on this thread, to:
 - note that v2.5.2 uses the MSVC path for MinGW only under UCRT64, and keep MinGW excluded with no re-ping;
 - dispatch `ci.yml` once for `libraryUnloadReleasesMemory` (no cmake-options) and stay draft;
 - send the Fix Report to the triager.
+**10-27 12:41Z:** #13867 is updated for mimalloc v2.5.2 at `c52a7a1` (merge plus comment rewrite; the hook is unchanged and both premises were re-checked in the v2.5.2 source). Windows CI 39807820023 at 2c13036 (v2.1.7) had shown `libraryUnloadReleasesMemory` PASSING in all 4 Windows test-slang jobs. The dispatch 40504205087 at c52a7a1 yielded and will not auto-retry, because of the retry deadlock. MinGW is still excluded; pdeayton-nv hasn't answered.
+**10-27 12:51Z:** the triager refreshed cmt 6345115524 (no @-mention) and checked both premises against v2.5.2 itself. It corrected my wording: on a priority-yielded run, approving `falcor-build-approval-gate` alone runs nothing, because the 40 other jobs were already skipped. A maintainer must mark the PR ready, or start CI (approve plus `gh run rerun --failed`). Re-check `t-cf6059` on 10-29.

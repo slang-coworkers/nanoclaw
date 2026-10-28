@@ -53,3 +53,7 @@ still unmerged drafts, unless it says otherwise.
   6078307404 edited 09:23Z for the new head (fixer-reported: 15/15 PR tests vk+cuda, 656/656 unit, #13706 WGSL test 3/3). Dispatch run
   39575875464 was **cancelled** 09:17Z and replaced by 40081357382 on `4b7541ad55`, `waiting` (unapproved). #13564 / #13872 / #13386 / #13300 are still
   open drafts with unchanged heads. 0 human activity. No nudge or dashboard post was needed. The 10-27 `rechase-13425-maintainer-1a96` prompt now has the verified numbers.
+- **10-27 09:00Z** — **no collision, no human activity.** Head `4b7541ad55` has not changed. The PR is MERGEABLE and BEHIND by 3: master `9a4817c881` added #13665 `bba63c2376`, #13879
+  mimalloc `f805738159` and a CONTRIBUTING edit. None of the three touches the PR's 14 files, stable-names or `slang-ir.h`. merge-tree is clean. I compared directly against master: PR id 910 / min 37 / max 38 / `MetalConstantBuffer` = 8,
+  master 909 / 37 / 37 / `LLVM` = 7. Gate kept. Dispatch run 40081357382 is still `waiting` (unapproved), and the pull_request jobs were skipped (draft). 0 reviews/comments; assignee + review request are still kaizhangNV.
+  #13386 / #13300 (CONFLICTING) / #13564 / #13872 are still open drafts with unchanged heads. No triager nudge. Dashboard msg 3. Next: `rechase-13425-maintainer-fba7` 10-30 09:00Z.

@@ -94,3 +94,15 @@ description: Human-filed (albertrodriguezclo) WGSL/Metal/HLSL codegen-quality is
   - Triager scratch: /workspace/agent/scratch-13764/v2/. Someone else removed wt-13764-base twice (the triager
     re-created it); clean up wt-13764, wt-13764-base and scratch-13764 after merge.
   - The old one-shot `rechase-13739-fixer-deci-60dd` is spent. A new one-shot `rechase-13739-const-bloc-b084` is set for 10-27 15:00Z.
+- 2026-10-27 15:01Z re-check (`rechase-13739-const-bloc-b084`, all read live): PR #13764 is OPEN with a **new head
+  `5b50ffb49e`** (albertrodriguezclo, 10-25 06:25Z, "WGSL half-load test: expect the word loads inside their use").
+  - It is 1 commit ahead of `b4f6056a08` and touches only `tests/wgsl/byte-address-buffer-load-half.slang` (+8 −14).
+    The patch matches jkwak-work's CONST block (cmt 6355543437) line for line. The reporter's comment 6394365378 says
+    the test, `tests/wgsl` (79/79) and the BAB tests under compute/hlsl-intrinsic/metal pass locally.
+  - **CI is NOT green: it has not run.** Every `pull_request` workflow on the head (CI 40169037068, Formatting, REUSE,
+    Labels, plus PR Maintenance and Fork Bridge) is `action_required`, so fork-PR workflow approval is pending. Only the
+    `pull_request_target` jobs ran (SlangPy trigger, PR Maintenance, Claude PR Review: success).
+  - **The push dismissed jkwak-work's approval** (review state DISMISSED; `reviewDecision` is empty). mergeStateStatus is BEHIND.
+  - The triager does not need to re-verify, because the compiler code did not change. No message was sent, per the
+    re-check table for a test-only head. Now parked on a maintainer: approve the workflows, re-approve, enqueue.
+  - A follow-up one-shot re-check, `rechase-13739-ci-approva-529f`, is scheduled for 10-30 15:00Z.
