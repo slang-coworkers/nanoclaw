@@ -1,7 +1,7 @@
 ---
+type: project
 name: Workspace-deletion incident (open) — slang-fixer dev workspace wiped mid-chain
 description: 2026-06-24 unexplained whole-group wipe of the slang-fixer dev workspace mid-chain; dev fixer RECOVERED Jun 29 & disk-full fixed by §8 GC (PR #686); 14:55 culprit never confirmed, no recurrence in 5d → DORMANT
-type: project
 originSessionId: 2fa53995-46b6-441a-92d7-5c95fde29125
 ---
 A targeted, unexplained deletion of the `slang-fixer` dev workspace mid-chain. Source localized to a host-side process; exact culprit NOT yet named (needs host logs).

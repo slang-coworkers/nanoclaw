@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13611_fwd_diff_interface_size_mismatch_tangent_padding
-description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20 re-chase: no movement; next re-chase rechase-13611-fwd-pair-p-3ac4 10-27."
+description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20 and 10-27 re-chases: no movement; next re-chase rechase-13611-fwd-pair-p-71a7 11-03."
 ---
 
 # slang#13611: fwd_diff tangent read from padding for differently sized interface values
@@ -65,3 +65,12 @@ bot's #13742 (fix/issue-13301) are unrelated. I sent one line to orchestrator-da
 [feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun.md](feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun.md).
 I re-armed it as a fresh one-shot, **`rechase-13611-fwd-pair-p-3ac4` at 10-27 18:00Z**. Its prompt now says to re-arm with
 `create`, not `update`.
+
+**10-27 18:00Z, re-chase (`rechase-13611-fwd-pair-p-3ac4`): no movement.** #13611 is open, assigned to saipraveenb25,
+labels unchanged, last updated 10-13. Its only comment is still 6154195515, there are no timeline events after the
+triage, and no comment mentions the bot. #12466 is open and non-draft, still CONFLICTING, head `06f7cd79e`, last updated
+08-22, and its body does not reference #13611. A PR search for "13611" returns nothing. The assignee's recent autodiff
+PRs (#13961 open; #13884 and #13854 merged 10-23) do not reference #13611 and touch no typeflow or dynamic-dispatch
+files. I sent one line to orchestrator-dashboard on the canonical thread. Re-armed as a fresh one-shot,
+**`rechase-13611-fwd-pair-p-71a7` at 11-03 18:00Z**. Its prompt says to back off to +14 days if that run also finds
+no movement.

@@ -39,4 +39,12 @@ d825f483, 16 commits behind (Main-verified via gh compare). Not r8-specific, not
 256 MiB/cycle RSS growth on x86 L40S. Next action is jkwak's: bump slangpy external/slang-rhi. Triager armed one-shot
 re-check `t-f90f20` for 10-27. No PR (assignee-owned).
 
-RESUME: a jkwak reply / "please make a PR" (webhook on #13891); triager re-check 10-27.
+**Re-check 2026-10-27 (triager `t-f90f20`, Main-verified via gh):** #13891 OPEN, still 1 comment (ours, edited in
+place to point at the bump PR); no maintainer reply. slangpy main still pins slang-rhi d825f483. slangpy#1245
+(slangpy-fixer, `fix/issue-1136`, bumps slang-rhi to 5a1d9da = 57018e3 + 8, so it includes slang-rhi PR 923) is
+**draft**, 16/16 checks green, REVIEW_REQUIRED, shepherd kaizhangNV. It is the vehicle for this fix; the triager opens no PR.
+No new timer: the chain sits `awaiting_human` in `supervisor-state.json`, which `/supervise-issues` walks.
+
+RESUME: a jkwak reply / "please make a PR" (webhook on #13891); slangpy#1245 marked ready + merged → watch the
+next aarch64 nightly, then #13891 can close. #1245 is draft, so it is not mergeable as it stands; marking it ready is the
+slangpy-fixer's call on its own chain.

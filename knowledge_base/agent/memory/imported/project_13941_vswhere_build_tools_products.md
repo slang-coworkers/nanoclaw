@@ -26,3 +26,5 @@ no @nv-slang-bot mention.
 Same-batch sibling: PR #13943 (Metal `-fno-fast-math` for `-fp-mode precise`, 12:21:00Z), its issue is
 routed by its own Main. Earlier siblings: [#13931](project_13931_sv_clipdistance_vector_form.md),
 [#13916](project_13916_wgsl_atomic_vec2u_min_max.md).
+
+**10-27 `pr_ready_for_review` (synchronize) on #13942** at head `d3c97471`: jkwak-work APPROVED; CI 55 pass / 1 pending. Not forwarded: slang-pr-approver is paused. Queued in `data/approver-pause-queue.md`.
