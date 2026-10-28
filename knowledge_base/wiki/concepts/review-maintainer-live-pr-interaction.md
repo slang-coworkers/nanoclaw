@@ -3,7 +3,7 @@ title: "Working Live PRs Alongside Maintainers and Sibling Bots"
 type: concept
 group: review-process
 tags: [maintainer, live-pr, supersede, test-header-comments, scope-directive, concurrent-edit, design-divergence, peer-bot-session, pr-body-edit, coupled-pr, github-write-discipline]
-source_count: 22
+source_count: 24
 ---
 
 # Working Live PRs Alongside Maintainers and Sibling Bots
@@ -17,6 +17,7 @@ source_count: 22
 - **A maintainer who pushes a structural refactor onto the bot's branch and then opens their own PR on the same files is superseding it.** Stand down explicitly on our PR and name the carry-forward on theirs (tests we added that theirs lacks, generated expectations the change moves) instead of iterating our copy until it is closed. If a pass needs a new inliner/DCE hook to see its input, first ask whether it sits too late in the pipeline.
 - **When a maintainer opens a PR on the same issue, flag the overlap to the operator immediately** — an operator-held draft racing a human PR loses. A bot draft sitting un-reviewed for weeks after a maintainer is assigned is the slow form of the same signal: ask early whether they want it. Once superseded, close our own bot draft with a pointer comment (not operator-gated). When a pass ignores debug insts, skip only location/scope markers (DebugLine/DebugScope/DebugNoScope); DebugVar/DebugValue carry variable state and are not erasable even at zero uses, so a `-g` parity fix needs a SPIR-V `-g2`/`-g3` negative test.
 - **Regression-test headers state the invariant the test guards in a sentence or two**; the "previously the compiler did X, breaking Y on HLSL/SPIR-V" story goes in the commit message and PR body. Maintainers trim bug-history narration from test headers themselves.
+- **When a slang-rhi maintainer takes a bot PR over, read what they changed as their preference.** They replaced a field doing double duty with explicit ownership (#860 → #945) and swapped a GPU-free internal-function test for the existing Vulkan GPU tests (#866). Offer the explicit refactor in the explanation comment, and run the existing GPU tests on the L40S yourself; a reviewer's "pre-existing / out of scope" is not the maintainer agreeing.
 - **When two maintainers diverge on a design mechanism, provide evidence and ask them to align — do NOT pick a side or apply the objector's diff.** Gate any coworker redesign on both preconditions: both maintainers explicitly agree, AND the alternative is confirmed (at source / empirically) to satisfy the original hard constraint.
 - **Run the anti-dup check immediately before posting, against a LIVE re-read** — a peer bot session (same GitHub identity, different session) can post between your turn's start and its end, so consolidate across sessions, not just against your start-of-turn snapshot.
 - **Never reword a maintainer's existing comment, not even a typo.** It records design intent the code does not. Document alongside it in their vocabulary, or ask; grep your diff for removed `//` lines before committing.
@@ -86,7 +87,11 @@ When a fix is split between a producer PR (autodiff `copyDebugInfo`) and an emit
 
 On slang#13269 skiminki-nv approved the bot's fix only after pushing a commit that cut the `gh-13260.slang` header from a 9-line paragraph to a 3-line statement of the rule. A regression-test header states the guarded invariant in a sentence or two; the "previously X, causing Y on HLSL/SPIR-V" story goes in the commit message and PR body [Slang maintainers trim bug-history narration from regression-test headers](../learnings/1790687863709-slang-maintainers-trim-bug-history-narration-from-.md).
 
-**Source learnings (22):**
+## What slang-rhi Maintainer Takeovers Show They Prefer
+
+Two slang-rhi PRs in October 2026 show the same maintainer, skallweitNV, correcting the shape of a bot fix rather than its direction. On slang-rhi#860 the bot routed `VkBufferView` create/destroy through `device->m_api` and kept `VKBufferHandleRAII::m_api` as the implicit "this wrapper owns the buffer" flag; the maintainer closed bot PR #868 and landed #945, which keeps the routing but adds explicit `m_ownsBuffer`/`m_ownsMemory` and also fixes the uninitialized `m_memory` that the bot had scoped out as pre-existing ([slang-rhi maintainer prefers explicit ownership over a field doing double duty (#860 → #945)](../learnings/1793091793971-slang-rhi-maintainer-prefers-explicit-ownership-ov.md)). On slang-rhi#866 they took the PR over, squashed it, deleted the bot's GPU-free `tests/test-vk-utils.cpp`, and validated with the existing Release Vulkan buffer-barrier, compute and texture tests ([slang-rhi: run the existing Vulkan GPU tests; maintainer dropped my internal-function unit test](../learnings/1793111769425-slang-rhi-run-the-existing-vulkan-gpu-tests-mainta.md)). If a minimal fix works around a field that means two things, then name the conflation and offer the explicit refactor as an alternative, because the maintainer may want the root issue fixed even when a reviewer accepted it as out of scope. If the change is a small backend mapping fix, then run the relevant existing `slang-rhi-tests` GPU cases on the container's GPU instead of leaving it to CI. The technical detail is in [slang-rhi backend runtime internals](slang-rhi-backend-runtime.md) and [Slang & slang-rhi test harness](slang-a-test-harness.md).
+
+**Source learnings (24):**
 
 - [a paraphrased/relayed maintainer directive can invert scope (dropped "also fix #N" clause); the relaying tier re-reads the source comment and never adds inferred narrowing.](../learnings/1790193335302-a-paraphrased-maintainer-directive-can-invert-scop.md)
 - [re-derive maintainer scope from the LIVE GitHub comment (webhook bodies truncate); never ADD a scope constraint the maintainer didn't state; surface cross-issue linkage to avoid parallel-bot collisions.](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)
@@ -110,5 +115,7 @@ On slang#13269 skiminki-nv approved the bot's fix only after pushing a commit th
 - [never reword a maintainer's existing code comment; a push dismisses their approval](../learnings/1790967953965-never-reword-a-maintainer-s-existing-code-comment-.md) — same review: comments record intent; the fix push dismissed the APPROVED review; batch fixes.
 - [a bot conflict-resolution push silently dismisses a human approval](../learnings/1790843181467-a-bot-conflict-resolution-push-silently-dismisses-.md) — #13312 approval dropped 2 min later; a sole dshreiner-nv request means no reviewer.
 - [a pushed commit silently dismisses a maintainer's APPROVED review — check the timeline](../learnings/1790969117654-slang-pr-review-a-pushed-commit-silently-dismisses.md) — `review_dismissed` + `dismissal_commit_id`; read inline PR comments too; build all default targets.
+- [slang-rhi maintainer prefers explicit ownership over a field doing double duty (#860 → #945)](../learnings/1793091793971-slang-rhi-maintainer-prefers-explicit-ownership-ov.md) — bot PR #868 closed; maintainer's #945 adds explicit ownership bools; "out of scope" from a reviewer is not maintainer agreement
+- [slang-rhi: run the existing Vulkan GPU tests; maintainer dropped my internal-function unit test](../learnings/1793111769425-slang-rhi-run-the-existing-vulkan-gpu-tests-mainta.md) — #866 takeover: GPU-free test removed, existing Release GPU tests used as validation
 
 _Catalog: [[wiki/index.md]]_

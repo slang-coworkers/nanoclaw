@@ -3,7 +3,7 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 21
+source_count: 22
 ---
 
 # Classifying red Slang CI — infra/flake vs. real regression
@@ -13,7 +13,7 @@ source_count: 21
 - **Read the fresh failing-job log before touching code.** Most single-job reds on `shader-slang/slang` are infra/flake, not your diff — but the log line is what tells the two apart, and the cause varies run-to-run.
 - **`test-falcor / Test (Falcor)` is an external-CI bridge**, not a test runner. It fails on infra (`run-external-ci: trigger failed: HTTP Error 403: Forbidden`, or an expired Slang artifact) far more often than on a real regression. A bail in ~15s with no shader diagnostics ⇒ infra, your compiler change is cleared. It is typically **non-required**.
 - **`test-falcor` is not required and is not in `check-ci`'s `needs`, and on `merge_group` it always skips** (its approval-gate grand-parent is skipped there), so the merge queue never runs the Falcor bridge test. Read required contexts from `branches/master`, not the 403ing `/protection` endpoint.
-- Falcor has **≥2 distinct infra modes** (403 auth wall, expired artifact). Don't propagate "artifact-TTL is THE Falcor cause" — re-read the log each time. A `--failed` rerun does NOT regenerate an expired artifact; a full `gh run rerun <id>` does. A 403 wall is not rerun-fixable — stop after ~2 attempts.
+- Falcor has **≥2 distinct infra modes** (403 auth wall, expired artifact). Don't propagate "artifact-TTL is THE Falcor cause" — re-read the log each time. A `--failed` or `--job test-falcor` rerun does NOT regenerate an expired artifact (it fails in ~19s, no GitLab pipeline starts); rerunning the producing `…-gpu-falcor / build` job or a full `gh run rerun <id>` does, and a rerun that reaches the bridge submits a new Falcor pipeline. A 403 wall is not rerun-fixable — stop after ~2 attempts.
 - When the Falcor log says only "external CI failed" (the internal GitLab pipeline is unreadable from the container), triage with a **public-Falcor differential compile** (baseline vs PR `slangc`, diff the diagnostics). A clean diff only *supports* infra, because the internal Falcor can differ.
 - GPU jobs (`test-windows-*-gpu-vk / test-slang`) flake/timeout: a step stuck `in_progress` at completion with an empty `--log-failed` is a timeout/cancellation, not an assertion failure. React to the current head only (a new push auto-cancels prior runs).
 - **Uniform** failure across *every* `test-slang` job (all OSes/arches, incl. CPU) ⇒ a deterministic `.slang` failure. Separate three causes: the PR's own new test, a PR-introduced regression of a pre-existing test, or inherited master-side breakage.
@@ -88,8 +88,18 @@ test-falcor") is stale: PRs #13183 and #12844 merged while their final-head gate
 also fails when the prebuilt **Slang artifact is expired/unavailable**:
 `run-external-ci: Slang artifact '…-falcor' … is unavailable (expired, still building, or the
 token cannot see it); not triggering Falcor`. The *tests* artifact (~122MB) can expire on a
-shorter retention than the sibling *build* artifact on the same run. A `--failed` rerun does NOT
-help (the artifact stays expired) — a **full** `gh run rerun <id>` regenerates artifacts fresh.
+shorter retention than the sibling *build* artifact on the same run: on a run older than ~a day,
+`gh run rerun --job <test-falcor job>` fails in ~19s at `Run external CI` with exactly this
+message, no GitLab pipeline starts, and so the red says nothing about Falcor. Before spending a
+rerun, check `gh api repos/shader-slang/slang/actions/runs/<run>/artifacts?name=slang-tests-windows-x86_64-cl-release-falcor`
+(`total_count` 0 = gone; only the `slang-build-*` artifacts remain). A `--failed` or test-job
+rerun does NOT help (the artifact stays expired). Rerunning the producing
+`build-windows-release-cl-x86_64-gpu-falcor / build` job re-uploads the artifact and cascades into
+`test-falcor`; a **full** `gh run rerun <id>` also regenerates artifacts fresh. A rerun that does
+reach the bridge submits a NEW Falcor pipeline (#13886 job 120443897612 passed on a rerun), so "a
+rerun cannot change an external pipeline's outcome" is false. Some old runs refuse job reruns
+outright (HTTP 403 "Jobs in this workflow run cannot be re-run")
+([test-falcor --job rerun fails in 19s once the slang-tests-* artifact is gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md)).
 The Falcor cause has flip-flopped (403 → artifact-TTL → 403 → artifact-expiry) enough that no
 single cause is a fleet fact; each occurrence is evidence for that run only. Classification
 shortcut: **if Falcor bails in seconds with no shader diagnostics in the log, it's infra and your
@@ -289,7 +299,7 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md) — slang#13352: no `set -E` = top-level only; `$BASH_COMMAND` splits annotations; `exit 0` ≈ `|| true`, below `continue-on-error`; `gh api --allow-escape-sequences` for job logs.
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
@@ -311,4 +321,5 @@ pass there is predicted, not proven; confirm via a CI re-run
 - [Bot CI run 'failure' after exactly 30 days = expired falcor-ci environment approval, not code](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md) — distinct from the 30-day rerun refusal; no code ran
 - [gh run rerun fails on runs older than one month — dispatch a fresh workflow_dispatch instead](../learnings/1792219533913-gh-run-rerun-fails-on-runs-older-than-one-month-di.md) — 720h falcor gate timeout lands past the rerun window; `gh workflow run --ref` keeps the SHA; `check-ci` `needs` excludes the gate.
 - [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md) — merge master (branch is BEHIND), check master's diff to your files, rebuild; reaped `build/` on #12443.
+- [test-falcor --job rerun fails in 19s once the run's slang-tests-* artifact is gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md) — check `artifacts?name=…-falcor` total_count; rerun the falcor build job to re-upload; reruns do submit a new pipeline (#13886)
 - [Slang CI: test-falcor failures can't be read from the container, so do a public-Falcor differential compile to triage](../learnings/1792769226659-slang-ci-test-falcor-failures-can-t-be-read-from-t.md) — GitLab 502; baseline vs PR `slangc` over public Falcor `Source/**/*.slang`; #13880 441 files, 0 diffs; clean diff only supports infra

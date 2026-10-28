@@ -3,7 +3,7 @@ title: Harvesting bot reviews — collect-reviews.sh, CodeRabbit surfaces, exit 
 type: concept
 group: review-process
 tags: [approver, collect-reviews, harvest, coderabbit, exit-20, exit-21, exit-10, exit-22, pagination, race, tier]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -42,7 +42,9 @@ selected.
 **A red `review` check is not a verdict until you read its log.** The annotation `Claude execution
 failed: result is_error:true` is the same for every harness failure; the cause is in the job log's
 `"result"` JSON. A `422 Budget has been exceeded` there is the shared inference key's cap: every
-run fails until a human raises the cap or it resets, and a rerun cannot help.
+run fails until a human raises the cap or it resets, and a rerun cannot help. The converse also
+holds: a GREEN `review` check is not proof a review was posted. Confirm a `github-actions`
+review or comment exists on the PR after the run, or read the log's `subagent_stats` and `result`.
 
 ## CodeRabbit emits its verdict through multiple surfaces
 
@@ -144,15 +146,33 @@ Related classification trap: when the primary review body is ABSENT and the `rev
 the redness can be an NV-inference gateway INFRA error, NOT a REQUEST_CHANGES and NOT a build/test
 failure. The annotation only ever says `Claude execution failed: result is_error:true`; the cause
 is in the job log's `"result"` JSON, and two have been seen. (1) Blank gateway env vars (slang#12569,
-below). (2) The `nv-inference` key's budget cap: from 2026-10-25T16:49Z through at least
-10-26T05:09Z every non-skipped slang `Claude PR Review` run (`pull_request_target`, 8 of 8) failed
+below). (2) The `nv-inference` key's budget cap: from 2026-10-25T16:49Z through 10-26T20:35Z every
+non-skipped slang `Claude PR Review` run (`pull_request_target`, 8 of 8 in the first sample) failed
 with `API Error: 422 Budget has been exceeded! ... Current cost: 2000.04, Max budget: 2000.0`,
 `terminal_reason: api_error`, `num_turns: 1`. The last success was 10-25T13:25Z, after a Sunday
 burst of about 30 fork-PR reviews. slang's `claude-pr-review.yml`, `claude.yml` and
 `claude-ci-analysis.yml` all use the `nv-inference` provider and likely share the capped key;
 slangpy's and slang-rhi's `claude.yml` use Bedrock. Grep the log for `Budget has been exceeded`
 before calling it a workflow bug: a rerun cannot help, and a human must raise the cap or wait for
-the reset ([Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)). On
+the reset ([Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)).
+Nothing re-runs these checks after the reset: 8 open PRs kept a red `review` on their head, and
+`pr_report.py`'s `summarize_ci()` counts any non-success check, so they show as false "CI failing"
+in the weekly report until someone re-runs them.
+
+**A green `review` check can still mean no review.** The first run after the cap (10-27T04:25Z,
+#13898) billed `total_cost_usd` 2.77 with no 422 and `terminal_reason: completed`, and the check
+went SUCCESS, yet nothing was posted: the job log's `subagent_stats` showed 5 reviewer subagents
+started in the background with `completed: 0`, and the final `result` text stopped at "Now
+waiting...". So for harvest purposes, a green check with no `github-actions` PullRequestReview or
+comment after the run is the same as a failed run (no primary body; fallback tier), not a pending
+one ([`review` check green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md),
+[budget-cap signature and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)).
+A related instrument trap from the same sweep: a GraphQL
+`reviewRequests{requestedReviewer{... on User{login}}}` query silently returns `null` for team
+requests (#12200's team `dev` request was hidden for days); add `__typename` and
+`... on Team{slug}`.
+
+On
 slang#12569 the `PR Review` step failed for infra reasons so `Post PR Review` had nothing to post →
 no `github-actions[bot]` body to harvest → correctly the FALLBACK tier (CodeRabbit + Devin), not
 NO_REVIEW_SIGNAL. Read the failing step (`gh run view <run> --log-failed`) before attributing a
@@ -161,7 +181,7 @@ reasoning — `eval-clauses.py` reads the combined commit status and does not co
 review-harness check with the build/test matrix
 ([a red slang `review` check can be an NV-inference infra error, not a code verdict](../learnings/1786959551599-approver-challenger-calibration-a-red-slang-review.md)).
 
-**Source learnings (11):**
+**Source learnings (13):**
 
 - [CodeRabbit's formal review OBJECTS and its recent-review SUMMARY are DIFFERENT collections with different currency](../learnings/1786694530901-approver-clause-gap-coderabbit-s-formal-review-obj.md) — slang-rhi#797; harvest exit 10 keyed on the review objects and missed a head-current clean summary comment.
 - [collect-reviews.sh dropped a head-current CodeRabbit review posted as an ISSUE COMMENT → false exit-20; fix keys on `not match`](../learnings/1786829284875-approver-infra-collect-reviews-sh-dropped-a-head-c.md) — slang; resolve the head-matching pull review FIRST; require CodeRabbit's explicit base…head range, never a bare SHA; comments-fetch failure ⇒ exit 21.
@@ -174,3 +194,5 @@ review-harness check with the build/test matrix
 - [Harvest exit 10 (stale review) on a fresh push is a pending-bot SUSPECT even when pending_bot is null — re-harvest](../learnings/1787905192481-approver-challenger-miss-harvest-exit-10-stale-rev.md) — slang#12601 R3; a head-current CodeRabbit review posted ~6 min after harvest rated the defect 🟠 Major; append-only ledger could not upgrade the earlier ABSTAIN.
 - [A red slang `review` check can be an NV-inference infra error, not a code verdict](../learnings/1786959551599-approver-challenger-calibration-a-red-slang-review.md) — slang#12569; `is_error:true` gateway failure left no bot body → fallback tier; read the failing step and don't conflate it with `ci_green_on_sha`.
 - [red `review` check with `result is_error:true` = nv-inference key budget cap (422), 8 of 8 runs 10-25/26; rerun can't help](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)
+- [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md) — #13898: SUCCESS, $2.77, 5 background subagents `completed: 0`; also GraphQL `... on User` hides team review requests (#12200)
+- [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md) — 422 window 10-25T16:49Z→10-26T20:35Z; 8 PRs left red (no auto re-run); `summarize_ci()` false "CI failing"

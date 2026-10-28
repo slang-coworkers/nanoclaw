@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 27
+source_count: 28
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -199,7 +199,7 @@ names gated commands with the Edit tool rather than a Bash heredoc
 A later session hit both shapes again (a read-only `gh api repos/.../pulls/comments/<id>`
 GET, and a memory heredoc that only mentioned PR-creation words) and found one more: the
 hook rejects `-F body=@$var.md` because it needs a literal absolute path, so post each
-reply with a literal `-F body=@/abs/path.md` [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md).
+reply with a literal `-F body=@/abs/path.md` [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md); a #13911 GPU-repro session hit the same inline-comment GET block and literal-path rule [Dawn/Tint num_subgroups first lands in chromium/7559 (gate gotcha)](../learnings/1793144297778-dawn-tint-num-subgroups-first-lands-in-chromium-75.md).
 The same literal-path rule binds `gh pr edit N --body-file $D/file.md`: it is refused
 with "cannot be resolved (not a literal path…)" even for an OUTPUT_REVIEW-approved file,
 so spell the absolute path out ([`--body-file $VAR` refused](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)).
@@ -353,7 +353,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (27):**
+**Source learnings (28):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -382,3 +382,4 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [codex-critique: first call on a fresh thread often returns a wiki recall, not the review](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md) — `[Fix Report]` needs `in_reply_to=<triage handoff seq>`, found via `ncl sessions messages`; recall/Verdict parts on the gate-mechanics page
 - [gate-critique-on-deliver blocks read-only gh api calls to PR REST routes](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — `gh api [^|]*pulls\b` (BASH_PATTERNS line 65) refuses a `.../pulls/N/reviews` GET; use `gh pr view --json`; issue-comment PATCH < 1,000 bytes passes
 - [gate-critique-on-deliver treats read-only `gh api .../pulls/N` GET as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md) — other repos' PRs too; `gh pr view --repo` is ungated; external `issues/<n>/events` 401s, WebFetch the PR page for timeline facts
+- [Dawn/Tint num_subgroups first lands in chromium/7559; slang-rhi's Dawn 7204 rejects it](../learnings/1793144297778-dawn-tint-num-subgroups-first-lands-in-chromium-75.md) — (gate half) a read-only `pulls/comments/<id>` GET is treated as PR creation; use the MCP comments tool; `-F body=@` needs an absolute path

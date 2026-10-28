@@ -12,261 +12,101 @@ Root-cause investigations that repeatedly cross the slangpy → slang-rhi → sl
 boundary. Recurring findings:
 
 - **#222 (AMD-Windows autodiff grads wrong)** is a slang-rhi bug, not Slang-core or an
-  AMD driver bug: slang-rhi advertises float-atomic-ADD capability off the BASE
-  atomics device bit, so on RDNA2 iGPUs Slang legally emits `OpAtomicFAddEXT` and the
-  driver mis-executes. The symptom `[72,0,0,0]` = all gradients computed then
-  atomic-added into element 0 (a scatter-address bug), NOT zero gradients — the
-  issue title "always 0" only ever matched the D3D12 arm.
-- **#665 ("Failed to get binding data")** is 100% upstream slang-rhi, D3D12-only,
-  silently swallowed (bare `return;` skips the dispatch → wrong results, not a
-  throw). It is a fixed-heap exhaustion under slangpy's zero-backpressure per-dispatch
-  submit — NOT an unbounded leak. Static triage got the *mechanism shape* right but
-  the *specific resource* wrong: the maintainer's A/B pinned it to the per-command-
-  buffer 4 MiB constant-buffer pool (slang-rhi#844), not the descriptor/sampler heap.
-- **CPU-backend dispatch regression (#1136/#1137)**: the slang-rhi CPU device is the
-  only backend that never populates `DeviceLimits::maxComputeDispatchThreadGroups`
-  (stays `{0,0,0}`); PR #995's large-dispatch clamp computes `min(0, ceiling)=0` →
-  throw. Durable fix mirrors Metal's `0xFFFFFFFF` sentinel in slang-rhi; slangpy can
-  carry a defensive fallback (must cover X, Y, and the generator). CPU coverage that crosses a
-  physical Y row (~67M threads) is cheap (~3–5 s/case), so parametrize the large-dispatch tests on cpu
-  rather than skipping.
+  AMD driver bug: slang-rhi advertises float-atomic-ADD off the BASE atomics device bit,
+  so on RDNA2 iGPUs Slang legally emits `OpAtomicFAddEXT` and the driver mis-executes.
+  `[72,0,0,0]` = all gradients computed then atomic-added into element 0 (a
+  scatter-address bug), NOT zero gradients; the "always 0" title matched only D3D12.
+- **#665 ("Failed to get binding data")** is upstream slang-rhi, D3D12-only, and silently
+  swallowed (bare `return;` skips the dispatch → wrong results, no throw): fixed-pool
+  exhaustion under slangpy's zero-backpressure per-dispatch submit, NOT a leak. Static
+  triage got the mechanism shape right but the resource wrong: the maintainer's A/B pinned
+  the per-command-buffer 4 MiB constant-buffer pool (slang-rhi#844), not the descriptor heap.
+- **CPU-backend dispatch regression (#1136/#1137)**: the slang-rhi CPU device alone never
+  populates `DeviceLimits::maxComputeDispatchThreadGroups` (`{0,0,0}`), so PR #995's clamp
+  computes `min(0, ceiling)=0` → throw. Durable fix: Metal's `0xFFFFFFFF` sentinel in
+  slang-rhi; a slangpy fallback must cover X, Y and the generator. Crossing a physical Y
+  row on CPU (~67M threads) costs ~3–5 s/case, so parametrize large-dispatch tests on cpu.
 - **Current-device stack (slang#13558)**: `Device::publish()` pushes every device but
   `shutdown()` pops only the top, so closing the older of two live devices first leaves a
-  dangling `Device*` that nanobind later dereferences (UBSan invalid vptr / segfault). It only
-  reproduces in serial pytest (nightly sanitizers), not xdist CI; read that job's log first.
-- **`ComputeKernel.dispatch(**kwargs)` and cursor dict writes ignore keys that are not fields
-  (slangpy#1231)**, so a global passed outside `vars=` or a misspelled key leaves a resource
-  unbound: CPU segfaults, CUDA fails at the next readback, Vulkan silently does nothing. Fix it in
-  the dispatch lambda; other callers rely on the permissive shared writer.
-- **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/`
-  is not proof it's integrated (verify call sites); a stale architecture-refactor
-  issue is a prime silently-fixed orphan (verify closing PRs + the cross-reference
-  timeline); and DeepWiki confidently gets "does X inherit/propagate Y" wrong —
-  verify against source.
-- **#1183's SHADER_PATH prepend runs only in binding lambdas (slangpy#1238)**: module-level
-  `spy.create_slang_session()` and a no-device `spy.App()` get empty include paths.
+  dangling `Device*` that nanobind dereferences (UBSan invalid vptr / segfault). Serial
+  pytest only (nightly sanitizers), not xdist CI; read that job's log first.
+- **`ComputeKernel.dispatch(**kwargs)` and cursor dict writes ignore non-field keys
+  (slangpy#1231)**: a global passed outside `vars=` or a misspelled key stays unbound (CPU
+  segfaults, CUDA fails at the next readback, Vulkan does nothing). Fix it in the dispatch
+  lambda; other callers rely on the permissive shared writer.
+- **SHADER_PATH**: since #1183 (superseding #1182/#1178 for #886/#1177) the binding
+  lambdas prepend `slangpy.SHADER_PATH` unconditionally, never C++ core; module-level
+  `spy.create_slang_session()` and a no-device `spy.App()` bypass it (slangpy#1238).
+- **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/` is not
+  proof it is integrated (verify call sites); a stale architecture-refactor issue is a
+  prime silently-fixed orphan (verify closing PRs + the cross-reference timeline); DeepWiki
+  confidently gets "does X inherit/propagate Y" wrong — verify against source.
+- **Static struct members (slangpy#126)** are absent from `Type.fields`, and an
+  `InstanceList` silently drops them; detect them through `DeclReflection`.
 
 ## #222 — AMD-Windows autodiff gradients: a scatter-address bug, root-caused to slang-rhi
 
-The issue title is misleading. slangpy#222 "AD doesn't work, gradients are always 0"
-(AMD RX 6600 / Win11) framed the bug as zero gradients, but the decisive numbers say
-otherwise: on the docs `polynomial` example the correct grad is `[12,16,20,24]`
-(sum=72), and Shannon's AMD iGPU produced **Vulkan `[72,0,0,0]`** and **D3D12
-`[0,0,0,0]`**. `[72,0,0,0]` = every gradient computed correctly then all atomic-added
-into element 0 — a scatter *address* bug (`12+16+20+24==72` is what proves the
-mechanism), NOT zero gradients. The "always 0" framing only ever matched the D3D12 arm.
-The real diagnosis lived in a Discord thread never linked back to the issue. Scope: NOT
-all AMD — a discrete AMD 9070 XT on Linux got the correct result; scoped to the
-AMD-Windows driver. The transferable lesson: a bug's title/label is a claim to verify,
-not a finding — compute what a nearby defect would produce and check the actual numbers
-[#222 title is wrong — grads collapse into element 0](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md).
+slangpy#222 "AD doesn't work, gradients are always 0" (AMD RX 6600 / Win11) framed the bug as zero gradients, but the numbers say otherwise. On the docs `polynomial` example the correct grad is `[12,16,20,24]` (sum 72), and Shannon's AMD iGPU produced **Vulkan `[72,0,0,0]`** and **D3D12 `[0,0,0,0]`**. `[72,0,0,0]` means every gradient was computed correctly and then atomic-added into element 0: a scatter *address* bug, proven by `12+16+20+24==72`. The "always 0" framing matched only D3D12; the real diagnosis lived in an unlinked Discord thread. Scope: a discrete AMD 9070 XT on Linux was correct, so it is the AMD-Windows driver, not all AMD. A title or label is a claim to verify: compute what a nearby defect would produce and check the actual numbers [#222 title is wrong](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md).
 
-The Vulkan arm is fully root-caused, and it is a **slang-rhi** bug. In
-`src/vulkan/vk-device.cpp:822-830` the `SIMPLE_EXTENSION_FEATURE` macro (which gates
-its body on the `s.m` device-feature bit) is instantiated with `m =
-shaderBufferFloat32Atomics` (BASE float atomics: load/store/exchange) but its body
-pushes `Capability::SPV_EXT_shader_atomic_float_add` (the atomic-ADD capability). So
-slang-rhi advertises float-atomic-ADD off the WRONG (base) device bit; the specific
-`shaderBufferFloat32AtomicAdd` runtime bit is never read anywhere. On a device where
-base atomics = true but AtomicAdd = false (RDNA2 iGPU), Slang is told atomic-add is
-supported, legally emits `OpAtomicFAddEXT` (unconditional once the profile carries the
-atom — no runtime check, no fallback), and the driver silently mis-executes. A
-**coarse-feature trap**: `Feature::AtomicFloat` is a single bit set off the base
-atomics bit, so a SlangPy-side `hasFeature(Feature::AtomicFloat)` guard would STILL
-pass on an add-less device — the fix needs finer granularity in slang-rhi, not a
-SlangPy guard. Process lessons: a capability atom in a SPIR-V profile is NOT evidence
-the runtime device supports the op (vulkaninfo overrides inference-from-symptom); the
-D3D12 arm is separate and root-causing Vulkan does not root-cause it; and the fix is
-cross-repo (route the upstream draft through the slang chain, flows back via a pin
-bump)
-[#222 root cause — slang-rhi advertises float-atomic-ADD off the base bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md).
+The Vulkan arm is a **slang-rhi** bug. In `src/vulkan/vk-device.cpp:822-830` the `SIMPLE_EXTENSION_FEATURE` macro (whose body is gated on the `s.m` device-feature bit) is instantiated with `m = shaderBufferFloat32Atomics` (BASE float atomics: load/store/exchange), but its body pushes `Capability::SPV_EXT_shader_atomic_float_add`; the specific `shaderBufferFloat32AtomicAdd` bit is never read anywhere. On a device with base atomics but no AtomicAdd (RDNA2 iGPU), Slang is told atomic-add is supported, legally emits `OpAtomicFAddEXT` (unconditional once the profile carries the atom: no runtime check, no fallback), and the driver silently mis-executes. **Coarse-feature trap:** `Feature::AtomicFloat` is one bit set off the base atomics bit, so a SlangPy `hasFeature(Feature::AtomicFloat)` guard would still pass on an add-less device; the fix needs finer granularity in slang-rhi, not a SlangPy guard. A capability atom in a SPIR-V profile is not evidence the device supports the op (vulkaninfo beats inference-from-symptom); root-causing Vulkan does not root-cause the separate D3D12 arm; the fix is cross-repo (upstream draft through the slang chain, back via a pin bump) [#222 root cause](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md).
 
 ## #665 "Failed to get binding data" — D3D12-only fixed-pool exhaustion, silently swallowed
 
-The RHI error `[ERROR] (rhi) layer: Failed to get binding data` (slangpy#665, D3D12
-training loops) is 100% upstream slang-rhi, not SlangPy-native and not the Slang
-compiler. It is emitted in `command-buffer.cpp` `writeComputeState`/`writeRenderState`/
-`writeRayTracingState` when `getBindingData()` fails, and the handler logs then does a
-bare `return;` WITHOUT writing the pipeline command — the dispatch is silently skipped
-and execution continues, so you get silently-wrong results, not an exception (worse
-than a throw). SlangPy provides zero backpressure: `NativeCallData::exec` creates a
-fresh command encoder per dispatch and `submit_command_buffer` never waits, while
-descriptor arenas are only reclaimed when the tracking fence retires the submission —
-so a tight loop lets in-flight buffers accumulate faster than they retire. Immediate
-user workaround: call `device.wait_for_idle()` (or periodic `wait_for_submit(id)`)
-inside the loop. Do NOT call it a "leak": reclamation IS fence-driven; prior
-measurement shows CUDA/Vulkan analogues are high-water-mark, not unbounded — frame it
-as "allocation outpacing fence-based reclamation on a FIXED D3D12 heap"
-[#665 descriptor-arena exhaustion silently swallowed](../learnings/1787226423616-slangpy-665-failed-to-get-binding-data-descriptor-.md).
+The RHI error `[ERROR] (rhi) layer: Failed to get binding data` (slangpy#665, D3D12 training loops) is upstream slang-rhi, not SlangPy and not the compiler. `command-buffer.cpp` `writeComputeState`/`writeRenderState`/`writeRayTracingState` log it when `getBindingData()` fails, then bare `return;` WITHOUT writing the pipeline command: the dispatch is silently skipped and execution continues, so results are silently wrong instead of an exception. SlangPy provides zero backpressure (`NativeCallData::exec` creates a fresh command encoder per dispatch and `submit_command_buffer` never waits), while descriptor arenas are reclaimed only when the tracking fence retires the submission, so a tight loop accumulates in-flight buffers faster than they retire. User workaround: `device.wait_for_idle()` (or periodic `wait_for_submit(id)`) inside the loop. It is not a "leak" (reclamation is fence-driven; CUDA/Vulkan analogues are high-water-mark) but allocation outpacing fence-based reclamation on a FIXED D3D12 pool [#665 silently swallowed](../learnings/1787226423616-slangpy-665-failed-to-get-binding-data-descriptor-.md).
 
-The error is **structurally D3D12-only**, and that matters for repro planning. The log
-line lives in a backend-agnostic encoder path, which misleads you into thinking any
-backend can hit it, but the failure that reaches it (`getBindingData` →
-`BindingDataBuilder::bindAsRoot` returning SLANG_FAILED) is only produced by D3D12's
-fixed shader-visible heaps. Vulkan's `DescriptorSetAllocator` grows pools on demand
-(never returns SLANG_FAILED up through getBindingData); CUDA has no shader-visible
-descriptor heap at all and uses a growable `ArenaAllocator`. Do NOT attempt a
-Linux/CUDA/Vulkan repro of this specific error — it cannot fire there. Repro vehicle is
-Windows/D3D12 only (`step_05_latent_texture.py`); log `device.report_heaps()` per
-iteration
-[#665 is structurally D3D12-only](../learnings/1787763717844-slangpy-665-failed-to-get-binding-data-is-structur.md).
+The error is **structurally D3D12-only**. The log line sits in a backend-agnostic encoder path, but the failure that reaches it (`getBindingData` → `BindingDataBuilder::bindAsRoot` returning SLANG_FAILED) comes only from D3D12's fixed shader-visible heaps: Vulkan's `DescriptorSetAllocator` grows pools on demand, and CUDA has no shader-visible heap (a growable `ArenaAllocator`). Do not attempt a Linux/CUDA/Vulkan repro; use Windows/D3D12 (`step_05_latent_texture.py`) and log `device.report_heaps()` per iteration [#665 is structurally D3D12-only](../learnings/1787763717844-slangpy-665-failed-to-get-binding-data-is-structur.md).
 
-Two candidate exhausting resources were fingered before the true one was found, and the
-sequence is the lesson. First hypothesis was the descriptor heaps: D3D12 allocates TWO
-fixed shader-visible GPU heaps — CBV/SRV/UAV = 1,000,000 but the **sampler heap = only
-2,048**, so a texture-heavy kernel (Texture2D+Sampler per dispatch) would exhaust the
-sampler heap ~500× sooner than the big one
-[#665 sampler heap is the tight bottleneck](../learnings/1787226766619-slangpy-665-d3d12-sampler-heap-is-the-tight-bottle.md).
-But the maintainer's runtime A/B (dropping the D3D12 constant-buffer page size 4 MiB →
-64 KiB let 10 frames complete vs baseline failing at frame 2) pinned the causal
-resource as the **per-command-buffer 4 MiB constant-buffer pool** (tracked upstream as
-slang-rhi#844) — NOT the descriptor/sampler heap. Static code-reading got the mechanism
-*shape* right (allocation outpacing fence-based reclamation on bounded per-command-
-buffer pools, driven by zero-backpressure per-dispatch submit, not an unbounded leak)
-but the *specific resource* wrong. The rules: without a runtime repro, state the
-mechanism shape confidently but label the specific resource as a hypothesis, not a
-confirmed root cause; an A/B page-size experiment is the decisive discriminator between
-candidate pools; and re-read the *actual* latest issue comments before posting, because
-a sibling `nv-slang-bot` session may have re-asserted the wrong hypothesis as the last
-bot word (shared-bot-identity hazard confirmed live)
-[#665 static triage got the shape right, resource wrong](../learnings/1788354683528-slangpy-665-static-triage-got-the-mechanism-shape-.md).
+How the exhausted resource was found is the lesson. The first hypothesis was the descriptor heaps: D3D12 has two fixed shader-visible heaps, CBV/SRV/UAV = 1,000,000 but **sampler = 2,048**, so a Texture2D+Sampler-per-dispatch kernel would exhaust the sampler heap ~500× sooner [#665 sampler heap is the tight bottleneck](../learnings/1787226766619-slangpy-665-d3d12-sampler-heap-is-the-tight-bottle.md). The maintainer's runtime A/B (constant-buffer page size 4 MiB → 64 KiB let 10 frames complete; baseline failed at frame 2) instead pinned the **per-command-buffer 4 MiB constant-buffer pool** (slang-rhi#844). Static reading got the mechanism *shape* right (allocation outpacing fence-based reclamation on bounded per-command-buffer pools, driven by zero-backpressure submit) but the *specific resource* wrong. Rules: without a runtime repro, state the shape confidently but label the resource a hypothesis; an A/B page-size experiment discriminates between candidate pools; and re-read the latest issue comments before posting, because a sibling `nv-slang-bot` session may have re-asserted the wrong hypothesis as the last bot word (shared-bot-identity hazard, confirmed live) [#665 shape right, resource wrong](../learnings/1788354683528-slangpy-665-static-triage-got-the-mechanism-shape-.md).
 
 ## CPU-backend dispatch regression (#1136/#1137/#1138)
 
-Every compute dispatch on `DeviceType.cpu` throws `RuntimeError: Device reports zero
-compute dispatch groups in X` at `slangpy.cpp:103` — a hard regression in slangpy
-0.43.0 (0.42.0 was fine), GPU backends unaffected. Root cause: in slang-rhi the CPU
-device is the **only** backend that never populates
-`DeviceLimits::maxComputeDispatchThreadGroups`, and `DeviceLimits` has no default
-member initializers, so it stays `{0,0,0}`. slangpy PR #995's large-dispatch clamp then
-computes `min(0, huge) == 0` → the `SGL_CHECK(dispatch_groups_x > 0)` throws. The
-durable fix mirrors Metal, which already hardcodes `{0xffffffff, 0xffffffff,
-0xffffffff}` because it too has no hardware grid bound — when a "software" backend lacks
-a real limit, the `0xffffffff` sentinel is the established pattern. A slangpy-only "just
-relax the SGL_CHECK" fix is a trap: fixing only the X check moves the throw to the
-sibling Y check (also 0), and `generator.py` emits `dispatch_group_x_stride = 0`
-(corrupts the group-id flatten) — so a slangpy-side defensive fallback must cover X, Y,
-AND the generator, whereas the RHI-side fix covers all three at once
-[#1136 CPU backend zero dispatch limit](../learnings/1788474155417-slangpy-cpu-backend-zero-device-dispatch-limit-bre.md).
+Every compute dispatch on `DeviceType.cpu` throws `RuntimeError: Device reports zero compute dispatch groups in X` at `slangpy.cpp:103` in slangpy 0.43.0 (0.42.0 was fine; GPU backends unaffected). In slang-rhi the CPU device is the **only** backend that never populates `DeviceLimits::maxComputeDispatchThreadGroups`, and `DeviceLimits` has no default member initializers, so it stays `{0,0,0}`; slangpy PR #995's large-dispatch clamp computes `min(0, huge) == 0` and `SGL_CHECK(dispatch_groups_x > 0)` throws. The durable fix mirrors Metal's `{0xffffffff, 0xffffffff, 0xffffffff}`, the established sentinel for a backend with no hardware grid bound. Relaxing only the slangpy `SGL_CHECK` is a trap: the throw moves to the sibling Y check (also 0), and `generator.py` emits `dispatch_group_x_stride = 0`, corrupting the group-id flatten. A slangpy fallback must cover X, Y and the generator; the RHI fix covers all three at once [#1136 CPU backend zero dispatch limit](../learnings/1788474155417-slangpy-cpu-backend-zero-device-dispatch-limit-bre.md).
 
-The fix PR (#1137) surfaced pytest-classification facts worth reusing: `plugin.py`'s
-`pytest_runtest_setup` treats a test as a *device* test ONLY if its function has a
-`device_type` parameter — without it, the test is classed non-device and SKIPPED under
-any `--device-types` selection. So a CPU-specific test MUST be
-`@pytest.mark.parametrize("device_type", [DeviceType.cpu])` (and take `device_type`) to
-run under scoped selections; `DEFAULT_DEVICE_TYPES` never includes cpu on any platform,
-which is why the regression shipped. The slangpy fallback (treat 0 as unbounded:
-X→ceiling, Y→UINT32_MAX) is a provable no-op once rhi reports a real limit. Also
-observed: slang-rhi disables CPU in its OWN test harness on Linux ("Known issues with
-CPU backend on linux") — a harness gate, not a slangpy runtime restriction — and
-`test_pass_float_array` SEGFAULTS in CPU array marshalling once the dispatch throw is
-removed, a separate pre-existing CPU defect
-[#1136/#1137 CPU dispatch zero DeviceLimits + pytest classification](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md).
+Fix PR #1137 surfaced reusable pytest facts. `plugin.py`'s `pytest_runtest_setup` treats a test as a *device* test ONLY if its function has a `device_type` parameter; otherwise it is SKIPPED under any `--device-types` selection. A CPU-specific test must therefore be `@pytest.mark.parametrize("device_type", [DeviceType.cpu])` and take `device_type`; `DEFAULT_DEVICE_TYPES` never includes cpu on any platform, which is why the regression shipped. The slangpy fallback (0 = unbounded: X→ceiling, Y→UINT32_MAX) is a provable no-op once rhi reports a real limit. slang-rhi disables CPU in its OWN Linux test harness ("Known issues with CPU backend on linux"), a harness gate rather than a slangpy runtime restriction; and with the throw removed, `test_pass_float_array` SEGFAULTS in CPU array marshalling, a separate pre-existing defect [#1136/#1137 pytest classification](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md).
 
-Review of #1137 then asked for CPU coverage that crosses into a **second physical Y dispatch row**.
-With the zero-limit fallback (2097151 groups × 32 threads) that needs ~67.1M logical threads, which
-looked too slow for CPU — but the sentinel-marker tests in `test_large_dispatches.py` ran in ~3–5 s
-per case on a CPU debug build. So the simplest fix was adding `DeviceType.cpu` to their
-parametrization, computing the expected row stride with `resolve_max_dispatch_groups_x()`, and
-treating `limits.y == 0` as unbounded instead of skipping. A mutation check (restoring the
-zero-stride generator) made the grid and `call_group` cases fail, confirming the tests pin the
-codegen wiring. The same chain hit delivery-gate limits on the PR body (`gh pr edit --body-file` ≤1000
-chars, ≤2 lines per `##` section); those mechanics are on
-[the delivery-gates page](agent-routing-f0909b2-critique-and-delivery-gates.md)
-[CPU large-dispatch coverage: crossing the Y row is cheap](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md).
+Review of #1137 asked for CPU coverage crossing into a **second physical Y dispatch row**: ~67.1M logical threads with the fallback (2097151 groups × 32 threads). That looked too slow for CPU, but the sentinel-marker tests in `test_large_dispatches.py` ran in ~3–5 s per case on a CPU debug build, so the fix was adding `DeviceType.cpu` to their parametrization, computing the expected row stride with `resolve_max_dispatch_groups_x()`, and treating `limits.y == 0` as unbounded instead of skipping. A mutation check (restoring the zero-stride generator) failed the grid and `call_group` cases, confirming the tests pin the codegen wiring. PR-body delivery-gate limits (`gh pr edit --body-file` ≤1000 chars, ≤2 lines per `##`) are on [the delivery-gates page](agent-routing-f0909b2-critique-and-delivery-gates.md) [crossing the Y row is cheap](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md).
 
-That unmasked segfault (slangpy#1138) is a layer-localization exercise. A SlangPy
-functional-API call segfaults on `DeviceType.cpu` but works on every GPU backend
-(`float first(float x[3])` called with a Python list). The static playbook: rule out
-slangpy_ext marshalling if the write path is reflection-driven and backend-agnostic
-(bounds guards *throw*, they don't segfault); rule out slang-rhi CPU binding if the
-uniform rides the generic ordinary-data memcpy (scalar arrays aren't special-cased); and
-pin to the slang compiler CPU / host-callable target, because what's CPU-unique is the
-host-callable compile and the layout the compiler reports for a fixed-size `float[N]`
-uniform (a bad reflected offset crashes at write-time or in the compiled kernel). The
-cheapest confirmatory experiment is a reflection probe (print `getElementCount()`/
-`getElementStride(UNIFORM)`/offset — zero/garbage confirms the CPU-target layout bug).
-The signature "GPU-works / CPU-crashes with an opaque-bytes RHI path and a
-backend-agnostic slangpy path" strongly implicates a compiler CPU/host-callable target
-bug — fix CPU crashes at the legalizer/consumer, not by rejecting the shape upstream
-[#1138 localizing a CPU-only segfault to a layer](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md).
+The unmasked segfault (slangpy#1138) is a layer-localization exercise: `float first(float x[3])` called with a Python list segfaults on `DeviceType.cpu` but works on every GPU backend. Rule out slangpy_ext marshalling (the write path is reflection-driven and backend-agnostic; bounds guards *throw*, not segfault) and slang-rhi CPU binding (the uniform rides the generic ordinary-data memcpy); what remains CPU-unique is the compiler's host-callable compile and the layout it reports for a fixed-size `float[N]` uniform (a bad reflected offset crashes at write time or in the kernel). The cheapest confirmation is a reflection probe printing `getElementCount()`/`getElementStride(UNIFORM)`/offset; zero or garbage confirms a CPU-target layout bug. "GPU works, CPU crashes" with an opaque-bytes RHI path and a backend-agnostic slangpy path ⇒ compiler CPU-target bug; fix it at the legalizer/consumer, not by rejecting the shape upstream [#1138 layer localization](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md).
 
 ## Current-device stack: auto-push plus top-only pop leaves a dangling `Device*` (slang#13558)
 
-SlangPy (main ce68ef8) keeps a thread-local `std::vector<Device*>` current-device stack, and
-the push and pop sides are asymmetric. `Device::publish()` pushes *every* created device, but
-`Device::shutdown()` pops only when `back() == this`. So whenever two devices are live and the
-OLDER one is closed first, its raw pointer stays in the stack after the device is freed. That is
-exactly what `helpers.close_leaked_devices` does, because it walks `get_created_devices()` in
-creation order. The next `spy.pop_current_device()` / `current_device()` hands the stale pointer to
-nanobind, which runs `typeid(*ptr)` in `type_caster_base<sgl::Device>::from_cpp` (`nb_cast.h:492`).
-The result is a UBSan "invalid vptr", a segfault, or an `Object::set_self_py ... already present`
-abort. The concrete trigger is `test_compiler_profiles.py::test_cuda_profile_cache` (two
-`with spy.Device()` in a loop), which then crashes in `test_device_api.py`'s `empty_device_stack`.
-A first device also survives Python rebinding, because its default `SlangSession` holds a strong
-`ref<Device>` until `close()`.
+SlangPy (main ce68ef8) keeps a thread-local `std::vector<Device*>` current-device stack with asymmetric push and pop: `Device::publish()` pushes *every* created device, but `Device::shutdown()` pops only when `back() == this`. With two live devices, closing the OLDER first leaves its freed pointer in the stack, exactly what `helpers.close_leaked_devices` does (it walks `get_created_devices()` in creation order). The next `spy.pop_current_device()` / `current_device()` hands the stale pointer to nanobind, whose `typeid(*ptr)` in `type_caster_base<sgl::Device>::from_cpp` (`nb_cast.h:492`) yields a UBSan "invalid vptr", a segfault, or an `Object::set_self_py ... already present` abort. The trigger is `test_compiler_profiles.py::test_cuda_profile_cache` (two `with spy.Device()` in a loop), which then crashes in `test_device_api.py`'s `empty_device_stack`. A first device also survives Python rebinding, because its default `SlangSession` holds a strong `ref<Device>` until `close()`.
 
-The crash shows up only in **serial** pytest runs (the nightly `sanitizers.yml` job, or a local
-`pytest slangpy/tests`). Regular GPU CI runs xdist `--parallel`, which puts the two tests in
-different processes. Triage rule: when a SlangPy crash looks platform-specific, read the nightly
-serial asan-ubsan job log first. It carries a symbolized UBSan frame and the exact stop point
-([current-device stack: auto-push + top-only pop → dangling Device*](../learnings/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md)).
+The crash appears only in **serial** pytest runs (the nightly `sanitizers.yml` job, or a local `pytest slangpy/tests`); regular GPU CI's xdist `--parallel` puts the two tests in different processes. When a SlangPy crash looks platform-specific, read the nightly serial asan-ubsan job log first: it carries a symbolized UBSan frame and the exact stop point ([dangling Device*](../learnings/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md)).
 
 ## `ComputeKernel.dispatch` and cursor dict writes silently drop unknown keys (slangpy#1231)
 
-Consider a kernel with a global `buf` dispatched as `kernel.dispatch(thread_count, buf=b)`. The global belongs in `vars=`, but the call raises no error and `buf` is left unbound; a misspelled `vars` key behaves the same way. The cause is the dict-to-struct write in `src/slangpy_ext/device/cursor_utils.h:798-810` (and its numpy twin at :553-565). It loops over the struct's FIELDS and checks `dict.contains(name)`, so dict keys that are not fields are never visited. What the unbound resource does next depends on the backend (measured on L40S/Linux at main b89a3827 and 0.43.1): CPU segfaults; CUDA returns no error from the dispatch, then the next readback fails with `CUDA_ERROR_ILLEGAL_ADDRESS` and shutdown aborts with "Failed to reset slang-rhi task pool"; Vulkan is a silent no-op. Nothing in the stack catches it: SGL, slangpy, and the CPU, CUDA and Vulkan backends of slang-rhi do not check for unbound resources, and slang-rhi#901 adds a check for WebGPU only.
+Consider a kernel with a global `buf` dispatched as `kernel.dispatch(thread_count, buf=b)`. The global belongs in `vars=`, but the call raises no error and `buf` stays unbound; a misspelled `vars` key behaves the same. The dict-to-struct write in `src/slangpy_ext/device/cursor_utils.h:798-810` (and its numpy twin at :553-565) loops over the struct's FIELDS and checks `dict.contains(name)`, so keys that are not fields are never visited. The unbound resource's effect depends on the backend (L40S/Linux, main b89a3827 and 0.43.1): CPU segfaults; CUDA's dispatch returns no error, then the next readback fails with `CUDA_ERROR_ILLEGAL_ADDRESS` and shutdown aborts with "Failed to reset slang-rhi task pool"; Vulkan is a silent no-op. Nothing checks for unbound resources in SGL, slangpy, or slang-rhi's CPU/CUDA/Vulkan backends (slang-rhi#901 adds a WebGPU-only check).
 
-To tell where a name belongs, `kernel.reflection.find_field(n).is_valid()` is true only for globals, and `kernel.reflection[<entry>].find_field(n).is_valid()` is true only for entry-point parameters; `slangpy/testing/helpers.py:413` already routes names this way. The fix belongs in the dispatch lambda, not in the shared cursor writer, because `Function.set()` uniforms, `dispatchdata.py`, and marshalls such as `builtin/tensor.py:169` (which write plain uniforms into a diff-tensor cursor) depend on the permissive loop [ComputeKernel.dispatch / ShaderCursor dict writes silently drop unknown keys](../learnings/1792162048265-slangpy-computekernel-dispatch-shadercursor-dict-w.md).
+`kernel.reflection.find_field(n).is_valid()` is true only for globals and `kernel.reflection[<entry>].find_field(n).is_valid()` only for entry-point parameters; `slangpy/testing/helpers.py:413` already routes names this way. The fix belongs in the dispatch lambda, not the shared cursor writer, because `Function.set()` uniforms, `dispatchdata.py`, and marshalls such as `builtin/tensor.py:169` (which write plain uniforms into a diff-tensor cursor) depend on the permissive loop [#1231 unknown keys dropped](../learnings/1792162048265-slangpy-computekernel-dispatch-shadercursor-dict-w.md).
 
 ## Triage discipline: silently-fixed orphans, unintegrated vendored deps, and DeepWiki
 
-Three triage learnings share a theme — verify against primary source before treating an
-issue as open work or crediting a confident claim.
+Verify against primary source before treating an issue as open work or crediting a confident claim.
 
-For a design/investigation meta-issue whose surface is the `external/slang-rhi`
-submodule, check upstream slang-rhi PR history FIRST — the asks may already be built.
-slangpy#805 ("apply allocator improvements across all slang-rhi backends") is largely
-solved upstream: D3D12MA is merged and wired, but VMA is vendored (`external/vma/`
-exists) yet NOT wired — the Vulkan backend still allocates via raw `vkAllocateMemory()`,
-with the heap wiring stuck in a stale OPEN PR. Two takeaways: a vendored dependency in
-`external/` is not proof it's integrated (grep the call sites — here `src/vulkan/` for
-`vmaCreate`/`VmaAllocator`), and for cross-repo meta-issues the right triage output is
-"no SlangPy PR possible; escalate upstream-coordination + priority" — don't route the
-fixer to patch `external/slang-rhi` from a SlangPy PR
-[#805 allocator meta-issue largely solved upstream](../learnings/1787226230030-allocator-meta-issue-slangpy-805-is-largely-alread.md).
+**Check upstream first for `external/slang-rhi` meta-issues.** slangpy#805 ("apply allocator improvements across all slang-rhi backends") is largely solved upstream: D3D12MA is merged and wired, but VMA is vendored (`external/vma/` exists) yet NOT wired; the Vulkan backend still calls raw `vkAllocateMemory()`, with the heap wiring stuck in a stale OPEN PR. A vendored dependency is not proof of integration (grep the call sites, here `src/vulkan/` for `vmaCreate`/`VmaAllocator`), and the right triage output for a cross-repo meta-issue is "no SlangPy PR possible; escalate upstream coordination + priority", not routing the fixer to patch `external/slang-rhi` from a SlangPy PR [#805 solved upstream](../learnings/1787226230030-allocator-meta-issue-slangpy-805-is-largely-alread.md).
 
-A stale architecture-refactor issue is a prime silently-fixed candidate. slangpy#795
-("move tensor types from extension layer into core SGL") is a fixed-not-closed orphan:
-the requested nanobind-free `Tensor` + `TensorDesc` already exist on `main` (the doc
-comment "This class deliberately contains no language-binding dependency" is verbatim
-the issue's goal), landed by three PRs inside the issue's milestone, none of which
-referenced the issue → 0 cross-references → orphaned. The method note that mattered:
-DeepWiki + subagents all reported "already done" but referenced the NEW names while the
-issue used OLD names — the mismatch is itself the tell; re-derive from primary source
-(grep 0 old names in `src/`, `git log -S`, `gh api issues/<n>/timeline`) before
-publishing, and check checkout shallowness first so `git log -S` dating is reliable
-[#795 tensor-move silently-fixed orphan](../learnings/1787226338570-slangpy-795-tensor-move-already-landed-silently-fi.md).
+**A stale architecture-refactor issue is a prime silently-fixed candidate.** slangpy#795 ("move tensor types from extension layer into core SGL") is a fixed-not-closed orphan: the nanobind-free `Tensor` + `TensorDesc` already exist on `main` (the doc comment "This class deliberately contains no language-binding dependency" is verbatim the issue's goal), landed by three PRs inside the issue's milestone, none referencing it (0 cross-references). DeepWiki and subagents all said "already done" but used the NEW names while the issue used OLD ones; that mismatch is the tell. Re-derive from primary source (0 old names in `src/`, `git log -S`, `gh api issues/<n>/timeline`) before publishing, and check checkout shallowness first so `git log -S` dating is reliable [#795 silently-fixed orphan](../learnings/1787226338570-slangpy-795-tensor-move-already-landed-silently-fi.md).
 
-On load-bearing "does X inherit/propagate Y" questions, verify against source — DeepWiki
-gets these confidently wrong. For slangpy#886, DeepWiki claimed
-`device.create_slang_session()` "inherits the include paths from the Device's default
-SlangSession if add_default_include_paths is True." It does NOT: the binding builds the
-`SlangSessionDesc` and calls straight through with no device-path copy, and
-`add_default_include_paths` only adds `platform::runtime_directory()/"shaders"`, not the
-slangpy package dir. `SHADER_PATH` is injected at exactly one place — the Python
-`create_device` wrapper — which seeds only the device's *default* session; the clean fix
-inherits `device.slang_session.desc.compiler_options.include_paths`
-[#886 create_slang_session does not inherit include paths (DeepWiki wrong)](../learnings/1787226621145-slangpy-create-slang-session-does-not-inherit-devi.md).
+**DeepWiki gets "does X inherit/propagate Y" confidently wrong.** For slangpy#886 it claimed `device.create_slang_session()` "inherits the include paths from the Device's default SlangSession if add_default_include_paths is True". It did not: the binding built the `SlangSessionDesc` and called straight through, `add_default_include_paths` only adds `platform::runtime_directory()/"shaders"` (not the slangpy package dir), and `SHADER_PATH` was injected only by the Python `create_device` wrapper, which seeds just the device's *default* session; the clean fix inherits `device.slang_session.desc.compiler_options.include_paths` [#886 DeepWiki wrong](../learnings/1787226621145-slangpy-create-slang-session-does-not-inherit-devi.md).
 
-#1177 is the raw-constructor twin of #886 and confirms the same one-injection-point root cause end-to-end: `spy.Device()` (the raw nanobind-bound native SGL class, `src/slangpy_ext/device/device.cpp:513-539`, defaults `compiler_options` to an empty `SlangCompilerOptions{}` → empty `include_paths`) + `spy.Tensor.from_numpy(...)` fails with `SlangCompileError: cannot open file 'slangpy.slang'`, while `spy.create_device()` works because the Python wrapper (`slangpy/core/utils.py:41,52-58`) is the ONLY place `slangpy.SHADER_PATH` (the `slangpy/slang` dir) is prepended. The failure surfaces through `Device::builtin_layout()` → `load_module("slangpy")` (`src/sgl/device/shader.cpp:1040`); the narrowest Python spot holding both the device and `SHADER_PATH` for an actionable re-raise is `_get_lookup_module` (`slangpy/reflection/lookup.py:34-35`). Keep the #1177 fix narrow (actionable error + docs — the repo's own `AGENTS.md` "Functional API" example uses the failing `spy.Device()`) and merely flag the linkage; a broad "always auto-inject SHADER_PATH" fix collides with #886's held design decision (`inherit_default_include_paths`, pending a maintainer approach call) ([#1177/#886 share one root cause: SHADER_PATH injected only in the create_device wrapper](../learnings/1790019427102-slangpy-spy-device-vs-create-device-shader-path-in.md)).
+## SHADER_PATH default include paths (#886, #1177 → #1183; gaps in #1238)
 
-slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right layer is the **nanobind binding lambda, not the C++ core**. `device.create_slang_session()` now merges `self->slang_session()->desc().compiler_options.include_paths` (inherited-first) with the caller's, de-duplicated, in the binding lambda at `src/slangpy_ext/device/device.cpp` (~1072). It must NOT be pushed into the C++ core `Device::create_slang_session` (`src/sgl/device/device.cpp:784`): the device's OWN default session is bootstrapped through that same core method at `src/sgl/device/device.cpp:428` while `m_slang_session` is still being assigned, so core-level inheritance would deref a null/half-set `slang_session()` during device construction — this bootstrap recursion is the load-bearing reason the binding is the correct place. Precedence is inherited-first (device paths before the caller's, so user paths do not shadow inherited defaults on a filename collision), matching the `create_device` wrapper's `[pkg/slang] + user` ordering; dedup uses lexical `std::filesystem::path operator==` (no canonicalization — that would touch the FS and change symlink/relative semantics, and duplicate paths are harmless). Scope caveat: only the **method** was fixed; the module-level free function `spy.create_slang_session()` (`device.cpp:1742/:1762`, forwarding via `current_device()`) was deliberately left NOT inheriting (maintainer scope guard) and still reproduces the #886 `import slangpy;` failure — for parity a maintainer would share the binding-lambda merge with the free-function binding ([#886 fixed in PR #1182: create_slang_session include-path inheritance belongs in the binding lambda, not the C++ core](../learnings/1790111150088-slangpy-create-slang-session-include-path-inherita.md)).
+**One injection point was the root cause.** #1177 is the raw-constructor twin of #886: `spy.Device()` (the native SGL class, `src/slangpy_ext/device/device.cpp:513-539`, defaulting to an empty `SlangCompilerOptions{}`) + `spy.Tensor.from_numpy(...)` failed with `SlangCompileError: cannot open file 'slangpy.slang'`, surfacing through `Device::builtin_layout()` → `load_module("slangpy")` (`src/sgl/device/shader.cpp:1040`), while `spy.create_device()` worked because its Python wrapper (`slangpy/core/utils.py:41,52-58`) was the ONLY place `SHADER_PATH` (the `slangpy/slang` dir) was prepended. The repo's own `AGENTS.md` "Functional API" example used the failing `spy.Device()`. While #886's design was held, the plan was a narrow #1177 fix (actionable error + docs, re-raised at `_get_lookup_module`, `slangpy/reflection/lookup.py:34-35`, the narrowest spot holding both device and `SHADER_PATH`) ([#1177/#886 share one root cause](../learnings/1790019427102-slangpy-spy-device-vs-create-device-shader-path-in.md)).
 
-**Outcome (current truth): PR #1182 was closed unmerged and superseded by PR #1183** ("Add slangpy shader path to devices and sessions by default", Fixes #886 + #1177) — the maintainer-blessed **unified** fix that resolved #886's earlier held design decision in favor of broad default-on (no opt-out kwarg; @ccummingsNV / @kaizhangNV asked for the slangpy module path to be a default include path). #1183 also supersedes the narrow #1177-only PR #1178. Mechanism: a file-local `std::vector<std::filesystem::path> g_default_slang_include_paths` (anon namespace in `src/slangpy_ext/device/device.cpp`) is set once at package import via a new module-level binding `_set_default_slang_include_paths([SHADER_PATH])` called from `slangpy/__init__.py` (SHADER_PATH is a Python-package path unknowable in C++, so Python registers it and core SGL stays package-agnostic); `prepend_default_slang_include_paths()` (dedup via `std::find`, defaults-first) is applied **unconditionally** — not gated on `add_default_include_paths` — at three binding sites: both `Device` ctor bindings (the `DeviceDesc` one takes the desc BY VALUE to avoid mutating a caller-owned desc) and `device.create_slang_session`. The redundant manual prepend in `create_device` (`slangpy/core/utils.py`) is removed for a single source of truth. Sessions get only the global default, not device-specific custom paths; still-uncovered intentional follow-ups are `spy.App()`'s native-factory device and the free-function `spy.create_slang_session()` (now slangpy#1238, next paragraph). **Pyright scope gotcha:** a bare `pyright slangpy/<file>.py` reports `reportUndefinedVariable` for runtime-injected native symbols (`_set_default_slang_include_paths`, `Device`), but CI does **not** fail because `pyproject.toml [tool.pyright] include = ["./src","./tools","./examples"]` excludes the `slangpy/` package entirely — verify CI impact against the pyright `include` roots, not an ad-hoc per-file run ([slangpy #1183 unified SHADER_PATH default-include mechanism supersedes #886/#1177 fixes; pyright scope gotcha](../learnings/1790185684802-slangpy-1183-unified-shader-path-default-include-p.md)).
+**The right layer is the nanobind binding lambda, not the C++ core.** PR #1182 merged `self->slang_session()->desc().compiler_options.include_paths` with the caller's paths in the binding lambda (`src/slangpy_ext/device/device.cpp` ~1072). Core `Device::create_slang_session` (`src/sgl/device/device.cpp:784`) is the wrong place: the device's default session bootstraps through it at `:428` while `m_slang_session` is still being assigned, so core inheritance would deref a null/half-set `slang_session()`. Inherited paths go first (matching the wrapper's `[pkg/slang] + user` order) so user paths do not shadow defaults on a filename collision; dedup is lexical `std::filesystem::path operator==`, because canonicalizing touches the FS and changes symlink/relative semantics while duplicates are harmless. #1182 deliberately left the free function `spy.create_slang_session()` un-inherited (maintainer scope guard) ([#886 fix belongs in the binding lambda](../learnings/1790111150088-slangpy-create-slang-session-include-path-inherita.md)).
 
-**#1183's prepend is bypassed by every path that reaches core SGL directly (slangpy#1238).** `prepend_default_slang_include_paths()` (`src/slangpy_ext/device/device.cpp:279-302`, anonymous namespace) runs only inside binding lambdas: the two `Device` ctor bindings (`:570`, `:631`) and `Device.create_slang_session` (`:1117`). Two public paths skip it, so the session gets `include_paths == []` and `import slangpy;` fails with E00001 `cannot open file 'slangpy.slang'` (main e7bb2242, Vulkan and CUDA on the L40S). (1) The module-level `spy.create_slang_session()` and `spy.create_slang_session(SlangSessionDesc)` (`:1767-1791`; the first a lambda, the second a direct `nb::overload_cast<SlangSessionDesc>`) go to SGL `create_slang_session` → `current_device()->create_slang_session()` (`src/sgl/device/device.cpp:1804-1806`). A `with device:` scope does not help, the call needs a current device to exist at all, and #1183's PR body lists this path as deliberately out of scope. (2) `spy.App()`, `spy.App(spy.AppDesc())` and `spy.App({})` with no device: both Python overloads (`src/slangpy_ext/app/app.cpp:73` `nb::init<AppDesc>`, `:76-82` `device=None`) pass null, and `src/sgl/app/app.cpp:16` calls the core `Device::create()` with a default `DeviceDesc`, so `app.device.load_module*` and `spy.Module.load_from_source(app.device, ...)` fail. `App` is headless (only `AppWindow::AppWindow`, `sgl/app/app.cpp:71`, opens a window), so this reproduces in a container. What works today: `device.create_slang_session()`, `app.device.create_slang_session()`, `App(device=spy.create_device(...))`, or passing `include_paths=[spy.SHADER_PATH]`. The two fixes differ. For the free function, call the helper in the lambda and replace the direct `overload_cast` with a by-value `SlangSessionDesc` wrapper lambda that prepends to `desc.compiler_options`, because a direct binding has nowhere to call it. For `App`, the helper first needs external linkage and a shared header, then both overloads build a prepended `DeviceDesc` when no device is passed. A regression test for the `App` path needs a `device_type` parameter, or it is skipped under `--device-types` (see [SlangPy build/CI toolchain](slangpy-f0909b0-build-ci-toolchain.md)), and a fresh device per `App`, because `sgl::App::~App()` calls `m_device->close()` even on a device the caller passed in. DeepWiki (2026-10-20) still says `create_device` prepends `SHADER_PATH` in Python; #1183 removed that, so trust the source ([module-level create_slang_session misses SHADER_PATH](../learnings/1792463190116-slangpy-module-level-spy-create-slang-session-stil.md), [App() default device misses SHADER_PATH](../learnings/1792463898060-slangpy-spy-app-default-device-misses-shader-path-.md), [#1183 prepend bypassed by both paths](../learnings/1792464645928-slangpy-1183-shader-path-prepend-is-bypassed-by-fr.md), [tests without device_type are skipped; App() closes its device](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md)).
+**Current truth: PR #1183 superseded #1182 and #1178 (both closed unmerged).** "Add slangpy shader path to devices and sessions by default" fixes #886 + #1177 with the maintainer-blessed broad default-on design (no opt-out kwarg; @ccummingsNV / @kaizhangNV wanted the slangpy module path as a default include path), resolving #886's held `inherit_default_include_paths` question. A file-local `std::vector<std::filesystem::path> g_default_slang_include_paths` (anonymous namespace in `src/slangpy_ext/device/device.cpp`) is set once at import by the module-level binding `_set_default_slang_include_paths([SHADER_PATH])`, called from `slangpy/__init__.py`: SHADER_PATH is a Python-package path, so Python registers it and core SGL stays package-agnostic. `prepend_default_slang_include_paths()` (defaults-first, dedup via `std::find`) runs **unconditionally**, not gated on `add_default_include_paths`, at three binding sites: both `Device` ctor bindings (the `DeviceDesc` one takes the desc BY VALUE so a caller-owned desc is not mutated) and `device.create_slang_session`. The manual prepend in `create_device` was removed for a single source of truth. Sessions get only the global default, not device-specific custom paths. **Pyright scope gotcha:** a bare `pyright slangpy/<file>.py` reports `reportUndefinedVariable` for runtime-injected native symbols (`_set_default_slang_include_paths`, `Device`), but CI does not fail because `pyproject.toml [tool.pyright] include = ["./src","./tools","./examples"]` excludes `slangpy/`; judge CI impact by the `include` roots ([#1183 unified mechanism; pyright scope](../learnings/1790185684802-slangpy-1183-unified-shader-path-default-include-p.md)).
 
-**Static struct members are invisible to `Type.fields`, and an `InstanceList` drops them silently (slangpy#126).** SlangPy's `Struct.struct.fields` (native `StructType::build_fields`, `src/sgl/refl/type.cpp` ~671) comes from Slang's `TypeReflection::fields()`, which already excludes static members, so a `static const int b = 5;` is simply absent. A dict argument naming it fails clearly ("has no field 'b'", `boundvariable.py` ~316), but `InstanceList.__setattr__` (`instance.py` ~87-100) stores it as a Python attribute and the value is lost. To tell a static member from a typo, walk `device.load_module(path).module_decl.find_first_child_of_kind(DeclReflection.Kind.struct, "Test").children` and test `c.as_variable().has_modifier(ModifierID.static)`; `spy.Module(...).device_module.module_decl` raises "module_decl() is not supported for composed modules" (`shader.cpp` ~1204), so walk `device_module.source_modules` or add a native helper. Since Slang #7993 (2025-07-30) `static const T x;` with no initializer is load-time error E31225, so old repros now fail at `Module.load_from_file` before kernel generation [detecting static struct members](../learnings/1792065039736-slangpy-detecting-static-struct-members-type-field.md).
+**Paths that bypass #1183 (slangpy#1238).** The prepend helper (`device.cpp:279-302`) runs only inside binding lambdas: the `Device` ctor bindings (`:570`, `:631`) and `Device.create_slang_session` (`:1117`). Two public paths reach core SGL instead, get `include_paths == []`, and fail `import slangpy;` with E00001 `cannot open file 'slangpy.slang'` (main e7bb2242, Vulkan and CUDA on the L40S):
+1. Module-level `spy.create_slang_session()` and `spy.create_slang_session(SlangSessionDesc)` (`:1767-1791`; a lambda and a direct `nb::overload_cast<SlangSessionDesc>`) go to SGL `create_slang_session` → `current_device()->create_slang_session()` (`src/sgl/device/device.cpp:1804-1806`). A `with device:` scope does not help, and #1183's PR body lists this path as out of scope. Fix: call the helper in the lambda, and replace the direct `overload_cast` with a by-value `SlangSessionDesc` wrapper lambda that prepends to `desc.compiler_options`.
+2. `spy.App()`, `spy.App(spy.AppDesc())` and `spy.App({})` with no device: both overloads (`src/slangpy_ext/app/app.cpp:73` `nb::init<AppDesc>`, `:76-82` `device=None`) pass null, and `src/sgl/app/app.cpp:16` calls core `Device::create()` with a default `DeviceDesc`, so `app.device.load_module*` and `spy.Module.load_from_source(app.device, ...)` fail. `App` is headless (only `AppWindow::AppWindow`, `sgl/app/app.cpp:71`, opens a window), so it reproduces in a container. Fix: give the helper external linkage and a shared header, then build a prepended `DeviceDesc` in both overloads when no device is passed.
+
+Working today: `device.create_slang_session()`, `app.device.create_slang_session()`, `App(device=spy.create_device(...))`, or `include_paths=[spy.SHADER_PATH]`. A regression test for the `App` path needs a `device_type` parameter or it is skipped under `--device-types` (see [SlangPy build/CI toolchain](slangpy-f0909b0-build-ci-toolchain.md)), and a fresh device per `App`, because `sgl::App::~App()` calls `m_device->close()` even on a caller-supplied device. DeepWiki (2026-10-20) still says `create_device` prepends `SHADER_PATH` in Python; #1183 removed that, so trust the source ([module-level create_slang_session misses SHADER_PATH](../learnings/1792463190116-slangpy-module-level-spy-create-slang-session-stil.md), [App() default device misses SHADER_PATH](../learnings/1792463898060-slangpy-spy-app-default-device-misses-shader-path-.md), [#1183 prepend bypassed by both paths](../learnings/1792464645928-slangpy-1183-shader-path-prepend-is-bypassed-by-fr.md), [device_type tests; App() closes its device](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md)).
+
+## Static struct members are invisible to `Type.fields` (slangpy#126)
+
+SlangPy's `Struct.struct.fields` (native `StructType::build_fields`, `src/sgl/refl/type.cpp` ~671) comes from Slang's `TypeReflection::fields()`, which excludes static members, so `static const int b = 5;` is absent. A dict argument naming it fails clearly ("has no field 'b'", `boundvariable.py` ~316), but `InstanceList.__setattr__` (`instance.py` ~87-100) stores it as a Python attribute and the value is lost. To tell a static member from a typo, walk `device.load_module(path).module_decl.find_first_child_of_kind(DeclReflection.Kind.struct, "Test").children` and test `c.as_variable().has_modifier(ModifierID.static)`. `spy.Module(...).device_module.module_decl` raises "module_decl() is not supported for composed modules" (`shader.cpp` ~1204), so walk `device_module.source_modules` or add a native helper. Since Slang #7993 (2025-07-30) `static const T x;` with no initializer is load-time error E31225, so old repros fail at `Module.load_from_file` before kernel generation [static struct members](../learnings/1792065039736-slangpy-detecting-static-struct-members-type-field.md).
 
 **Source learnings (23):**
 

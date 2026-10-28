@@ -3,7 +3,7 @@ title: "Fixer PR Creation, Fork & CI Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, pr-hygiene, commit-attribution, report-up, priority-gate, push-rights, drafts-only, fork-permissions, ci, tools-gfx, slang-rhi, devin, critique-gate, slang]
-source_count: 27
+source_count: 28
 ---
 
 # Fixer PR Creation, Fork & CI Mechanics
@@ -64,7 +64,7 @@ The Falcor YML 3-file refactor (#11600) requires build-flag reconciliation — t
 
 When a `set -euo pipefail` CI script exits non-zero with no output and the logs cannot name the command (#13041 → PR #13352), add `trap 'status=$?; echo "::warning::… \"$BASH_COMMAND\" (line $LINENO) exited with status $status"; exit 0' ERR` **without** `set -E`. It then fires only where errexit would abort at top level, not on expected no-matches inside `$(...)`, which makes the next occurrence falsifiable: either a warning names the command, or a still-silent exit rules errexit out (shell or runner process) ([ERR-trap diagnostic for silent pipefail exits](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md)).
 
-**On a parent-requested rebase/force-push, report up the moment the push lands and the new CI run has started.** On a shader-slang bot PR the fixer pushed, dispatched `ci.yml`, and then held its 5-bullet report until a background CI watcher finished; the session ended mid-watch, the watcher was killed, no report was ever sent, and the parent had to re-chase 24 h later. The report should carry the new head SHA, the run URL, and the current gate state; CI outcomes arrive later as a `github.ci_failed` webhook, so waiting for them in-session buys nothing and risks losing the report. A related trap on the same run: a bot CI run can stop at `wait-for-human-priority` with `priority-gate-yielded`, which makes `check-ci` fail although no real job ran. That is a scheduling yield, not a code failure; `retry-yielded-bot-ci` normally reruns it (see [GitHub bot & webhooks](agent-routing-github-bot-and-webhooks.md)), and if it does not, re-dispatch with `gh workflow run ci.yml --ref <branch>` [Report up right after push+CI dispatch; don't gate the report on a long CI watch](../learnings/1790669062658-report-up-right-after-push-ci-dispatch-don-t-gate-.md).
+**On a parent-requested rebase/force-push, report up the moment the push lands and the new CI run has started.** On a shader-slang bot PR the fixer pushed, dispatched `ci.yml`, and then held its 5-bullet report until a background CI watcher finished; the session ended mid-watch, the watcher was killed, no report was ever sent, and the parent had to re-chase 24 h later. The report should carry the new head SHA, the run URL, and the current gate state; CI outcomes arrive later as a `github.ci_failed` webhook, so waiting for them in-session buys nothing and risks losing the report. A related trap on the same run: a bot CI run can stop at `wait-for-human-priority` with `priority-gate-yielded`, which makes `check-ci` fail although no real job ran. That is a scheduling yield, not a code failure; `retry-yielded-bot-ci` reruns it only once the run is *completed* (see [GitHub bot & webhooks](agent-routing-github-bot-and-webhooks.md)). On a draft whose yielded run still sits `waiting` on the Falcor build approval gate, the script never fires (it treats `waiting` as active CI), approving the gate does not help, and a re-dispatch only yields again, so say so and leave it to a maintainer marking the PR ready or starting CI ([a priority-yielded draft dispatch is not rerun while it sits 'waiting'](../learnings/1793105473572-a-priority-yielded-bot-ci-yml-dispatch-on-a-draft-.md); rules on [rerun decision rules](ci-flake-rerun-decision-rules.md)) [Report up right after push+CI dispatch; don't gate the report on a long CI watch](../learnings/1790669062658-report-up-right-after-push-ci-dispatch-don-t-gate-.md).
 
 ## Devin Review Done-Detector False Positives
 
@@ -78,7 +78,7 @@ The `gate-critique-on-deliver.sh` hook keys off delivery markers (`[Fix Report]`
 
 - The "fixers must not self-flip PRs" rule ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)) was corrected by ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)): the drafts-only rule stands, but the bot never self-flipped in the confirming instance; a maintainer did — VERIFY THE ACTOR (timeline event, not current state) before directing a revert.
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [slang-fixer can push fix/ branches direct to origin](../learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md)
 - [slang-fixer PR push: szihs fork master is stale/divergent](../learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md)
 - [Fixer PRs must use a Closes/Fixes #N closing keyword](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
@@ -107,4 +107,5 @@ The `gate-critique-on-deliver.sh` hook keys off delivery markers (`[Fix Report]`
 - [explain-diff gate only clears when the upsert receipt line reaches stdout untruncated](../learnings/1792155974206-explain-diff-gate-only-clears-when-the-upsert-rece.md) — `pr-auto-map.sh` parses it with `fromjson?`; a `cut` leaves `explained_head` stale
 - [Never truncate the EXPLAIN_DIFF_RECEIPT line: the stop hook parses it from Bash output](../learnings/1792177961012-never-truncate-the-explain-diff-receipt-line-the-s.md) — `gate-explain-on-stop.sh` blocks "explanation comment is stale" after a `cut -c1-N`
 
+- [A priority-yielded bot ci.yml dispatch on a draft is NOT rerun by retry-yielded-bot-ci while it sits 'waiting'](../learnings/1793105473572-a-priority-yielded-bot-ci-yml-dispatch-on-a-draft-.md) — don't promise the retry, don't re-dispatch; maintainer ready/start CI
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: Devin scraper false-cleans — empty "## Flags" is UNEXTRACTED, not clean
 type: concept
 group: review-process
 tags: [devin-fetch, false-clean, extraction-defect, positive-token, json-escape, approver, agent-browser]
-source_count: 13
+source_count: 14
 ---
 
 ## TL;DR
@@ -37,12 +37,15 @@ Recurring mechanisms behind the empty section:
 - **Bad done-signal.** A `Checks N/M` match is GitHub's right-rail CI counter,
   present on every page — so the "analysis complete" predicate reduces to
   `heading && true` and scrapes an unexpanded/still-generating panel.
-- **Unclicked "View results".** Findings sit behind a control the script never
-  clicks.
+- **Unclicked controls.** Findings sit behind a control the script never
+  clicks: "View results", or a count-only `1 Bug` button whose title and body
+  render only after clicking the count and then the bug's title row. Then the
+  page text carries the count but no finding, and `## Bugs` is empty. Open
+  `devin-screenshot.png` before trusting any empty section.
 
 Discriminator when `## Flags` is empty: `grep -c 'Flag' devin-page.txt` — **0 =
 early scrape (nothing to recover)**, **≥1 = parse defect (findings on disk,
-recover them)**. Also `wc -l devin-page.txt == 1` is the escaped-newline
+recover them)**, unless only the count is on disk (see the click recovery below). Also `wc -l devin-page.txt == 1` is the escaped-newline
 signature. Two forks of the script exist and neither is a strict superset; the
 fix you rely on may not be in the copy you run, and any fix is not version-
 controlled so a container rebuild reverts it.
@@ -167,6 +170,17 @@ and `devin-error.txt` is written only on failure and **not cleared on a later
 success**, so a stale error file alongside fresh artifacts is expected — date
 artifacts by mtime [empty Flags on a FLAGGED review](../learnings/1786386045220-approver-infra-abstain-devin-fetch-sh-emits-an-emp.md).
 
+The recipe above assumes the finding text is in `devin-page.txt`. A positive
+counter with no title or body after it means the finding was never rendered, so
+there is nothing to parse and the browser must click it open. On slang#13966
+(2026-10-27) `devin-fetch.sh` exited 0 with `## Bugs` empty while the screenshot
+showed "1 Bug" in the Info panel; the page text listed only the count. Recover by
+hand: `agent-browser open <devin url>`, wait about 25 s, `agent-browser eval` a
+click on the element whose trimmed text matches `^\d+\s+Bugs?$`, then click the
+element whose text is the bug title, then read `document.body.innerText`. A green
+scraper result is not proof that Devin found nothing; look at the screenshot first
+[devin-fetch can report an empty Bugs section while Devin shows "1 Bug"](../learnings/1793143511139-devin-fetch-can-report-an-empty-bugs-section-while.md).
+
 The first atom also carries a companion instrument defect on a different channel:
 `record_decision` returned "Decision recorded" while the host separately denied the
 write (`APPROVAL_LEDGER_WRITERS` unset), so **a tool's own success string is not
@@ -174,7 +188,7 @@ evidence its write landed — when two channels disagree about your own side eff
 the channel you did not author wins** [Devin false-clean plus record_decision success-string](../learnings/1786368481518-approver-infra-abstain-devin-false-clean-a-not-fou.md).
 That defect is developed further in the decision-artifact-hygiene page.
 
-**Source learnings (13):**
+**Source learnings (14):**
 
 - [Devin false-clean: a not-found default that renders as "0" is unfalsifiable; plus record_decision success on a denied write](../learnings/1786368481518-approver-infra-abstain-devin-false-clean-a-not-fou.md) — `(none reported)` is a `.get()` default byte-identical to genuine zero; done-signal needs a positive token; findings hide behind unclicked "View results".
 - [Two devin-fetch.sh variants, each newer in a DIFFERENT half](../learnings/1786372259773-devin-fetch-sh-the-nanoclaw-and-slang-variants-are.md) — nanoclaw has the `passed===total` done-signal, slang has the `json.loads` decode; neither is a superset, copying either imports a false clean.
@@ -189,3 +203,4 @@ That defect is developed further in the decision-artifact-hygiene page.
 - [devin-fetch.sh (slang copy) died exit 127 — apostrophes closed the single-quoted DONE_EXPR](../learnings/1786446800096-approver-infra-abstain-devin-fetch-sh-slang-copy-d.md) — `bash -n` misses a quoting bug; any exit outside {0,2,3,4} is a harness defect; the file is not version-controlled and reverts on rebuild.
 - [extractor silently drops Flags — devin-flags.md said 0 while the raw page had 6](../learnings/1786488777764-approver-infra-abstain-devin-fetch-extractor-silen.md) — slang-rhi#831 R5; Flags render as `title/Investigate/file:line` triplets the parser mis-handles; failed extraction returns to UNKNOWN, not clean.
 - [extractor drops the flag count; empty ## Flags ≠ zero flags](../learnings/1786495242058-approver-critique-mustfix-devin-fetch-extractor-dr.md) — slang#12467; the dump is one escaped line so key on the counter substring not a multiline split; cross-check captured-count == rail-count before parsing the verdict.
+- [devin-fetch can report an empty Bugs section while Devin shows "1 Bug"](../learnings/1793143511139-devin-fetch-can-report-an-empty-bugs-section-while.md) — slang#13966: count-only page text; click the `N Bug` button then the title row; open `devin-screenshot.png` before trusting an empty section

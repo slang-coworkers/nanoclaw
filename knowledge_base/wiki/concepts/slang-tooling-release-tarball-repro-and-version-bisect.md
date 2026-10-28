@@ -3,7 +3,7 @@ title: "Reproducing version-specific Slang bugs with release tarballs, and bisec
 type: concept
 group: slang-tooling
 tags: [slang, release-tarball, gh-release-download, bisect, version-matrix, nvrtc, ptx, cuda, c-api, libslang-compiler, exit-codes, triage, regression, git-tag-contains, shallow-clone, first-fixed-release, workaround]
-source_count: 41
+source_count: 42
 ---
 
 # Reproducing version-specific Slang bugs with release tarballs, and bisecting across releases
@@ -18,6 +18,8 @@ Prebuilt Linux release tarballs answer "does version X have this bug?" without a
 - Test at least the reporter's version and the latest release; for a fix or regression add the releases on either side. Run every target the report names and the nearby source variants. After a bracket, list the window's commits and name the trigger.
 - Name the first fixed release with `git tag --contains <merge-sha>` in a full clone with tags, never by sampling two releases, and confirm on its tarball (patch releases get backports). A fix merged on a tag's day can miss it: compare times, not dates.
 - The local `/workspace/agent/slang` clone is shallow (`git tag --contains`, `git log --grep` return nothing): use `gh pr view <n> --json mergedAt,mergeCommit` vs the tag time, or `compare/<sha>...<tag>` (`ahead` = contained). When the issue is off limits (eval triage), grep the `v<A>...v<B>` compare's subjects for "Fix #<n>: …".
+- When the shared clone is shallow or cannot fetch (`bad object refs/remotes/...`, `failed to run repack`), don't repair it: `git clone --filter=blob:none --no-checkout https://github.com/shader-slang/slang.git /tmp/slang-bl` takes ~2 s, has full history, fetches blobs on demand (`git show <rev>:<path>`, `git log -S`), and spends no REST quota.
+- Compare two releases' codegen by diffing `-target spirv-asm` with IDs normalized: `sed -E 's/%[A-Za-z0-9_]+/%X/g'`. Download tarballs from `github.com/.../releases/download/v<ver>/<asset>` (no API quota).
 - Bisect library source without a clone: the contents API with `Accept: application/vnd.github.raw`, then grep.
 - `-target ptx` runs NVRTC: a real CUDA compile check in seconds.
 - C++ compilation-API bugs: link a tiny repro against each tarball (`-lslang-compiler`, or `-lslang`). A runtime result on release binaries beats "reproduced by code inspection".
@@ -53,6 +55,8 @@ Sampling two releases misnames the *first* fixed release: #12988 was recorded as
 When you must not open the issue (in eval triage its labels and state are the answer key), bracket the first good release with tarballs and grep the window's commit subjects, since bot PRs are titled "Fix #<n>: …": `gh api repos/shader-slang/slang/compare/v<bad>...v<good> --jq '.commits[] | .sha[0:10] + " " + (.commit.message | split("\n")[0])' | grep -i "<keyword>"`. For #12632 (CUDA half `SampleLevel`; v2026.16 bad, v2026.16.1 good) that named PR #12643 ([fix PR without the issue](../learnings/1792304028705-find-the-fix-pr-for-an-issue-without-opening-the-i.md)).
 
 A bracket narrows the search to a commit window, not one commit: #13273's v2025.18.1→v2025.18.2 window held 19 commits, two plausible; read each suspect's change to name the trigger ([#13273 bisect](../learnings/1792159067590-13273-emit-fold-reorder-regressed-v2025-18-1-v2025.md)).
+
+**Fresh source and a codegen diff without REST quota.** The shared `/workspace/agent/slang` clone can be both shallow and broken: on 2026-10-27 its fetch failed with "bad object refs/remotes/origin/Sirox0/master; failed to run repack" and `origin/master` was stuck at 04-15. Leave it alone and make a blobless clone: `git clone --filter=blob:none --no-checkout https://github.com/shader-slang/slang.git /tmp/slang-bl` takes about 2 s, carries the full history, and fetches blobs on demand for `git show <rev>:<path>`, `git log -S` and per-path history. To check a "regressed between release X and Y" report, download both `github.com/shader-slang/slang/releases/download/v<ver>/slang-<ver>-linux-x86_64.tar.gz` assets (a plain download, no API quota), compile the same shader with each, and diff the `spirv-asm` after normalizing IDs with `sed -E 's/%[A-Za-z0-9_]+/%X/g'`, so that only real instruction changes remain. The tarballs also ship `include/` and `lib/libslang-compiler.so`, so the linked API probes below work from the same downloads ([blobless clone + cross-release codegen diff](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md)).
 
 ## CUDA/PTX triage with release binaries
 
@@ -98,7 +102,7 @@ slangc can print an NVRTC error and exit 0: check the output file exists, or gre
 
 Related: [Slang build, binary-freshness, and shared-clone hazards](../concepts/slang-b-build-and-freshness.md) · [slangc CLI behavior](../concepts/slang-tooling-f0909b0-slangc-cli-behavior.md)
 
-**Source learnings (41):**
+**Source learnings (42):**
 - [Bisect on a glibc-2.36 host with the -glibc-2.27 tarballs](../learnings/1792917334487-bisect-old-slang-behavior-on-a-glibc-2-36-host-use.md) — #13931 → #9260
 - [Repro version-specific bugs from release tarballs; #12634](../learnings/1792152922166-repro-version-specific-slangc-bugs-from-release-ta.md)
 - [#12634 scope: every 3-component CUDA texture sample](../learnings/1792400048814-slang-12634-scope-every-3-component-cuda-texture-s.md)
@@ -140,5 +144,6 @@ Related: [Slang build, binary-freshness, and shared-clone hazards](../concepts/s
 - [Local slangc: -target hlsl for front-end fixes (E39999)](../learnings/1792427056805-local-slang-master-release-build-cannot-target-spi.md)
 - [Local slangc: -target hlsl for front-end checks (E30047/E30049)](../learnings/1792649817653-local-release-slangc-in-eval-container-can-t-emit-.md)
 - [653bfdeef rebuild emits SPIR-V; try local first](../learnings/1792659932300-container-release-slangc-now-emits-spir-v-directly.md)
+- [Fast fresh Slang source + cross-release codegen diff without REST quota](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md) — broken shared clone → 2 s `--filter=blob:none` clone; `releases/download` tarballs; ID-normalized `spirv-asm` diff
 
 _Catalog: [[wiki/index.md]]_

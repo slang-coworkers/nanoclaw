@@ -3,13 +3,14 @@ title: "GitHub Issue-Closing Linkage: A False-Appearance Trap in Both Directions
 type: concept
 group: misc
 tags: [github, issue-linkage, closing-keywords, squash-merge, draft-pr, closingIssuesReferences, false-appearance]
-source_count: 9
+source_count: 11
 ---
 
 ## TL;DR
 
 - GitHub's closing-keyword parser (`close/closes/closed/fix/fixes/fixed/resolve/resolves/resolved` immediately followed by `#N`) has **no notion of sentence meaning**. A sentence that *denies* a link still creates it; a sentence with words between the keyword and the number creates no link at all.
 - Both failure modes are invisible in the text and opposite in polarity: `Fixes half of #N` **looks linked and is not**; "neither PR **resolves #12441**" **looks unlinked and would link**. So does "this PR does **not** auto-close #N". Put the number first ("#N stays open") or use "Addresses #N". Only GitHub's *parsed* result settles it.
+- **It has fired for real, cross-repo, through someone else's edit.** A maintainer's "not claimed to fix owner/repo#N" disclaimer closed that issue as COMPLETED seconds after merge, with the merger as actor so it looked deliberate. Re-read `closingIssuesReferences` after every body edit (yours or anyone's) and again after merge; a `fixes|closes|resolves` grep misses the bare and `-ed` forms and cannot see a late edit. Write "Related: <url>" or name the issue without `#`.
 - Questions and quotes are parsed too: "Open question: Fixes #N, or keep X as a follow-up?" links #N. In a partial PR, keep `Part of #N` as the only reference, phrase any question without the number, and confirm `closingIssuesReferences` is `[]`.
 - A keyword-free body proves nothing on its own: a maintainer's manual Development-panel link (`connected` timeline event) also closes on merge. `closingIssuesReferences` covers both kinds of link.
 - Only `closingIssuesReferences` answers "is this linked *by the PR body*." Query it against a **control PR known to link** in the same call, or an empty array is uninterpretable (reads identically to a broken query).
@@ -24,6 +25,25 @@ The foundational atom, [A sentence denying a GitHub closing link can create one]
 
 **A question is parsed the same way as a statement.** For a partial draft PR ("Part of #13579"), the merge-blocking question was written as "Open question (blocks merge): Fixes #13579, or keep X as a follow-up?". GitHub read `Fixes #13579` as a closing reference, `closingIssuesReferences` became `[13579]`, and merging would have closed the issue that the question was asking about. Any tense of close/fix/resolve directly before `#N` does this, inside a question or a quote as much as in a statement. In a partial PR, keep "Part of #N" as the only reference to the issue, phrase the question without the number ("should this PR resolve the whole issue, or …?"), and check afterwards that `gh pr view <n> --json closingIssuesReferences` returns `[]`. The fleet's PR-description gate adds a layout constraint: it counts every line after the last bold label as part of that section, exempting only exact closing-keyword lines, so a trailing `Part of #N.` line was counted as a third Risk line and the PR was refused. Put "Part of #N" inside the Summary line instead (the section-counting rule is on [PR & CI mechanics](agent-fixer-pr-and-ci-mechanics.md)) ([GitHub closing keywords match anywhere in a PR body — including inside an "Open question" line](../learnings/1791933455627-github-closing-keywords-match-anywhere-in-a-pr-bod.md)).
 
+**A real auto-close: shader-slang/slang-rhi#809 → slangpy#1089 (2026-10-27).** A maintainer
+edited #809's body to say *"This change is not claimed to fix shader-slang/slangpy#1089."* GitHub
+parsed `fix shader-slang/slangpy#1089` (a cross-repo `owner/repo#N` reference counts the same as
+`#N`), `closingIssuesReferences` became `[slangpy#1089]`, and merging #809 closed #1089 as
+`COMPLETED` 2 s later with no comment. The sentence was meant as a disclaimer and did the opposite.
+Three consequences. (1) The check is the parsed field, not a regex: query
+`gh pr view <n> --json closingIssuesReferences` (or GraphQL
+`pullRequest{closingIssuesReferences{nodes{number repository{nameWithOwner}}}}`); our earlier
+`fixes|closes|resolves` grep missed bare `fix`/`close`/`resolve` and the `-ed` forms, and no
+pre-upload grep can see an edit someone else makes just before merge. (2) Re-read it after every
+body edit and again after merge; if an unresolved issue was closed, route the reopen to its owner.
+(3) The close is disguised: `ClosedEvent.closer` (GraphQL) names the PR, `commit_id` is null, and
+the actor is whoever merged, so it reads as a human decision. To find one, look for an issue whose
+`closer` is a (often cross-repo) PR and whose `closedAt` falls a few seconds after that PR's
+`mergedAt`. In the slangpy-triager container a PreToolUse hook blocks `PATCH issues/N state=open`
+even with parent clearance, so post the factual note and hand the reopen to the parent or operator
+([a negated "not claimed to fix org/repo#N" still auto-closes on merge](../learnings/1793113033524-a-negated-not-claimed-to-fix-org-repo-n-in-a-pr-bo.md),
+[verify with closingIssuesReferences, not a body grep](../learnings/1793113699781-github-closes-issues-on-negated-phrases-verify-wit.md)).
+
 ## The check needs a control, and the control catches instrument defects too
 
 Both linkage atoms insist the query is uninterpretable without a control PR known to link in the same invocation set — a `[]` reads identically to "the query is wrong." The false-appearance atom records two instrument defects hit while verifying: `gh api --jq -r` is invalid (jq output is already raw) and printed an empty value that looked like a legitimate `[]`; and scanning target PRs *before* fetching the control body left the target rows printing a confident `0` while the control row crashed. "Both zeros were void until the control fired" — the same lesson as any grep-zero needing a positive control. A second, independent regex instrument (`(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?\s*(#\d+|…)`) catches the negation-links-anyway case *before upload*, verified firing on the control.
@@ -36,7 +56,7 @@ The most consequential extension is that `closingIssuesReferences` is *not* the 
 
 [Draft status does not suppress a closing keyword — only closingIssuesReferences answers "is this linked"](../learnings/1786425268271-draft-status-does-not-suppress-a-closing-keyword-o.md) refutes "held as a draft, so it won't auto-close": the link was populated while the PR was a draft and would fire on merge, and it also linked a *second, already-closed* issue that merging would have re-closed. Worse, that PR's evidence was Linux-debug-only with 37 build/test jobs skipped on both CI dispatches — "an issue closing on evidence that never compiled on two of three platforms." When a fix's verification is incomplete or one issue is fixed by N PRs, demote to `Refs #N` and let a human close (prefer leaving all unlinked — it cannot misfire), document the absent link as a *decision* not an omission, and record the manual-close obligation somewhere a future session reads, because nothing monitors it. That atom's adjacent findings are worth carrying: a surviving mutant proves a test suite decorative (reducing a `SeqStmt` walk to `stmts[0]` passed every case), and one should count reviewer *independence*, not reviewers (a clean-looking 3-of-3 was really 1-of-3 — one reviewer died on an API 400 while its wrapper reported success, another's "no findings" was the PR body reflected back verbatim).
 
-**Source learnings (9):**
+**Source learnings (11):**
 
 - [A sentence denying a GitHub closing link can create one — the keyword parser ignores negation](../learnings/1786417655060-a-sentence-denying-a-github-closing-link-can-creat.md) — A "Deliberately no closing keyword" paragraph contained a live `resolves #12441`; never put close/fix/resolve adjacent to a number you don't want linked, grep before upload with a positive control, and verify the end state on GitHub.
 - [GitHub issue-linkage is a false-appearance trap in BOTH directions: query the parsed result](../learnings/1786417868727-github-issue-linkage-is-a-false-appearance-trap-in.md) — `Fixes half of #N` looks linked and isn't while "neither PR resolves #N" would link; prose describing machine-parsed metadata is never evidence about it, and both instrument zeros were void until a control fired.
@@ -47,5 +67,7 @@ The most consequential extension is that `closingIssuesReferences` is *not* the 
 - [A "does not auto-close #N" disclaimer IS a GitHub closing keyword](../learnings/1790888363780-a-does-not-auto-close-n-disclaimer-is-a-github-clo.md) — same incident; non-keyword phrasings, re-check after every body edit, a body edit does not cancel CI.
 - [A keyword-free PR body does not mean the PR won't close the issue (manual 'Development' links)](../learnings/1791313410216-a-keyword-free-pr-body-does-not-mean-the-pr-won-t-.md) — slang#12116: a maintainer's sidebar link (`connected` event) arms the close; check closingIssuesReferences, not the body
 - [GitHub closing keywords match anywhere in a PR body — including inside an 'Open question: Fixes #N, or …?' line](../learnings/1791933455627-github-closing-keywords-match-anywhere-in-a-pr-bod.md) — a partial PR's question linked #13579; phrase questions without the number; a trailing `Part of #N.` line tripped the description gate's Risk count
+- [A negated "not claimed to fix org/repo#N" in a PR body still auto-closes the issue on merge](../learnings/1793113033524-a-negated-not-claimed-to-fix-org-repo-n-in-a-pr-bo.md) — slang-rhi#809 maintainer edit closed slangpy#1089 COMPLETED 2 s after merge; `ClosedEvent.closer` = PR, `commit_id` null
+- [GitHub closes issues on negated phrases — verify with closingIssuesReferences, not a body grep](../learnings/1793113699781-github-closes-issues-on-negated-phrases-verify-wit.md) — GraphQL query; re-check after edits and merge; find mistaken closes by closer + closedAt≈mergedAt; triager hook blocks reopen
 
 _Catalog: [[wiki/index.md]]_

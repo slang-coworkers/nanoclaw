@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 22
+source_count: 24
 ---
 
 ## TL;DR
@@ -34,13 +34,15 @@ assert absence). A `//CHECK-NOT:` line is an inert comment that still satisfies 
 `docs/generated` lint, so a no-diagnostic pin needs a nearby one-token control that still
 warns. Each rich diagnostic emits TWO
 records. Match by bare code (`30133`) or message substring, never the rendered
-`error[E…]:` header. Matching is a literal substring of ONE field (no `{{.*}}`; code and message are
-never concatenated), and an unlocated `E99997` (location `0:0`) cannot be caret-anchored. Rich diagnostics take a code line plus a message line; legacy lexer diagnostics (E10002/E10003) take exactly one (`^ error E10003`). For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
+`error[E…]:` header. Matching is a literal substring of ONE field (message, severity, code, or `severity code`;
+no `{{.*}}`; code and message are never concatenated), so a message-only annotation ignores
+severity: bind it with `^^^ warning E30204` / `^^^ error E30200` on the primary row (codes are
+always `E<code>`, even for warnings). An unlocated `E99997` (location `0:0`) cannot be caret-anchored. Rich diagnostics take a code line plus a message line; legacy lexer diagnostics (E10002/E10003) take exactly one (`^ error E10003`). For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
 bounded region — use a `CHECK-DAG`/`CHECK-NOT`/`CHECK-DAG` barrier (it guards only the gap
 between groups) or a separate `-NOT`-only run, and run the revert drill on negatives.
 
 **Harness/build facts.** `-warnings-disable` works on SIMPLE but not
-COMPARE_COMPUTE (forward via `-xslang -Wno-<code>`); slang-test puts directive options after the file, so `-lang glsl` needs SIMPLE_EX with an explicit path, and `.glsl`/`.hlsl` under `tests/` are gitignored; slang-rhi's CPU backend is
+COMPARE_COMPUTE (forward via `-xslang -Wno-<code>`); slang-test puts directive options after the file, so `-lang glsl` needs SIMPLE_EX with an explicit path, and `.glsl`/`.hlsl` under `tests/` are gitignored (`git add -f` a new one); slang-rhi's CPU backend is
 harness-skipped on Linux; internal (non-`SLANG_API`) symbols are testable in
 `slang-static-unit-test` (not `slang-unit-test`) — but verify that target exists at
 the PR's head commit, not master.
@@ -198,6 +200,22 @@ empty-type legalization removes `Empty` first, so `NotEqualBitCastSize` is repor
 has to come from enumerating the `BitCast` producers
 ([DIAGNOSTIC_TEST: annotate every record; unlocated internal errors cannot be caret-anchored](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md)).
 
+**A message-substring annotation does not check severity.** `checkAnnotations`
+(`tools/slang-test/diagnostic-annotation-util.cpp` ~465) accepts an annotation whose text is a
+substring of the message, the severity, the code, or the combined `severity code`. Consider a
+version-gated warning that reuses the text of error E30200 ("conflicting declaration"): when the
+compiler changes the error into warning E30204, the old message annotations still pass, so the
+test never noticed the severity flip (shader-slang/slang PR #13880). Put the severity and code on
+the primary row (`//CHECK: ^^^ warning E30204`, `//CHECK: ^^^ error E30200`); the machine-readable
+code is `E<code>` for warnings too. Two `diag=` prefixes cannot stack their annotation blocks
+under one source line, because the other prefix's block counts as a source line for caret
+alignment, so per-version expectations go in separate test files
+([DIAGNOSTIC_TEST annotations are substring matches — tag severity](../learnings/1793094492688-slang-diagnostic-test-annotations-are-substring-ma.md)).
+For a method-call diagnostic such as E30050/E30068 the caret goes on the call's `(`; in
+`makeCounter().increment();` that is the LAST `(` on the line, not the first. Copy the
+"Suggested annotations" block the failure prints rather than counting columns
+([.hlsl tests gitignored; method-call carets at the call paren](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md)).
+
 **How many annotations a diagnostic takes depends on how many records it emits.** A rich
 diagnostic (E41407, E15501) emits a code row and a message row, so a lone `//CHECK: ^ E41407`
 still leaves "Found N diagnostic(s) without annotations"; add `//CHECK: ^ <message substring>`
@@ -216,7 +234,7 @@ order operands are reported at the same `sourceLoc` can emit two identical diagn
 [exhaustive DIAGNOSTIC_TEST: annotate code AND message](../learnings/1791550646372-slang-exhaustive-diagnostic-test-annotate-code-and.md)
 [legacy lexer diagnostics: one annotation per diag](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md).
 
-**Choosing the source language in a DIAGNOSTIC_TEST.** slang-test appends directive options AFTER the file path, and `-lang` applies only to files that follow it, so `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):-lang glsl ...` still parses the file as Slang and never sees a GLSL interface block. Adding `#version 450` to the `.slang` file does switch the language, but it adds two diagnostics ("source-language directive selects glsl and overrides the file-extension-implied slang source language"), which breaks an exhaustive test. What works is `//DIAGNOSTIC_TEST:SIMPLE_EX(diag=CHECK): -lang glsl tests/<path>/<file>.slang -target spirv -stage vertex -entry main`, with no `#version` line (precedent: `tests/glsl-intrinsic/compute-derivative/*.slang`). Keep the file `.slang`: `.gitignore` ignores `/tests/**/*.glsl` and `*.hlsl` as generated outputs, so a `.glsl` test passes locally and silently stays out of `git status` unless force-added. An HLSL-only option such as `-Gec` works as `-lang hlsl -Gec` in a plain SIMPLE directive, because no `#version`-style directive is involved [GLSL diagnostic tests: -lang glsl must precede the file (use SIMPLE_EX)](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md).
+**Choosing the source language in a DIAGNOSTIC_TEST.** slang-test appends directive options AFTER the file path, and `-lang` applies only to files that follow it, so `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):-lang glsl ...` still parses the file as Slang and never sees a GLSL interface block. Adding `#version 450` to the `.slang` file does switch the language, but it adds two diagnostics ("source-language directive selects glsl and overrides the file-extension-implied slang source language"), which breaks an exhaustive test. What works is `//DIAGNOSTIC_TEST:SIMPLE_EX(diag=CHECK): -lang glsl tests/<path>/<file>.slang -target spirv -stage vertex -entry main`, with no `#version` line (precedent: `tests/glsl-intrinsic/compute-derivative/*.slang`). Keep the file `.slang`: `.gitignore` ignores `/tests/**/*.glsl` and `*.hlsl` as generated outputs, so a `.glsl` or `.hlsl` test passes locally and silently stays out of `git status`; a plain `git add` fails with "paths are ignored". In-tree `.hlsl` tests were force-added (`git add -f`; precedent `tests/bugs/13306/*.hlsl`, `tests/hlsl/*.hlsl`) [.hlsl tests are gitignored](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md). An HLSL-only option such as `-Gec` works as `-lang hlsl -Gec` in a plain SIMPLE directive, because no `#version`-style directive is involved [GLSL diagnostic tests: -lang glsl must precede the file (use SIMPLE_EX)](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md).
 
 For **real FileCheck** (e.g. SPIR-V absence assertions), a bare `CHECK-NOT` only
 guards a bounded region — if the forbidden text appears in the MIDDLE of output, a
@@ -284,7 +302,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (22):**
+**Source learnings (24):**
 
 - [slang-test GLSL diagnostic tests: -lang glsl must precede the file (use SIMPLE_EX); .glsl/.hlsl under tests/ are gitignored](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md) — `#version 450` adds two diagnostics; precedent tests/glsl-intrinsic/compute-derivative
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
@@ -308,3 +326,5 @@ target, file, helper) must be checked at the exact reviewed ref
 - [Search for a community PR before opening a bot fix PR; FileCheck `-NOT` covers only its gap](../learnings/1792079739619-search-for-a-community-pr-on-the-issue-before-open.md) — interleave a `-NOT` between every positive line, add a whole-output `-NOT`-only row, drill each gap
 - [Core-module bootstrap aborts on any warning; worktree submodule init needs protocol.file.allow](../learnings/1792436239104-core-module-bootstrap-aborts-on-any-warning-worktr.md) — `addBuiltinSource` SLANG_UNEXPECTED on any sink output; prototype widened warnings against the core module; E30515 value-param hit at core.meta.slang:2242
 - [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint; a no-diagnostic pin needs exhaustive mode plus a live control](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md) — lint regex accepts `//CHECK-NOT: W30051`; one-token control with caret CHECKs; `non-exhaustive` fails "Unnecessary" (#13887)
+- [slang DIAGNOSTIC_TEST annotations are substring matches — tag severity to bind it](../learnings/1793094492688-slang-diagnostic-test-annotations-are-substring-ma.md) — message/severity/code/`severity code`; a warning reusing an error's text still matches; separate files per `diag=` prefix
+- [Slang tests: .hlsl files are gitignored; diagnostic carets align to the call paren](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — `git add -f`; E30050/E30068 caret on the last `(`; copy suggested annotations

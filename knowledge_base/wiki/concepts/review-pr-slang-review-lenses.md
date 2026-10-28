@@ -3,7 +3,7 @@ title: "Slang Code-Review Lenses"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, reviewer-a, reviewer-c, false-positives, filecheck, convergence, unreachable-path]
-source_count: 24
+source_count: 26
 ---
 
 # Slang Code-Review Lenses
@@ -14,6 +14,7 @@ Reusable "look here" heuristics for Slang compiler review: lenses that surface r
 - **Unit tests of an extracted matcher are not integration coverage** of call-site wiring, ordering, or precedence. For slang-test, assert the subtest is absent from `-dry-run` stdout.
 - **Normalize-before-match blind spot:** if one side of a string match is canonicalized (`Path::simplify`) and the other assembled raw, it fails where normalization is not a no-op (Windows `kPathDelimiter` is `\`).
 - **A "single source of truth" refactor's risk is the sites it left behind.** Grep for every reader of the same facts. "Pure refactor, no new tests" holds only if behavior is identical for ALL inputs.
+- **A checker relaxation of a receiver rule needs its lowering half** (`moveIntoMutableTemp`, not `tryGetAddress` of read-only storage) and a probe of overloaded calls through implicit `this`, where `OverloadedExpr::base` is null and the checker's receiver test is skipped.
 - **New null-possible invariant + safe-access helper → grep every `<member>->` reachable from the entry point**, not the sites the PR lists. A consumer-guard approach enforces nothing; ask for the invariant to be documented. Two reviewers flagging the same untouched site is strong convergence.
 - **A null shape can have several producers:** guard at the consuming helper, not one exact shape.
 - **Compile the repro against a built `slangc` before treating a 🔴 crash / recursion / spurious-diagnostic finding as blocking**, and before adding a test for a traced "gap". Earlier fatal diagnostics (E30702, E39997, E39999, E41001, E30820) and depth caps (`= 128`) often foreclose the path; automated reviewers reason from source and miss them.
@@ -34,6 +35,8 @@ Two lenses recur on PRs that extract a matching helper ([extracted-matcher integ
 ## Unify / Single-Source-of-Truth Refactors
 
 When a PR routes N consumers through one canonical query (slang#13213: implicit-`this` passing mode via `getDeclaredThisParamPassingMode`), the risk is not the migrated sites but the ones left behind. Grep for every reader of the same facts (`hasModifier<Mutating/Ref/ConstRef/NonmutatingAttribute>`, `isLeftValue` on `this`) and diff with the migrated set: #13213 left ≥4, two AST-synthesis sites plus hardcoded `SetterDecl` branches in `visitThisExpr`/`_lookUpInScopes` that skip `[nonmutating]`. "Pure refactor, the suite is the contract" is true only if behavior is identical for all inputs. #13213 changed the contradictory multi-attribute `this` case (`[mutating][ref]`), so it needs a regression test, preferably a `//DIAGNOSTIC_TEST` that *rejects* the contradiction (as the code's own "we should be diagnosing this" comment asks) over an `//TEST:INTERPRET` that pins the accidental resolution ([unify refactor: grep for the sites it did NOT migrate](../learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md)).
+
+**A receiver-mode relaxation needs its lowering half and a probe of calls the checker never saw.** slang#13964 / PR #13966 relaxed E30050 for a non-l-value receiver. A checker-only relaxation is not enough: lowering's `addCallArgsForParam` would then pass `tryGetAddress` of a cbuffer member, a pointer into read-only storage, so the fix passes a `moveIntoMutableTemp` copy instead; a revert drill of the lowering hunk made CPU, Vulkan and DXIL tests fail ([receiver-mode fix needs its lowering hunk](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md)). A new lowering branch keyed on `!baseExpr->type.isLeftValue && writable(mode)` also fires for calls the checker never examined. For an overloaded call through implicit `this`, `OverloadedExpr::base` is null, so `TryCheckOverloadCandidateDirections` skips its receiver test. Probe such a branch with overloaded `[mutating]` / `[__ref]` methods called through implicit `this` from a non-mutating method, in plain `.slang` code ([implicit-`this` overloads bypass the receiver test](../learnings/1793153753122-filecheck-buffer-with-output-using-type-small-digi.md)).
 
 ## Null-Possible Invariant Audits
 
@@ -91,7 +94,7 @@ From slang#12302 → PR #13021 and follow-up #13023 → #13040:
 - **State per-license obligations precisely:** MIT = reproduce the dep's copyright lines; Apache-2.0 §4(a) = include the license, and §4(d) NOTICE-carry applies only if upstream ships a NOTICE (spirv-tools has none, so LICENSE-only is correct; check `ls external/<dep>/NOTICE`). A follow-up PR editing the same CPack block lands AFTER its precedent (adopt the same per-dep-vs-aggregated form), and any `.github/workflows/*` half is blocked by the bot's missing App `workflows` scope, so deliver it as a maintainer-applied `git apply` patch ([Apache §4(d) precondition, sequencing, workflows wall](../learnings/1789167340037-third-party-license-notice-follow-ups-apache-4-d-n.md)).
 - **No PR-CI coverage.** `COMPONENT metadata` + `EXCLUDE_FROM_ALL` rules materialize only at release-time `cpack` (`ci-slang-build.yml` installs `--component generators`; `cmake-options-build.yml` installs with no component), so a path typo or bad `RENAME` fails only at a release tag. A cheap guard is a GPU-free step running `cmake --install build --component metadata --prefix X` and asserting the files land ([install-component CI coverage](../learnings/1789164645783-slang-license-notice-prs-check-mit-deps-install-co.md)).
 
-**Source learnings (24):**
+**Source learnings (26):**
 
 - [Extracted-matcher integration gap + normalize-before-match](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md) — helper unit tests aren't integration coverage; test normalization on the non-no-op platform.
 - [Null-possible invariant: audit ALL structurally-identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md) — grep every raw deref of the nullable member; two reviewers on one sibling = convergence.
@@ -117,3 +120,5 @@ From slang#12302 → PR #13021 and follow-up #13023 → #13040:
 - [Widening _canLValueCoerce reaches layout-blind _canReinterpretCast](../learnings/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md) — value-test integer-matrix `inout` on `-cpu` (#13378).
 - ['Possibly dead branch' claims need one probe](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md) — #13726 R2: plain-read vertex EP + interpolating fragment EP reaches E58004.
 - [Unify refactor: grep for the sites it did NOT migrate](../learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md) — #13213 left ≥4 sites; changed `[mutating][ref]` behavior needs a DIAGNOSTIC_TEST.
+- [Slang tests: .hlsl files are gitignored; diagnostic carets align to the call paren](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — receiver-mode fix #13966: lowering must copy via `moveIntoMutableTemp`, not `tryGetAddress` of a cbuffer member
+- [filecheck-buffer with -output-using-type: small-digit CHECKs are vacuous](../learnings/1793153753122-filecheck-buffer-with-output-using-type-small-digi.md) — review lens: implicit-`this` overloads skip `TryCheckOverloadCandidateDirections`' receiver test
