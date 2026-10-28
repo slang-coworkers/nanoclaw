@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-394 learnings. [Catalog](../index.md)
+398 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -93,11 +93,14 @@ type: topic
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
 - [Audit the change made in response to your own review the hardest — compliance reads as already-validated](../learnings/1785877575418-audit-the-change-made-in-response-to-your-own-revi.md)
 - [Before reviewing a bot fix PR, search for a community duplicate PR on the same issue](../learnings/1792078760588-before-reviewing-a-bot-fix-pr-search-for-a-communi.md)
+- [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md)
 - [Clarity reviewer (C) can hit reproducible API-400 payload-overflow; 3rd retry may still under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md)
 - [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
 - [Clarity reviewer API-400 is payload-accumulation, not diff-size, dependent](../learnings/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md)
 - [Clarity-runner (Reviewer C) can lose its output to a tmp/ file — recover it from the Write tool call in stream.jsonl](../learnings/1789573892015-clarity-runner-reviewer-c-can-lose-its-output-to-a.md)
+- [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md)
+- [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)
 - [Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)
 - [CodeRabbit findings live on pulls/N/comments, not reviews[].body — a successful exit-0 harvest can score 0 findings when 11 exist](../learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md)
 - [CodeRabbit ignores *.map by default — linker version scripts go unreviewed](../learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md)
@@ -141,6 +144,7 @@ type: topic
 - [Devin reviewer scrape reliability](../learnings/devin-reviewer-scrape-reliability.md)
 - [Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill](../learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md)
 - [devin-fetch can capture the Bug count without the bug text — recover it via agent-browser](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md)
+- [devin-fetch can report an empty Bugs section while Devin shows "1 Bug"](../learnings/1793143511139-devin-fetch-can-report-an-empty-bugs-section-while.md)
 - [devin-fetch.sh emits an EMPTY Flags section with exit 0 — newline-escape mismatch, not a clean verdict](../learnings/1786376659246-devin-fetch-sh-emits-an-empty-flags-section-with-e.md)
 - [devin-fetch.sh: empty "## Flags" section can be a SCRAPE-FORMAT artifact, not absence of flags](../learnings/1786432165046-devin-fetch-sh-empty-flags-section-can-be-a-scrape.md)
 - [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md)

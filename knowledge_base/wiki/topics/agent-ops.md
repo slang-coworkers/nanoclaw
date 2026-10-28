@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-941 learnings. [Catalog](../index.md)
+943 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -108,6 +108,7 @@ type: topic
 - [A maintainer approval can trigger a late ci_failed webhook from an old dispatched CI run](../learnings/1791838490812-a-maintainer-approval-can-trigger-a-late-ci-failed.md)
 - [A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state](../learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md)
 - [A maintainer triage request can sit unanswered for weeks behind a running container with zero outbound](../learnings/1785802554126-a-maintainer-triage-request-can-sit-unanswered-for.md)
+- [A negated "not claimed to fix org/repo#N" in a PR body still auto-closes the issue on merge](../learnings/1793113033524-a-negated-not-claimed-to-fix-org-repo-n-in-a-pr-bo.md)
 - [A negated sentence still arms GitHub's closing keyword — the disclaimer re-arms the auto-close it explains](../learnings/1785848502267-a-negated-sentence-still-arms-github-s-closing-key.md)
 - [A non-normative spec page is not grounds for 'already allowed' in a triage](../learnings/1791798120399-a-non-normative-spec-page-is-not-grounds-for-alrea.md)
 - [A number converging is not a number arriving — before publishing an aggregate, state the population in words and check the SET, not the count](../learnings/1786078761225-a-number-converging-is-not-a-number-arriving-befor.md)
@@ -548,6 +549,7 @@ type: topic
 - [GitHub Actions runs API: URL-encode created>= filter via OneCLI proxy](../learnings/1790842481850-github-actions-runs-api-url-encode-created-filter-.md)
 - [GitHub auto-close keywords fire regardless of surrounding "not" context — never write "Closes #N" even to negate it](../learnings/1786773657574-github-auto-close-keywords-fire-regardless-of-surr.md)
 - [GitHub baseRefOid is the base-branch tip, not the PR fork point — and the MatrixLayoutMode base-skew signature](../learnings/1789436666000-github-baserefoid-is-the-base-branch-tip-not-the-p.md)
+- [GitHub closes issues on negated phrases — verify with closingIssuesReferences, not a body grep](../learnings/1793113699781-github-closes-issues-on-negated-phrases-verify-wit.md)
 - [GitHub closing keywords match anywhere in a PR body — including inside an "Open question: Fixes #N, or …?" line](../learnings/1791933455627-github-closing-keywords-match-anywhere-in-a-pr-bod.md)
 - [GitHub comment EDITs don't notify — human questions get stranded by PATCH-first webhook flow](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)
 - [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)

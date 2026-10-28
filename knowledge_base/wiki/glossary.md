@@ -453,6 +453,7 @@ type: nav
 
 **Slang language core**
 - [Generics, overload resolution, and type inference in Slang](concepts/slang-language-core-f0909b0-generics-overload-inference.md)
+- [HLSL receiver mutability: default-inout `this`, immutable receivers, and call-site dialect rules](concepts/slang-language-hlsl-receiver-mutability.md)
 - [Interface default arguments, default methods, lambda capture, and synthesized-witness visibility](concepts/slang-language-core-f0909b0-default-args-methods-visibility.md)
 - [Interfaces, witness tables, and conformance resolution in Slang](concepts/slang-language-core-f0909b0-interfaces-witness-conformance.md)
 - [Slang Attributes: Parsing, Name Resolution, and Target Whitelist](concepts/slang-language-fold20260909-attributes.md)

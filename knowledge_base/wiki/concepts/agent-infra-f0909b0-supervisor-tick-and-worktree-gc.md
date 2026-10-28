@@ -3,7 +3,7 @@ title: "Supervisor Tick Reliability and Worktree-GC Repo Binding"
 type: concept
 group: agent-infra
 tags: [supervise-issues, pull-universe, thread-key, worktree-gc, gitdir, datetime, gh-401]
-source_count: 11
+source_count: 12
 ---
 
 ## TL;DR
@@ -45,6 +45,10 @@ defects. Verify the instrument before nudging or reaping.
   stale local `origin/*` makes a worktree look "ahead"; don't push already-merged PR-head
   snapshots to a production remote. Verify the save step's purpose (unsaved reviewer
   notes) directly; fetch before trusting ahead/behind.
+- **A correct reap still breaks a consumer that assumed the tree persists.** Reviewer
+  worktrees and baseline builds reused across a multi-day round can vanish between
+  sessions; consumers must `ls -d` them first (see
+  [[wiki/concepts/agent-infra-f0909b0-git-worktree-hygiene.md]]).
 
 ## Synthesis
 
@@ -167,7 +171,7 @@ stale-ref "ahead" signal, and fetch before trusting any local `origin/*` ahead/b
 
 Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains — a pathological over-flag, not real work, from three durable classifier gaps. (1) **A disposition agreed in-chat or in a `triage-*.md` memo but never written to `supervisor-state.json` is re-flagged every tick.** `scan.py`'s human-owned park (`classify()` checks `HUMAN_OWNED_DISPOSITION` before the ball/silence branches) only fires if the token is IN the state file, and `pull-universe.sh` rehydrates `disposition` from prior state each tick — so when a chain is parked/non-actionable/handed-off, write a recognized `disposition` token (`advisory`, `maintainer-driving`, `stood-down`, `awaiting-pickup`, `external-pr`, `human-debate`, `closed-by-us`) to the state file **that tick**; a memo is not a substitute (five slang perf-epic sub-tasks #12942/12945-12948, closed-by-design at triage, re-flagged because the decision never became a `disposition` key). (2) **Read-only / never-post roles (e.g. `slang-pr-approver`) are structural `awaiting_us` false-positives** — their output is a ledger decision, never a GitHub post, so "human spoke last, unanswered by us" is *always* true (confirmed on #12389); `scan.py` should exclude read-only roles from `awaiting_us`. (3) **R3 "0 comments = no artifact" is a false-positive for a maintainer-self-assigned PM/tracking issue** (core-team reporter + no reproducer + self-assigned) — the disposition + internal memo is the resumable artifact; a bot triage comment is noise on their tracker. Operational rule at scale: never fire 100+ nudges or 32 blocking escalations mechanically — check prior `nudgedAt` (nudged twice → escalate, not a 3rd nudge) and prior-tick cadence (a days-old last nudge means a full blast is a spike, not "resuming"); act on the genuinely-fresh delta and escalate the *systemic* condition once ([persist no-post dispositions to state; read-only roles are awaiting_us false-positives](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)).
 
-**Source learnings (11):**
+**Source learnings (12):**
 - [Supervisor thread-key regex is greedy — sub-threads parse to a nonexistent repo](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md) — `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$`, greedy-within-segment for hyphenated repos; check the instrument's error log before nudging.
 - [scan.py naive-datetime crash froze state ~23h and produced a 115-nudge false surge](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md) — normalize naive→UTC at the parse_ts chokepoint; a recovery-tick surge is a backlog, hold and escalate.
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md) — `set -euo pipefail` aborts on the first 401; diagnose with `gh api rate_limit`, report BLOCKED, escalate the connect URL, never fabricate a board.
@@ -179,3 +183,4 @@ Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains 
 - [supervise-issues worktree GC bare-number resolver ignores repo binding in .git gitdir](../learnings/1787490790849-supervise-issues-worktree-gc-bare-number-resolver-.md) — two collisions in one tick; verify the largest destructive candidates live before dispatch.
 - [Worktree GC must bind repo from .git gitdir, not the tier folder](../learnings/1788098052948-worktree-gc-must-bind-repo-from-git-gitdir-not-the.md) — confirm PR state and that local tips are ancestors of refs/pull/<n>/head before removing any OPEN-PR worktree.
 - [write a recognized `disposition` token to supervisor-state.json the tick you park a chain (a memo isn't persisted); exclude read-only roles (pr-approver) from `awaiting_us`; don't force a public comment on a maintainer's self-assigned tracker; never fire 100+ nudges mechanically.](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)
+- [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md) — consumer side of the GC: #13880 R4 lost its `REPO_ROOT` and baseline build

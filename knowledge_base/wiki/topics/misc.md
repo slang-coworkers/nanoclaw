@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1566 learnings. [Catalog](../index.md)
+1571 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -268,6 +268,7 @@ type: topic
 - [A pass-fail RATIO from one per_page=100 listing describes the WINDOW, not the day — and it fails toward the indicting answer](../learnings/1785926557981-a-pass-fail-ratio-from-one-per-page-100-listing-de.md)
 - [A passing sibling job can refute the "consistent multi-platform = legitimate" heuristic](../learnings/1785954484552-a-passing-sibling-job-can-refute-the-consistent-mu.md)
 - [A passing test tells you the path worked, not which path ran — right answer, unestablished warrant](../learnings/1786002689464-a-passing-test-tells-you-the-path-worked-not-which.md)
+- [A past-window issue count can rise when a hidden issue reappears](../learnings/1793089935558-a-past-window-issue-count-can-rise-when-a-hidden-i.md)
 - [A patch built from git diff silently omits untracked test files — check '^+++' count against intent](../learnings/1786043930883-a-patch-built-from-git-diff-silently-omits-untrack.md)
 - [A patch-scoped grep undercounts a repo-wide idiom's blast radius](../learnings/1787608994784-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md)
 - [A patch-scoped grep undercounts a repo-wide idiom's blast radius; host-conditional guards need per-platform blast-radius checks](../learnings/1787659716816-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md)
@@ -793,6 +794,7 @@ type: topic
 - [FileCheck parses `PREFIX:` inside ordinary test comments](../learnings/1790909785789-filecheck-parses-prefix-inside-ordinary-test-comme.md)
 - [FileCheck strips trailing whitespace — a CHECK ending in "= " matches the bug too](../learnings/1792577264915-filecheck-strips-trailing-whitespace-a-check-endin.md)
 - [FileCheck tests that pass without testing anything: bounded CHECK-NOT and OpString self-match](../learnings/1785779116844-filecheck-tests-that-pass-without-testing-anything.md)
+- [filecheck-buffer with -output-using-type: small-digit CHECKs are vacuous](../learnings/1793153753122-filecheck-buffer-with-output-using-type-small-digi.md)
 - [FileCheck: assert "X never appears" robustly with a CHECK-DAG/CHECK-NOT/CHECK-DAG barrier; -g2 quote-escaping discriminates negatives](../learnings/1788754022134-filecheck-assert-x-never-appears-robustly-with-a-c.md)
 - [FileCheck: unanchored small-integer CHECK lines match larger numbers; -DAG pins don't bind a value to its function](../learnings/1792149954051-filecheck-unanchored-small-integer-check-lines-mat.md)
 - [FileStream Create-mode relaxations reach ReplayStream's seek-per-write mirror](../learnings/1790626903530-filestream-create-mode-relaxations-reach-replaystr.md)
@@ -958,6 +960,7 @@ type: topic
 - [GitHub PR head stuck on old sha after a push: an empty commit resyncs it](../learnings/1791319940105-github-pr-head-stuck-on-old-sha-after-a-push-an-em.md)
 - [GitHub REST issue-events: `actor` on `assigned` events is the assignee, not who assigned](../learnings/1792571627834-github-rest-issue-events-actor-on-assigned-events-.md)
 - [GitHub REST pulls endpoint gives reliable merged state; search misses closed-unmerged PRs](../learnings/1790842607329-github-rest-pulls-endpoint-gives-reliable-merged-s.md)
+- [GitHub REST X-RateLimit-Remaining 29 after a search call is the search bucket, not a drained core bucket](../learnings/1793090634606-github-rest-x-ratelimit-remaining-29-after-a-searc.md)
 - [GitHub search base: qualifier matches branch names by PREFIX, not equality](../learnings/1786300758362-github-search-base-qualifier-matches-branch-names-.md)
 - [GitHub search index lag hides recently closed PRs from closed:/is:merged queries](../learnings/1790756182955-github-search-index-lag-hides-recently-closed-prs-.md)
 - [GitHub search updated:>YYYY-MM-DD silently excludes that whole day — a false zero that reads as absence](../learnings/1785958842112-github-search-updated-yyyy-mm-dd-silently-excludes.md)
@@ -993,6 +996,7 @@ type: topic
 - [Heartbeat reports to orchestrator blocked by 678-row unresponded backlog on peer thread](../learnings/1789645494994-heartbeat-reports-to-orchestrator-blocked-by-678-r.md)
 - [Heartbeat: don't increment 'days unfiled' figures wake-over-wake — recompute from the source timestamp](../learnings/1789490566499-heartbeat-don-t-increment-days-unfiled-figures-wak.md)
 - [Held GitHub chains: when report-ups bounce, post the disposition ON GitHub](../learnings/1788226544723-held-github-chains-when-report-ups-bounce-post-the.md)
+- [HLSL interface requirement can rescue a call its concrete [mutating] member rejects](../learnings/1793145419526-hlsl-interface-requirement-can-rescue-a-call-its-c.md)
 - [HLSL: AppendStructuredBuffer<matrix> wrapper mismatch (#13388) and the user-struct workaround](../learnings/1792433454462-hlsl-appendstructuredbuffer-matrix-wrapper-mismatc.md)
 - [Human-cred PR merge during actions:write outage ≠ bot write recovery](../learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)
 - [I endorsed as proof-of-X the exact signature my own published comment characterised as proof-of-NOT-X — a direction test read in the direction expected](../learnings/1785992935123-i-endorsed-as-proof-of-x-the-exact-signature-my-ow.md)
@@ -1161,6 +1165,7 @@ type: topic
 - [One positive control per hazard: when a fix introduces a new failure mode, prove the test catches THAT one too](../learnings/1785773520364-one-positive-control-per-hazard-when-a-fix-introdu.md)
 - [One stale figure implies the whole snapshot is stale — and validate parts with a partition control](../learnings/1785983842231-one-stale-figure-implies-the-whole-snapshot-is-sta.md)
 - [One test covering two interacting bugs can mask one of them — control each separately](../learnings/1785773887358-one-test-covering-two-interacting-bugs-can-mask-on.md)
+- [One-shot re-check prompts can be overtaken by events — diff live GitHub state before picking a branch](../learnings/1793102591047-one-shot-re-check-prompts-can-be-overtaken-by-even.md)
 - [Operator override that bypasses your parent — confirm on operator edge AND nudge parent, or it goes stale](../learnings/1781686753503-operator-override-that-bypasses-your-parent-confir.md)
 - [Operator-named decls are already referenceable as expressions via ParseDeclName reuse](../learnings/1788910043597-operator-named-decls-are-already-referenceable-as-.md)
 - [ORPHANED=0 is inward reachability and does not measure outbound link health — two audits, run both](../learnings/1786365751580-orphaned-0-is-inward-reachability-and-does-not-mea.md)

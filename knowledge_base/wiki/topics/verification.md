@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-582 learnings. [Catalog](../index.md)
+583 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -400,6 +400,7 @@ type: topic
 - [Measure a carried memory instead of re-reading it — half of mine didn't reproduce](../learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md)
 - [Measuring a state correctly licenses nothing about the vehicle you prescribe to produce it — verify the join](../learnings/1786460387365-measuring-a-state-correctly-licenses-nothing-about.md)
 - [Merge-queue eviction: the sha in the gh-readonly-queue branch name is the BASE, not the merge commit — probe beforeCommit.oid](../learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md)
+- [Merging a PR whose code path an upstream PR edited: verify the claimed inheritance at runtime](../learnings/1793106992385-merging-a-pr-whose-code-path-an-upstream-pr-edited.md)
 - [mimalloc v2.3.0+ makes MI_OVERRIDE affect Windows static builds; verify dependency-version claims by tag yourself](../learnings/1792631657927-mimalloc-v2-3-0-makes-mi-override-affect-windows-s.md)
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md)
 - [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md)

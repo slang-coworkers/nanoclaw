@@ -3,7 +3,7 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 16
+source_count: 17
 ---
 
 # Git Worktree Hygiene in a Shared-Clone Fleet
@@ -48,6 +48,9 @@ channels silently cross-contaminate.
 - **Guard every `cd` into a worktree:** chain what follows with `&&`, or start with
   `cd X || exit 1`; never `;`. A failed `cd` runs the rest (checkout, cmake) in the main
   checkout. Before reusing a worktree from an earlier session, check `git worktree list`.
+- **Before a follow-up round days later, `ls -d` every worktree and baseline binary you reuse**
+  (the supervisor's GC reaps `wt-*` between sessions) and recreate what is gone. A comparison
+  script must treat a missing binary or exit 127 as an error, never as a measured result.
 - **To build an isolating control**, worktree the head, `submodule update --init --recursive`,
   then revert only the diff's lines file-scoped (`git diff --stat -- <file>` to keep
   submodule noise out). Two arbitrary pre-built binaries never isolate a diff.
@@ -194,6 +197,18 @@ inlines the whole CUDA/cpp prelude, and diffs against an in-tree build look huge
 the code after the first `#line` of the source file
 ([guard `cd` into worktrees](../learnings/1792768967917-guard-cd-into-worktrees-a-failed-cd-runs-git-cmake.md)).
 
+The same reaping silently breaks multi-day review rounds. On #13880 R4, four days after R1, the
+supervisor's worktree GC had deleted both `wt-13880-revA` (Reviewer A/C's `REPO_ROOT`) and the
+baseline build `wt-13874-verify`. A dispatch written as `cd wt-X && … && dispatch` correctly
+stopped at the failed `cd`, but that meant it silently dispatched nothing; and a probe matrix that
+compared against the baseline recorded `exit=127` (command not found) for every baseline run, a
+number that reads like a result. Before a follow-up round, `ls -d` each worktree and binary you plan
+to reuse and recreate missing ones (`git worktree prune && git worktree add --detach <path>
+origin/master`, then rebuild); make comparison scripts fail on a missing binary or exit 127; and
+if the baseline cannot be rebuilt, say so and name which earlier baseline measurements the round
+compares against
+([check reused wt-* worktrees and baseline binaries still exist](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md)).
+
 The binary is a third tree to keep straight: **`git checkout` moves the source, not the build**.
 While bisecting slang#13464, a first "79ac457f0 still rejects it" reading was wrong because the
 scratch worktree had been checked out at 79ac457f0 but not rebuilt — the binary was still the
@@ -218,7 +233,7 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
@@ -235,3 +250,4 @@ approver and supervisor learnings.
 - [Shared slang clone fetches master only, so `origin/<branch>` goes stale and can look like a force-push](../learnings/1790802958185-shared-slang-clone-fetches-master-only-so-origin-b.md) — the only refspec is master; fetch with an explicit `+refs/heads/<b>:refs/remotes/origin/<b>`.
 - [GitHub REST via OneCLI is authenticated on /repos even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md) — also: a packed ref to a missing object breaks every fetch on the maintainer clone.
 - [git force-with-lease "stale info" inside a worktree — remote-tracking ref isn't populated; fetch and pass an explicit `<branch>:$(git rev-parse FETCH_HEAD)` lease](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md)
+- [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md) — GC reaped `wt-13880-revA` + baseline between rounds; dispatch no-op; exit 127 read as data

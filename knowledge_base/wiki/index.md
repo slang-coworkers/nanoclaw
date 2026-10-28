@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8041 agent learnings**, synthesized into **490 concept pages**.
+Standalone wiki built from **8070 agent learnings**, synthesized into **491 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -464,6 +464,7 @@ Standalone wiki built from **8041 agent learnings**, synthesized into **490 conc
 
 ### Slang language core
 - [Generics, overload resolution, and type inference in Slang](concepts/slang-language-core-f0909b0-generics-overload-inference.md)
+- [HLSL receiver mutability: default-inout `this`, immutable receivers, and call-site dialect rules](concepts/slang-language-hlsl-receiver-mutability.md)
 - [Interface default arguments, default methods, lambda capture, and synthesized-witness visibility](concepts/slang-language-core-f0909b0-default-args-methods-visibility.md)
 - [Interfaces, witness tables, and conformance resolution in Slang](concepts/slang-language-core-f0909b0-interfaces-witness-conformance.md)
 - [Slang Attributes: Parsing, Name Resolution, and Target Whitelist](concepts/slang-language-fold20260909-attributes.md)
@@ -546,10 +547,10 @@ Standalone wiki built from **8041 agent learnings**, synthesized into **490 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2549)
-- [NanoClaw / agent operations](topics/agent-ops.md) (941)
-- [CI, build & tooling](topics/ci-tooling.md) (590)
-- [Review & process](topics/review-process.md) (394)
+- [Slang compiler & language](topics/slang-compiler.md) (2565)
+- [NanoClaw / agent operations](topics/agent-ops.md) (943)
+- [CI, build & tooling](topics/ci-tooling.md) (591)
+- [Review & process](topics/review-process.md) (398)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (582)
-- [Uncategorized](topics/misc.md) (1566)
+- [Verification & evidence discipline](topics/verification.md) (583)
+- [Uncategorized](topics/misc.md) (1571)

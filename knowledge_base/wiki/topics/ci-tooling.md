@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-590 learnings. [Catalog](../index.md)
+591 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -112,6 +112,7 @@ type: topic
 - [A pre-checkout runner-death probe must require runner_name non-null (dur<60s alone manufactures a fake pool trend)](../learnings/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md)
 - [A prebuilt binary can predate the fix a test-only PR depends on — control on a test that ships WITH the fix](../learnings/1786192095441-a-prebuilt-binary-can-predate-the-fix-a-test-only-.md)
 - [A prefix-requiring grep recipe undercounts an id union the source text writes bare](../learnings/1786402949849-a-prefix-requiring-grep-recipe-undercounts-an-id-u.md)
+- [A priority-yielded bot ci.yml dispatch on a draft is NOT rerun by retry-yielded-bot-ci while it sits 'waiting'](../learnings/1793105473572-a-priority-yielded-bot-ci-yml-dispatch-on-a-draft-.md)
 - [A provenance label does not neutralize a false premise that drives a decision](../learnings/1786420945243-a-provenance-label-does-not-neutralize-a-false-pre.md)
 - [A queue-depth alarm is anti-correlated with a total capacity outage](../learnings/1786395574061-a-queue-depth-alarm-is-anti-correlated-with-a-tota.md)
 - [A rebuild on mainline discards by default — enumerate from the old head, never infer from a diff](../learnings/1785890710923-a-rebuild-on-mainline-discards-by-default-enumerat.md)

@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 28
+source_count: 30
 ---
 
 ## TL;DR
@@ -31,6 +31,9 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
   load**, not Critical, and blinds `health_snapshots` for ~2.5 h; a bot dispatch can
   cause it any day. Attribute a queue spike to its dominant workflow's triggers first.
 - **merge_group runs skip `test-falcor`** — check the job, not the run, for "MQ Falcor passed".
+- **Slang's scheduled workflows have no fork guard** (16 of 17; only `sccache-populate.yml`), so a
+  fork with Actions enabled fails `ci-health.yml` every 15 min (it needs the project's GCP
+  identity). Tell a contributor who complains to disable Actions on the fork; PR CI runs upstream.
 - **Perf/benchview:** compile-time alerting is the mature fork template; runtime perf is
   greenfield. Since PR #13625 (2026-10-19) `tools/compile-perf/benchview.py` exports
   compile-time results to BenchView; runtime GPU and MaterialX perf have nothing in tree;
@@ -86,8 +89,14 @@ failure's raw log, not only the rerun's
 ([CORRECTION: 403 and artifact-expiry are distinct](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md)).
 Even with the bridge confirmed healthy (a fresh unrelated run reached it, no 403), 6
 `--failed` reruns of day-old runs failed with "artifact unavailable": verifying one
-precondition says nothing about the other, and only a fresh push regenerates a stale
+precondition says nothing about the other, and a test-job rerun cannot regenerate a stale
 artifact ([bridge-403 confirmation must also check artifact age](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md)).
+A `--job` rerun of `test-falcor` fails the same way, in ~19 s at `Run external CI`, with no
+GitLab pipeline started. What does regenerate the artifact is a fresh push, a full rerun, or a
+rerun of the producing `build-windows-release-cl-x86_64-gpu-falcor / build` job, which re-uploads
+it and cascades into `test-falcor`; check `artifacts?name=slang-tests-windows-x86_64-cl-release-falcor`
+(`total_count` 0 = gone) first. A rerun that reaches the bridge does submit a new Falcor pipeline
+(#13886) ([test-falcor --job rerun fails in 19s once the artifact is gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md)).
 
 ## Flake vs. real: master merge breaks and the master branch name
 
@@ -132,6 +141,18 @@ anchor timestamp, not "last figure + elapsed". A base error (a ~24h off-by-one-d
 survives indefinitely because every delta looks locally consistent; one carried figure
 read "~59h" when anchor-to-now was ~31h
 ([verify the base, not just the deltas](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md)).
+
+### Scheduled workflows run on forks, and ci-health fails there every 15 minutes
+
+At master 9a4817c881 (2026-10-27), 16 of the 17 scheduled workflows in shader-slang/slang have
+no `if: github.repository == 'shader-slang/slang'` guard; only `sccache-populate.yml` has one.
+`ci-health.yml` runs on `*/15 * * * *` and needs the project's GCP Workload Identity, so on a
+fork with Actions enabled it fails every 15 minutes. GitHub disables workflows on new forks by
+default, but until jkwak-work's direct commit 9a4817c881 `CONTRIBUTING.md` (line 54, there since
+at least #5622, 2024-11) told contributors to enable them. If a contributor complains about
+failing fork workflows, the answer is Settings > Actions > General > Disable actions on the fork,
+because PR CI runs upstream; those reds are not upstream CI health
+([scheduled workflows lack fork guards](../learnings/1793089763873-slang-scheduled-ci-workflows-lack-fork-guards-ci-h.md)).
 
 ### The Saturday CMake Options burst is expected load, and it blinds CI Health
 
@@ -322,7 +343,7 @@ about a week (10-07/10-08 runs returned 404 on 10-16), so record geomeans durabl
 sizing a step
 ([MDL perf nightly per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md)).
 
-**Source learnings (28):**
+**Source learnings (30):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
 - [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
@@ -352,3 +373,5 @@ sizing a step
 - [Quick CUDA vs SPIR-V compile-time evidence from the compile-perf generators](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md) — import a `workloads.py` generator, `-report-detailed-perf-benchmark`; SPIR-V control needs `-emit-spirv-directly -O0`; N=640: CUDA ~80 ms/pass vs SPIR-V <2 ms
 - [MDL perf nightly: size a front-end step with per-timer geomeans from perf-confirmation artifacts](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md) — size-matched workloads vs a fixed green night; artifacts expire ~1 week
 - [CI sweep: full ubuntu-latest log-header scan exhausts the shared 6000/hr REST budget](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md) — rider: two nv-slang-bot CMake Options dispatches pushed jobs_queued to 458; read `queue_by_group` first (quota half on the agent-ops page)
+- [Slang scheduled CI workflows lack fork guards; ci-health fails every 15 min on forks with Actions on](../learnings/1793089763873-slang-scheduled-ci-workflows-lack-fork-guards-ci-h.md) — 16 of 17 unguarded; CONTRIBUTING.md told contributors to enable Actions until 9a4817c881; advise disabling on the fork
+- [test-falcor --job rerun fails in 19s once the run's slang-tests-* artifact is gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md) — rerun the falcor build job; reruns do submit a new pipeline
