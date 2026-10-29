@@ -465,6 +465,7 @@ type: nav
 - [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
 - [Slang Front-End Design Review Principles (tangent-vector, #13406)](concepts/slang-compiler-frontend-design-review-principles.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
+- [Slang integer constant folding: signed int64 storage, un-narrowed front-end IntVals, and what folds](concepts/slang-language-core-integer-constant-folding.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification, Parser-Time Lookup, and ?: Precedence](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)

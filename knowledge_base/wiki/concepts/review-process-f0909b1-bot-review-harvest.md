@@ -3,7 +3,7 @@ title: Harvesting bot reviews — collect-reviews.sh, CodeRabbit surfaces, exit 
 type: concept
 group: review-process
 tags: [approver, collect-reviews, harvest, coderabbit, exit-20, exit-21, exit-10, exit-22, pagination, race, tier]
-source_count: 13
+source_count: 15
 ---
 
 ## TL;DR
@@ -42,9 +42,10 @@ selected.
 **A red `review` check is not a verdict until you read its log.** The annotation `Claude execution
 failed: result is_error:true` is the same for every harness failure; the cause is in the job log's
 `"result"` JSON. A `422 Budget has been exceeded` there is the shared inference key's cap: every
-run fails until a human raises the cap or it resets, and a rerun cannot help. The converse also
-holds: a GREEN `review` check is not proof a review was posted. Confirm a `github-actions`
-review or comment exists on the PR after the run, or read the log's `subagent_stats` and `result`.
+run fails until a human raises the cap or it resets, and a rerun cannot help. A GREEN check is not
+proof a review was posted either (10-27/28: 5 reviews from 40 green runs; background reviewer
+subagents outlive the session): confirm a `github-actions` review exists after the run, or read the
+log's last `result` line, and judge a delivery fix by posted reviews per green run.
 
 ## CodeRabbit emits its verdict through multiple surfaces
 
@@ -159,14 +160,7 @@ Nothing re-runs these checks after the reset: 8 open PRs kept a red `review` on 
 `pr_report.py`'s `summarize_ci()` counts any non-success check, so they show as false "CI failing"
 in the weekly report until someone re-runs them.
 
-**A green `review` check can still mean no review.** The first run after the cap (10-27T04:25Z,
-#13898) billed `total_cost_usd` 2.77 with no 422 and `terminal_reason: completed`, and the check
-went SUCCESS, yet nothing was posted: the job log's `subagent_stats` showed 5 reviewer subagents
-started in the background with `completed: 0`, and the final `result` text stopped at "Now
-waiting...". So for harvest purposes, a green check with no `github-actions` PullRequestReview or
-comment after the run is the same as a failed run (no primary body; fallback tier), not a pending
-one ([`review` check green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md),
-[budget-cap signature and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)).
+**A green `review` check can still mean no review, and on 10-27/28 that was the common case.** The first run after the cap (10-27T04:25Z, #13898) billed `total_cost_usd` 2.77 with no 422 and `terminal_reason: completed`, and the check went SUCCESS, yet nothing was posted: the job log's `subagent_stats` showed 5 reviewer subagents started in the background with `completed: 0`, and the final `result` text stopped at "Now waiting..." ([`review` check green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md), [budget-cap signature and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)). Counted over the whole window it is systematic, not a one-off: 40 green runs (CLI 2.1.311/2.1.312), 0 budget 422s, and only 5 `github-actions[bot]` reviews posted. 8 of 9 sampled logs end on a final `"result"` like "I'll wait for the reviewers / still running" after the orchestrator launched 3–6 reviewer subagents with `"run_in_background": true`; the session ends with the orchestrator's turn, so nothing is posted unless every reviewer finished first, and each run still bills $0.65–$4.45. The cheap delivery check is the last `"result":` line of the review job log (a posting run says "I posted one COMMENT review..."), confirmed by one GraphQL search over PRs updated in the window reading `reviews(last:30){author{login} submittedAt}` filtered to `github-actions` ([green check does not mean a review was posted (background subagents)](../learnings/1793176878442-claude-pr-review-green-check-does-not-mean-a-revie.md)). For harvest purposes a green check with no `github-actions` PullRequestReview or comment after the run is the same as a failed run (no primary body; fallback tier), not a pending one. For anyone tracking the bot's health, judge a delivery fix by posted reviews per green run across the whole window, never by a few new reviews or a green check: on 10-28 the budget-cap item was first marked resolved because 4 PRs had new reviews, and the full count (5 of 40) reopened it ([watch-list sweep: judge a CI-delivery fix by the ratio](../learnings/1793177249369-watch-list-sweep-judge-a-ci-delivery-fix-by-the-ra.md)).
 A related instrument trap from the same sweep: a GraphQL
 `reviewRequests{requestedReviewer{... on User{login}}}` query silently returns `null` for team
 requests (#12200's team `dev` request was hidden for days); add `__typename` and
@@ -181,7 +175,7 @@ reasoning — `eval-clauses.py` reads the combined commit status and does not co
 review-harness check with the build/test matrix
 ([a red slang `review` check can be an NV-inference infra error, not a code verdict](../learnings/1786959551599-approver-challenger-calibration-a-red-slang-review.md)).
 
-**Source learnings (13):**
+**Source learnings (15):**
 
 - [CodeRabbit's formal review OBJECTS and its recent-review SUMMARY are DIFFERENT collections with different currency](../learnings/1786694530901-approver-clause-gap-coderabbit-s-formal-review-obj.md) — slang-rhi#797; harvest exit 10 keyed on the review objects and missed a head-current clean summary comment.
 - [collect-reviews.sh dropped a head-current CodeRabbit review posted as an ISSUE COMMENT → false exit-20; fix keys on `not match`](../learnings/1786829284875-approver-infra-collect-reviews-sh-dropped-a-head-c.md) — slang; resolve the head-matching pull review FIRST; require CodeRabbit's explicit base…head range, never a bare SHA; comments-fetch failure ⇒ exit 21.
@@ -196,3 +190,5 @@ review-harness check with the build/test matrix
 - [red `review` check with `result is_error:true` = nv-inference key budget cap (422), 8 of 8 runs 10-25/26; rerun can't help](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)
 - [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md) — #13898: SUCCESS, $2.77, 5 background subagents `completed: 0`; also GraphQL `... on User` hides team review requests (#12200)
 - [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md) — 422 window 10-25T16:49Z→10-26T20:35Z; 8 PRs left red (no auto re-run); `summarize_ci()` false "CI failing"
+- [Claude PR Review green check does not mean a review was posted (background subagents)](../learnings/1793176878442-claude-pr-review-green-check-does-not-mean-a-revie.md) — 10-27/28: 40 green runs, 5 reviews; `run_in_background` reviewers outlive the session; check the last `"result":` line + a GraphQL reviews search
+- [Watch-list sweep: judge a CI-delivery fix by the ratio, and read thread replies](../learnings/1793177249369-watch-list-sweep-judge-a-ci-delivery-fix-by-the-ra.md) — count posted reviews against green runs before retiring a delivery item

@@ -3,7 +3,7 @@ title: "Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, 
 type: concept
 group: slang-backends
 tags: [spirv, debug-info, nonsemantic, g0, g2, DebugSource, DebugLine, DebugTypeMatrix, DebugTypeComposite, DebugValue, DebugDeclare, dbgvar, spirv-opt-adce, OpName, spirv_asm, separate-debug-info]
-source_count: 31
+source_count: 33
 ---
 
 # Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName
@@ -18,6 +18,7 @@ Producer and consumer rules for SPIR-V debug information: what each `-g` level e
 - `-g1 OpLine` / `-g2 DebugLine` come only from statement-level `IRDebugLine` markers, so a value-inst `sourceLoc` fix changes the SPIR-V by zero bytes and has no writable golden test.
 - `-g2` embeds the whole source, CHECK lines included, as an `OpString`: anchor patterns on `%id = OpString "name"` and on real instruction lines, or they self-match.
 - A hoistable IR inst dedups only if every producer builds byte-identical operands; path strings are the classic divergence (#11982).
+- `linkIR` kept the `DebugSource`+CU of every imported module, used or not (#13982). Ownership comes from the producer (CU operands list the TU's `#include`d sources): a module also holds lazy foreign `DebugSource`s with the owner's operands, so reachability and `isIncludedFile` are not ownership tests.
 - `IRDebugScope` is variable-arity (1 or 2 operands); never build it with a null operand.
 - A matrix's debug type is layout-independent: `OpTypeMatrix` is the same for all layouts, and packing rides the member decoration plus `MatrixStride`.
 - Opaque-handle locals: the emitter already handles them (`OpDebugLocalVariable` + `OpDebugValue`, no backing `OpVariable`). Admit them at the leaf/creation type gates with a narrow texture/sampler predicate, never inside recursive `isDebuggableType`, and cover both `let` and `var`.
@@ -52,6 +53,10 @@ Producer and consumer rules for SPIR-V debug information: what each `-g` level e
 **`IRDebugScope` arity.** Use 1 operand when `inlinedAt` is absent, otherwise 2. A null operand crashes `buildEntryPointReferenceGraph` (`slang-ir-call-graph.cpp:~85`) ([DebugScope variable-arity](../learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md)).
 
 **`-g2` + `import`/`#line` cluster (#11982/#11983/#11984, not dups).** All three are producer-side bugs in `slang-lower-to-ir.cpp`; the consumer (`slang-emit-spirv.cpp` ~:2136) is innocent. (1) DebugFunction scope is now carried in IR (`IRDebugFunction` `parentScope`, operand 5), so an imported function resolves to its own module's CU; see [[wiki/concepts/slang-backends-spirv-debug-function-info.md]]. (2) A duplicate `DebugSource` for one file comes from two producers spelling the path differently (`getMostUniqueIdentity()` relative vs `getName()` absolute), which defeats `hoistable=true` dedup ([#11982](../learnings/1783466061131-slang-11982-duplicate-spir-v-debugsource-from-dive.md)). (3) A BOM in `DebugSource` for a `#line` file appears because the fresh-read fallback `getOrEmitDebugSource` bypasses `SourceFile::setContents`'s BOM strip; decode in the fallback ([#11984](../learnings/1783468265984-slang-11984-g2-debugsource-for-line-files-bypasses.md)). `-dump-ir` is authoritative on whether dedup happens; DeepWiki got this one wrong.
+
+**Which modules' `DebugSource` and `DebugCompilationUnit` survive linking (#13982, PR #13992).** At `-g2`/`-g3`, an imported module that contributes nothing (or only an inlined `static const`) still emits a `DebugSource` with its full source text and a `DebugCompilationUnit`; only the CU references the source, and nothing references the CU. The cause is `linkIR` (`slang-ir-link.cpp:2356-2395`), which runs `cloneValue` on every global `DebugSource`/`DebugBuildIdentifier`/`DebugCompilationUnit` of every user module with no reference check. That was intentional in PR #7203 ("list all source files … regardless of line table"). Lowering and emit are innocent: DCE keeps these insts because `mightHaveSideEffects` defaults to true, and `slang-emit-spirv.cpp:12538` runs `ensureInst` on all of them. `-separate-debug-info` does not make the stripped `.spv` byte-identical, because the `DebugBuildIdentifier` hash and the shifted result ids both differ. A quick check counts references to each `DebugSource`/CU result id in the `-target spirv-asm` output [linker keeps DebugSource+CU of every imported module](../learnings/1793210647818-slang-spir-v-g-linker-keeps-debugsource-cu-of-ever.md).
+
+"Clone the whole record set of any module the linked code reaches" is not a fix. `getOrEmitDebugSource` (`slang-lower-to-ir.cpp`) lazily creates a `DebugSource` inside module M for any location M refers to, including another module's file (an imported function's declaration, for example). Those foreign records have the same operands as the owner's record, on purpose, for hoistable dedup (PR #12034). So the entry module always reaches itself and drags in every import it names anywhere (a second entry point, a dead helper), and a foreign record for another module's `#include`d header even has `isIncludedFile=true`. The fix records ownership at the producer: `generateIRForTranslationUnit` gives each `DebugCompilationUnit` the TU's `#include`d DebugSources as variadic operands, the linker clones a used module's CUs (whose operands bring its full file list, including code-less headers per #7203), and foreign records are cloned only by reference. The SPIR-V emitter reads only `getSource()`, so the extra CU operands are inert (`IROpInfo::fixedArgCount` has no readers). The changed IR meaning needs a module-version bump (legacy-path test and gate drill: [[wiki/concepts/slang-compiler-serialization-and-enums.md]]). FetchDXC builds DXC from source here (GLIBC 2.36), so SPIR-V-only work configures `-DSLANG_ENABLE_DXIL=OFF` [a module's DebugSource list includes lazy foreign records; ownership needs the producer](../learnings/1793220067281-slang-linker-a-module-s-debugsource-list-includes-.md).
 
 ## Debug type records
 
@@ -121,7 +126,7 @@ Draft PRs that append stable IR ids collide often (three open drafts claimed 910
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (31):**
+**Source learnings (33):**
 - [slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path](../learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md)
 - [-g0/DebugInfoLevel::None emits EXACTLY OpSource/OpName/OpMemberName in SPIR-V (not OpLine/OpString/OpModuleProcessed)](../learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)
 - [source-text embedding gated at producer + consumer (#12181)](../learnings/1784666850986-slang-spir-v-source-text-embedding-is-gated-at-two.md)
@@ -153,3 +158,5 @@ Draft PRs that append stable IR ids collide often (three open drafts claimed 910
 - [Slang IR: a decoration on a param that names a body inst goes stale under params-first cloners](../learnings/1792712281969-slang-ir-a-decoration-on-a-param-that-names-a-body.md) — fwd/rev autodiff + set-specialization clone params first; remap with `findCloneForOperand` after the clone; keep the fallback
 - [Slang Vulkan COMPARE_COMPUTE tests compile at -g2 — a release assert in SPIR-V debug emission gets full-suite coverage](../learnings/1792702942408-slang-vulkan-compare-compute-tests-compile-at-g2-a.md) — here for the fwd-mode autodiff side fact: remap param decorations via `cloneEnv.mapOldValToNew` (#13841)
 - [Coverage drill: log each defensive branch to a file, run the full suite](../learnings/1792692531156-coverage-drill-log-each-defensive-branch-to-a-file.md) — here for the side note: in-param proxy vars are a separate storage case DebugVar changes miss
+- [slang SPIR-V -g: linker keeps DebugSource+CU of every imported module, even unused (#13982)](../learnings/1793210647818-slang-spir-v-g-linker-keeps-debugsource-cu-of-ever.md) — `linkIR` clones all debug globals (PR #7203); DCE keeps them
+- [Slang linker: a module's DebugSource list includes lazy foreign records — ownership needs the producer](../learnings/1793220067281-slang-linker-a-module-s-debugsource-list-includes-.md) — foreign records; CU `includedSources` operands (PR #13992)

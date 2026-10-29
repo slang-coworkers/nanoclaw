@@ -3,7 +3,7 @@ title: "Slang Coercion & Overload Resolution"
 type: concept
 group: slang-language-core
 tags: [type-system, coercion, optional, generic-container, initializer-list, overload-resolution, vector, conversion-cost-cache, matrix-layout, BuiltinCast, finalizeSpecialization, IRMemoryScopeAttr, IRAlignedAttr]
-source_count: 11
+source_count: 14
 ---
 
 # Slang Coercion & Overload Resolution
@@ -19,6 +19,8 @@ How Slang coerces values into generic containers (`Optional<T>` and friends) and
 - **An array-typed `BuiltinCast` (arrays of matrices that differ only in layout) is lowered by a dedicated pass right after `finalizeSpecialization`, not in the peephole.** The peephole runs before linking (layouts still `Unknown`) and inside generics, and handles only literal lengths, so a spec-constant-sized array ICEs at emit. Use a `MakeArray` of per-element casts for length ≤16 or at global scope, and a cached loop helper otherwise.
 - **Coherence and alignment are attributes on each load, so a pass that splits `load(p)` into per-field loads must copy `IRAlignedAttr`/`IRMemoryScopeAttr` or refuse.** Otherwise `loadCoherent(ptr).field` silently becomes a plain SPIR-V load. `deferBufferLoad` refuses.
 - **Shift operands may differ in type by design** (`vector<L,N> op(vector<L,N>, vector<R,N>)`, `op(L, vector<R,N>)`), so each C-like target must convert them for its output language. On CPU/CUDA, `unifyBinaryExprOperands` splats a scalar to the OTHER operand's type: `int s >> uint3` becomes a logical shift (-8>>1 = 2147483644 on CPU) and `int3 >> uint3` fails NVRTC/gcc. Convert shift operands to the RESULT type (#13553, PR #13562).
+- **Generic `vector<T,N> == vector<T,N>` with `T : __BuiltinFloatingPointType`/`__BuiltinIntegerType` bound core's `IComparable` `operator==` and returned a scalar `bool`** (fewer witness-upcast hops beat `OverloadRank`); #13969 removed the fast-path decline, so infix is per-component, while explicit `operator==(a, b)` still binds IComparable. glsl.meta.slang's overloads are in scope only under `import glsl` or GLSL source.
+- **When a result changes from scalar `bool` to `vector<bool,N>`, test `any(a == b)` and `all(a != b)`**: they flip, while `all(a == b)` and `any(a != b)` keep their value. Vector `?:` also changes (per-component, E30056; E30055 in `[Differentiable]` code).
 
 ## Optional<T> and Generic-Container Coercion
 
@@ -52,7 +54,19 @@ Slang's shift operators let the two operands differ. core.meta.slang (:3309-3343
 
 Three side findings from testing that fix. `simplifyForEmit` visits only `IRFunc` bodies, so a module-scope `static const int3 K = int(-8) + V;` fails on CPU/CUDA for any binary operator; this is pre-existing. `int8_t3(int8_t(x), int8_t(y), int8_t(100))` gives an NVRTC "more than one make_char3" ambiguity on master. And a narrow-type `<<` (`uint16_t3 << n`) emits warning E41034, which breaks COMPARE_COMPUTE stderr matching, so regression tests should use `>>` ([same](../learnings/1791604848695-cpu-cuda-vector-shifts-unifybinaryexproperands-mus.md)).
 
-**Source learnings (11):**
+## Generic `vector<T,N> ==` binds `IComparable` and returns a scalar `bool` (#13969, #13970)
+
+Consider generic code with no `import glsl`:
+
+```slang
+bool3 eq<T : __BuiltinFloatingPointType>(vector<T,3> a, vector<T,3> b) { return a == b; }
+```
+
+Before #13969 the builtin-operator fast path (`convertToBuiltinArithmeticOp`, `slang-check-expr.cpp` ~L5062) explicitly declined generic vector equality, so `==` and `!=` went to overload resolution. There core.meta.slang's `__generic<T:IComparable> [OverloadRank(-10)] bool operator==(T,T)` (~:3650) won through vector's `IFloat`/`IInteger` → `IArithmetic` → `IComparable` witness. The result was a scalar `all(__vectorEql(..))`, silently splatted to `bool3` on assignment. The component-wise `__generic<T:__BuiltinType,N> [OverloadRank(10)] vector<bool,N> operator==` lost because `CompareOverloadCandidates` compares `conversionCostSum` (+1 per witness upcast hop) before `OverloadRank`: `T:__BuiltinFloatingPointType → __BuiltinType` costs 5 hops and `vector : IComparable` costs 2 (the general rule is on [[wiki/concepts/slang-language-core-f0909b0-generics-overload-inference.md]]). With `T : __BuiltinArithmeticType` the comparison was already component-wise. The fast-path comment that glsl.meta.slang's vec==vec→bool overload is "visible regardless of scope" is false: that module loads only through `import glsl` or GLSL source, where `all(equal(..))` binds instead. A release-binary bisect puts the break at v2023.4.10 (#3317, `vector : IFloat`; v2023.4.9 is good): `gh release download <tag> -R shader-slang/slang -p '*linux-x86_64*'`, then read the `-target hlsl` output. To see which overload bound, read the first `### LOWER-TO-IR:` section of `slangc -dump-ir` for `lookupWitness(... IComparable ...)` plus `MakeVectorFromScalar`. #13969 removed the fast-path decline, so infix `a == b` is now per-component; explicit `operator==(a, b)` call syntax still takes the IComparable overload. On older releases, build the `bool3` per component [generic vector == binds IComparable scalar bool (witness cost beats OverloadRank)](../learnings/1793188707381-generic-vector-t-n-binds-icomparable-scalar-bool-w.md) [fast path vs overload resolution: generic vector == binds IComparable](../learnings/1793191333102-slang-fast-path-vs-overload-resolution-generic-vec.md).
+
+**Testing the scalar-`bool` → `vector<bool,N>` change (#13970).** Code that used the result as a `bool` now errors, but code wrapped in a reduction still compiles, and only two of the four reductions keep their value. `all(a == b)` and `any(a != b)` agree under both meanings. `any(a == b)` (master 0 → head 1 for a=(0.1,0,0.3), b=0) and `all(a != b)` (1 → 0) silently flip, so a repro that tests only the two stable forms cannot tell the old meaning from the new. Vector `?:` changes too: it used to select a whole vector and now selects per component with warning E30056, and inside `[Differentiable]` code it is a hard error, E30055. Probe each form on a master build and a head build before calling the break "documented" [test any(a==b) and all(a!=b), not all(a==b)/any(a!=b)](../learnings/1793194698608-bool-to-vector-bool-result-change-test-any-a-b-and.md).
+
+**Source learnings (14):**
 - [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
 - [slang generic-container covariance unsupported — _coerce has no type-arg recursion (Optional Derived to Base, #7406)](../learnings/1783523269992-slang-generic-container-covariance-unsupported-coe.md)
 - [slang#7878 Optional-of-opaque via generic member escapes the E30902 front-end guard](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md)
@@ -64,4 +78,7 @@ Three side findings from testing that fix. `simplifyForEmit` visits only `IRFunc
 - [CPU/CUDA vector shifts: unifyBinaryExprOperands must use the RESULT type, not the other operand's](../learnings/1791604848695-cpu-cuda-vector-shifts-unifybinaryexproperands-mus.md)
 - [Slang: array-typed BuiltinCast must be lowered after specialization, not in the peephole](../learnings/1792202454473-slang-array-typed-builtincast-must-be-lowered-afte.md) — pass after `finalizeSpecialization`; `MakeArray` ≤16 or global, cached loop otherwise; `getDataType()`; spec-constant lengths; `CoercionSite::General` probing
 - [Partial-load rewrites must carry load attributes (Aligned / MemoryScope)](../learnings/1792252301146-partial-load-rewrites-must-carry-load-attributes-a.md) — per-field load split drops coherence in SPIR-V; `deferBufferLoad` refuses; LLVM-DISABLE build ignores FileCheck tests
+- [Generic vector<T,N> == binds IComparable scalar bool (witness cost beats OverloadRank) — #13969](../learnings/1793188707381-generic-vector-t-n-binds-icomparable-scalar-bool-w.md) — 5 hops vs 2; glsl overload not in scope; v2023.4.10 bisect via release downloads
+- [Slang fast path vs overload resolution: generic vector == binds IComparable (scalar)](../learnings/1793191333102-slang-fast-path-vs-overload-resolution-generic-vec.md) — `-dump-ir` LOWER-TO-IR check; #13969 per-component infix; explicit `operator==` still IComparable
+- [bool-to-vector<bool> result change: test any(a==b) and all(a!=b)](../learnings/1793194698608-bool-to-vector-bool-result-change-test-any-a-b-and.md) — two reductions flip; vector `?:` E30056/E30055
 _Catalog: [[wiki/index.md]]_

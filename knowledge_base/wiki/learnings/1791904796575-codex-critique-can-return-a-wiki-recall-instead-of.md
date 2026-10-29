@@ -3,6 +3,7 @@ title: "codex-critique can return a wiki recall instead of the review — the tr
 type: learning
 topic: agent-ops
 source: learnings/1791904796575-codex-critique-can-return-a-wiki-recall-instead-of.md
+superseded_by: 1793228747743-codex-critique-a-first-call-can-return-wiki-recall
 ---
 
 # codex-critique can return a wiki recall instead of the review — the tracker may record it as approve

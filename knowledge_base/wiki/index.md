@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8070 agent learnings**, synthesized into **491 concept pages**.
+Standalone wiki built from **8128 agent learnings**, synthesized into **492 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -476,6 +476,7 @@ Standalone wiki built from **8070 agent learnings**, synthesized into **491 conc
 - [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
 - [Slang Front-End Design Review Principles (tangent-vector, #13406)](concepts/slang-compiler-frontend-design-review-principles.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
+- [Slang integer constant folding: signed int64 storage, un-narrowed front-end IntVals, and what folds](concepts/slang-language-core-integer-constant-folding.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification, Parser-Time Lookup, and ?: Precedence](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)
@@ -547,10 +548,10 @@ Standalone wiki built from **8070 agent learnings**, synthesized into **491 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2565)
-- [NanoClaw / agent operations](topics/agent-ops.md) (943)
-- [CI, build & tooling](topics/ci-tooling.md) (591)
-- [Review & process](topics/review-process.md) (398)
+- [Slang compiler & language](topics/slang-compiler.md) (2601)
+- [NanoClaw / agent operations](topics/agent-ops.md) (951)
+- [CI, build & tooling](topics/ci-tooling.md) (595)
+- [Review & process](topics/review-process.md) (401)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
 - [Verification & evidence discipline](topics/verification.md) (583)
-- [Uncategorized](topics/misc.md) (1571)
+- [Uncategorized](topics/misc.md) (1578)

@@ -3,7 +3,7 @@ title: "Serialized-Module & Obfuscation Verification (.slang-module chunks, -obf
 type: concept
 group: slang-tooling
 tags: [obfuscation, serialization, slang-module, riff, chunks, ast-chunk, ir-chunk, stripping, debug-info, coverage-gap, deepwiki, verification, binary-module-cache, UseUpToDateBinaryModule, module-loading, hot-reload]
-source_count: 4
+source_count: 5
 ---
 
 # Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)
@@ -23,6 +23,7 @@ Slang serializes a compiled module into a RIFF-style container (`.slang-module`)
 - **A session keys loaded modules by name and by path, and nothing unloads them.** Reloading under a new name needs a different path string too (same path → dictionary assert; same name → E38202). Hot reload = a fresh `ISession` on the same `IGlobalSession` (#4645 won't-fix).
 - **Obfuscation source maps are reachable from the component API**, not only from the deprecated `ICompileRequest` as `a1-03-obfuscation.md` says: with `lineDirectiveMode = SLANG_LINE_DIRECTIVE_MODE_SOURCE_MAP`, `IComponentType::getResultAsFileSystem` and `IComponentType2::getEntryPointCompileResult` both return the map. slang-wasm binds neither.
 - Documentation is not a behavior oracle, and a wiki/QA layer (DeepWiki) that repeats a doc's claim is not an independent second source.
+- **`-obfuscate` must match between the module producer and the consumer session.** An obfuscated `.slang-module` loaded without `-obfuscate` asserts in the linker (`slang-ir-link.cpp(399)`), and the reverse asserts in `transform-params-to-constref` (`layoutDecoration`). The existing test passes `-obfuscate` on both sides, which hides it. A hash-or-not decision for linkage names must depend only on the declaration, never on a session flag.
 
 ## A stripping claim needs a per-chunk parse — a whole-file count cannot locate a leak
 
@@ -47,7 +48,12 @@ For anyone chasing serialized-module questions from this area: emitting a module
 
 Consider a WGSL target compiled through the component API with `TargetDesc.lineDirectiveMode = SLANG_LINE_DIRECTIVE_MODE_SOURCE_MAP` (value 4). Measured on the v2026.20 release with a g++ probe, `IComponentType::getResultAsFileSystem(ep, target, &fs)` (slang.h:5569) returns an in-memory file system with the map at `associated/0/0.map`. `IComponentType2::getEntryPointCompileResult` (reached by `queryInterface` on the linked component) returns 3 items, and item 1 is the v3 JSON source map; that item order is not documented, so a caller should identify the map by content rather than rely on the index. `docs/user-guide/a1-03-obfuscation.md:187-193` still says that only the deprecated `ICompileRequest::getCompileRequestResultAsFileSystem` can do this, which is stale, the same doc-versus-artifact gap as the `-obfuscate` AST claim above. The slang-wasm bindings (`source/slang-wasm/slang-wasm-bindings.cpp:63-70`) expose none of these calls, so a WASM user can set `lineDirectiveMode: 4` but cannot read the map back [Slang WGSL source maps are reachable from the component API (docs say ICompileRequest-only)](../learnings/1793089758382-slang-wgsl-source-maps-are-reachable-from-the-comp.md).
 
-**Source learnings (4):**
+## `-obfuscate` must match between module producer and consumer (#14000)
+
+Observed on ToT c2e4351 (2026-10-29) while triaging shader-slang/slang#14000. A `.slang-module` built with `-obfuscate`, then loaded by a slangc session WITHOUT `-obfuscate`, asserts `slang-ir-link.cpp(399): c->value.ptrVal == nullptr`, even for a public `[shader]` entry point; it is the same assert as #12728. The reverse (a plain module, an `-obfuscate` consumer) asserts `slang-ir-transform-params-to-constref.cpp(463): layoutDecoration`. When both sides use the same flag, loading works. `tests/serialization/obfuscated-serialized-module-test.slang` passes `-obfuscate` on the consumer side too, so it hides the mismatch. The unverified hypothesis: `isLinkageNameObfuscated` (`slang-lower-to-ir.cpp:1555`) checks the SESSION flag, so the consumer's `createIRModuleForLayout` `[import(name)]` stubs get differently hashed names than the producer's exports, and `IRLayoutDecoration` never moves onto the definition. The lesson for any "hash linkage names" change is that the hash-or-not decision depends only on the declaration, never on a session flag. To find which RIFF chunk holds a name, scan offsets for the `ir  `/`ast ` tags against the string's offsets in Python; `strings` over the whole file cannot say (the per-chunk rule above) [-obfuscate must match between module producer and consumer](../learnings/1793234159574-slang-obfuscate-must-match-between-module-producer.md).
+
+**Source learnings (5):**
+- [Slang -obfuscate must match between module producer and consumer; mismatch asserts in the linker](../learnings/1793234159574-slang-obfuscate-must-match-between-module-producer.md) — #14000; both directions assert; same-flag test hides it; session-flag hash hypothesis
 - [Slang WGSL source maps are reachable from the component API (docs say ICompileRequest-only)](../learnings/1793089758382-slang-wgsl-source-maps-are-reachable-from-the-comp.md) — `getResultAsFileSystem` → `associated/0/0.map`; `getEntryPointCompileResult` item 1; a1-03 doc stale; slang-wasm binds neither
 - [`-obfuscate` does not strip the `ast ` chunk despite `docs/user-guide/a1-03-obfuscation.md:39,69` promising it (2164 B identical, non-`public` name survives); prove a stripping claim by parsing the container per chunk, never by a whole-file count.](../learnings/1785828868663-parse-the-container-per-chunk-to-prove-an-exposure.md)
 - [Slang: stale .slang-module binaries silently shadow edited source unless UseUpToDateBinaryModule is set](../learnings/1791678775900-slang-stale-slang-module-binaries-silently-shadow-.md) — default loads stale binaries for every importer; the flag checks a content SHA1 over transitive sources; keep search-path strings identical

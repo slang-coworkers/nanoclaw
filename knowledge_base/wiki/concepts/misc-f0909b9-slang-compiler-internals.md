@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -42,6 +42,9 @@ triage/review sessions on real issues:
   now Lua-driven (`slang-diagnostics.lua`), pick a FREE code.
 - **C++ review lens.** A `T{}` (value-init) test does NOT regress a new default
   member initializer — value-init zero-inits regardless.
+- **Core-module edits.** A `*.meta.slang` edit made during a build, or without a
+  touch, can leave the OLD source embedded with fresh-looking mtimes; touch, rebuild,
+  and grep the generated `.meta.slang.h` for the new text.
 
 ## Parser / checker
 
@@ -263,6 +266,21 @@ interface requirement needs `override` or E30853 fires, surfaced only on a clean
 regen)
 ([core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md)).
 
+**An edit made while a build runs is missed the same silent way.** The meta source
+is copied into `core-module-meta/<name>.meta.slang.h` early in the build, and the
+bootstrap compile that writes `slang-core-module-generated.h` minutes later reads
+that header, not the live file. On slang#13983 the header was generated 11 s before
+the edit and `slang-core-module-generated.h` 90 s after it, so "core module newer
+than my edit" held while `slangc` still emitted the old `SAbs`. If you edit
+`source/slang/*.meta.slang` during any build, assume the old source was embedded:
+`cmake -E touch` it, rebuild, and grep
+`build/source/slang-core-module/core-module-meta/hlsl.meta.slang.h` for the new text
+(an unchanged `grep -c` count is the tell). The accident also gives a free
+same-commit pre-fix build; a deliberate revert drill for a meta-only fix is
+`git show HEAD~1:<file> > <file>; cmake -E touch <file>; cmake --build --preset debug`
+(~3 min incremental), capture, then `git checkout HEAD -- <file>`, touch, rebuild
+([editing a .meta.slang during a build embeds the OLD core module](../learnings/1793215460858-editing-a-meta-slang-file-while-a-slang-build-runs.md)).
+
 **Value-init vs default-init review lens.** When a C++ change adds a default member
 initializer (`T* m_x{nullptr};`) to fix an uninitialized-member UB, check how the
 regression test constructs the object: `Foo obj{};` is value-init and zero-inits a
@@ -273,7 +291,7 @@ deterministically since reading uninitialized memory is UB). Flag the mismatch a
 documentation nit
 ([value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 - [Slang linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md) — `emitHostVMCode` serializes linked IR; ptx DIAGNOSTIC_TEST lanes silently need NVRTC
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
@@ -294,3 +312,4 @@ documentation nit
 - [Value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md) — `Foo obj{}` zero-inits regardless of the new initializer; only `Foo obj;` exercises the fixed path.
 - [slangc dynamic-dispatch CUDA repro needs -conformance flags](../learnings/1792155480923-slangc-dynamic-dispatch-cuda-repro-needs-conforman.md) — `-conformance "Impl:IFoo=0"` per impl; emitted `s_dispatch_*` switch forwards `&(&agg)->field`; miscompile needs NVRTC 13.3 + OptiX (#12916)
 - [CUDA miscompile repro: constant inputs let nvcc fold the compares (false positive)](../learnings/1792402540993-cuda-miscompile-repro-constant-inputs-let-nvcc-fol.md) — set compared values from a buffer, not a literal; nvcc 12.6 -O3 then keeps all 3 `setp.neu.f32` (#12916)
+- [Editing a .meta.slang file while a Slang build runs can silently embed the OLD core module](../learnings/1793215460858-editing-a-meta-slang-file-while-a-slang-build-runs.md) — the bootstrap reads the early-copied `.meta.slang.h`; touch, rebuild, grep the header

@@ -3,7 +3,7 @@ title: "Slang IR Passes, Diagnostics, and Tooling"
 type: concept
 group: slang-autodiff-ir
 tags: [ir-passes, diagnostics, source-locations, ir-instructions, optimization, serialization, parser, tooling, agent-operations]
-source_count: 27
+source_count: 28
 ---
 
 # Slang IR Passes, Diagnostics, and Tooling
@@ -23,6 +23,7 @@ This page covers concrete knowledge about Slang's IR pass infrastructure, diagno
 - **Texture `Sample` `offset` is `constexpr`** — a wrapper forwarding it as a runtime param gets `E40013`; mark the wrapper param `constexpr` too (`[ForceInline]` does NOT fix it; the check precedes inlining).
 - **A type-shape-keyed legalize gate is B/C-risky** — passes synthesize 1-vectors in-window, so an up-front presence scan misses them; force-run conservatively and key the scan on the pass's own `isSpecialType` predicate (a provable superset). A new *kind* of lattice value (SCCP marking aggregates as `Constant(inst)`) must audit every `as<IRConstant>` site pass-wide, not just the changed lines.
 - **Scan-only `Agent` forks overreach** (inherit full context, may run the whole task + message upstream) — cap with "Read-only, return to ME only, no send_message/append_learning" or use `Explore`. Concurrent ninja on one build dir races destructively (transient `ranlib: No such file`) — serialize.
+- **Primal-hoist sizes reverse-mode loop storage from `IRLoopMaxItersDecoration`, so a wrong inferred trip count is wrong code.** A false zero-trip from trip-count inference attaches `MaxIters(0)`, undersizes the tape, and `bwd_diff` goes out of bounds; non-differentiable loops only get a warning.
 
 ## IR Pass Diagnostics: Source Location Loss
 
@@ -128,7 +129,9 @@ Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on
 
 `bwd_diff` through two NESTED non-unrolled `[MaxIters]` loops produces WRONG *input* gradients (`dx`) — silently wrong on Vulkan/CPU, `CUDA_ERROR_ILLEGAL_ADDRESS` (OOB) on CUDA. Forward values and the loop body's own weight/bias grads are correct; only the gradient passed back to the input is wrong. Fires iff the two loops' `[MaxIters]` bounds differ by ≥3 (corrupted element is always the highest inner-loop index); `[ForceUnroll]` or equal bounds are correct. Long-standing, not a regression. **Root cause** (dual code-trace + reproduced on `-cpu`): in `slang-ir-autodiff-primal-hoist.cpp` the per-iteration checkpoint array for nested loops is **built innermost-first** (`getTypeForLocalStorage`, ~:1572-1588, each dim sized `IndexTrackingInfo::maxIters+1`, folded with `getArrayType` wrapping a NEW OUTER dim each step) but the store/load addressing **peels outermost-first** (`emitIndexed{Store,Load}AddressForVar`, ~:1617-1672; `defBlockIndices` from `getAllAncestorRegions` is innermost-first). Net: the outermost array dim (sized by the OUTER loop's bound) is indexed by the INNER loop's counter and vice-versa — each nested loop's saved state is effectively sized from the SIBLING loop's `[MaxIters]`: inner_max>outer_max → OOB, outer_max>inner_max → slot aliasing → wrong `dx`, equal → symmetric so correct. **Fix:** make allocation order and indexing order agree — minimal single-site fix reverses the fold order in `getTypeForLocalStorage` (store/load unchanged and stay mutually consistent; no-op for single-loop / equal-bound cases). **Repro trap that cost real time — the trigger needs a CHECKPOINTED per-iteration primal, not just nested `[MaxIters]`:** an inline-constant weight (recomputable from loop indices) creates no checkpoint array so the bug doesn't fire; a weight read via a `no_diff`/custom-`[BackwardDerivativeOf]` accessor gives all-zero `dx` even under `[ForceUnroll]`. Working construction: pass the weight as a **differentiable input array** read through a `[Differentiable]` helper and check `dpx.d` (the input differential); reproduces GPU-free on `-cpu` COMPARE_COMPUTE (the `slangi` interpreter can't run it — `unimplemented: VM bytecode gen for inst`) ([nested `[MaxIters]` checkpoint dim/index transposition — target-independent reverse-mode IR-pass bug](../learnings/1789105256227-autodiff-nested-maxiters-loop-wrong-gradients-chec.md)).
 
-**Source learnings (27):**
+**An inferred `MaxIters(0)` undersizes the same storage (PR #13993).** When `tryInferLoopMaxIterations` (`slang-check-stmt.cpp`) wrongly concludes that a loop runs 0 times, it warns E30514 and also attaches `InferredMaxItersAttribute(0)`, which lowers to `IRLoopMaxItersDecoration`. Primal-hoist sizes the per-iteration storage from it, so `bwd_diff` through the loop reads and writes out of bounds: cpu garbage that changes between runs and NaN on vk/cuda. Non-differentiable loops still run correctly, because no emitter reads the decoration, so review a trip-count change with a runtime `bwd_diff` test, not only diagnostics. The mis-folded constants (#13954) that trigger the false zero, and why only a producer fix is safe, are on [[wiki/concepts/slang-language-core-integer-constant-folding.md]] [false zero-trip trip count corrupts reverse-mode autodiff](../learnings/1793223526256-slang-false-zero-trip-trip-count-corrupts-reverse-.md).
+
+**Source learnings (28):**
 - [Slang IR-pass diagnostics lose source locations](../learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
 - [Slang diagnostics.lua: changing a span's loc kind silently drops secondary message](../learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md)
 - [Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](../learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)
@@ -156,5 +159,6 @@ Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on
 - [SCCP: marking aggregates as `Constant(inst)` breaks the pass-wide `IRConstant` invariant — every `as<IRConstant>(v.value)` null-derefs (bit_cast vector→scalar repro); guard ALL sites, not the one that broke](../learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
 - [#11917: #11987 in-pass-scan early-out does NOT transfer to shared-`legalizeTypes` wrappers — per-context guard + conservative generic force-run; key the scan on the pass's own `isSpecialType` (safe superset)](../learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
 - [#13000 nested `[MaxIters]` checkpoint array dim/index transposition (alloc innermost-first vs address peel outermost-first) → wrong/OOB input gradients; fix by aligning fold order; repro needs a checkpointed differentiable-input primal on `-cpu`.](../learnings/1789105256227-autodiff-nested-maxiters-loop-wrong-gradients-chec.md)
+- [Slang false zero-trip trip count corrupts reverse-mode autodiff (MaxIters(0) undersizes tape)](../learnings/1793223526256-slang-false-zero-trip-trip-count-corrupts-reverse-.md) — `InferredMaxItersAttribute(0)` → primal-hoist tape undersized; test `bwd_diff` at runtime
 
 _Catalog: [[wiki/index.md]]_

@@ -251,7 +251,9 @@ Later reports confirm the same gate on every fresh peer delegation that
 carries a marker: a slangpy `[Triage handoff]` (#1153) and a second one to
 slangpy-fixer, and a fixer's `[Fix Review Request]` to `slang-reviewer` (PR
 #13353), were all refused until `in_reply_to=<the parent inbound that dispatched
-this chain>` was added beside the explicit `to`. `to` wins for delivery;
+this chain>` was added beside the explicit `to` (a slang `[Triage handoff]` to
+slang-fixer again on 2026-10-28). `to` wins for delivery, and the fixer's replies
+still come back to the originating session;
 `in_reply_to` only supplies `thread_id` + reply-correlation, so `thread_id` is
 then optional. Because `send_file` is not gated, an attached memo can land before
 its blocked handoff text: send the message first, then the file, to keep order.
@@ -261,6 +263,7 @@ Separately, merely *quoting* another tier's bracketed marker name in prose
 avoid quoting other tiers' marker names
 ([chain-routing gate needs in_reply_to on a fresh peer delegation carrying a chain marker](../learnings/1789374291867-chain-routing-gate-needs-in-reply-to-when-message-.md),
 [chain-routing hook rejects peer handoff without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md),
+[the hook rejects a [Triage handoff] without in_reply_to; send the message before the file](../learnings/1793205779658-the-chain-routing-hook-rejects-a-triage-handoff-th.md),
 [peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md)).
 
 **Send marker messages through the `send_message` tool, not a final-response block.**
@@ -370,7 +373,7 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md) — the hook also blocks a read-only pulls/comments GET and rejects `-F body=@$var`; use a literal absolute path
 - [Critique gate: ANY file write after the OUTPUT_REVIEW approve voids it — even /tmp scratch](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md) — `edits_since_critique` counts memory appends and scratch writes; each refusal is a denial strike (3 escalate); write first, review, send
 - [Critique gate: an older OUTPUT_REVIEW's attested hash can block gh pr create after a newer approve](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md) — `codex-reply` may not replace the attestation set; diagnose via `jq .critique_attested`; fresh codex call re-attests current files
-- [Chain-routing hook rejects peer handoff send_message without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md) — add `in_reply_to=<parent inbound>` beside explicit `to`; `send_file` is ungated so send the message first
+- [The chain-routing hook rejects a [Triage handoff] without in_reply_to; send the message before the file](../learnings/1793205779658-the-chain-routing-hook-rejects-a-triage-handoff-th.md) — 2026-10-28 restatement: explicit `to` routes to the fixer, replies return to the originating session
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md) — `[Fix Review Request]` to slang-reviewer refused without `in_reply_to`; a `codex-reply` round is not recorded
 - [Final-response [Resolution] refused twice by chain-routing-gate](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md) — use the send_message tool with in_reply_to + canonical thread_id; OUTPUT_REVIEW a [Resolution] first; task ids from `ncl tasks list`
 - [Chain-routing gate: a fresh [Triage handoff] needs in_reply_to=<parent dispatch id>](../learnings/1792070986920-chain-routing-gate-a-fresh-triage-handoff-needs-in.md) — refused on both the tool and `<message>` block without it; the block-channel workaround is stale; `send_file` ungated

@@ -3,7 +3,7 @@ title: Slang Dev Craft — Git, Build, Blast-Radius Grep, and FileCheck
 type: concept
 group: misc
 tags: [git, rebase, pathspec, ninja-build, filecheck, slang-test, blast-radius, grep, benchmark]
-source_count: 13
+source_count: 14
 ---
 
 ## TL;DR
@@ -16,6 +16,8 @@ wrong result.
 - **`git checkout master -- <file>` restores from master TIP, not your merge-base** — silently
   pulling unrelated upstream edits into your branch. Restore from `$(git merge-base HEAD master)`
   and verify with the THREE-dot diff (`git diff master...HEAD --name-only`).
+- **`git checkout <rev> -- <file>` also stages `<rev>`'s version**, so `git checkout -- <file>` then
+  restores nothing; end a revert drill with `git checkout HEAD -- <paths>` and re-check head results.
 - **A quoted `*.cpp` git pathspec (`'source/slang/*.cpp'`) silently matches NOTHING** — an inert-glob
   empty diff is byte-identical to a genuine "no change." Use no-pathspec full changeset or a
   byte-hash; three-dot uses merge-base (shows rebase artifacts as "modified"), two-dot for "what
@@ -49,6 +51,13 @@ merge-base, so a three-dot diff then blamed the branch for it. Restore from the 
 (`MB=$(git merge-base HEAD master); git checkout "$MB" -- <file>`) and confirm with the three-dot
 `--name-only` ([git checkout master -- <file> restores from master TIP, not the PR
 merge-base](../learnings/1787637340749-git-checkout-master-file-restores-from-master-tip-.md)).
+The restore half of a revert drill has its own reference-point trap. `git checkout <rev> -- path`
+writes `<rev>`'s version into the index as well as the worktree, and `git checkout -- path`
+restores from the index, so a later `git checkout -- source/` restores nothing. On slang#13984
+drills D2–D4 and the "restored head" all still carried the SCCP revert, and the restored head
+failed the PR's own test. Restore with `git checkout HEAD -- source/`, which resets both, and check
+that the restore step reproduces the head results before trusting any drill ([git checkout <rev>
+-- <file> stages the file](../learnings/1793218043049-git-checkout-rev-file-stages-the-file-so-a-revert-.md)).
 A quoted `*.cpp` pathspec returns EMPTY even when those files changed — git's default pathspec doesn't
 treat `*` as spanning a path segment, and neither the plain glob nor `:(glob)` magic is reliable
 across git subcommands, so a verdict-bearing "did X change" check must use a no-pathspec full
@@ -137,7 +146,7 @@ compounds and overflows float32). And an import-time regression guard should pin
 filler swap must stay op-count and growth-character
 neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)).
 
-**Source learnings (13):**
+**Source learnings (14):**
 - [Scratch PR-body file can leak into the commit via git add during --amend](../learnings/1787566872697-scratch-pr-body-file-can-leak-into-the-commit-via-.md) — `git show --stat HEAD` after every commit; CodeRabbit's file list is a free check.
 - [Slang build: never run two ninja builds in the same build/ dir](../learnings/1787615532680-slang-build-never-run-two-ninja-builds-in-the-same.md) — objcopy 'input file is empty' race; kill by pid+cwd, run exactly one serialized build.
 - [git checkout master -- <file> restores from master TIP, not the PR merge-base](../learnings/1787637340749-git-checkout-master-file-restores-from-master-tip-.md) — restore from `git merge-base`; verify with the three-dot diff.
@@ -151,3 +160,4 @@ neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count
 - [Non-expanding filler swap must stay op-count and growth-character neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md) — preserve op-count + recurrence sign; pin the property (sin/cos-free), not a literal.
 - [swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md) — a merged-master branch's baseline is `M^2` not the merge commit `M`; grep a fix marker to confirm fix-free; interleave head/base samples so shared-host drift cancels.
 - [Slang release tags live on release branches — bisect from merge-base; FileCheck CHECK-NEXT capture trap](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — `[[X:[0-9.]+]]` then `[[X]]` on CHECK-NEXT fails "same line"; use per-RUN COL/ROW prefixes
+- [git checkout <rev> -- <file> stages the file, so a revert drill needs checkout HEAD to restore](../learnings/1793218043049-git-checkout-rev-file-stages-the-file-so-a-revert-.md) — slang#13984 drills leaked the SCCP revert; also: two concurrent GPU suites on one L40S

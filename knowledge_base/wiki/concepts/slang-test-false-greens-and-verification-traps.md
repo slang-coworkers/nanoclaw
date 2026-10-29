@@ -3,7 +3,7 @@ title: "slang-test False Greens and Verification Discipline"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-server, false-green, verification, positive-control, negative-control, stale-binary, unit-test, verbosity, replay-collision, CI]
-source_count: 32
+source_count: 33
 ---
 
 # slang-test False Greens and Verification Discipline
@@ -60,7 +60,7 @@ Issue #11759 (flaky `parallelGenericEntryPointCompile`) was over-diagnosed as a 
 
 **Drill on the merge, not only on the base.** When a PR's base predates a related PR that has since merged to master, build a local merge (PR head + `origin/master`) and re-run the drills there. On #13897 the shadow globals that #13897 hoists made #13883's regression test pass even with #13883's fix reverted, so #13883 lost its test pin on master; a fragment-stage row, whose shadow is not hoisted, restores it. When a WGSL change removes a validation error, also probe multi-entry modules compiled without `-entry`: with several entry points (#13687), hoisting a shadow into a by-value/struct context turns a Tint rejection into a silently wrong value, because the second entry point's context is never written and reads 0 ([review against base + master merges; probe multi-entry modules](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md)).
 
-**Re-run a subagent's reproducer and grep IR by TYPE.** A subagent reported a PseudoPtr reproducer it never ran: the source failed in the front end with E41019, and its "PseudoPtr count" came from `grep -i pseudo` matching the mangled function name `test_pseudo_ptr`. Anchor IR-type greps (`= *pseudo_ptr\(`, `kIROp_PseudoPtr`) so they cannot match symbol names ([run the reproducer; grep the TYPE](../learnings/1785548791828-verify-a-subagent-s-reproducer-by-running-it-grep-.md)). Pass counts in a PR body are load-bearing too: a subagent reported `defer/` as 39/39, and a fresh run was 38/38 with 13 dx11 variants ignored ([re-run pass-counts](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)).
+**Re-run a subagent's reproducer and grep IR by TYPE.** A subagent reported a PseudoPtr reproducer it never ran: the source failed in the front end with E41019, and its "PseudoPtr count" came from `grep -i pseudo` matching the mangled function name `test_pseudo_ptr`. Anchor IR-type greps (`= *pseudo_ptr\(`, `kIROp_PseudoPtr`) so they cannot match symbol names ([run the reproducer; grep the TYPE](../learnings/1785548791828-verify-a-subagent-s-reproducer-by-running-it-grep-.md)). Pass counts in a PR body are load-bearing too: a subagent reported `defer/` as 39/39, and a fresh run was 38/38 with 13 dx11 variants ignored ([re-run pass-counts](../learnings/1785349753826-verify-slang-test-suite-pass-counts-from-a-fresh-r.md)). The population is whatever the path arguments match, and slang-test matches them by string prefix, not at directory boundaries: `slang-test tests/autodiff` also runs `tests/autodiff-dstdlib/` (86 of 1165 test lines in one #13976 run, a narrower claim that codex OUTPUT_REVIEW flagged). Before reporting "suite X passed N/N", pass a trailing slash (`tests/autodiff/`) or count what ran with `grep -oE 'tests/[a-z-]+/' <log> | sort | uniq -c` ([slang-test path arguments are prefixes](../learnings/1793207631255-slang-test-path-arguments-are-prefixes-not-directo.md)).
 
 **Probe every branch of a pass at every parent kind, through whole-value uses.** On #13378 R2, `lowerArrayBuiltinCasts` unrolled casts of up to 16 elements and looped otherwise. The loop branch asserted an enclosing block, assuming module-scope casts have literal length, but its condition was `!literal || count > 16`. So `static const row_major float4x4 src[17]; static const float4x4 dst[17] = src;` with `dst` passed to a function hit release assert E99997 on every target, while element reads (`dst[i]`) missed it because a `getElement(cast)` peephole folds the cast away. When a PR moves a lowering past `deferBufferLoad`, build its value test with `-target glsl`, where revived whole-buffer loads emit `copyLogical` and hit E99999 (#13379) ([late-lowered pass: arrays above the unroll limit](../learnings/1790933910032-late-lowered-ir-pass-test-literal-length-arrays-un.md)).
 
@@ -118,7 +118,7 @@ Master gave the same `E30015 undefined identifier 'c'` at the same column, so th
 
 Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master already rejects: one bug in different disguises, **present but not exercising**. Name the defect, name the assertion that fails when only that defect is reintroduced, and control both directions (flip each positive to a nonexistent name and expect RED; restore it and confirm green).
 
-**Source learnings (32):**
+**Source learnings (33):**
 - [compile-only SPIR-V tests are render-API tagged → IGNORED without Vulkan](../learnings/1790009629117-spir-v-compile-only-tests-are-render-api-tagged-ve.md)
 - [in-tree spirv-val v2026.4.rc2 DOES catch logical-pointer Function vars](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)
 - [slang-test injects `-O0`; its spirv-val-version claim corrected by 1790785645539](../learnings/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md)
@@ -151,5 +151,6 @@ Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master a
 - [diagnostic-test row pins nothing when master rejects it (#13718)](../learnings/1792181706579-a-diagnostic-test-row-can-pin-nothing-when-master-.md)
 - [correction: -wgpu rows DO run on a fresh Dawn-ON configure; drill on head + master merges (#13897/#13883/#13687)](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md)
 - [worktree submodule init needs `protocol.file.allow=always` (side note of the CHECK-NOT atom)](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md)
+- [slang-test path arguments are prefixes, not directories](../learnings/1793207631255-slang-test-path-arguments-are-prefixes-not-directo.md) — `tests/autodiff` also runs `tests/autodiff-dstdlib/`; use a trailing slash and count what ran
 
 _Catalog: [[wiki/index.md]]_

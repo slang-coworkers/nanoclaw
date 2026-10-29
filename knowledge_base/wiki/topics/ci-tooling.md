@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-591 learnings. [Catalog](../index.md)
+595 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -255,6 +255,7 @@ type: topic
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
 - [CMake sorts compile definitions: a later target_compile_definitions does not make its -D win](../learnings/1792707403738-cmake-sorts-compile-definitions-a-later-target-com.md)
 - [cmake-options.yml weekly cron is Saturday 08:00Z (not Friday); 10-03/10-10 runs missing](../learnings/1792253897751-cmake-options-yml-weekly-cron-is-saturday-08-00z-n.md)
+- [CMake: detect a dependency's transitive link via INTERFACE_LINK_LIBRARIES, not LINK_LIBRARIES (imported targets)](../learnings/1793228740752-cmake-detect-a-dependency-s-transitive-link-via-in.md)
 - [CMake: escaped list (\;) forwarded to a sub-configure is lost by a second unquoted expansion — verify with a cmake -P argv harness](../learnings/1790373222851-cmake-escaped-list-forwarded-to-a-sub-configure-is.md)
 - [CMake: every unquoted ${list} hop eats one level of \; escaping — list values get truncated before execute_process](../learnings/1790372578345-cmake-every-unquoted-list-hop-eats-one-level-of-es.md)
 - [CMake: seed CMAKE_<LANG>_FLAGS_<CONFIG>_INIT to make a default flag user-overridable (not target_compile_options + detection)](../learnings/1785767372104-cmake-seed-cmake-lang-flags-config-init-to-make-a-.md)
@@ -501,6 +502,7 @@ type: topic
 - [Shallow-clone graft lie is depth-1-specific — one-line discriminator, and it targets PR-sizing clones](../learnings/1785768378247-shallow-clone-graft-lie-is-depth-1-specific-one-li.md)
 - [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
+- [Shared git memory store: commit by explicit path, never -a](../learnings/1793211339402-shared-git-memory-store-commit-by-explicit-path-ne.md)
 - [Shared tmp/pr-diff.patch clobber: one root cause producing a loud false positive AND a silently wrong review](../learnings/1785867844462-shared-tmp-pr-diff-patch-clobber-one-root-cause-pr.md)
 - [slang #13455 lock split: cite layout→ASTBuilder, not link(), as the race evidence](../learnings/1792660287709-slang-13455-lock-split-cite-layout-astbuilder-not-.md)
 - [Slang bot-draft CI has run no build/test since 10-01: retry-yielded-bot treats `waiting` runs as active](../learnings/1792313744673-slang-bot-draft-ci-has-run-no-build-test-since-10-.md)
@@ -585,6 +587,7 @@ type: topic
 - [Verifying a cross-reference cluster: assert >= 1 not == 1, grep case-insensitively, and check the edge from the reader's landing point — three instrument defects found inside the notes asserting the discipline](../learnings/1785847532091-verifying-a-cross-reference-cluster-assert-1-not-1.md)
 - [Verifying the figures is not verifying the argument built on them — and test the guard, don't cite it](../learnings/1785897523808-verifying-the-figures-is-not-verifying-the-argumen.md)
 - [Wake payload `evicted` can be a FALSE-NEGATIVE, not only a false positive — check recall, not just precision](../learnings/1786011778780-wake-payload-evicted-can-be-a-false-negative-not-o.md)
+- [Watch-list sweep: judge a CI-delivery fix by the ratio, and read thread replies for rotation answers](../learnings/1793177249369-watch-list-sweep-judge-a-ci-delivery-fix-by-the-ra.md)
 - [wc -m silently returns BYTES under a non-UTF-8 locale — and perfect agreement between two instruments is itself suspicious](../learnings/1785832446547-wc-m-silently-returns-bytes-under-a-non-utf-8-loca.md)
 - [Weekly CMake Options run lasts ~4 h and blinds the CI Health snapshots](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md)
 - [Weekly cmake-options.yml failures can go unexamined for days; check its last runs every master scan](../learnings/1791778074299-weekly-cmake-options-yml-failures-can-go-unexamine.md)
@@ -597,4 +600,5 @@ type: topic
 - [Worktree volume can be 100% full — build fails ENOSPC at final link, not a code error](../learnings/1787280962308-worktree-volume-can-be-100-full-build-fails-enospc.md)
 - [Xcode CMake generator rejects any $&lt;CONFIG&gt; genex in per-source COMPILE_OPTIONS (presence, not value)](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)
 - [XPASS is a deterministic author-owned CI failure, not a flake or regression](../learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md)
+- [Yielded bot CI retry is disabled by `waiting` runs (ACTIVE_STATUSES), measured 10-29](../learnings/1793252623672-yielded-bot-ci-retry-is-disabled-by-waiting-runs-a.md)
 - [Zombie queued CI runs poison queue metrics — 33% of a queue was two 71-day-old constants](../learnings/1786134666479-zombie-queued-ci-runs-poison-queue-metrics-33-of-a.md)
