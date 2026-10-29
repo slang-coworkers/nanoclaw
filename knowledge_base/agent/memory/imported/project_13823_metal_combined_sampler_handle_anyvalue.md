@@ -20,13 +20,19 @@ cmt 6328073437 (still the newest bot comment, still accurate).
 | Option | Where | State |
 |---|---|---|
 | **A — diagnostic** (located E41014 at all 5 Metal AnyValue producers) | bot draft [#13843](https://github.com/shader-slang/slang/pull/13843) `fix/issue-13823`@81efc9ddf6, fixer `sess-1792610420980-0vwcru` (PR-mapped) | R2 APPROVE 0/0/0; 14/14 (master 4/14); suites 3053/3053; compile-only for Metal. HELD as draft: no ready-flip, no pushes unless a maintainer asks. Clarity renames held on local `wip/13823-r1-clarity` (22e91d0d66). |
-| **B — 16 bytes** (keeps #11540's no-host-producer decision; E41019 when a type no longer fits) | reporter branch `albertrodriguezclo:fix/metal-combined-sampler-on-13755`, now 07f2d85dd (557906ff6 + #13755's ebc7691ab) | Stacked on #13755 (open). Reporter opens a PR once #13755 merges, unless maintainers prefer A. Runtime-tested on Apple M4 (cmt 6337983099): 6 new lanes pass, `tests/metal` 326/327. |
+| **B — 16 bytes** (keeps #11540's no-host-producer decision; E41019 when a type no longer fits) | reporter branch `albertrodriguezclo:fix/metal-combined-sampler-on-13755`, now 07f2d85dd (557906ff6 + #13755's ebc7691ab) | Stacked on #13755 (open; head 075169d4d on 10-25). Reporter opens a PR once #13755 merges, unless maintainers prefer A. Runtime-tested on Apple M4 (cmt 6337983099): 6 new lanes pass, `tests/metal` 326/327. |
 
 Deferred to maintainers: the E41014 wording (raised by reviewers A, C and Devin). After a pick of A: CI after the
 ready-flip, incl. `check-formatting` and macOS Metal lanes (skipped while draft).
 
-**Resume:** webhooks (#13843 → fixer via mapping; #13823 comments → Main) plus one-shot `rechase-13823-maintainer-2329`
-(10-28 12:00Z), which also watches for #13755 merging and the reporter's new PR.
+**Resume:** webhooks (#13843 → fixer via mapping; #13823 comments → Main) and the `/supervise-issues` tick, which carries
+#13823 in `supervisor-state.json`. The one-shot `rechase-13823-maintainer-2329` fired 10-28 12:00Z and found no change;
+per its order it was **not** rescheduled, so no per-issue timer remains.
+
+**10-28 re-check:** #13843 open draft @81efc9ddf6, no reviews. #13755 open, not merged: jkwak-work CHANGES_REQUESTED again
+10-22 18:53Z (inline `_slang_reinterpretBits`); the reporter answered in 075169d4d on 10-25 06:33Z, re-review pending.
+No reporter PR yet, no maintainer pick, no bot mention. **10-23 13:57Z jkwak-work assigned #13823 to themself and
+unassigned saipraveenb25,** so the pick now sits with jkwak-work (also #13755's reviewer). Not a pick by itself.
 
 ## Cause (triage, reproduced on master 23f8fbe9b and 2026.13.1)
 

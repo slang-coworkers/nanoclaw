@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13579_generic_struct_capability_outside_entrypoint
-description: "slang#13579 (kaizhangNV): [require(...)] on a GENERIC struct not enforced outside entry-point signatures. Draft PR #13616 (bot, Part of, closingIssuesReferences=[]) PARKED since 10-14 on the author's intrinsic-generic scope answer + a human CI release; 10-19 re-chase: no change, behind master by 24."
+description: "slang#13579 (kaizhangNV): [require(...)] on a GENERIC struct not enforced outside entry-point signatures. Draft PR #13616 (bot, Part of, DIRTY, behind master 88). 10-28: author removed the fork RT traversal and asked the fix to re-enable 4 fork test runs (incl. intrinsic MLAS + stage-view cases); routed to slang-triager."
 metadata:
   node_type: memory
   type: project
@@ -103,3 +103,60 @@ exist for the head SHA. The 10-14 waiting run 38512747808 now returns 404, and t
 The only new link is #13637 (albertrodriguezclo), which names #13579 as "Related" in its bot triage, and it is not a duplicate.
 Nothing was sent to the triager. The supervisor register (`supervisor-state.json`, `awaiting_human`) keeps the timer; no new
 one-shot was created. It resumes on: the author's scope answer, a human review, or a CI release. A rebase is needed before CI.
+
+**10-28 22:59Z — author comment 6482890268: the park is released (substantive, no bot @-mention).** kaizhangNV removed the
+RT-specific final module traversal from fork PR kaizhangNV/slang#24 (commit `cbd707f41`): "The general capability
+checks should own these cases". They ask that fixing this issue re-enable 4 fork test runs: `stage-intrinsic-capability.slang`
+(module-only), `callable-dispatch-stage.slang` (module-only), `cross-stage-input.slang` (`-DTEST_HELPER=1`), and
+`multilevel-acceleration-metal-only.slang` (HLSL). All four currently exit 0. Don't add `-ignore-capabilities` to TEST_HELPER;
+`trace-dispatch-stage` stays enabled; the generic-interface regression is tracked separately as **#13995** (theirs, open).
+⚠️ Two of these runs are exactly the ones E5 changed on 10-13 (extra E36100), and MLAS is `__intrinsic_type`, so this
+leans toward "the general fix owns the intrinsic/stage-view generics". The author did not say it explicitly. Main
+left that for the triager to resolve or ask.
+Live state: PR #13616 is draft, head `bd38ff9e97`, **mergeStateStatus DIRTY**, behind master by 88 and ahead by 12, 0 reviews,
+closingIssuesReferences []. Sessions (all stopped): triager `f7n4ns`, fixer `vychna` (holds the PR mapping), and a third
+`hin6ce` (slang-reviewer). Routed to slang-triager on the canonical thread with
+post authorization (fix-time direction to the bot's own PR, on a chain the author opened by @-mentioning the bot).
+
+**10-28 23:04Z — triager ack (progress, not a verdict).** It is measuring the 4 fork runs at `cbd707f41` against three
+builds: the fork as-is, the fork with #13616 merged, and a variant that skips intrinsic types only when they come from the
+core module (what MLAS needs). Its hypothesis, unverified: `ClosestHitInput`/`AnyHitInput`/`IntersectionInput` are plain
+`[require]` structs, so #13616 should cover the first 3 runs. The fixer handoff, GitHub reply and 5-bullet come after the results.
+
+**10-28 23:36Z — triager result: #13616 covers 3 of the 4 fork runs; a narrowing covers the 4th; fixer re-dispatched.**
+The triager measured (theirs) on a local merge of fork `cbd707f41` with #13616 `bd38ff9e97`:
+- stage-intrinsic, callable-dispatch and cross-stage `TEST_HELPER` now reject.
+- MLAS stays rc 0 until the magic/intrinsic skip is limited to `isFromCoreModule` decls. Then it gives E36107, with no new
+  core/standard-module diagnostics, 1090/1090 capability + diagnostics, and 35/35 on the PR tests.
+- ray-tracing-2: 257 → 259 → 260 of 261. The remaining failure is the fork's exhaustive `trace-dispatch-stage`, where the
+  location moved 30:51 → 30:16; that annotation is the author's to update.
+- The 10-13 E5 drift does not reproduce at this fork head.
+⚠️ slang-test needs libslang-llvm on LD_LIBRARY_PATH, or filecheck tests are silently skipped (triager's shared learning).
+Fresh reply **6483531725** (Main checked: bot, 2369 chars, 23:35:28Z, no pronouns; 8 comments). Treats the author's "general
+checks should own these" as the scope answer for standard-module types, and asks whether core-module intrinsics (CoopVec,
+RWSB; about 50 E36104) go in #13616 or a follow-up. The fixer (`vychna`, running) has to merge master (no rebase), adopt
+the narrowing, record the fork recipe in the PR body, re-run the fork runs, keep the PR draft "Part of", go through the codex
+gates and the reviewer, and send a [Fix Report]. One-shot re-check `recheck-13579-fixer-and-3b9c` is set for 11-04 17:00Z.
+
+**10-29 02:30Z — [Triage Resolution]: PARKED again (author's scope answer + a human CI release).** Main checked live:
+- PR #13616: draft, head `0d77282d3d`, 23 commits all bot, 7 files +891/−103, `pr: breaking change`, closingIssuesReferences
+  [], 0 reviews, mergeState BEHIND (master moved again). CI run 40804024110 is `waiting` at that head.
+- Explanation cmt 6157101613 (PR, edited 02:26Z) §7 has the fork recipe. Issue cmt 6483531725 was edited 02:29:45Z (2784 chars,
+  no pronouns, 8 comments). It corrects the earlier "~50 E36104" figure, which applies only to the check-everywhere variant.
+
+Changes this round (theirs): master merged in (ed5982ff3, normal push); the magic/intrinsic exclusion now applies only to core-module
+types, so MLAS rejects (a test with a user `__intrinsic_type` fails without the change); workgraph note moved
+`'Get'`→`'DispatchNodeInputRecord'` (E36107 unchanged); two R4 fixes: non-generic structs in entry-point signatures incl. one
+behind a field wrapper, and `Outer<3>.In.make()`.
+
+Tests (theirs): 54/54 PR files (master 25/54); 1199/1199 cap + diag + workgraphs; full suite 11258/11261 (3 fp8-cuda env);
+fork runs 4/4 reject; ray-tracing-2 260/261 (author's `trace-dispatch-stage` annotation).
+
+slang-reviewer R4 = REQUEST_CHANGES (small). Its N2 item (skip core-module intrinsic types only while checking core-module
+code) is HELD by the triager. Measured on local `drill/13579-n2`, N2 makes 7 runs fail, 3 of them false rejects of valid code
+(`OutputPatch` domain shader; `__SubpassImpl` at `hlsl.meta.slang:6711/:24086`). It is only safe after those core-module
+`[require]` declarations are fixed, and adopting it would answer the author's scope question for them.
+
+The fixer is idle. The open question to kaizhangNV: fix those declarations and check core-module intrinsic generics in user code
+inside #13616, or as a follow-up? #13995 is not covered. The re-check `recheck-13579-fixer-and-3b9c` (11-04 17:00Z) was
+rewritten for this park.

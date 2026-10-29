@@ -63,3 +63,25 @@ Notes: `gh api` against microsoft/DXC returns 401 through the gateway, so read t
 from bots. The DXC `releases.atom` feed is the same as the 10-15 baseline: the newest release is `v1.9.2609` and the newest SM 6.10 preview is
 `v1.10.2605.37`. No comment on #13527 since 6069079805 and no timeline event since 10-08. The issue's `updatedAt` of 10-12 matches no timeline
 event. `update` again refused the firing one-shot (`no live task matched`), so I re-armed it as `rechase-13527-dxc8644-0383` for 10-29 18:00Z.
+
+**10-28 14:16Z, `pr_mention` [6471406139](https://github.com/shader-slang/slang/issues/13527#issuecomment-6471406139).** jkwak-work: *"There isn't
+a new release yet."* The live comment matched the payload and mentioned no one. It is a status note that restates the known blocker. #13532 is still
+OPEN (head `c91704bc`, `BEHIND`, last updated 10-09). Held: no dispatch, no bot post. Re-chase `rechase-13527-dxc8644-0383` (10-29 18:00Z) stays as it is.
+
+**10-28 18:14Z, `pr_mention` [6476956743](https://github.com/shader-slang/slang/issues/13527#issuecomment-6476956743).** jkwak-work pointed to the
+Agility SDK `1.722.0-preview` (released 10-28) and wrote that he was *"not sure how it is related to the DXC version"*. The live comment matched the
+payload and mentioned no one. I checked the facts (#13411 precedent: a factual question we can answer goes to the operator, not GitHub):
+- Agility SDK is the D3D12 **runtime** NuGet package. Its 1.722 entry lists "Linear algebra matrix operation and enumeration API updates" and does
+  not name a DXC version. The release post (agilitysdk-1-620-retail-and-1-722-preview) does not mention DXC or linalg at all. It says SM 6.10 stays
+  in preview until the **Agility SDK 1.621 retail release, "early December"**.
+- The `InterlockedAccumulate` signature lives in the **DXC** binary and `dx/linalg.h`. The DXC tags still end at `v1.10.2605.37` (SM 6.10 preview,
+  old order) and `v1.9.2609`. **No DXC release accompanied 1.722.** The last DXC that a blog post named (DXC 1.10.2605.2) was tied to Agility 1.720.
+- The likely unblock is a DXC SM 6.10 release alongside the December Agility 1.621 retail release; that is my inference, not a stated date.
+Held: no dispatch, no bot post. I offered the answer to the operator. Re-chase `rechase-13527-dxc8644-0383` (10-29 18:00Z) is unchanged.
+
+**10-28 20:42Z, `pr_mention` [6480214472](https://github.com/shader-slang/slang/issues/13527#issuecomment-6480214472).** jkwak-work answered his own
+Agility question with the same conclusion: the runtime does not update DXC or `dx/linalg.h`. He added two facts. The 1.722 raytracing-preview post
+(clas-ptlas-preview) still names DXC `v1.10.2605.37` as the prerequisite. In the headers, `v1.10.2605.37` linalg.h:654 has `(Vec, Res, StartOffset,
+uint Align = 64)` and main linalg.h:711 has `(Res, StartOffset, Vec)` (DXC#8644). The merge hold on #13532 stands. The live comment matched the payload
+and mentioned no one. Held: no dispatch, no bot post. The operator offer from the previous entry is moot, because jkwak published the answer himself.
+Re-chase `-0383` (10-29 18:00Z) is unchanged.

@@ -43,3 +43,18 @@ I dispatched fixer `4stbs2`, pinned on this thread, to:
 - send the Fix Report to the triager.
 **10-27 12:41Z:** #13867 is updated for mimalloc v2.5.2 at `c52a7a1` (merge plus comment rewrite; the hook is unchanged and both premises were re-checked in the v2.5.2 source). Windows CI 39807820023 at 2c13036 (v2.1.7) had shown `libraryUnloadReleasesMemory` PASSING in all 4 Windows test-slang jobs. The dispatch 40504205087 at c52a7a1 yielded and will not auto-retry, because of the retry deadlock. MinGW is still excluded; pdeayton-nv hasn't answered.
 **10-27 12:51Z:** the triager refreshed cmt 6345115524 (no @-mention) and checked both premises against v2.5.2 itself. It corrected my wording: on a priority-yielded run, approving `falcor-build-approval-gate` alone runs nothing, because the 40 other jobs were already skipped. A maintainer must mark the PR ready, or start CI (approve plus `gh run rerun --failed`). Re-check `t-cf6059` on 10-29.
+**10-28 22:32Z, first maintainer review.** Shepherd pdeayton-nv (COMMENTED, r4406782905) asked for
+`INTERFACE_LINK_LIBRARIES` handling under `SLANG_USE_SYSTEM_SPIRV_TOOLS`. Fixer `[Report]` 23:06Z, which I checked live:
+head `b8093c48b` (still draft). 2fd7c1301 skips `PRIVATE MI_DEBUG` when `mimalloc-static` is imported; b8093c48b reads
+SPIRV-Tools-opt `INTERFACE_LINK_LIBRARIES`, matching `mimalloc-static` or `$<LINK_ONLY:...>`. Reply r4407013282 23:04Z;
+explanation comment refreshed for b8093c4. CI run 40783638331 yielded again (57 skipped / 4 success), so a maintainer
+still has to start Windows CI. MinGW (cmt 6345115524) is still unanswered. The fixer flagged an upstream packaging bug
+outside this PR: vendored SPIRV-Tools installed with mimalloc fails `find_package(SPIRV-Tools-opt)`, because
+`mimalloc-static` is in two export sets. The park is maintainer-owned and unchanged, so nothing went to the dashboard.
+**10-29 01:35Z, out of draft, Falcor red.** A maintainer marked #13867 ready, which cleared the CI yield. Run
+40790110746 @b8093c48b: 45/46 jobs green, including all four Windows `test-slang` jobs (I checked live; fixer reports
+`libraryUnloadReleasesMemory` passing, the first Windows pass on v2.5.2). Only `test-falcor` failed (attempt 1, job
+123177470048). Its log only names the external GitLab pipeline, which the gateway can't reach. Fixer cmt 6485435496 asks
+for the failing test, and rerun attempt 2 started 01:34Z. Unlike the earlier docs-only Falcor flakes, this diff changes
+DLL-unload and mimalloc linkage behavior that Falcor actually loads, so a second red is plausibly real. If attempt 2 fails,
+someone with internal Falcor access is needed, and that goes to the dashboard then. mergeState BLOCKED (review).

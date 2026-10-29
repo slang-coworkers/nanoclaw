@@ -86,3 +86,79 @@ Not taken:
 The fixer's local runs: slang-test 11155/11158 (3 fp8-cuda failures that also fail on master) and static 62/0. Its
 revert drill showed both new R5 tests fail without the fix.
 CI: pull_request run 40544338814 pending, formatting queued. No human review yet.
+
+**10-28 11:36Z, MAINTAINER REQUEST_CHANGES** (skiminki-nv, review
+[5681967676](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5681967676); Main read it live). The
+direction is confirmed: the 18 new tests pass on their debug build with no regressions. The review lists 6 requests:
+1. Pair buffer members with their block through the variable's type (`ConstantBuffer<SLANG_ParameterGroup_CB>`), not by
+   member order.
+2. Run the buffer-member pass once per container, not from the first transparent variable's visitor. This removes the
+   `__generic` unit test and the either-outcome language-server test.
+3. Mark the unscoped-enum alias in `CompleteDecl` (a modifier or a field), not in `isUnscopedEnumCaseAliasOfOwnEnum`.
+4. In the process report, explain why replaying only the redeclaration check in `ensureDecl` is enough, compared with not
+   skipping ReadyForReference in `checkVarDeclCommon`, and describe the `__optInner` cascade.
+5. Shorten the comments, and note that 202c may change (#13956).
+6. Use the five-part PR description, with input-shape answers for requests 1–4.
+The review also asks the PR to state that severity depends on order (`static const a; enum{a}` gives W30204, the
+reverse gives E30200). W30203 is accepted.
+At 11:40Z the fixer posted a TODO acknowledgement ([6468031899](https://github.com/shader-slang/slang/pull/13880#issuecomment-6468031899)),
+head still `8fa442147`, and started a design pass on 1–3.
+**Conflict:** request 6 against our fleet PR-description gate (1,000 characters, 2 lines per section). The fixer
+proposed a short five-part description plus the full process report in the explanation comment, and telling the
+maintainer. Main told the fixer to proceed with that, and asked the operator whether to lift the gate for #13880.
+
+**10-28 13:46Z, R6 REWORK PUSHED** (fixer; Main checked live). Head `69255c6c3` (21 files +1224/−12, 33 commits, no
+force-push, `pr: non-breaking`). Requests 1–5 are done:
+- buffer members are paired through the transparent variable's checked type;
+- one pass per container, including `visitBlockStmt` for function bodies;
+- the `__generic` guard, its unit test and the either-outcome LS test are removed;
+- `UnscopedEnumCaseAliasModifier` is set in `CompleteDecl`;
+- comments are shorter, with the #13956 note.
+Request 6 is partial. The PR body (1117 characters including the disclaimer and the Fixes line) has the five parts in
+short form, with one-line input-shape answers and the order-dependent severity. The full report is in the explanation
+comment, and the TODO reply 6468031899 was edited in place to say where it is.
+Fixer's local runs: slang-test 11156/11159 and static 61/0.
+Peer R6: round 1 REQUEST_CHANGES (function-local buffers lost the warning; fixed), round 2 had 0 findings. Both rounds
+were **lead-only**: reviewers A and C did not run, and B cannot run in patch mode.
+CI: pull_request 40697449182 waiting for environment approval; formatting passed.
+Waiting on skiminki-nv's re-review, and on the operator's gate decision (a: keep, the default; b: lift for #13880).
+
+**10-28 15:48Z, APPROVED** by skiminki-nv ("LGTM", review
+[5685541303](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5685541303), on `69255c6c3`). Main checked
+live: mergeable is MERGEABLE, but mergeStateStatus is BLOCKED and reviewDecision is null, so another required approval
+(likely a code owner) and/or the queued CI job is still missing. Run 40697449182 had 44 jobs succeeded and 1 queued. The
+approval did not ask for the full process report in the description, so the operator gate question is **moot for #13880**
+and has been dropped from the re-check. No pr-approver was routed (both are paused). Next: a human merge.
+**10-28 15:50Z:** skiminki-nv asked "@nv-slang-bot Confirm that this PR contains all intended commits." (6473677315). The
+fixer confirmed in [6473705773](https://github.com/shader-slang/slang/pull/13880#issuecomment-6473705773): 33 commits,
+`a391ff0`..`69255c6`, matching its local branch one-to-one, with no other work, and 21 files against base `e485e7861`.
+Master is 25 commits ahead with no conflicts; the fixer offered to merge master but did not. Main checked live: 33 commits,
+still BLOCKED, reviewDecision null, not merged. This looks like the maintainer preparing to merge.
+
+**10-28 16:24Z, REWORD AFTER APPROVAL** (fixer; Main checked live). skiminki-nv had **added #13880 to the merge queue
+at 15:51Z**. The PR was 25 commits behind master at that point, so being BEHIND does not block queueing. At 16:14Z they
+removed it from the queue and left an inline suggestion
+([r4403168398](https://github.com/shader-slang/slang/pull/13880#discussion_r4403168398)): "declaration of '~decl'
+conflicts with existing declaration (allowed for compatibility)". The fixer applied it in `ae2249915`, one
+message-only commit, 34 commits total, and replied in the thread (r4403210114, left unresolved).
+⚠️ That push **dismissed the approval**. The timeline shows `review_dismissed` at 16:23:28Z, because the repo dismisses
+stale approvals. The state is now reviewDecision null and mergeStateStatus BEHIND. The fixer's report did not mention
+the dismissal. Main told the fixer: no further pushes, and no master merge unless asked. Next: skiminki-nv re-approves
+and re-queues.
+
+**10-28 16:31Z, RE-APPROVED** by skiminki-nv: "LGTM if CI passes" (review
+[5686166855](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5686166855), on `ae2249915`). Main checked
+live: reviewDecision null, BEHIND, not merged. The commit's check-runs show 16 success, 13 in progress, 3 queued, 1
+waiting. **2 are FAILED: `check-ci` and `wait-for-human-priority` from the fixer's own workflow_dispatch run
+40725539917**, the usual bot priority-yield. The fixer's report said "no check has failed yet", which was wrong again.
+On a non-draft PR the pull_request run already gives CI, so a bot dispatch only adds red `check-ci` rows on the head. Main
+told the fixer to stop dispatching on #13880 and to report those rows correctly. Next: CI finishes, then skiminki-nv
+re-queues.
+
+**10-28 18:52Z, CI GREEN** on `ae2249915`. pull_request run 40725494846 finished with success. Main checked live: the
+PR's **statusCheckRollup state is SUCCESS with no bad contexts**. The rollup takes the latest result per name, so the
+yielded dispatch rows don't show on the PR. mergeStateStatus is BLOCKED and reviewDecision null. It was BLOCKED in the
+same way at 15:51Z, when skiminki-nv merge-queued it anyway, so BLOCKED does not stop a maintainer from queueing. Branch
+rulesets list no review or check rules; classic protection isn't readable from here.
+The fixer offered three options. **Main chose (a): no action**, meaning no dispatch rerun and no PR note. skiminki-nv's
+"LGTM if CI passes" condition is met. Next: skiminki-nv re-queues.

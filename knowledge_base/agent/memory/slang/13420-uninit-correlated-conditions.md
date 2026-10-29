@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13420 — false-positive E41035 when the store and the read sit under the same condition
-description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open (conflicting with master as of 10-21)
+description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open, conflicting with master and idle since 10-16 (as of 10-28)
 tags: [slang, ir, diagnostics, uninitialized-values, regression, parked]
 resource: /workspace/inbox/a2a-1790993086700-996pfk/triage-13420.md
 ---
@@ -64,3 +64,12 @@ they passed. The 5 failures from 10-14 belong to the older SHA. Review is still 
 dshreiner-nv; the only review is from coderabbit, and there are no human inline comments. The issue
 has had no comments since the bot triage. NO-GO holds. Next one-shot: `rechase-13420-pr13543-dbb0`
 (2026-10-28).
+
+**2026-10-28 re-chase: no change since 10-16.** #13543 is open and not a draft. Head is still
+`91955cc99`, the last update was 2026-10-16T22:02Z, and the PR is still `DIRTY`/`CONFLICTING`, so the
+`pull_request`-event CI has still not run on that head. Only the 4 `pull_request_target` runs exist,
+and they all passed. Review is still requested from dshreiner-nv. The only review is coderabbit's,
+and the PR has no human comments. The issue is open and assigned to pdeayton-nv, and it has no
+comments after the bot triage. NO-GO holds. The PR has been idle for 12 days. If it is still
+unchanged on 11-04, mention the stall on the dashboard (a fact, not a nudge on the PR). Next one-shot:
+`rechase-13420-pr13543-1cc5` (2026-11-04).

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13419 — Conditional resource loses bindings/reflection when its condition uses an extern enum
-description: Triaged + reproduced (not a regression); front-end link-time constant folding misses checked initializers. The assignee opened PR #13487 (Approach A); tangent-vector has reviewed it critically; NO-GO stands, fixer briefing superseded
+description: Triaged + reproduced (not a regression); front-end link-time constant folding misses checked initializers. The assignee opened PR #13487 (Approach A); tangent-vector reviewed it critically on 10-16 and the author has not replied; NO-GO stands, fixer briefing superseded
 tags: [slang, frontend, reflection, link-time-constants, conditional, parked]
 resource: /workspace/inbox/a2a-1790993201805-3bhx61/triage-13419.md
 ---
@@ -80,3 +80,12 @@ triage comment, no linked PR and no ask to the bot. The operator has not answere
 `PolynomialIntVal` FILE/SKIP question (re-asked 10-15, seq 503822), so it stays unasked and unfiled.
 #13487's only new activity is the 10-16 tangent-vector reviews, already reported on 10-21, so I sent
 no dashboard message. Next #13534 one-shot: `rechase-13534-3487` (2026-10-29).
+
+**2026-10-28 re-chase (`…-5716`):** no change. #13487 is open and not a draft. Head is still
+`53035c247` (last push 10-16), and mergeStateStatus has moved from BLOCKED to BEHIND. CI on that
+head: 61 success, 11 skipped, 1 FAILURE on `test-falcor / Test (Falcor)`. It is still not triaged.
+The job logs have expired (HTTP 410), there are no annotations and no failed step is named, so the
+cause can only be read after a re-run. The author has not answered tangent-vector's 5 inline
+comments. dshreiner-nv and jkwak-work are still requested. #13419 is open; its only comment is the
+triage. The PR has been dormant 12 days. The 3-week dormant flag applies from 2026-11-06. One
+dashboard line was sent. Next one-shot: `rechase-13419-pr13487-0327` (2026-11-04).

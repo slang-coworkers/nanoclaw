@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13964 — HLSL default-inout receiver rejects immutable receivers
-description: Regression from #13615; triage resolved, bot draft PR #13966 (call-site-dialect design) parked on tangent-vector + operator un-draft sign-off
+description: Regression from #13615; triage resolved, bot draft PR #13966 (call-site-dialect design) design settled by tangent-vector; parked on operator un-draft sign-off
 ---
 
 # slang#13964 — HLSL methods no longer callable on immutable receivers
@@ -29,8 +29,12 @@ description: Regression from #13615; triage resolved, bot draft PR #13966 (call-
   no module-version bump, so the earlier module-v38 collision with #13953/#13872/#13564 no longer applies. Peer review
   R2 must-fix (overloaded implicit-`this` calls were copied without checker approval) is fixed and tested. Full Debug suite
   11190/11193 (fp8-cuda failures also on master).
-- **PARKED on:** (A) tangent-vector's answer to the PR-body open question: warn on discarded `this` writes, and drop E30068
-  for HLSL `in` params? (B) operator sign-off to move the PR from draft to ready. Asked on the dashboard 10-28. When the PR is
-  made ready, check `paused` before routing pr_ready_for_review (approvers are paused).
-- **Timer:** one-shot `rechase-slang-13964-r1-086e`, 2026-10-30 16:00Z (task-hygiene r1 of 3). Prompt re-pointed 02:58Z
-  to (A) and (B).
+- **10-28 06:38Z, tangent-vector answered** ([comment](https://github.com/shader-slang/slang/pull/13966#issuecomment-6462478732),
+  verified). The callee gets a temporary copy and nothing is written back; HLSL downgrades E30050 to a warning (not
+  silent); E30068 for `in` parameters stays. The fixer added warning E30134 `mutating-method-on-immutable-value-warning`.
+  Head `e785e0710` (verified: draft, 14 files, +683/−6). The warning delta had codex review only, because the peer-round
+  cap was reached.
+- **PARKED on:** operator sign-off to move the PR from draft to ready (asked on the dashboard 10-28), then maintainer
+  review. When the PR is made ready, check `paused` before routing pr_ready_for_review (approvers are paused).
+- **Timer:** one-shot `rechase-slang-13964-r1-086e`, 2026-10-30 16:00Z (task-hygiene r1 of 3). Prompt re-pointed 07:06Z
+  to the operator sign-off only.

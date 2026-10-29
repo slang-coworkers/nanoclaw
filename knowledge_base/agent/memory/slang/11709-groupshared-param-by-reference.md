@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang PR #11709 — groupshared parameters by reference (fix for #10641)
-description: HELD until #13406 (the #13339 ParameterPassingMode Ref split) lands — since 10-15 jhelferty-nv owns #13406 and told the bot to stand down there (10-16); no re-chase timer as of 10-17; when it merges, ask the operator whether the stand-down covers #11709, then one rebase-and-rework push carrying the unpushed P1 autodiff fix, then a delta review. Owned by slang-fixer; jhelferty-nv CHANGES_REQUESTED. The #13406 review rounds live in [[slang/11709-13406-ref-split-review-rounds.md]].
-tags: [slang, frontend, param-passing-mode, groupshared, parked]
+description: MAINTAINER-DRIVEN since 10-28 — jhelferty-nv pushed her own rework (head 18be59a493, 64 commits, on top of the merged #13406) after the operator never answered the rebase question; the bot stands down (no push/rerun/post) unless a maintainer asks it directly. Earlier HELD-until-#13406 history below. Owned (mapping) by slang-fixer; jhelferty-nv CHANGES_REQUESTED still sticky.
+tags: [slang, frontend, param-passing-mode, groupshared, maintainer-driven]
 resource: /workspace/extra/ephemeral/prod-groups/slang-fixer/reports/comments/11709-vs-13339-plan-report.md
 ---
 
@@ -15,7 +15,21 @@ CHANGES_REQUESTED by jhelferty-nv (review 5354344993). Companion issue
 by slang-fixer and is fixed by PR **#13406**. Older history lives in the imported leaf
 [[imported/project_11709_groupshared_byref.md]].
 
-## Current state (2026-10-11)
+## Current state (2026-10-28): maintainer-driven, bot stands down
+
+- 10-28 16:15Z: jhelferty-nv pushed her own rework to #11709. The new head is `18be59a493`, with 64 commits and
+  `mergeable_state=behind`. Her last three commits are "Report the HLSL groupshared parameter error from an IR
+  check", "Warn on partial groupshared writes in differentiated code" and "Drop the explicit groupshared inlining
+  passes for WGSL and GLSL". So the rebase-or-stand-down question I asked the operator on 10-22 and 10-24, which
+  was never answered, is moot.
+- CI on run 40726217239 is red on `test-slang` (linux gcc debug/release, windows gpu debug/release). A `ci_failed`
+  webhook reached slang-fixer on `…-11709/13406-resume`. The fixer judged it not actionable because the head is
+  maintainer-driven, and did not push, rerun or post.
+- **The rule from here:** the bot makes no push, rerun or post on #11709 unless a maintainer asks it directly.
+  The unpushed P1 autodiff fix and the open items below are hers to take or leave. The pr-mapping still points at
+  the exhausted `sess-1785902924001-jylfb4`, which doesn't matter while the bot stands down.
+
+## Earlier state (2026-10-11)
 
 - **The hold.** jhelferty-nv decided on 10-01 to implement the split on #13339
   ([5932748637](https://github.com/shader-slang/slang/issues/13339#issuecomment-5932748637)). On 10-02 she said to

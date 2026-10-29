@@ -80,3 +80,15 @@ fires 2026-11-03T21:00Z.** Its case (e) parks the chain indefinitely, with no mo
 **Cross-link (10-22 17:05Z, from #13427 re-chase 4):** there was still no operator answer for either chain in dashboard rows up to 507392. #13427 took the
 same default hold (one line on `orchestrator-dashboard` id 15). Its last check is `rechase-13427-fifth-5d28` (11-05), which parks the chain if it is silent,
 the same as this chain's fifth. Note: on 10-21 the operator said the `bot-ok` label authorizes a bot PR (dashboard 506954). Neither issue has that label.
+
+**Human comment (2026-10-28T16:54Z, binaryfire, association NONE,
+[6475208532](https://github.com/shader-slang/slang/issues/13330#issuecomment-6475208532)):** they reproduce both
+defects on Windows x64 with a v2026.20 source build (`d9ede2dd`): `void_constant` on the vertex side and
+overlapping input Locations on the fragment side. DXIL compiles. *"We're investigating a fix that preserves the reflected
+layout and will share it here once tested."* That is the B1 direction. Live read matched the payload; no `bot-ok`.
+**Decision (Orchestrator): stand down.** A second external party is now working on the fix, so a bot PR would
+compete with it. The fixer stays HELD and was not messaged (its session is stopped and it holds only a briefing). No bot
+reply on GitHub: the comment asks the bot nothing, and the triage comment already has the analysis it builds on,
+including the GS/hull `Flavor::array` caveat. The 3-way operator ask is moot for #13330; #13427 is unaffected.
+`rechase-13330-fifth-e954` (11-03 21:00Z) was rewritten. A human PR, or silence, parks the chain for good. Only
+bot-ok, an explicit ask, or both contributors declining releases the fixer.

@@ -12,14 +12,22 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#8557 — Std430DataLayout missing, GLSL→WGSL](8557-glsl-to-wgsl-std430datalayout.md) —
+  maintainer re-triage ask (jkwak-work) on 10-28. Verdict: #13908 alone doesn't fix it, and it can close once human PR #13935 merges. PARKED on the maintainer. Re-chase `rechase-slang-8557-r1` 11-04 21:00Z.
+- [slang#13982 — `-g` emits DebugSource for an unused imported module](13982-spirv-debugsource-unused-import.md) —
+  external bug, P3. Bot draft PR #13992 (module version 37→38; collides with #13953/#13872/#13564/#13425). PARKED 10-28 on operator un-draft sign-off, then a #7203 intent question for maintainers; re-chase `rechase-slang-13982-r1-5ee9` 10-30 16:00Z.
+- [slangpy#1227 — Vulkan .bwds() gradient in grad[0,0], RTX 5090 driver 617](slangpy-1227-vulkan-bwds-grad-rtx5090-driver.md) —
+  bot-filed off the #1167/#1225 chain. 10-28 jkwak-work took it over (driver bug route). Optional operator "repro" offer, default nothing; no timer.
+- [slang#13804 — SPIR-V decorations on global resource OpVariables](13804-spirv-decorations-global-resources.md) —
+  feature request, P2. Side-bug crash fix is bot draft PR #13809 (kaizhangNV, 0 reviews). The feature waits on tangent-vector (assignee) to pick A/B/both. PARKED 10-28 in the register after re-check t-26dd74 found no change; no re-arm.
 - [slang#13964 — HLSL default-inout receiver rejects immutable receivers](13964-hlsl-default-inout-receiver-immutable.md) —
-  regression from #13615, P1. Triage resolved 10-28. Bot draft PR #13966 @93a1f017d uses the call-site-dialect design. PARKED on tangent-vector (warn on discarded writes? drop E30068?) and on operator un-draft sign-off; re-chase `rechase-slang-13964-r1-086e` 10-30 16:00Z.
+  regression from #13615, P1. Triage resolved 10-28. Bot draft PR #13966 @e785e0710: the call site's dialect decides, with new warning E30134. tangent-vector settled both questions 10-28 06:38Z. PARKED on operator un-draft sign-off; re-chase `rechase-slang-13964-r1-086e` 10-30 16:00Z.
 - [slang PR #13911 — WGSL WaveGetNumWaves; Dawn follow-up issue](13911-wgsl-wave-get-num-waves-dawn-followup.md) —
   fork PR (albertrodriguezclo), jkwak-work APPROVED. 10-27 they asked the bot to file a follow-up issue (upgrade slang-test's Dawn, re-enable the `-wgpu` test), assigned to them; the bot filed #13967, assigned to jkwak-work (verified). Terminal for the bot. Approver event queued (paused).
 - [slang#13011 + #13061 — optional-constraint lookup leak](13011-optional-constraint-lookup.md) —
   assignees saipraveenb25 / jvepsalainen-nv. Maintainer asked the bot to fix (09-17) and gave the direction (09-30). Parked 26 days on our own ownership blocker. 10-26: leftover operator A/B gate withdrawn, no-ping notice dispatched to the triager; re-check `rechase-13011-3fa9` 10-30 16:00Z releases slang-fixer (draft PR) if nobody objects.
 - [slang#13948 — structType assert, pointer field of a local struct copy passed to a function](13948-ptr-field-local-copy-structtype-assert.md) —
-  external-filed (xdk78) 10-25. Bot DRAFT PR #13951 @4e276bf (pr: non-breaking), reviewer APPROVE_WITH_NITS with nits applied. PARKED on un-draft; shepherd kaizhangNV. Re-chase `rechase-slang-13948-undr-bb3e` 10-28 22:30Z. Owner: slang-fixer `sess-1792961824237-auyd5v`.
+  external-filed (xdk78) 10-25. Bot DRAFT PR #13951 @4e276bf (pr: non-breaking), reviewer APPROVE_WITH_NITS with nits applied. PARKED on un-draft; shepherd kaizhangNV. Ask #2 sent 10-28 (unanswered, no GitHub change); re-chase `rechase-slang-13948-undraft-r2 (id `rechase-slang-13948-undr-d74c`)` 10-31 22:30Z. Owner: slang-fixer `sess-1792961824237-auyd5v`.
 - [slang#13904 — WGSL ScalarDataLayout CB: emitted stride vs std140 reflection](13904-wgsl-scalar-cb-layout-reflection.md) —
   human-filed (albertrodriguezclo) 10-25 and triaged P2. The reporter's PR #13935 was verified at a2ee40c. PARKED on jkwak-work (capability gate) and dshreiner-nv/kaizhangNV (review), with no fixer and no timer. ⚠️ It shares the one-line `isWGPUTarget` change with bot draft #13402.
 - [slang#13902 — WGSL static const arrays exceed the 8192-byte private limit](13902-wgsl-static-const-array-private-limit.md) —
@@ -51,7 +59,8 @@ decay and must be re-read, not remembered.
 - [slang#13875 — update mimalloc v2.1.7 → v2.5.2](13875-mimalloc-bump-2-5-2.md) —
   pdeayton-nv filed + self-labelled `bot-ok` 10-22 (follow-on to #13827). Fixed by PR #13879, **MERGED 10-26 23:26Z** (`f80573815`); issue closed. Terminal; r2 re-chase cancelled.
 - [slang#13828 — memory retained after unloading Slang DLLs with mimalloc](13828-mimalloc-dll-unload-memory.md) —
-  DRAFT PR #13867 @2c13036b3 (MSVC/clang-cl `DllMain` hooks; MinGW excluded). 10-26: base moved to v2.5.2 (#13879), PR DIRTY; fixer `4stbs2` sent to merge master, rewrite v2.1.7 comments, re-run Windows CI. MinGW answer still pending; triager re-check t-cf6059 10-29.
+  PR #13867 @b8093c48b, READY (out of draft 10-29). Windows `libraryUnloadReleasesMemory` green on v2.5.2; only
+  `test-falcor` red (internal pipeline, no log access), rerun attempt 2 pending. MinGW answer still pending; triager re-check t-cf6059 10-29.
 - [slang#13238 — per-derivative DebugFunction](13238-autodiff-derivative-debugfunction.md) —
   bot draft PR #13239 (jkwak-work, 0 reviews since 09-24). 10-24 08:40Z: fixed at `6850aac48` (explicit inherited root, R2 APPROVE_WITH_NITS); PARKED on jkwak-work. 2 follow-ups unfiled, waiting on the operator.
 - [slang#13827 — duplicate operator new/delete with newer mimalloc on Windows](13827-mimalloc-windows-duplicate-operator-new.md) —
@@ -63,7 +72,7 @@ decay and must be re-read, not remembered.
 - [slang#13824 — render-test binds a Texture2D.Handle input as a Vulkan storage image](13824-render-test-texture-handle-storage-image.md) —
   external (albertrodriguezclo) 10-21 18:31Z. A render-test access-inference bug, not emit. TRIAGED 18:51Z (cmt 6323929737, P2); Fix Report 21:14Z; PR #13829 READY (jkwak-work 10-22) @2a6ef6a after a dx12 test split (fixer `pz3euq`); CI run 39829158775 in flight; 2 unfiled side bugs await the operator. Operator asked once about filing the CUDA RWTexture2D side bug.
 - [slang#13817 — type-flow: generics over a dynamic associated type, two conformances](13817-typeflow-dynamic-assoc-type-two-conformances.md) —
-  external (LDAP) 10-21. Triaged (cmt 6314992118, P2, `reproduced`). DRAFT PR #13820 @c7517306b2 (fixer `n7r8qa`, `Refs`): the diamond E33180 is fixed and the witness segfault now reports E33180. PARKED on jkwak-work (cmt 6322223875: "known `dyn` limitation"); the triager posts the options. Recheck 10-24: no maintainer reply; next one-shot `recheck-slang-13817-8c50` 10-31 17:30Z.
+  external (LDAP) 10-21. Triaged (cmt 6314992118, P2, `reproduced`). DRAFT PR #13820 @c7517306b2 (fixer `n7r8qa`, `Refs`): the diamond E33180 is fixed and the witness segfault now reports E33180. 10-28: assignee saipraveenb25 said legacy "should compile correctly" (cmt 6475032790); The joint reply asking about scope is cmt 6475284726. PARKED on saipraveenb25. One-shot `recheck-slang-13817-8c50` 10-31 17:30Z.
 - [slang#13789 — isParameterLocationUsed on a split mixed constant buffer](13789-isparameterlocationused-mixed-cb-split.md) —
   external (fuchstraumer) 10-20. Triaged (cmt 6298782357, P2). Cause in type legalization. DRAFT PR #13811 @8921fd5 (fixer session `4lrs0a`), Fix Report 10-21 16:17Z. PARKED on maintainer review (Metal emit change disclosed) + operator call on filing the pre-existing PB-in-CB binding bug. One-shot recheck 10-24 15:00Z.
 - [slang#13795 — `-O0 -separate-debug-info` loads the spirv-opt wrapper](13795-separate-debug-info-o0-loads-spirv-opt.md) —
@@ -116,7 +125,7 @@ decay and must be re-read, not remembered.
 - [slang#13690 — Metal RayQuery → `intersector<>` lowering?](13690-metal-rayquery-intersector.md) —
   human-filed (albertrodriguezclo) Metal design question (candidate-free RayQuery → `intersector<>`; reuse one `intersection_query`). Triaged 10-16 07:46Z (cmt 6210678998), Feature/P3. PARKED on kaizhangNV (#11296 scope; explicit API vs recognition pass; reuse pass vs doc). No fixer. Re-check `t-b12d01` 10-23. Sibling #13688.
 - [slang#13642 — slang-wasm `createSession` macros/search paths/options](13642-slang-wasm-createsession-options.md) —
-  human-filed (albertrodriguezclo) feature request: wasm `createSession` takes only a target. Triaged 10-15 (cmt 6193362000), Feature/P2. Reporter then opened PR #13651 (shape A, `Fixes #13642`, fork-CI action_required), so the shape decision now sits in maintainer review. 10-21: jkwak-work (assigned) asked on the issue for a JS-vs-C++ API table + minimal C++-aligned change; triager answered 10-21 (cmt 6320607407). jkwak-work decided 10-21 20:36Z (cmt 6325983474): mirror C++ `SessionDesc` with `targets[]` of `TargetDesc`. Reporter updated #13651 to c0df7e87cf at 10-21 22:22Z; now in maintainer review. Re-check `rechase-13642-wasm-sessi-cbbe` 10-28.
+  **TERMINAL, closed 10-23.** Reporter's PR #13651 (C++-shaped `SessionDesc` with `targets[]`, per jkwak-work) was merged by jkwak-work as d36f0be181.
 - [slang#13662 — slang-wasm `loadModuleFromIRBlob` + `Module.serialize`](13662-slang-wasm-load-module-ir-blob.md) —
   human-filed (albertrodriguezclo) feature request: wasm offers only `loadModuleFromSource`. Triaged 10-15 17:14Z Feature/P3; dup of older #8744. Reporter PR #13663 is the fix (watch-only, fork-CI action_required); issue post held for operator GO; re-check t-ea7eeb 10-22.
 - [slang#13673 — `sign` in `slang.numerics` (`ISignedNumeric.IntegerSign`)](13673-numerics-sign-requirement.md) —
@@ -142,7 +151,7 @@ decay and must be re-read, not remembered.
 - [slang#13558 — SlangPy ARM64 segfault draining the current-device stack](13558-slangpy-arm64-current-device-stack-segfault.md) —
   **TERMINAL, closed 10-12.** jkwak fixed it in slangpy#1219 (`~Device()` erases its stack entries, merged as fb1bca1). The 10-14 post-fix nightly ASan passes test_push_pop_current_device; the remaining red is unrelated.
 - [slang-rhi#876 — in-flight command buffers retain the device](slang-rhi-876-inflight-cmdbuf-device-retention.md) —
-  external lifetime-cycle bug, handed off to maintainer PR #884 (MERGED 10-01, no closing ref). #880 (jkwak, closes #876) still open. Triager dispatched 10-14 to verify + post resolution suggesting close; re-check `rechase-slang-rhi-876-re-b4fe` (10-15).
+  external lifetime-cycle bug, fixed by maintainer PR #884 (MERGED 10-01, no closing ref). #880 CLOSED as superseded 10-27. Triager asked 10-28 for a FINAL suggesting a close; re-check `rechase-slang-rhi-876-fi-0ff5` (11-11).
 
 - [slang#12609 — bulk-copy dyn-interface packing, PR #12875](12609-bulkcopy-dyn-interface-packing.md) —
   **PARKED 10-24** after 6 silent re-chases (task-hygiene register; no re-arm). Still waiting on maintainer jvepsalainen-nv (re-review + Windows-run question). The head has no CI since the Actions purge and is 120 behind; the operator can resume with `go 12875 rebase|ping`.
@@ -173,7 +182,7 @@ decay and must be re-read, not remembered.
 
 - [nanoclaw PR: expired falcor gate → `gate_expired`](ci-babysitter-gate-expired-pr.md) — **PARKED 10-19, no PR.** The babysitter's two sweep-gate fixes are durable patches in `data/patches/`, never pushed; the operator never answered (asked 10-16, 10-17). Resume only on an operator "open it".
 - [Yield-retry bot starved by `waiting` runs](ci-retry-yielded-bot-starved-by-waiting-runs.md) — `retry-yielded-bot-ci.py` counts approval-parked `waiting` runs as active, so it never retries yielded bot CI. Maintainer decision; raised with the operator 10-12, still live 10-21 (#13201 gate expiry).
-- [Falcor bridge rerun policy](falcor-bridge-rerun-policy.md) — gate 0d holds; one-off --job reruns of #13880/#13487 (10-27, #13725-window reds); 0d's "rerun can't change outcome" rationale is false (#13886).
+- [Falcor bridge rerun policy](falcor-bridge-rerun-policy.md) — gate 0d split: bridge `relay error` gets one `--job` rerun; pipeline `failed` gets none (two in a row = PR-owned, #13697). The #13880 one-off was for #13725-window reds. A rerun needs the live `slang-tests-*` artifact, or else a rerun of the falcor build job.
 - [Actions queue stall 10-17](actions-queue-stall-2026-10-17.md) — **recurring Saturday ~08:00Z** (10-17, 10-24) on shader-slang/slang. Likely cause (inference): the weekly 478-job `cmake-options.yml` matrix (cron `0 8 * * 6`) saturating GitHub-hosted concurrency. The 10-17 stall lasted 2h14m and cleared on its own. A fix (`max-parallel` or a cron move) needs a maintainer.
 - [Actions run history gap 10-01→10-07](actions-run-history-gap-2026-10-01-07.md) — oldest-first deletion of workflow runs and their check-runs, 10-01 20:05Z to 10-09 ~16Z. It moved about 1h of history per hour, paused from ~10-14 16Z for about 2 days, then **resumed by 10-16 22Z** (front about 10-10 00Z). Cause unknown; operator asked 10-12, 10-13 and 10-16. PRs with heads in the window look like `no-ci`.
 
@@ -213,7 +222,7 @@ decay and must be re-read, not remembered.
 - [slang#13489: accessor errors + throwing call nested in `try`](13489-accessor-errors-nested-try.md) -
   **TERMINAL 2026-10-16.** #13502 merged 10-09, and #13514 merged 10-16 10:04Z after its in-place try-coverage fix cleared the Windows-Debug stack overflow; the issue auto-closed.
 - [slang#13491: one `try` covers every throwing call in its operand](13491-try-covers-nested-calls.md) -
-  design-gated feature, triage NO-GO; **PARKED** on maintainers (coverage model + redundant-nested-`try` policy), waiting on Yong. spec#63 (merged 10-14) is the current narrow rule, not a decision. #13514 (merged 10-16) made `try g(f())` an error, so only the design question remains. Re-chase `rechase-13491-try-covera-b893` (10-28).
+  design-gated feature, triage NO-GO; **PARKED** on maintainers (coverage model + redundant-nested-`try` policy), waiting on Yong. spec#63 (merged 10-14) is the current narrow rule, not a decision. #13514 (merged 10-16) made `try g(f())` an error, so only the design question remains. Re-chase `rechase-13491-try-covera-6544` (11-04).
 - [slang#13490: `try` in a lambda checked against the enclosing function](13490-lambda-try-error-context.md) -
   triaged bug P2, reproduced, not a regression; Approach A recommended. **HOLD**: no fixer until skiminki-nv (self-assigned)
   asks for a PR. Operator re-asked once on 10-08, no reply; the final check on 10-11 found no change. No timer left: it resumes only on a human comment or an operator GO/DROP.
@@ -277,12 +286,12 @@ decay and must be re-read, not remembered.
   three post-fix hits (two in merge_group, 09-28/29, plus #11709 on 09-30). Diagnostic draft #13352 is waiting on the operator ready-flip and on jvepsalainen-nv choosing exit semantics; re-chase `rechase-13352-exit-seman-440c` (10-03).
 
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
-  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. The GCC `-flarge-source-files` fix split out as **#13570**, which jhelferty-nv merged 10-13; **10-14/15: jhelferty-nv took #13406 over**: self-assigned, retitled "Split the Ref passing mode by access", 13 commits of her own (head `671215f5de`), with the `__ref_writeonly` read check deferred behind `-experimental-feature`. The bot stands down. #11709 rebases onto her final spellings when #13406 merges. **#13406 MERGED 10-22 08:47Z (`0bd71cd709`, jhelferty-nv), so the #11709 hold has lifted.** The next step waits on the operator: is the bot allowed to rebase #11709, or does her stand-down cover it?
+  **MAINTAINER-DRIVEN since 10-28** (jhelferty-nv pushed her own rework, head `18be59a493`); the bot stands down unless a maintainer asks. Earlier: owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. The GCC `-flarge-source-files` fix split out as **#13570**, which jhelferty-nv merged 10-13; **10-14/15: jhelferty-nv took #13406 over**: self-assigned, retitled "Split the Ref passing mode by access", 13 commits of her own (head `671215f5de`), with the `__ref_writeonly` read check deferred behind `-experimental-feature`. The bot stands down. #11709 rebases onto her final spellings when #13406 merges. **#13406 MERGED 10-22 08:47Z (`0bd71cd709`, jhelferty-nv), so the #11709 hold has lifted.** The next step waits on the operator: is the bot allowed to rebase #11709, or does her stand-down cover it?
   - [#13406 review-round history](11709-13406-ref-split-review-rounds.md) — tangent-vector's round, the `readonly` rounds and reversal, the effective-mode settlement, round 3 + the GCC/FIDDLE split to #13570 and its 10-13 landing, the 10-09 budget/phantom-session/misrouted-webhook incident.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
   triaged + reproduced; three BoundMember consumers accept VarDecl only and reject InheritanceDecl. The author
-  self-assigned it, so NO-GO and no fixer; silent at 10-07 and 10-14 re-chases; next `rechase-13348-assignee-5d97` (2026-10-21).
+  self-assigned it, so NO-GO and no fixer; silent at the 10-07, 10-14, 10-21 and 10-28 re-chases; next `rechase-13348-assignee-1007` (2026-11-04).
 
 - [slang#13346 — note-suppression tracking issue for maintainer PR #13325](13346-note-suppression-tracking.md) —
   TERMINAL. #13325 merged 2026-09-30 and the maintainer closed #13346 by hand on 2026-10-01; the re-chase is done.
@@ -305,8 +314,8 @@ decay and must be re-read, not remembered.
   error-vs-warning call + draft-gated CI. Re-chase `rechase-13471-severity-fbf6` (2026-10-14).
 
 - [slang#13330 — array-of-struct shader IO crashes SPIR-V/GLSL](13330-array-of-struct-shader-io.md) —
-  triaged; two legalize-pass defects (write-path void store + overlapping input Locations). Fixer
-  HELD: external reporter co-assigned; re-chase 1 silent (10-06); re-chase 2 silent (10-13), operator asked; re-chase 3 silent (10-16), one reminder sent; re-chase 4 silent (10-20), default hold applied (#13078 merged 10-19); recheck `rechase-13330-fifth-e954` (11-03), parks indefinitely if still silent.
+  triaged; two legalize-pass defects. Main stood down 10-28: external user binaryfire is working on a
+  layout-preserving fix. Fixer HELD; last check `rechase-13330-fifth-e954` (11-03).
 
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. PR #881 implements the maintainer-mandated
@@ -315,7 +324,7 @@ decay and must be re-read, not remembered.
   (3) wait. Unchanged on 10-19; re-chase `rhi-881-review-rechase-7e72` (10-23).
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — design convergence (#812 forks, the rejected
     `IExternalMemoryQueue` sketch), the review rounds, and the 09-24 → 10-11 ready/re-chase log.
-- [slang#13549 — bump pinned LLVM to drop the ARM COFF patch](13549-llvm-pin-coff-patch.md) — OPEN, blocked upstream on llvm/llvm-project#229712; maintainer-owned (jkwak-work); one-shot re-chase `rechase-slang-13549-r1-a169` 11-06 09:00Z
+- [slang#13549 — bump pinned LLVM to drop the ARM COFF patch](13549-llvm-pin-coff-patch.md) — OPEN; llvm/llvm-project#229712 merged 10-26 but is in no LLVM release yet; maintainer-owned (jkwak-work); one-shot re-chase `rechase-slang-13549-r1-a169` 11-06 09:00Z
 - [slang#13565 — SemanticChecking compile-time step since 10-07](13565-semcheck-compile-perf-step.md) — OPEN, maintainer-owned (jvepsalainen-nv), silent; operator asked 10-16 re bot comment/bisect; green nightlies = baseline absorption, re-measure from absolute daily medians; 10-16 had a separate step-2, resolved 10-17 by the #13537 revert (#13712); re-chase `rechase-13565-r5-a966` 10-19 09:00Z
 
 - [slang#13793 — member typealias caps don't reach enclosing struct](13793-member-typealias-capability-propagation.md) —

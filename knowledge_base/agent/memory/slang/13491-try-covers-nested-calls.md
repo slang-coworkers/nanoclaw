@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13491: one try covers every throwing call in its operand"
-description: "Feature request from skiminki-nv (self-assigned), triaged 10-07 as feature + correctness bug, P2, and NO-GO until maintainers decide the design. PARKED on two maintainer decisions; skiminki-nv wants to wait for Yong. spec#63 (merged 10-14) documents the current narrow rule, which is not a decision. Next re-chase rechase-13491-try-covera-b893 runs 10-28 17:00Z."
+description: "Feature request from skiminki-nv (self-assigned), triaged 10-07 as feature + correctness bug, P2, and NO-GO until maintainers decide the design. PARKED on two maintainer decisions; skiminki-nv wants to wait for Yong. spec#63 (merged 10-14) documents the current narrow rule, which is not a decision. Next re-chase rechase-13491-try-covera-6544 runs 11-04 17:00Z."
 ---
 
 # slang#13491: let one `try` cover every throwing call in its operand
@@ -44,3 +44,7 @@ holds a reverted prototype at `scratch-13491/prototype.diff`.
   E30094 error and no longer miscompiles. The correctness-bug half of #13491 is therefore gone; what remains is the
   pure design question. The fixer's `scratch-13491/prototype.diff` predates #13514 and needs a rebase if this ever
   goes ahead. Told dashboard and created `rechase-13491-try-covera-b893` for 10-28.
+- 2026-10-28 17:00Z re-chase: still parked. #13491, #13490 and #13492 have had no comments since 10-07/08. No slang or spec
+  item mentions 13491 since 10-21. The only spec activity is tangent-vector's 10-21 comments on #65 (explicit
+  receivers), which are not about `try`. The Discord channel is still silent since 10-09 16:34Z, and Yong hasn't
+  posted. Told dashboard and created `rechase-13491-try-covera-6544` for 11-04.
