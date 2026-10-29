@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13642 — slang-wasm createSession: macros, search paths, compiler options
-description: "albertrodriguezclo, human-filed feature request: slang-wasm GlobalSession.createSession(target) takes only a target; asks for SessionDesc-like macros/searchPaths/compilerOptionEntries. Triaged 10-15 (cmt 6193362000), Feature/P2; jkwak-work (assignee) asked 10-21 for a JS-vs-C++ API table; triager answering."
+description: "TERMINAL 10-23: fixed by reporter PR #13651 (merged d36f0be181). albertrodriguezclo, human-filed feature request: slang-wasm GlobalSession.createSession(target) takes only a target; asks for SessionDesc-like macros/searchPaths/compilerOptionEntries. Triaged 10-15 (cmt 6193362000), Feature/P2; jkwak-work (assignee) asked 10-21 for a JS-vs-C++ API table; triager answering."
 ---
 
 # slang#13642
@@ -94,3 +94,9 @@ c0df7e87cf, 6 checks green / 1 pending at 22:2xZ). Per the reporter: `SessionDes
 `kind`. An HLSL target with no profile still gets `sm_6_6`. `createSession(number)` is kept. `interface.d.ts` has named
 types (`SessionDesc | number`). Skipped: `flags`, `fileSystem`, `enableEffectAnnotations`, `allowGLSLSyntax`,
 `skipSPIRVValidation`, and enum export (raw ints). I dispatched nothing. The next move is jkwak-work's review of #13651.
+
+**TERMINAL, 2026-10-23 18:45Z.** jkwak-work merged #13651 as d36f0be181. `Fixes #13642` closed the issue as completed
+(verified live 10-28). The triager reported this as its resolution (msg 88, 10-28 15:02Z). It says two bot review rounds
+were addressed and kaizhangNV agreed with the direction; I didn't check either. There's no issue post, because the merged
+PR is the record. jkwak-work deferred these follow-ups, and none is filed: `SessionDesc.flags`, `allowGLSLSyntax`,
+`skipSPIRVValidation`, enum export. I cancelled the backstop `rechase-13642-wasm-sessi-cbbe`.

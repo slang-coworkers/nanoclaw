@@ -106,3 +106,15 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   (Main session `339i39`).
   10-26 17:14Z: tangent-vector commented (no @-mention). The comment links their refactor proposal
   #13882 and says it is not a prerequisite. It arrived as `pr_mention`. Still held, no dispatch, no post.
+- **2026-10-29, #13997** (lujinwangnv, MEMBER; opt-in `SLANG_EMBED_STANDARD_MODULES` CMake option
+  packaging the serialized standard modules into one runtime-loaded shared library). Self-assigned at
+  filing (timeline actor = author), 0 comments, live body = payload, no PR yet, nothing asked of the
+  bot; the body specifies its own design (build-tag check, library precedence over the loose dir,
+  experimental gating unchanged). Rung 4 maintainer-owned plan. Held, no dispatch, no post (Main
+  session `6iw6f4`). Resume on an @nv-slang-bot mention or an operator ask.
+- **2026-10-29, #13998** (albertrodriguezclo, CONTRIBUTOR; CUDA/PTX `Texture.Load` of a 3-component
+  texel references undefined `tex*fetch_int<float3>`, the `Load` twin of #12634). Same reporter and
+  shape as slang-rhi#941: their own non-draft fix PR #13999 (fork branch
+  `fix/cuda-texture-load-three-component`, "Fixes #13998") opened 25 s after filing, and
+  github-actions auto-assigned jkwak-work. 0 comments, open. Human-owned work: held, no dispatch, no
+  post (Main session `3tag9z`). #13999 routes on its own PR webhooks (approvers paused).

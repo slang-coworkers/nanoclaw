@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13876_non_overloadable_same_scope_redeclaration
-description: "slang#13876 (skiminki-nv, MEMBER, self-assigned, sub-issue of #13719): no redeclaration diagnostic for a global `static const` vs an [UnscopedEnum] case / cbuffer / tbuffer member. Assignee-authorized bot PR #13880 (fixer sgt9at), READY @8fa442147, pr: non-breaking: W30204 in EVERY version (incl. 202c, per assignee 10-27 14:57Z) for conflicts master accepts, master's E30200 unchanged, W30203 all versions. No open maintainer questions; PARKED on human review (+ CI); peer R5 APPROVE_WITH_NITS applied; OPERATOR decision pending on 3 pre-existing bugs; one-shot rechase-13876-pr-13880-c876 10-29 12:00Z. Dated log in _history."
+description: "slang#13876 (skiminki-nv, MEMBER, self-assigned, sub-issue of #13719): no redeclaration diagnostic for a global `static const` vs an [UnscopedEnum] case / cbuffer / tbuffer member. Assignee-authorized bot PR #13880 (fixer sgt9at), READY @ae2249915, pr: non-breaking: W30204 in EVERY version (incl. 202c, per assignee 10-27 14:57Z) for conflicts master accepts, master's E30200 unchanged, W30203 all versions. 10-28 11:36Z skiminki-nv REQUEST_CHANGES (6 asks: type-based buffer pairing, per-container pass, parser alias marker, process report, shorter comments, five-part description) → 10-28 13:46Z reworked @69255c6c3 (1–5 done; 6 short-form within the gate, full report in explanation comment), 10-28 15:48Z skiminki-nv APPROVED + merge-queued 15:51Z, unqueued 16:14Z for a message reword (applied @ae2249915), which DISMISSED the approval; 16:31Z RE-APPROVED 'LGTM if CI passes' @ae2249915; 18:52Z CI GREEN (pull_request 40725494846, rollup SUCCESS); awaiting skiminki-nv re-queue; gate question moot; OPERATOR decision pending on 3 pre-existing bugs; one-shot rechase-13876-pr-13880-c876 10-29 12:00Z. Dated log in _history."
 ---
 
 # slang#13876: diagnose non-overloadable declarations in the same scope
@@ -9,15 +9,15 @@ description: "slang#13876 (skiminki-nv, MEMBER, self-assigned, sub-issue of #137
 Dated log (ids, heads, CI runs, every forward): [[project_13876_non_overloadable_same_scope_redeclaration_history]].
 Umbrella: [[project_13719_unqualified_name_lookup_umbrella]].
 
-## Current state (as of 10-27 16:55Z, checked live)
+## Current state (as of 10-28 18:55Z, checked live)
 
 | | |
 |---|---|
-| PR | [#13880](https://github.com/shader-slang/slang/pull/13880) `fix/issue-13876` @ `8fa442147`, ready (marked by skiminki-nv 10-23 13:24Z), `pr: non-breaking`, 19 files +1181/−12 |
+| PR | [#13880](https://github.com/shader-slang/slang/pull/13880) `fix/issue-13876` @ `ae2249915`, ready (marked by skiminki-nv 10-23 13:24Z), `pr: non-breaking`, 21 files, 34 commits |
 | Owner | slang-fixer `sess-1792694206953-sgt9at` (PR-mapped) on `gh-issue-shader-slang/slang-13876`; triager `sess-1792693495093-68uevm` (holds its own re-check `t-29e011`) |
-| Review | peer R5 APPROVE_WITH_NITS applied (module-decl W30204 hole + syntax-modifier E99997 assert fixed); **no human review yet** |
-| CI | pull_request run 40544338814 pending at `8fa442147` |
-| Parked on | human review only; both 10-27 answers ([6445312525](https://github.com/shader-slang/slang/issues/13876#issuecomment-6445312525)) implemented |
+| Review | skiminki-nv APPROVED 15:48Z ([5685541303](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5685541303)) and merge-queued 15:51Z; unqueued 16:14Z for the W30204 reword; the reword push **dismissed the approval** (16:23Z); reviewDecision null, BEHIND |
+| CI | pull_request run 40725494846 **success**; PR rollup SUCCESS (the yielded dispatch 40725539917 rows are hidden by the rollup) |
+| Parked on | skiminki-nv re-queuing (re-approved 16:31Z [5686166855](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5686166855), "LGTM if CI passes"; condition met); BLOCKED is the normal pre-queue state; no bot pushes, dispatches or notes |
 | Timer | one-shot `rechase-13876-pr-13880-c876`, 10-29 12:00Z |
 | Operator | decision pending: file the 3 pre-existing bugs below? |
 
@@ -69,6 +69,11 @@ blocks without an instance name.
 - **Read CI from `repos/<o>/<r>/commits/<sha>/check-runs`, filtered by run**, not `gh pr checks`
   (it omitted the failing priority-yield runs) and not a naive tally (a stale pre-ready run still
   showed "failure=2" on a green head).
+- **On a non-draft PR, don't workflow_dispatch CI:** the bot dispatch priority-yields and leaves red `check-ci` rows on the
+  head next to the real pull_request run, which muddies a reviewer's "LGTM if CI passes".
+- **A push after approval dismisses it on shader-slang/slang** (stale-review dismissal), and the repo uses a
+  merge queue that accepts a BEHIND branch. Once a PR is approved, push only on the reviewer's request, report the
+  dismissal, and don't add a master merge, which would cost another re-approval.
 - **Falcor red during an outage:** once the `slang-tests-*` artifact has expired, a test-falcor-only
   rerun fails in 19 s; re-run the build job. Here the red was the #13725 outage, and a fixer waiting
   for a rerun webhook that never fires needed a supervisor nudge.

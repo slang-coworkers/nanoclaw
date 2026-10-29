@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13847_target_ignore_capabilities_e36107
-description: "10-23: maintainer jkwak-work summoned the bot to explain the four getOptionSet() methods; dispatched to slang-triager (thread gh-issue-shader-slang/slang-13847). Before that HUMAN-OWNED, nothing dispatched (10-21 22:44Z). slang#13847 (albertrodriguezclo, external): IgnoreCapabilities in TargetDesc::compilerOptionEntries does not silence E36107, because validateEntryPoint reports it against linkage->m_optionSet (confirmed on master ffbd1771e5, slang-check-shader.cpp ~2588-2627). Author filed it with their own fix PR #13848 (fix/target-ignore-capabilities, reviewer dshreiner-nv). Touches our parked #13638 chain: the triager's comment 6193471137 says the per-target option does not help, which goes stale if #13848 merges."
+description: "10-28 09:00Z re-check: #13848 still OPEN (DIRTY, unapproved) — no #13638 correction sent; timer spent. 10-23: maintainer jkwak-work summoned the bot to explain the four getOptionSet() methods; dispatched to slang-triager (thread gh-issue-shader-slang/slang-13847). Before that HUMAN-OWNED, nothing dispatched (10-21 22:44Z). slang#13847 (albertrodriguezclo, external): IgnoreCapabilities in TargetDesc::compilerOptionEntries does not silence E36107, because validateEntryPoint reports it against linkage->m_optionSet (confirmed on master ffbd1771e5, slang-check-shader.cpp ~2588-2627). Author filed it with their own fix PR #13848 (fix/target-ignore-capabilities, reviewer dshreiner-nv). Touches our parked #13638 chain: the triager's comment 6193471137 says the per-target option does not help, which goes stale if #13848 merges."
 ---
 
 # slang#13847: target-level `IgnoreCapabilities` does not silence E36107
@@ -30,7 +30,7 @@ the capability-system maintainers (A defer / B opt-in / C document). The owner i
 `sess-1792070271261-svtzet`, with re-check task `system:tasks:i13638-recheck-e622`. #13848 does not decide that
 question: the issue body says it is about which option set the check reads, not when the check runs.
 
-**Timer:** one-shot task `13848-merge-recheck-9ccf` (process-after 2026-10-28T09:00Z) checks whether #13848 merged.
+**Timer:** one-shot task `13848-merge-recheck-9ccf` (process-after 2026-10-28T09:00Z) checked whether #13848 merged. It fired 10-28 and is now spent (see below); no new timer was created.
 
 **Resume on:** a maintainer asking the bot to act on #13847/#13848; or **#13848 merging**. In that case, tell the
 #13638 triager owner (thread `gh-issue-shader-slang/slang-13638`, pin the session above) that the per-target
@@ -51,3 +51,12 @@ TargetDesc applied on top; (3) `ComponentType`, which `linkWithOptions` writes; 
 plus missing options from the target set, read by codegen. E36107 reads (1); #13848 moves it to (2). The triager
 also noted that `TargetInfo::targetOptions` is dead code. Chain state is in the triager's `memory/issues/13847.md`.
 **Next:** idle until jkwak-work replies; a human reply on #13847 is a live inbound for the triager.
+
+**10-28 09:00Z: re-check (task `13848-merge-recheck-9ccf`): #13848 still OPEN, so nothing was sent.** Head is now
+`dac4098c77`. The author pushed it 10-25 06:28Z ("Unit test: include List and String headers, so it builds with
+GCC"). `mergeStateStatus=DIRTY`, which means it conflicts with master. There is no review decision. skiminki-nv's
+10-23 review was dismissed, then they left a COMMENTED review. jkwak-work commented 10-23 20:28Z that they are
+"waiting on more information", linking the #13847 thread. So the #13638 comment 6193471137 is still accurate on
+master, and the slang-triager was **not** messaged. **Resume on:** #13848 merging. Nothing now polls for that: the
+timer is spent. A merge is caught only by a human/maintainer inbound or by a later supervise pass. If it merges,
+send the correction to the #13638 owner as described above.

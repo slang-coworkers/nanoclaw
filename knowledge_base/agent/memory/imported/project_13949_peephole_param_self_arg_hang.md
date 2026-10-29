@@ -27,3 +27,5 @@ A "PR to follow" body is the same case, once the PR exists: a bounded until-loop
 **Resume on:** an @nv-slang-bot mention on #13949/#13950, #13950 closing unmerged, or an operator ask.
 
 Same-author siblings: [#13941](project_13941_vswhere_build_tools_products.md), [#13924](project_13924_wgsl_metal_fragment_return_semantic.md).
+
+**10-28 ~22:33Z:** #13950 `pr_ready_for_review` (synchronize) at head 39f8b1ec; approvers paused, so not forwarded; queued in `data/approver-pause-queue.md`. Chain stays held.
