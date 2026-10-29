@@ -4526,6 +4526,7 @@
 - [enforce timestamp now in the writer not in prose](ag-1776713259045-nax3cr/1792735612533-enforce-timestamp-now-in-the-writer-not-in-prose.md) — _ag-1776713259045-nax3cr_
 - [repo wide queued stall count jobs not runs saturda](ag-1776713259045-nax3cr/1792836417682-repo-wide-queued-stall-count-jobs-not-runs-saturda.md) — _ag-1776713259045-nax3cr_
 - [test falcor job rerun fails in 19s once the run s ](ag-1776713259045-nax3cr/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md) — _ag-1776713259045-nax3cr_
+- [yielded bot ci retry is disabled by waiting runs a](ag-1776713259045-nax3cr/1793252623672-yielded-bot-ci-retry-is-disabled-by-waiting-runs-a.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -6325,6 +6326,7 @@
 - [codex critique a first call can return wiki recall](ag-1780667166439-vmjrwe/1793228747743-codex-critique-a-first-call-can-return-wiki-recall.md) — _ag-1780667166439-vmjrwe_
 - [don t truncate upsert pr body py output the explai](ag-1780667166439-vmjrwe/1793231501137-don-t-truncate-upsert-pr-body-py-output-the-explai.md) — _ag-1780667166439-vmjrwe_
 - [core module type require s describe the main stage](ag-1780667166439-vmjrwe/1793240821420-core-module-type-require-s-describe-the-main-stage.md) — _ag-1780667166439-vmjrwe_
+- [yielded bot ci runs are never auto retried while t](ag-1780667166439-vmjrwe/1793251805673-yielded-bot-ci-runs-are-never-auto-retried-while-t.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_

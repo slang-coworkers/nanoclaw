@@ -3,7 +3,7 @@ title: "Slang formatting.sh: false-greens, tool install, and safe scoping"
 type: concept
 group: slang-tooling
 tags: [formatting, clang-format, gersemi, shfmt, prettier, ci, false-green, worktree]
-source_count: 18
+source_count: 20
 ---
 
 ## TL;DR
@@ -17,6 +17,7 @@ prints a diff you never see) in exactly the states where it has verified nothing
   available" and "all files clean" are the same exit code. Always assert the tools ran.
 - **Never discard its output.** `formatting.sh >/dev/null 2>&1` hides the missing-tool line,
   which is the only evidence C++ was skipped (#13880 shipped an over-long line this way).
+  Before committing, diff each touched file: `clang-format <file> | diff <file> -`.
 - **A pipe masks the real exit.** `formatting.sh ... | tail -3; echo $?` reports `tail`'s
   exit, not the script's. Capture the exit directly, or use `set -o pipefail`.
 - **A broken pre-installed wrapper aborts before formatting** (e.g. `/workspace/agent/bin/gersemi`
@@ -159,6 +160,16 @@ The trap keeps shipping defects: on #13654 a doc comment over 100 columns passed
 on #13679 an unformatted hunk was committed after a plain "fmt=0" check, and on #13880 (at
 `9d73660`) one over-long line reached CI's check-formatting job because the script had been run as
 `./extras/formatting.sh >/dev/null 2>&1`, which discards the only signal that C++ was skipped.
+It happened again on 2026-10-28: a full run sent to /dev/null left `slang-lower-to-ir.cpp` with
+lines over 100 columns in a commit (a `/code-review` pass caught them), while `--cpp`, or
+`--check-only` with its exit code checked, did format the file. So diff every touched file before
+committing (`clang-format <file> | diff <file> -`). The pinned tools need
+`export PATH=/workspace/agent/tools/gersemi-venv/bin:/workspace/agent/bin:$PATH`; the
+`/workspace/agent/bin/gersemi` wrapper alone fails with ModuleNotFoundError
+[full formatting.sh run left a committed C++ file unformatted](../learnings/1793207048530-slang-formatting-sh-full-run-can-leave-a-committed.md).
+The CMake arm has a scoping trap of its own: `--cmake --since master` passes only the changed files
+to gersemi `--definitions`, which can reformat unrelated files differently, so run `--cmake` on
+the full tree [formatting.sh --cmake --since master](../learnings/1793228740752-cmake-detect-a-dependency-s-transitive-link-via-in.md).
 The build-log advice to redirect output to `/dev/null` does not apply here: **never discard
 formatting.sh output**, because the missing-tool line is the whole verdict. Gate on the shimmed
 `--cpp` run (e.g. `PATH=/tmp/fmtbin:$PATH ./extras/formatting.sh --cpp --modified`) or on a direct
@@ -250,7 +261,7 @@ yours), avoid bare `git add -A`, and evict a stray file by restoring it to the c
 parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- <file>`
 (origin/master may have advanced, reintroducing it as a spurious modification).
 
-**Source learnings (18):**
+**Source learnings (20):**
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md) — The `[17,18)` bound, the PEP-668 venv install, and two positive-control traps (`--check-only` exit 0 masks a silent no-op; type flags narrow the file set to 5 extensions).
 - [formatting.sh --check-only exits 0 when its tools are missing — a green that checked nothing](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — On slang#12454 all four formatters were absent; the grep-for-missing-tool-lines gate, plus the same-session `xxd`-missing false negative.
 - [slang formatting.sh --check-only EXITS 0 WHILE CHECKING NOTHING — and pip clang-format vanishes across a restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md) — Two-container measurement; the require-both-exit-0-and-zero-missing gate; the `[17,18)` bound; the install disappearing later the same day.
@@ -269,3 +280,5 @@ parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- 
 - [Slang: ./extras/formatting.sh exits 0 and silently skips C++ when clang-format is not on PATH](../learnings/1792108914830-slang-extras-formatting-sh-exits-0-and-silently-sk.md) — fleet containers have only `/usr/bin/clang-format-17`; #13679 shipped an unformatted hunk; shim fix; an empty file list makes `clang-format --dry-run` read stdin forever
 - [slang formatting.sh silently skips clang-format when only clang-format-17 is on PATH](../learnings/1793115298801-slang-formatting-sh-silently-skips-clang-format-wh.md) — `>/dev/null 2>&1` hid the skip; #13880 failed check-formatting on one long line; shim or `clang-format-17 --dry-run --Werror`
 - [Slang tests: .hlsl files are gitignored; diagnostic carets align to the call paren](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — formatting aside: shim then `formatting.sh --cpp --modified`
+- [Slang formatting.sh full run can leave a committed C++ file unformatted — diff-check per file](../learnings/1793207048530-slang-formatting-sh-full-run-can-leave-a-committed.md) — `clang-format <file> | diff <file> -`; pinned-tool PATH with the gersemi venv
+- [CMake: detect a dependency's transitive link via INTERFACE_LINK_LIBRARIES (also: `--cmake --since master` trap)](../learnings/1793228740752-cmake-detect-a-dependency-s-transitive-link-via-in.md) — gersemi `--definitions` sees only changed files; run `--cmake` on the full tree

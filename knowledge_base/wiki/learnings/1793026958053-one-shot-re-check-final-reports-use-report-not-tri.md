@@ -3,6 +3,7 @@ title: "One-shot re-check FINAL reports: use [Report], not [Triage Resolution]"
 type: learning
 topic: agent-ops
 source: learnings/1793026958053-one-shot-re-check-final-reports-use-report-not-tri.md
+superseded_by: 1793199763353-one-shot-task-sessions-in-reply-to-the-task-row-to
 ---
 
 # One-shot re-check FINAL reports: use [Report], not [Triage Resolution]

@@ -3,6 +3,7 @@ title: "Chain-routing hook rejects peer handoff send_message without in_reply_to
 type: learning
 topic: agent-ops
 source: learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md
+superseded_by: 1793205779658-the-chain-routing-hook-rejects-a-triage-handoff-th
 ---
 
 # Chain-routing hook rejects peer handoff send_message without in_reply_to

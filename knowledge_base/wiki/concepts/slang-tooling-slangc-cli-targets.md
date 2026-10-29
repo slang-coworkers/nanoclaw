@@ -3,7 +3,7 @@ title: "slangc CLI, Freshness & Emit-Verification Mechanics"
 type: concept
 group: slang-tooling
 tags: [slangc, cli, filecheck, dump-ir, diagnostics, version, freshness, check-cmdline-ref, render-test]
-source_count: 20
+source_count: 22
 ---
 
 # slangc CLI, Freshness & Emit-Verification Mechanics
@@ -44,6 +44,7 @@ Reliable freshness checks (in ~2 min):
 1. **Object mtime:** `find build -name 'slang-emit-spirv.cpp.o' -printf '%t %p\n'` — the `.o` mtime should be newer than the source mtime after `git reset --hard origin/master`.
 2. **Feature probe:** compile a tiny shader exercising a feature that landed AFTER the suspect-stale commit. If the binary emits the new diagnostic / accepts the new attribute, it is provably newer than that commit.
 3. **Diff identity:** `git diff --stat <baked-sha>..HEAD -- source/` — if none of the files under investigation changed since the baked commit, the binary's behavior for that code path is correct regardless.
+4. **Binary mtime vs reflog:** compare the binary's mtime with `git reflog --date=iso` (when HEAD moved) and with the mtimes of the files changed since then (`git diff --name-only <old> HEAD`). A Windows-only file such as `source/compiler-core/windows/*` is not built on Linux, so it cannot make a Linux binary stale. Measured 2026-10-28: a Debug build printed `2026.13.1-50-g3649fb982` while HEAD was 3218a7612 ([slangc -version shows configure-time git describe, not HEAD](../learnings/1793201892976-slangc-version-shows-configure-time-git-describe-n.md)), and after `git checkout` plus an incremental build in an old worktree a 3218a7612 binary printed `2026.19-19-gfeb2452bf`. In a report, name the SHA from `git rev-parse HEAD`, never from `-version` ([`-version` keeps the old worktree's describe](../learnings/1793205140280-disable-non-essential-validations-contract-help-te.md)).
 
 The version header can be refreshed by deleting the generated `slang-tag-version.h` and reconfiguring, but for repro work the cosmetic staleness is harmless once the binary is confirmed by behavior. ([slangc -v version string is baked at CONFIGURE time, not build time](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md), [Confirm a build is really ToT with a feature-probe, not the slangc -v string (extends the #11483 stale-binary trap)](../learnings/1781651877940-confirm-a-build-is-really-tot-with-a-feature-probe.md), [Verify-at-HEAD can be silently wrong: cached slangc binary may be weeks-stale — check freshness before trusting any repro](../learnings/1782470684664-verify-at-head-can-be-silently-wrong-cached-slangc.md))
 
@@ -102,7 +103,7 @@ A single-case grep (camel OR pascal) will silently miss alive entries in the oth
 
 **The diagnostic output format changed between releases, so grep both forms when bisecting.** Binaries from v2025.2x and older print `file.slang(9): error 30019: ...`; newer ones print `error[E30019]: ...`. A `grep -oE 'error\[E[0-9]+\]'` returns nothing on an old binary, so a failing old compile looks like a success — this produced a false "regression since v2025.24" claim that OUTPUT_REVIEW caught before filing. Check slangc's exit status (255 on error) and grep `error\[?E?[0-9]+`; capture `rc=$?` on the line right after slangc, because inside `$(...)` or after a pipe `$?` is the last stage's code. The same atom notes that an E30019 reading "expected T got T" usually hides a layout/modifier difference the type printer omits: since #12992 made `MatrixLayoutModifier` a `TypeModifier`, `_coerce` (`slang-check-conversion.cpp:2316`) converts layout-only-different matrices but not arrays of them, so `cbuffer { row_major float4x4 m[N]; }` passed to a `float4x4 x[N]` parameter fails (#13376) ([old slangc releases print `error 30019` with no E prefix](../learnings/1790885585791-old-slangc-releases-print-error-30019-no-e-prefix-.md)).
 
-**Source learnings (20):**
+**Source learnings (22):**
 - [Verify Slang diagnostics with slangc-only build (slang-test won't link: X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md)
 - [Verifying Slang PR emit locally: build slangc-only to dodge the slang-rhi/X11 build break](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md)
 - [slangc -v version string is baked at CONFIGURE time, not build time](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md)
@@ -123,5 +124,7 @@ A single-case grep (camel OR pascal) will silently miss alive entries in the oth
 - [filecheck-buffer tests pass vacuously when slang-llvm is disabled](../learnings/1790896856276-slang-test-filecheck-buffer-tests-pass-vacuously-w.md) — TEST_INPUT integers without `.0` are int bits
 - [backtrace a hung slangc by running it under gdb and sending SIGINT](../learnings/1790959668691-slang-get-a-backtrace-of-a-hung-slangc-by-running-.md) — `ptrace_scope=1`; `-dump-ir-before` on a hang (#12564)
 - [old slangc releases print `error 30019` (no E prefix) — grep both forms when bisecting](../learnings/1790885585791-old-slangc-releases-print-error-30019-no-e-prefix-.md) — plus array-of-layout-matrix E30019 (#13376)
+- [slangc -version shows configure-time git describe, not HEAD; local arrays vanish even at -O0](../learnings/1793201892976-slangc-version-shows-configure-time-git-describe-n.md) — compare binary mtime with `git reflog`; Windows-only files do not stale a Linux binary
+- [-disable-non-essential-validations contract (side note: `-version` after checkout + incremental build)](../learnings/1793205140280-disable-non-essential-validations-contract-help-te.md) — name the SHA from `git rev-parse HEAD`
 
 _Catalog: [[wiki/index.md]]_

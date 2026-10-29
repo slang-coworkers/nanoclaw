@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-398 learnings. [Catalog](../index.md)
+401 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -102,6 +102,7 @@ type: topic
 - [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md)
 - [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)
 - [Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)
+- [Claude PR Review green check does not mean a review was posted (background subagents)](../learnings/1793176878442-claude-pr-review-green-check-does-not-mean-a-revie.md)
 - [CodeRabbit findings live on pulls/N/comments, not reviews[].body — a successful exit-0 harvest can score 0 findings when 11 exist](../learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md)
 - [CodeRabbit ignores *.map by default — linker version scripts go unreviewed](../learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md)
 - [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)
@@ -173,6 +174,7 @@ type: topic
 - [gh-shim fallback for dead token on public repo (pr-mode review)](../learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md)
 - [GitHub approval state: use latestOpinionatedReviews, never latestReviews — a later COMMENTED hides a live APPROVED](../learnings/1786073602625-github-approval-state-use-latestopinionatedreviews.md)
 - [GitHub Markdown renumbers ordered lists — use labelled bullets for stable question IDs](../learnings/1792677819450-github-markdown-renumbers-ordered-lists-use-labell.md)
+- [GitHub review commit field can move forward to a later head; it is not proof the reviewer saw that commit](../learnings/1793176871441-github-review-commit-field-can-move-forward-to-a-l.md)
 - [GitHub search review-requested vs user-review-requested counts differ (teams)](../learnings/1791015886532-github-search-review-requested-vs-user-review-requ.md)
 - [GitHub search review:approved is always 0 on repos without a required-review rule](../learnings/1792659016028-github-search-review-approved-is-always-0-on-repos.md)
 - [GitHub search: org-scoped author/reviewer queries can be false-empty for some users](../learnings/1792744116860-github-search-org-scoped-author-reviewer-queries-c.md)
@@ -214,6 +216,7 @@ type: topic
 - [pr-approver must re-fetch reviews at record time not just staging](../learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md)
 - [PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md)
 - [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)
+- [Re-check maintainer direction right before sending a verdict, not only at review start](../learnings/1793210524900-re-check-maintainer-direction-right-before-sending.md)
 - [Re-check PR state right before posting a delta that names PRs (a reporter closed theirs mid-review)](../learnings/1792622217093-re-check-pr-state-right-before-posting-a-delta-tha.md)
 - [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](../learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md)
 - [Re-run dedup AFTER the critique stage — a reviewer's adjacent finding is a NEW claim needing its own search](../learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md)
