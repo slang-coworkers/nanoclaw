@@ -309,7 +309,7 @@ def collect(
             return False
         reads += 1
         try:
-            data = ncl.run("sessions", "messages", rec["id"], "--limit", str(limit), "--full")
+            data = ncl.run("sessions", "messages", rec["id"], "--limit", str(limit), "--full", "--reverse")  # newest rows: a plain --limit returns the OLDEST
             rec["messages"] = [m for m in (project_message(r) for r in (data or [])) if m is not None]
             return True
         except RuntimeError as exc:
@@ -418,8 +418,8 @@ def collect(
             rec["messages_error"] = "not read: row not in flight"
             rec["skipped"] = True
             unread += 1
-        else:
-            read_messages(rec)
+        elif read_messages(rec):
+            # an unread session leaves its thread null for the supervisor, so its cost status would go unused
             read_cost(rec)
         threads.setdefault(row, {"thread_id": tid, "sessions": []})["sessions"].append(rec)
 

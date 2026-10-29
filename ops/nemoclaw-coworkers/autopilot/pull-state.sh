@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # pull-state.sh: assemble the Hermes autopilot state INSIDE the Orchestrator container.
 #
-# Called by the two tick prompts, and by the task gates under `timeout 22`. It reads the one
+# Called by the two tick prompts, and by the task gates with a PULL_END_BY (a 27 s `timeout` backstop). It reads the one
 # ledger, the plan and the matrix from the shared mirror, the fork through `gh` (OneCLI injects
 # the credential), and the role sessions through `ncl` (the dashboard API is not reachable from
 # a container), then runs the deterministic core and writes, under $AUTOPILOT_DIR:
@@ -59,7 +59,7 @@
 #
 # Env knobs (container defaults shown): AUTOPILOT_DIR LEDGER UPSTREAM_ASKS PLAN MATRIX ALERTS FORK NCL GH
 # ACKS=$AUTOPILOT_DIR/acks.json PROBE_TIMEOUT=25 COLLECT_LIMIT=200 COLLECT_MAX_SESSIONS=80 COLLECT_DEADLINE_S=0 (the gates set 10)
-# COLLECT_ROWS_FROM_QUEUE=1 (0 reads every row thread) NOW_OVERRIDE. Every path has an override so
+# COLLECT_ROWS_FROM_QUEUE=1 (0 reads every row thread) PULL_END_BY PULL_TAIL_S=3 PULL_CALL_S=1.5 NOW_OVERRIDE. Every path has an override so
 # the script runs offline against fixtures with a fake `ncl` and `gh` on PATH (test_pull_state.py).
 set -euo pipefail
 
@@ -80,6 +80,9 @@ COLLECT_MAX_SESSIONS=${COLLECT_MAX_SESSIONS:-80}
 COLLECT_DEADLINE_S=${COLLECT_DEADLINE_S:-0}
 COLLECT_OPERATOR_DEADLINE_S=${COLLECT_OPERATOR_DEADLINE_S:-3}   # pass 3's own reserve (operator threads), runs before the row reads
 COLLECT_ROWS_FROM_QUEUE=${COLLECT_ROWS_FROM_QUEUE:-1}
+PULL_END_BY=${PULL_END_BY:-}   # epoch seconds the caller must be done by; empty = no end (the tick prompts' own pull)
+PULL_TAIL_S=${PULL_TAIL_S:-3}  # the steps after the collector (~2.4 s measured on the box)
+PULL_CALL_S=${PULL_CALL_S:-1.5} # one serial ncl round trip (~1.1 s measured on the box)
 NOW=${NOW_OVERRIDE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 RAW=$AP/raw
@@ -135,7 +138,13 @@ done
 
 # --- 2. The fork: one gh call ------------------------------------------------------------
 FORK_CHECKED=false
-run_probe "gh pr list" "$RAW/prs.json" with_timeout "$PROBE_TIMEOUT" "$GH" pr list --repo "$FORK" --state all --limit 100 \
+GH_PROBE_TIMEOUT=$PROBE_TIMEOUT
+if [ -n "$PULL_END_BY" ]; then
+  # a stalled gh must not eat the time the ncl reads after it need to finish before the caller's end
+  GH_PROBE_TIMEOUT=$(python3 -c 'import sys,time; print(min(float(sys.argv[2]), max(1, int((float(sys.argv[1]) - time.time()) / 3))))' \
+    "$PULL_END_BY" "$PROBE_TIMEOUT")
+fi
+run_probe "gh pr list" "$RAW/prs.json" with_timeout "$GH_PROBE_TIMEOUT" "$GH" pr list --repo "$FORK" --state all --limit 100 \
   --json number,title,url,body,headRefName,baseRefName,isDraft,state,createdAt,updatedAt,mergedAt,closedAt,headRefOid,mergeCommit,comments
 if [ -s "$RAW/prs.json" ] && python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$RAW/prs.json" 2>/dev/null; then
   mv "$RAW/prs.json" "$AP/prs.json"
@@ -303,6 +312,24 @@ if [ "$COLLECT_ROWS_FROM_QUEUE" = 1 ] && [ "$CORE_QUEUE" = ok ]; then
   ROWS_ARGS=(--rows "$IN_FLIGHT")
 fi
 COLLECT=$(find_core collect_threads.py)
+if [ -n "$COLLECT" ] && [ -n "$PULL_END_BY" ]; then
+  # The caller's wall-clock end (gate-supervise.sh): both transcript budgets shrink to the time left, so the pull ends
+  # on its own rather than being killed mid-`ncl`. Reserved: the steps after the collector (PULL_TAIL_S) and the ncl
+  # calls a read begun just inside a deadline still makes.
+  read -r COLLECT_DEADLINE_S COLLECT_OPERATOR_DEADLINE_S < <(python3 - "$PULL_END_BY" "$PULL_TAIL_S" "$PULL_CALL_S" \
+    "$COLLECT_DEADLINE_S" "$COLLECT_OPERATOR_DEADLINE_S" <<'PY'
+import sys, time
+end_by, tail, call, row_cfg, op_cfg = (float(a) for a in sys.argv[1:6])
+left = end_by - time.time() - tail - 3 * call  # a read that starts just inside a deadline: 1 in pass 3, 2 (messages + cost) in a row read
+op = max(0.1, min(op_cfg if op_cfg > 0 else 3.0, left / 2))  # its configured reserve while it fits; never 0 ("no reserve")
+row = max(0.1, left - op)
+if row_cfg > 0:
+    row = min(row, row_cfg)
+print(f"{row:.1f} {op:.1f}")
+PY
+  )
+  log "transcript budget from PULL_END_BY: rows ${COLLECT_DEADLINE_S}s, operator ${COLLECT_OPERATOR_DEADLINE_S}s"
+fi
 if [ -n "$COLLECT" ]; then
   run_probe "collect_threads.py" "$RAW/threads.json" python3 "$COLLECT" \
     --groups "$RAW/groups.json" --sessions "$RAW/sessions.json" --ncl "$NCL" --now "$NOW" \

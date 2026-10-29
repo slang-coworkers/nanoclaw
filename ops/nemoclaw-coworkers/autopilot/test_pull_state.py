@@ -16,6 +16,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -87,6 +88,10 @@ if args[:2] == ["groups", "list"]: out(fx["groups"])
 if args[:2] == ["sessions", "list"]: out(fx["sessions"])
 if args[:2] == ["sessions", "messages"]:
     sid = args[2]
+    if fx.get("sleep_s"):
+        import time; time.sleep(fx["sleep_s"])
+    with open(sys.argv[0] + ".done.log", "a") as fh:
+        fh.write(sid + "\n")
     if sid in fx["fail_messages"]:
         sys.stderr.write("session not found: " + sid); sys.exit(1)
     out(fx["messages"].get(sid, []))
@@ -97,6 +102,8 @@ sys.stderr.write("unexpected: " + " ".join(args)); sys.exit(2)
 FAKE_GH = r'''#!/usr/bin/env python3
 import json, sys
 fx = json.load(open(sys.argv[0] + ".fixtures.json"))
+if fx.get("gh_sleep_s"):
+    import time; time.sleep(fx["gh_sleep_s"])
 print(json.dumps(fx["prs"]))
 '''
 
@@ -406,6 +413,56 @@ class PullStateTest(unittest.TestCase):
         st = json.loads((self.ap / "state.json").read_text())
         self.assertEqual(st["eligible_next"], [])
 
+
+    def _gate(self, **env_extra):
+        (self.bin / "ncl.fixtures.json").write_text(json.dumps(self.fixtures))
+        (self.bin / "gh.fixtures.json").write_text(json.dumps(self.fixtures))
+        env = {
+            **os.environ,
+            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(DOCS / "dispatch-plan.md"),
+            "MATRIX": str(DOCS / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
+            "GH": str(self.bin / "gh"), "NOW_OVERRIDE": NOW, "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
+            **env_extra,
+        }
+        shutil.copy(HERE / "pull-state.sh", self.ap / "pull-state.sh")
+        for f in ("hermes_queue.py", "hermes_supervise.py", "collect_threads.py", "rowid.py", "scorecard.py", "abtr.py"):
+            shutil.copy(HERE / f, self.ap / f)
+        t0 = time.monotonic()
+        proc = subprocess.run(["bash", str(HERE / "gate-supervise.sh")], capture_output=True, text=True, env=env, check=False)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return json.loads(proc.stdout.strip().splitlines()[-1]), time.monotonic() - t0
+
+    def test_gate_pull_ends_on_its_own_inside_its_end_and_wakes_for_the_rows_it_could_not_read(self):
+        """With PULL_END_BY the collector's budgets shrink to the time left, so the pull exits 0 before the backstop
+        (never killed mid-ncl); the in-flight row it could not finish reading is named and wakes the agent to re-pull."""
+        self.fixtures["sleep_s"] = 1.5  # every transcript read: the budget below leaves room for about one
+        last, took = self._gate(GATE_PULL_S="6", GATE_BACKSTOP_S="20", PULL_TAIL_S="1", PULL_CALL_S="0.5")
+        self.assertEqual(last["data"]["pull_rc"], 0)  # ended on its own: the backstop never fired
+        self.assertLess(took, 20)
+        self.assertEqual(last["data"]["budget_unread"], ["LOOP-F35"])
+        self.assertTrue(last["data"]["partial"])
+        self.assertTrue(last["wakeAgent"])
+        st = json.loads((self.ap / "state.json").read_text())
+        self.assertTrue(any("deadline" in w for w in st["threads_unreadable"]["hermes-LOOP-F35"]))
+
+    def test_gate_bounds_a_stalled_gh_so_the_ncl_reads_still_finish_before_the_end(self):
+        """A gh probe that stalls is cut to a third of the time left, so the transcript reads after it still finish and
+        state.json is written; the backstop never fires mid-ncl."""
+        self.fixtures["gh_sleep_s"] = 30
+        last, took = self._gate(GATE_PULL_S="12", GATE_BACKSTOP_S="15", PULL_TAIL_S="1", PULL_CALL_S="0.5")
+        self.assertEqual(last["data"]["pull_rc"], 0)
+        self.assertLess(took, 15)
+        self.assertTrue((self.ap / "state.json").exists())
+        self.assertTrue((self.bin / "ncl.done.log").read_text().strip())  # at least one transcript read ran to its end
+
+    def test_gate_backstop_still_marks_a_killed_pull_partial(self):
+        """The `timeout` stays as a backstop just under the runner's 30 s: if the pull overruns its end anyway, the gate
+        reports pull_rc 124 and partial, and wakes the agent to re-pull."""
+        self.fixtures["sleep_s"] = 3
+        last, _ = self._gate(GATE_PULL_S="60", GATE_BACKSTOP_S="2")
+        self.assertEqual(last["data"]["pull_rc"], 124)
+        self.assertTrue(last["data"]["partial"])
+        self.assertTrue(last["wakeAgent"])
 
 if __name__ == "__main__":
     sys.exit(unittest.main())
