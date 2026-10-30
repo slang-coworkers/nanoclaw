@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13858_ast_natural_layout_static_members_sizeof
-description: "PARKED ON MAINTAINER 10-22 17:29Z: bot draft PR #13864 (fix/issue-13858@8a17fc92e2, pr: non-breaking, 2 files +267/-3, mapped to fixer sess-1792662002552-8wg3d2) passed peer review (R1 REQUEST_CHANGES fixed, R2 APPROVE_WITH_NITS applied) and waits for a maintainer to review it and mark it ready. slang#13858 (tdavidovicNV, MEMBER): concrete sizeof/alignof counted static struct members (ASTNaturalLayoutContext::_calcSizeImpl getFields() loop, now MemberFilterStyle::Instance). Reporter declined to open a PR. OPERATOR DECISION PENDING on 4 follow-ups (bool 1-vs-4 front-end/IR mismatch + 3 getFields() static-as-instance checker sites). One-shot rechase-13858-pr-13864-6a46 on 10-29 12:00Z."
+description: "PARKED ON MAINTAINER 10-22 17:29Z: bot draft PR #13864 (fix/issue-13858@8a17fc92e2, pr: non-breaking, 2 files +267/-3, mapped to fixer sess-1792662002552-8wg3d2) passed peer review (R1 REQUEST_CHANGES fixed, R2 APPROVE_WITH_NITS applied) and waits for a maintainer to review it and mark it ready. slang#13858 (tdavidovicNV, MEMBER): concrete sizeof/alignof counted static struct members (ASTNaturalLayoutContext::_calcSizeImpl getFields() loop, now MemberFilterStyle::Instance). Reporter declined to open a PR. OPERATOR DECISION PENDING on 4 follow-ups (bool 1-vs-4 front-end/IR mismatch + 3 getFields() static-as-instance checker sites). 10-29 re-check: still draft, no human review; jkwak-work assigned kaizhangNV + label RTR on 10-23; follow-up choice re-asked; no timer left."
 metadata:
   node_type: memory
   type: project
@@ -121,4 +121,13 @@ operator's follow-up choice.
 **Operator decision pending (asked 11:46Z on the dashboard thread):** whether to file the 3 `getFields()`
 follow-ups as (a) one umbrella issue, (b) three issues, or (c) not at all.
 
-**Resume on:** the fixer's PR report (it must call report_pr_created), reviewer verdict, maintainer review.
+**10-29 12:00Z, one-shot `rechase-13858-pr-13864-6a46` (Main checked live):** #13864 is still OPEN and a draft at
+`8a17fc92e2`, with no reviews, no human or inline comments, and reviewDecision empty. Its last update was 10-22
+17:28Z. **Maintainer triage on the issue:** on 10-23 13:56Z, jkwak-work unassigned jkiviluoto-nv (who was
+auto-assigned by github-actions on 10-22) and assigned **kaizhangNV**, and added the label `RTR` (which has no
+description). kaizhangNV is the maintainer to expect for the review. Nothing has been pushed since `8a17fc92e2`. The
+dashboard session `rnc00v` has no operator reply after 10-22 17:30Z, so the follow-up decision is still pending. I
+re-asked it once on the dashboard thread (options a–d). The task was not rescheduled, as the task order required.
+
+**Resume on:** a maintainer review on #13864 (kaizhangNV is likely), the PR being marked ready or merged, and the
+operator's choice on the follow-ups. Webhooks deliver the first two; there is no timer.

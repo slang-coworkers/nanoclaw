@@ -33,6 +33,13 @@ it, and nobody asked the bot for anything.
 
 I offered these as operator-only, not to GitHub.
 
+**10-29 11:33Z, operator triage request** (dashboard, msg 30). Live re-read: still open, 0 comments, no labels,
+body unchanged; one change, milestone `Q4 2026 (Fall)` added 10-14 17:07Z. Spec `introduction-goals.md` still `TODO`,
+the user-guide lines are unchanged on master `01dcd35682`, and no PR/issue references #13578. I answered the
+triage myself (docs/governance, spec repo; low, non-defect; maintainer-owned) and did not dispatch the triager,
+because its workflow would post a public triage comment on a self-assigned maintainer policy issue. I offered
+the operator: dispatch the triager, or post the two pointers.
+
 **Resume** on a comment that @-mentions @nv-slang-bot (for example, asking for the spec PR or the user-guide
 rewording once the text is agreed), or if the operator says to post the pointers. A mention arrives as a
 webhook, so no re-chase timer is needed.

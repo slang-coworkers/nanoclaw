@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13847_target_ignore_capabilities_e36107
-description: "10-28 09:00Z re-check: #13848 still OPEN (DIRTY, unapproved) — no #13638 correction sent; timer spent. 10-23: maintainer jkwak-work summoned the bot to explain the four getOptionSet() methods; dispatched to slang-triager (thread gh-issue-shader-slang/slang-13847). Before that HUMAN-OWNED, nothing dispatched (10-21 22:44Z). slang#13847 (albertrodriguezclo, external): IgnoreCapabilities in TargetDesc::compilerOptionEntries does not silence E36107, because validateEntryPoint reports it against linkage->m_optionSet (confirmed on master ffbd1771e5, slang-check-shader.cpp ~2588-2627). Author filed it with their own fix PR #13848 (fix/target-ignore-capabilities, reviewer dshreiner-nv). Touches our parked #13638 chain: the triager's comment 6193471137 says the per-target option does not help, which goes stale if #13848 merges."
+description: "10-29 ~21:0xZ: #13848 APPROVED by jkwak-work (20:53Z), head 8db26a447f, not merged; approver webhook not forwarded (slang-pr-approver paused), queued in data/approver-pause-queue.md. 10-28 09:00Z re-check: #13848 still OPEN (DIRTY, unapproved) — no #13638 correction sent; timer spent. 10-23: maintainer jkwak-work summoned the bot to explain the four getOptionSet() methods; dispatched to slang-triager (thread gh-issue-shader-slang/slang-13847). Before that HUMAN-OWNED, nothing dispatched (10-21 22:44Z). slang#13847 (albertrodriguezclo, external): IgnoreCapabilities in TargetDesc::compilerOptionEntries does not silence E36107, because validateEntryPoint reports it against linkage->m_optionSet (confirmed on master ffbd1771e5, slang-check-shader.cpp ~2588-2627). Author filed it with their own fix PR #13848 (fix/target-ignore-capabilities, reviewer dshreiner-nv). Touches our parked #13638 chain: the triager's comment 6193471137 says the per-target option does not help, which goes stale if #13848 merges."
 ---
 
 # slang#13847: target-level `IgnoreCapabilities` does not silence E36107
@@ -60,3 +60,10 @@ GCC"). `mergeStateStatus=DIRTY`, which means it conflicts with master. There is 
 master, and the slang-triager was **not** messaged. **Resume on:** #13848 merging. Nothing now polls for that: the
 timer is spent. A merge is caught only by a human/maintainer inbound or by a later supervise pass. If it merges,
 send the correction to the #13638 owner as described above.
+
+**10-29 ~21:0xZ: `pr_ready_for_review` (reason synchronize) for #13848, not forwarded.** `slang-pr-approver` is
+`paused=1`, so the PR went into [`data/approver-pause-queue.md`](../../data/approver-pause-queue.md) per
+[pr-approvers-paused.md](../pr-approvers-paused.md). Live state: head `8db26a447f` (pushed 10-28 18:07Z), **jkwak-work
+APPROVED 10-29 20:53Z**, CI 55 pass / 1 pending (falcor-build-approval-gate), no auto-merge, still OPEN. A merge now
+looks close, but nothing polls for it. **Resume on:** #13848 merging, then send the #13638 correction described above.
+

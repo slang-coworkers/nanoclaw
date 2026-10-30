@@ -21,6 +21,9 @@ Each Main session routed its webhook to **no coworker and posted nothing**.
   by jhelferty-nv at 11:07:15Z. Live body = payload. Lists R1–R10 plus "shorter reviews / gym eval"; every check
   starts in warn mode, adopted only after the replay harness shows a 40% drop in review text. Six szihs drafts back
   it: #13584–#13589 (all 08:1xZ). Routed to no coworker, nothing posted.
+- **Update 10-29:** nanoclaw#1993 **merged 10-25** without the wait. Per the maintainers' 10-24 decision, the gate only skips
+  `GoodFirstBug`/`HelpWanted`/`no-bot` and accepts `bot-ok`; every other issue is delivered at once. The 4-day hold
+  described next was dropped.
 - **R6 #13596 changes Main's own intake once its gate lands**: skip `GoodFirstBug`/`HelpWanted`/`no-bot`, and hold
   human-filed issues 4 days unless a maintainer adds `bot-ok` or it's a crash with a reproducer. The gate lives in
   slang-coworkers/nanoclaw nv-main, so it's a host change, not a routing habit. Until it merges, the

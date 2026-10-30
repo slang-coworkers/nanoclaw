@@ -162,3 +162,14 @@ same way at 15:51Z, when skiminki-nv merge-queued it anyway, so BLOCKED does not
 rulesets list no review or check rules; classic protection isn't readable from here.
 The fixer offered three options. **Main chose (a): no action**, meaning no dispatch rerun and no PR note. skiminki-nv's
 "LGTM if CI passes" condition is met. Next: skiminki-nv re-queues.
+
+**10-29 12:58Z, RE-QUEUED.** skiminki-nv approved again at `ae2249915` (review 5698041568, no comment) and added #13880
+to the merge queue at 12:58:07Z. Main checked live: isInMergeQueue true, OPEN, BLOCKED, reviewDecision null. The fixer
+stays frozen. Main armed the one-shot `rechase-13880-merge-queu-57f4` for 10-30 12:00Z: it records TERMINAL if merged,
+nudges the fixer if the PR leaves the queue unmerged, and otherwise reports that it is still queued.
+
+**10-29 14:36Z, TERMINAL: MERGED.** skiminki-nv merged #13880 through the merge queue at 14:36:09Z, merge commit
+`9b3ac252d085af3a7c64886e0a89ba6879e1e93b`. #13876 closed COMPLETED at 14:36:11Z. Main checked live. The fixer cleaned
+up its worktree and active-work sentinel. Main cancelled one-shot `rechase-13880-merge-queu-57f4`, which no longer
+applies. **Only open item:** the operator's decision on the 3 pre-existing bugs, which has been asked repeatedly since
+10-23 with no answer.

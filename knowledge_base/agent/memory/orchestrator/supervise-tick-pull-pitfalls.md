@@ -21,6 +21,7 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
   repo (`payload3r.json`), re-scan.
 
+- **`payload3.json` `chains` is a dict keyed by thread** (no `key` field; `sessions` is a list of ids) — build `lo-cache.json` as `{thread:{ts:our_last_outbound,text:last_outbound_text,sess:sessions}}`.
 - **The mid-tick `ncl sessions list` re-list can come back empty** (0-byte stdout, exit 0) — `moved.py` then dies on `json.load`. Retry until the file is non-empty (tick 307).
 - **`ncl sessions messages` truncates every row to 300 chars unless `--full` is passed** — hold reasons and operator asks get cut mid-sentence. `tick305/msgs.py` passes `--full`. Any `ncl` call made while `pull.sh` is running fails with `database is locked`; do GitHub-only checks (auto-merge sweep, closed-since) during the pull instead (tick 305).
 
@@ -39,6 +40,7 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
 
 - **`ci.py` merge=UNKNOWN is GitHub computing mergeStateStatus lazily**, not a change (tick 278: 207 rows flipped, ⤵️
   dropped). When the run id is unchanged, carry the prior cell and merge state.
+- **`ci.py` can pick a yielded bot `workflow_dispatch` over the PR's own `pull_request` run** (#13880, ticks 312–313: cell ⏸️ from run 40725539917 while the PR rollup was 58 SUCCESS / 7 SKIPPED). For an approved PR whose cell is ⏸️/❌, read `gh pr view --json statusCheckRollup` and override the cell in `ci.json`.
 - **A tracked CI run can 404** (GitHub purged runs created ~10-01T20:05Z→10-07T22:25Z; 30 open PR heads had 0 check
   suites as of 10-12). `ci.py` then falls back to an older cancelled run → `❌(recheck)`. Check the PR's
   `statusCheckRollup` is empty before treating it as a rebase-nudge case.

@@ -87,3 +87,11 @@ the SHA being cited.
 - **Collision still open:** #13425 @ `3a41ab51a0` (CONFLICTING) also claims **910**, with max 37. Whichever merges second moves to 911/39. That note is on `rechase-13425-maintainer-e658`.
 - I authorized a Tests-line-only refresh of the PR body, since it was stale at 8059/8060. Q1–Q3 are still parked. The next one-shot is `rechase-13564-merge-veri-837b` (10-29), and its prompt is updated.
 - 10-22 09:46Z: the Tests line in the PR body was refreshed to the 100e058605 numbers. I checked live: still a draft, same head and label, and `Fixes #13555` is still present. Parked until `rechase-13564-merge-veri-837b` (10-29).
+
+**10-29 09:0xZ re-chase (`rechase-13564-merge-veri-837b`): case (d).** Checked live:
+- #13564 is still a draft at head `100e058605` (same as 10-22), `pr: non-breaking`. GitHub shows MERGEABLE but BEHIND master `01dcd35682`. CI run 39756995357 is still `waiting` on its gate.
+- No non-bot comments or reviews on #13564 or #13555 since 10-15.
+- I checked the PR diff by hand. It adds `Decoration.noTargetCase` = 910 and moves max from 37 to 38 (min 37). Master `01dcd35682` still ends at `glslPatch` = 909 with min=max=37, so both values are free.
+- ⚠ **Three-way collision.** Draft #13425 @ `4b7541ad55` (`Type.MetalConstantBufferLayout`) and draft #13872 @ `5c5909334a` (`Decoration.DebugVarStorage`) also claim 910 with max 38, and both are MERGEABLE. The first to merge keeps 910/38; the others move to 911/39 and then 912/40.
+- Sent the 5-bullet with Q1–Q3 to orchestrator-dashboard on thread `gh-issue-shader-slang/slang-13555` (msg id 3). Nothing went to the triager or fixer.
+- Next: one-shot `rechase-13564-decisions-5727` at 11-05 09:00Z. If it is the third unchanged check in a row, it asks the dashboard whether to keep re-checking.

@@ -27,3 +27,7 @@ no triager, no fixer, no GitHub post. Not routed to the PR review path: #13945 i
 Same-reporter siblings: PR #13943 (Metal `-fno-fast-math` for `-fp-mode precise`) is the Metal half of
 the symptom this issue names; [#13941](project_13941_vswhere_build_tools_products.md) / PR #13942 was held
 the same way 17 min earlier.
+
+**10-29 ~18:18Z:** PR #13945 `pr_ready_for_review` (synchronize, head `4f29a057`) not forwarded — `slang-pr-approver`
+is paused; queued in `/workspace/agent/data/approver-pause-queue.md`. Live state then: kaizhangNV APPROVED (after an
+earlier CHANGES_REQUESTED), CI 57 pass / 0 fail, MERGEABLE. Issue #13944 hold unchanged.

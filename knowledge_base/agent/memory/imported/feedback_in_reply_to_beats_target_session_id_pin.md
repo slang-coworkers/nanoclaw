@@ -52,3 +52,8 @@ replies, and three claimed gaps in the PR, went to fneziu. The next send (pin + 
 The recipe above (pin + `in_reply_to=<my webhook row>`) landed on the first try. ⇒ **When a report about chain A mentions chain B,
 treat any message to B as a sibling-session relay.** Use the recipe from the first send, never `thread_id` alone, and verify with
 `ncl sessions messages <pinned-sid> --reverse --limit 3`.
+
+**Recurred 2026-10-29 (#14006/#14007), the 3rd time.** I sent a pin to the #14006 triager (`…5hohp3`) without
+`in_reply_to` while handling msg 12 from the #14007 triager. It landed in the #14007 session (`…3hlxu4`).
+I then misdiagnosed it to the operator as a host pin bug and filed a duplicate shared learning (since deleted).
+The recall failure is why this rule now has a Core Memory pointer.

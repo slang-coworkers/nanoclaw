@@ -118,3 +118,6 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   `fix/cuda-texture-load-three-component`, "Fixes #13998") opened 25 s after filing, and
   github-actions auto-assigned jkwak-work. 0 comments, open. Human-owned work: held, no dispatch, no
   post (Main session `3tag9z`). #13999 routes on its own PR webhooks (approvers paused).
+  10-29 18:57Z: the author commented "The change is #14001" with no @-mention. It arrived as
+  `pr_mention`. Their own non-draft PR #14001 (`nvbug-5792784-embed-standard-modules`) was opened
+  00:15Z. Still held, no dispatch, no post.

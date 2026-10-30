@@ -89,3 +89,9 @@ cause can only be read after a re-run. The author has not answered tangent-vecto
 comments. dshreiner-nv and jkwak-work are still requested. #13419 is open; its only comment is the
 triage. The PR has been dormant 12 days. The 3-week dormant flag applies from 2026-11-06. One
 dashboard line was sent. Next one-shot: `rechase-13419-pr13487-0327` (2026-11-04).
+
+**2026-10-29 #13534 re-chase (`rechase-13534-3487`):** no change (case c). #13534 still has only the
+bot's 10-08 comment, no linked PR, no ask to the bot. #13487 is open at `53035c247`, behind, with no
+reviews or comments after 10-22. Dashboard seqs 507312–509048 hold no `PolynomialIntVal` FILE/SKIP
+answer, so it stays unasked and unfiled. Dashboard rows carry their body in `text`, not `content`.
+Next #13534 one-shot: `rechase-13534-1405` (2026-11-05, pages from seq 509048).

@@ -97,6 +97,14 @@ pinned nudge acked in under a minute.
     A pinned nudge recovered it: after about 4 min of 400s it compacted (~280 messages) and acked. **Wait at least 5 min
     after a nudge before calling a session wedged.** Tick 309 posted a reset request and then had to send a correction.
 
+14. **Gateway 429 wave killed in-flight turns** (tick 314, 10-29 21:58–22:01Z). Every model call got HTTP 429
+    `rate_limit_error` ("Model capacity reached for azure/anthropic/…, Priority: prod"). 27 sessions hit it; 23 got a
+    later 200, and 4 never did: #12714 triager + Main, #14026 fixer, #13685 fixer. Containers stayed `running`, so
+    scan read them as live, and shapes 10/11 miss it (no `stop_reason`, no 422). The worst case was #13685: the bot had
+    acked pdeayton-nv's "file a new issue and fix it" with "On it", and nothing was filed for 2.5 h. Detector:
+    `tickNNN/rl429.py` (429s since the previous tick with no later 200 → DEAD). A pinned nudge that names the
+    unfinished step worked: all 3 nudges landed within 4 min.
+
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
 `prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned

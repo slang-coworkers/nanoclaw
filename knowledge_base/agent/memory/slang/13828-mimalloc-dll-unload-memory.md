@@ -58,3 +58,11 @@ outside this PR: vendored SPIRV-Tools installed with mimalloc fails `find_packag
 for the failing test, and rerun attempt 2 started 01:34Z. Unlike the earlier docs-only Falcor flakes, this diff changes
 DLL-unload and mimalloc linkage behavior that Falcor actually loads, so a second red is plausibly real. If attempt 2 fails,
 someone with internal Falcor access is needed, and that goes to the dashboard then. mergeState BLOCKED (review).
+**10-29 04:57Z, APPROVED + green, awaiting maintainer merge.** pdeayton-nv APPROVED at head `b8093c48b` (no
+comments). The `test-falcor` rerun (attempt 2) passed, so the 01:35Z red was a flake. Run 40790110746 is a success;
+the rollup is 62 success / 60 skipped / 0 failed (checked live). mergeState is still BLOCKED with reviewDecision null and
+mergeable MERGEABLE, and dshreiner-nv's review request is still open. Branch-protection rules aren't readable by the
+integration, so whether a second approval is required is unverified. The fixer doesn't merge, and it offered in the
+edited status cmt 6485435496 to drop the open MinGW-scope line from the PR description if MSVC-only is accepted. Next:
+a maintainer merges, then the triager closes #13828. Nothing went to the dashboard; the next supervise tick boards it.
+**10-29 ~06:2xZ, MERGED (terminal).** pdeayton-nv merged #13867 (head `b8093c48b`). #13828 closed as completed. It covers MSVC and clang-cl only; the MinGW scope question was never answered, so MinGW remains untracked. The fixer cleaned up.

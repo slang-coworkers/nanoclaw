@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13688 — Metal inline RayQuery fixed to triangle_data/instancing (no curves, no multi-level)
-description: "Human-filed (albertrodriguezclo) Metal feature/design question. Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 does NOT cover inline queries. PARKED on kaizhangNV direction (tag source A/B/C, accessors i/ii); kaizhangNV assigned + Q4 2026 milestone 10-19. Reporter addendum 10-20 (cmt 6291687104, per-primitive data + intersector curve workaround) held, no bot post. Re-check t-2c3ce2 fired 10-23 08:31Z: no change; no further one-shot, parked in supervisor-state (awaiting_human). Sibling of #13690."
+description: "Human-filed (albertrodriguezclo) Metal feature/design question. Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 does NOT cover inline queries. PARKED on kaizhangNV direction (tag source A/B/C, accessors i/ii); kaizhangNV assigned + Q4 2026 milestone 10-19. Reporter addendum 10-20 (cmt 6291687104, per-primitive data + intersector curve workaround) held, no bot post. Re-check t-2c3ce2 fired 10-23 08:31Z: no change; no further one-shot, parked in supervisor-state (awaiting_human). Reporter perf data point 10-29 (cmt 6494559417; per-primitive data not a perf win, accessor wanted for ergonomics) held, no post. Sibling of #13690."
 ---
 
 # slang#13688 — Metal: inline RayQuery can't traverse curves or multi-level instances
@@ -68,5 +68,13 @@ comments (the newest is still 6291687104), assignee kaizhangNV, `raytracing` lab
 10-20T13:13:28Z. #12691 is still a draft at head 40667840 (updated 10-08). Nothing was posted and the HOLD stands. No new
 one-shot was scheduled: the timer is the `supervisor-state.json` entry (`awaiting_human`, advisory:maintainer-decision),
 which `/supervise-issues` walks. Webhooks deliver any maintainer comment.
+
+**2026-10-29 10:44:59Z, reporter data point (cmt 6494559417), arriving as a `pr_mention` webhook.** It has no bot mention and
+asks the bot nothing. Live body = payload. The reporter measured per-primitive data (an 80 B record per triangle) on an Apple M4 with
+RT hardware: 1.4–5.7% slower per frame, neutral on a Cornell box, compacted BLAS 2.6–3.0× larger, and 3.9% slower on an M2
+without RT hardware. In the reporter's words it is "not a performance case", but they still want a first-class
+`Committed/CandidatePrimitiveData` pointer accessor on `RayQuery` so apps don't need inline MSL. So the per-primitive ask is
+now ergonomics only. No maintainer activity since 10-19; #12691 is still a draft at 40667840. Routing: forwarded to the triager
+owner session to record only, HOLD, no bot post. supervisor-state.json was left to the tick.
 
 **Resumes on:** a maintainer comment on #13688 (webhook), or a `/supervise-issues` stale flag.
