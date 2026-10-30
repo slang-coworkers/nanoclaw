@@ -3,7 +3,7 @@ title: "CI, build, git mechanics, and coworker/GitHub-app operations"
 type: concept
 group: misc
 tags: [ci, git, shallow-clone, lavapipe, filecheck, rerun, github-app, coworker, capdef, source-compat]
-source_count: 15
+source_count: 17
 ---
 
 ## TL;DR
@@ -16,7 +16,7 @@ Operational gotchas from running the Slang coworker fleet: git/shallow-clone tra
 - **Reruns:** `gh run rerun --failed` on a run >~20h old is doomed by artifact expiry (~24h TTL) — only a full rerun rebuilds. SIGILL(4) vs SIGABRT(6) discriminates the AVX-512-JIT mechanism from a var-masked different bug.
 - **The coworker GitHub App lacks the `workflows` scope** — origin push of `.github/workflows/**` is rejected; push to the `slang-coworkers` fork and open a cross-fork draft PR (with `maintainer_can_modify=false`), which does NOT auto-run CI. This *corrects* an earlier "patch-only" note.
 - **Multi-issue single-PR "un-authored" bot commits are coworker collisions** under one shared identity, not intruders; **track a fix by the ISSUE**, not by a PR number that can go stale.
-- **`capdef` append-only means after the LAST Normal `def` in the whole file**, and a hand-picked diagnostic error code can collide with an upstream one after a stale-branch rebase — re-check before trusting.
+- **`capdef` append-only means after the LAST Normal `def` in the whole file**, and a hand-picked diagnostic error code can collide with an upstream one after a stale-branch rebase — re-check before trusting. "Master's max + 1" is not free either: pick a new code by scanning the `slang-diagnostics.lua` diff of EVERY open PR (`--limit 1000`), and re-scan before each push.
 
 ## Git and shallow-clone mechanics
 
@@ -42,7 +42,17 @@ When one draft PR closes several issues, multiple fixer sessions commit to the s
 
 Two Slang source files carry enum-ordering compat hazards. `capdef` "append-only" means append after the **last Normal `def` in the entire file**, not after the topical block — enum values are assigned in pure declaration order and `.slang-module` files serialize capability sets as bit positions indexed by that value, so inserting a `def` mid-file renumbers every later def and invalidates compiled modules; aliases are exempt (separate later pass). This is a `.slang-module` format-compat concern, so `pr: non-breaking` [capdef append-only means append after the last Normal def in the whole file](../learnings/1788071111340-capdef-append-only-means-append-after-the-last-nor.md). Similarly, a hand-picked diagnostic error code in `slang-diagnostics.lua` is only free as of the moment you picked it — a stale branch can collide with an upstream code taken meanwhile; re-check with `git grep <code> origin/master` on rebase, and the renumber surface is wider than the `.cpp` (the lua def+comment, every `//CHECK: E<code>`, the commit message, AND the PR body) [rebasing a stale branch can collide a hand-picked diagnostic code with an upstream one](../learnings/1787950830117-rebasing-a-stale-branch-can-collide-a-hand-picked-.md).
 
-**Source learnings (15):**
+Open PRs collide with each other long before any of them merges, so choose a new code against master **and** every open PR, and re-scan just before each push. On 2026-10-29 master's highest code in the 552xx block was 55218, yet five open PRs each added 55219 (bot drafts #13856, #13939, #14049, author draft #13652 and human non-draft #13387), #13939 and #13652 both added 55220, and #13940 added 55221; the first code no open PR claimed was 55222. Whichever PR merges second either hits a textual conflict or ships two diagnostics under one code, and the fleet then renumbers and re-runs tests after review. "Master's max + 1" was wrong, and so was the orchestrator's first fix, "the max of one conflicting PR + 1" (55220); the slang-triager found the full set only by scanning all 499 open PRs [Pick a new slang diagnostic code by scanning open PRs, not only master](../learnings/1793304028572-pick-a-new-slang-diagnostic-code-by-scanning-open-.md). The default `gh pr list` limit of 300 misses some, so pass `--limit 1000`:
+
+```bash
+for n in $(gh pr list -R shader-slang/slang --state open --limit 1000 --json number --jq '.[].number'); do
+  gh pr diff $n -R shader-slang/slang | awk '/^\+\+\+ b\/source\/slang\/slang-diagnostics.lua/{f=1;next} /^\+\+\+ /{f=0} f && /^\+[ \t]+552[0-9][0-9],/{gsub(/[^0-9]/,""); print}' | sort -u
+done
+```
+
+Write `[ \t]`, not `\s`, in the awk pattern: the container's awk is mawk, which does not support `\s`, and the scan then prints nothing without any error [Slang diagnostic codes: open PRs collide; scan every open PR's slang-diagnostics.lua diff before picking "next free"](../learnings/1793303999378-slang-diagnostic-codes-open-prs-collide-scan-every.md). After renumbering, update every reference: the test CHECK lines (`error E<code>`), the PR body and any issue comment that names the code [Pick a new slang diagnostic code by scanning open PRs, not only master](../learnings/1793304028572-pick-a-new-slang-diagnostic-code-by-scanning-open-.md).
+
+**Source learnings (17):**
 - [CORRECTION: bot CAN ship .github/workflows PRs via the coworkers fork (not patch-only)](../learnings/1787748419987-correction-bot-can-ship-github-workflows-prs-via-t.md) — the fork accepts the workflow push; open the cross-fork PR with `-F maintainer_can_modify=false`; amend via `--force-with-lease coworkers`.
 - [Recovering a deferred reference-impl from a squash-merged PR's history](../learnings/1787777686026-recovering-a-deferred-reference-impl-from-a-squash.md) — `gh api .../pulls/<N>/commits` lists pre-squash SHAs; the design rationale survives in issue-level bot comments; re-classify counts against current HEAD.
 - [Multi-issue single-PR: "un-authored" bot commits are coworker collisions, not intruders](../learnings/1787780061590-multi-issue-single-pr-un-authored-bot-commits-are-.md) — match an anomalous commit's author+message+files against the sibling issue chains sharing the branch before escalating; rebase-before-assume catches it.
@@ -58,3 +68,5 @@ Two Slang source files carry enum-ordering compat hazards. `capdef` "append-only
 - [Artifact-expiry-before-rerun: a --failed rerun of an old test can hit a different, unfixable failure](../learnings/1787985585815-artifact-expiry-before-rerun-a-failed-rerun-of-an-.md) — `slang-tests-*` artifacts expire ~24h; `--failed` on a >20h run re-requests the expired artifact and is doomed; only a full rerun or fresh push helps.
 - [On a shallow clone, git merge-base lies about remote ancestry — use the GitHub compare API](../learnings/1787862114697-on-a-shallow-clone-git-merge-base-lies-about-remot.md) — empty `merge-base` ≠ non-linear base; use `compare` (`behind_by:0` = clean ancestor); `rebase --onto` works locally; verify with `patch-id --stable`/`range-diff`.
 - [capdef append-only means append after the LAST Normal def in the whole file](../learnings/1788071111340-capdef-append-only-means-append-after-the-last-nor.md) — enum values assigned in pure declaration order; a mid-file `def` insert renumbers every later def and invalidates `.slang-module` bit positions; aliases are exempt; `pr: non-breaking`.
+- [2026-10-29: five open PRs claimed 55219 over master's 55218; scan all ~500 open PRs' `slang-diagnostics.lua` diffs with `--limit 1000`; mawk has no `\s`](../learnings/1793303999378-slang-diagnostic-codes-open-prs-collide-scan-every.md)
+- [pick a new diagnostic code against master AND every open PR, re-scan before each push; first free was 55222; renumber CHECK lines, PR body and issue comments](../learnings/1793304028572-pick-a-new-slang-diagnostic-code-by-scanning-open-.md)

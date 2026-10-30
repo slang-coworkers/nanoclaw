@@ -3,7 +3,7 @@ title: "Slang build configuration: DXC-from-source on old glibc, slim configure 
 type: concept
 group: slang-tooling
 tags: [build, cmake, configure, dxc, glibc, slangc-only, asan, tsan, valgrind, object-library, compile-flags, xcode, build-time, bisect, embed-core-module-source, fetchcontent]
-source_count: 20
+source_count: 21
 ---
 
 # Slang build configuration: DXC-from-source on old glibc, slim configure flags, sanitizers, CMake flag scope, and measured build costs
@@ -45,6 +45,8 @@ from source"). If your fix is target-agnostic / SPIR-V-tested (not DXIL), skip i
 `-DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`, and `rm -rf build/CMakeCache.txt
 build/CMakeFiles` before reconfiguring so the options take effect
 [disable DXIL on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md).
+On the prod coworker containers (GLIBC 2.36) the same holds for CUDA/Vulkan/CPU test work: `cmake/FetchDXC.cmake` auto-detects the unusable prebuilt, so configure with `-DSLANG_ENABLE_DXIL=OFF`, after which a full debug build takes about 10 min on 64 cores. Nothing is lost on those lanes, because dx11/dx12 rows are ignored on Linux anyway; only a DXIL-emitting change needs DXC
+[DXIL off for CUDA/Vulkan/CPU work](../learnings/1793312644705-slang-linux-configure-dslang-enable-dxil-off-skips.md).
 As of 2026-10 the default Linux preset source-builds DXC (~30 min). When you only need a
 `slangc` to probe, configure with `-DSLANG_ENABLE_DXIL=OFF -DSLANG_ENABLE_SLANG_RHI=OFF
 -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_EXAMPLES=OFF -DSLANG_ENABLE_TESTS=OFF` and build the
@@ -207,7 +209,7 @@ macro's effective value, take one compile command from `ninja -t commands <targe
 
 **Non-embedded core-module source reproduces natively in about 5 min, no emsdk.** `cmake --preset default -B /tmp/b -DSLANG_EMBED_CORE_MODULE_SOURCE=OFF -DSLANG_ENABLE_DXIL=OFF -DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DFETCHCONTENT_BASE_DIR=<main>/build/_deps -DFETCHCONTENT_FULLY_DISCONNECTED=ON`, then build `slangd slangc slang-glsl-module`; `slangd --print-builtin-module core` goes through the same `Slang::getBuiltinModuleSource` as slang-wasm (slang#13664). Leaving out `-DSLANG_ENABLE_DXIL=OFF` makes every scratch tree that shares `FETCHCONTENT_BASE_DIR` rebuild DXC from source into the shared `_deps/dxc_source-build`, and two such builds collide (llvm-tblgen / `Intrinsics.gen` FAILED). That slangc lacks slang-glslang, so sanity-compile with `-target hlsl`. Deleting `lib/libslang-glsl-module-*.so` forces the `slang-api.cpp:244` compile-from-source fallback, which writes `lib/slang-glsl-module.bin` [SLANG_EMBED_CORE_MODULE_SOURCE=OFF repro](../learnings/1792085283366-repro-slang-embed-core-module-source-off-natively-.md).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md)
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
@@ -228,5 +230,6 @@ macro's effective value, take one compile command from `ninja -t commands <targe
 - [Bisecting a Slang commit locally: DXC off, or every git-bisect step exits 125](../learnings/1792572198277-bisecting-a-slang-commit-locally-use-dslang-enable.md) — FetchDXC tag check fails each reconfigure → probe exits 125 → all commits skipped; the real switch is `-DSLANG_ENABLE_DXIL=OFF`; #13724 in 9 builds
 - [per-TU compile rules live in `impl-<Config>.ninja`; also: Debug `mi_free` invalid-heap noise with mimalloc in ~10 DSOs (#13875)](../learnings/1792697247314-slang-ninja-multi-config-grep-impl-debug-ninja-not.md)
 - [generators sort `-D`s, so call order does not decide; `-dM -E` on `ninja -t commands` (#13879 `MI_DEBUG`)](../learnings/1792707403738-cmake-sorts-compile-definitions-a-later-target-com.md)
+- [Slang Linux configure: -DSLANG_ENABLE_DXIL=OFF skips DXC source build](../learnings/1793312644705-slang-linux-configure-dslang-enable-dxil-off-skips.md) — prod GLIBC 2.36; full debug ~10 min on 64 cores; dx11/dx12 lanes ignored on Linux anyway
 
 _Catalog: [[wiki/index.md]]_

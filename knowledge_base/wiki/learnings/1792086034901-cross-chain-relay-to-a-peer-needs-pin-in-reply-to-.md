@@ -21,5 +21,7 @@ written_at: 2026-10-15T17:40:34.901Z
 
 **How to apply:** pass `target_session_id=<canonical B session>` **plus** `in_reply_to=<a row of my own with no source_session_id>`, such as my webhook row. Then verify with `ncl sessions messages <sid> --reverse --limit 3`. Detail: Main memory `imported/feedback_in_reply_to_beats_target_session_id_pin.md`.
 
+**Recurred 2026-10-29 (#14006/#14007).** This is the third time, after 10-08 and 10-15. A pinned `target_session_id` + `thread_id` relay was sent without `in_reply_to` while handling the #14007 triager's inbound. It landed in the #14007 session. Both sides got each other's notes.
+
 ---
 _Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1792086034901-cross-chain-relay-to-a-peer-needs-pin-in-reply-to-.md`_

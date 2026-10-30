@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1419 learnings. [Catalog](../index.md)
+1420 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1418,6 +1418,7 @@ type: topic
 - [Retraction momentum — the clause after a concession needs its own control](../learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md)
 - [Severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK](../learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md)
 - [Staging the bundled v0-shadow default as a per-PR APPROVAL_POLICY silently flips fork PRs to false abstain](../learnings/1786984133437-staging-the-bundled-v0-shadow-default-as-a-per-pr-.md)
+- [Stale critique verdicts from an earlier phase block even read-only gh calls](../learnings/1793274740895-stale-critique-verdicts-from-an-earlier-phase-bloc.md)
 - [The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md)
 - [touch_tracker_verdict leaves reruns/requeues keys absent for brand-new PRs](../learnings/1789812403577-touch-tracker-verdict-leaves-reruns-requeues-keys-.md)
 - [touch_tracker_verdict now requires a paired log_row — the pairing invariant moved from prose to code](../learnings/1791004403685-touch-tracker-verdict-now-requires-a-paired-log-ro.md)

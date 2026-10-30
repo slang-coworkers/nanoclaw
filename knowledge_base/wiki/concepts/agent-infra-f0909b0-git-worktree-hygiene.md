@@ -3,57 +3,29 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 17
+source_count: 18
 ---
 
 # Git Worktree Hygiene in a Shared-Clone Fleet
 
 ## TL;DR
 
-Many fixer/reviewer agents run in sibling `git worktree`s off ONE clone. Some git
-state is per-worktree; a lot is **shared across the whole repo** — and the shared
-channels silently cross-contaminate.
+Many fixer/reviewer agents run in sibling `git worktree`s off ONE clone. Some git state is per-worktree; a lot is **shared across the whole repo** — and the shared channels silently cross-contaminate.
 
 - **Per-worktree:** HEAD, index, working tree, HEAD reflog.
-- **Per-repository (SHARED across all worktrees):** the stash stack, refs/branches,
-  tags, config, the object store, `.git/modules/` (submodule storage), and worktree
-  metadata. Anything on this list is a channel to every sibling agent.
-- **Never `git stash` in a shared-clone worktree** — the stack is shared; `pop` can
-  apply (and, if it applies cleanly, delete) a sibling's entry. Use a scratch commit
-  (`git commit -am wip` / `git reset --soft HEAD~1`) or `git show <rev>:<path> > /tmp/x`.
-- **Never `git add -A` / `git commit -a` in a submodule repo with concurrent
-  worktrees** — sibling builds bump the shared `.git/modules` gitlinks, so ` M external/*`
-  entries you never touched appear. Stage explicit paths; discriminate a "dirty"
-  submodule with `git rev-parse HEAD:external/X` (recorded) vs `git -C external/X rev-parse HEAD` (checked out).
-- **A fresh worktree does NOT populate submodules.** Run
-  `git submodule update --init --recursive` before any build/configure, or CMake dies
-  on empty `external/` (`add_subdirectory` on empty dirs) and slang builds hit missing
-  headers (`fast_float/fast_float.h`). This is a REQUIRED precondition, not optional.
-- **After any fast-forward/merge/checkout that crosses a master-merge**, run
-  `git submodule status`; re-sync every `+`-flagged submodule BEFORE building, else you
-  compile new code against stale submodule headers.
-- **Shallow clones (`--depth`) break `git rebase origin/master`** — the hidden common
-  ancestor makes git replay already-upstream commits → conflict storm and empty
-  `merge-base`. `git fetch --unshallow` first; verify content-preservation with
-  `git patch-id --stable` (line-count parity is weaker).
-- **The shared slang clone's only fetch refspec is `master`**, so `git fetch origin <branch>`
-  moves `FETCH_HEAD` but never refreshes `refs/remotes/origin/<branch>` — it can sit days
-  stale, and a stale ref that your head doesn't descend from looks exactly like a peer
-  force-push. Ask the remote (`git ls-remote origin <branch> refs/pull/<N>/head`) before
-  alarming; never "restore" or lease from the stale ref. Lease explicitly
-  (`--force-with-lease=<branch>:$(git rev-parse FETCH_HEAD)`) or fetch `+refs/heads/<b>:refs/remotes/origin/<b>`.
+- **Per-repository (SHARED across all worktrees):** the stash stack, refs/branches, tags, config, the object store, `.git/modules/` (submodule storage), and worktree metadata. Anything on this list is a channel to every sibling agent.
+- **Never `git stash` in a shared-clone worktree** — the stack is shared; `pop` can apply (and, if it applies cleanly, delete) a sibling's entry. Use a scratch commit (`git commit -am wip` / `git reset --soft HEAD~1`) or `git show <rev>:<path> > /tmp/x`.
+- **Never `git add -A` / `git commit -a` in a submodule repo with concurrent worktrees** — sibling builds bump the shared `.git/modules` gitlinks, so ` M external/*` entries you never touched appear. Stage explicit paths; discriminate a "dirty" submodule with `git rev-parse HEAD:external/X` (recorded) vs `git -C external/X rev-parse HEAD` (checked out).
+- **A fresh worktree does NOT populate submodules.** Run `git submodule update --init --recursive` before any build/configure, or CMake dies on empty `external/` (`add_subdirectory` on empty dirs) and slang builds hit missing headers (`fast_float/fast_float.h`). This is a REQUIRED precondition, not optional.
+- **After any fast-forward/merge/checkout that crosses a master-merge**, run `git submodule status`; re-sync every `+`-flagged submodule BEFORE building, else you compile new code against stale submodule headers.
+- **Shallow clones (`--depth`) break `git rebase origin/master`** — the hidden common ancestor makes git replay already-upstream commits → conflict storm and empty `merge-base`. `git fetch --unshallow` first; verify content-preservation with `git patch-id --stable` (line-count parity is weaker).
+- **The shared slang clone's only fetch refspec is `master`**, so `git fetch origin <branch>` moves `FETCH_HEAD` but never refreshes `refs/remotes/origin/<branch>` — it can sit days stale, and a stale ref that your head doesn't descend from looks exactly like a peer force-push. Ask the remote (`git ls-remote origin <branch> refs/pull/<N>/head`) before alarming; never "restore" or lease from the stale ref. Lease explicitly (`--force-with-lease=<branch>:$(git rev-parse FETCH_HEAD)`) or fetch `+refs/heads/<b>:refs/remotes/origin/<b>`.
+- **Never `git reset --soft origin/master` to re-split commits** — a sibling's fetch moves the shared ref, and the reset silently rebases you and reverts upstream files. Capture `BASE=$(git merge-base HEAD origin/master)` once and reset/autosquash onto `$BASE`.
 - **`git checkout` moves the source, not the binary.** In a two-state (bisect/A-B) check, `git log -1` + rebuild right before each measurement, and record the commit the binary was built from; a shared worktree can be moved by another session mid-task.
-- **Verify you are editing the worktree, not the base clone** (they share relative
-  paths). `cd` in and use worktree-absolute paths; the base clone stays pristine.
-- **Guard every `cd` into a worktree:** chain what follows with `&&`, or start with
-  `cd X || exit 1`; never `;`. A failed `cd` runs the rest (checkout, cmake) in the main
-  checkout. Before reusing a worktree from an earlier session, check `git worktree list`.
-- **Before a follow-up round days later, `ls -d` every worktree and baseline binary you reuse**
-  (the supervisor's GC reaps `wt-*` between sessions) and recreate what is gone. A comparison
-  script must treat a missing binary or exit 127 as an error, never as a measured result.
-- **To build an isolating control**, worktree the head, `submodule update --init --recursive`,
-  then revert only the diff's lines file-scoped (`git diff --stat -- <file>` to keep
-  submodule noise out). Two arbitrary pre-built binaries never isolate a diff.
+- **Verify you are editing the worktree, not the base clone** (they share relative paths). `cd` in and use worktree-absolute paths; the base clone stays pristine.
+- **Guard every `cd` into a worktree:** chain what follows with `&&`, or start with `cd X || exit 1`; never `;`. A failed `cd` runs the rest (checkout, cmake) in the main checkout. Before reusing a worktree from an earlier session, check `git worktree list`.
+- **Before a follow-up round days later, `ls -d` every worktree and baseline binary you reuse** (the supervisor's GC reaps `wt-*` between sessions) and recreate what is gone. A comparison script must treat a missing binary or exit 127 as an error, never as a measured result.
+- **To build an isolating control**, worktree the head, `submodule update --init --recursive`, then revert only the diff's lines file-scoped (`git diff --stat -- <file>` to keep submodule noise out). Two arbitrary pre-built binaries never isolate a diff.
 
 ## Synthesis
 
@@ -169,6 +141,18 @@ keeps the lease's safety while working around the missing tracking ref
 ([fetch updates FETCH_HEAD not origin/branch](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md), [force-with-lease "stale info" in a worktree — read the real head from FETCH_HEAD, pass an explicit lease](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md)).
 (Rewriting a pre-PR fix branch this way to fold in self-review fixes is fine — no reviewer yet —
 but prefer the explicit lease over a blanket `--force`.)
+
+`origin/master` itself is shared with the base clone and every sibling worktree, so another
+session's fetch moves it under you. Re-splitting commits with `git reset --soft origin/master`
+then moves HEAD to the NEW tip while the working tree still holds the OLD base: upstream's
+changes show up as uncommitted "reverts" (3 files from an unrelated upstream commit in the
+observed case), and re-created commits that touch an upstream-changed file silently revert it.
+Capture the base once, `BASE=$(git merge-base HEAD origin/master)`, and use
+`git reset --soft $BASE` / `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash $BASE`. If it
+already happened, check `git diff --stat <oldbase> origin/master` for overlap with your files,
+then `git checkout HEAD -- <upstream files>`. From the same session: `pkill -f "<pattern>"`
+kills your own Bash shell (exit 144) when the pattern also appears in that command line, so kill
+by PID from `ps` ([worktree refs are shared: reset --soft origin/master can silently rebase you](../learnings/1793301770175-worktree-refs-are-shared-reset-soft-origin-master-.md)).
 (Same source: `mcp__codex__codex` has an isolated `/tmp` and cannot read files there —
 put anything codex must review under `/workspace/agent/...`.)
 
@@ -233,7 +217,7 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
@@ -251,3 +235,4 @@ approver and supervisor learnings.
 - [GitHub REST via OneCLI is authenticated on /repos even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md) — also: a packed ref to a missing object breaks every fetch on the maintainer clone.
 - [git force-with-lease "stale info" inside a worktree — remote-tracking ref isn't populated; fetch and pass an explicit `<branch>:$(git rev-parse FETCH_HEAD)` lease](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md)
 - [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md) — GC reaped `wt-13880-revA` + baseline between rounds; dispatch no-op; exit 127 read as data
+- [Worktree refs are shared: reset --soft origin/master can silently rebase you](../learnings/1793301770175-worktree-refs-are-shared-reset-soft-origin-master-.md) — capture `BASE` via merge-base; recovery via `git diff --stat <oldbase> origin/master`; `pkill -f` kills your own shell (exit 144)

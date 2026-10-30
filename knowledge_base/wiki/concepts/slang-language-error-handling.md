@@ -2,8 +2,8 @@
 title: "Slang error handling: throws, try, catch — checking and lowering"
 type: concept
 group: slang-language-core
-tags: [slang, throws, try, catch, errorType, bottom-type, visitTryExpr, TryCall, lowerErrorHandling, lambda, accessor, overload-resolution, front-end]
-source_count: 7
+tags: [slang, throws, try, catch, errorType, bottom-type, visitTryExpr, TryCall, lowerErrorHandling, lambda, accessor, overload-resolution, front-end, Result-void, getResultError, lowerResultType, noinline, peephole]
+source_count: 8
 ---
 
 # Slang error handling: throws, try, catch — checking and lowering
@@ -24,6 +24,7 @@ How Slang's `throws`/`try`/`catch` feature is represented on callables, checked 
 - "Overload resolution always gives the callee a `FuncType`" is false: the member reference can still be rejected after overload selection (static↔instance, `this` in a static), leaving an `ErrorType` callee under a non-error call. Probe overloaded callees, not just single candidates, before asserting such an invariant.
 - A diagnostic that depends on how the ENCLOSING call resolves (`try int(f())` is an identity conversion) is collected on a pending list during operand checking and settled after resolution at every early exit, never by re-checking the operand.
 - `BottomType`/`Never` is used only as the throws error type, not as a noreturn marker.
+- `Result<void,E>`'s `getResultError` returns the whole lowered `{tag, AnyValue}` struct, a leftover from before #6916. The peephole folds `GetResultError(MakeResultError(e))` once the thrower is inlined, so a repro needs a `[noinline]` void thrower; a rethrow then silently delivers `tag ? 1 : 0` as the error (#14066).
 
 ## Representation: `errorType` and the Bottom default
 
@@ -71,7 +72,19 @@ struct S {
 
 `ConstructLookupResultExpr` can still reject the member reference after overload selection (E30100 static-to-non-static, E30120 `this.m` from a static), which leaves the callee as `ErrorType`. `ResolveInvoke` bails on `IsErrorExpr(funcExpr)` only on the single-candidate path, while `CompleteOverloadCandidate` (Flavor::Func) still set the call's type to `candidate.resultType`, so consumers that early-return on an `ErrorType` call never saw the error. The producer fix is in Flavor::Func: `if (IsErrorExpr(baseExpr)) return CreateErrorExpr(callExpr);`. Before asserting "overload resolution always produces X," probe every flavor (Func / Generic / Expr) against both a single candidate and an overloaded set, and against a member reference rejected after selection; the single-candidate path proves nothing about the overloaded one [probe overloaded + erroneous-member callees before asserting an AST invariant](../learnings/1791418093072-before-asserting-an-ast-invariant-at-a-consumer-pr.md).
 
-**Source learnings (7):**
+## `Result<void,E>` error extraction, and why tests miss it (#14066)
+
+`getResultError` (`slang-ir-lower-result-type.cpp:155-172`) returns the whole lowered `{tag, AnyValue}` struct for `Result<void,E>`. It is left over from before #6916, when `Result<void,E>` lowered to plain `E`. Existing error-handling tests pass because their void throwers are inlined: after inlining, `slang-ir-peephole.cpp:419` folds `GetResultError(MakeResultError(e))` before the result type is lowered. A repro or regression test therefore needs `[noinline]` on the void thrower [Slang Result<void,E> catch bugs only reproduce with [noinline]; void→value rethrow is a silent wrong value](../learnings/1793316146558-slang-result-void-e-catch-bugs-only-reproduce-with.md).
+
+The worst shape is a rethrow through a void callee:
+
+```slang
+[noinline] uint relay() throws uint { try voidFail(c); return 5; }
+```
+
+The rethrow packs `tag ? 1 : 0` as the error. The emitted HLSL and SPIR-V are valid (the SPIR-V passes spirv-val), and the catcher receives 1 on vk, cuda and cpu, a silent wrong value. Separately, slang-test on `-vk` segfaults when the emitted SPIR-V is invalid (for example an `OpReturnValue` type mismatch that reaches the NVIDIA driver), so read a slang-test core dump on `-vk` as "check the `SLANG_RUN_SPIRV_VALIDATION` output first", not as a harness bug [Slang Result<void,E> catch bugs only reproduce with [noinline]; void→value rethrow is a silent wrong value](../learnings/1793316146558-slang-result-void-e-catch-bugs-only-reproduce-with.md).
+
+**Source learnings (8):**
 - [Slang `throws E` with a generic error type fails at the try site (visitTryExpr reads unsubstituted errorType)](../learnings/1791396633466-slang-throws-e-with-a-generic-error-type-fails-at-.md) — E30095/E30093 for generic E; use getErrorCodeType(astBuilder, declRef); accessors/lambdas have no errorType
 - [Slang property/subscript accessors never get the Bottom errorType default](../learnings/1791396718277-slang-property-subscript-accessors-never-get-the-b.md) — only checkCallableDeclCommon sets it; fix at the default, not the consumer; nested `try g(f())` escapes E30094
 - [Slang `try g(f())` miscompiles: nested throwing calls lower as plain Call; lowerErrorHandling only rewrites TryCall](../learnings/1791399033479-slang-try-g-f-miscompiles-nested-throwing-calls-lo.md) — per-InvokeExpr try marks, identity visitTryExpr, reset in withParentLambdaExpr; findErrorHandler prev bug
@@ -79,5 +92,6 @@ struct S {
 - [Lambda bodies are checked twice; statement-stack leaks are hidden by pass 2](../learnings/1791398551841-lambda-bodies-are-checked-twice-statement-stack-le.md) — expressions see only the leaked outer context; use a null-stmt boundary node; don't skip pass 2
 - [Slang checker: decide a diagnostic that depends on how an enclosing call resolves with a pending list, not a re-check](../learnings/1791542677184-slang-checker-decide-a-diagnostic-that-depends-on-.md) — `try int(f())` (#13514): pending `List<InvokeExpr*>`, settle at every early exit, `invoke == resolved`; zero-annotation exhaustive test.
 - [Before asserting an AST invariant at a consumer, probe overloaded + erroneous-member callees](../learnings/1791418093072-before-asserting-an-ast-invariant-at-a-consumer-pr.md) — CompleteOverloadCandidate Flavor::Func must return an error expr when the base is an error
+- [`Result<void,E>` `getResultError` returns the whole `{tag, AnyValue}` struct (pre-#6916); peephole hides it after inlining, so repro with `[noinline]`; `-vk` segfault on invalid SPIR-V](../learnings/1793316146558-slang-result-void-e-catch-bugs-only-reproduce-with.md)
 
 _Catalog: [[wiki/index.md]]_

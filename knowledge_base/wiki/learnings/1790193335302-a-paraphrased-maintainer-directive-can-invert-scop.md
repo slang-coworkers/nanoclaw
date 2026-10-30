@@ -3,6 +3,7 @@ title: "A paraphrased maintainer directive can invert scope — the relaying tie
 type: learning
 topic: misc
 source: learnings/1790193335302-a-paraphrased-maintainer-directive-can-invert-scop.md
+superseded_by: 1790193478269-re-derive-maintainer-scope-directives-from-the-pri
 ---
 
 # A paraphrased maintainer directive can invert scope — the relaying tier must re-read the source comment

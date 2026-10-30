@@ -3,7 +3,7 @@ title: "CI Flake Triage — Runner Pools and Infrastructure"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, runners, runner-pools, self-hosted, gpu, disk-space, queue-timeout, pool-lottery, slang]
-source_count: 21
+source_count: 23
 ---
 
 # CI Flake Triage — Runner Pools and Infrastructure
@@ -31,7 +31,7 @@ The self-hosted GPU/perf fleet that shader-slang/slang CI actually runs on, how 
 
 shader-slang/slang maintains two self-hosted GPU runner pools on GCP: a Windows GPU pool (`win-test-*` machines, labels `[Windows, self-hosted, test]`) for T4-based jobs, and a Linux GPU runner fleet (`2u1g-*` machines). The Windows pool is heterogeneous; individual machines (e.g. `SLANG-WINDOWS-2`) can run low on disk while neighbours are healthy, and a Windows GPU test job that completes in under ~60 seconds usually means no actual tests ran — a disk-space preflight failure or artifact-download failure, not a real test result. When one bad runner in the pool is repeatedly assigned, multiple PRs can fail the same Windows test job within ~6 seconds of each other, producing a cluster that looks like a flake but is really one sick box ([Slang CI: Windows test-slang disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)). There are also two separate self-hosted perf/benchmark pools — `[Windows, self-hosted, perf]` is distinct from `[Windows, self-hosted, benchmark]` and used by different workflows; always grep the actual `runs-on:` line before citing which pool a workflow uses ([slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked](../learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)).
 
-To identify which specific runner a job ran on: `gh api repos/shader-slang/slang/actions/runs/<run-id>/jobs --jq '.jobs[] | select(.name | contains("test-windows-release-cl-x86_64-gpu")) | {runner_name, conclusion}'`. `Machine name: 'SLANG-WINDOWS-2'` in a log is an image-baked pool name, not a physical host — resolve real identity via the jobs API. For per-attempt runner assignment, read `actions/runs/<id>/attempts/<N>/jobs`, which carries the runner each attempt landed on.
+To identify which specific runner a job ran on: `gh api repos/shader-slang/slang/actions/runs/<run-id>/jobs --jq '.jobs[] | select(.name | contains("test-windows-release-cl-x86_64-gpu")) | {runner_name, conclusion}'`. `Machine name: 'SLANG-WINDOWS-2'` in a log is an image-baked pool name, not a physical host — resolve real identity via the jobs API. For per-attempt runner assignment, read `actions/runs/<id>/attempts/<N>/jobs`, which carries the runner each attempt landed on. The attempt endpoint is also the fallback when `actions/runs/<id>/jobs` answers 502 while verifying a re-run, and job logs need `gh api .../jobs/<id>/logs --allow-escape-sequences` [gate-chain-routing hook blocks [Triage Resolution] in no-inbound one-shot runs](../learnings/1793289852768-gate-chain-routing-hook-blocks-triage-resolution-i.md). A pool that the CI analytics frame shows as `busy 0 / total 1` with queued jobs is confirmed against the live API in two calls: `actions/runs?status=queued`, then `actions/runs/<id>/jobs` filtered to `status==queued`; the job `labels` (e.g. `Linux,self-hosted,SM80Plus`) name the stuck pool, and a merge_group run with only that job outstanding shows what it blocks [send_message refused on inherited heartbeat thread — pass explicit thread_id](../learnings/1793283475940-send-message-refused-on-inherited-heartbeat-thread.md).
 
 When a job shows `runner_name == ""` and `steps == []` with elapsed time exactly at the job timeout, the job never ran — it sat in queue waiting for a runner that never came online. Rerunning is futile; escalate the missing runner ([Distinguish missing-runner queue-timeout from a real test hang (gh api job runner/steps)](../learnings/1782605298157-distinguish-missing-runner-queue-timeout-from-a-re.md)).
 
@@ -51,7 +51,7 @@ When a job shows `runner_name == ""` and `steps == []` with elapsed time exactly
 
 **`checks_timed_out` from a runner-pool queue wait (2026-10-12).** `test-linux-release-gcc-x86_64-sm80 / test-slang` runs on the self-hosted SM80Plus pool and normally waits 0–14 minutes. #13371's merge-group run had that job QUEUED for 143 minutes (22:26Z → 00:49Z); the PR was removed from the queue as `checks_timed_out` at 00:18Z, and the group run later finished SUCCESS. Measure the wait from `actions/runs/<id>/jobs` (`created_at` vs `started_at` for jobs named like sm80) before blaming code or LLVM. The wake payload's `evicted` list missed this removal, so re-derive evictions from `RemovedFromMergeQueueEvent`. The bot still cannot requeue: `gh pr merge <n>` and GraphQL `enqueuePullRequest` were both refused, and `gh pr merge` has no `--merge-queue` flag, so a maintainer must requeue [merge-queue checks_timed_out can be a self-hosted sm80 runner queue wait](../learnings/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md).
 
-**Source learnings (21):**
+**Source learnings (23):**
 - [Runner-scoped CI defect: a rerun is a POOL LOTTERY, not a futile reland — the defect can be job-scoped; prove attribution by a differential over runner_name](../learnings/1785838439742-runner-scoped-ci-defect-a-rerun-is-a-pool-lottery-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [Two distinct self-hosted runner pools (perf vs benchmark)](../learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)
@@ -73,5 +73,7 @@ When a job shows `runner_name == ""` and `steps == []` with elapsed time exactly
 - [Merged Windows GPU CI job (-api all) measured: Debug 90.8 min, Release 21.5 min](../learnings/1792592295131-merged-windows-gpu-ci-job-api-all-measured-debug-9.md) — `test-slang` timeout is now 120 min for every caller
 - [Before citing a 'shared runner/pool' clue on a flake, control against passing jobs](../learnings/1792691453073-before-citing-a-shared-runner-pool-clue-on-a-flake.md) — slangpy Windows jobs all share one label set; tally `2u1g-b650-<idx>` over ~40 passing jobs; `runner_name` outlives logs
 - [Ubuntu 26.04 reached shader-slang ubuntu-latest on 2026-10-27 ~16-17Z; first breakages in slang-rhi](../learnings/1793176888015-ubuntu-26-04-reached-shader-slang-ubuntu-latest-on.md) — 38-job header sample; doctest `<ciso646>` under GCC 15 `-Werror` (tsan nightly); lavapipe coop-matrix query; slang formatting passed
+- [`actions/runs/<id>/jobs` can 502; `attempts/<n>/jobs` works; logs need `--allow-escape-sequences`](../learnings/1793289852768-gate-chain-routing-hook-blocks-triage-resolution-i.md)
+- [confirm a stuck self-hosted pool via `actions/runs?status=queued` + queued job `labels`](../learnings/1793283475940-send-message-refused-on-inherited-heartbeat-thread.md)
 
 _Catalog: [[wiki/index.md]]_

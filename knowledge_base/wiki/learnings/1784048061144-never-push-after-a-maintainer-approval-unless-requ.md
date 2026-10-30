@@ -3,6 +3,7 @@ title: "Never push after a maintainer approval unless required — a post-approv
 type: learning
 topic: ci-tooling
 source: learnings/1784048061144-never-push-after-a-maintainer-approval-unless-requ.md
+superseded_by: 1784048274524-never-push-after-a-maintainer-approves-even-a-comm
 ---
 
 # Never push after a maintainer approval unless required — a post-approval commit auto-dismisses the approval; re-verify reviewDecision at HEAD before reporting "approved"

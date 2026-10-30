@@ -3,7 +3,7 @@ title: "Slang IR Passes, Diagnostics, and Tooling"
 type: concept
 group: slang-autodiff-ir
 tags: [ir-passes, diagnostics, source-locations, ir-instructions, optimization, serialization, parser, tooling, agent-operations]
-source_count: 28
+source_count: 30
 ---
 
 # Slang IR Passes, Diagnostics, and Tooling
@@ -34,6 +34,8 @@ Root cause: IR instructions are often synthesized, legalized, or link-time-clone
 Fixing the key at creation is a dead end for the imported-module case ([Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](../learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)): when a struct is deserialized from a precompiled `.slang-module`, its keys carry no source location resolvable in the consuming compile, and the consumer-side lowering never re-touches them. The correct fix is at the **diagnostic emission site**: give the diagnostic an explicit `.location` span, and fall back to a use-site location via `findFirstUseLoc(type_or_func)` when the originating inst's loc is invalid. `findFirstUseLoc` walks uses for the first one with a valid `sourceLoc`, so it recovers the common consumer-side case but is not a hard guarantee. A regression test must precompile a module and import it — a single-file test cannot reproduce the loss.
 
 The "can't reproduce with a small shader" behavior is a tell for this bug class: simple repros trigger the IRBuilder's incidental position (correct location shown), while the complex/imported path does not.
+
+A producer-side fix does work when the source is in the same compile. On HLSL and CUDA, `collectGlobalUniformParameters` moves uniform globals into a `globalParams` struct with a fresh `createStructKey()` key and no `sourceLoc`, so a field-level diagnostic on a `uniform` global (and on CUDA, on any resource-typed global) reports line 0. Copying `fieldKey->sourceLoc = globalParam->sourceLoc` fixes it, but only after the existing `SLANG_ASSERT(globalParam)`, because non-uniform entries reach that point with a null param; placed before the guard it segfaulted two GLSL tests ([late IR unsupported-shape checks must look through wrappers](../learnings/1793309934870-late-ir-unsupported-shape-checks-must-look-through.md)) ([Slang IR diagnostics: run a check for an optimizable shape late](../learnings/1793321156877-slang-ir-diagnostics-run-a-check-for-an-optimizabl.md)). Where such checks belong in the pipeline, and what they must look through, is on [[wiki/concepts/slang-compiler-unsupported-shape-checks-and-emitter-use-checks.md]].
 
 ## slang-diagnostics.lua: Dropped Secondary Messages
 
@@ -131,7 +133,7 @@ Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on
 
 **An inferred `MaxIters(0)` undersizes the same storage (PR #13993).** When `tryInferLoopMaxIterations` (`slang-check-stmt.cpp`) wrongly concludes that a loop runs 0 times, it warns E30514 and also attaches `InferredMaxItersAttribute(0)`, which lowers to `IRLoopMaxItersDecoration`. Primal-hoist sizes the per-iteration storage from it, so `bwd_diff` through the loop reads and writes out of bounds: cpu garbage that changes between runs and NaN on vk/cuda. Non-differentiable loops still run correctly, because no emitter reads the decoration, so review a trip-count change with a runtime `bwd_diff` test, not only diagnostics. The mis-folded constants (#13954) that trigger the false zero, and why only a producer fix is safe, are on [[wiki/concepts/slang-language-core-integer-constant-folding.md]] [false zero-trip trip count corrupts reverse-mode autodiff](../learnings/1793223526256-slang-false-zero-trip-trip-count-corrupts-reverse-.md).
 
-**Source learnings (28):**
+**Source learnings (30):**
 - [Slang IR-pass diagnostics lose source locations](../learnings/1780328920397-slang-ir-pass-diagnostics-lose-source-locations-be.md)
 - [Slang diagnostics.lua: changing a span's loc kind silently drops secondary message](../learnings/1780411224942-slang-diagnostics-lua-changing-a-span-s-loc-kind-s.md)
 - [Locationless IR-pass diagnostics on imported-module structs: fix at emission, not key creation](../learnings/1780418999087-locationless-ir-pass-diagnostics-on-imported-modul.md)
@@ -160,5 +162,7 @@ Gating `legalizeEmptyArray`/`legalizeVectorTypes`/`legalizeUniformBufferLoad` on
 - [#11917: #11987 in-pass-scan early-out does NOT transfer to shared-`legalizeTypes` wrappers — per-context guard + conservative generic force-run; key the scan on the pass's own `isSpecialType` (safe superset)](../learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
 - [#13000 nested `[MaxIters]` checkpoint array dim/index transposition (alloc innermost-first vs address peel outermost-first) → wrong/OOB input gradients; fix by aligning fold order; repro needs a checkpointed differentiable-input primal on `-cpu`.](../learnings/1789105256227-autodiff-nested-maxiters-loop-wrong-gradients-chec.md)
 - [Slang false zero-trip trip count corrupts reverse-mode autodiff (MaxIters(0) undersizes tape)](../learnings/1793223526256-slang-false-zero-trip-trip-count-corrupts-reverse-.md) — `InferredMaxItersAttribute(0)` → primal-hoist tape undersized; test `bwd_diff` at runtime
+- [Late IR unsupported-shape checks must look through wrappers](../learnings/1793309934870-late-ir-unsupported-shape-checks-must-look-through.md) — `globalParams` keys from `collectGlobalUniformParameters` have no sourceLoc; copy it after the assert
+- [Slang IR diagnostics: run a check for an optimizable shape late](../learnings/1793321156877-slang-ir-diagnostics-run-a-check-for-an-optimizabl.md) — same sourceLoc fix for `uniform` globals' field diagnostics
 
 _Catalog: [[wiki/index.md]]_

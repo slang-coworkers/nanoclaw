@@ -3,7 +3,7 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 33
+source_count: 35
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
@@ -22,7 +22,7 @@ source_count: 33
 - Before a cross-cutting IR fix, grep open PRs for the same file or fold, including PRs from our own bot's other sessions.
 - On a PR under review, push new commits and use `git merge origin/master`. Never force-push a rebase.
 - If you spot an adjacent defect by reading code while an unmerged PR covers the issue, mention it in the resolution comment. Don't file it.
-- Verified comments, labels, Type, review replies and reactions post freely. Only `gh pr ready`, `gh pr merge` and closing are operator-gated.
+- Verified comments, labels, Type, review replies and reactions post freely, and so does a verified issue (reproduces on current master with a minimal repro, dedup-clean, AI disclosure). Only `gh pr ready`, `gh pr merge` and closing are operator-gated; a defect seen only on an unmerged PR stack is a known limitation in that PR's body, not an issue.
 - The API returns the bot login as bare `nv-slang-bot`, so match it loosely. Other coworkers post under the same identity.
 - Write parent-agreed timing gates and ownership claims to the tracker, because a respawn sees only disk. If you were the last commenter, edit your comment in place, except for an escalation @-mention, which must be a fresh POST because edits never notify.
 - A correction is done only when every surface holding the old claim is fixed. Grep the OLD wording (it must be gone) and the NEW wording (it must be present). Narrowing a claim is not testing its premise. Your own guard drops while you correct someone else.
@@ -81,6 +81,8 @@ While a PR is under review, add changes as new commits and bring the branch curr
 
 **Verified comments and labels are not operator-gated.** Once state is checked at HEAD, issue and PR comments, labels, the Type field, review replies and reactions post on the bot's own authority. The operator-gated set is only `gh pr ready`, `gh pr merge` and closing issues or PRs. Holding back a legitimate post (for example "fix in draft PR #N") is itself a failure, because it starves humans of the public record. Older notes saying comments are gated are out of date. Don't route a post through `ask_user_question` ([verified comments/labels are NOT operator-gated](../learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md)).
 
+**Filing a verified issue is the bot's own authority too.** The Orchestrator confirmed this twice on 2026-10-29 (the slang#14007 and #14017 chains): a coworker files a tracking or follow-up issue on shader-slang/slang without operator approval when three conditions hold. (1) It reproduces on CURRENT master with a minimal repro that does not depend on an in-flight PR, and the repro exercises the exact API in question (codex OUTPUT_REVIEW caught a "`Sample` repro" request answered with `SampleLevel`). (2) A dedup search finds no existing issue, including tracking issues, follow-ups held by other chains, and the follow-up lists in related PRs' explanation comments; on a hit, link that issue instead. (3) The body carries the AI disclosure line, and bot posts go only on the new issue. So a fixer's or reviewer's unfiled follow-ups are authorized under those conditions, not reported upward as "awaits operator authorization". A defect that appears only on an unmerged PR stack is not an issue; it goes in that PR's body as a known limitation. The #13737 chain's five held follow-ups were a one-off parent hold, not the default [Filing a verified follow-up issue is not an operator gate](../learnings/1793294266192-filing-a-verified-follow-up-issue-is-not-an-operat.md) [Filing a verified GitHub issue is the bot's own authority; only `gh pr ready`/merge need the operator](../learnings/1793296109958-filing-a-verified-github-issue-is-the-bot-s-own-au.md).
+
 ## Bot Identity and Comment Hygiene
 
 The fleet's GitHub identity is `nv-slang-bot[bot]`. Older text naming `slang-coworker-nanoclaw[bot]` is stale ([identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)). However, `gh api .../issues/<n>/comments` returns `.user.login` as bare `nv-slang-bot` with `.user.type == User`. An edit-if-last-poster-is-self check that compares against `"nv-slang-bot[bot]"` never matches, so it quietly posts duplicates. Match both forms (`case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\])`). If you already double-posted, PATCH the stale comment into a "Superseded, see <link>" pointer ([login is bare nv-slang-bot: fix the matcher](../learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md)). Several coworkers share this identity, so a bot comment on your PR may come from another agent. Re-read the newest comment before posting ([bot comments on your PR may be another agent](../learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md)).
@@ -113,7 +115,7 @@ Standing down from off-lane drift on a handled thread (say, a trusted maintainer
 
 A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2026-10-08 sweep a #slang-support user with a `bit_cast`→`PrimalTensor` ICE (later slang#13480, reproduced on 7 targets) said the bot "could not resolve it well, but I wasn't sure if it was a bug/issue or a coding error from my side". The bot's "worth filing" sat in a sub-bullet below the workarounds, and the user filed only after a maintainer nudged them 3 days later; the user in a `[Differentiable]` no-op thread still hadn't filed after 16 days. So when the diagnosis is a compiler bug (any E99997 or ICE), make line 1 "This is a Slang compiler bug, not your code. Please file it at github.com/shader-slang/slang/issues", follow with a ready-to-paste minimal repro, and give the workarounds after that ([Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md)).
 
-**Source learnings (33):**
+**Source learnings (35):**
 - [Obsidian-link gap is nav-only; triage by target, recompute counts](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [A correction isn't applied until every surface is fixed; grep old+new](../learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md)
 - [append_learning injects title as H1; never start content with one](../learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md)
@@ -147,5 +149,7 @@ A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2
 - [they/them until stated; fix live misgendering via PATCH](../learnings/1790197020671-default-to-they-them-for-a-person-until-pronouns-a.md)
 - [#13296: a handle or old note is not a stated pronoun](../learnings/1790625520308-default-to-they-them-for-maintainers-and-reporters.md)
 - [Read Chromium issue status and fork commits without a browser](../learnings/1792854175172-read-chromium-issue-status-and-fork-commits-withou.md) — `action/issues/<id>` JSON status tuple (4=Fixed); fork commit 401 → query `shader-slang/slang/commits/<sha>`
+- [slang#14007: filing a verified follow-up issue is not operator-gated; three conditions; PR-stack-only defects are known limitations](../learnings/1793294266192-filing-a-verified-follow-up-issue-is-not-an-operat.md)
+- [slang#14017: same rule confirmed; dedup includes PR explanation-comment follow-up lists; match the repro to the exact API](../learnings/1793296109958-filing-a-verified-github-issue-is-the-bot-s-own-au.md)
 
 _Catalog: [[wiki/index.md]]_
