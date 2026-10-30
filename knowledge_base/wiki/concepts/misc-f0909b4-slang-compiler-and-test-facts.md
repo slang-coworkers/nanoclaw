@@ -2,32 +2,19 @@
 title: Slang compiler internals and test-harness facts (address-of, entry-points, AnyValue, IR passes, CUDA/NVRTC, diagnostic tests)
 type: concept
 group: misc
-tags: [slang, compiler, ir, getaddress, entry-point, anyvalue, dce, cuda, nvrtc, diagnostic-test, filecheck, slang-cli]
+tags: [slang, compiler, ir, getaddress, entry-point, anyvalue, dce, cuda, nvrtc, diagnostic-test, filecheck, slang-cli, entry-point-names, E38000, findFunctionDeclByName]
 source_count: 21
 ---
 
 ## TL;DR
 
-Codebase-specific reference facts gathered while fixing/triaging shader-slang/slang
-issues. Grouped by subsystem:
+Codebase-specific reference facts gathered while fixing/triaging shader-slang/slang issues. Grouped by subsystem:
 
-- **Address-of whitelist.** `__getAddress(buf[i])`→E31160 is an AST whitelist gap
-  in `getValidTypeForAddressOf`, not a semantic prohibition — `&buf[i]` already
-  compiles (routes through `operator&`/`__ref` binding). The fix must enable RW
-  *and* RasterizerOrdered buffers and **default** the pointer layout `L` (match
-  `&`, not preserve `L` — preserving a generic `L` crashes a RELEASE_ASSERT).
-- **Entry-point role conflation.** The EP decoration attaches to the ordinary
-  IRFunc; the crash lives in the post-link `translateEntryPointInParamToBorrow`
-  when a function is both entry point and non-entry (called/exported). A Release
-  spin and a Debug assert can be the *same* bug. `fixEntryPointCallsites` clones a
-  *called* entry point into an ordinary function; it must select every entry-point-like
-  decoration (`[CUDAKernel]` has no `IREntryPointDecoration`).
-- **AnyValue marshalling** is field-wise 4-byte `bit_cast` per leaf (deliberate
-  for correctness). A whole-object fast path must use the *target ABI* layout, not
-  Natural layout, or it silently truncates.
-- **IR passes**: a DCE epoch-stamp optimization must keep one zeroing per call
-  (serialize-ir writes unbounded scratchData); a fixpoint memoization can hit high
-  hit rates because keys recur across rounds.
+- **Address-of whitelist.** `__getAddress(buf[i])`→E31160 is an AST whitelist gap in `getValidTypeForAddressOf`, not a semantic prohibition — `&buf[i]` already compiles (routes through `operator&`/`__ref` binding). The fix must enable RW *and* RasterizerOrdered buffers and **default** the pointer layout `L` (match `&`, not preserve `L` — preserving a generic `L` crashes a RELEASE_ASSERT).
+- **Entry-point role conflation.** The EP decoration attaches to the ordinary IRFunc; the crash lives in the post-link `translateEntryPointInParamToBorrow` when a function is both entry point and non-entry (called/exported). A Release spin and a Debug assert can be the *same* bug. `fixEntryPointCallsites` clones a *called* entry point into an ordinary function; it must select every entry-point-like decoration (`[CUDAKernel]` has no `IREntryPointDecoration`).
+- **Entry-point names are never checked for uniqueness.** Two `[shader]` functions with one unqualified name (overloads, or `A::K` and `B::K`) are both emitted under it; slangc exits 0 and the output is invalid on CUDA, SPIR-V, Metal, WGSL and DXIL. `-entry X` on an overloaded `X` gives a misleading E38000 "no function found" (#14053).
+- **AnyValue marshalling** is field-wise 4-byte `bit_cast` per leaf (deliberate for correctness). A whole-object fast path must use the *target ABI* layout, not Natural layout, or it silently truncates.
+- **IR passes**: a DCE epoch-stamp optimization must keep one zeroing per call (serialize-ir writes unbounded scratchData); a fixpoint memoization can hit high hit rates because keys recur across rounds.
 - **Storage-type lowering**: `lowerBufferElementTypeToStorageType` can emit `CopyLogical` on every
   target though only SPIR-V lowers it (fix the producer), and `&local` is a UserPointer on CPU/CUDA,
   so a global UserPointer pointee rewrite splits it from the parameter type — test with `&local`.
@@ -100,6 +87,8 @@ the pass because its generated `compute_main` calls the user function directly
 original author's. Use a full-history clone for `git log -S` on such questions; a
 shallow clone hides the origin. The clone's stale param layouts breaking Metal and CUDA
 are on [[wiki/concepts/slang-backends-wgsl-metal.md]].
+
+**Duplicate entry-point names pass silently, and an overloaded `-entry` name gives a misleading E38000 (#14053).** Two `[shader]` functions with the same unqualified name, whether overloads or `A::K` and `B::K` in two namespaces, are both discovered and both emitted under that name. slangc exits 0, but the output is invalid on CUDA (nvcc rejects the `extern "C"` overload), SPIR-V (spirv-val: "2 Entry points cannot share the same name and ExecutionMode."), Metal, WGSL and DXIL. Nothing checks for this in discovery (`Module::_discoverEntryPoints`, `slang-module.cpp:337`) or in lowering (`lowerFrontEndEntryPointToIR` uses `getFuncDecl()->getName()`), and `Module::findEntryPointByName` returns the first match. Two entry points with the same name but different stages (a vertex and a fragment `Main`) are valid SPIR-V, so any uniqueness rule has to depend on the target. Separately, `-entry X` on an overloaded `X` gives `E38000 no function found matching entry point name` at 1:1, not an ambiguity error: `findDeclFromString` resolves overloads with a null sink and returns an `OverloadedExpr`, and `findFunctionDeclByName` (`slang-check-shader.cpp:933`) accepts only a `DeclRefExpr`. When E38000 names a function that plainly exists, check first whether the name is overloaded. Test tip: if a worktree build lacks `slang-glslang` ("failed to load downstream compiler 'spirv-opt'"), compile with `-target spirv -O0` and validate with the in-tree `build/external/spirv-tools/tools/Debug/spirv-val` [Slang does not check entry-point names for uniqueness, and -entry on an overloaded name reports a misleading E38000](../learnings/1793312063302-slang-does-not-check-entry-point-names-for-uniquen.md).
 
 ## AnyValue marshalling (slang#12606/#12609)
 
@@ -298,3 +287,4 @@ positive-control CHECK that the output actually changed.
 - [Slang release tags live on release branches; `&local` is UserPointer on CPU/CUDA](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — #13405/#8526: a global UserPointer pointee rewrite splits `&local` from the param type
 - [HLSL: AppendStructuredBuffer<matrix> wrapper mismatch (#13388) and the user-struct workaround](../learnings/1792433454462-hlsl-appendstructuredbuffer-matrix-wrapper-mismatc.md) — `wrapStructuredBuffersOfMatrices` skips Append/Consume and wraps per buffer type → DXC X3017; use `struct Mat { float4x4 m; }`
 - [Slang IR inliner never reads [noinline]; only the CUDA emitter does (13177)](../learnings/1792658399913-slang-ir-inliner-never-reads-noinline-only-the-cud.md) — `shouldInline` tests ForceInline/UnsafeForceInlineEarly/IntrinsicOp only; a heuristic inliner (#13177) must add its own NoInline check
+- [duplicate `[shader]` names (overloads, namespaces) are emitted unchecked and invalid on every target; overloaded `-entry` gives misleading E38000 (`findFunctionDeclByName` wants a `DeclRefExpr`)](../learnings/1793312063302-slang-does-not-check-entry-point-names-for-uniquen.md)

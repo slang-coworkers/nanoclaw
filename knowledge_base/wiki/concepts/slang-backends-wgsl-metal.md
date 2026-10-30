@@ -3,7 +3,7 @@ title: "Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)"
 type: concept
 group: slang-backends
 tags: [wgsl, metal, webgpu, static-const, buffer-layout, wave-intrinsics, deferBufferLoad, uniform, tint, PreventInfiniteLoops, loop, restructure]
-source_count: 29
+source_count: 30
 ---
 
 # Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)
@@ -28,6 +28,7 @@ The WGSL backend (`slang-emit-wgsl.cpp`) is a textual target that needs construc
 - Widening `[require]` needs a matching `__target_switch` `case`/`default`, or E36107 becomes an emit gap (#12165).
 - groupshared-by-ref (#10641) breaks Metal, WGSL and CUDA differently; a green vk/HLSL/SPIR-V run clears none.
 - Pointer address space is TYPE-LEVEL on Metal/WGSL (E30019), PASS-INFERRED on SPIR-V (E58005/E58004). An "X can't reach Y" claim needs a named diagnostic + test or a repro.
+- Metal `&` (E36107) is only a `[require]` gate; `__getAddress` works. Maintainers are deprecating `&`, so route such issues to them instead of widening the gate (#14035).
 - Metal wrapper swaps leak decorations (#10675, #13271; cloned param layouts also break CUDA): strip at the producer. Callee-first `-entry vsB -entry vsA` hangs HLSL/GLSL/WGSL; use `timeout`.
 
 Companion page [[wiki/concepts/slang-backends-wgsl-matrix-and-validation.md]] covers WGSL matrix-operator validity (negation, int64 matrices), the §3.9 template-list ambiguity in argument lists, and GPU-free naga-wasm validation. WGSL uniformity analysis (spec rules, which context shapes pass Tint, the `__builtinWaveLaneCount` shadow store; #8774) is on [[wiki/concepts/slang-backends-wgsl-uniformity-and-shadow-globals.md]].
@@ -110,7 +111,9 @@ A bare `groupshared` array param **by reference** (#10641 / PR #11709) breaks th
 
 On **SPIR-V** a source `int*` has no address space until `specializeAddressSpace` assigns a storage class, so returning pointers from two address spaces fails in or after that pass (E58005 `conflicting-return-pointer-storage-classes`; E58004 for non-returnable classes). On **Metal/WGSL** the address space is in the type (`Ptr<T, Access, AddressSpace.Device|GroupShared|…, Layout>`), so the same conflict (`uniform int*` vs `__getAddress(groupshared)`) is a type mismatch, **E30019**, in semantic checking. Metal does allow returning pointers and `__getAddress` (`tests/metal/metal-pointer-params.slang`, `pointer-in-buffer-getaddress.slang`); E31160 on a function-local, failure on structured-buffer `buf[i]` on all targets (#10841), and a context-specific E36107 for `&gShared` in a Metal/WGSL/GLSL compute entry point do not mean "no pointers". Maintainer rule: an "X cannot reach Y" claim names the enforcing diagnostic with a test or a failing repro, or weakens to "not attempted; covered by construction" ([Pointer address space is type-level on Metal/WGSL but pass-inferred on SPIR-V](../learnings/1789546490977-pointer-address-space-is-type-level-on-metal-wgsl-.md)).
 
-**Source learnings (29):**
+**`&` on Metal is blocked only by its capability gate, and the gate should stay (#14035).** `operator&` (`core.meta.slang:3091`) is `[require(cpp_cuda_spirv_llvm)]`, which has never included Metal since #4710, while `__getAddress` is gated `cpp_cuda_metal_spirv_llvm` (`slang-check-decl.cpp:22442`). So on Metal `&p[i]` gives E36107, but `__getAddress(p[i])` and `__getAddress(p->f)` compile today (they emit `p + i`), and `-ignore-capabilities` shows the Metal IR/emit path already handles `&` for device, threadgroup and thread pointers. Do not just widen the `&` gate: maintainers plan to deprecate `&` (#10280 commit b1505c6e5, jkwak-work on #9148, jhelferty-nv on #10619, draft #10206 `RemovedSince(2026)`, which intentionally leaves `__getAddress` out of its guidance), and under #10206 there is no public spelling for a field address. Route such issues to maintainer direction. `slangc -ignore-capabilities` is a fast probe for "is the `[require]` gate the only blocker". WGSL has no device pointers at all: `uniform int*` silently emits invalid `ptr<, T>` (#13399) [E36107 on `&` (operator&) for Metal: gate-only; `__getAddress` works; maintainers are deprecating `&`](../learnings/1793295608390-e36107-on-operator-for-metal-gate-only-getaddress-.md).
+
+**Source learnings (30):**
 - [output-struct flatten (`maybeFlattenNestedStructs`) desyncs var-layout → positional-index null-deref in `ensureStructHasUserSemantic` (Metal/WGSL segfault)](../learnings/1784382530471-slang-metal-wgsl-entry-point-output-struct-flatten.md)
 - [Slang per-target stride for `StructuredBuffer<float3, ScalarDataLayout>` — WGSL is the outlier](../learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md)
 - [Coverage wave-aggregate tests — CUDA/Metal FileCheck asserting `WaveActiveCountBits` passes for the wrong reason](../learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md)
@@ -140,4 +143,5 @@ On **SPIR-V** a source `int*` has no address space until `specializeAddressSpace
 - [Tint PreventInfiniteLoops: only a WGSL `for` with var-in-init and a ±1 update is provably finite; `loop{continuing}` is not](../learnings/1792251784378-tint-preventinfiniteloops-only-a-wgsl-for-with-var.md) — Dawn `loop_analysis.cc` rules, 14 probes via `dump_shaders`; Slang's restructurer copies the continue block into the body (#13733)
 - [WGSL: VECTOR_MAP loops + the inline one-trip wrapper leave a Tint counter even with counted-for emission](../learnings/1792502293606-wgsl-vector-map-loops-the-inline-one-trip-wrapper-.md) — `VECTOR_MAP_*` lacks `[ForceUnroll]`; `inlineMultipleBlockFuncBody` wrapper survives a callee loop; 5→1 counters after #13740 (#13765)
 - [WGSL uniform 16-byte rule is on array STRIDE; @align can't fix it; uniform_buffer_standard_layout relaxes it (Dawn only)](../learnings/1792627107595-wgsl-uniform-16-byte-rule-is-on-array-stride-align.md) — §14.4.5 stride; `_Array_std140` / `@size(16)` wrapper; naga 0.32 rejects the extension (#13704)
+- [`operator&` gate omits Metal while `__getAddress` works; `&` is being deprecated, don't widen; `-ignore-capabilities` probe (#14035)](../learnings/1793295608390-e36107-on-operator-for-metal-gate-only-getaddress-.md)
 _Catalog: [[wiki/index.md]]_

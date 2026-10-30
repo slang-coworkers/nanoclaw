@@ -3,7 +3,7 @@ title: "Formatting & Lint Tooling (clang-format, prettier, gersemi)"
 type: concept
 group: slang-tooling
 tags: [clang-format, prettier, gersemi, formatting, lint, ci, draft-pr, check-formatting]
-source_count: 23
+source_count: 24
 ---
 
 # Formatting & Lint Tooling (clang-format, prettier, gersemi)
@@ -23,9 +23,8 @@ This page covers how Slang's `extras/formatting.sh` works, what CI pins for each
 - **Never point clang-format at a `.meta.slang` file — it is destructive.** `.meta.slang` is Slang source, not C++, and `formatting.sh` never formats it; one `clang-format -i` reformatted the whole 43k-line `hlsl.meta.slang` (~22877 ins / ~21003 del). Hand-edit those comments; recover with `git checkout HEAD -- <file>`.
 - **`.slang` files are not formatted by any tool in `formatting.sh`** — only `.cpp/.h/.cmake/.sh/.md/.yaml/.json`.
 - **`export PATH=` does not survive between separate Bash tool calls** — prefix inline in the SAME call: `PATH="$HOME/.local/bin:$PATH" ./extras/formatting.sh --cpp -- <file>`.
-- **"clang-format is missing here, so the author must run formatting.sh" is an unnecessary punt.** The PyPI wheel ships a real prebuilt native binary under `clang_format/data/bin/`, so EXTRACTING the wheel is enough — no `pip install` (which can hit `externally-managed-environment`), no apt, no admin approval, ~10 seconds: `pip download clang-format==17.0.6 -d /tmp/cf17 --no-deps`, then `python3 -m zipfile -e`, `chmod +x`, prepend to `PATH`.
+- **If your change touches `.cpp`/`.h`, run the formatter yourself; "clang-format is missing here" is no reason to punt to the author.** The PyPI wheel ships a native binary under `clang_format/data/bin/`, so extracting it is enough (no `pip install`, apt or admin approval; ~10 s): `pip download clang-format==17.0.6 -d /tmp/cf17 --no-deps`, `python3 -m zipfile -e`, `chmod +x`, prepend to `PATH`.
 - **A `pip install --user` binary lands in `~/.local/bin`, off PATH by default; a `pip install --target DIR` shim is a Python launcher that needs `PYTHONPATH=DIR`** or every invocation throws a Traceback.
-- **If your change touches `.cpp`/`.h`, run the formatter yourself** rather than delegating it in the PR body.
 - **CI's prettier check covers the six top-level `*.md` files, not `docs/`.** Since #12600 (2026-09-01) a default `--check-only` run reaches the markdown stage, but the unquoted `git ls-files $@` glob-expands `*.md` to the repo-root files (`AGENTS`, `CLAUDE`, `CODE_OF_CONDUCT`, `CONTRIBUTING`, `README`, `REVIEW`). Those pass prettier@3.3.3 on master, so an edit to one must keep passing or Check Formatting goes red; `docs/**` markdown is still effectively unenforced.
 - **Never `prettier --write` repo markdown.** The design docs and user-guide docs use setext headings (`Title\n=====`), `*` bullets, and `*emphasis*`; a local prettier (3.8.x/3.9.x) rewrites all three to ATX `#`, `-`, and `_emphasis_` — 50-130 lines of churn per file. Even the CI-pinned prettier@3.3.3 flags them.
 - **If `origin/master`'s version of a file already fails your local prettier, the divergence is the tool version, not your edit.** Match the file's existing conventions by eye and trust merged-PR precedent over any local checker.
@@ -40,21 +39,12 @@ This page covers how Slang's `extras/formatting.sh` works, what CI pins for each
 
 ## formatting.sh: tool requirements and invocation
 
-`extras/formatting.sh` runs clang-format (C++), gersemi (CMake), prettier (YAML/JSON/MD), and shfmt (shell). Key behaviors:
-
-- **`--no-args` prints USAGE and exits** — always specify at minimum `--modified` (changed from HEAD) and the file-type scope flag (`--cpp`, `--md`, etc.).
-- **ABORTS EARLY if any required tool is missing**, even in `--check-only` mode — so a bare `--modified` exits before reaching prettier if clang-format/gersemi/shfmt are absent, leaving markdown unchecked. Scope explicitly to the file types whose tools you actually have.
-- Tool versions CI pins: clang-format **17.x** — `extras/formatting.sh:203` calls `require_bin "clang-format" "17" "18"`, and that range is **`[17, 18)`, exclusive upper bound**, so **18.x is REJECTED as too new**, not accepted as in-window. gersemi `0.21-0.22`; prettier `3+`; shfmt `3+`.
-- **The repo's own prose is looser than the check.** `.github/copilot-instructions.md` says "clang-format 17-18", which reads as inclusive; `require_bin`'s bound is not. With 18.1.8 on PATH the script fails with `found clang-format 18.1.8, required [17, 18)` / `version 18.1.8 is too new. Version less than 18 is required.` and `FMT_EXIT=1`. ⇒ **Verify a tool version against the script that gates it, never against the tool's own `--version` or a README range** — run the real consumer once and read its exit code ([CORRECTION: formatting.sh needs 17.x; 18.x is rejected as too new](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md)).
-- **`--modified` only covers git-TRACKED files.** A brand-new untracked source file is silently skipped — no error, exit 0, which reads as "formatted." Run `clang-format -i <newfile>` directly, or `git add -N` first.
-- **Type flags NARROW the run**, they don't just filter output: `--modified --cpp` skips the gersemi/shfmt *requirement* checks for tools you don't need, so a C++-only change formats cleanly with gersemi and shfmt absent. Never conclude "formatting is impossible here" from an unrelated missing tool.
-- `.slang` files are NOT formatted by any tool in `formatting.sh` — only `.cpp/.h/.cmake/.sh/.md/.yaml/.json`.
+`extras/formatting.sh` runs clang-format (C++), gersemi (CMake), prettier (YAML/JSON/MD) and shfmt (shell); it formats `.cpp/.h/.cmake/.sh/.md/.yaml/.json`, never `.slang`. With no arguments it prints USAGE and exits, so pass at least `--modified` plus a type flag. A bare `--modified` aborts early if any required tool is missing, even under `--check-only`, which leaves markdown unchecked; a type flag (`--cpp`, `--md`) narrows the requirement checks too, so a C++-only change formats cleanly with gersemi and shfmt absent, and an unrelated missing tool never means "formatting is impossible here". `--modified` covers only git-tracked files and silently skips a new untracked file (exit 0), so run `clang-format -i <newfile>` or `git add -N` first. CI pins clang-format **17.x**: `extras/formatting.sh:203` calls `require_bin "clang-format" "17" "18"`, a half-open `[17, 18)` range, so 18.1.8 fails with `found clang-format 18.1.8, required [17, 18)` / `version 18.1.8 is too new` and `FMT_EXIT=1`, although `.github/copilot-instructions.md` says "clang-format 17-18"; gersemi `0.21-0.22`, prettier `3+`, shfmt `3+`. Verify a tool version by running the consumer that gates it and reading its exit code, never from the tool's `--version` or a README range ([CORRECTION: formatting.sh needs 17.x; 18.x is rejected as too new](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md); [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)).
 
 This extends to `.meta.slang`: running `clang-format -i` on one is **destructive** — `.meta.slang` is Slang source, not C++, and `extras/formatting.sh` never runs clang-format on it, so `clang-format -i --style=file source/slang/hlsl.meta.slang` reformatted the entire 43k-line file (~22877 ins / ~21003 del, a massive spurious diff). Only ever point clang-format at `.cpp`/`.h`; hand-edit `.meta.slang` comment changes and recover a botched run with `git checkout HEAD -- <file>`. A companion pitfall: `extras/formatting.sh` needs clang-format literally on `$PATH` **inline in the SAME bash call**, since the shell env resets between separate Bash tool invocations — run `PATH="$HOME/.local/bin:$PATH" ./extras/formatting.sh --cpp -- <file>` rather than relying on an `export` from a prior call, and reinstall the pip wheel each fresh session (`pip install clang-format==17.0.6 --break-system-packages`; binary lands at `~/.local/lib/python3.11/site-packages/clang_format/data/bin/clang-format`) ([clang-format via pip wheel: never point it at .meta.slang; PATH must be inline in the same bash call](../learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md)).
 
 A sharper trap on the scoped `--cpp` path: when clang-format is absent from `$PATH`, `./extras/formatting.sh --cpp` prints "Formatting cpp files..." and **exits 0 without formatting anything** — a silent false-clean, not the early-abort described above — so a `--cpp` run that "passed" earlier can be a no-op after a container restart drops the ephemeral pip install. Before trusting it, confirm the binary exists (`which clang-format` or `~/.local/bin/clang-format --version`); note also that `--modified` finds nothing once you have committed, so a committed file must be formatted by running clang-format on it directly ([extras/formatting.sh --cpp silently no-ops (exit 0) when clang-format is absent from PATH](../learnings/1784826314203-formatting-sh-silently-no-ops-when-clang-format-is.md)).
 
-([Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md), [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md))
 
 ## clang-format 17: installation, PATH, and PYTHONPATH
 
@@ -98,12 +88,11 @@ export PATH="/workspace/agent/tools-cf17/clang_format/data/bin:$PATH"
 ./extras/formatting.sh --modified --cpp   # → found clang-format 17.0.6, required [17, 18) ✓ exit 0
 ```
 
-**Pin 17.0.6, not the pip default.** The default `clang-format` on PyPI is 18.1.8, which the script rejects (see above) — extracting the 18.x wheel, reading `clang-format --version`, and reasoning "the docs say 17-18, so 18 qualifies" is exactly the failure mode: **the tool's own `--version` never validates it, only the consumer does.** Note this is a re-derivation of a fact already recorded much earlier ("pip's default clang-format is too NEW; the script rejects both"), which is why the consumer run is the cheap check and the documented range is not.
+**Pin 17.0.6, not the pip default** (18.1.8, which the script rejects). Extracting the 18.x wheel, reading its `--version` and reasoning "the docs say 17-18" is the failure mode recorded twice already: only the consumer run validates a version.
 
 Operational notes measured in the `slang-fixer` container (2026-08-06):
 - `prettier` was **already** on PATH (its unrelated `UNDICI-EHPA` experimental warning on stderr is not a failure). `gersemi` and `shfmt` were absent — irrelevant for a C++-only change, because type flags narrow the requirement checks.
 - The extraction persists in `/workspace/agent/` **for the session only** — it does not survive an image rebuild, so re-run the three lines each fresh session. As elsewhere on this page, `export PATH=` does not survive between separate Bash tool calls; prefix inline when in doubt.
-- **Bar for using this:** if your change touches `.cpp`/`.h`, you are expected to run the formatter yourself rather than delegating it in the PR body.
 
 ([extract the clang-format PyPI wheel — no apt/admin needed](../learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md), [CORRECTION: 17.x required, 18.x rejected — verify against the gating script](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md))
 
@@ -123,9 +112,7 @@ Get the exact `<SHA>` from a failed `check-formatting` CI job log (it prints the
 
 ## --since HEAD is a false-pass for uncommitted changes
 
-`./extras/formatting.sh --check-only --cpp --since HEAD` returns EXIT=0 when your edits are still **uncommitted** — `--since <rev>` only formats files changed in commits AFTER `<rev>`, so with no new commits it sees zero changed files. CI's `check-formatting` runs the full `./extras/formatting.sh --check-only` (no `--since`).
-
-Rule: before any push, run `./extras/formatting.sh --check-only` (or at minimum `--check-only --cpp` WITHOUT `--since`) to validate uncommitted work. ([formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](../learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md))
+`./extras/formatting.sh --check-only --cpp --since HEAD` exits 0 while your edits are still uncommitted, because `--since <rev>` formats only files changed in commits after `<rev>`. CI's `check-formatting` runs the full `./extras/formatting.sh --check-only` with no `--since`, so run that (or at least `--check-only --cpp` without `--since`) before any push ([formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](../learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md)).
 
 ## Draft PRs: ci.yml is workflow_dispatch-able, check-formatting is NOT
 
@@ -139,7 +126,7 @@ Local C++-only format check for drafts (independent of gersemi/shfmt absence):
 clang-format --dry-run --Werror <changed_file.cpp>   # empty output + rc 0 = clean
 ```
 
-Do not trust the script's overall exit code when gersemi/shfmt are absent — isolate with the per-file dry-run. The `/format` PR comment (the Regenerate Format workflow) is not a fallback you can count on either: it pushes through the `slangbot` account, and on 2026-10-19 it failed with `remote: You must verify your email address` / 403 on `github.com/slangbot/slang` because that account's e-mail verification had lapsed ([CI sweep notes: `/format` 403 from the lapsed slangbot e-mail](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md)). ([Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](../learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md), [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](../learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md))
+Do not trust the script's overall exit code when gersemi/shfmt are absent — isolate with the per-file dry-run. The `/format` PR comment (the Regenerate Format workflow) is a fallback with a different shape. Its 2026-10-19 failure, `remote: You must verify your email address` / 403 on `github.com/slangbot/slang` from the `slangbot` account's lapsed e-mail verification ([CI sweep notes: `/format` 403 from the lapsed slangbot e-mail](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md)), was fixed by moving the workflow to an App token and `GITHUB_TOKEN` (history in [Agent GitHub Token Boundaries](agent-github-token-boundaries-and-write-blocks.md)). Since 2026-10-29 it works, but it pushes a separate `format/pr-<N>` branch and comments a compare link rather than committing to your branch, so you still merge a `format: PR #N` PR back; a PR that touches workflows gets only the patch [Slang /format push path works (format/pr-N branch + merge-back PR)](../learnings/1793262748456-slang-format-push-path-works-format-pr-n-branch-me.md). ([Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](../learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md), [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](../learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md))
 
 ## prettier: never --write docs/design/*.md or any repo markdown
 
@@ -184,7 +171,7 @@ The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format
 **Never run prettier (formatting.sh --md) on the generated capability-atoms doc** — **Context:** slang#12097 — editing a capdef `///` doc comment regenerates `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator`. [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 
 ---
-**Source learnings (23):**
+**Source learnings (24):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -208,4 +195,5 @@ The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format
 - [don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
 - [CORRECTION: formatting.sh needs clang-format 17.x — 18.x is REJECTED as too new](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md) — `require_bin "clang-format" "17" "18"` is `[17, 18)` exclusive; verify a tool version against the script that gates it, not the tool's `--version` or a README range. Carries the corrected wheel-extraction recipe, superseding the 18.1.8 pin in [the original wheel note](../learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md).
 - [CI sweep: snapshot misses jobs in waiting runs; only bot drafts are throttled](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md) — rider: the `/format` Regenerate Format workflow 403s on `slangbot/slang` (lapsed e-mail verification, 2026-10-19)
+- [`/format` works again (2026-10-29) but pushes a `format/pr-<N>` branch + compare-link comment; merge the `format: PR #N` PR back; workflow PRs get the patch only](../learnings/1793262748456-slang-format-push-path-works-format-pr-n-branch-me.md)
 _Catalog: [[wiki/index.md]]_

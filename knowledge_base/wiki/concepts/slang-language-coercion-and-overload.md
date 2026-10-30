@@ -2,8 +2,8 @@
 title: "Slang Coercion & Overload Resolution"
 type: concept
 group: slang-language-core
-tags: [type-system, coercion, optional, generic-container, initializer-list, overload-resolution, vector, conversion-cost-cache, matrix-layout, BuiltinCast, finalizeSpecialization, IRMemoryScopeAttr, IRAlignedAttr]
-source_count: 14
+tags: [type-system, coercion, optional, generic-container, initializer-list, overload-resolution, vector, conversion-cost-cache, matrix-layout, BuiltinCast, finalizeSpecialization, IRMemoryScopeAttr, IRAlignedAttr, compound-assignment, operator-overloading, E30073, IArithmetic]
+source_count: 15
 ---
 
 # Slang Coercion & Overload Resolution
@@ -21,6 +21,7 @@ How Slang coerces values into generic containers (`Optional<T>` and friends) and
 - **Shift operands may differ in type by design** (`vector<L,N> op(vector<L,N>, vector<R,N>)`, `op(L, vector<R,N>)`), so each C-like target must convert them for its output language. On CPU/CUDA, `unifyBinaryExprOperands` splats a scalar to the OTHER operand's type: `int s >> uint3` becomes a logical shift (-8>>1 = 2147483644 on CPU) and `int3 >> uint3` fails NVRTC/gcc. Convert shift operands to the RESULT type (#13553, PR #13562).
 - **Generic `vector<T,N> == vector<T,N>` with `T : __BuiltinFloatingPointType`/`__BuiltinIntegerType` bound core's `IComparable` `operator==` and returned a scalar `bool`** (fewer witness-upcast hops beat `OverloadRank`); #13969 removed the fast-path decline, so infix is per-component, while explicit `operator==(a, b)` still binds IComparable. glsl.meta.slang's overloads are in scope only under `import glsl` or GLSL source.
 - **When a result changes from scalar `bool` to `vector<bool,N>`, test `any(a == b)` and `all(a != b)`**: they flip, while `all(a == b)` and `any(a != b)` keep their value. Vector `?:` also changes (per-component, E30056; E30055 in `[Differentiable]` code).
+- **Compound assignment `x -= y` calls a function named `-=` found by lookup; it is never derived from `operator-`.** A user type with only `operator-` gets E39999, and the only working user spelling is a free `T operator-=(inout T l, T r)`, because member, static and extension operators are rejected (E30073). `IArithmetic`/`IFloat` get no compound ops in core, while `ILogical` gets `&= |= ^=` (#14038).
 
 ## Optional<T> and Generic-Container Coercion
 
@@ -66,7 +67,11 @@ Before #13969 the builtin-operator fast path (`convertToBuiltinArithmeticOp`, `s
 
 **Testing the scalar-`bool` → `vector<bool,N>` change (#13970).** Code that used the result as a `bool` now errors, but code wrapped in a reduction still compiles, and only two of the four reductions keep their value. `all(a == b)` and `any(a != b)` agree under both meanings. `any(a == b)` (master 0 → head 1 for a=(0.1,0,0.3), b=0) and `all(a != b)` (1 → 0) silently flip, so a repro that tests only the two stable forms cannot tell the old meaning from the new. Vector `?:` changes too: it used to select a whole vector and now selects per component with warning E30056, and inside `[Differentiable]` code it is a hard error, E30055. Probe each form on a master build and a head build before calling the break "documented" [test any(a==b) and all(a!=b), not all(a==b)/any(a!=b)](../learnings/1793194698608-bool-to-vector-bool-result-change-test-any-a-b-and.md).
 
-**Source learnings (14):**
+## Compound assignment is looked up by name, never derived from the binary operator (#14038)
+
+`x -= y` is an `InfixExpr` that calls a function named `-=`. The checker finds that function by scope lookup only and never rewrites the expression to `x = x - y`, so a user type that defines only `operator-` gets E39999 (verified on master 9b3ac252d). The only working user spelling is a free function `T operator-=(inout T l, T r)`; member, static and extension operators are rejected with E30073 (#12781). Conforming to `IArithmetic` does not help either: `core.meta.slang` generates binary operators for `IArithmetic`/`IFloat` but no compound operators (open PR #12765), while `ILogical` does get `&= |= ^=`. DeepWiki claimed that core has `+=` for "IAdditive"; that exists only in the experimental slang.numerics module (`wrappers.slang:332`). The local `external/spec` clone was stale (June 2026), so read operator rules from the upstream shader-slang/spec `expressions-operators.md` [Slang compound assignment: never derived from binary op; member operators E30073; IArithmetic has no op=](../learnings/1793296003069-slang-compound-assignment-never-derived-from-binar.md).
+
+**Source learnings (15):**
 - [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
 - [slang generic-container covariance unsupported — _coerce has no type-arg recursion (Optional Derived to Base, #7406)](../learnings/1783523269992-slang-generic-container-covariance-unsupported-coe.md)
 - [slang#7878 Optional-of-opaque via generic member escapes the E30902 front-end guard](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md)
@@ -81,4 +86,5 @@ Before #13969 the builtin-operator fast path (`convertToBuiltinArithmeticOp`, `s
 - [Generic vector<T,N> == binds IComparable scalar bool (witness cost beats OverloadRank) — #13969](../learnings/1793188707381-generic-vector-t-n-binds-icomparable-scalar-bool-w.md) — 5 hops vs 2; glsl overload not in scope; v2023.4.10 bisect via release downloads
 - [Slang fast path vs overload resolution: generic vector == binds IComparable (scalar)](../learnings/1793191333102-slang-fast-path-vs-overload-resolution-generic-vec.md) — `-dump-ir` LOWER-TO-IR check; #13969 per-component infix; explicit `operator==` still IComparable
 - [bool-to-vector<bool> result change: test any(a==b) and all(a!=b)](../learnings/1793194698608-bool-to-vector-bool-result-change-test-any-a-b-and.md) — two reductions flip; vector `?:` E30056/E30055
+- [`x -= y` calls a looked-up `-=`, never `x = x - y`; only a free `operator-=(inout T, T)` works (E30073 otherwise); IArithmetic has no compound ops, ILogical does](../learnings/1793296003069-slang-compound-assignment-never-derived-from-binar.md)
 _Catalog: [[wiki/index.md]]_

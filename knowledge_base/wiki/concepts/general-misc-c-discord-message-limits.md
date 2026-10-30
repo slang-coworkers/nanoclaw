@@ -2,8 +2,8 @@
 title: "Discord message limits (the real cap is 2000 chars, and the first error lies) and reading the bot's posts for the compliance check"
 type: concept
 group: general
-tags: [discord, mcp, message-limit, formatting, compliance-check, discord-read-messages, is_bot, github-search, url-encoding]
-source_count: 9
+tags: [discord, mcp, message-limit, formatting, compliance-check, discord-read-messages, is_bot, github-search, url-encoding, github-to-discord, identity-mapping]
+source_count: 12
 ---
 
 # Discord message limits, reading replies and feedback state, and the compliance check
@@ -20,6 +20,7 @@ source_count: 9
 - **Replies to a bot post often live in a thread whose channel ID is the post's message ID.** Read `discord_read_messages(channel_id=<bot msg id>)`; a 404 "Unknown Channel" means no thread. The parent channel shows only a short starter line that repeats the bot post, so a parent-only read misses the answers. A recurring ask (the maintainer rotation) can be answered in an earlier ask's thread: read the previous asks' threads too.
 - **A green Resolved button means the owner clicked Resolved, and that click pauses the bot.** `feedback:resolved` is `style` 2 (grey) until clicked, then `style` 3 (green) with `edited_timestamp` set to the click time. An owner follow-up posted before the click can be left unanswered; relay it by hand.
 - **The compliance check reads the bot's Discord posts poorly**: its converter now reads the `filtered` wrapper (save inline tool output mechanically from the session transcript, never retyped), the bot posts as `SlangMaintainerBot` (so `--author nv-slang-bot` gives an empty-pass R10 "OK 0/0"), and its GitHub searches 400 on a raw `>` in `created:>=`. Exit code 1 can hide UNKNOWN rules; read `complete` in `latest.json`.
+- **A Discord username is not a GitHub login.** Map both handles through `memory/github-to-discord.json` (keyed by Discord author `id`) before calling a question unanswered or planning a relay, and resolve a login with GraphQL `user(login:)` before trusting an `author:<discord-name>` zero: `author:h7per` hits an unrelated empty account (h7per = H7perus; sirspate = jhelferty-nv).
 
 ## Details
 
@@ -39,7 +40,15 @@ The compliance-check converter `scripts/discord_export_from_json.py` could not r
 
 The same run's GitHub side failed for a URL-encoding reason. `compliance_check.py`'s `gh_command()` builds the URL with `urllib.parse.urlencode(params, safe=":/+>=<")`, so `created:>=2026-09-16` goes out with a raw `>`, and GitHub `search/issues` answers HTTP 400; `%3E`, `%3E%3D` or the range form `created:2026-09-16..*` answer 200. All nine searches failed, R1, R2/R3, R5, R7 and R9 went UNKNOWN with 0 items, and R8 covered only comments. The fix is a skill-script change, dropping `>` and `<` from `safe=`; check with `gh api --method GET "search/issues?q=repo:shader-slang/slang+is:pr+author:app/nv-slang-bot+created:%3E%3D2026-09-16&per_page=1"` [compliance_check.py GitHub searches return HTTP 400](../learnings/1792145809721-compliance-check-py-github-searches-return-http-40.md).
 
-**Source learnings (9):**
+Rule R9 asks for a `bot` label on bot PRs and issues, but shader-slang/slang has no such label: on 2026-10-29 `gh api repos/shader-slang/slang/labels/bot` returned 404, and the recent bot-filed issues (#13972–#13994) carry none. Creating the label is a repository-admin action, so a coworker does not create it; it reports the gap to the operator, and an R9 miss on slang is that standing gap, not a per-post defect [shader-slang/slang has no `bot` label; slang-test needs the test under tests/](../learnings/1793295931890-shader-slang-slang-has-no-bot-label-slang-test-nee.md).
+
+## Mapping Discord handles to GitHub logins
+
+A Discord username is not a GitHub login, so an `author:<discord-name>` search can return a clean zero about the wrong account. Discord user h7per (id 232213633839398921) is GitHub **H7perus**: they linked github.com/H7perus/GPUNN in #slang-support thread 1501184709172924466, and H7perus filed slang#10265, #10979, #9999, #9891 and #9855 (all descriptor-heap or compile-time topics). But `author:h7per` resolves to an unrelated account `H7PER` with no issues or PRs, so every "author:h7per = 0" check in the Discord sweeps up to 2026-10-28 was vacuous; the right query is `org:shader-slang author:H7perus` plus `involves:H7perus`. Before trusting an `author:<discord-username>` negative, resolve the login with GraphQL `user(login:"...")` (null means no such user; otherwise check its issue and PR counts) and look for a GitHub link the person posted on Discord. The 2026-10-29 pass found that sirspate, jaspersgames, tombadilllo and tessfactor have no GitHub account by that name (tessfactor is tangent-vector), that mattov→MattOV, riebeck→Riebeck and Tombadillo have never filed an issue, and that CrossVR, externalhost0, HildarTheDorf, fknfilewalker, BarabasGitHub, DouglasPotesta, Plokie and ims21 resolve to active accounts [Discord h7per = GitHub H7perus; author:<discord-name> searches can hit the wrong account](../learnings/1793261887553-discord-h7per-github-h7perus-author-discord-name-s.md).
+
+The maintained mapping is `memory/github-to-discord.json`, keyed by the Discord author `id`, not the username. It maps both `jhelferty-nv` and `sirspate` to Discord ID 117490599833108481, so Discord sirspate is GitHub jhelferty-nv (James Helferty); authorship corroborates it, since slang#12656 ("Add slang-package", the package-manager prototype sirspate discusses in #slang-discussion) is committed by James Helferty. Skipping the lookup produced a wrong carry: the sweeps listed "tessfactor → sirspate (slangd config file), 12 d unanswered; ping sirspate with jhelferty-nv's slang-vscode-extension#78 comment", but that 10-23 comment was sirspate's own reply, so the question was already partly answered on GitHub. So we map both handles through the file before calling a Discord question "unanswered" or planning a relay between two people [Discord sirspate = GitHub jhelferty-nv (James Helferty); check github-to-discord.json before "relay to X"](../learnings/1793262133027-discord-sirspate-github-jhelferty-nv-james-helfert.md).
+
+**Source learnings (12):**
 - [discord_send_message caps content at 2000 chars, not 4000](../learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md) — the first over-length error reports 4000
 - [Discord message limit is 2000 chars, not 4000 — the API error message lies on the first try](../learnings/1786006634390-discord-message-limit-is-2000-chars-not-4000-the-a.md) — split under ~1900 chars on the first attempt
 - [discord_export_from_json.py cannot read discord_read_messages output](../learnings/1792145488222-compliance-check-discord-export-from-json-py-canno.md) — `filtered` wrapper and top-level `is_bot` are not unwrapped
@@ -49,3 +58,6 @@ The same run's GitHub side failed for a URL-encoding reason. `compliance_check.p
 - [Discord bot answers: a green Resolved button means the owner paused the bot](../learnings/1792485276891-discord-bot-answers-a-green-resolved-button-means-.md) — style 2→3 + `edited_timestamp` = click; follow-ups before the click go unanswered; one `gh` call per Bash
 - [compliance-check: save inline discord_read_messages output byte-exact from the session transcript](../learnings/1792995656071-compliance-check-save-inline-discord-read-messages.md) — converter now reads both shapes; extract inline results from the JSONL; R7 judge truncation
 - [Rotation answers can land in the PREVIOUS ask's Discord thread](../learnings/1793176596468-rotation-answers-can-land-in-the-previous-ask-s-di.md) — 2026-10-27 answer sat in the 10-12 ask's thread; read previous asks' threads and diff `threads/active` `message_count`
+- [h7per = H7perus; `author:h7per` hits an unrelated empty account; resolve logins via GraphQL before trusting a zero](../learnings/1793261887553-discord-h7per-github-h7perus-author-discord-name-s.md)
+- [sirspate = jhelferty-nv via github-to-discord.json; map both handles before calling a question unanswered](../learnings/1793262133027-discord-sirspate-github-jhelferty-nv-james-helfert.md)
+- [compliance R9: shader-slang/slang has no `bot` label (`labels/bot` 404); don't create it (admin action), report the gap to the operator](../learnings/1793295931890-shader-slang-slang-has-no-bot-label-slang-test-nee.md)

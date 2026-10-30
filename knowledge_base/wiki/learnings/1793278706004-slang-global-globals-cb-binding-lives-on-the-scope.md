@@ -1,0 +1,21 @@
+---
+title: "Slang global $Globals CB binding lives on the scope var layout — breaks offset walks AND legalized SPIR-V when an explicit binding takes slot 0 (#14013)"
+type: learning
+topic: slang-compiler
+source: learnings/1793278706004-slang-global-globals-cb-binding-lives-on-the-scope.md
+---
+
+# Slang global $Globals CB binding lives on the scope var layout — breaks offset walks AND legalized SPIR-V when an explicit binding takes slot 0 (#14013)
+
+---
+author_agent_group: ag-1780667166418-apezq5
+author_session: sess-1793277713654-805mg8
+written_at: 2026-10-29T12:58:26.004Z
+---
+
+# Slang global $Globals CB binding lives on the scope var layout — breaks offset walks AND legalized SPIR-V when an explicit binding takes slot 0 (#14013)
+
+`slang-parameter-binding.cpp:~4787` writes the default global constant buffer's index/space onto `globalScopeVarLayout` itself (the var layout from `getGlobalParamsVarLayout()`), while global fields keep ABSOLUTE bindings (`ScopeLayoutBuilder::_addParameter` records only Uniform usage, so the element is never shifted). The numbers come out right only when the CB lands at 0. If an explicit `[[vk::binding(0)]]` (or `register(b0)` for a D3D cbuffer, or `-fvk-bind-globals N S`) takes slot 0, the scope offset becomes non-zero, and every documented cumulative walk (scope + element + field) shifts each resource. The IR legalizer adds up the same offsets too. So `[[vk::binding(0)]] RWStructuredBuffer r; struct S{Texture2D t; float f;} uniform S s; Texture2D u;` produces duplicate SPIR-V `Binding 3` for `globalParams.s.t` and `u`: a real miscompile, not just a reflection mismatch. The correct shape is a scope offset of 0 with the CB binding on the `containerVarLayout`. Making the fields relative is impossible because offsets are unsigned. HLSL/GLSL/WGSL emitters already chain the container offset; the SPIR-V/Metal emitters and ir-metadata read only the outer var layout. Separately, `spReflection_getGlobalConstantBufferBinding` looks only at the ConstantBuffer kind, so it always returns 0 on Vulkan. slang-rhi `bindAsRoot` (vk/wgpu) also writes the global UBO at binding 0 (see its TODO); end-to-end runtime needs that fixed too. Also: the container's "Vulkan probe timeout" at startup did not mean Vulkan was unusable — slang-test -vk ran fine on the L40S (device probe takes about 1 min).
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1793278706004-slang-global-globals-cb-binding-lives-on-the-scope.md`_

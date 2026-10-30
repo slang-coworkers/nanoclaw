@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-583 learnings. [Catalog](../index.md)
+588 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -188,6 +188,7 @@ type: topic
 - [A two-stage filter: verifying the predicate named after the property proves nothing](../learnings/1786458866064-a-two-stage-filter-verifying-the-predicate-named-a.md)
 - [A verified negative has a shelf life — stamp it, and re-probe before carrying it forward](../learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md)
 - [A verified premise can carry you to an unverified conclusion — check the instruction, not just its evidence](../learnings/1786392604301-a-verified-premise-can-carry-you-to-an-unverified-.md)
+- [A Vulkan runtime pass on NVIDIA without validation layers is not evidence of a binding fix](../learnings/1793289426474-a-vulkan-runtime-pass-on-nvidia-without-validation.md)
 - [A weak probe that errors on YOUR bug reads as a negative result — arm it on a known-positive](../learnings/1786194435249-a-weak-probe-that-errors-on-your-bug-reads-as-a-ne.md)
 - [A wedged run is evidence of a wedged run, not a wedged outcome — verify the consequence at its own surface](../learnings/1786264741786-a-wedged-run-is-evidence-of-a-wedged-run-not-a-wed.md)
 - [A wrong repro shape yields a false negative indistinguishable from refutation](../learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md)
@@ -233,6 +234,7 @@ type: topic
 - [Bot-filed migration issues go stale — re-verify every file:line against current main before triaging](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md)
 - [Byte-address / HLSL-profile changes: verify at -profile cs_5_0, not just -target hlsl (fxc has no templated .Load<T>)](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
 - [Byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)
+- [Capability-inference fixes must be verified with standard modules built (neural E36104), not only the core-module bootstrap](../learnings/1793287326326-capability-inference-fixes-must-be-verified-with-s.md)
 - [Check the two halves of an attribution against each other before relaying it — a self-refuting claim needs no external evidence](../learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md)
 - [Check whether a stalled PR was superseded before paying any cost to unblock it](../learnings/1785887439570-check-whether-a-stalled-pr-was-superseded-before-p.md)
 - [check_linker_flag with a version script probes the MAP's contents, not option support — and caches the negative](../learnings/1785987788952-check-linker-flag-with-a-version-script-probes-the.md)
@@ -363,6 +365,7 @@ type: topic
 - [Falcor full-length+branch-isolated failure is "needs author eyes", not "confirmed regression"](../learnings/1786501058011-falcor-full-length-branch-isolated-failure-is-need.md)
 - [Fetch a whole repo subtree via codeload tarball, then SHA-verify against tree.json](../learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md)
 - [FileCheck CHECK-NOT window: a -NOT only guards the gap between its two surrounding positive CHECKs (recurring false-positive source)](../learnings/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md)
+- [Filing a verified GitHub issue is the bot's own authority; only `gh pr ready`/merge need the operator](../learnings/1793296109958-filing-a-verified-github-issue-is-the-bot-s-own-au.md)
 - [Find the fix PR for an issue without opening the issue: release-tarball bisect + compare API](../learnings/1792304028705-find-the-fix-pr-for-an-issue-without-opening-the-i.md)
 - [find/grep enumerate a MOUNT not a CAPABILITY — read --help before claiming you cannot reach X](../learnings/1785787584602-find-grep-enumerate-a-mount-not-a-capability-read-.md)
 - [Five instruments that answered a different question than the flag asked — and 7 of 7 corrections needed a second instrument, none came from re-reading](../learnings/1786135621755-five-instruments-that-answered-a-different-questio.md)
@@ -404,6 +407,7 @@ type: topic
 - [mimalloc v2.3.0+ makes MI_OVERRIDE affect Windows static builds; verify dependency-version claims by tag yourself](../learnings/1792631657927-mimalloc-v2-3-0-makes-mi-override-affect-windows-s.md)
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md)
 - [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md)
+- [MSVC 19.29 (VS2019 16.11) ICE C1001 on constexpr std::to_array<const char*> over string literals; CE full-TU MSVC repro tip](../learnings/1793318072513-msvc-19-29-vs2019-16-11-ice-c1001-on-constexpr-std.md)
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [My false claims were all about my own work, not the code — and a commit message is the one carrier you can't correct in place](../learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md)
 - [Narrowing a claim is not testing its premise — and check your own store before re-deriving](../learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md)
@@ -454,6 +458,7 @@ type: topic
 - [Related-by-symptom is not fixed-by: two issues sharing a repro is the signal that invites a wrong `Fixes #N`](../learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md)
 - [Release-binary bisect beats a bot-filed "pre-existing, not a regression" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)
 - [Reply-eval LLM judge marks every "I reproduced this" as dishonest](../learnings/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md)
+- [Repro __ref_readonly/__ref_writeonly in user code needs -experimental-feature (E30133); ref-arg stage split](../learnings/1793274065554-repro-ref-readonly-ref-writeonly-in-user-code-need.md)
 - [Reproduce a defect against EVERY published figure — one number can be satisfied by two different corpora, and the person who owns the defect holds evidence the re-diagnoser doesn't](../learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
 - [Resume-after-pause: re-verify remote state before applying the saved resume plan](../learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)

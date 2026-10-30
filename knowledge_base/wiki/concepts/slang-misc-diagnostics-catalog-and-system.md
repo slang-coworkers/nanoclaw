@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 33
+source_count: 34
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -22,7 +22,7 @@ The Lua-driven definition layer, the generated catalog tests and `regenerate.py`
 - **Adjudicate "false-positive warning?" by diffing emitted target code**; run the discriminating control before relaying a mechanism (E36108 'llvm' was alias membership, not a linked-library leak).
 - **API-path option bugs can't be `.slang` tests** (the CLI path is immune). `applySettingsToDiagnosticSink` double-applies, and an empty option set (the linked *composite*'s, not the module's) clobbers with defaults. Write a GPU-free `slang-unit-test`.
 - **E36110/E36108 false positive on a public interface impl calling a portable stdlib fn** (`normalize`, #12755): inference is target-agnostic and a Public decl's set is clamped. Spurious = extra TARGET the impl merely supports; legit = extra SUB-CAP needed within a shared target.
-- **E30082 (float→double) tags only scalar `double.__init(float)`**; vector/matrix go through one untagged generic init and warn silently (#12930); key off the concrete element `BaseType` at the coercion site.
+- **E30082 (float→double) tags only scalar `double.__init(float)`**; vector/matrix go through one untagged generic init and warn silently (#12930); key off the concrete element `BaseType` at the coercion site. Its float-literal exemption is syntactic (a paren or `?:` around the literal warns), and since #11513 the lexer stores unsuffixed literals already float-rounded, so a value-exactness check needs the raw token text (#14057).
 - Worked incident case studies are on the companion page (see end).
 
 ## Lua-Driven Diagnostic Definitions
@@ -103,11 +103,20 @@ Root cause (source-verified on master): stdlib fns advertise the targets they WO
 
 **E30082** ("implicit float→double conversion") is emitted in `SemanticsVisitor::_coerce` (`slang-check-conversion.cpp:2883-2892`) only when `site == CoercionSite::Argument`, the chosen conversion initializer carries `kBuiltinConversion_FloatToDouble` (via `getImplicitConversionBuiltinKind`, `:336-344`), and `fromExpr` is not a `FloatingPointLiteralExpr`. That tag is stamped only on the per-pair SCALAR `double.__init(float)` from the base-type meta-loop (`core.meta.slang:1213-1224`, 2-arg `__implicit_conversion($(cost), $(builtinConversionKind))`). Vector and matrix conversions use ONE generic init (`vector<T,N>`'s `__generic<U:__BuiltinFloatingPointType> __init(vector<U,N> other)`, `core.meta.slang:2412-2417`, plus matrix/coop-vector analogs) with a 1-arg `__implicit_conversion($(cost))`, so the kind defaults to `kBuiltinConversion_Unknown` and they warn SILENTLY. Tagging the generic init is wrong: it covers every float-family element conversion (including double→float narrowing and half→float). The principled fix reads the CONCRETE element `BaseType` at the emission site (peel `VectorExpressionType`/`MatrixExpressionType` to the element `BasicExpressionType`; warn when from==`BaseType::Float` && to==`BaseType::Double`), covering scalar/vector/matrix uniformly and retiring the scalar-only tag machinery. Decl-level conversion-kind tags in `core.meta.slang` work only for non-generic per-pair inits; a diagnostic covering aggregates keys off concrete types at the coercion site. E30082 had no test coverage (diagnostics-catalog) ([E30082 float→double warning only tags scalar conversions; generic vector/matrix inits can't carry the tag](../learnings/1788791945839-e30082-float-double-warning-only-tags-scalar-conve.md)).
 
+**The literal exemption is syntactic, so a wrapper defeats it (#14057).** E30082 is a performance warning: it fires only at `CoercionSite::Argument` and skips a `fromExpr` that is a bare `FloatingPointLiteralExpr` (`slang-check-conversion.cpp` ~:3006-3015 on current master). Any wrapper around the literal therefore warns [E30082 literal exemption is syntactic; unsuffixed float literals are rounded at lex time](../learnings/1793311782255-e30082-literal-exemption-is-syntactic-unsuffixed-f.md):
+
+- `takeD((10e+16))` warns, because the literal is inside a ParenExpr.
+- `takeD(c ? 10e+16 : 1.0)` warns, because the `float` `?:` expression is what gets converted, not the literal; it warns even when the value is exact.
+- `takeD(10e+16)`, `d * 10e+16`, `double x = 10e+16;`, assignment and return are all silent.
+- `-lit` stays a bare literal, because the parser folds the minus into a new literal (`slang-parser.cpp` ~:10279).
+
+Since #11513 (2026-06) the lexer parses an unsuffixed or `f` decimal literal directly as `float` (`slang-lexer.cpp` ~:1332), so `FloatingPointLiteralExpr::value` is already rounded, and a check of whether the value is exact in `float` needs the raw `LiteralExpr::token` text, which is not a FIDDLE field. Builds before #11513 (2026.10.2, 2026.11) emit the same rounded CUDA value, so this is not a regression. For a value-based conversion warning, the precedent is E40016 IntegerConstantOverflow in the same `_coerce` block (~:2884), which runs for the Argument, Initializer, Assignment and Return sites and skips the core module [E30082 literal exemption is syntactic; unsuffixed float literals are rounded at lex time](../learnings/1793311782255-e30082-literal-exemption-is-syntactic-unsuffixed-f.md).
+
 ## Deep-Dive Incidents & Case Studies (split out)
 
 The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site guard fix complete, "a warning is not the end of a compile" (#8785 ICE/SIGSEGV), the severity-downgrade-receiver rule, shared-formatter golden regressions, `(Struct)0` deprecation, and the std140 source-loc drop — live on the companion page [Slang Diagnostics: Deep-Dive Incidents & Case Studies](slang-misc-diagnostics-deep-dives.md).
 
-**Source learnings (33):**
+**Source learnings (34):**
 - ['Is it breaking?' — answer from the compiler, not from the design doc's intent](../learnings/1791569984990-is-it-breaking-answer-from-the-compiler-not-from-t.md) — #13537: master-vs-PR repro table; grep the base commit's doc comments; classify against the proposal.
 - [Empty-statement lint (UnintendedEmptyStatement 20101) is a parser check keyed on parent-stmt type (fires only under IfStmt); warn→error-by-version copies the volatile-modifier if/else; 202c error form blocked on OPEN #12179](../learnings/1785434273353-empty-statement-lint-unintendedemptystatement-2010.md)
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
@@ -141,4 +150,5 @@ The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site 
 - [same #12755 defect at the witness-table check (`MustHaveEqualAbstractAtoms`, `:21168`): E36108 = extra bare TARGET (count short-circuit), E36110 = extra sub-cap within a shared target; scoped fix uses `AvailableCanHaveSubsetOfAbstractAtoms` on the requirement projected to requested targets, strict fallback for `SLANG_TARGET_UNKNOWN`](../learnings/1787698928314-e36108-e36110-interface-conformance-false-positive.md)
 - [E30082 float→double warning tags only the scalar `double.__init(float)` (`kBuiltinConversion_FloatToDouble`); vector/matrix go through one generic init with no tag → silent (#12930); fix keys off concrete element `BaseType` at the coercion site](../learnings/1788791945839-e30082-float-double-warning-only-tags-scalar-conve.md)
 - [Promoting a Slang diagnostic note→error: pin the SEVERITY in never-emitted code, or the test passes either way](../learnings/1792580635936-promoting-a-slang-diagnostic-note-error-pin-the-se.md) — `^^^ error E29xxx` + an unused-function / off-target `__target_switch` case; drill on master's build (#13809, E29103).
+- [E30082 literal exemption is syntactic (paren / `?:` wrapper warns, Argument site only); #11513 lexer rounds unsuffixed literals; E40016 is the value-based precedent](../learnings/1793311782255-e30082-literal-exemption-is-syntactic-unsuffixed-f.md)
 _Catalog: [[wiki/index.md]]_

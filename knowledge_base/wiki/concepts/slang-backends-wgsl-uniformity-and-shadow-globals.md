@@ -3,7 +3,7 @@ title: "WGSL uniformity analysis and global-varying shadow forwarding (#8774)"
 type: concept
 group: slang-backends
 tags: [wgsl, tint, dawn-node, uniformity, subgroups, var-private, KernelContext, introduceExplicitGlobalContext, translateGlobalVaryingVar, tryRemoveRedundantLoad, canInstHaveSideEffectAtAddress, RequireTargetExtension, deferBufferLoad, metal, debug-info, wgpu, slang]
-source_count: 7
+source_count: 8
 ---
 
 # WGSL uniformity analysis and global-varying shadow forwarding (#8774)
@@ -21,6 +21,7 @@ Slang turns a global `in` builtin such as `SV_WaveLaneCount` into a shadow globa
 - **On WGSL four things block that forwarding:** the inlined `RequireTargetExtension("subgroups")` (PR #13883 lets the walk cross it), any side-effecting call between the store and the read (every wave op is one), the `DebugScope`/`DebugLine` insts that `-g`/`-g2`/`-g3` add, and any block boundary, because `tryRemoveRedundantLoad` walks back only inside the load's block. `-minimum-slang-optimization` does not block it. Check cross-block variants (loop condition, after an `if`, `[noinline]` helper) before claiming a forwarding fix closes an issue.
 - **Fix forwarding barriers in `canInstHaveSideEffectAtAddress`.** `RequireTargetExtension` must stay side-effecting for `mightHaveSideEffects`, because that is the only thing that keeps it alive through DCE.
 - **A `-wgpu` COMPARE_COMPUTE subgroup row is a real Tint guard on CI**, because the Windows GPU job runs it. Locally, check through dawn.node `backend=vulkan` with the `subgroups` feature.
+- **For barrier uniformity, Tint is the ground truth.** naga (wgpu 0.32) runs no barrier-uniformity check, and Slang's opt-in `-validate-uniformity` checks only `dynamic_uniform` sinks and treats every SV_* input, SV_GroupID included, as non-uniform.
 - **Read the spec with `curl`, not WebFetch**, which truncates it.
 
 ## What the WGSL spec requires
@@ -57,13 +58,17 @@ PR #13883 lets the walk cross `RequireTargetExtension`. The fix belongs in `canI
 
 A user-declared `in uint lc : SV_WaveLaneCount` fails the same ways, including when it is read across blocks with no requirement inst involved, so all three blockers predate #13883. `-minimum-slang-optimization` does not block the forwarding [WGSL shadow-global forwarding is blocked by -g debug insts and by any wave op before the read](../learnings/1792722382100-wgsl-shadow-global-forwarding-is-blocked-by-g-debu.md) [block-local](../learnings/1792720401225-slang-store-to-load-forwarding-is-block-local-a-fi.md). A forwarding-based fix therefore covers only the release, single-block shape; a by-value parameter per builtin is the shape that survives all of them.
 
+## Barrier uniformity: trust Tint, not naga or Slang's `-validate-uniformity` (#14056)
+
+Checked on #14056 (2026-10-29, slang 977df1246): use **Tint** as ground truth for "is this barrier in non-uniform control flow". Tint is Dawn through npm `webgpu@0.6.2`, which works on the L40S (harness `/workspace/agent/scratch-14056/dawn/validate.mjs`). It rejects `workgroupBarrier` after a thread-dependent `return`, inside a loop whose trip count depends on the thread, and in a helper called under a divergent `if`. It accepts an early exit that depends only on `workgroup_id`/SV_GroupID, because that value is workgroup-uniform. **naga** (wgpu-native 0.32 through wgpu-py) accepted all of those cases, including a minimal hand-written bad case, so it runs no barrier-uniformity check (it does report parse errors). On the Slang side, `-validate-uniformity` (`slang-ir-uniformity.cpp`) is opt-in and checks only data flow into `dynamic_uniform` sinks (E41201/E41203). It has no barrier check, and it seeds EVERY SV_* entry parameter as non-uniform, SV_GroupID included, so reusing it for barriers as-is would give false positives. The IR also has no post-dominator tree (`slang-ir-dominators.h:164` TODO), and `traverseControlDependentBlocks` in that file is never called; DeepWiki wrongly says it is used. Metal is looser here: threads that have ended do not block a barrier on Apple silicon ([Metal fences](slang-backends-metal-atomics-fences-and-coherence.md)) [WGSL barrier-uniformity: Tint rejects, naga (wgpu 0.32) does not; Slang -validate-uniformity has no barrier check](../learnings/1793311950124-wgsl-barrier-uniformity-tint-rejects-naga-wgpu-0-3.md).
+
 ## Testing a uniformity fix
 
 The Windows GPU CI job (`test-windows-release-cl-x86_64-gpu`) runs the `-wgpu` subgroup rows; for example `wave-get-lane-index.slang.5 (wgpu)` passes there. So a `-wgpu` COMPARE_COMPUTE row is a real Tint guard on CI. Locally the `-wgpu` rows also run ("Check wgpu,webgpu: Supported" on the L40S container) when the build tree is configured FRESH with `cmake --preset default -DSLANG_EXCLUDE_DAWN=OFF` (plus `XDG_RUNTIME_DIR=/tmp`); they report "Not Supported" only in a tree first configured with Dawn excluded and later flipped to OFF, which is what the earlier dawn.node proxy (`backend=vulkan`, `subgroups` feature) worked around [WGSL shadow-global forwarding is blocked by -g and wave ops](../learnings/1792722382100-wgsl-shadow-global-forwarding-is-blocked-by-g-debu.md), [correction: -wgpu rows run locally on a fresh Dawn-ON configure](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md). The Dawn build flags and `LD_LIBRARY_PATH` that a local `-wgpu` run needs are on [[wiki/concepts/slang-backends-wgsl-on-gpu-execution.md]].
 
 Critique-gate tooling: codex `### Attested` lines wrapped in backticks are not parsed, so a stale attestation from an earlier task can block `gh pr create`. Ask codex for plain `- <sha> <path>` lines ([uniform-only context, PR #13897](../learnings/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md)).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [WGSL uniformity: by-value param per builtin passes Tint; shared ptr<function> context fails](../learnings/1792626209225-wgsl-uniformity-by-value-param-per-builtin-passes-.md) — KernelContext shape fails with a non-uniform builtin; shadow global from `__builtinWaveLaneCount` (#8774, PR #13667)
 - [Slang Metal 'folds' global-varying shadows via generic deferBufferLoad forwarding, not KernelContext](../learnings/1792695049867-slang-metal-folds-global-varying-shadows-via-gener.md) — `deferBufferLoad` → `tryRemoveRedundantLoad`; WGSL blocked by `RequireTargetExtension`; any struct with a non-uniform field fails Tint
 - [WGSL spec (not Tint) mandates var<private> reads = non-uniform and no per-field tracking](../learnings/1792717208147-wgsl-spec-not-tint-mandates-var-private-reads-non-.md) — §15.2.8, §15.2.10.3, gpuweb#1791; keep `RequireTargetExtension` side-effecting (DCE)
@@ -72,4 +77,5 @@ Critique-gate tooling: codex `### Attested` lines wrapped in backticks are not p
 - [WGSL: workgroup-uniform built-in shadows can share a uniform-only context; user `in` globals are writable](../learnings/1792788292003-wgsl-workgroup-uniform-built-in-shadows-can-share-.md) — PR #13897 hoists only SV_GroupID/SV_WaveLaneCount; key on `findSystemValueSemanticAttr`; `subgroup_id` breaks `workgroupBarrier`; codex `### Attested` parsing gotcha
 - [Correction: slang-test -wgpu rows DO run locally on a fresh Dawn-ON configure](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md) — "Not Supported" only after an EXCLUDE_DAWN ON→OFF reconfigure; review WGSL PRs on PR head + origin/master
 
+- [Tint rejects divergent `workgroupBarrier`, naga accepts; `-validate-uniformity` has no barrier check and over-seeds SV_* (#14056)](../learnings/1793311950124-wgsl-barrier-uniformity-tint-rejects-naga-wgpu-0-3.md)
 _Catalog: [[wiki/index.md]]_

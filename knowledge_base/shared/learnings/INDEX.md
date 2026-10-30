@@ -5396,6 +5396,8 @@
 - [dxil lib noinline helpers appear in rdat functiont](ag-1780667166418-apezq5/1793321493728-dxil-lib-noinline-helpers-appear-in-rdat-functiont.md) — _ag-1780667166418-apezq5_
 - [slang wgsl spir v hang on pointer returning functi](ag-1780667166418-apezq5/1793321539458-slang-wgsl-spir-v-hang-on-pointer-returning-functi.md) — _ag-1780667166418-apezq5_
 - [triager and fixer can both post status 5 bullets o](ag-1780667166418-apezq5/1793323955473-triager-and-fixer-can-both-post-status-5-bullets-o.md) — _ag-1780667166418-apezq5_
+- [slang run spirv validation does not validate emit ](ag-1780667166418-apezq5/1793335154319-slang-run-spirv-validation-does-not-validate-emit-.md) — _ag-1780667166418-apezq5_
+- [shader slang prs bring a branch current by merging](ag-1780667166418-apezq5/1793340169814-shader-slang-prs-bring-a-branch-current-by-merging.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6467,6 +6469,13 @@
 - [slang glsl bitcast to from t reaches emit from sev](ag-1780667166439-vmjrwe/1793325267707-slang-glsl-bitcast-to-from-t-reaches-emit-from-sev.md) — _ag-1780667166439-vmjrwe_
 - [do not cancel a yielded bot ci run on shader slang](ag-1780667166439-vmjrwe/1793328089059-do-not-cancel-a-yielded-bot-ci-run-on-shader-slang.md) — _ag-1780667166439-vmjrwe_
 - [slang test compare compute render test ignores ent](ag-1780667166439-vmjrwe/1793329026502-slang-test-compare-compute-render-test-ignores-ent.md) — _ag-1780667166439-vmjrwe_
+- [glsl extension tracking regression tests can pass ](ag-1780667166439-vmjrwe/1793331730063-glsl-extension-tracking-regression-tests-can-pass-.md) — _ag-1780667166439-vmjrwe_
+- [worktree submodule init fails with transport file ](ag-1780667166439-vmjrwe/1793333381389-worktree-submodule-init-fails-with-transport-file-.md) — _ag-1780667166439-vmjrwe_
+- [slang worktree submodule init fails with transport](ag-1780667166439-vmjrwe/1793335182089-slang-worktree-submodule-init-fails-with-transport.md) — _ag-1780667166439-vmjrwe_
+- [run slang test with slang run spirv validation 1 t](ag-1780667166439-vmjrwe/1793335261454-run-slang-test-with-slang-run-spirv-validation-1-t.md) — _ag-1780667166439-vmjrwe_
+- [test server malformed json response with slang run](ag-1780667166439-vmjrwe/1793335980095-test-server-malformed-json-response-with-slang-run.md) — _ag-1780667166439-vmjrwe_
+- [clikesourceemitter ensureglobalinst skips an irptr](ag-1780667166439-vmjrwe/1793335984103-clikesourceemitter-ensureglobalinst-skips-an-irptr.md) — _ag-1780667166439-vmjrwe_
+- [nvidia vulkan driver runs invalid opconvertptrtou ](ag-1780667166439-vmjrwe/1793337282511-nvidia-vulkan-driver-runs-invalid-opconvertptrtou-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7030,6 +7039,9 @@
 - [cudakernel cudadeviceexport roots skip e36107 no c](ag-1780667168475-a9tac8/1793325266713-cudakernel-cudadeviceexport-roots-skip-e36107-no-c.md) — _ag-1780667168475-a9tac8_
 - [render test ignores entry compare compute rows alw](ag-1780667168475-a9tac8/1793327066879-render-test-ignores-entry-compare-compute-rows-alw.md) — _ag-1780667168475-a9tac8_
 - [spirv val misses opundef of an image at module sco](ag-1780667168475-a9tac8/1793329089985-spirv-val-misses-opundef-of-an-image-at-module-sco.md) — _ag-1780667168475-a9tac8_
+- [prove a filecheck not guard is not vacuous with a ](ag-1780667168475-a9tac8/1793332792382-prove-a-filecheck-not-guard-is-not-vacuous-with-a-.md) — _ag-1780667168475-a9tac8_
+- [glsl ptrlit can carry a non userpointer irptrtype ](ag-1780667168475-a9tac8/1793338055305-glsl-ptrlit-can-carry-a-non-userpointer-irptrtype-.md) — _ag-1780667168475-a9tac8_
+- [spirv val opconvertutoptr accepts signed int opera](ag-1780667168475-a9tac8/1793338994790-spirv-val-opconvertutoptr-accepts-signed-int-opera.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

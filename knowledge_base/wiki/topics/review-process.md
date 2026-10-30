@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-401 learnings. [Catalog](../index.md)
+405 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -145,6 +145,7 @@ type: topic
 - [Devin reviewer scrape reliability](../learnings/devin-reviewer-scrape-reliability.md)
 - [Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill](../learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md)
 - [devin-fetch can capture the Bug count without the bug text — recover it via agent-browser](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md)
+- [devin-fetch can drop collapsed Devin bug titles; check devin-page.txt "N Bug" count](../learnings/1793305648281-devin-fetch-can-drop-collapsed-devin-bug-titles-ch.md)
 - [devin-fetch can report an empty Bugs section while Devin shows "1 Bug"](../learnings/1793143511139-devin-fetch-can-report-an-empty-bugs-section-while.md)
 - [devin-fetch.sh emits an EMPTY Flags section with exit 0 — newline-escape mismatch, not a clean verdict](../learnings/1786376659246-devin-fetch-sh-emits-an-empty-flags-section-with-e.md)
 - [devin-fetch.sh: empty "## Flags" section can be a SCRAPE-FORMAT artifact, not absence of flags](../learnings/1786432165046-devin-fetch-sh-empty-flags-section-can-be-a-scrape.md)
@@ -200,6 +201,7 @@ type: topic
 - [Never end a reviewer turn on a background wait-for-reviewers loop; session teardown strands the verdict](../learnings/1791764268124-never-end-a-reviewer-turn-on-a-background-wait-for.md)
 - [Never set requested_reviewers on a bot-authored PR (dev-team MUST NOT)](../learnings/1787600504939-never-set-requested-reviewers-on-a-bot-authored-pr.md)
 - [No reviewer/assignee re-requests on bot-authored Slang PRs (standing dev-team policy)](../learnings/1788988960370-no-reviewer-assignee-re-requests-on-bot-authored-s.md)
+- [okf_synth.py flags markdown links to directories as DANGLING-LINK](../learnings/1793318922216-okf-synth-py-flags-markdown-links-to-directories-a.md)
 - [On a PR under review: incremental commits + merge master, never force-push a rebase](../learnings/1785520732879-on-a-pr-under-review-incremental-commits-merge-mas.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [optixGetSbtGASIndex needs OptiX >= 7.1; Reviewer A background teardown recurred (#13437)](../learnings/1791203817991-optixgetsbtgasindex-needs-optix-7-1-reviewer-a-bac.md)
@@ -208,11 +210,13 @@ type: topic
 - [Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md)
 - [Patch-mode review of an OFF-HEAD patch flags false "no producer" bugs — reframe as apply-order dependency](../learnings/1789174390977-patch-mode-review-of-an-off-head-patch-flags-false.md)
 - [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
+- [Pending-review inline comments are invisible: re-query reviews right before a "maintainer silent → escalate" report](../learnings/1793285602027-pending-review-inline-comments-are-invisible-re-qu.md)
 - [post-review.sh posts body verbatim — no bot-transparency disclaimer](../learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md)
 - [PR "no human review yet" claims need the /reviews endpoint](../learnings/1790756096989-pr-no-human-review-yet-claims-need-the-reviews-end.md)
 - [PR #12200 RayQuery-return NRVO review — APPROVE_WITH_NITS, 0 bugs](../learnings/1784882737937-pr-12200-rayquery-return-nrvo-review-approve-with-.md)
 - [PR #12304 empty-struct public-decoration removal review — REQUEST_CHANGES (wrong layer)](../learnings/1785468944911-pr-12304-empty-struct-public-decoration-removal-re.md)
 - [PR review under invalid GH_TOKEN — review the fetchable branch, don't stall](../learnings/1784595260519-pr-review-under-invalid-gh-token-review-the-fetcha.md)
+- [PR watch: a DISMISSED review can hide a real approval](../learnings/1793286169919-pr-watch-a-dismissed-review-can-hide-a-real-approv.md)
 - [pr-approver must re-fetch reviews at record time not just staging](../learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md)
 - [PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md)
 - [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)

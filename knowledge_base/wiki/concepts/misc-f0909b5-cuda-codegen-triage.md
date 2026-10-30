@@ -3,7 +3,7 @@ title: CUDA/PTX codegen bugs and triage patterns
 type: concept
 group: misc
 tags: [cuda, ptx, nvrtc, codegen, emit, texture, half, diagnostics, triage]
-source_count: 27
+source_count: 28
 ---
 
 ## TL;DR
@@ -22,6 +22,7 @@ source_count: 27
 - Two distinct `static const` array bugs: nested literal arrays as dynamic `__device__` init (#12635, fixed by #12688) vs struct-element arrays localized per invocation (#13107, open; workaround: pack records into `uint2`/`uint4`).
 - `__ldg` guard (#13091): the `__constant__` group is immutable via the `kIROp_ConstantBufferType` case of `isPointerToImmutableLocation`, NOT `AddressSpace::Uniform`; the guard keys on an `IRGlobalParam` of `IRUniformParameterGroupType` and `getRootAddr` suffices. Pair a negative guard test with a `ConstantBuffer` positive.
 - Buffer ABI is pointer + `size_t count`; `SLANG_CUDA_STRUCTURED_BUFFER_NO_COUNT` changes the prelude but reflection still reports 16 bytes, so a pointer-only ABI must change the layout rules too.
+- A `T*` pointee on CUDA is laid out with scalar rules (`struct { float a; float4 c; }` → size 20, align 4, `c` at 4) while nvcc gives the emitted struct size 32, align 16, `c` at 16; buffers and uniforms reflect CUDA rules correctly, so only the pointer path disagrees (`float2`/`float4` fields; `double` agrees).
 - An entry point named `main` is renamed `main_0` at emit time after reflection recorded `main`, so runtime lookup by `getNameOverride()` fails (#13264).
 - CUDA `half2` division is never packed, and packed `+ - * neg` exist only on SM 5.3+.
 
@@ -75,15 +76,17 @@ A doc claim that CUDA `half2` arithmetic is "packed SIMD / one instruction per o
 
 Put a `case kIROp_<Type>:` in the module-level global walk `checkUnsupportedInst(IRModule*, target, sink)`, not a recursive descent into struct fields: IR types are hoisted and deduplicated, so a `Texture2DMS<float>` used anywhere is one top-level inst and one case catches every use with one diagnostic ([checkUnsupportedInst — reject unsupported types at the hoisted global](../learnings/1787278343860-checkunsupportedinst-reject-unsupported-types-at-t.md)). Gate to the exact failing target (`isCUDATarget`, not `isKernelCPPOrCUDASourceTarget`, which includes CPPSource where the type lowers fine — the #11659 over-broad-rejection trap). Same layer as the #11297 `String` rejection.
 
-## CUDA buffer ABI: the prelude's `NO_COUNT` macro disagrees with reflection
+## CUDA layout vs reflection: the buffer ABI (`NO_COUNT`) and `T*` pointees
 
 The prelude (`prelude/slang-cuda-prelude.h` ~2887, tree of 2026-10-22) defines `StructuredBuffer<T>` as `{ T* data; size_t count; }`; `SLANG_CUDA_STRUCTURED_BUFFER_NO_COUNT` drops `count` and with it bounds checks and `GetDimensions` (ByteAddressBuffers keep `sizeInBytes`). Reflection ignores the macro: `CUDAObjectLayoutRulesImpl` (`slang-type-layout.cpp` ~1668-1686) always reports 16 bytes (pointer + `CUDACount`) for structured, raw and append/consume buffers, so a host that sets the macro gets code whose layout disagrees with reflection. Unsized arrays are pointer+count too (~807). A pointer-only CUDA ABI request (e.g. #13397) must reach the layout rules, not only the prelude ([CUDA buffer ABI: prelude NO_COUNT macro and reflection layout disagree](../learnings/1792651922688-cuda-buffer-abi-prelude-no-count-macro-and-reflect.md)).
+
+A second disagreement is on the pointer path. Measured on master 9b3ac252d with nvcc 12.6 on the L40S (sm_89): for `struct E3 { float a; float4 c; }` reached through `uniform E3* p` on `-target cuda`, Slang folds `sizeof(E3)` to 20 and `alignof(E3)` to 4, and the reflection JSON (`entryPoints[0].scope.parameters[i].type.valueType`) puts `c` at offset 4. nvcc lays out the emitted `struct E3_0 { float a_0; float4 c_0; }` as size 32, alignment 16, `c` at 16, and the kernel's own `&p[1]-&p[0]` is 32. `{float a; float2 b}` gives Slang 12/4 against nvcc 16/8; `double` fields agree. The same struct in a `StructuredBuffer` or as a uniform parameter is reflected with CUDA rules (`c` at 16), so only `T*` disagrees. The likely cause (an inference, not traced): the front end lays out `T*` pointees with `kScalarLayoutRulesImpl_` on every target (`slang-type-layout.cpp:5718-5745`) and the IR uses Natural rules for CUDA pointers and buffers (`slang-ir-lower-buffer-element-type.cpp:2501`), but CUDA emit uses the native 8/16-byte-aligned `float2`/`float4`. Metal avoids it by emitting an `X_natural_0` copy with `packed_float4`. DeepWiki claims the pointee uses `CUDALayoutRulesImpl`; the measurement shows that is wrong. To check, write `sizeof(T)`, `alignof(T)` and `(uint64_t)&p[1]-(uint64_t)&p[0]` from a kernel into a buffer and compare them with a host `sizeof` of the emitted struct compiled with `nvcc -I prelude`. Found while triaging #14032 (an `[Align(N)]` request); not filed as of 2026-10-29 [CUDA T* pointee layout (sizeof/alignof/reflection) disagrees with nvcc for float2/float4 fields](../learnings/1793294735930-cuda-t-pointee-layout-sizeof-alignof-reflection-di.md).
 
 ## Entry point `main` is renamed at emit time, after reflection recorded it (#13264)
 
 On CPU, CUDA (+PTX) and Metal, `CLikeSourceEmitter::maybeMakeEntryPointNameValid` (slang-emit-c-like.cpp:1130-1143, PR #7105) renames `main` to `main_0` at emit time, after layout recorded the name, so `EntryPointReflection::getNameOverride()` still returns `main` and lookups fail: slang-rhi CUDA `cuModuleGetFunction`, CPU `findSymbolAddressByName`, Metal `newFunction`, the OptiX prefix+name. An explicit `renameEntryPoint("x")` does reach the symbol (the linker writes it into `IREntryPointDecoration`). The rename is required (nvcc rejects `__global__ main`); no public API exposes the emitted symbol (DeepWiki wrongly says `getNameOverride` does). Also, slang-rhi CUDA `RootShaderObjectLayoutImpl::getEntryPointIndex` compares the override-derived name to `getName()`, so a renamed entry point gets -1. GPU harness: `getEntryPointCode(SLANG_PTX)` → `cuModuleLoadData` → `cuModuleGetFunction(getNameOverride)` ([Slang renames entry main at emit time on CUDA/CPU/Metal; reflection never sees it](../learnings/1790318957835-slang-renames-entry-main-at-emit-time-on-cuda-cpu-.md)).
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [CUDA __device__ matrix/vector globals: only a brace literal is static init](../learnings/1791305634716-cuda-device-matrix-vector-globals-only-a-brace-lit.md) — `makeMatrix` of literals is dynamic init (#13444)
 - [CUDA ignores shaderRecordEXT on global ConstantBuffer](../learnings/1787171496782-cuda-ignores-shaderrecordext-on-global-constantbuf.md) — folded into GlobalParams, not the SBT; CUDA-specific
 - [CUDA prelude empty-body: a third silent-empty variant](../learnings/1787171580700-cuda-prelude-empty-body-a-third-silent-empty-varia.md) — case-present stub body → silent empty kernel (#12630)
@@ -111,3 +114,4 @@ On CPU, CUDA (+PTX) and Metal, `CLikeSourceEmitter::maybeMakeEntryPointNameValid
 - [slang#12634 scope: every 3-component CUDA texture sample fails before v2026.16.1](../learnings/1792400048814-slang-12634-scope-every-3-component-cuda-texture-s.md) — workaround `float4` + `.xyz`
 - [CUDA buffer ABI: prelude NO_COUNT macro and reflection layout disagree](../learnings/1792651922688-cuda-buffer-abi-prelude-no-count-macro-and-reflect.md) — macro drops `count` but reflection always reports 16 B (#13397)
 - [operator correction: coworker containers have an NVIDIA L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md) — L40S + CUDA 12.6 in every container; check `nvidia-smi -L`
+- [CUDA `T*` pointee sizeof/alignof/reflection use scalar layout and disagree with nvcc for float2/float4 fields; buffers/uniforms agree (#14032)](../learnings/1793294735930-cuda-t-pointee-layout-sizeof-alignof-reflection-di.md)

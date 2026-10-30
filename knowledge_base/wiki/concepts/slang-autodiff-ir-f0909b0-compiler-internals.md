@@ -3,7 +3,7 @@ title: Slang autodiff & IR internals — producer layers, SSA/VM invariants, and
 type: concept
 group: slang-autodiff-ir
 tags: [slang, autodiff, ir, ssa, slangi-vm, validation, codegen, hlsl-atomic, sroa, unit-test, triage]
-source_count: 11
+source_count: 14
 ---
 
 ## TL;DR
@@ -27,6 +27,12 @@ producer — trace the actual op back to its real origin before routing a fixer.
 - **`-validate-ir-detailed` can SIGABRT on transient invalid-SSA** left intentionally by
   autodiff finalization and repaired later; plain `-validate-ir` + normal compile stay green.
   A false-positive class, not a codegen bug.
+- **Plain `-validate-ir` aborts (`E99997 unhandled terminator instruction`) on any module that still has an IR `throw`**,
+  even in an uncalled function: validation runs before `lowerErrorHandling` and `getSuccessors` has no
+  `kIROp_Throw` case. CI never passes `-validate-ir`, so check the plain compile before blaming a pass.
+- **`as<IRIntType>`/`as<IRUIntType>` match only 32-bit ints**; use `isIntegralType` for "any integer". Most IR
+  types (and funcs, generics, keys, fields) have a null full type, and the full type is part of the hoisting
+  dedup key, so an "every inst has a type" rule changes deduplication.
 - **Narrow-SROA machinery is ~90% present** but the value-based enabler
   (`eliminateAddressInsts`) is autodiff-only-gated; `constructSSA` rejects any local whose
   element chain ends in a store.
@@ -159,6 +165,46 @@ producer insert-point fix for a genuine mis-ordering. Independent hardening: an 
 validation failure currently escapes as an uncaught `AbortCompilationException` → SIGABRT rather
 than a clean diagnostic.
 
+Plain `-validate-ir` has a false-positive class of its own. At master 1f0b33b86, `slangc -validate-ir`
+aborts with `E99997 unhandled terminator instruction` on any module that still contains an IR `throw`;
+a function that is never called is enough. `validateIRModuleIfEnabled` (`slang-lower-to-ir.cpp:15582`)
+runs before `lowerErrorHandling` (`:15610`), the validator builds a dominator tree for every function
+(`slang-ir-validate.cpp:471`), and `getSuccessors` (`slang-ir.cpp:558-627`) has no `kIROp_Throw` case.
+`Throw` has no block operand, so its correct successor list is empty, as for `Return`. A `throw` caught in
+the same function is lowered to a branch first, so that case passes. CI misses this because slang-test
+never adds `-validate-ir` and no test combines the flag with `throw`; 15 existing throw/try tests abort
+once the flag is added. `Yield` is also missing from `getSuccessors`, but it lives only inside `IRExpand`,
+which is not an `IRGlobalValueWithCode`, so the validator should not walk it (untested; #14067). The
+triage rule is the same as above: before blaming a pass for a crash under `-validate-ir` or
+`-validate-ir-detailed`, run the plain compile to see whether only the validation path fails
+([slang -validate-ir aborts on any module containing an IR throw](../learnings/1793316524172-slang-validate-ir-aborts-on-any-module-containing-.md)).
+
+## IR type facts that predicates and validators trip on
+
+**`IRIntType` and `IRUIntType` are 32-bit only.** `as<IRIntType>` and `as<IRUIntType>` match only the
+32-bit int and uint ops; `Int8/16/64` and `UInt8/16/64` are separate ops (`IRInt16Type` and so on). A
+predicate written as `as<IRBoolType> || as<IRUIntType> || as<IRIntType>` therefore skips every other width.
+Consider `shouldLegalizeMatrixType` (`slang-ir-legalize-matrix-types.cpp:56`): it leaves
+`matrix<int16_t,2,2>` unlowered on SPIR-V, which yields an invalid integer `OpTypeMatrix`, and an int
+matrix cast then crashes `emitIntCast` with "Unhandled type passed to getIntTypeWidth" (#14019). On GLSL
+the same gap emits `u16mat2x2`, which glslang rejects. For "any integer" use the existing
+`isIntegralType` (`slang-ir.cpp:8698`), which covers 8 to 64 bits plus `IntPtr`/`UIntPtr` but not `Bool`.
+Its float counterpart `isFloatingType` covers only `Float`/`Half`/`Double`, not `BFloat16` or FP8. A side
+trap from the same work: the version string `slangc -version` prints is fixed at configure time, so it
+cannot tell you whether a local build is at HEAD; run an incremental rebuild instead
+([IRIntType/IRUIntType are 32-bit only: use isIntegralType](../learnings/1793284783537-irinttype-iruinttype-are-32-bit-only-use-isintegra.md)).
+
+**Most IR types have a null full type.** On master 01dcd3568 (2026-10-29), `IRBuilder::getType`
+(`slang-ir.cpp:2953-2956`) and the generated zero-operand type getters (the template in `slang-ir-insts.h`
+~3394) create types with a `nullptr` full type, while `createStructType` and the class, interface and enum
+builders (`slang-ir.cpp` ~5356) use `getTypeKind()`. Funcs (whose type is set later), generics, struct
+keys, struct fields, witness-table entries and interface-requirement entries are also created with a null
+type. `validateIRInstOperands` (`slang-ir-validate.cpp:290-293`) checks the full type only for scoping, and
+only when it is non-null. An IR rule that "every inst has a type" (#9152) therefore fails on nearly every
+type unless types get a `Kind` or are exempted, and because the full type is part of the hoisting dedup
+key (`IRInstKey::operator==`, `slang-ir.h:1968`), typing them also changes which insts deduplicate
+([most Slang IR types have a null full type](../learnings/1793274130050-most-slang-ir-types-have-a-null-full-type-only-str.md)).
+
 ## SSA-promotion machinery and merge-block shapes
 
 For promoting small non-escaping fixed-size local arrays/aggregates to SSA (narrow SROA — the
@@ -255,7 +301,7 @@ failure messages" nit). The meta-lesson pairs with the assert case: verify a mac
 before applying a reviewer's "reuse it" suggestion, and always rebuild — a local debug build
 caught this before CI.
 
-**Source learnings (11):**
+**Source learnings (14):**
 
 - [HLSL float atomic-add is NVAPI-only and emitted silently; autodiff is not the producer](../learnings/1786551719062-slang-hlsl-float-atomic-add-is-nvapi-only-and-emit.md) — `InterlockedAddF32`→`NvInterlockedAddFp32` silent emit; grep autodiff for the atomic = 0 hits; the higher-order claim was true but the layer attribution wasn't.
 - [HLSL float atomic-add NVAPI-only; the tensor producer is not the autodiff pass](../learnings/1786552449501-hlsl-float-atomic-add-is-nvapi-only-and-emits-sile.md) — Sibling with the tensor `[BackwardDerivative]` → `AtomicAdd.load_backward` producer trace, the generic-vs-NVAPI diagnostic asymmetry, the unreachable `default:` arm, and the no-CAS-precedent constraint.
@@ -268,3 +314,6 @@ caught this before CI.
 - [Correction: defaultArgSource count-equality assert is over-strict (autodiff bwd_diff)](../learnings/1787569981440-correction-defaultargsource-count-equality-assert-.md) — A `bwd_diff` callee's param list legitimately mismatches; the tolerant guard is load-bearing; document, don't assert.
 - [SLANG_CHECK_MSG requires a string-literal message — use addResultWithLocation for a dynamic one](../learnings/1788161608321-slang-check-msg-requires-a-string-literal-message-.md) — Adjacent-literal concatenation forces a compile-time literal; call the reporter overload directly for interpolated messages; verify the macro before reusing it.
 - [Autodiff debug scopes: a derivative's inherited scope root is the CLONE's record, not srcFunc's](../learnings/1792823534137-autodiff-debug-scopes-a-derivative-s-inherited-sco.md) — #13238: forward root = `primalFuncClone`'s record, reverse root = the unzipped `s_fwd_f`'s; body walk breaks on inlined scopes without `inlinedAt`; `copyDebugInfo` before `maybeHoist`; `-g2` scope-audit script.
+- [slang -validate-ir aborts on any module containing an IR throw](../learnings/1793316524172-slang-validate-ir-aborts-on-any-module-containing-.md) — validation runs before `lowerErrorHandling`; `getSuccessors` lacks `kIROp_Throw` (and `Yield`); 15 throw/try tests abort with the flag (#14067)
+- [IRIntType/IRUIntType are 32-bit only: use isIntegralType](../learnings/1793284783537-irinttype-iruinttype-are-32-bit-only-use-isintegra.md) — `shouldLegalizeMatrixType` skips `int16_t` matrices (#14019); `isFloatingType` excludes BFloat16/FP8; `-version` string is configure-time
+- [Most Slang IR types have a null full type](../learnings/1793274130050-most-slang-ir-types-have-a-null-full-type-only-str.md) — only struct/class/interface/enum get a Kind; the full type is in the hoisting dedup key (#9152)

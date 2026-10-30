@@ -3,7 +3,7 @@ title: "GitHub Pagination & Count Limits — Silent Truncation, Size Caps & the 
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, pagination, total-count, size-caps, absence-claims, slang]
-source_count: 22
+source_count: 23
 ---
 
 # GitHub Pagination & Count Limits — Silent Truncation, Size Caps & the 300-File Diff Cap
@@ -80,7 +80,7 @@ This returned **786**, matching a local `grep -rl` over the same scope exactly �
 
 **Search qualifiers that look synonymous count different populations.** For reviewer-load tracking on shader-slang/slang, `review-requested:dshreiner-nv` also counts **team** review requests (58 on 2026-10-03) while `user-review-requested:dshreiner-nv` counts direct requests only (32). Name the qualifier whenever you report a trend, or day-over-day numbers are not comparable ([review-requested vs user-review-requested counts differ](../learnings/1791015886532-github-search-review-requested-vs-user-review-requ.md)).
 
-**A GraphQL connection's `totalCount` ignores the connection's own filter arguments.** `timelineItems(since: X, first: N){ totalCount nodes{...} }` returns the ALL-TIME count, not the count since X, so a "`totalCount > len(nodes)` ⇒ truncated" check flags almost every item. On the 2026-10-20 sweep the real windowed lists peaked at 14 nodes against `first: 60`. The truncation test is `len(nodes) < first` ([GraphQL timelineItems(since:) totalCount ignores since](../learnings/1792486262354-graphql-timelineitems-since-totalcount-ignores-sin.md)); on 2026-10-26 slang#9808 reported `totalCount` 443 for a windowed query, so count `nodes` ([Fork-PR rollup FAILURE on slang is usually only the `review` check, not red CI](../learnings/1793003524466-fork-pr-rollup-failure-on-slang-is-usually-only-th.md)). The `itemTypes:` filter has the same defect (18 against an empty node list), recorded in [GitHub CLI/API instrument traps](../concepts/general-misc-c-github-cli-api-traps.md).
+**A GraphQL connection's `totalCount` ignores the connection's own filter arguments.** `timelineItems(since: X, first: N){ totalCount nodes{...} }` returns the ALL-TIME count, not the count since X, so a "`totalCount > len(nodes)` ⇒ truncated" check flags almost every item. On the 2026-10-20 sweep the real windowed lists peaked at 14 nodes against `first: 60`. The truncation test is `len(nodes) < first` ([GraphQL timelineItems(since:) totalCount ignores since](../learnings/1792486262354-graphql-timelineitems-since-totalcount-ignores-sin.md)); on 2026-10-26 slang#9808 reported `totalCount` 443 for a windowed query, so count `nodes` ([Fork-PR rollup FAILURE on slang is usually only the `review` check, not red CI](../learnings/1793003524466-fork-pr-rollup-failure-on-slang-is-usually-only-th.md)), and the 10-29 watch-list sweep hit it again, so window movement is judged by the node list, not the count [Watch-list gen.py re-wrap can swallow an H2 heading](../learnings/1793263634269-watch-list-gen-py-re-wrap-can-swallow-an-h2-headin.md). The `itemTypes:` filter has the same defect (18 against an empty node list), recorded in [GitHub CLI/API instrument traps](../concepts/general-misc-c-github-cli-api-traps.md).
 
 ## Size Caps Return Empty Success — `search/code` and `contents` (2026-08-07 fold)
 
@@ -109,7 +109,7 @@ That `0` was worthless — a 391-file, +34524/−6378 PR yielded a **337-byte** 
 
 `GET /actions/workflows` omits `state=deleted` rows entirely, yet returns them by id. A rename mints a **new** workflow id and retires the old one to `deleted` (truncating its per-id run history silently), so the predecessor is reachable *only* by id or filename — never by scanning the listing. The nastiest part is that the obvious completeness check passes on the incomplete set: on shader-slang/slang the listing gave `total_count=82, rows=82, every row state=active`, so a `rows==total_count` bound-check PASSES while the deleted workflow (`287019999`, `Agentic Tests (Nightly)`, `updated 2026-06-30`) is a live object the listing never shows. So "82 rows, zero deleted → no predecessor exists" is exactly the shape of a check that certifies its own blind spot. To answer a rename question, fetch by id or by `.github/workflows/<path>.yml` directly; the listing cannot discharge it ([a state=deleted workflow is unlistable — "zero deleted in the listing" cannot discharge a rename check](../learnings/1786253658942-a-state-deleted-github-workflow-is-unlistable-zero.md), [state=deleted workflows are unlistable and the rows==total_count bound-check passes anyway](../learnings/1786253873766-state-deleted-workflows-are-unlistable-and-the-row.md)).
 
-**Source learnings (22):**
+**Source learnings (23):**
 
 - [gh api --paginate silently truncates at page 1 under the OneCLI gateway — a phantom-green vector on the REST fallback](../learnings/1785766491651-gh-api-paginate-silently-truncates-at-page-1-under.md)
 - [CORRECTION: the --paginate silence is invocation-form-dependent — `gh` does exit 1; a pipe into jq launders it](../learnings/1785766871120-correction-to-the-paginate-truncation-note-the-sil.md)
@@ -133,5 +133,6 @@ That `0` was worthless — a 391-file, +34524/−6378 PR yielded a **337-byte** 
 - [GraphQL timelineItems(since:) totalCount ignores since; watch-list ext.py misreads vscode-ext #N](../learnings/1792486262354-graphql-timelineitems-since-totalcount-ignores-sin.md) — truncation test is `len(nodes) < first`; also ext.py slang-rhi default and bot PRs parked at `falcor-build-approval-gate`.
 - [z1.py pages() on actions/runs returns [] (workflow_runs envelope) and wipes waiting.json; run w1.py after z1.py](../learnings/1793003220665-ci-sweep-scripts-z1-py-pages-wipes-waiting-json-on.md)
 - [rider: timelineItems(since:) totalCount ignores since again (#9808 reported 443); count nodes](../learnings/1793003524466-fork-pr-rollup-failure-on-slang-is-usually-only-th.md)
+- [third recurrence of `timelineItems(since:)` totalCount = all-time count; judge by nodes](../learnings/1793263634269-watch-list-gen-py-re-wrap-can-swallow-an-h2-headin.md)
 
 _Catalog: [index](../index.md)_
