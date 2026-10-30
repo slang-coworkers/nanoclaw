@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13853_target_ignore_capabilities_e36112
-description: "10-28 09:00Z re-check: #13855 OPEN, APPROVED by skiminki-nv 10-26, mergeStateStatus BLOCKED, head e4d6a4a1f7. TRIAGED 10-22 16:22Z (reproduced; API-only, command line unaffected; comment 6345694984; parked on #13855 review + CI approval). DISPATCHED to slang-triager 10-22 16:1xZ on maintainer ask (skiminki-nv comment 6345456165: reproduce + check command-line disabling of 36112). Held 02:50Z as human-owned. slang#13853 (albertrodriguezclo, external): IgnoreCapabilities in TargetDesc::compilerOptionEntries does not silence E36112, because resolveStageOfProfileWithEntryPoint passes the session optionSet to maybeDiagnose inside its per-target loop (confirmed on master ffbd1771e5, slang-check-shader.cpp ~2726-2739). Sibling of #13847/#13848. Author's fix PR #13855 (fix/target-profile-check-option-set, +1/-1 plus a unit test, reviewer dshreiner-nv)."
+description: "10-29 20:58Z: #13855 APPROVED by jkwak-work + ADDED TO MERGE QUEUE (head e4d6a4a1f7); approver webhook not forwarded (slang-pr-approver paused), queued in data/approver-pause-queue.md. 10-28 09:00Z re-check: #13855 OPEN, APPROVED by skiminki-nv 10-26, mergeStateStatus BLOCKED, head e4d6a4a1f7. TRIAGED 10-22 16:22Z (reproduced; API-only, command line unaffected; comment 6345694984; parked on #13855 review + CI approval). DISPATCHED to slang-triager 10-22 16:1xZ on maintainer ask (skiminki-nv comment 6345456165: reproduce + check command-line disabling of 36112). Held 02:50Z as human-owned. slang#13853 (albertrodriguezclo, external): IgnoreCapabilities in TargetDesc::compilerOptionEntries does not silence E36112, because resolveStageOfProfileWithEntryPoint passes the session optionSet to maybeDiagnose inside its per-target loop (confirmed on master ffbd1771e5, slang-check-shader.cpp ~2726-2739). Sibling of #13847/#13848. Author's fix PR #13855 (fix/target-profile-check-option-set, +1/-1 plus a unit test, reviewer dshreiner-nv)."
 ---
 
 # slang#13853: target-level `IgnoreCapabilities` does not silence E36112
@@ -48,3 +48,7 @@ says the CI build failures had the same cause as on #13848. skiminki-nv APPROVED
 earlier 10-23 review. `mergeStateStatus=BLOCKED`, most likely on required checks or CI approval. jkwak-work
 commented 10-23 20:27Z that they are "waiting on more information", linking #13847. The state is recorded here only:
 #13855 does not touch #13638, which is about E36107. Nothing was dispatched or posted.
+
+**10-29 ~21:0xZ `pr_ready_for_review` (synchronize) for #13855: not forwarded.** `slang-pr-approver` is still `paused=1`, so per [pr-approvers-paused](../pr-approvers-paused.md) the PR went into `data/approver-pause-queue.md` instead. The head is still `e4d6a4a1f7`. jkwak-work APPROVED it at 20:58:21Z and added it to the merge queue at 20:58:30Z, so the human review is done and it should merge on its own. If it merges, the queue entry is moot, and #13853 should close through "Fixes #13853". Nothing was posted.
+
+**10-30 repeat synchronize: only the `paused` check was run (still paused, nothing forwarded or messaged).** The merge queue removed #13855 at 00:27Z. jkwak-work merged master into the branch (head `64e47a70be`, 00:57Z) and enabled auto-merge at 01:06Z, so a human is still driving it.

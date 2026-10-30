@@ -152,3 +152,4 @@ family indexes (`index-feedback.md` / `index-project.md`) — byte-identical to
 the linked shards — were pruned, and the anchor prose was compressed to
 triggers, its derivations already living in the named leaves. Prior full-prose
 form: `MEMORY-full-archive-2026-08-05.md`.</sub>
+- [Search all Main sessions before denying a quoted Orchestrator instruction](feedback_check_all_main_sessions_before_denying_orchestrator_said_x.md) — sibling Main sessions dispatch in parallel (slangpy#1250, 2026-10-30)

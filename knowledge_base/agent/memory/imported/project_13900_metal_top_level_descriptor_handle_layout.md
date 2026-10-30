@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13900_metal_top_level_descriptor_handle_layout
-description: "slang#13900 (skallweitNV, MEMBER, 10-24 21:27Z, unassigned, 0 comments): on Metal a top-level DescriptorHandle / T.Handle uniform is reflected + emitted as a bound resource ([[buffer(n)]], binding kind constantBuffer) instead of ordinary uniform data, so slang-rhi setDescriptorHandle() has nowhere to write. Asks maintainers: intentional exception or bug? TRIAGED 10-24 21:50Z (cmt 6389968314, label reproduced, bug/medium/P2): root cause is #6028 layout rule slang-type-layout.cpp:5771-5773; options A/B(recommended)/C put to jhelferty-nv + csyonghe; PARKED on maintainers, no fixer; triager one-shot t-17876f 10-29 15:00Z. Our bot's false 'intentional upstream' claim (slang-rhi PR 802) retracted on #13900; correcting it on PR 802 is an open operator decision."
+description: "slang#13900 (skallweitNV, MEMBER, 10-24 21:27Z, unassigned, 0 comments): on Metal a top-level DescriptorHandle / T.Handle uniform is reflected + emitted as a bound resource ([[buffer(n)]], binding kind constantBuffer) instead of ordinary uniform data, so slang-rhi setDescriptorHandle() has nowhere to write. Asks maintainers: intentional exception or bug? TRIAGED 10-24 21:50Z (cmt 6389968314, label reproduced, bug/medium/P2): root cause is #6028 layout rule slang-type-layout.cpp:5771-5773; options A/B(recommended)/C put to jhelferty-nv + csyonghe; PARKED on maintainers, no fixer; 10-26 assigned to kaizhangNV (by jkwak-work), now maintainer-owned; 10-27 skallweitNV closed slang-rhi PR 802 unmerged pending #13900. Our 'intentional upstream' claim retracted on #13900 and #10842 (PR 802 question moot). No bot ping; triager re-check 11-05 15:00Z."
 metadata:
   node_type: memory
   type: project
@@ -60,5 +60,16 @@ an open operator decision.
   C is B behind an opt-in option.
 - Triager's one-shot re-check `t-17876f` fires 2026-10-29 15:00Z. From Main, `ncl tasks get` reports "not found",
   which is expected for a peer group's task and does not mean it is missing.
+
+**10-29 15:02Z re-check (verified live by Main):** still only our comment. jkwak-work assigned the issue to
+**kaizhangNV** on 10-26 17:12Z, so it is maintainer-owned. skallweitNV closed slang-rhi PR 802 unmerged on 10-27
+12:43Z (cmt 6442179704): "Slang first needs to address #13900", with a Metal bindless branch waiting on it. That
+leans to B but is not a pick. 3 min later the slang-fixer #10842 chain posted slang#10842 cmt 6442225736, which also
+corrects the 08-03 "intended" claim. So the PR 802 correction question is **moot**: the PR is closed and the claim is
+retracted on #13900 and #10842.
+- Main's decision: **no bot ping to @kaizhangNV.** The issue was assigned after our triage comment, which already
+  sets out A/B/C. The PR 802 closure is already cross-referenced on the timeline, and a second bot post on a
+  maintainer-assigned issue is noise. Hand off to slang-fixer only if the assignee or a maintainer asks for a bot
+  PR. Triager one-shot re-check 11-05 15:00Z.
 
 **Resume:** maintainer comment (webhook), the triager's re-check, an operator answer on the PR 802 correction, a human comment on #13900 (webhook), or an operator ask.

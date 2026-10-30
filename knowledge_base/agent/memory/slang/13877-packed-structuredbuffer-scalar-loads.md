@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13877 — packed StructuredBuffer record loads stay scalar on CUDA/Vulkan
-description: "MEMBER-filed (tdavidovicNV) 10-22 19:59Z perf/codegen report: fully consumed packed scalar-array records load as 8x32/6x32 on CUDA+Vulkan vs 2x128/3x64 via a vector view. Companion #13878 (aligned immutable handle loads) is owned by a sibling Main session. TRIAGED + PARKED ON MAINTAINER 10-22 20:23Z (cmt 6350491972, label reproduced, Type blank): enhancement/low/P2; design questions = base-alignment contract, placement A/B/C, scope. Triager one-shot recheck t-22c2ef 10-29 15:00Z."
+description: "STOOD DOWN 10-29: human-owned since 10-23 (jkwak-work assigned kaizhangNV, label RTR, milestone Q4 2026; reporter retitled and rescoped to cross-field grouping + alignment from the access contract). Bot triage cmt 6350491972 is the only comment; recheck t-22c2ef ran 10-29 15:00Z and posted nothing; no fixer, no further timer. Resumes only on a human comment/mention."
 tags: [slang, structuredbuffer, load-widening, cuda, spirv, performance]
 resource: https://github.com/shader-slang/slang/issues/13877
 ---
@@ -42,3 +42,18 @@ body cites; #13126/#13805 are ByteAddressBuffer alignment chains.
 - Type left blank: the repo's `Performance` Type fits but is outside triager policy. A human may set it.
 - Timer: triager one-shot task `t-22c2ef` (session `h9s6jx`), 2026-10-29 15:00Z. No fixer handoff, no bot-PR promise.
 - Resumes on a maintainer/reporter reply (webhook) or the 10-29 recheck.
+
+**10-29 15:02Z, recheck `t-22c2ef` (triager), STAND-DOWN.** Main checked live: retitled "Packed
+StructuredBuffer loads miss wider grouping; vector fields partially recover it" (updated 10-23 14:02Z),
+assignee kaizhangNV (assigned by jkwak-work), labels `RTR` + `reproduced`, milestone Q4 2026 (Fall),
+Type blank, still 1 comment (ours). New body: `float3`/`uint3`/`float2` fields already recover some
+wide loads; remaining scope is cross-field grouping and alignment that the access contract
+establishes. It cites our comment as the independent reproduction. #11803 merged; #13734 open.
+Human-owned work item with no bot ask ⇒ no fixer, no new timer. Main asked the triager for one
+in-place edit of its own comment so the stale "Triage checks again on 2026-10-29" line doesn't
+promise a check that is over (no new comment, no @-mentions). Terminal unless a human comments.
+
+**10-29 15:07Z, TERMINAL.** Triager edited cmt 6350491972 in place (Main checked live: comment
+`updated_at` 15:07:06Z; only the Next-action and Blocker bullets changed, to "assigned to a Slang
+engineer, Q4 2026 milestone, no further automated re-check, design questions left to the
+assignee"; no @-mentions; still 1 comment). Chain closed; resumes only on a human comment or mention.

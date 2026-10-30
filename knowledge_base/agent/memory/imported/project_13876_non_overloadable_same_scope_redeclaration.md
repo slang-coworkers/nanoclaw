@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13876_non_overloadable_same_scope_redeclaration
-description: "slang#13876 (skiminki-nv, MEMBER, self-assigned, sub-issue of #13719): no redeclaration diagnostic for a global `static const` vs an [UnscopedEnum] case / cbuffer / tbuffer member. Assignee-authorized bot PR #13880 (fixer sgt9at), READY @ae2249915, pr: non-breaking: W30204 in EVERY version (incl. 202c, per assignee 10-27 14:57Z) for conflicts master accepts, master's E30200 unchanged, W30203 all versions. 10-28 11:36Z skiminki-nv REQUEST_CHANGES (6 asks: type-based buffer pairing, per-container pass, parser alias marker, process report, shorter comments, five-part description) → 10-28 13:46Z reworked @69255c6c3 (1–5 done; 6 short-form within the gate, full report in explanation comment), 10-28 15:48Z skiminki-nv APPROVED + merge-queued 15:51Z, unqueued 16:14Z for a message reword (applied @ae2249915), which DISMISSED the approval; 16:31Z RE-APPROVED 'LGTM if CI passes' @ae2249915; 18:52Z CI GREEN (pull_request 40725494846, rollup SUCCESS); awaiting skiminki-nv re-queue; gate question moot; OPERATOR decision pending on 3 pre-existing bugs; one-shot rechase-13876-pr-13880-c876 10-29 12:00Z. Dated log in _history."
+description: "TERMINAL 10-29 14:36Z: slang#13876 (skiminki-nv; no redeclaration diagnostic for a global `static const` vs an [UnscopedEnum] case / cbuffer / tbuffer member) FIXED by bot PR #13880, merged by skiminki-nv via merge queue (9b3ac252d), issue closed COMPLETED. Final behavior: W30204 in every version for conflicts master accepted, master's E30200 unchanged, W30203 for an enum case named like its enum. Only open item: OPERATOR decision on 3 pre-existing bugs (never answered). Dated log in _history."
 ---
 
 # slang#13876: diagnose non-overloadable declarations in the same scope
@@ -9,17 +9,17 @@ description: "slang#13876 (skiminki-nv, MEMBER, self-assigned, sub-issue of #137
 Dated log (ids, heads, CI runs, every forward): [[project_13876_non_overloadable_same_scope_redeclaration_history]].
 Umbrella: [[project_13719_unqualified_name_lookup_umbrella]].
 
-## Current state (as of 10-28 18:55Z, checked live)
+## Final state (TERMINAL 10-29 14:36Z, checked live)
 
 | | |
 |---|---|
-| PR | [#13880](https://github.com/shader-slang/slang/pull/13880) `fix/issue-13876` @ `ae2249915`, ready (marked by skiminki-nv 10-23 13:24Z), `pr: non-breaking`, 21 files, 34 commits |
+| PR | [#13880](https://github.com/shader-slang/slang/pull/13880) **MERGED** 10-29 14:36:09Z by skiminki-nv (merge queue), merge commit `9b3ac252d`; head was `ae2249915`, `pr: non-breaking`, 34 commits |
 | Owner | slang-fixer `sess-1792694206953-sgt9at` (PR-mapped) on `gh-issue-shader-slang/slang-13876`; triager `sess-1792693495093-68uevm` (holds its own re-check `t-29e011`) |
-| Review | skiminki-nv APPROVED 15:48Z ([5685541303](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5685541303)) and merge-queued 15:51Z; unqueued 16:14Z for the W30204 reword; the reword push **dismissed the approval** (16:23Z); reviewDecision null, BEHIND |
+| Review | skiminki-nv APPROVED 15:48Z ([5685541303](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5685541303)) and merge-queued 15:51Z; unqueued 16:14Z for the W30204 reword; the reword push **dismissed the approval** (16:23Z); then **re-approved 16:31Z** at `ae2249915` ([5686166855](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5686166855), "LGTM if CI passes"); not re-queued as of 10-29 12:00Z |
 | CI | pull_request run 40725494846 **success**; PR rollup SUCCESS (the yielded dispatch 40725539917 rows are hidden by the rollup) |
-| Parked on | skiminki-nv re-queuing (re-approved 16:31Z [5686166855](https://github.com/shader-slang/slang/pull/13880#pullrequestreview-5686166855), "LGTM if CI passes"; condition met); BLOCKED is the normal pre-queue state; no bot pushes, dispatches or notes |
-| Timer | one-shot `rechase-13876-pr-13880-c876`, 10-29 12:00Z |
-| Operator | decision pending: file the 3 pre-existing bugs below? |
+| Issue | #13876 CLOSED COMPLETED 10-29 14:36:11Z; fixer worktree cleaned up |
+| Timer | none (merge-queue one-shot cancelled after merge) |
+| Operator | still pending: file the 3 pre-existing bugs below? (asked repeatedly 10-23 → 10-29, no answer) |
 
 ## The bug and its two root causes (triage memo `/workspace/agent/reports/triage/triage-13876.md`)
 

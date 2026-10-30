@@ -92,3 +92,37 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
   - Decision row (2): parked 5 days since 10-21, which is less than 7, so I sent nothing. I did not message the
     triager, dispatch the fixer, or contact an approver. Successor one-shot `rechase-13732-pr13734-ae-ccd9` runs on
     10-29 15:00Z (that is 8 days parked, so it sends the dashboard row if nothing changes).
+- 2026-10-29 15:00Z re-check `-ae-ccd9` (live read): **the head moved to cb4ad5253a**. The PR is still OPEN, not
+  merged, and `BEHIND` master. The listed checks pass (CodeRabbit shows "skipping").
+  - Maintainer activity (no review or comment yet): on 10-27 19:59:10Z **jkwak-work force-pushed the branch**. That
+    rewrote the six earlier commits, and 2969c15569 now has the ae4db91cd7 subject. jkwak-work added the label
+    `pr: non-breaking` at 20:06:41Z. On 10-28 15:43–15:48Z **jhelferty-nv asked jkwak-work for a review and removed
+    dshreiner-nv**.
+  - Reporter commits: 15d5ec38b0 (10-28 00:15Z) changes `emitCopyLogical` in the SPIR-V emitter, which widens the
+    scope beyond the IR pass. The reporter's comment 6457463415 says this emitter bug already exists on master and
+    caused a -O0 spirv-val failure in `buffer-load-partial-member-loads-attributes`. cb4ad5253a (10-28 15:04Z) is a
+    test that answers coderabbit r4393566027. No one mentioned @nv-slang-bot. 6278114155 is unchanged and still
+    names ae4db91cd7.
+  - Decision rows (3)+(4): I asked slang-triager to re-verify cb4ad5253a, to test the reporter's "master emits the
+    same SPIR-V" claim with a revert drill on 15d5ec38b0, to compare 2969c15569 against ae4db91cd7, and to edit
+    6278114155 in place. The message was pinned to `sess-1792248984408-me86v2` on thread
+    `gh-issue-shader-slang/slang-13732`, with in_reply_to = my task row seq 2 (a2a msg id 9; it reached the pinned session, which woke and wrote seq 23 at 15:03:15Z). I did not dispatch the
+    fixer, contact an approver, or send a dashboard row. Successor one-shot `rechase-13732-pr13734-cb-7fd5`, keyed on
+    cb4ad5253a, runs on 11-01 15:00Z.
+- 2026-10-29 15:23Z triager `[Report]` (their findings): no problem at cb4ad5253a.
+  - The force-push is a pure rebase onto 9a4817c881 (range-diff all `=`, same patch-id as ae4db91cd7).
+  - The reporter's claim is true: master 01dcd3568 also stores the coherent copy with
+    `MakePointerAvailable|NonPrivatePointer` into a Function var, and spirv-val rejects it.
+  - 15d5ec38b ("a logical copy's store does not take the source load's attributes", 22-line emitter
+    change) is principled, because `IRCopyLogical` attributes only come from the source load
+    (slang-ir.cpp:5688).
+  - Revert drill with validation on: 3/5. Without validation the test passes 5/5, so it catches the bug
+    only through spirv-val (which CI runs).
+  - Subset 1324/1324 on the PR, 1350/1350 on master.
+  - Verified by me: comment 6278114155 was edited at 15:22:35Z and is still the newest comment; the PR
+    is OPEN at cb4ad5253a with 8 commits incl. 15d5ec38b; CI is 6 pass and 1 skipping; `BEHIND` master;
+    jkwak-work is requested.
+  - **Side finding, unfiled, operator call:** on master, struct `storeCoherent<16, MemoryScope::Device>`
+    through a `Big*` splits into member `OpStore`s with only `Aligned`. The coherent flags are lost
+    (a scalar store keeps them). Pre-existing and unrelated to #13734. The probe is in the triager's
+    workspace: `scratch-13732/store-coh2.slang`. I asked the operator on the dashboard 10-29.

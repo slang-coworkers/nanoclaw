@@ -33,3 +33,4 @@ the one mount detail the spine omits.
   re-check whose PR merged is cancelled within the hour, even if its job is post-merge.
 - [Placeholder one-shot tasks fire immediately](task-one-shot-placeholder.md) — create
   with the real prompt + future time in one call; read it back before quoting the id.
+- [Fixer reports drift to Main](fixer-fix-reports-drift-to-main.md) - slang-fixer `[Fix Report]`s often land on Main, not the handing-off triager; forward to the triager (cases 10-22→10-29)

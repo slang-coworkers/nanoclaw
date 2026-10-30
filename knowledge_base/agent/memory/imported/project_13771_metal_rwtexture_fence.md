@@ -68,3 +68,22 @@ New dated entries go there; this file holds the current state and the decisions.
   commit skips everything ("Only documentation files changed"). Count jobs, not the conclusion.
 - **Bot CI on a draft can be unrunnable**, not slow: once the priority gate livelocks, waiting does not
   help; escalate the human paths once, re-ask once, then let the supervisor carry it.
+
+**10-29 11:16Z: hardware confirmation.** Reporter cmt [6494314161](https://github.com/shader-slang/slang/pull/13792#issuecomment-6494314161), which I read: they ran it on an Apple M4,
+macOS 26.7.1, Xcode 26.5, comparing PR accfd0d with control 7251cc6. Results:
+- Runtime wrong components went to 0 under the PR: rawOnce 209.6M, rawChain 194.8M, war 4.8M (~2.3%) on control. The WAR row backs the RC1 decision; no post-fence-only variant was tested.
+- `-api mtl` full suite: 5487/5583 vs 5481/5583, with no regressions.
+- The only new failure is the PR's own METALLIB lane `.5`: "number of textures with read_write access exceeds maximum supported (8)". `computeMain` had 11 rw textures, so the test is at fault, not the codegen.
+
+The fixer pushed `1cbdeb683d` (merge master) and `18cc8ac929` (a separate `metallibMain` with ≤8 rw textures), with no rebase.
+I verified `k_maxSupportedModuleVersion` 37→38 in the diff, MERGEABLE, draft, 0 reviews. CI 40862424323 @18cc8ac `waiting` (yielded, 40 skipped).
+**Lesson:** the reporter said "no Mac here" on 10-20, yet produced M4 results on 10-29. An external contributor's constraint can change; a direct ask (the fixer's) got the hardware run that our CI could not.
+Next: the reporter re-runs the 2 metallib lanes on 18cc8ac, or a human dispatches CI. Then the operator decides the ready-flip. I sent one update to the dashboard 10-29.
+
+**10-29 11:41Z: reporter re-ran 18cc8ac on the M4** (cmt [6495681400](https://github.com/shader-slang/slang/pull/13792#issuecomment-6495681400); I read it). Results:
+- 8/8 `read-write-texture-fence*` lanes pass, including `.5` METALLIB (`metallibMain`) and `.6` METALLIB_ROV.
+- `xcrun metal -c` is clean apart from one -Wunused-variable on the atomic result, and `slangc -target metallib` works for both entries.
+- Runtime repro still shows 0 bad components.
+
+The fixer made no code change and only updated the Tests line and explanation (cmt 6495788612). The reporter's own pre-ready condition is met.
+Project macOS CI (run 40862424323) still yielded. At 11:5xZ I told the dashboard that the condition from my 11:2x ask is now met: approve the ready-flip.

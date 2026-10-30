@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13956_name_lookup_overload_resolution_overhaul_202c
-description: "slang#13956 (skiminki-nv, 10-26 16:06Z, self-assigned, label 'slang 202c'): maintainer design proposal for a decomposable LOOKUP/RESOLVE name-lookup + overload-resolution model in 202c (no silent semantic change from non-local decls, no lookup filter, accessibility detached, wildcard imports lowest priority). Asks nothing of the bot -> held: NO dispatch, NO bot post."
+description: "slang#13956 (skiminki-nv, 10-26 16:06Z, self-assigned, label 'slang 202c'): maintainer design proposal for a decomposable LOOKUP/RESOLVE name-lookup + overload-resolution model in 202c (no silent semantic change from non-local decls, no lookup filter, accessibility detached, wildcard imports lowest priority). Asks nothing of the bot -> held: NO dispatch, NO bot post. 10-28 renamed 'language proposal', SPF:Proposal, Q4 2026; 10-29 author edit-note comment (no @nv-slang-bot mention) -> still held; char 6 now allows C++ semantics. 10-29 21:53Z external design data point (albertrodriguezclo: imported-vs-own decl ranking; const ambiguous, func silently local), no mention -> still held."
 ---
 
 # slang#13956 — name lookup and overload resolution overhaul for Slang 202c
@@ -27,3 +27,19 @@ assignee reconciles them; a bot comment cross-linking them would be noise.
 
 **Resume** only on a comment that @-mentions @nv-slang-bot, or on an operator ask. Mentions arrive
 as webhooks, so no re-chase timer.
+
+**10-26 → 10-29 deltas (author-driven, no bot ask).** Cross-referenced from #13888, #13750, #13876, PR #13880.
+PR #13880's fixer commits cite it (d0752c089, 8fa442147, eff1ddfdf, ec354abb5). 10-28: renamed "…: language
+proposal", label `SPF:Proposal`, parent re-set, milestone "Q4 2026 (Fall)". **10-29 13:49Z** author comment
+6498471705, "Fix `using namespace` semantics a bit in the description." It has no @nv-slang-bot mention, so it
+is not a resume trigger and was not routed. The edited characteristic 6 now reads "lowest lookup priority **or** the C++
+semantics (closest common parent namespace)", which is consistent with the C++ direction already given on #13750,
+so the #13750 overlap noted above is narrower. Still held.
+
+**10-29 21:53Z, external data point (not routed).** albertrodriguezclo (CONTRIBUTOR; author of the
+cloth-sim issue batch filed the same evening) posted comment 6509187946. It does not mention @nv-slang-bot. Their
+claim, not verified by us: at master 9931ba0ea, if a module defines its own `static const K` with the same name
+as one from `import Lib`, every use is ambiguous (E39999). An own function with the same signature as an imported
+one wins with no diagnostic. They propose one rule for overloadable and non-overloadable declarations, with a
+collision error at the declaration (fits characteristic 1). This is design input to the maintainer-owned proposal,
+not a bug filing, so there was no dispatch and no bot post. Still held.

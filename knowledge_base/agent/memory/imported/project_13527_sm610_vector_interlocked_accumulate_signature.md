@@ -85,3 +85,9 @@ Agility question with the same conclusion: the runtime does not update DXC or `d
 uint Align = 64)` and main linalg.h:711 has `(Res, StartOffset, Vec)` (DXC#8644). The merge hold on #13532 stands. The live comment matched the payload
 and mentioned no one. Held: no dispatch, no bot post. The operator offer from the previous entry is moot, because jkwak published the answer himself.
 Re-chase `-0383` (10-29 18:00Z) is unchanged.
+
+**10-29 18:00Z re-chase: still held.** #13532 is OPEN (head `c91704bc`, non-draft, `BEHIND`, last updated 10-09; only bot reviews/comments).
+The DXC `releases.atom` and `tags.atom` feeds match the baseline: newest `v1.9.2609` (09-29), newest SM 6.10 preview `v1.10.2605.37` (08-12, old order).
+The 3 comments on #13527 since 6069079805 (6471406139, 6476956743, 6480214472) are all jkwak-work's, already handled above, and none mentions
+the bot. `update` refused the firing one-shot again (`no live task matched`), so I re-armed it as `rechase-13527-dxc8644-c4c3` for 11-05 18:00Z
+(comment baseline moved to 6480214472; prompt notes the expected early-December Agility 1.621 / SM 6.10 retail).
