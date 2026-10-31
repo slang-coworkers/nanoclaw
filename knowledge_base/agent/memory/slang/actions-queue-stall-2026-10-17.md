@@ -31,3 +31,8 @@ Raised with the operator 10-17 10:1xZ.
 - The workflow sets no top-level `max-parallel`; the matrix comes from a reusable workflow. The bot can't see the org's concurrent-job limit, so "the matrix saturates the concurrency cap" is an inference. It fits the same weekday and time, ubuntu-latest jobs from other workflows starving, and the stall clearing as the matrix drains.
 - **Pagination 401:** `gh api --paginate` on the jobs endpoint fails on the next-page request with `app_not_connected`, while the same pages fetched with `&page=N` succeed. GitHub is still connected; use explicit `page=` loops.
 - Possible fixes, all needing a maintainer: `max-parallel` on the matrix, or moving the cron off peak.
+
+## 10-30 (Friday), ~15:33Z: a backlog with a different shape, not the CMake matrix
+- At 16:2xZ, shader-slang/slang had **44 runs queued and 1 in progress**. Each queued run (CI merge_group, SlangPy trigger, Populate sccache) had only its first job `queued`. No run had a large set of in-progress jobs. slangpy had 1 queued and 1 in progress; slang-rhi had 0 and 0. So these repos aren't using up hosted-runner concurrency, unlike the 10-24 Saturday matrix (60 jobs in progress).
+- I couldn't check org-wide load: `orgs/shader-slang/repos` returns the OneCLI `app_not_connected` 401, the known signature for org-level paths. githubstatus showed all operational (per the babysitter).
+- ⇒ **There are two stall shapes.** (a) Saturday 08:00Z, with a large in-progress matrix: the CMake Options cron. (b) Pickup stalls with nothing running locally (10-17's first 4 min before the cron? and 10-30): cause unknown, possibly another org repo or GitHub-side. Check the in-progress **job** count first to tell them apart.

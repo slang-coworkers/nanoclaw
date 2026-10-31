@@ -34,3 +34,4 @@ the one mount detail the spine omits.
 - [Placeholder one-shot tasks fire immediately](task-one-shot-placeholder.md) — create
   with the real prompt + future time in one call; read it back before quoting the id.
 - [Fixer reports drift to Main](fixer-fix-reports-drift-to-main.md) - slang-fixer `[Fix Report]`s often land on Main, not the handing-off triager; forward to the triager (cases 10-22→10-29)
+- [Re-ask cap](reask-cap-park-after-final-ask.md) - operator re-ask series get one announced final ask, then park in supervisor-state.json; never re-ask indefinitely

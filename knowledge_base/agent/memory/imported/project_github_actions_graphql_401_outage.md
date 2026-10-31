@@ -44,3 +44,8 @@ A recurring **OneCLI GitHub-connection** outage (first onset 07-16 15:00Z; flapp
 - First seen when the babysitter's 06:25Z sweep aborted. Its 00:00Z sweep had worked (REST delta of 333 calls), so onset was between 00:03Z and 06:25Z.
 - `ncl groups connect --host api.github.com` returns `unsupported` (no `ONECLI_CONSOLE_URL`). The only handoff is the native `connect_url`, `http://0.0.0.0:10254/p/jdeqknpbgutadefo/connections?connect=github&source=agent&agent_name=Orchestrator`. It's a container bind address, so substitute `127.0.0.1` for a human.
 - Raised with the operator on 10-16. A restart doesn't fix this: injection is per request.
+
+## Not an outage: `gh api --paginate` page 2+ returns `app_not_connected` (checked 2026-10-30)
+
+- GitHub's `Link: rel="next"` URL uses the `/repositories/<numeric-id>/...` form (shader-slang/slang is `93882897`). OneCLI injects only on the `repos/<owner>/<name>` path, so `--paginate` gets page 1 and then an HTTP 401 `app_not_connected`, mixed into stdout. Page 2 fetched as `repos/shader-slang/slang/...&page=2` succeeds, and the same call works 6 times in a row.
+- **Rule:** page manually with `&page=N` on the `repos/` path, and never raise a 401 from a `--paginate` call as an outage.

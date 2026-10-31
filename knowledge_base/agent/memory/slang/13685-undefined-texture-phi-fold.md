@@ -65,3 +65,11 @@ A re-check prompt for a parked decision names the exact question comment and ask
   `pr: non-breaking` OK. Open for pdeayton-nv: reads through an undefined handle are not correlated (two loads give two
   OpUndef). The reviewer says this is sound because access through an unwritten descriptor is UB, but the maintainer should confirm.
   Next: the fixer's R2. The combined review is in inbox `a2a-1793329070807-xwu2qx`.
+- **2026-10-30 03:21Z:** #14081 R1 fixes are pushed at 41c22bde2, and the R2 request went to slang-reviewer. ⚠️ Owner session
+  `yiuh5a` is at **$296.53 of a $300 ceiling** (status escalated, cap $180). It is the costliest slang-fixer session in 30 days;
+  p95 is $135. It owns #13685/#13700/#14076/#14081. Per the one-owner rule I escalated the ceiling raise to the operator
+  and did **not** open a second session. The fixer's handoff notes are in `memory/fix-14076.md` (its group) and worktree `wt-slang-undef-image`.
+- **2026-10-30 04:00Z:** slang-reviewer R2 of #14081 @41c22bde2 is **REQUEST_CHANGES**. The R1 bug and forwarding gap are fixed. New crash:
+  a user `spirv_asm` with `__imageType` of a never-written handle segfaults in Release (base only fails validation). Gaps: the recursion
+  bound counts rounds, not work; `.10` relies on spirv-val; no stated UB rationale for removing whole asm blocks. R3 is the last round. Owner
+  session is at $297.90 of $300, and the operator's ceiling decision (asked 03:22Z) is still pending.

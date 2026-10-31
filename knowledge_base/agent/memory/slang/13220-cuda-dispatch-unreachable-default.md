@@ -74,6 +74,7 @@ The fixer replied with three answers ([6002744164](https://github.com/shader-sla
   A kaizhangNV comment reaches the fixer directly through the PR mapping.
   It pages the dashboard with `--since-seq 505700`. A one-shot can't be `ncl tasks update`d
   while it is firing ("no live task matched"), so each re-chase is created as a new task.
+- 2026-10-30 (`passive-13228-d25-43d6`): no change. No human comment/review on #13228/#13220 after 10-23 02:40Z; PR still OPEN draft at `842ea5d5c1` (updatedAt 10-05). Dashboard seq 507557→509502 (to 10-30 20:30Z): no a/b/c answer. Sent nothing, not rescheduled — webhooks only now. (Page with Python `json.loads`, not `jq`: one page has a bad surrogate escape jq rejects.)
 - Dashboard paging: `--reverse --limit 400` only reaches back about 2 days on this busy session.
   To cover the window since the ask, walk forward with `--since-seq <seq near the ask>`.
 

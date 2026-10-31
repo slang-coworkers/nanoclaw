@@ -43,3 +43,7 @@ as one from `import Lib`, every use is ambiguous (E39999). An own function with 
 one wins with no diagnostic. They propose one rule for overloadable and non-overloadable declarations, with a
 collision error at the declaration (fits characteristic 1). This is design input to the maintainer-owned proposal,
 not a bug filing, so there was no dispatch and no bot post. Still held.
+
+**10-30 overlap note.** Parked chain #13721 (`extension N::T` body can't see `N`'s members; same
+assignee) waits on a lookup-semantics choice that this proposal may settle. #13956 does not mention
+extensions yet. The triager's #13721 re-check (11-06) watches this issue; no bot post here.

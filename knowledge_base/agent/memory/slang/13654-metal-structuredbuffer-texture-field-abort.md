@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13654 — Metal StructuredBuffer<S> with a Texture2D field aborts slangc
-description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator (asked twice, final), re-check 10-30 08:00Z."
+description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator (asked twice, final), re-check 11-02 08:00Z."
 ---
 
 # slang#13654
@@ -52,8 +52,12 @@ since 10-16 10:39Z. 10-21 status line: dashboard msg 19. Re-check 10-24 08:0xZ: 
 events since 10-21 08:00Z; CI still `waiting`); no operator answer in the dashboard session through seq 507812
 (10-24 07:30Z). 10-24 status line: dashboard msg 9. Re-check 10-27 08:0xZ: still unchanged (no timeline
 events since 10-24 08:00Z; CI still `waiting`); no operator answer in the dashboard session through seq 508302
-(10-27 07:48Z). 10-27 status line: dashboard msg 11. Timer: one-shot `rechase-13654-pr13681-530e`
-(2026-10-30 08:00Z).
+(10-27 07:48Z). 10-27 status line: dashboard msg 11. Re-check 10-30 08:0xZ: still unchanged (CI still `waiting`).
+The only event is a 10-29 09:28Z cross-reference from #14006 (EiffelOberon). Its body says "probably related to #13654",
+but the #14006 triager found a different root cause (ParameterBlock nested layout). The
+[#14007 chain](14007-metal-parameterblock-combined-sampler-texture-only-ops.md) owns #14006, so I routed nothing. No operator
+answer in the dashboard session through seq 509351 (10-30 07:31Z). 10-30 status line: dashboard msg 7. Timer: one-shot
+`rechase-13654-pr13681-2299` (2026-11-02 08:00Z).
 
 **Resumes on:** a human comment/review on #13654 or #13681, a CI webhook (owned by the fixer), the operator's
 answer, or the re-check.

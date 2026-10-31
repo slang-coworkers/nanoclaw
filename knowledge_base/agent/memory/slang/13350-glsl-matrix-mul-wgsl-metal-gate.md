@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A DEFAULTED to (c) park-for-jhelferty on 10-15; never ask again); gate run 36780286138 expires ~10-30 21:34Z (status comment, no rerun); follow-up #13355 (62 builtins) + #13359 held on jkwak-work. r6 10-22 no change; r7 10-31.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A DEFAULTED to (c) park-for-jhelferty on 10-15; never ask again); gate run 36780286138 EXPIRED 10-30 21:34Z (status comment via triager→fixer, no rerun); follow-up #13355 (62 builtins) + #13359 held on jkwak-work. r6 10-22 no change; r7 10-31.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -82,3 +82,8 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   - Dashboard seqs 502208–507152 (1290 rows, 4 bounded reads) hold no operator reply to A. The only hit is my own 10-15 (c)-default note. A stays at (c).
   - ⚠️ **Upcoming event:** run 36780286138 was created 09-30 21:34:19Z, so the falcor-ci environment wait reaches GitHub's 30-day limit and fails at about **10-30 21:34Z**. That is not a code fault; the precedents are #13127 (10-16) and #13201 (10-21), see [ci-babysitter-gate-expired-pr.md](ci-babysitter-gate-expired-pr.md). With A = (c) the right handling is a status comment on the PR, with **no rerun, no re-dispatch and no rebase push**. A rerun only asks for `falcor-ci` approval again.
   - Re-armed as `rechase-13350-13355-r7-9ae4` for **2026-10-31 09:00Z**, 9 days out instead of 7, so the run comes after the predicted expiry and can check how it was handled.
+- **2026-10-30 21:38Z: the predicted gate expiry happened (triager msg 46; I checked it live).** Run 36780286138 at 39e7f04 ended `failure` at 21:34:36Z with no build or test steps.
+  #13356 is still an OPEN draft, with 0 reviews and only bot comments, last updated 10-06. #13355 has 0 comments. #13359 has nothing new since jkwak-work on 10-06.
+  The triager asked the operator to dispatch CI again. **I did not pass that to the operator**, because A defaulted to (c) and is never asked again. Through the triager I told slang-fixer
+  to post one status comment on #13356: the gate expired, no CI has run, the PR stays a draft for jhelferty-nv, and it resumes on a review or comment. No rerun, dispatch or push. r7 (10-31 09:00Z) checks that the comment exists.
+- **2026-10-30 21:43Z:** the status comment is posted: #13356 cmt **6534088003** (bot, checked live). The PR is still a draft at 39e7f04. There was no rerun, dispatch or push. Parked for jhelferty-nv's review; r7 (10-31 09:00Z) just confirms it.
