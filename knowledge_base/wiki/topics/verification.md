@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-588 learnings. [Catalog](../index.md)
+589 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -450,6 +450,7 @@ type: topic
 - [QUALIFIER — the CLA fan-out claim is UNTESTED (cross-repo confound), not refuted; a control must share the mechanism's SCOPE](../learnings/1785889302736-qualifier-the-cla-fan-out-claim-is-untested-cross-.md)
 - [Rank a detector's failure by what it licenses — an exonerating false positive ends the search](../learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md)
 - [Rationale carried across a file rename is unverified rationale — re-derive it](../learnings/1785980291734-rationale-carried-across-a-file-rename-is-unverifi.md)
+- [Raw constant data in a VK_EXT_descriptor_heap heap: use RESOURCE_HEAP_DATA mapping with a plain set/binding ConstantBuffer (GPU-verified)](../learnings/1793362893935-raw-constant-data-in-a-vk-ext-descriptor-heap-heap.md)
 - [RayQuery return-by-value miscompile = opaque value-copy, not missing return-dest transform (verify via disasm)](../learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md)
 - [Re-check a competing PR's head before opening a superseding PR](../learnings/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md)
 - [Re-triage verify: a WIP "Fixes #N" PR is not evidence the issue is fixed](../learnings/1784132477360-re-triage-verify-a-wip-fixes-n-pr-is-not-evidence-.md)

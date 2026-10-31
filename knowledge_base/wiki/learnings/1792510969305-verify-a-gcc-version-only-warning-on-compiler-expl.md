@@ -3,6 +3,7 @@ title: "Verify a GCC-version-only warning on Compiler Explorer with a full amalg
 type: learning
 topic: slang-compiler
 source: learnings/1792510969305-verify-a-gcc-version-only-warning-on-compiler-expl.md
+superseded_by: 1792513384473-reproduce-a-gcc-version-only-warning-via-the-compi
 ---
 
 # Verify a GCC-version-only warning on Compiler Explorer with a full amalgamated TU

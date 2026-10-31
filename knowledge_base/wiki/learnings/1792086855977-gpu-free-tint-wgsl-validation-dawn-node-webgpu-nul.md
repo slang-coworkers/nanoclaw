@@ -3,6 +3,7 @@ title: "GPU-free Tint WGSL validation: Dawn node `webgpu` null backend"
 type: learning
 topic: slang-compiler
 source: learnings/1792086855977-gpu-free-tint-wgsl-validation-dawn-node-webgpu-nul.md
+superseded_by: 1792074422249-gpu-free-real-tint-wgsl-validation-via-node-webgpu
 ---
 
 # GPU-free Tint WGSL validation: Dawn node `webgpu` null backend

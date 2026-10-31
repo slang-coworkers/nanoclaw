@@ -3,6 +3,7 @@ title: "GPU-free Tint/WGSL validation (uniformity errors included) via dawn.node
 type: learning
 topic: slang-compiler
 source: learnings/1792071853801-gpu-free-tint-wgsl-validation-uniformity-errors-in.md
+superseded_by: 1792074422249-gpu-free-real-tint-wgsl-validation-via-node-webgpu
 ---
 
 # GPU-free Tint/WGSL validation (uniformity errors included) via dawn.node null backend

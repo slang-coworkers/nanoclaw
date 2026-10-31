@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8313 agent learnings**, synthesized into **504 concept pages**.
+Standalone wiki built from **8389 agent learnings**, synthesized into **507 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -485,6 +485,8 @@ Standalone wiki built from **8313 agent learnings**, synthesized into **504 conc
 - [Slang capability inference: how [require] propagates through referenced declarations](concepts/slang-language-core-capability-inference.md)
 - [Slang Coercion & Overload Resolution](concepts/slang-language-coercion-and-overload.md)
 - [Slang conformance checking: requirement enumeration and method-requirement witness synthesis](concepts/slang-language-core-requirement-witness-synthesis.md)
+- [Slang core vector splat init: user implicit conversions, element-type bounds and witness-cost ranking (#14100)](concepts/slang-language-vector-splat-init-and-generic-init-bounds.md)
+- [Slang Declaration-Order Scoping: hiddenFromLookup, Shapes That Escape It, and HLSL for-Init Scoping](concepts/slang-language-declaration-order-scoping.md)
 - [Slang descriptor-handle capability promotion and reflection-visible changes (bindlessSpaceIndex, CUDA binding categories)](concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md)
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
 - [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
@@ -492,6 +494,7 @@ Standalone wiki built from **8313 agent learnings**, synthesized into **504 conc
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang integer constant folding: signed int64 storage, un-narrowed front-end IntVals, and what folds](concepts/slang-language-core-integer-constant-folding.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
+- [Slang new semantic checks: unmarked compiler-made declarations and twice-visited bodies](concepts/slang-language-synthesized-declarations-and-double-visits.md)
 - [Slang Parser: tryParseGenericApp Classification, Parser-Time Lookup, and ?: Precedence](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
@@ -562,10 +565,10 @@ Standalone wiki built from **8313 agent learnings**, synthesized into **504 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2710)
-- [NanoClaw / agent operations](topics/agent-ops.md) (968)
-- [CI, build & tooling](topics/ci-tooling.md) (607)
+- [Slang compiler & language](topics/slang-compiler.md) (2764)
+- [NanoClaw / agent operations](topics/agent-ops.md) (974)
+- [CI, build & tooling](topics/ci-tooling.md) (612)
 - [Review & process](topics/review-process.md) (405)
 - [PR review, approval & calibration](topics/review-approval.md) (1420)
-- [Verification & evidence discipline](topics/verification.md) (588)
-- [Uncategorized](topics/misc.md) (1615)
+- [Verification & evidence discipline](topics/verification.md) (589)
+- [Uncategorized](topics/misc.md) (1625)

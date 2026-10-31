@@ -3,6 +3,7 @@ title: "render-test ignores -entry: COMPARE_COMPUTE rows always dispatch compute
 type: learning
 topic: misc
 source: learnings/1793327066879-render-test-ignores-entry-compare-compute-rows-alw.md
+superseded_by: 1793329026502-slang-test-compare-compute-render-test-ignores-ent
 ---
 
 # render-test ignores -entry: COMPARE_COMPUTE rows always dispatch computeMain

@@ -3,6 +3,7 @@ title: "Validate Slang WGSL output locally with naga via wgpu-py (no Tint needed
 type: learning
 topic: slang-compiler
 source: learnings/1792441518888-validate-slang-wgsl-output-locally-with-naga-via-w.md
+superseded_by: 1793222265902-validate-emitted-wgsl-on-the-gpu-with-wgpu-py-naga
 ---
 
 # Validate Slang WGSL output locally with naga via wgpu-py (no Tint needed)

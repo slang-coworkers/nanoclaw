@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-968 learnings. [Catalog](../index.md)
+974 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -498,6 +498,7 @@ type: topic
 - [Fix Report may route to Orchestrator, not the triager — don't call a fixer chain stalled from triager inbox alone](../learnings/1792829026301-fix-report-may-route-to-orchestrator-not-the-triag.md)
 - [Fix Review Request can bounce/misroute into a reviewer's stale-labeled reused session](../learnings/1788468324330-fix-review-request-can-bounce-misroute-into-a-revi.md)
 - [Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
+- [Fixer gate: autosquash rebases onto new master; any file write voids OUTPUT_REVIEW approve](../learnings/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md)
 - [Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
 - [Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)
 - [Fixer stall diagnosis — unpushed worktree vs dead session](../learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md)
@@ -608,6 +609,7 @@ type: topic
 - [INVERTED HEADLINE: `ncl` silently accepts arbitrary flag names on nearly every verb and returns FULL data — `tasks list` is the lone validating exception](../learnings/1786242295161-inverted-headline-ncl-silently-accepts-arbitrary-f.md)
 - [Investigation-only deliverables stay in the analysis tier — don't add a fixer handoff for a read-only comment](../learnings/1788542147628-investigation-only-deliverables-stay-in-the-analys.md)
 - [Issue webhooks route to triager only, never also fixer](../learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-fi.md)
+- [Issue-comment routing: post a fresh delta when a human commented since, even if told to edit in place](../learnings/1793395604259-issue-comment-routing-post-a-fresh-delta-when-a-hu.md)
 - [Issue-supervisor nudges completed bot work because mandatory-draft PRs read as "no PR"](../learnings/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md)
 - [Judge coworker output by real engineering quality, not proxy metrics](../learnings/legoop-feedback_ab_evaluation_criteria.md)
 - [KB-sync STEP 4b data-only gate: core.fileMode=false defeats the chmod control — prove via cacheinfo instead](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md)
@@ -622,6 +624,7 @@ type: topic
 - [Looping self-edge peer session: flag up once, then ignore — ncl mutating verbs blocked without a wired approver](../learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md)
 - [Maintainer "assign the PR to me" LOSES to standing operator no-assignee gate on bot PRs — triager can't override](../learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md)
 - [Maintainer comments can be edited after the triage handoff — check updated_at before planning](../learnings/1792608633600-maintainer-comments-can-be-edited-after-the-triage.md)
+- [Maintainer daily report: fleet asks must go to parent, not only the dashboard](../learnings/1793350337272-maintainer-daily-report-fleet-asks-must-go-to-pare.md)
 - [Maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md)
 - [Maintainer-driving disposition must be persisted in the Orchestrator's supervisor-state, not a coworker's workspace](../learnings/1789416210923-maintainer-driving-disposition-must-be-persisted-i.md)
 - [Mark retention-expired CI reds terminal-unclassifiable once — don't re-derive the same verdict every sweep](../learnings/1786213458375-mark-retention-expired-ci-reds-terminal-unclassifi.md)
@@ -712,6 +715,7 @@ type: topic
 - [PR-review OUTPUT_REVIEW gate rejects "relied on the fixer's test run" — build+run it yourself in a detached worktree](../learnings/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md)
 - [PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions](../learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md)
 - [Precheck staleness gate is click-age-only, blind to existing replies](../learnings/1787070354536-precheck-staleness-gate-is-click-age-only-blind-to.md)
+- [Predict post-fix parse results for IGlobalSession::parseCommandLineArguments without editing code](../learnings/1793392947549-predict-post-fix-parse-results-for-iglobalsession-.md)
 - [printf width-from-operand-size fixes: an UNPINNED float type (half) can be misread as double via an aliased aggregate operand](../learnings/1788904081233-printf-width-from-operand-size-fixes-an-unpinned-f.md)
 - [Profiler-flake triage: tested-sha ancestry must be checked per-line, not just per-fix-commit](../learnings/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
@@ -800,6 +804,7 @@ type: topic
 - [Sentinel-gated helper needs a negative-invariant test, not just positive coverage](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md)
 - [Session identity — git authorship is also a group identity, and the swap was one-directional](../learnings/1785871175369-session-identity-git-authorship-is-also-a-group-id.md)
 - [Session reap deletes worktree mid-build — commit tests+code BEFORE the long build](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)
+- [Session-level -profile from parseCommandLineArguments never reaches API targets](../learnings/1793405396040-session-level-profile-from-parsecommandlineargumen.md)
 - [settings.json IS writable — build the PreToolUse guard; exit 2, strip quotes, and include `until`/`while`/`if` in the command-position set](../learnings/1786226029670-settings-json-is-writable-build-the-pretooluse-gua.md)
 - [SGL ui::Context::begin_frame gates mouse-cursor sync on a non-null window arg](../learnings/1789818274564-sgl-ui-context-begin-frame-gates-mouse-cursor-sync.md)
 - [shader-slang/spec has no writable path from the slang-fixer container (no push, no fork, invalid GH_TOKEN)](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md)
@@ -829,6 +834,7 @@ type: topic
 - [Spurious E41012 profile-upgrade warning: static [require] out of sync with emit-time isCombined gate (samplerless)](../learnings/1782889962730-spurious-e41012-profile-upgrade-warning-static-req.md)
 - [spvDescriptorHeapEXT AS heap is driver-managed — descriptor write, NOT raw memcpy (host population)](../learnings/1785056296611-spvdescriptorheapext-as-heap-is-driver-managed-des.md)
 - [Stale coworker session can have GC'd provider conversation — sub-thread to sidestep](../learnings/1785467330065-stale-coworker-session-can-have-gc-d-provider-conv.md)
+- [Stale github.ci_failed ~30 days after a bot workflow_dispatch: approval-gate expiry, not a failure](../learnings/1793394266543-stale-github-ci-failed-30-days-after-a-bot-workflo.md)
 - [Staleness is a property of how an artifact is READ; and a correction's radius includes the reasoning that depended on it](../learnings/1786193488406-staleness-is-a-property-of-how-an-artifact-is-read.md)
 - [Standing-order reinforcements inherit via CLAUDE.md, not per-session relay](../learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md)
 - [Static REF+patch diff can settle a vcpkg overlay-removability question without a build](../learnings/1787228997352-static-ref-patch-diff-can-settle-a-vcpkg-overlay-r.md)

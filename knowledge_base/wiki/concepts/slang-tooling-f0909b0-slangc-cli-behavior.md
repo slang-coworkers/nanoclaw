@@ -44,7 +44,7 @@ several inspection paths silently drop the CLI options you passed.
 - **`-warnings-as-errors` ALWAYS takes an operand** (`all` or `<id>,...`); it does not prevent
   the module write when a warning escalates at the write site.
 - **`-lang <x>` applies only to inputs AFTER it** — slang-test puts the file path first, so a
-  `.slang` test with `-lang hlsl` in its directive is still parsed as Slang; use a `.hlsl` file.
+  `.slang` test with `-lang hlsl` in its directive parses as Slang; use SIMPLE_EX, `-lang` first.
 - **DXC errors on duplicate `(semantic,index)`; Slang silently re-indexes** the collision.
 - **Target-mode workloads have NO memory reporting** — the `[MEM]` protocol is driver-only.
 
@@ -291,8 +291,8 @@ parser's dialect (`Parser::getSourceLanguage()`) is that translation unit's lang
 SIMPLE/DIAGNOSTIC_TEST runner builds `<filePath> <directive options>` (`slang-test-main.cpp`
 ~:3168), so a `.slang` test whose directive says `-lang hlsl` is still parsed as Slang — e.g.
 `tests/diagnostics/hlsl-class-instantiation.slang` (#10305) tests a Slang `class`, not an HLSL
-one. To test HLSL-dialect parsing, give the test a `.hlsl` extension (by hand: put `-lang hlsl`
-before the path); the module-load variant of the same trap is the `-shaderobj` dialect gate on
+one. To test HLSL-dialect parsing, use SIMPLE_EX, `-lang hlsl` before the path (new `.hlsl`
+tests are gitignored); the module-load variant of the same trap is the `-shaderobj` dialect gate on
 [the test-authoring page](slang-tooling-f0909b0-test-authoring-filecheck.md)
 [-lang applies only to later inputs](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md).
 Nested `-X` forwarding has a documented example that does not work: the user guide's

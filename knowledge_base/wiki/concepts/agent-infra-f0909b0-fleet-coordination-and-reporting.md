@@ -3,7 +3,7 @@ title: "Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plu
 type: concept
 group: agent-infra
 tags: [persistence, tracker, disposition, reporting, scheduled-task, thread-backpressure, stale-comment]
-source_count: 6
+source_count: 7
 ---
 
 ## TL;DR
@@ -22,6 +22,9 @@ distinguish a config-skip from a transient error.
 - **When you add an honesty field to a payload (`totalNonDraft`, `prsTruncated`), the fix isn't
   done until every consumer is audited** — the human-facing report is a consumer, and it's the one
   place field-passing failures are invisible until someone with independent ground truth calls it.
+- **Fleet asks inside a human-facing report reach no agent.** When a read-only role's report lists
+  GitHub writes or fleet actions it cannot do, send them to `parent` as a separate `[Report]`
+  5-bullet, not only as a "Fleet" section on the dashboard.
 - **A scheduled task with a hardcoded absolute skill-script path silently skips in any group whose
   container installs that skill at a different path** — a missing-file exit 2 is indistinguishable
   from a transient error, so "post only if due" swallows it. Invoke by slash name; author/verify
@@ -76,6 +79,14 @@ field that exists in JSON but never in prose might as well not exist for the rea
 same producer/consumer-starvation shape as the supervisor board-sync filter matched on a body the
 fetch layer never populated.)
 
+The reverse failure is a report whose only consumer is human-facing while part of it is addressed
+to the fleet. From 10-20 to 10-29 the Slang Maintainer daily report went only to
+`slang-maintainer-dashboard`, so its "Fleet (parent → operator)" items (file h7per's issue,
+ready-flip bot drafts) never reached the orchestrator; nobody acted, and h7per's P0-candidate issue
+stayed unfiled for 3 days. When a report lists GitHub writes or fleet actions that a read-only role
+cannot do, send them to `parent` as a separate `[Report]` 5-bullet: a section titled "Fleet" inside
+a human-facing report does not reach the fleet ([maintainer daily report: fleet asks must go to parent, not only the dashboard](../learnings/1793350337272-maintainer-daily-report-fleet-asks-must-go-to-pare.md)).
+
 ### Task and thread plumbing: silent skips and backpressure
 
 Two learnings are about NanoClaw plumbing that fails quietly. A scheduled/recurring task that
@@ -121,10 +132,11 @@ doesn't cover the issue's own footprint. Rule of thumb for the `github.pr_closed
 handler: after cleanup, ask "does any GitHub comment I authored still assert a next-action against
 this now-dead PR?" — if yes, edit it to point at the replacement.
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [Cross-sweep chat commitments must be persisted to tracker, not left in transcript](../learnings/1786782427154-cross-sweep-chat-commitments-must-be-persisted-to-.md) — write a future-sweep conditional trigger into the tracker/memory the same turn; chat doesn't survive to the next sweep.
 - [CI babysitter: author-owned red disposition and clean-sweep silence, now persisted](../learnings/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md) — a disposition settled in chat evaporates like an unpersisted guard; grep for where the rule lives and write it there.
 - [Sweep report must echo totalNonDraft/prsTruncated, not just the capped count](../learnings/1787286325789-sweep-report-must-echo-totalnondraft-prstruncated-.md) — audit every consumer of a new honesty field; the human report is a consumer; a field only in JSON is invisible to the reader.
 - [Scheduled task with hardcoded skill script path silently skips per-container](../learnings/1787548296286-scheduled-task-with-hardcoded-skill-script-path-si.md) — skill install paths differ per container; exit-2 looks transient; invoke by slash name, author inside the owning container.
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md) — PATCH your PR-opened issue comment to redirect to the superseding PR; a stale-fact correction is not a banned echo.
 - [Slang Discord heartbeat: don't mint fresh thread_ids for routine reports](../learnings/1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id.md) — keep the canonical heartbeat thread and in_reply_to its newest inbound; the 678-row guard backlog is benign; supersedes the rotate-thread_id advice.
+- [Maintainer daily report: fleet asks must go to parent, not only the dashboard](../learnings/1793350337272-maintainer-daily-report-fleet-asks-must-go-to-pare.md) — 10-20..10-29 report reached only `slang-maintainer-dashboard`; h7per issue unfiled 3 days

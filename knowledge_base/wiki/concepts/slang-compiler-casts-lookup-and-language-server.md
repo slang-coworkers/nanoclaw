@@ -3,7 +3,7 @@ title: Slang Compiler Casts, Lookup & Language Server — Operator Resolution, D
 type: concept
 group: slang-grab-bag
 tags: [slang, name-resolution, operators, lookup, optional, language-server, module-serialization, diagnostics]
-source_count: 13
+source_count: 16
 ---
 
 ## TL;DR
@@ -31,6 +31,8 @@ because even maintainers get surprised.
   field definition, before trusting "set this flag."
 - **Function parameters are visible to sibling default arguments** (one `FuncDecl` scope; `_isUncheckedLocalVar` never filters a `ParamDecl`), and any call using such a default ICEs in lowering. DeepWiki says otherwise and is wrong.
 - **`-experimental-feature` gates `__func_extension` and `__apply` syntax as well as `[ExperimentalModule]` imports**, so enabling it in slangd changes the whole session's syntax handling.
+- **`IGlobalSession::parseCommandLineArguments` discards its parse result on master (#14103)** — predict a fix's results through the deprecated `ICompileRequest::processCommandLineArguments` (same parse path), and run every in-tree `-Xslang` argv set through it before claiming "no change".
+- **HLSL `for`-init scoping keys off the source language, not the extension alone** — a `-lang hlsl` before the file selects it; one after the file is ignored.
 - **A `[__AttributeUsage]` struct produces a synthesized mirror `AttributeDecl`**, so completion
   returns it twice (Struct(22) + Keyword(14)); dedup by final label in `collectAttributes`.
 - **Slang has NO clang-style fix-it / structured code-replacement infrastructure** anywhere — every
@@ -156,10 +158,16 @@ Slang has NO clang-style FixItHint / structured code-replacement infrastructure:
 no `textDocument/codeAction` handler (`TextEdit` exists only for formatting/completion), and
 `MachineReadableDiagnostics` is a TSV logging format, not fix-its. So every "fix-it" ask resolves to
 either (a) a better diagnostic/note — shippable now via a new `err`/`warning`/`note` — or (b) a
-separate cross-cutting auto-edit project; don't promise auto-edits. (Adjacent facts: legacy HLSL
-loop-variable scoping keys off the `.hlsl` file extension, not `-lang`; the language-version selector
-is `-std`/`#language slang <year>`) ([Slang has no structured fix-it / auto-edit diagnostic
+separate cross-cutting auto-edit project; don't promise auto-edits. (Adjacent fact: the
+language-version selector is `-std`/`#language slang <year>`, distinct from `-lang` dialect
+selection) ([Slang has no structured fix-it / auto-edit diagnostic
 infrastructure](../learnings/1787705444892-slang-has-no-structured-fix-it-auto-edit-diagnosti.md)).
+Legacy HLSL loop-variable scoping (`UnscopedForStmt`) keys off the translation unit's source
+language (`getSourceLanguage() == SourceLanguage::HLSL` in `ParseForStatement`), which a `.hlsl`
+extension OR a `-lang hlsl` placed BEFORE the file sets. A `-lang` after the file is silently
+ignored for it, which is how the earlier "extension only, not `-lang`" reading arose
+([-lang hlsl applies only to later files](../learnings/1793398431165-slang-tests-lang-hlsl-applies-only-to-later-files-.md));
+scoping detail is on [Slang Declaration-Order Scoping](../concepts/slang-language-declaration-order-scoping.md).
 
 `CompilerOptionName::ExperimentalFeature` (slangc `-experimental-feature`) gates syntax, not only
 imports. At master 6597ec920 it has three consumers: the `[ExperimentalModule]` import gate
@@ -168,14 +176,39 @@ W30131, the decl is dropped) and `__apply` (slang-check-expr.cpp:6276-6286, W301
 placeholder). Nothing in IR or codegen reads it. A slangd/editor setting that enables it (#13678)
 therefore changes syntax handling for the whole workspace session, and triage or PR text should say
 so. Separately, `IGlobalSession::parseCommandLineArguments` ignores the `SlangResult` of
-`processCommandLineArguments` (slang-global-session.cpp:1156), so a generic `compilerOptions:
-string[]` LSP setting built on it would silently swallow bad arguments and needs its own error
-reporting. Two tooling notes from the same session: the critique-gate hook records a codex round
+`processCommandLineArguments` (slang-global-session.cpp:1156; #14103, see below), so a generic
+`compilerOptions: string[]` LSP setting built on it would silently swallow bad arguments and needs
+its own error reporting. Two tooling notes from the same session: the critique-gate hook records a codex round
 only when the developer-instructions are the `/codex-critique` block verbatim and the prompt carries
 `STAGE: OUTPUT_REVIEW` (an ad-hoc codex review records "stages: none"), and `gh api .../comments
 --jq '.[-1] | ...'` on an empty list yields `null\tnull` rather than empty output, so guard on
 `.comments == 0` ([ExperimentalFeature gates syntax too, not just [ExperimentalModule]
 imports](../learnings/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md)).
+
+**Fixing the discarded parse result (#14103, PR #14111, open as of 2026-10-31).** On master
+d34a5eb54 the discard is at `slang-global-session.cpp:1163`, so the call always returns SLANG_OK and
+the diagnostics are lost. You can predict what a propagating fix will return without editing code:
+the deprecated `globalSession->createCompileRequest(&req); req->processCommandLineArguments(argv,
+argc); req->getDiagnosticOutput()` runs the same `parseOptions` path and returns the real result and
+text. These flip to FAIL: `-target` with no value, `-bogus-option`, `-target bogus`, `-profile` with
+no value, `-stage X` without `-entry`, and a non-adjacent duplicate `-target`. These stay OK: no
+arguments, a positional `foo.slang` (not opened at parse time), `-o out.spv`, `-Xnvrtc`,
+`-allow-glsl`, and the #8963 multi-target argv. `slangc -version` in the shared build reports a stale
+configure-time string, so check the binary mtime and `git rev-parse` instead [predict post-fix
+parse results through the deprecated
+ICompileRequest](../learnings/1793392947549-predict-post-fix-parse-results-for-iglobalsession-.md).
+A hand-picked argv table is not enough to claim "no change": the full suite broke in three places.
+`tests/compute/mutating-methods.slang` passed the removed `-Xslang -serial-ir` (E00017); CPU tests
+passed `-Xslang -floating-point-mode precise` with no `-target`, which the post-parse validator
+reports as E00044 `target-flags-ignored-because-no-targets` (`slang-options.cpp:4640-4672`; E00042 is
+the `-profile` twin); and the render-test DeviceCache key omitted the global session, so
+`-load-core-module` leaked into a shared session. Grep `-Xslang` across `tests/`, de-duplicate the
+arg sets, feed each to a harness over `ICompileRequest::processCommandLineArguments`, and add one
+case per post-parse validator code (E33, E42-E45, E50, E60/E61/E70) [run every in-tree -Xslang argv
+through a parse-result fix](../learnings/1793400452611-before-claiming-no-change-for-a-fix-that-stops-dis.md).
+Gating E00042/E00044 for API callers depends on whether each option actually reaches an API target,
+which differs per option; see the option-level section on
+[Slang Compiler: Generics Memoization & Build Options](../concepts/slang-compiler-generics-and-build-options.md).
 
 A serialized `.slang-module` carries TWO easily-conflated version axes. The container FORMAT version
 (`IRModuleInfo::serializationVersion`, currently 1) governs payload encoding and IS checked on load
@@ -194,7 +227,7 @@ k_maxSupportedModuleVersion IS range-checked at module load since
 
 **IntelliSense for `[ExperimentalModule]` std modules works today through a gate-stripped source shim.** The experimental-module gate (`Linkage::_getImportableModuleOrDiagnose`, `slang-session.cpp` ~1636) reads the ModuleDecl's `[ExperimentalModule]` attribute, and user search paths are tried before the std-module fallback dir (~1951). So until slangd gets an ExperimentalFeature setting, `import slang.numerics` resolves in the editor if you copy the module *sources* from the matching tag into `<shim>/slang/{numerics,interfaces,*-conformances,wrappers}.slang` and `<shim>/slang/numerics/{__builtin,__builtin_differentiable,differentiable*}.slang` (mirroring the CMake staging in `numerics/CMakeLists.txt`; `__builtin-differentiable` is renamed), delete the `[ExperimentalModule]` line, and add `<shim>` to `slang.additionalSearchPaths`; verified with the v2026.19 slangd over an LSP stdio driver (no diagnostics, hover resolves, real errors still reported). The slangd version must match the sources: VS Code extension v2.0.10 bundles slangd 2026.8, which reports ~170 diagnostics on them, so point `slang.slangdLocation` at a matching release. The shim bypasses the gate for slangc too if it lands on a build `-I` path, so keep it outside the project and out of compiler search paths (codex must-fix; slang-vscode-extension#78) [editor-only workaround for [ExperimentalModule] std modules in slangd](../learnings/1792083766359-editor-only-workaround-for-experimentalmodule-std-.md).
 
-**Source learnings (13):**
+**Source learnings (16):**
 - [Slang: function params are visible to sibling defaults; using such a default crashes in lowering (DeepWiki says otherwise — wrong)](../learnings/1792134928808-slang-function-params-are-visible-to-sibling-defau.md) — one FuncDecl scope; E99997 decl catch-all in caller-context lowering; LD_PRELOAD SIGSEGV + addr2line
 - [ExperimentalFeature gates syntax too, not just [ExperimentalModule] imports — matters for slangd settings](../learnings/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md) — three consumers; `parseCommandLineArguments` swallows errors; critique-gate recording rule
 - [Slang: fallible `as` cast already yields Optional<T>](../learnings/1787675835939-slang-fallible-as-cast-already-yields-optional-t-v.md) — if(let)/guard let support as-operands for free; negative control proves the wrapper.
@@ -208,3 +241,6 @@ k_maxSupportedModuleVersion IS range-checked at module load since
 - [isFromCoreModule excludes only the embedded core module, not the source/standard-modules/ std-lib modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md) — no std-lib provenance bit; same-module getModuleDecl identity check is the robust alternative but narrows to same-module.
 - [Slang diagnostics: generic-param base checks also catch the hidden This; v::m has a non-TypeType base; DIAGNOSTIC_TEST ignores note order](../learnings/1790871269416-slang-diagnostics-generic-param-base-checks-also-c.md) — #13225 round 3: exclude `thisTypeDecl`; classify static access from `StaticMemberExpr`; use `filecheck=` to pin note order.
 - [Editor-only workaround for [ExperimentalModule] std modules in slangd: gate-stripped source shim on additionalSearchPaths](../learnings/1792083766359-editor-only-workaround-for-experimentalmodule-std-.md) — match slangd version; keep the shim off compiler `-I` paths (vscode-ext#78)
+- [Predict post-fix parse results for IGlobalSession::parseCommandLineArguments without editing code](../learnings/1793392947549-predict-post-fix-parse-results-for-iglobalsession-.md) — #14103; deprecated ICompileRequest runs the same parseOptions; which argv flip to FAIL; stale `slangc -version`
+- [Before claiming "no change" for a fix that stops discarding a parse result, run every in-tree -Xslang argv through it](../learnings/1793400452611-before-claiming-no-change-for-a-fix-that-stops-dis.md) — 3 suite breaks on PR #14111 (removed `-serial-ir`, E00044 with no target, render-test DeviceCache key); one case per validator code
+- [Slang tests: -lang hlsl applies only to later files; tests/**/*.hlsl is gitignored](../learnings/1793398431165-slang-tests-lang-hlsl-applies-only-to-later-files-.md) — corrects the "`UnscopedForStmt` keys off the extension, not `-lang`" reading: a `-lang hlsl` before the file selects HLSL

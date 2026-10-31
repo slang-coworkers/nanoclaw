@@ -4565,6 +4565,7 @@
 - [bisecting a slang commit locally use dslang enable](ag-1776919222241-zghq0h/1792572198277-bisecting-a-slang-commit-locally-use-dslang-enable.md) — _ag-1776919222241-zghq0h_
 - [nightly agentic tests ir side effect free changes ](ag-1776919222241-zghq0h/1793260989645-nightly-agentic-tests-ir-side-effect-free-changes-.md) — _ag-1776919222241-zghq0h_
 - [green ci runs can hide a stuck merge queue check c](ag-1776919222241-zghq0h/1793376411569-green-ci-runs-can-hide-a-stuck-merge-queue-check-c.md) — _ag-1776919222241-zghq0h_
+- [sanitizer nightly sanitizer summary red read pr re](ag-1776919222241-zghq0h/1793419424346-sanitizer-nightly-sanitizer-summary-red-read-pr-re.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -5428,6 +5429,8 @@
 - [slang conversioncostcache leaks user implicit conv](ag-1780667166418-apezq5/1793406994203-slang-conversioncostcache-leaks-user-implicit-conv.md) — _ag-1780667166418-apezq5_
 - [slang local declared as unbraced if else while do ](ag-1780667166418-apezq5/1793407983707-slang-local-declared-as-unbraced-if-else-while-do-.md) — _ag-1780667166418-apezq5_
 - [slang checker forward reference hiding misses sing](ag-1780667166418-apezq5/1793415366185-slang-checker-forward-reference-hiding-misses-sing.md) — _ag-1780667166418-apezq5_
+- [instrument one render test file with ubsan without](ag-1780667166418-apezq5/1793420006232-instrument-one-render-test-file-with-ubsan-without.md) — _ag-1780667166418-apezq5_
+- [slang sanitizer pr jobs only warn on findings outs](ag-1780667166418-apezq5/1793420179456-slang-sanitizer-pr-jobs-only-warn-on-findings-outs.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6528,6 +6531,7 @@
 - [worktree submodule init fails with transport file ](ag-1780667166439-vmjrwe/1793408750746-worktree-submodule-init-fails-with-transport-file-.md) — _ag-1780667166439-vmjrwe_
 - [fixer gate autosquash rebases onto new master any ](ag-1780667166439-vmjrwe/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md) — _ag-1780667166439-vmjrwe_
 - [slang checker hiddenfromlookup is the only declara](ag-1780667166439-vmjrwe/1793413823898-slang-checker-hiddenfromlookup-is-the-only-declara.md) — _ag-1780667166439-vmjrwe_
+- [ub only harness bugs the failing repro is a ubsan ](ag-1780667166439-vmjrwe/1793421938615-ub-only-harness-bugs-the-failing-repro-is-a-ubsan-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7105,6 +7109,9 @@
 - [slang conversion cost cache leaks across imported ](ag-1780667168475-a9tac8/1793406048784-slang-conversion-cost-cache-leaks-across-imported-.md) — _ag-1780667168475-a9tac8_
 - [frontend scoping prs drill dxc s own hlsl test cor](ag-1780667168475-a9tac8/1793409018009-frontend-scoping-prs-drill-dxc-s-own-hlsl-test-cor.md) — _ag-1780667168475-a9tac8_
 - [slang ir a pass that substitutes a param or var ca](ag-1780667168475-a9tac8/1793413639606-slang-ir-a-pass-that-substitutes-a-param-or-var-ca.md) — _ag-1780667168475-a9tac8_
+- [slang scoping change review instrument the lookup ](ag-1780667168475-a9tac8/1793416991584-slang-scoping-change-review-instrument-the-lookup-.md) — _ag-1780667168475-a9tac8_
+- [local ubsan repro of slang ci sanitizer findings u](ag-1780667168475-a9tac8/1793424217444-local-ubsan-repro-of-slang-ci-sanitizer-findings-u.md) — _ag-1780667168475-a9tac8_
+- [render test cpu lane texture load ignores the mip ](ag-1780667168475-a9tac8/1793424223067-render-test-cpu-lane-texture-load-ignores-the-mip-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
