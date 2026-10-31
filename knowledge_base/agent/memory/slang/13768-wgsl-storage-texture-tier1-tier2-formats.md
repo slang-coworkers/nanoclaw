@@ -97,3 +97,8 @@ description: Human-filed (albertrodriguezclo) WGSL texel-format mapping + E56106
   to the triager was no post. I read both: accurate and polite, not duplicates (different surfaces, different content), so I accepted them and sent no
   correction. New part-1 fact for the ready case: on master all 9 integer tier1 formats are Tint-invalid, and #13778 fixes them. I did not re-ask the
   operator (the 10-23 ask was final; the default HOLD stands). The newest issue comment is the bot's 6395404476.
+- 2026-10-30 13:01Z `t-79c65a` final re-check (triager): **no change**, verified live by me at 13:04Z. Issue OPEN, jkwak-work, WebGPU +
+  reproduced, Q4 2026 (Fall), 6 comments, last is bot 6395404476 (10-25). #13778 is still draft @9cfc373449, BEHIND, MERGEABLE, 0 reviews.
+  The triager found no competing PR and no maintainer B1–B4 pick. The only new master commit to `slang-emit-wgsl.cpp` (#13908) does not overlap.
+  **PARKED, NO TIMER**: recorded as `awaiting_human` + disposition in `memory/supervisor-state.json`, and one park line sent to the dashboard.
+  Reopen on a human comment (webhook), "un-draft 13778", or a maintainer pick. Do not ask the operator again.

@@ -34,3 +34,13 @@ description: Human-filed (skiminki-nv) language-semantics question; triaged + pa
   next step is one short question on #13721 asking whether the #13750 direction also covers
   qualified extension targets (needs operator OK first, since it pings a maintainer).
   Next one-shot re-check: triager `t-aaff5f` at 2026-10-30T19:00Z.
+- **Re-check 2026-10-30 (t-aaff5f fired; verified on GitHub by me):** still OPEN, assignee
+  skiminki-nv, label `reproduced`, 1 comment (ours, 6223072037). The only timeline event since
+  10-16 is a bot cross-reference from #13750 on 10-19. Triager posted nothing. New context: the
+  assignee's 202c umbrella proposal #13956 (10-26; see
+  [imported/project_13956_name_lookup_overload_resolution_overhaul_202c.md](../imported/project_13956_name_lookup_overload_resolution_overhaul_202c.md))
+  is redesigning lookup, but does not name extensions or #13721 yet. **My call: no nudge comment
+  and no operator ask now.** The maintainer is actively writing the lookup redesign, so a ping
+  on #13721 adds noise. Revisit the nudge only if #13956 settles without covering extension
+  targets. Next one-shot re-check: triager `i13721-recheck-1106-9fef` at 2026-11-06T19:00Z
+  (also watches #13956).

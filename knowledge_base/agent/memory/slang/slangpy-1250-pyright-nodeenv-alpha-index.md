@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slangpy#1250 — pyright step red in every ci-latest-slang run (nodeenv vs nodejs v27.0.0-alpha index entry)
-description: Bot-filed (nv-slang-bot) 2026-10-30 00:02Z. "SlangPy Tests" check red on every Slang PR since 10-29 ~22:15Z; not PR-caused. Triaged P1 (env regression) 10-30 00:13Z; fix A `pyright[nodejs]` handed to slangpy-fixer. Needs a MERGE to main to clear Slang PRs.
+description: CLOSED 2026-10-30 13:49Z via maintainer PR #1253 (`pyright[nodejs]`, jkwak-work); bot PR #1251 (nodeenv floor) closed unmerged. Bot-filed (nv-slang-bot) 2026-10-30 00:02Z. "SlangPy Tests" check red on every Slang PR since 10-29 ~22:15Z; not PR-caused. Triaged P1 (env regression) 10-30 00:13Z; fix A `pyright[nodejs]` handed to slangpy-fixer. Needs a MERGE to main to clear Slang PRs.
 tags: [slangpy, ci, infra, pyright, nodeenv]
 resource: raw/slangpy-1250-triage-memo.md
 ---
@@ -78,3 +78,25 @@ resource: raw/slangpy-1250-triage-memo.md
 - **10-30 02:05Z:** the sibling session `jmv3wy` told the fixer to mark #1251 ready and told the dashboard it had.
   The fixer **declined, which is correct** (its spine forbids `gh pr ready`), so #1251 is still a draft with 16 checks
   SUCCESS. I corrected the dashboard: a human has to flip it. The sibling's plan is that after the merge the babysitter reruns `SlangPy Tests` once per affected Slang PR.
+- **10-30 08:00Z one-shot re-check (`slangpy-1250-merge-reche-a920`):** #1251 is still OPEN and a draft, REVIEW_REQUIRED,
+  with 16/16 checks SUCCESS (head `19389c9e89`). No human review or comment since 00:26Z. `index.json[0]` is still
+  `v27.0.0-alpha.0.0.0`. Every ci-latest-slang run through 03:33Z (#14051) failed or was cancelled; the latest failure is in
+  Typing Checks with a Traceback (Windows runner, cached nodeenv 1.10.0). So the "may pass before merge" hope at 01:44Z is
+  **false** for that runner. Sent the dashboard one reminder (thread gh-issue-shader-slang/slangpy-1250) listing the Slang PRs
+  to rerun after the merge: #14072, #13848, #14052, #13918, #13855, #14065, #13925, #14021, #14051, plus the master schedule run.
+  No GitHub writes. No timer is armed now: the merge webhook and the babysitter rerun plan carry the chain from here.
+
+## Merged in from the duplicate note of session `jmv3wy` (10-30 10:1xZ)
+- At 00:07Z, session `jmv3wy` (the babysitter's sweep session, not the canonical one) also dispatched slangpy-fixer. That made two Main parents. The fixer reported to `qsff21`, and the dispatch led to the "who directed the nodeenv floor" correction and retraction. Hazard recorded in system/hazards.md. `jmv3wy` sends nothing further on #1250.
+- At 02:1xZ, `jmv3wy` asked the fixer to `gh pr ready` #1251. The fixer declined, correctly (feedback_fixers_cannot_request_reviewers.md).
+- The babysitter's plan after the merge: one `--failed` SlangPy rerun per affected Slang PR, once the newest `ci-latest-slang` run is green. At 10:0xZ it had seen no green run; newest was 40998042565 at 03:33Z.
+- **10-30 13:34Z TERMINAL:** jkwak-work's slangpy#1253 (`pyright` → `pyright[nodejs]` in `requirements-dev.txt`, the
+  triager's option A) merged. skallweitNV closed #1251 unmerged ("Closing due to fix in #1253") at 13:49Z, and #1250
+  closed at 13:49Z. The fixer edited its issue status comment, removed the worktree and sentinel, and left the remote branch.
+  I verified all three states at ~13:52Z.
+- **Lessons:** (1) **The maintainers chose to bundle node instead of setting a version floor.** For a CI break caused by
+  a runtime fetch from an external index, prefer removing the fetch over pinning the fetcher. The sibling Main session's
+  steer to B overrode the triager's correct recommendation, A. (2) My "early relief" inference was wrong: the
+  ci-latest-slang runs from 01:47Z to 03:33Z all still failed after #1251's run, so the runner toolcache did not
+  carry the upgrade across. (3) There have been no ci-latest-slang runs since 03:33Z, so reruns of the red Slang
+  "SlangPy Tests" checks are still needed. The sibling session's plan gives these to the babysitter sweep.

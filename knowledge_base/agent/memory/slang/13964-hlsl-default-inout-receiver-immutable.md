@@ -36,5 +36,9 @@ description: Regression from #13615; triage resolved, bot draft PR #13966 (call-
   cap was reached.
 - **PARKED on:** operator sign-off to move the PR from draft to ready (asked on the dashboard 10-28), then maintainer
   review. When the PR is made ready, check `paused` before routing pr_ready_for_review (approvers are paused).
-- **Timer:** one-shot `rechase-slang-13964-r1-086e`, 2026-10-30 16:00Z (task-hygiene r1 of 3). Prompt re-pointed 07:06Z
-  to the operator sign-off only.
+- **10-30 16:0xZ, re-chase r1:** no operator answer on the dashboard (I scanned Main session `81yz2f` and the dashboard
+  session rows back to 10-27). GitHub, checked live: still a draft at `e785e0710`, `BEHIND` master, CI 5 pass / 53 skipped,
+  0 reviews, and no maintainer comment since 10-28 06:38Z (the fixer answered it at 06:40Z). I sent the **2nd un-draft ask**
+  to `orchestrator-dashboard` on the chain thread (msg 19). On a yes, the fixer **merges** master (no rebase) before `gh pr ready`.
+- **Timer:** one-shot `rechase-slang-13964-r2`, 2026-11-02 16:00Z (task-hygiene allowed r2 of 3; it carries the r1 decision
+  table, and its no-answer branch is the 3rd ask).

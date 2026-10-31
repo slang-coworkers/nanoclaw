@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13664 — getBuiltinModuleSource null-deref with SLANG_EMBED_CORE_MODULE_SOURCE=OFF
-description: "albertrodriguezclo, human-filed bug: Session::getBuiltinModuleSource dereferences null blobs when core-module source is not embedded (wasm: memory access out of bounds). Reporter's PR #13665 'Fixes #13664'. Triaged 10-15 17:26Z (cmt 6198150215), P3. #13665 APPROVED 10-23 by jkwak-work, evicted from the merge queue by the slangpy#1062 flake, waiting on a human re-queue (10-26)."
+description: "albertrodriguezclo, human-filed bug: Session::getBuiltinModuleSource dereferences null blobs when core-module source is not embedded (wasm: memory access out of bounds). TERMINAL: reporter PR #13665 merged 10-26 19:29Z by jkwak-work (bba63c2376); issue closed completed. Follow-up B (compileBuiltinModule on empty source) unfiled, operator call."
 ---
 
 # slang#13664
@@ -54,4 +54,17 @@ Main told the operator on the dashboard (msg 7) and gave them the exact fix:
 `gh pr merge 13665 --repo shader-slang/slang --merge-queue`. Main posts no bot comment on the PR, because it is human-authored.
 Follow-up B is still unclaimed. Timer: triager one-shot `t-aa90fe` on 2026-10-30.
 
-**Resumes on:** #13665 re-queued/merged/closed, a human comment that asks the bot something, or the 10-30 re-check.
+
+**2026-10-30 15:32Z, [Triage Resolution] FINAL (msg 18) — Main-verified. TERMINAL.** #13665 MERGED
+2026-10-26 19:29:17Z by jkwak-work (merge commit `bba63c2376`). This came after the operator's
+re-queue; the 10-26 escalation is resolved. #13664 closed as `completed` at 19:29:18Z. The only
+comment on the issue is the bot's triage comment 6198150215. The triager removed its sentinel and
+posted nothing more, because the merged PR carries the trail.
+**Open operator calls (unfiled, no issue or PR):**
+(1) follow-up B: `compileBuiltinModule` should return `SLANG_E_NOT_AVAILABLE` instead of silently
+compiling an empty source when EMBED_SOURCE=OFF, and the cmake-options job should run
+`slangd --print-builtin-module core`;
+(2) `slang-language-server.cpp:3337` ignores the `slang_createGlobalSession` result.
+Asked on the dashboard 10-30.
+
+**Resumes on:** a human comment on #13664/#13665, or the operator saying to file B or (2).

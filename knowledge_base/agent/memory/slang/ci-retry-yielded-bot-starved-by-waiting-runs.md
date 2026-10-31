@@ -21,3 +21,5 @@ tags: [slang, ci, merge-queue, priority-gate, open-question]
 - (a) fixes the cause and (b) clears it once. Raised with the operator 2026-10-12.
 
 **2026-10-21 recheck:** still unresolved. `ci.yml?status=waiting` = **85** (78 `nv-slang-bot[bot]`, oldest 09-16). Second 30-day falcor-gate expiry on a bot draft: slang#13201 (run 35629836846, 09-21 17:06Z → 10-21 17:06Z, 0 build steps), after #13127 on 10-16. Both drafts parked with a status comment, not rerun: a rerun only re-requests `falcor-ci` approval.
+
+**2026-10-30 recheck:** 157 `waiting` runs, all workflow `CI`, created 09-30 to 10-30 (older ones have expired at 30 days). By source: **96 are `nv-slang-bot[bot]` `workflow_dispatch`**, 51 are fork PRs from albertrodriguezclo, 7 are bot `pull_request`, and 3 are other forks. Most of the backlog that starves the bot's own retry is the bot's own CI dispatches parked on `falcor-ci`. Each one expires after 30 days and sends a `ci_failed` webhook (slang#13352 run 36764728378 today). A third option is for the bot to cancel its own waiting dispatches on parked drafts. That is a bulk action, so it needs the operator.

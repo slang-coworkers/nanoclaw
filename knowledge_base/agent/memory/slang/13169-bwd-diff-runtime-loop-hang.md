@@ -52,11 +52,7 @@ description: "CLOSED 2026-10-09 by saipraveenb25: fixed on master by #13234 (dup
   `recheck-slangpy-1225-r2-d743` (14:00Z) forwards the answer or asks again.
   That re-check ran at 14:00Z: no operator answer, head still `4e90d26e`, fixer still stopped at $77.26/$76.74, so I re-asked
   decisions (1)+(2) on the dashboard a 3rd time (msg id 7). No new timer is set; the next `/supervise-issues` tick owns the chase.
-- **Cancelled:** re-chase `rechase-slang-13169-1330-0772`, which bundled this close with #13301. #13301 is still
-  saipraveenb25 answered on 10-09 at 21:10Z with a question instead of an (a)/(b) pick: does removing `[Differentiable]`
-  from functions with a custom derivative work? He says that is the intended usage, and the double-conformance bug
-  should still be fixed. slang-fixer was dispatched to test it and draft a reply (pinned to `sess-1789716207340-dwbdoz`;
-  fixer's gh works again). Fixer replied on 10-09 at 21:56Z: the workaround works only partly, and it recommended the guard PR.
-  On 10-18 at 02:45Z saipraveenb25 said: "open a PR with the header fix". That closes #13301 and slangpy#1204; the conditional
-  `__func_extension` case is deferred. Dispatched to the same fixer session. Re-chase: `rechase-slang-13301-huma-91bf` (10-19 09:00Z).
+- **Cancelled:** re-chase `rechase-slang-13169-1330-0772`, which bundled this close with #13301. The #13301 chain
+  (header-guard PR #13742, merged 10-22, and the slangpy#1204/#1206 tail) lives in
+  [13301-header-guard-slangpy-1204.md](13301-header-guard-slangpy-1204.md).
 - **Spin-offs:** the #9808 autodiff cluster, recorded in [13332-second-order-nodiff-scope.md](13332-second-order-nodiff-scope.md).

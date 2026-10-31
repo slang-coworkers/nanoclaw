@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14039 — unused ByteAddressBuffer + -preserve-params ICEs in spirv-emit
-description: Human bug (pdeayton-nv, `bot-ok`) 2026-10-29 17:34Z. Triaged and reproduced (not a regression; the remainder of #9262). Bot PR #14045 is ready for review (head 0c1668d) with the nits applied. Resting on maintainer review and merge.
+description: Human bug (pdeayton-nv, `bot-ok`) 2026-10-29 17:34Z. Triaged and reproduced (not a regression; the remainder of #9262). Bot PR #14045 is ready for review (head 35e787227). tangent-vector's review round 1 is handled (10-30). Resting on approval and merge.
 tags: [spirv, byte-address-buffer, legalization, preserve-params, bug, awaiting-maintainer]
 ---
 
@@ -46,5 +46,12 @@ Memo: `/workspace/inbox/a2a-1793296121016-hn4r1o/triage-14039.md`.
 - 13/13 PR test rows pass. CI was dispatched again at 0c1668d.
 - The newest bot status on the issue is fixer comment 6506027206 (19:13Z).
 
-**Next.** A maintainer reviews and merges #14045. The chain rests until the PR is merged or closed, and the webhooks route to the fixer.
-⚠️ Both pr-approvers are paused (checked 10-29). Do not forward a `pr_ready_for_review` webhook for #14045 to an approver.
+**10-30 17:43Z: maintainer review round 1 (the triager's report, which I checked on GitHub).**
+- tangent-vector left 3 COMMENTED reviews (17:30–17:32Z) with a question and a style nit.
+- The question was why the pass does not translate every BAB up front. tangent-vector answered and resolved it themself.
+- The nit is applied in comment-only commits 5b7db2519 and 35e787227. The bot replied at r4426670317.
+- `reviewDecision` is empty, pdeayton-nv's review is still pending, and the subset passes 1133/1133.
+
+**Next.** A maintainer approves and merges #14045. The chain rests until the PR is merged or closed, and the webhooks route to the fixer.
+⚠️ Both pr-approvers are paused (re-checked 10-30). Do not forward a `pr_ready_for_review` webhook for #14045 to an approver.
+**10-30:** first approver webhook (synchronize, head still 0c1668d5) reached Main; not forwarded, queued in `data/approver-pause-queue.md`, operator told. tangent-vector left a COMMENTED review 10-30 17:30Z (routes to the fixer via pr-mapping).

@@ -50,7 +50,7 @@ OUTPUT approve. The fixer merges master (never force-pushes — not authorized);
 | 3 | 10-21 | #13078 `9e17a9e850` | id 909 (`glslPatch`), max 36 | 910 / max 37 → head `3a41ab51a0` (verified 10-21 13:00Z) |
 | 4 | 10-24 | #13406 `0bd71cd709` (+ #13706 code conflict in entry-point-uniforms.cpp) | min=max 37 | 910 / min 37 / max 38 → head `4b7541ad55` (verified 10-24 13:00Z) |
 
-Rival claimants on the same numbers: #13564 (draft) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
+Rival claimants on the same numbers: #13564, #13872, #13953, #13992 (drafts; see Current state) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
 [[slang/13555-ignore-capabilities-caseless-target-switch.md]]. Whoever merges second renumbers; never renumber early.
 
 ## Lessons
@@ -61,11 +61,11 @@ Rival claimants on the same numbers: #13564 (draft) and #13406 (jhelferty-nv, mi
    PR's "Version 36 adds MetalConstantBufferLayout" comment rode along — silently reusing master's version. Always compare the PR's
    version and ids against master's directly; `merge-tree` conflict output alone is not enough.
 
-## Current state (10-27 09:00Z)
-Head `4b7541ad55` (merge of master `52e29ab43b`), draft, **MERGEABLE**, BEHIND 3 (master `9a4817c881`; the 3 new commits miss all 14 PR files and the
-stable-names/version files). Id 910 / min 37 / max 38 vs master 909 / 37 / 37. Gate kept (#13386 unmerged). #13564 and #13872 (drafts) also claim 910/v38;
-whichever merges second moves. Comment 6078307404 is current. Dispatch run 40081357382 has been `waiting` for approval since 10-24. 0 human reviews or comments;
-assignee/review request still kaizhangNV. Next: `rechase-13425-maintainer-fba7` 10-30 09:00Z.
+## Current state (10-30 09:00Z)
+Head `4b7541ad55` (merge of master `52e29ab43b`), draft, **MERGEABLE**, BEHIND 29 (master `1f0b33b868`). None of the new commits touch the 14 PR files or the
+stable-names/version files. Id 910 / min 37 / max 38 vs master 909 / 37 / 37. The gate is kept (#13386 unmerged). Four drafts also claim 910 and/or v38: #13564 and #13872 (both 910 + v38),
+#13953 (min=max 38) and #13992 (max 38). Whichever merges second moves. Comment 6078307404 is current. Dispatch run 40081357382 has been `waiting` for approval since 10-24.
+0 human reviews or comments; the assignee and review request are still kaizhangNV. Next: `rechase-13425-maintainer-9443` 11-02 09:00Z.
 
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human

@@ -29,10 +29,12 @@ Verify every `action=nudge`/`escalate` row before acting; for each shape below, 
 | Side-finding burst from one chain: the bot files N issues, each gets a Main-only session that reads `silent` → nudge/escalate | each Main session's newest `out` names the owning chain's Main session and says "held filed-only" / "no dispatch" (#13973 → #13989/#13990/#13994, tick 312) | `advisory:operator-decision — held filed-only by #<owner> Main` |
 | Session-only "update" on a chain that is some coworker's parent edge (the CI babysitter's sweeps land on Main's slangpy#1223 session every 2 h) | the moved rows are `CI babysitter sweep …` inbounds; no GitHub activity since the last tick | leave it out of `real-updates.json` |
 | A stale disposition survives a maintainer takeover (#10641 kept "active-implementation (OWED)" after jhelferty-nv pushed their own #11709 rework) | the 🔼 row's disposition contradicts the newest Main `out` | rewrite the disposition this tick (`advisory:maintainer-driving …`) |
+| Stale `github.ci_failed` webhook on a fixer session (blind.py shows it as an unanswered `in`) | the run is a bot `workflow_dispatch` ~30 days old whose `falcor-build-approval-gate` job ended `failure` at created_at+30 d with every build job skipped; head often older than the PR head (#13345, #13356, tick 316). ~96 bot runs were `waiting` at 10-31, so expect a wave | none — not a code failure; fold into the fleet-CI operator decision |
 | `needs_cost_notice` re-armed by a PR merge or a moved activity stamp | `ncl cost-cap escalations --group <folder>` shows the **same** `pending` `cst-…` row and state has a live `costNoticeUrl` (#13555 twice) | don't re-post |
 
 **Cost-notice target** is the PR the stopped reviewer was reviewing, which can differ from the chain's own PR (the
 #13489 chain's PR is #13502, but its reviewer was on #13514). Read the stopped session's newest inbound
-`[Fix Review Request]` to find it.
+`[Fix Review Request]` to find it. A stopped **fixer** works the same way: post on the PR whose verdict sits unprocessed in its newest
+inbound (tick 315: the #13685 chain's PR is #13700, but fixer `yiuh5a` stopped holding #14081's R2 `[Review Verdict]`).
 
 `watch:` / `handed-off:` are not tokens scan.py recognizes — re-tokenize to `advisory:…` or the row keeps re-flagging.
