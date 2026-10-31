@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -41,7 +41,9 @@ triage/review sessions on real issues:
   usually means a producer built an Expr without propagating `->loc`; diagnostics are
   now Lua-driven (`slang-diagnostics.lua`), pick a FREE code.
 - **C++ review lens.** A `T{}` (value-init) test does NOT regress a new default
-  member initializer — value-init zero-inits regardless.
+  member initializer — value-init zero-inits regardless. In an rvalue constructor, an
+  initializer after `_Move(x)` must read the moved-to member, not `x`
+  (`ImmutableHashedString(String&&)` hashed the empty string until PR #14092).
 - **Core-module edits.** A `*.meta.slang` edit made during a build, or without a
   touch, can leave the OLD source embedded with fresh-looking mtimes; touch, rebuild,
   and grep the generated `.meta.slang.h` for the new text.
@@ -93,6 +95,9 @@ give a captured `this` a `$this` synthesized field name (local-var captures keep
 their name). General lesson: member-wise `$init` synthesis re-resolves `this.<field>`
 by name, so give synthesized receiver/capture slots a `$`-prefixed name
 ([synthesized closure/struct fields must not borrow a type's name](../learnings/1788793839980-synthesized-closure-struct-fields-must-not-borrow-.md)).
+Local-variable capture fields also keep the captured decl's location, and only the
+`LambdaDecl` carries `SynthesizedModifier`, so a new per-member check sees them as user
+members; see [[wiki/concepts/slang-language-synthesized-declarations-and-double-visits.md]].
 
 ## IR, legalization, and validation
 
@@ -291,7 +296,20 @@ deterministically since reading uninitialized memory is UB). Flag the mismatch a
 documentation nit
 ([value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)).
 
-**Source learnings (20):**
+**Use-after-move in a member-initializer list.** On master 1f0b33b86,
+`ImmutableHashedString(String&& str) : slice(_Move(str)), hashCode(str.getHashCode())`
+(`source/core/slang-string.h:864-866`) hashes `str` after it was moved into `slice`, so
+every key built from a temporary `String` gets the empty string's hash and never matches
+a key built from the same characters another way. The symptom is silent:
+`irModule->findSymbolByMangledName(someFuncReturningString())` returns an empty list,
+while the same call with a named `String` local succeeds. All earlier callers passed
+lvalues or slices, so nothing was visibly broken. PR #14092 hashes `slice` instead and
+adds `slang-unit-test-tool/immutableHashedStringFromTemporary`; on an older build, bind
+the name to a named `String` before the lookup. Review lens: in an rvalue constructor,
+every initializer after a `_Move(x)` must read the moved-to member, not `x`
+([ImmutableHashedString(String&&) hashed the moved-from string](../learnings/1793366191596-slang-immutablehashedstring-string-hashed-the-move.md)).
+
+**Source learnings (21):**
 - [Slang linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md) — `emitHostVMCode` serializes linked IR; ptx DIAGNOSTIC_TEST lanes silently need NVRTC
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
@@ -313,3 +331,4 @@ documentation nit
 - [slangc dynamic-dispatch CUDA repro needs -conformance flags](../learnings/1792155480923-slangc-dynamic-dispatch-cuda-repro-needs-conforman.md) — `-conformance "Impl:IFoo=0"` per impl; emitted `s_dispatch_*` switch forwards `&(&agg)->field`; miscompile needs NVRTC 13.3 + OptiX (#12916)
 - [CUDA miscompile repro: constant inputs let nvcc fold the compares (false positive)](../learnings/1792402540993-cuda-miscompile-repro-constant-inputs-let-nvcc-fol.md) — set compared values from a buffer, not a literal; nvcc 12.6 -O3 then keeps all 3 `setp.neu.f32` (#12916)
 - [Editing a .meta.slang file while a Slang build runs can silently embed the OLD core module](../learnings/1793215460858-editing-a-meta-slang-file-while-a-slang-build-runs.md) — the bootstrap reads the early-copied `.meta.slang.h`; touch, rebuild, grep the header
+- [ImmutableHashedString(String&&) hashed the moved-from string (PR #14092)](../learnings/1793366191596-slang-immutablehashedstring-string-hashed-the-move.md) — keys built from a temporary `String` got the empty-string hash; `findSymbolByMangledName(tempString())` silently returned nothing.

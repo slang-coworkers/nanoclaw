@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 29
+source_count: 30
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -18,8 +18,8 @@ chain routing and PR-body limits; stage counting and attestation parsing are on
 [critique gate and decision recording](review-critique-gate-and-recording.md).
 
 - **The gate counts edit *events* since the last critique, not hash diffs.** Any file write after an approve
-  re-arms it — even reverting a file to its byte-exact attested content, editing a memory note, or posting a
-  `gh` comment. Any Bash call counts, even a read-only `wc -c`: approve and send back-to-back. Batch ALL
+  re-arms it — even reverting a file to its byte-exact attested content, editing a memory note, rendering the
+  HTML explanation, a `git push`, or posting a `gh` comment. Any Bash call counts, even a read-only `wc -c`: approve and send back-to-back. Batch ALL
   edits, format once, commit, then run CODE_REVIEW + OUTPUT_REVIEW as the final actions before sending.
 - **It re-hashes every `### Attested` file at send time.** A volatile attested file
   (`.claude-trace/*.jsonl`) blocks delivery forever, and a stale attestation from an older round can deny
@@ -63,7 +63,9 @@ The canonical sequence: (1) make ALL edits (code + PR body), (2) run `clang-form
 CODE_REVIEW + OUTPUT_REVIEW as the final actions, (5) immediately emit only `send_message` calls with no
 intervening file writes or `gh` posts. Non-delivery writes (memory files, `append_learning`) are fine after
 the send. A code push is not operator-gated and does not go through the gate: push freely, gate only the
-report ([attestation treadmill](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)).
+report ([attestation treadmill](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)),
+but push before the final OUTPUT_REVIEW, because a `git push` after the approve still counts as a write
+(next paragraph).
 
 Step (5) is stricter than it sounds: the counter treats **any Bash call** after the approve as an edit, even
 a read-only `wc -c` on the deliverable, so the approve and the gated `send_message` run back-to-back. If
@@ -79,6 +81,12 @@ escalation) ([any file write after the approve voids it, even /tmp scratch](../l
 on slang#13567 an unrelated memory edit after the approve cost three more rounds ("N edit(s) recorded since
 the last critique round"). Do memory writes before the final OUTPUT_REVIEW or after the delivery is sent
 ([any edit after an OUTPUT_REVIEW approve re-arms it](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md)).
+On slang#14115 (2026-10-31) an internal HTML explanation render and a `git push` after the approve each
+counted, and the next `gh pr create` / `gh pr edit` / `[Fix Report]` was refused. There `codex-reply` rounds
+recorded nothing, so the fresh `mcp__codex__codex` OUTPUT_REVIEW is the fallback that works. Order the work
+as render HTML, finalize files, OUTPUT_REVIEW, then publish and deliver with no writes between. The gate
+also matches `gh api repos/.../pulls/<n>/files` as PR creation, so read a PR's diff with `gh pr diff <n>`
+([fixer gate: any file write voids OUTPUT_REVIEW approve](../learnings/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md)).
 
 Two secondary edit-triggers: **PR-body citations drift** (a `file.cpp:NNNN` cited in the body is invalidated
 by every comment trim or `clang-format` reflow above it, so re-derive ALL line numbers from the final
@@ -292,7 +300,7 @@ Rewriting README `## Claims` entries to HEAD behaviour, against `_claims.md` §1
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (29):**
+**Source learnings (30):**
 
 - [attestation treadmill: batch edits, OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — edit events not hash diffs; push isn't gated.
 - [gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — literal `WOULD_APPROVE`.
@@ -318,6 +326,7 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [`--body-file $VAR` refused](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md) — upsert writes a comment.
 - [PR-description gate: ≤1000 chars, ≤2 lines/section](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — (gate half) slangpy#1137.
 - [any edit after approve re-arms; plain Attested lines](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md) — slang#13567; PR body ≠ 5-bullet.
+- [Fixer gate: autosquash rebases onto new master; any file write voids OUTPUT_REVIEW approve](../learnings/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md) — #14115: HTML render / `git push` re-arm; reply rounds unrecorded; `gh pr diff` for read-only diffs.
 - [byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md) — `description_problems(...)`.
 - [`[Fix Report]` needs in_reply_to=<handoff seq>](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md) — via `ncl sessions messages`.
 - [read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — BASH_PATTERNS line 65.

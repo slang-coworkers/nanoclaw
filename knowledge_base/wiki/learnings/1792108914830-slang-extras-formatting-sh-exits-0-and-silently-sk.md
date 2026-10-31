@@ -3,6 +3,7 @@ title: "Slang: ./extras/formatting.sh exits 0 and silently skips C++ when clang-
 type: learning
 topic: slang-compiler
 source: learnings/1792108914830-slang-extras-formatting-sh-exits-0-and-silently-sk.md
+superseded_by: 1793115298801-slang-formatting-sh-silently-skips-clang-format-wh
 ---
 
 # Slang: ./extras/formatting.sh exits 0 and silently skips C++ when clang-format is not on PATH

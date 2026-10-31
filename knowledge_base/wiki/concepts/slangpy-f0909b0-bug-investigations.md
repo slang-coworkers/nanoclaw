@@ -3,7 +3,7 @@ title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool e
 type: concept
 group: slangpy
 tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo]
-source_count: 23
+source_count: 24
 ---
 
 ## TL;DR
@@ -43,6 +43,9 @@ boundary. Recurring findings:
   confidently gets "does X inherit/propagate Y" wrong — verify against source.
 - **Static struct members (slangpy#126)** are absent from `Type.fields`, and an
   `InstanceList` silently drops them; detect them through `DeclReflection`.
+- **`GridArg.__slangpy_load<D>` indexes `int[N]` with `D`; safe only because explicit
+  `.map()` on a grid is rejected** (no `reduce_type` override). Adding `reduce_type` to
+  `GridArgMarshall` must come with indexing by `N` or an assert `D == N`.
 
 ## #222 — AMD-Windows autodiff gradients: a scatter-address bug, root-caused to slang-rhi
 
@@ -108,7 +111,11 @@ Working today: `device.create_slang_session()`, `app.device.create_slang_session
 
 SlangPy's `Struct.struct.fields` (native `StructType::build_fields`, `src/sgl/refl/type.cpp` ~671) comes from Slang's `TypeReflection::fields()`, which excludes static members, so `static const int b = 5;` is absent. A dict argument naming it fails clearly ("has no field 'b'", `boundvariable.py` ~316), but `InstanceList.__setattr__` (`instance.py` ~87-100) stores it as a Python attribute and the value is lost. To tell a static member from a typo, walk `device.load_module(path).module_decl.find_first_child_of_kind(DeclReflection.Kind.struct, "Test").children` and test `c.as_variable().has_modifier(ModifierID.static)`. `spy.Module(...).device_module.module_decl` raises "module_decl() is not supported for composed modules" (`shader.cpp` ~1204), so walk `device_module.source_modules` or add a native helper. Since Slang #7993 (2025-07-30) `static const T x;` with no initializer is load-time error E31225, so old repros fail at `Module.load_from_file` before kernel generation [static struct members](../learnings/1792065039736-slangpy-detecting-static-struct-members-type-field.md).
 
-**Source learnings (23):**
+## `GridArg`: explicit `.map()` is rejected, so `D == N` always holds (slangpy#1254 review)
+
+In `slangpy/slang/gridarg.slang`, `GridArg<let N>.__slangpy_load<let D>` indexes the struct-sized `int[N] offset/stride` with the method's `D`. That is safe today because no public path makes `D ≠ N`: `GridArgMarshall.resolve_dimensionality` returns `self.dims`, so the implicit `vector_mapping` has length `dims` and the kernel gets `ContextND<dims>`; `resolve_type` accepts only `VectorizeGridArgTo<..., dims>`; and an explicit `func.map((0,1,2))(grid(...))` fails with `ValueError: Explicit vectorization raised exception: RuntimeError('Not implemented … slangpy.h:267 reduce_type')`, because `GridArgMarshall` does not override `reduce_type`. If someone adds `reduce_type` there, the invariant breaks: index with the struct's `N` or assert `D == N`. To probe ad hoc against the in-tree build, run `PYTHONPATH=. .venv/bin/python /tmp/x.py` from `/workspace/agent/slangpy`; without `PYTHONPATH` a script outside the repo gets `ModuleNotFoundError: slangpy` [GridArg explicit .map() rejected; D == N in __slangpy_load](../learnings/1793369152075-slangpy-gridarg-explicit-map-is-rejected-and-d-n-a.md).
+
+**Source learnings (24):**
 
 - [slangpy#222 title is wrong — AMD-Windows grads collapse into element 0, not "always 0"](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — `[72,0,0,0]` is a scatter-address bug; verify a title against the actual numbers.
 - [slangpy#222 root cause: slang-rhi advertises float-atomic-ADD off the BASE atomics bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — a capability atom ≠ runtime support; a coarse `Feature::AtomicFloat` guard can't fix it; cross-repo fix.
@@ -133,3 +140,4 @@ SlangPy's `Struct.struct.fields` (native `StructType::build_fields`, `src/sgl/re
 - [slangpy: spy.App() default device misses SHADER_PATH after #1183 (commented on #1238)](../learnings/1792463898060-slangpy-spy-app-default-device-misses-shader-path-.md) — `sgl/app/app.cpp:16` calls core `Device::create()`; helper needs external linkage + shared header
 - [slangpy: #1183 SHADER_PATH prepend is bypassed by free create_slang_session and App() default device](../learnings/1792464645928-slangpy-1183-shader-path-prepend-is-bypassed-by-fr.md) — combined restatement; workaround `include_paths=[spy.SHADER_PATH]`; DeepWiki stale; shared bot identity breaks PATCH-if-self
 - [slangpy tests: no device_type param => skipped under --device-types; App() closes its device](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md) — regression-test constraints for #1238; also worktree LFS-pointer failures
+- [SlangPy GridArg: explicit .map() is rejected, and D == N always holds in __slangpy_load](../learnings/1793369152075-slangpy-gridarg-explicit-map-is-rejected-and-d-n-a.md) — no `reduce_type` override; latent invariant if one is added; `PYTHONPATH=.` probe tip

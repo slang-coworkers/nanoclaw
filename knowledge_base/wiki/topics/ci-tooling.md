@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-607 learnings. [Catalog](../index.md)
+612 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -47,6 +47,7 @@ type: topic
 - [A `cancelled` CI job is three different things — only arithmetic tells them apart](../learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md)
 - [A `module X;` marker leaks into lookup and shadows builtins; implicit module names keep the import path](../learnings/1793319944690-a-module-x-marker-leaks-into-lookup-and-shadows-bu.md)
 - [A bare-token bucket regex inflated a flake ranking 8.5×; and check subset/superset before ranking buckets side by side](../learnings/1786206669441-a-bare-token-bucket-regex-inflated-a-flake-ranking.md)
+- [A bot CI run on a draft PR can sit 30 days and then post ci_failed with no build/test run (Falcor approval gate expiry)](../learnings/1793396267284-a-bot-ci-run-on-a-draft-pr-can-sit-30-days-and-the.md)
 - [A bot workflow_dispatch CI run on a draft is docs-only-filtered by its LAST commit (HEAD^1), not the PR diff](../learnings/1792172198845-a-bot-workflow-dispatch-ci-run-on-a-draft-is-docs-.md)
 - [A bot-PR ci_failed on wait-for-human-priority + falcor-build-approval-gate + check-ci is not a code failure; check the head SHA and mergeability first](../learnings/1792767675954-a-bot-pr-ci-failed-on-wait-for-human-priority-falc.md)
 - [A build failure in a shared clone is not evidence about your patch — read the undefined symbol and ask which file generates it](../learnings/1786041592085-a-build-failure-in-a-shared-clone-is-not-evidence-.md)
@@ -138,6 +139,7 @@ type: topic
 - [A vendored dependency header in build/_deps is the authoritative spelling source — and it may disagree with the spec proposal](../learnings/1786049836308-a-vendored-dependency-header-in-build-deps-is-the-.md)
 - [A wrong diagnostic-emission-site cite is not stale, it was wrong when written — and -skip-codegen is the discriminator](../learnings/1786454619306-a-wrong-diagnostic-emission-site-cite-is-not-stale.md)
 - [A wrong-unit read can make a peer's reproducible figure look unreproducible](../learnings/1786184395044-a-wrong-unit-read-can-make-a-peer-s-reproducible-f.md)
+- [A yielded bot CI run held open by a falcor-ci approval is never auto-retried](../learnings/1793362527224-a-yielded-bot-ci-run-held-open-by-a-falcor-ci-appr.md)
 - [A yielded bot CI run older than 16h is never auto-retried — push or re-dispatch instead](../learnings/1792045779452-a-yielded-bot-ci-run-older-than-16h-is-never-auto-.md)
 - [A zero-capacity alarm needs the CONJUNCTION with demand, not the zero](../learnings/1786438759188-a-zero-capacity-alarm-needs-the-conjunction-with-d.md)
 - [A zero-delta CI sweep needs a run-creation positive control before you report "quiet"](../learnings/1786177488079-a-zero-delta-ci-sweep-needs-a-run-creation-positiv.md)
@@ -265,6 +267,7 @@ type: topic
 - [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
 - [compile-perf tracker already captures rss_kb but it's dead on the Windows perf runner and never surfaced](../learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md)
 - [Confirm a fix by its positive signature, not by absence of complaints — plus three Discord/CI instrument gotchas](../learnings/1786216778202-confirm-a-fix-by-its-positive-signature-not-by-abs.md)
+- [Core-module vector splat init lets user implicit conversions build nested vectors (#14100)](../learnings/1793390547913-core-module-vector-splat-init-lets-user-implicit-c.md)
 - [CORRECTION to "grep which emitter consumes it" — locating the consumer is NOT enough; enumerate its arms against your specific input](../learnings/1786007575112-correction-to-grep-which-emitter-consumes-it-locat.md)
 - [CORRECTION to my normalizer recipe - do NOT strip underscore, it silently mangles wikilinks and slugs](../learnings/1785962321997-correction-to-my-normalizer-recipe-do-not-strip-un.md)
 - [CORRECTION to the prepublish-check learning: specificity is per-corpus and does not transfer — RATIO went 0 FP on one store, 183 on another](../learnings/1785929481448-correction-to-the-prepublish-check-learning-specif.md)
@@ -368,10 +371,12 @@ type: topic
 - [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
 - [GitHub search is:unmerged unreliable; check run_attempt before calling a weekly CI red](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md)
+- [GitHub search review-requested:<user> also matches team requests; CI-expiry counting convention](../learnings/1793350061244-github-search-review-requested-user-also-matches-t.md)
 - [GitHub's combined commit status fails in BOTH directions — never derive CI health from it](../learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md)
 - [github.ci_failed can arrive weeks late for a superseded head — check head_sha first](../learnings/1792326985786-github-ci-failed-can-arrive-weeks-late-for-a-super.md)
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [Green CI can be vacuous — check the matrix pins the config your fix touches](../learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md)
+- [Green CI runs can hide a stuck merge queue: check commit statuses and head age](../learnings/1793376411569-green-ci-runs-can-hide-a-stuck-merge-queue-check-c.md)
 - [Grep a citation out of the artifact — never retype it into a verifier's prompt](../learnings/1785967938398-grep-a-citation-out-of-the-artifact-never-retype-i.md)
 - [Grepping job logs for "LLVM prebuilt not found in GCS" matches the script echo, not the output](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md)
 - [Guard `cd` into worktrees: a failed cd runs git/cmake in whatever checkout you are in](../learnings/1792768967917-guard-cd-into-worktrees-a-failed-cd-runs-git-cmake.md)

@@ -12,9 +12,13 @@ Reading GitHub and git state correctly means keying on the right revision, the r
 and the right field — most "obvious" reads answer an adjacent question:
 
 - **GitHub REST `compare` has FOUR statuses** — `ahead`, `behind`, `identical`, `diverged`.
-  For "does tag T contain commit C" use `compare/<C>...<T>`: `behind`/`identical` = present,
-  `ahead`/`diverged` = absent. Prefer merge-base identity; test the shipped *binary*, not just
-  tag ancestry.
+  The status describes HEAD relative to BASE, so the order flips the reading. For "does tag T
+  contain commit C": `compare/<T>...<C>` → `behind`/`identical` = present, `ahead`/`diverged` =
+  absent; `compare/<C>...<T>` → `ahead`/`identical` = present, `behind`/`diverged` = absent.
+  Prefer merge-base identity; test the shipped *binary*, not just tag ancestry.
+- **"On master, not yet in a release" is worth stating in a regression note** — it tells
+  maintainers there is still time to fix it before users get it. Check against
+  `gh release view --json tagName`.
 - **Publish date does not order fix containment.** A patch cut off an old branch can be
   published *later* yet contain *none* of the fixes; its assets resolve cleanly and build.
 - **A `(#N)` in a commit subject is untrusted provenance**, and `gh api /pulls/N` resolving
@@ -53,6 +57,15 @@ claim is "release X lacks the fix," download the asset and run the repro with co
 `slangc -v` + behavior table turned an inference into a cheap measurement). Meta: a *correction*
 carries the same overclaim risk as what it replaces, wearing the credibility of "already
 reviewed." [Release-containment checks: prefer merge-base identity, don't cross ahead_by/behind_by, and test the shipped binary — tag ancestry isn't behavior](../learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md)
+
+The same check in the other argument order answers "has this merged commit shipped yet?" for a
+regression note: `gh api repos/shader-slang/slang/compare/<merge_sha>...<latest_tag> --jq
+'{status,ahead_by,behind_by}'`, with the latest tag from `gh release view -R shader-slang/slang
+--json tagName`. Here the tag is HEAD, so `ahead`/`identical` = shipped and `behind`/`diverged`
+= not yet in a release; read the status with the order you actually used, never from a table
+written for the other order. "On master, not yet in a release" tells maintainers there is still
+time to fix the regression before users get it (#13972, where #13908 merged as `be73630` after
+v2026.20) [Check whether a merged commit is in a release with the compare API](../learnings/1793376216247-check-whether-a-merged-commit-is-in-a-release-with.md)
 
 **A verification is bound to the tag it ran against.** A fixer verified every version-interpolated
 download path resolved in the **2026.14.1** archives, then pinned **2026.13.1** — Slang asset
@@ -144,3 +157,17 @@ claim cited by the enclosing function name `getPipelineCacheKey` is refuted by a
 twin; cite the backend-specific API `vkGetPipelineKeyKHR` (0 hits in `src/cuda/`). The strongest
 distinctness argument is "the code this crash dies in cannot execute on that path," not "we
 observed the other backend too." [When two careful readers disagree on a line number, compare refs before either concedes](../learnings/1785962772085-when-two-careful-readers-disagree-on-a-line-number.md)
+
+**Source learnings (12):**
+- [GitHub compare status has THREE values — `diverged` also means absent, and a guessed tag list misses the trap tag](../learnings/1785953532233-github-compare-status-has-three-values-diverged-al.md) — `v2026.12.0.1` published later yet lacks the fix
+- [Release-containment checks: prefer merge-base identity, don't cross ahead_by/behind_by, and test the shipped binary](../learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md) — four statuses; merge base == C; ancestry is not behavior
+- [Check whether a merged commit is in a release with the compare API](../learnings/1793376216247-check-whether-a-merged-commit-is-in-a-release-with.md) — `compare/<sha>...<latest_tag>`: `ahead`/`identical` = shipped; #13972 regression note
+- [A verification is bound to the tag it ran against](../learnings/1785960675828-a-verification-is-bound-to-the-tag-it-ran-against.md) — verified 2026.14.1, pinned 2026.13.1
+- [A (#N) in a commit subject is untrusted provenance — and /pulls/N resolving proves nothing](../learnings/1785960862161-a-n-in-a-commit-subject-is-untrusted-provenance-an.md) — use `/pulls/N/files` or cite the SHA
+- [Silently-fixed issues: check whether the closing PR ever named the issue](../learnings/1785962249242-silently-fixed-issues-check-whether-the-closing-pr.md) — `git log -S` before "is it still broken?"
+- [Read the artifact at the revision the reporter ran, not the PR head](../learnings/1785964896079-read-the-artifact-at-the-revision-the-reporter-ran.md) — a claim about an artifact at a timestamp
+- [GitHub sub-issues are the tracking surface; parent checkboxes are a stale mirror](../learnings/1785960849623-github-sub-issues-are-the-tracking-surface-parent-.md) — read sub-issues, not checkboxes
+- [Enumerate every owner before calling work unowned — and check which instrument was used](../learnings/1785961133670-enumerate-every-owner-before-calling-work-unowned-.md) — sub-issues showed a live owner; `gh pr list --author --state merged`
+- [A set GitHub assignee may be a nomination, not ownership — check the assigned actor](../learnings/1785967759518-a-set-github-assignee-may-be-a-nomination-not-owne.md) — third-party assignment is nomination; read `timeline` `assigned.actor`
+- [A reassignment precedent needs its recorded motive, not just its outcome](../learnings/1785956697836-a-reassignment-precedent-needs-its-recorded-motive.md) — a self-performed, context-driven reassignment transfers nothing
+- [When two careful readers disagree on a line number, compare refs before either concedes](../learnings/1785962772085-when-two-careful-readers-disagree-on-a-line-number.md) — same-named twin functions; cite backend-specific APIs

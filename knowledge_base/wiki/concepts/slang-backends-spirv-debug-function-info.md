@@ -3,7 +3,7 @@ title: "Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction rep
 type: concept
 group: slang-backends
 tags: [spirv, debug-info, nonsemantic, IRDebugFunction, DebugFunctionDefinition, autodiff, copyDebugInfo, cloneDecoration, fixUpDebugFuncType]
-source_count: 10
+source_count: 11
 ---
 
 # Slang SPIR-V DebugFunction / NonSemantic debug-info
@@ -22,6 +22,7 @@ The NonSemantic.Shader.DebugInfo `DebugFunction`/`DebugFunctionDefinition` famil
 - **NonSemantic debug info is NOT validated by spirv-val** — these defects ship silently at rc=0; only a GPU debugger (RenderDoc/Nsight) notices. Reproduce/confirm by source trace or by grepping the ext-inst stream, never by trusting a clean spirv-val.
 - **A function's `DebugFuncDecoration` record is not always the root of its body's debug-scope tree** (after #13219 lexical scopes). Function cloning, autodiff and the inliner can each leave a different or second root. Audit from the spirv-asm, excluding scopes that carry an inlinedAt operand.
 - **fwd_diff of a CONCRETE generic specialization does NOT hit `copyDebugInfo`'s generic path** — a concrete `fwd_diff(gen<float>)` resolves to a module-scope `IRFunc` first, so no hoisted name-hint-less `IRGeneric` reaches `copyDebugInfo`. Check generic-vs-concrete before flagging an autodiff-of-generics debug-info abort.
+- **`FlagArtificial` (0x20) has no defined stepping semantics in the NSDI spec**, and Slang emits DebugFunction Flags = 0. Do not claim debuggers skip artificial functions; in spvdb `step` is step-into and `next` step-over.
 
 ## IRDebugFunction representation (operands are IR-carried)
 
@@ -55,6 +56,10 @@ To audit, parse the spirv-asm, map each `OpFunction`'s `DebugScope` operands up 
 
 A plausible-but-usually-wrong autodiff debug-info 🔴: "fwd_diff of a named generic at `-g2` aborts because `copyDebugInfo` gets a hoisted, name-hint-less `IRGeneric` as destFunc while srcFunc has a hint (firing the no-name-hint assert)." For a CONCRETE call like `fwd_diff(genPoly<float>)` this is wrong: `specialize(genPoly, float)` resolves to a MODULE-SCOPE cloned `IRFunc` first (non-module-scope translation is rejected at `slang-ir-translate.cpp:430`; `slang-ir-specialize.cpp:4094` clones beside the module-scope specialization), so in `maybeTranslateForwardDerivative` (`slang-ir-autodiff-fwd.cpp:3518`) the generic-base branch (`base = getGenericReturnVal(base)`) is NOT taken, `targetFunc` is a module-scope `IRFunc`, `findOuterGeneric(fwdDiffFunc)` is null, `hoistValueFromGeneric` returns the `IRFunc`, and `copyDebugInfo` takes the `if (nameHint)` branch — the release assert is never reached. When reviewing autodiff-of-generics claims, always check generic-vs-concrete: a concrete specialization is a module-scope func, not a nested generic ([Autodiff: fwd_diff of a CONCRETE generic specialization does not hit copyDebugInfo's generic path](../learnings/1790220192127-autodiff-fwd-diff-of-a-concrete-generic-specializa.md)).
 
+## DebugFunction `Flags`: FlagArtificial has no stepping semantics (#14107)
+
+The NonSemantic.Shader.DebugInfo spec lists `FlagArtificial` = 1<<5 (0x20) in its Debug Info Flags table with no description, and says nothing about how debuggers step, so "debuggers skip artificial functions" cannot be claimed from the spec. The `.100.html` registry URL is only a meta-refresh redirect (WebFetch returns nothing); curl the redirected `NonSemantic.Shader.DebugInfo.html`. Slang's SPIR-V emitter always passes 0 for DebugFunction Flags (`slang-emit-spirv.cpp` ~11004 at e638298fe). In the vendored spvdb (`tests/spvdb/cli/main.cpp` ~918), `step`/`s` is step-INTO and `next`/`n` is step-over, as in gdb; `tests/debuginfo/debug-no-step-into-ctor.slang` uses `step`. Attribution trap: the `this` debug-name gate on synthesized constructors (`slang-lower-to-ir.cpp` ~14342) came from PR #11815 (#11565), not #12148; `git log -S isSynthesizedConstructorDecl` shows only b9fd870 (#11555) and 94d4e4736 (#11815) ([FlagArtificial has no defined semantics; spvdb step is step-into](../learnings/1793396528691-nonsemantic-shader-debuginfo-100-flagartificial-is.md)).
+
 ## Tooling trap
 
 `awk 'length>100'` for column checks counts **bytes**; an em-dash `—` is 3 bytes / 1 char, so it false-flags ≤100-column comment lines as over-length. `clang-format` (display columns) is the authority — if it reports NO CHANGES, the line is within the limit. When the container has no formatter, clang-format 17 installs without apt: `python3 -m pip install --target /tmp/cf17 clang-format==17.0.6`, then `PYTHONPATH=/tmp/cf17 python3 /tmp/cf17/bin/clang-format --style=file <file>` [Check which targets run a pass before citing it as a producer; lowerOutParameters is Metal-only](../learnings/1792829218517-check-which-targets-run-a-pass-before-citing-it-as.md).
@@ -62,7 +67,7 @@ A plausible-but-usually-wrong autodiff debug-info 🔴: "fwd_diff of a named gen
 In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. Use `= OpFunction %` ([debug-scope roots; FileCheck gotcha](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md)).
 
 ---
-**Source learnings (10):**
+**Source learnings (11):**
 - [IRDebugFunction has a parentScope operand (idx 5) at HEAD; supersedes the "no scope operand" learning](../learnings/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md)
 - [getDebugType() returns a raw IRType, not a debug-type record](../learnings/1790164801529-irdebugfunction-getdebugtype-returns-a-raw-irtype-.md)
 - [#13235: DebugFunctionDefinition dropped when a callee is inlined (record/definition cache conflation)](../learnings/1790151769234-spir-v-debugfunctiondefinition-dropped-when-a-call.md)
@@ -73,4 +78,5 @@ In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. 
 - [fwd_diff of a concrete generic specialization is module-scope, doesn't hit copyDebugInfo's generic path](../learnings/1790220192127-autodiff-fwd-diff-of-a-concrete-generic-specializa.md)
 - [SPIR-V debug scopes: a function's DebugFuncDecoration record is not always its body's scope root](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md) — `cloneDebugScopesForFunc`, autodiff stray roots, inliner drops inlinedAt; spirv-asm audit; `= OpFunction %` FileCheck label
 - [out-param lowering is Metal-only, so never cite it as a SPIR-V record producer; grep a pass's call sites first; env-gated log found 0 repeated records; clang-format 17 via pip](../learnings/1792829218517-check-which-targets-run-a-pass-before-citing-it-as.md)
+- [NonSemantic.Shader.DebugInfo.100 FlagArtificial is 1<<5 with no defined semantics; spvdb `step` is step-into](../learnings/1793396528691-nonsemantic-shader-debuginfo-100-flagartificial-is.md) — #14107; emitter passes Flags 0; ctor `this` gate came from #11815
 _Catalog: [[wiki/index.md]]_

@@ -3,6 +3,7 @@ title: "Parked-issue re-check: read the timeline, not only comments"
 type: learning
 topic: misc
 source: learnings/1793286184064-parked-issue-re-check-read-the-timeline-not-only-c.md
+superseded_by: 1793041485668-parked-issue-re-checks-read-the-timeline-cross-ref
 ---
 
 # Parked-issue re-check: read the timeline, not only comments
