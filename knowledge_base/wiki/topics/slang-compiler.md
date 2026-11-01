@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-2764 learnings. [Catalog](../index.md)
+2768 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -537,6 +537,7 @@ type: topic
 - [Falcor approval gate makes intermittent test-slang reds un-rerunnable](../learnings/1786465690642-falcor-approval-gate-makes-intermittent-test-slang.md)
 - [Fast fresh Slang source + cross-release codegen diff without REST quota](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md)
 - [Fast GPU-free-build repro: compare Slang release binaries for CUDA/PTX triage](../learnings/1792153192040-fast-gpu-free-build-repro-compare-slang-release-bi.md)
+- [Fast slangc build in a fresh slang PR worktree (for SPIR-V measurement)](../learnings/1793463061545-fast-slangc-build-in-a-fresh-slang-pr-worktree-for.md)
 - [Fast-forwarding a worktree past a master-merge leaves submodule working trees stale (breaks slang-rhi build)](../learnings/1786612310554-fast-forwarding-a-worktree-past-a-master-merge-lea.md)
 - [Fetching Khronos/CUDA/Metal specs: WebFetch 403s, and the CUDA guide moved](../learnings/1786181912850-fetching-khronos-cuda-metal-specs-webfetch-403s-an.md)
 - [FileCheck -NOT around a -DAG group does not guard text between DAG matches (slang-test)](../learnings/1791336888864-filecheck-not-around-a-dag-group-does-not-guard-te.md)
@@ -1137,6 +1138,7 @@ type: topic
 - [slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path](../learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md)
 - [Slang -g2 DebugLine is statement-marker driven, not per-value-inst sourceLoc](../learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md)
 - [slang -g2 spirv-asm FileCheck tests: embedded-source self-match trap + local env gotchas](../learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md)
+- [Slang -g2: three autodiff synthesis paths never call copyDebugInfo (derivatives with NO DebugFunction)](../learnings/1793436267860-slang-g2-three-autodiff-synthesis-paths-never-call.md)
 - [Slang -O3 SPIR-V output is post-spirv-opt; swizzle(makeVector(vec,s)) is folded by neither Slang nor spirv-opt](../learnings/1790319181328-slang-o3-spir-v-output-is-post-spirv-opt-swizzle-m.md)
 - [slang -obfuscate + any precompiled standard module: imported linkage names hashed per consumer, std modules plain (#14091)](../learnings/1793357951808-slang-obfuscate-any-precompiled-standard-module-im.md)
 - [Slang -obfuscate must match between module producer and consumer; mismatch asserts in the linker](../learnings/1793234159574-slang-obfuscate-must-match-between-module-producer.md)
@@ -1535,6 +1537,7 @@ type: topic
 - [slang init-list arg coercion: #11730 fixed the success return's probe-safety but the ERROR return still leaks a real-sink diagnostic during canCoerce](../learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md)
 - [Slang init-list-as-argument bugs: check canCoerce viability-probe (outExpr==null) divergence](../learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md)
 - [slang init-list→vector: (vec2,vec2) composition ctor splats scalars, diverges from tail-pad path](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md)
+- [Slang inliner drops DebugInlinedAt when call's block has no DebugLine (ternary repro)](../learnings/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md)
 - [Slang int64 shift literals need LL suffix, not L (L is 32-bit)](../learnings/1787337737957-slang-int64-shift-literals-need-ll-suffix-not-l-l-.md)
 - [Slang interface conformance: checker requirement loop is a deny-list, IR requirement predicate is an allow-list](../learnings/1790757907963-slang-interface-conformance-checker-requirement-lo.md)
 - [Slang interface: __init requirements cannot have default bodies (E30317)](../learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md)
@@ -2670,6 +2673,7 @@ type: topic
 - [Upstream slang publishes machine-readable compile-perf data — use it instead of a local A/B build](../learnings/1785953888171-upstream-slang-publishes-machine-readable-compile-.md)
 - [User attributes on enum members: two-layer front-end gap, reflection already works](../learnings/1786742270900-user-attributes-on-enum-members-two-layer-front-en.md)
 - [valgrind memcheck of slang-llvm JIT: glibc ld.so/dlopen $ORIGIN errors are false positives — filter to slang frames](../learnings/1788385213783-valgrind-memcheck-of-slang-llvm-jit-glibc-ld-so-dl.md)
+- [Validate emitted WGSL on the GPU with pip wgpu (naga) when Tint/Dawn are absent](../learnings/1793437270685-validate-emitted-wgsl-on-the-gpu-with-pip-wgpu-nag.md)
 - [Validate emitted WGSL on the GPU with wgpu-py (naga) — no Tint needed](../learnings/1793222265902-validate-emitted-wgsl-on-the-gpu-with-wgpu-py-naga.md)
 - [Validate slang test-gate #if fixes: confirm the macro is a compile-define for that target](../learnings/1782318227042-validate-slang-test-gate-if-fixes-confirm-the-macr.md)
 - [Validate Slang WGSL output locally with naga via wgpu-py (no Tint needed)](../learnings/1792441518888-validate-slang-wgsl-output-locally-with-naga-via-w.md)

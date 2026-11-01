@@ -2,8 +2,8 @@
 title: "Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction representation, DebugFunctionDefinition emit, and the shared-record producer class"
 type: concept
 group: slang-backends
-tags: [spirv, debug-info, nonsemantic, IRDebugFunction, DebugFunctionDefinition, autodiff, copyDebugInfo, cloneDecoration, fixUpDebugFuncType]
-source_count: 11
+tags: [spirv, debug-info, nonsemantic, IRDebugFunction, DebugFunctionDefinition, autodiff, copyDebugInfo, cloneDecoration, fixUpDebugFuncType, inliner, DebugInlinedAt]
+source_count: 13
 ---
 
 # Slang SPIR-V DebugFunction / NonSemantic debug-info
@@ -21,6 +21,7 @@ The NonSemantic.Shader.DebugInfo `DebugFunction`/`DebugFunctionDefinition` famil
 - **Producer-side fix = `fixUpDebugFuncType(IRFunc*)`** (`slang-ir.cpp`): if the func's data type differs from the record's `getDebugType()`, mint a fresh distinct `IRDebugFunction` (preserving name/line/col/file/scope) and swap the decoration — fixes BOTH the sharing AND a stale debug type in one call.
 - **NonSemantic debug info is NOT validated by spirv-val** — these defects ship silently at rc=0; only a GPU debugger (RenderDoc/Nsight) notices. Reproduce/confirm by source trace or by grepping the ext-inst stream, never by trusting a clean spirv-val.
 - **A function's `DebugFuncDecoration` record is not always the root of its body's debug-scope tree** (after #13219 lexical scopes). Function cloning, autodiff and the inliner can each leave a different or second root. Audit from the spirv-asm, excluding scopes that carry an inlinedAt operand.
+- **Some functions have NO record, and then the inliner drops `DebugInlinedAt`.** Three autodiff synthesis paths never call `copyDebugInfo`, so a fix inside `copyDebugInfo` does not reach them. The inliner emits an inline chain only when the caller has a `DebugFunction` AND a `DebugLine` precedes the call in the call's own block (a `?:` branch block fails this). Both defects are silent under spirv-val.
 - **fwd_diff of a CONCRETE generic specialization does NOT hit `copyDebugInfo`'s generic path** — a concrete `fwd_diff(gen<float>)` resolves to a module-scope `IRFunc` first, so no hoisted name-hint-less `IRGeneric` reaches `copyDebugInfo`. Check generic-vs-concrete before flagging an autodiff-of-generics debug-info abort.
 - **`FlagArtificial` (0x20) has no defined stepping semantics in the NSDI spec**, and Slang emits DebugFunction Flags = 0. Do not claim debuggers skip artificial functions; in spvdb `step` is step-into and `next` step-over.
 
@@ -48,9 +49,21 @@ Since #13219 added SPIR-V lexical debug scopes, a function body's `DebugScope`, 
 
 1. `cloneInst` of a function calls `cloneDebugScopesForFunc` (`slang-ir-clone.cpp`), which gives the clone a private copy of the tree. Reverse-mode autodiff's temporary primal clone (`slang-ir-autodiff-rev.cpp:200`) therefore leaks a second record, named after the original, into every derived body (`s_apply_`, `s_bwdProp_`, `s_remat_`).
 2. Inside autodiff, even the forward source function's decoration record can differ from its body's root: `s_fwd_` bodies kept a stray root.
-3. The inliner (`slang-ir-inline.cpp:627-640`) copies a callee's `DebugScope`s WITHOUT inlinedAt when the call site has no preceding `DebugLine`. So "the root of the non-inlined DebugScopes" is not guaranteed to be unique.
+3. The inliner copies a callee's `DebugScope`s WITHOUT inlinedAt when the caller has no record or the call's block has no `DebugLine` (see the next section). So "the root of the non-inlined DebugScopes" is not guaranteed to be unique.
 
 To audit, parse the spirv-asm, map each `OpFunction`'s `DebugScope` operands up the `DebugLexicalBlock` parent chain, and compare each root with the record bound by that function's `DebugFunctionDefinition`. Exclude scopes that have an inlinedAt operand ([a function's DebugFuncDecoration record is not always its body's scope root](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md)).
+
+## Missing inline chains: the inliner's two early-outs, and derivatives with no record
+
+On master `c959b561d`, `emitCalleeDebugInlinedAt` (`slang-ir-inline.cpp:328-387`) builds a callee's `DebugInlinedAt` only if two conditions are true. First, the caller has a `DebugFunction`; if not, it returns at :370. Second, a `DebugLine` precedes the call in the call's OWN IR block, because the scan walks only `getPrevInst`; if not, it returns at :372-373. In both cases `newDebugInlinedAt` is null, the callee's `DebugScope(calleeFunc)` and `DebugScope(lexicalBlock)` are cloned with no inlinedAt, and no caller-scope restore is emitted. Consider `float r = x > 0.0 ? callee(x) : 0.0;`. The ternary lowers to an `ifElse`, and the then-block holds only `DebugScope(caller)` and the call, while the line's `DebugLine` stays in the predecessor block. This happens with `[__unsafeForceInlineEarly]` and `[ForceInline]`, at `-g2` and `-g3`, and at `-O0`, default and `-O2`, and spirv-val passes. Quick check: `slangc x.slang -target spirv-asm -g2 -O0 -stage compute -entry computeMain -o o.spvasm`, then count `DebugInlinedAt` (0 = bug) and look for a one-operand callee `DebugScope %<calleeFn>` inside `computeMain`. With `[ForceInline]`, `-dump-ir-before performForceInlining` shows the block shape [Slang inliner drops DebugInlinedAt when call's block has no DebugLine (ternary repro)](../learnings/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md). The autodiff side of the same `?:`/`&&`/`||` case is on [[wiki/concepts/slang-autodiff-ir-f0909b0-compiler-internals.md]].
+
+The first early-out has its own producer class. #13238 is about derivatives that SHARE the original's record. Separately, three derivative-synthesis paths call `createFunc` and never call `copyDebugInfo`, so the derivative has no `DebugFuncDecoration` at all (checked at `c959b561d`, 2026-10-31):
+
+1. The adapter for a user `[BackwardDerivative]`/`[BackwardDerivativeOf]`, `maybeTranslateLegacyToNewBackwardDerivative` (`slang-ir-autodiff-rev.cpp:428`, `createFunc` at :453-455). It affects `s_apply_X`, `s_remat_X` and `s_bwdProp_X`: 83 funcs in 26 `tests/autodiff` files (for example `inline.slang`, `diff-ptr-type-smoke.slang`, `test-minimal-context.slang`).
+2. The trivial forward derivative, `maybeTranslateTrivialForwardDerivative` (`slang-ir-autodiff-fwd.cpp:3609`, `createFunc` at :3629). It is made for `[TreatAsDifferentiable]` callees, and for `fwd_diff` through a callee that has only a backward derivative. This func has no nameHint either. Only `treat-as-differentiable-fwd-primal.slang` hits it (8 funcs).
+3. The legacy-signature `bwd_diff(f)` wrapper, `maybeTranslateLegacyBackwardDerivative` (`slang-ir-autodiff-rev.cpp:755`, `createFunc` at :774, next to a "TODO: do all the decorator and naming stuff"). It is unnamed: 245 funcs in 165 files.
+
+PR #13239 changes `copyDebugInfo` itself, so it does not cover these paths. Because of the first early-out, a callee inlined into such a derivative at default `-O` keeps `DebugScope`s with no inline chain. To find these funcs, run `slangc X.slang -target spirv-asm -g2 -O0 -stage compute -entry computeMain -dump-ir-after finalizeAutoDiffPass -o x.spvasm > x.ir`. A func's decorations are the `[...]` lines directly above `func %id`, and `[DebugFunction(%N)]` marks the record. Nested funcs indent their decorations differently from the func line. `*_wtwrapper` derivatives also have no debug info, but only because the wrapper itself (`slang-ir-lower-dynamic-dispatch-insts.cpp:159`) has none, so nothing is lost there [Slang -g2: three autodiff synthesis paths never call copyDebugInfo (derivatives with NO DebugFunction)](../learnings/1793436267860-slang-g2-three-autodiff-synthesis-paths-never-call.md).
 
 ## Review-scoping: concrete generic specialization is module-scope, not a nested generic
 
@@ -67,7 +80,7 @@ The NonSemantic.Shader.DebugInfo spec lists `FlagArtificial` = 1<<5 (0x20) in it
 In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. Use `= OpFunction %` ([debug-scope roots; FileCheck gotcha](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md)).
 
 ---
-**Source learnings (11):**
+**Source learnings (13):**
 - [IRDebugFunction has a parentScope operand (idx 5) at HEAD; supersedes the "no scope operand" learning](../learnings/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md)
 - [getDebugType() returns a raw IRType, not a debug-type record](../learnings/1790164801529-irdebugfunction-getdebugtype-returns-a-raw-irtype-.md)
 - [#13235: DebugFunctionDefinition dropped when a callee is inlined (record/definition cache conflation)](../learnings/1790151769234-spir-v-debugfunctiondefinition-dropped-when-a-call.md)
@@ -79,4 +92,6 @@ In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. 
 - [SPIR-V debug scopes: a function's DebugFuncDecoration record is not always its body's scope root](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md) — `cloneDebugScopesForFunc`, autodiff stray roots, inliner drops inlinedAt; spirv-asm audit; `= OpFunction %` FileCheck label
 - [out-param lowering is Metal-only, so never cite it as a SPIR-V record producer; grep a pass's call sites first; env-gated log found 0 repeated records; clang-format 17 via pip](../learnings/1792829218517-check-which-targets-run-a-pass-before-citing-it-as.md)
 - [NonSemantic.Shader.DebugInfo.100 FlagArtificial is 1<<5 with no defined semantics; spvdb `step` is step-into](../learnings/1793396528691-nonsemantic-shader-debuginfo-100-flagartificial-is.md) — #14107; emitter passes Flags 0; ctor `this` gate came from #11815
+- [`emitCalleeDebugInlinedAt` scans only the call's own block for a `DebugLine`; a `?:` repro drops `DebugInlinedAt` and the caller-scope restore, silent under spirv-val](../learnings/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md)
+- [three autodiff synthesis paths never call `copyDebugInfo` (no record; #13239 does not cover them); the inliner then skips `DebugInlinedAt`; `-dump-ir-after finalizeAutoDiffPass` detection](../learnings/1793436267860-slang-g2-three-autodiff-synthesis-paths-never-call.md)
 _Catalog: [[wiki/index.md]]_

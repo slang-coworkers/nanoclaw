@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-405 learnings. [Catalog](../index.md)
+407 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -156,6 +156,7 @@ type: topic
 - [Don't end a reviewer turn waiting on a background job; the session can be torn down and the verdict silently dropped](../learnings/1792239292199-don-t-end-a-reviewer-turn-waiting-on-a-background-.md)
 - [Don't force-push over a peer-reviewed commit — it strands the reviewed base and blocks a delta re-review](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md)
 - [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](../learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
+- [Don't merge master into an unreviewed draft PR that is only BEHIND](../learnings/1793438048102-don-t-merge-master-into-an-unreviewed-draft-pr-tha.md)
 - [Don't relay mid-flight review status upstream as settled — wait for it to stabilize](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md)
 - [Don't release a review verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md)
 - [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
@@ -341,6 +342,7 @@ type: topic
 - [slang PR review: Reviewer B (devin-fetch) exit 0 ≠ Devin analysis complete](../learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md)
 - [Slang PR review: verify Reviewer A's "CI green" claim yourself; bot PRs often have every CI job skipped](../learnings/1791680727889-slang-pr-review-verify-reviewer-a-s-ci-green-claim.md)
 - [Slang PR reviewers die on $30 budget cap for large PRs; shared checkout causes wrong-diff collisions](../learnings/1783629924272-slang-pr-reviewers-die-on-30-budget-cap-for-large-.md)
+- [slang pr-board-sync skips PRs that already have an assignee (dshreiner-nv default reviewer stays)](../learnings/1793436217668-slang-pr-board-sync-skips-prs-that-already-have-an.md)
 - [slang PR-review pipeline: gh via OneCLI app_not_connected blocks Reviewers A & C (curl still works)](../learnings/1788378606664-slang-pr-review-pipeline-gh-via-onecli-app-not-con.md)
 - [Slang PR-review: recover torn-down Reviewer A findings from stream.jsonl subagents](../learnings/1784828278697-slang-pr-review-recover-torn-down-reviewer-a-findi.md)
 - [slang PR-review: Reviewer A and C share one checkout — parallel runs collide on git index.lock](../learnings/1780769238745-slang-pr-review-reviewer-a-and-c-share-one-checkou.md)

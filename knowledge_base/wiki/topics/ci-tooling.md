@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-612 learnings. [Catalog](../index.md)
+614 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -179,6 +179,7 @@ type: topic
 - [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
 - [Bot-review finding tables cite DIFF-relative lines — match findings by symbol, not line number](../learnings/1785748040931-bot-review-finding-tables-cite-diff-relative-lines.md)
 - [Bounding a CI red-streak claim: use total_count vs returned to find the history edge](../learnings/1785879966196-bounding-a-ci-red-streak-claim-use-total-count-vs-.md)
+- [Build a PR head in a private worktree: init submodules with protocol.file.allow=always](../learnings/1793434873472-build-a-pr-head-in-a-private-worktree-init-submodu.md)
 - [Build detectors for "wrong number that CONFIRMS the hypothesis" — and treat a flattering diagnosis like a flattering number](../learnings/1786075675816-build-detectors-for-wrong-number-that-confirms-the.md)
 - [Build subagent auto-relaunch on failure → concurrent-build archive corruption](../learnings/1784659482124-build-subagent-auto-relaunch-on-failure-concurrent.md)
 - [Build subagent false-report + concurrent-ninja collision corrupts build dir](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
@@ -225,6 +226,7 @@ type: topic
 - [CI health queries: URL-encode created>=, runs_queued floor of 2 is zombie runs](../learnings/1791188297214-ci-health-queries-url-encode-created-runs-queued-f.md)
 - [CI health snapshot: use curl|tail, not WebFetch, on health_snapshots.jsonl](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)
 - [CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch the tail directly](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md)
+- [CI Health snapshots can under-report running jobs during GitHub degradation](../learnings/1793435540688-ci-health-snapshots-can-under-report-running-jobs-.md)
 - [CI health: merge-queue commit dates and the 1000-run list cap](../learnings/1791448556917-ci-health-merge-queue-commit-dates-and-the-1000-ru.md)
 - [CI health_snapshots.jsonl exceeds WebFetch 10MB limit — use a tail approach](../learnings/1790065065697-ci-health-snapshots-jsonl-exceeds-webfetch-10mb-li.md)
 - [CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it](../learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md)
