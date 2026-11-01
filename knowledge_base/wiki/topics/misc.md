@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1625 learnings. [Catalog](../index.md)
+1629 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -656,6 +656,7 @@ type: topic
 - [CUDA/HLSL emit FileCheck -NOT must match a syntax token, not a bare keyword (filename collision)](../learnings/1787846790793-cuda-hlsl-emit-filecheck-not-must-match-a-syntax-t.md)
 - [CUDA: entry point named `main` is renamed to `main_0` (E40100) → cuModuleGetFunction NOT_FOUND](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)
 - [CUDA: nvcc won't merge scalar __ldg into wide loads, even with assume_aligned](../learnings/1792700658146-cuda-nvcc-won-t-merge-scalar-ldg-into-wide-loads-e.md)
+- [Daily GitHub sweep: closed-unmerged PRs and merge-queue failures need REST + timeline, not search](../learnings/1793436218667-daily-github-sweep-closed-unmerged-prs-and-merge-q.md)
 - [daily maintainer report must carry open ship-stoppers until merged](../learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md)
 - [Daily-report P0 candidates: label view ≠ work state (read-only blind spot)](../learnings/1785485841108-daily-report-p0-candidates-label-view-work-state-r.md)
 - [Dawn node `webgpu` on the L40S: Vulkan backend works for Tint and runtime immediates](../learnings/1792137779204-dawn-node-webgpu-on-the-l40s-vulkan-backend-works-.md)
@@ -715,6 +716,7 @@ type: topic
 - [Discord sirspate = GitHub jhelferty-nv (James Helferty); check github-to-discord.json before "relay to X"](../learnings/1793262133027-discord-sirspate-github-jhelferty-nv-james-helfert.md)
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
 - [Discord support: do mandatory research before sending, not after](../learnings/1788755188581-discord-support-do-mandatory-research-before-sendi.md)
+- [Discord sweep scandiff.py undercounted feedback on new threads; summon-bot posts count as bot messages](../learnings/1793435103545-discord-sweep-scandiff-py-undercounted-feedback-on.md)
 - [Discord sweep: DeepWiki may be hook-denied; use gh api for source facts](../learnings/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md)
 - [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)
 - [Discord sweep: watch linked GitHub trackers for movement on Discord-carried questions](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md)
@@ -1008,6 +1010,7 @@ type: topic
 - [GPU-free render-test regression via a real CPU device in gfx-unit-test](../learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)
 - [Granular SpvOpt pass selection — RegisterPassesFromFlags is the clean primitive (issue #12204)](../learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md)
 - [GraphQL author.login omits [bot] suffix for github-actions/coderabbitai — breaks "human spoke last" detection](../learnings/1786453325216-graphql-author-login-omits-bot-suffix-for-github-a.md)
+- [GraphQL timelineItems(since:) totalCount ignores since — check len(nodes) for truncation](../learnings/1793436330596-graphql-timelineitems-since-totalcount-ignores-sin.md)
 - [GraphQL timelineItems(since:) totalCount ignores since; watch-list ext.py misreads vscode-ext #N](../learnings/1792486262354-graphql-timelineitems-since-totalcount-ignores-sin.md)
 - [GraphQL timelineItems.totalCount ignores the itemTypes filter](../learnings/1786047790242-graphql-timelineitems-totalcount-ignores-the-itemt.md)
 - [grep -c for orientation, read the hits before publishing the number](../learnings/1786002658196-grep-c-for-orientation-read-the-hits-before-publis.md)
@@ -1296,6 +1299,7 @@ type: topic
 - [Read the artifact at the revision the reporter ran, not the PR head](../learnings/1785964896079-read-the-artifact-at-the-revision-the-reporter-ran.md)
 - [Read-only classification subagents may execute the full workflow anyway](../learnings/1782260610851-read-only-classification-subagents-may-execute-the.md)
 - [Reading a submodule pin: commit date ≠ version; check reachability with compare](../learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md)
+- [Reading Chromium issue tracker (issues.chromium.org) state without login](../learnings/1793459379803-reading-chromium-issue-tracker-issues-chromium-org.md)
 - [Reading Mach-O exports with no Apple tooling: two independent parsers, and the demangle traps](../learnings/1785991525886-reading-mach-o-exports-with-no-apple-tooling-two-i.md)
 - [Rebasing a stale branch can collide a hand-picked diagnostic code with an upstream one](../learnings/1787950830117-rebasing-a-stale-branch-can-collide-a-hand-picked-.md)
 - [Recall scoped to the task's subject can never surface a tooling limit — run a second cheap query keyed on your environment](../learnings/1785863868529-recall-scoped-to-the-task-s-subject-can-never-surf.md)

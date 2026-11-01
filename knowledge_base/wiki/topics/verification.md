@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-589 learnings. [Catalog](../index.md)
+590 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -458,6 +458,7 @@ type: topic
 - [Registry-collision addendum: second verified instance, and the scope-of-absence error that nearly lost it](../learnings/1786023401020-registry-collision-addendum-second-verified-instan.md)
 - [Related-by-symptom is not fixed-by: two issues sharing a repro is the signal that invites a wrong `Fixes #N`](../learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md)
 - [Release-binary bisect beats a bot-filed "pre-existing, not a regression" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)
+- [render-test createTexture forced mipCount=1 picks wrong m_slices for layers >=1 (repro on Linux via Vulkan patch)](../learnings/1793437666271-render-test-createtexture-forced-mipcount-1-picks-.md)
 - [Reply-eval LLM judge marks every "I reproduced this" as dishonest](../learnings/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md)
 - [Repro __ref_readonly/__ref_writeonly in user code needs -experimental-feature (E30133); ref-arg stage split](../learnings/1793274065554-repro-ref-readonly-ref-writeonly-in-user-code-need.md)
 - [Reproduce a defect against EVERY published figure — one number can be satisfied by two different corpora, and the person who owns the defect holds evidence the re-diagnoser doesn't](../learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md)

@@ -3,7 +3,7 @@ title: "slangc Wave Intrinsics, VM Emitter & Inliner"
 type: concept
 group: slang-tooling
 tags: [wave, vm, slangi, bytecode, inliner, debugscope, forceinline, irconstant, emit, empty-struct]
-source_count: 6
+source_count: 7
 ---
 
 # slangc Wave Intrinsics, VM Emitter & Inliner
@@ -35,7 +35,7 @@ Add a `default: SLANG_UNEXPECTED("unhandled IRConstant op in VM emitter");` defe
 
 ## Inliner: the caller scope is restored explicitly, so IR `DebugNoScope` has no producer
 
-Before shader-slang/slang#13175, returning from a `[ForceInline]` callee under `-O0 -g3 -target spirv-asm` emitted `DebugNoScope` instead of restoring the caller's `DebugScope`: `emitCalleeDebugInlinedAt()` (`slang-ir-inline.cpp`) scanned backward for an enclosing `IRDebugScope`, and a top-level caller's entry scope is synthesized at SPIR-V emit time rather than materialized in the IR, so the scan found nothing. Since #13175 (f3a7ce5b06, 2026-09-22) the inliner restores the caller scope with a one-operand `DebugScope(callerDebugFunc)`, and `IRBuilder::emitDebugNoScope()` has no callers, so no Slang input produces an IR `DebugNoScope`. A test that expects one after inlining is stale: retarget it to the one-operand restore instead of hunting for an input that triggers it. The trap is that `OpExtInst ... DebugNoScope` still appears in SPIR-V at `-g2`+ with `-O1`+, because spirv-opt produces it (it is absent at `-O0`), so a loose FileCheck such as `DebugNoScope{{$}}` passes for the wrong reason. For the `docs/generated` agentic tests, a design-bundle test that drifts because of an intentional compiler change is retargeted and its bundle README gets a `drift-from-source` doc-gap row (precedents #13150, #13172); `expected-failures.txt` is only for filed compiler bugs [Post-#13175: IR DebugNoScope has no producer; stale agentic tests + spirv-opt DebugNoScope trap](../learnings/1790510614113-post-13175-ir-debugnoscope-has-no-producer-stale-a.md).
+Before shader-slang/slang#13175, returning from a `[ForceInline]` callee under `-O0 -g3 -target spirv-asm` emitted `DebugNoScope` instead of restoring the caller's `DebugScope`: `emitCalleeDebugInlinedAt()` (`slang-ir-inline.cpp`) scanned backward for an enclosing `IRDebugScope`, and a top-level caller's entry scope is synthesized at SPIR-V emit time rather than materialized in the IR, so the scan found nothing. Since #13175 (f3a7ce5b06, 2026-09-22) the inliner restores the caller scope with a one-operand `DebugScope(callerDebugFunc)`, and `IRBuilder::emitDebugNoScope()` has no callers, so no Slang input produces an IR `DebugNoScope`. A test that expects one after inlining is stale: retarget it to the one-operand restore instead of hunting for an input that triggers it. The trap is that `OpExtInst ... DebugNoScope` still appears in SPIR-V at `-g2`+ with `-O1`+, because spirv-opt produces it (it is absent at `-O0`), so a loose FileCheck such as `DebugNoScope{{$}}` passes for the wrong reason. For the `docs/generated` agentic tests, a design-bundle test that drifts because of an intentional compiler change is retargeted and its bundle README gets a `drift-from-source` doc-gap row (precedents #13150, #13172); `expected-failures.txt` is only for filed compiler bugs [Post-#13175: IR DebugNoScope has no producer; stale agentic tests + spirv-opt DebugNoScope trap](../learnings/1790510614113-post-13175-ir-debugnoscope-has-no-producer-stale-a.md). The restore is emitted only when `emitCalleeDebugInlinedAt` finds a caller `DebugFunction` and a `DebugLine` in the call's own block; otherwise (for example a call in a `?:` branch) there is neither an inline chain nor a restore, see [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] [Slang inliner drops DebugInlinedAt when call's block has no DebugLine (ternary repro)](../learnings/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md).
 
 ## Empty-struct field emit-skip: must be an IR transform, not emit-layer skip
 
@@ -45,12 +45,13 @@ The correct fix is a guaranteed IR transform (opt-level-independent): remove emp
 
 ---
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [slangi VM emitter: missing IRConstant cases produce silent malformed operands](../learnings/1780297768364-slangi-vm-emitter-missing-irconstant-cases-produce.md)
 - [Slang VM bytecode: missing constant-emit case can silently mask wrong test assertions](../learnings/1780321477721-slang-vm-bytecode-missing-constant-emit-case-can-s.md)
 - [slangi VM emitter constant section: write sizeAlignment.size bytes, not natural type size](../learnings/1780330259667-slangi-vm-emitter-constant-section-write-sizealign.md)
 - [Slang wave intrinsics have no IR opcode — an IR pass can't just emit WaveActiveSum/WaveIsFirstLane](../learnings/1780925183948-slang-wave-intrinsics-have-no-ir-opcode-an-ir-pass.md)
 - [Empty-struct field emit-skip is incomplete — must remove fields in IR, not at emit](../learnings/1781725277930-empty-struct-field-emit-skip-is-incomplete-must-re.md)
 - [Post-#13175: IR DebugNoScope has no producer; stale agentic tests + spirv-opt DebugNoScope trap](../learnings/1790510614113-post-13175-ir-debugnoscope-has-no-producer-stale-a.md) — the inliner restores caller scope with a one-operand DebugScope; retarget stale tests; spirv-opt's DebugNoScope fools loose FileChecks.
+- [inliner emits no `DebugInlinedAt` or caller-scope restore when the call's block has no `DebugLine`](../learnings/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md)
 
 _Catalog: [[wiki/index.md]]_
