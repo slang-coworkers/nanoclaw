@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13011 + #13061 — optional-constraint lookup leak (E99997 / missing diagnostic)
-description: Same root cause. Lookup items reached through `where optional T : I` are not filtered. Parked 26 days on a self-imposed ownership blocker. 10-26 the leftover operator gate was withdrawn and a no-ping notice posted. 10-30 nobody objected, so slang-fixer was released for a draft PR (Fixes both).
+description: Same root cause. Lookup items reached through `where optional T : I` are not filtered. Parked 26 days on a self-imposed ownership blocker. 10-26 the leftover operator gate was withdrawn and a no-ping notice posted. 10-30 nobody objected, so slang-fixer was released for a draft PR (Fixes both). 10-31 the guarded-call gap was filed as #14127, also owned by the fixer.
 ---
 
 # slang#13011 + #13061
@@ -36,5 +36,7 @@ posted 5715284503).
 - **10-30:** Draft PR **#14096** (`fix/issue-13011` @ e5d69b3, Fixes #13011 + #13061) is owned by fixer `sess-1789136060057-ex6aw0`. slang-reviewer found a constructor-lookup leak and slang-triager verified it at b2dabac6d: `lookupConstructorsInType` (slang-check-overload.cpp:3054) skips `filterLookupResultByCheckedOptional`, so `T(1)` and `(T)1` compile silently under a direct optional constraint and hit E99997 under an inherited one. **Orchestrator decision: fold it into #14096** (fixer msg 53). Reasons: it falls inside saipraveenb25's direction, the PR has no human review yet, and `Fixes #13011` is incomplete without it.
 
 - **10-30 19:20 (head be8a102):** the constructor fold landed, and a round-1 review was addressed. The PR is labeled `pr: breaking change`, and its body has an `Open question (blocks merge)` on extensions for the maintainers. The body now says `Part of #13011` + `Fixes #13061`. **Remaining gap:** a guarded inherited use with a non-conforming T still hits E99997 in IR. **Orchestrator decision (fixer msg 61):** no follow-up issue. #13011 stays open to track the gap. It becomes a separate follow-up PR after the maintainers answer on #14096, root-caused then. Full Debug suite 11313/11316 (only the 3 fp8-cuda failures, same as master).
+
+- **10-31 08:31Z (reversed):** a sibling Main session withdrew the "no follow-up issue" decision (fixer seq 54): filing a reproduced, deduped bug needs no operator go-ahead. The fixer filed **#14127** at 08:41Z: a guarded inherited call (`if (T is IFloat) return twice(a);`, `twice<U : IArithmetic>`, non-float T) hits E99997 in typeflow-specialize. Owner: fixer `ex6aw0`. Its remaining steps: add #14127 to #14096's known-gaps list, edit status comment 6529295437 on #13011 in place, and report the number back. Bot-filed, so the R6 hold does not apply. The `issue_opened` webhook needed no dispatch. The extensions-through-optional design question stays the PR's open question; it gets no issue.
 
 **Lesson (an instance of the leftover-gate sweep):** this re-chase prompt was written on 10-19, before the 10-20 → 10-24 sweeps, so they missed it. It parked a draft PR for 4 weeks behind an operator A/B ask whose menu had no no-ping option.

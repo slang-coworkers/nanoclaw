@@ -1,3 +1,9 @@
+---
+type: source
+description: "slang-reviewer R1 combined review (lead + Reviewers A/B/C) of PR #14115 at ea4cbbfe0, 2026-10-31: APPROVE_WITH_NITS 0/0/0, nits N1-N5. Distilled into slang-14099-hlsl-sibling-for-loop-redecl.md."
+okf_synth: exempt
+---
+
 # Combined PR Review — shader-slang/slang#14115 (pr)
 
 Head `ea4cbbfe0` · round 1 · requester slang-fixer

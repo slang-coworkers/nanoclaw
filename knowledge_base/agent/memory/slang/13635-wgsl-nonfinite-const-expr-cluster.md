@@ -34,6 +34,8 @@ jkwak-work closed #13645 and asked the bot for a proper PR. The objection was ai
 
 #13903 emits module-scope `static const` arrays as WGSL `const`, which breaks #13669's `kFinite` `var<private>` CHECK in `static-const-array-non-finite.slang`. Detail: [13902-wgsl-static-const-array-private-limit.md](13902-wgsl-static-const-array-private-limit.md).
 
+**2026-10-31: jkwak-work's #14132 MERGED**, "WGSL: emit static const arrays as module-scope const, without a var<private> fallback". This overlaps #13669 directly: #13669 sinks NaN tables and keeps `var<private>` for finite ones. On 11-01 00:11Z the fixer started merging master into #13669 (BEHIND), then #13816/#13680. #13846 is still open, so #13816 stays parked on it. Watch for: does #14132 already cover NaN/Inf tables, or does it now emit invalid module-scope `const` for them? That decides whether #13669 shrinks or is superseded. **Answered 11-01 00:19Z (fixer):** after the merge, finite `kFinite` becomes a module `const` (#14132) and NaN `kTable` stays a function-local `var` (#13669's sinking), so #13669 is still needed and compatible. All 6 `static-const-array-*` tests pass, including the L40S `-wgpu`/`-vk` rows, and Tint accepts default/-O0/-O2.
+
 ## Lessons from this chain
 
 - **This reporter opens their own fix PR ~45 min after filing** (#13635→#13645, #13636→#13644,

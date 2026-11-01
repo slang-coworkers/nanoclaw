@@ -55,3 +55,31 @@ Numbers are the fixer's or reviewer's own unless marked "I checked".
 - 15:24Z **R4 APPROVE** (delta `c94e1d0..fb36938`; 0/0/0; diff_hash 42b8d748…): 58/58 targeted, revert drill rc 139, DXC t0..t4 =
   reflection, Tint OK. 15:2xZ consolidated operator update sent.
 - 15:25Z **final [Fix Report]** (msg 120): 74 behind master; master merge offered and declined (pin + `in_reply_to=120`).
+- **10-31 08:0xZ re-check (case e, 3rd silent in a row):** #13741 is still a draft @fb36938, with no human activity on #13737/#10522/#13741 since 10-29 15:30Z
+  (only bot cross-refs from #14042/#14073/#14079). Operator: no answer. CI 40897173994 is still `waiting` on falcor-ci (`can_approve=false`); the PR is 95 behind master.
+  Withdrew the "which follow-ups to file" ask as over-gated; slang-triager `4emo71` was asked to file 1/3/6 (pin + `in_reply_to=2`, it woke 08:02).
+  Dashboard msg 21 says 2 decisions are open, the window ends ~11-28, and the 10-30 proposal to cancel stale bot runs would cancel 40897173994. Re-armed `rechase-13737-pr13741-564d` @11-07 08:00Z.
+- 10-31 08:11Z triager `4emo71` [Report] (its seq 29): filed follow-up 1 = **#14123** (`Sampler2DMS.GetSamplePosition`) and 3 = **#14124** (E30027,
+  extension method calling a member of the same extension on another specialization); 6 not reproduced on master `c959b561d`. The #14123
+  `issue_opened` webhook reached Main 10-31; ownership checked, nothing dispatched.
+- **10-31 08:11Z filing report** (triager msg 134; I checked both are live): **#14123** (HLSL `GetSamplePosition` on a combined
+  `Sampler2DMS`, follow-up 1) and **#14124** (E30027: an extension method calling a member of the same extension on another
+  specialization, follow-up 3; reproduced in user code with a 9-variant table), both labeled `reproduced`. Item 6 (G1) was not
+  reproduced on master and not filed. On master the shape gets no binding (#13272) and Debug asserts at `legalize-types.cpp:3508`,
+  but master's reflection JSON shows the cause: descriptorTableSlot size 1 in a `ParameterBlock` vs 2 in a `ConstantBuffer`/global.
+  08:1xZ I asked the triager (msg 135, pin `4emo71` + `in_reply_to=134`) to **file G1 anyway**, based on that reflection
+  inconsistency on master (the consequence after #13741: a duplicate `@binding`; link #13272/#13741/#14017), and **to file the
+  side observation** (`GetSamplePosition` body-less intrinsic under `[require(glsl, spirv)]`: invalid GLSL, SPIR-V E29000, plain
+  `Texture2DMS` too).
+- 10-31 08:15Z the triager filed **#14125** (`GetSamplePosition` on GLSL/SPIR-V, a body-less intrinsic under `[require]`;
+  cross-references #14123), which shows msg 135 reached it. The G1 issue is next: the triager is first building fb36938 in its own
+  worktree to measure the duplicate binding.
+- 10-31 08:15Z triager `4emo71` (its seq 31) filed the side observation as **#14125** (`Texture2DMS.GetSamplePosition`
+  declared for GLSL/SPIR-V with no implementation: invalid GLSL, SPIR-V E29000; labels `reproduced`, Bug; cross-ref #14123).
+  Its `issue_opened` webhook reached Main 08:16Z; owned by this chain, nothing dispatched. G1 (WGSL ParameterBlock) still in progress.
+- 10-31 08:21Z the triager filed **#14126** (WGSL: combined `Sampler2D` in a `ParameterBlock` reserves 1 descriptor slot instead
+  of 2). Master repro is the reflection JSON at c959b561d. The duplicate `@binding(1) @group(1)` was measured at fb36938e7 in the
+  triager's own worktree; Tint is credited to the review. It links #13272/#13741/#14017/#14042. **Filing done: #14123, #14124, #14125,
+  #14126.** Not filed: 2 (`Texture2DMS[uint2]`), 4 (bindless DXIL nonUniformIndex), 5 (CPU float-array GetDimensions); the reviewer
+  did not recommend them. 7 = #14041.
+- 10-31 the `issue_opened` webhook for **#14126** reached Main; owned by this chain (bot-filed by the triager), nothing dispatched.

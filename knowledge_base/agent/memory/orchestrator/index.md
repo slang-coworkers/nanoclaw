@@ -32,6 +32,7 @@ the one mount detail the spine omits.
 - [task-hygiene CLOSED rule drops post-merge checks](task-hygiene-closed-rule-post-merge.md) — a
   re-check whose PR merged is cancelled within the hour, even if its job is post-merge.
 - [Placeholder one-shot tasks fire immediately](task-one-shot-placeholder.md) — create
-  with the real prompt + future time in one call; read it back before quoting the id.
+  with the real prompt + future time in one call; read it back before quoting the id. Also: `ncl tasks update` is a write and never a probe; read a prompt back with `ncl tasks get` (`list` truncates it).
 - [Fixer reports drift to Main](fixer-fix-reports-drift-to-main.md) - slang-fixer `[Fix Report]`s often land on Main, not the handing-off triager; forward to the triager (cases 10-22→10-29)
 - [Re-ask cap](reask-cap-park-after-final-ask.md) - operator re-ask series get one announced final ask, then park in supervisor-state.json; never re-ask indefinitely
+- [Filing verified issues](filing-verified-issues-policy.md) - reproduced+deduped shader-slang bugs are filed without operator approval; external-repo filings, scope requests and fixer fan-out are asked/reported

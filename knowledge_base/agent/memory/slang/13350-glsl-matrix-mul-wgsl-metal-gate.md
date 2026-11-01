@@ -1,89 +1,68 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A DEFAULTED to (c) park-for-jhelferty on 10-15; never ask again); gate run 36780286138 EXPIRED 10-30 21:34Z (status comment via triager→fixer, no rerun); follow-up #13355 (62 builtins) + #13359 held on jkwak-work. r6 10-22 no change; r7 10-31.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked for jhelferty-nv (operator decision A defaulted to (c) on 10-15, never ask again); gate run 36780286138 expired 10-30, status comment posted, no rerun; follow-ups #13355 + #13359 held on jkwak-work. Next re-chase r8 2026-11-07.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
 
-- **Reporter:** andy-slater (external). ShaderToy GLSL → WGSL pipeline, follows #11877 / PR #12162.
-- **Root cause (verified by me on origin/master, 2026-09-30):** `source/slang/glsl.meta.slang` ~226-287.
-  The 3 `operator*` and 4 `operator*=` overloads are `[require(cpp_cuda_glsl_hlsl_spirv_llvm, sm_4_0_version)]`,
-  so metal and wgsl are excluded. The `==`/`!=` overloads include both, and the bodies forward to `mul`, which supports both.
-- **Not a regression** (per the triager): the gate dates from #3912, before WGSL existed (#5006). The reporter saw the same failure in every version they tried.
-- **Triage:** comment 5917443980, labels reproduced+WebGPU+Metal. The triager's prototype widens the gate to
-  `cpp_cuda_glsl_hlsl_metal_spirv_wgsl_llvm` and passes on 7 targets.
-- **Decision 2026-09-30:** GO, routed THROUGH slang-triager (ANCHOR H). Grounds: no assignee, no competing PR,
-  no maintainer comment, a tiny non-breaking gate widen. Draft PR `Fixes #13350` plus a GPU-free wgsl+metal FileCheck test.
-- **Resumes on:** the fixer's draft PR, or a human comment on the issue.
-- **2026-09-30 19:35, fixer finding (I verified it on origin/master):** 69 `cpp_cuda_glsl_hlsl_spirv_llvm` gates. Besides the 7 operators, 62 other
-  builtins are gated off metal/wgsl, for example `mix`, `mod`, `inversesqrt` and `atan(y,x)`; `fract` is not gated. The PR stays scoped to the 7.
-  I said YES to the triager filing a bot follow-up issue with a per-builtin callee audit, after a dedup check, linked from the #13350 PR body.
-- **2026-09-30 19:46Z: follow-up filed as [#13355](https://github.com/shader-slang/slang/issues/13355)** by slang-triager
-  (bot-authored, labels reproduced+WebGPU+Metal). Its body covers the 62 builtins, the 4-builtin repro table and the per-builtin
-  callee-audit caveats (`packDouble2x32` #10232, the `imulExtended` int64 fallback, `half2float` → `uintBitsToFloat`). The #13350 triage comment links it.
-  I did not route it: it is already triaged, and a second triage would repeat its body. Same precedent as #13354.
-  **No fix authorized for #13355.** It is much larger than the 7-gate widen and needs an audit per builtin, so it waits on an operator or maintainer go.
-  Re-chase task `rechase-13350-13355-d86c` fires 2026-10-02 09:00Z: checks that the #13350 draft PR exists and names #13355, and checks #13355 for human activity.
-- **2026-09-30 19:55 (checked live):** draft PR **#13356** (fix/issue-13350 @ 87c6c5c619, +76/−7, 7 gate lines exactly, closes #13350, `pr: non-breaking`).
-  Follow-up **#13355** filed by the bot, left UNROUTED, with no assignee; its go/no-go is the operator's call. Re-chase `rechase-13350-13355-d86c` (2026-10-02 09:00)
-  was updated to cover #13356 reviews/CI and the #13355 go/no-go.
-- **2026-09-30 21:39 [Triage Resolution] (checked live):** #13356 is a draft at 39e7f0415e (+101/−8, 2 files) with no GitHub reviews. slang-reviewer r2 returned
-  APPROVE_WITH_NITS. **No build/test CI has run.** Every build/test job is SKIPPED, including `wait-for-human-priority`, and the falcor gate needs a human.
-  Follow-ups: (b) YES, file: four tests use `filecheck=A,B`, and `slang-llvm-filecheck.cpp:92` builds `CheckPrefixes = {fileCheckPrefix}`, so only
-  prefix A is ever checked. (a) NO new issue: std140/std430 on WGSL is already open as #8557 ("Dev Reviewed"). Comment there only if Metal/std140 adds information.
-- **2026-09-30 21:52 (checked live):** (b) was filed as **#13359** ("slang-test: `filecheck=A,B` silently checks only prefix A") and left unrouted with no assignee.
-  The triager's correction: slang-test's own option parser splits on commas (`_parseCommandArguments`), so `B` becomes a separate valueless option. The fix
-  options are a non-comma multi-prefix syntax, or a loud error on unknown valueless options. The triager also posted a Metal note on #8557 (cmt 5920354066):
-  GLSL std140/std430 fail with E36107 on metal as well as wgsl, so a WGSL-only `[require]` widen won't fix Metal. Triager is idle until #13356 merges.
-- **2026-10-01 01:05:** jkwak-work commented on #13359 (5922625720), mentioning @nv-slang-bot: "the \"filecheck\" tool is from LLVM. I wonder how LLVM project uses it regarding the problem you discovered." Routed to slang-triager on `gh-issue-shader-slang/slang-13359` with GitHub-post authorization. Step (3) of `rechase-13350-13355-d86c` now checks that the triager replied and routes only comments newer than this one.
-- **2026-10-01 01:25 (checked live):** slang-triager answered jkwak-work in comment 5922837368 (4672 chars, bot author). The answer: LLVM FileCheck accepts comma-separated `--check-prefixes`, and by default it fails when a prefix has no check lines (`--allow-unused-prefixes` turns that off). The conflict comes from slang-test's grammar. The triager also reported a new finding from a local drill: a duplicated option key, e.g. `filecheck=CHECK,filecheck=EXTRA`, crashes slang-test with an uncaught `InternalError` (`Dictionary::add` asserts on duplicates). #13359 is now **assigned to jkwak-work**. Still unrouted, no fix authorized. Step (3) of the re-chase routes only comments newer than 5922837368.
-- **2026-10-02 09:00 re-chase (checked live):** Nothing has moved since 2026-09-30.
-  - **#13356:** draft @ 39e7f04, 0 GitHub reviews, no inline or human comments, shepherd jhelferty-nv. Checks: 5 pass, 56 SKIPPED.
-  - **#13355:** no comments, no assignee, no competing PR.
-  - **#13359:** nothing newer than 5922837368.
-  - **No triager nudge:** the fixer session already holds the [Fix Report] (21:38) and r2 verdict.
-  - I routed nothing. I sent the operator a 5-bullet on orchestrator-dashboard (msg 17) asking for **(A)** a decision on the #13356 CI gate and **(B)** a #13355 go/no-go.
-  - Re-armed as `rechase-13350-13355-r2-6066` for 2026-10-05 09:00Z.
-- **2026-10-05 09:00 re-chase (r2; checked live):** Still nothing has moved since 2026-09-30.
-  - **#13356:** draft @ 39e7f04, now 2 ahead / 15 behind master. 0 reviews, 0 inline comments, no human comments. CI run 36780286138 has been `waiting` on the **falcor-ci** environment since 09-30 21:34Z, and our token can't approve it (`current_user_can_approve:false`).
-  - **#13355 / #13350 / #13359:** no new activity. #13355 still has no competing PR.
-  - No operator reply to msg 17 on the dashboard. I routed nothing and re-asked A/B on orchestrator-dashboard (2nd ask).
-  - Re-armed as `rechase-13350-13355-r3-23ff` for 2026-10-08 09:00Z.
-- **2026-10-06 22:13 (checked live):** jkwak-work (assignee since 10-01, milestoned) on #13359, comment 6026415243: "I think we should to both: 1. fail loudly when using `filecheck=A,B` 2. support multiple test prefixes but each `filecheck` can take only one keyword, `filecheck=A,filecheck=B`". There's no explicit PR request, so I treated it as a design decision from a self-assigned maintainer, not a go-ahead for us. Routed to slang-triager on `gh-issue-shader-slang/slang-13359`, to acknowledge it, raise the constraints and ask whether jkwak wants a bot draft PR. The constraints I verified on master 98c4f258c6:
-  - (a) `commandOptions` is a `Dictionary`, and `.add` asserts on a duplicate key, so a repeated `filecheck=` needs a multi-valued store.
-  - (b) `IFileCheck::performTest` takes one `const char*`. Default local builds (`FETCH_BINARY_IF_POSSIBLE`, `cmake/GitHubRelease.cmake`) fetch the prebuilt slang-llvm from the *last release tag*, while CI builds it from source (`USE_SYSTEM_LLVM`). So an interface change works in CI but not in a local build until the next release. The choice is between one performTest per prefix and a versioned interface with a fallback.
-  - (c) A 5th affected test landed after filing, from our own bot's #12766 (feb2452bfa, 10-02): `tests/compute/texture-format-through-param.slang:12` `filecheck=CUDA,READ,NEG`.
-- The r3 re-chase step (3) routes only comments newer than 6026415243. A jkwak PR request is the go-ahead, and the triager hands it to slang-fixer.
-- **2026-10-06 22:48 (checked live):** slang-triager replied in comment 6026863543 (2217 chars, bot author) and asked jkwak-work whether they want a bot draft PR. Before posting, it updated the issue body to add the 5th file (`texture-format-through-param.slang:12`, from #12766) and set the counts to 15 directives / 18 entries / 10 names. The triager corrected my "CI builds slang-llvm from source" read: some legs disable LLVM, and the Windows-debug leg builds slang-llvm and then consumes it via FETCH_BINARY. Its account of the interface-change cost: a new IFileCheck GUID makes an LLVM-enabled slang-test fail at startup against the last-tag prebuilt. That mismatch happens in local builds, not CI. The triager's handoff constraints are in its `memory/issues/triage-13359.md`. Waiting on jkwak-work. A PR request means the triager hands the work to slang-fixer. A "we'll do it" closes the chain. The r3 re-chase routes only comments newer than 6026863543.
-- **2026-10-08 09:00 re-chase (r3; checked live):**
-  - **#13356:** draft @ 39e7f04, now 2 ahead / 38 behind master (BEHIND, MERGEABLE). Review requested from jhelferty-nv, 0 reviews, 0 inline comments. The only new comment is our 10-06 explain-diff. CI run 36780286138 is still `waiting` on `falcor-ci`.
-  - **jhelferty-nv milestoned #13350** Q4 2026 (Fall) on 10-07.
-  - **jhelferty-nv assigned #13355 to jkwak-work** and milestoned it Q4 2026 on 10-05 17:33Z, with no comment and no competing PR. **Decision B is closed as HOLD by that maintainer assignment.** A bot fix starts only on a jkwak request to @nv-slang-bot, routed via slang-triager on `gh-issue-shader-slang/slang-13355`.
-  - **#13359:** nothing newer than 6026863543.
-  - No operator reply on the dashboard. I routed nothing.
-  - I sent a 3rd ask for decision A on orchestrator-dashboard (msg 21), with options: (a) ci-approver approves the run, (b) fixer rebases and marks the PR ready, (c) park it for jhelferty-nv.
-  - Re-armed as `rechase-13350-13355-r4-d5dc` for 2026-10-12 09:00Z.
-- **2026-10-12 09:00 re-chase (r4; checked live):** Still nothing has moved since 10-08.
-  - **#13356:** draft @ 39e7f04, now 2 ahead / 47 behind master (BEHIND). Review requested from jhelferty-nv, with 0 reviews, 0 inline comments and no human comments. Checks: 6 pass, 56 SKIPPED, 2 pending (falcor-gated). CI run 36780286138 is still `waiting` on `falcor-ci` (`current_user_can_approve:false`).
-  - **#13355:** no comments and no competing PR.
-  - **#13359:** nothing newer than 6026863543.
-  - Dashboard seqs 478686–499142 hold no operator reply to A. I routed nothing.
-  - I sent a 4th ask for A on orchestrator-dashboard (id 13), saying **no answer defaults to (c), parked for jhelferty-nv**. That means no push and no re-dispatch, with events still routed to slang-fixer.
-  - Re-armed as `rechase-13350-13355-r5-ccdb` for 2026-10-15 09:00Z. If A is still unanswered then, r5 records the (c) default, does not ask a 5th time, and moves to a slower ~7-day cadence.
-- **2026-10-15 09:00 re-chase (r5; checked live): decision A defaulted to (c), parked for jhelferty-nv.**
-  - **#13356:** draft @ 39e7f04, now 2 ahead / 72 behind master (BEHIND, MERGEABLE). Review requested from jhelferty-nv, with 0 reviews, 0 inline comments and no human comments (last comment is our 10-06 explain-diff). Checks: 5 pass, 56 SKIPPED. CI run 36780286138 is still `waiting` on `falcor-ci` (`current_user_can_approve:false`).
-  - **#13350:** assignee jhelferty-nv, Q4 2026. **#13355:** jkwak-work, no comments, no competing PR. **#13359:** nothing newer than 6026863543.
-  - Dashboard seqs 499142–502206 hold no operator reply to A. **Per the 10-12 ask, A is now recorded as defaulted to (c): no push, no re-dispatch, no 5th ask.** Events still route to slang-fixer on `gh-issue-shader-slang/slang-13350`.
-  - I routed nothing and sent one short (c)-default note to orchestrator-dashboard.
-  - Moved to a slower cadence: re-armed as `rechase-13350-13355-r6-96e2` for 2026-10-22 09:00Z (7 days).
-- **2026-10-22 09:00 re-chase (r6; checked live): no change on any chain. Nothing routed, no dashboard message.**
-  - **#13356:** OPEN draft @ 39e7f04, 2 ahead / 120 behind master. Review requested from jhelferty-nv, with 0 reviews, 0 inline comments and no human comments (last comment is still our 10-06 explain-diff, and the PR has not been updated since 10-06). Checks: 5 pass, 56 skipping. CI run 36780286138 is still `waiting` on `falcor-ci`.
-  - **#13350:** jhelferty-nv, Q4 2026, no new comments or events. **#13355:** jkwak-work, 0 comments, no competing PR (search empty; the timeline has only our cross-refs and the 10-05 assignment). **#13359:** nothing newer than 6026863543.
-  - Dashboard seqs 502208–507152 (1290 rows, 4 bounded reads) hold no operator reply to A. The only hit is my own 10-15 (c)-default note. A stays at (c).
-  - ⚠️ **Upcoming event:** run 36780286138 was created 09-30 21:34:19Z, so the falcor-ci environment wait reaches GitHub's 30-day limit and fails at about **10-30 21:34Z**. That is not a code fault; the precedents are #13127 (10-16) and #13201 (10-21), see [ci-babysitter-gate-expired-pr.md](ci-babysitter-gate-expired-pr.md). With A = (c) the right handling is a status comment on the PR, with **no rerun, no re-dispatch and no rebase push**. A rerun only asks for `falcor-ci` approval again.
-  - Re-armed as `rechase-13350-13355-r7-9ae4` for **2026-10-31 09:00Z**, 9 days out instead of 7, so the run comes after the predicted expiry and can check how it was handled.
-- **2026-10-30 21:38Z: the predicted gate expiry happened (triager msg 46; I checked it live).** Run 36780286138 at 39e7f04 ended `failure` at 21:34:36Z with no build or test steps.
-  #13356 is still an OPEN draft, with 0 reviews and only bot comments, last updated 10-06. #13355 has 0 comments. #13359 has nothing new since jkwak-work on 10-06.
-  The triager asked the operator to dispatch CI again. **I did not pass that to the operator**, because A defaulted to (c) and is never asked again. Through the triager I told slang-fixer
-  to post one status comment on #13356: the gate expired, no CI has run, the PR stays a draft for jhelferty-nv, and it resumes on a review or comment. No rerun, dispatch or push. r7 (10-31 09:00Z) checks that the comment exists.
-- **2026-10-30 21:43Z:** the status comment is posted: #13356 cmt **6534088003** (bot, checked live). The PR is still a draft at 39e7f04. There was no rerun, dispatch or push. Parked for jhelferty-nv's review; r7 (10-31 09:00Z) just confirms it.
+Dated re-chase entries live in [[slang/13350-glsl-matrix-mul-rechase-log.md]]. **New re-chases append there**;
+update only the state table below in this file.
+
+## Current state (r7, 2026-10-31 09:00Z, checked live)
+
+| item | state | owner / hold |
+|---|---|---|
+| #13350 (issue) | assignee jhelferty-nv, milestone Q4 2026 | fixed by #13356 |
+| PR **#13356** | OPEN draft, fix/issue-13350 @ 39e7f04 (+101/−8, 2 files), 2 ahead / 178 behind, MERGEABLE. Review requested from jhelferty-nv; 0 reviews, no human comments. Checks 5 pass / 56 skipping. Last comment: our status cmt 6534088003 | **parked for jhelferty-nv**: no push, no rerun, no re-dispatch |
+| CI run 36780286138 | `completed/failure` 10-30 21:34:36Z (falcor-ci 30-day env wait expired; no build steps) | not a code fault |
+| #13355 (62 gated builtins) | bot-filed, assigned jkwak-work by jhelferty-nv 10-05, Q4 2026, 0 comments, no competing PR | **HOLD** |
+| #13359 (`filecheck=A,B`) | assigned jkwak-work, last human cmt 6026415243, our reply 6026863543 | **HOLD** |
+
+- Master `glsl.meta.slang` still has 69 `cpp_cuda_glsl_hlsl_spirv_llvm` gates (r7), so #13356 is not superseded.
+- Events on #13350/#13356 route to slang-fixer on `gh-issue-shader-slang/slang-13350`.
+- **Resumes on:** a review or comment on #13356, a human comment on any of the three issues.
+- **Next:** `rechase-13350-13355-r8-6fd2`, 2026-11-07 09:00Z. If all three chains are still held on maintainers, re-arm once ~7 days out (process-after only); if all are closed/merged, do not re-arm.
+
+## Root cause and fix
+
+- **Reporter:** andy-slater (external). ShaderToy GLSL → WGSL pipeline; follows #11877 / PR #12162.
+- **Root cause (I verified it on origin/master, 09-30):** `source/slang/glsl.meta.slang` ~226-287. The 3 `operator*` and
+  4 `operator*=` overloads are `[require(cpp_cuda_glsl_hlsl_spirv_llvm, sm_4_0_version)]`, which excludes metal and wgsl.
+  The `==`/`!=` overloads include both, and the bodies forward to `mul`, which supports both.
+- **Not a regression** (per the triager): the gate dates from #3912, before WGSL existed (#5006).
+- **Triage:** comment 5917443980, labels reproduced+WebGPU+Metal. The fix widens the 7 gates to
+  `cpp_cuda_glsl_hlsl_metal_spirv_wgsl_llvm` and adds a GPU-free wgsl+metal FileCheck test. slang-reviewer r2: APPROVE_WITH_NITS.
+
+## Decisions
+
+- **09-30 GO**, routed through slang-triager (ANCHOR H): no assignee, no competing PR, no maintainer comment, tiny non-breaking widen.
+- **PR scope stays at the 7 operators.** The fixer found 62 other gated builtins (`mix`, `mod`, `inversesqrt`, `atan(y,x)`; `fract` is
+  not gated). Those went to bot follow-up #13355, with a per-builtin callee audit (`packDouble2x32` #10232, the `imulExtended` int64
+  fallback, `half2float` → `uintBitsToFloat`). I did not route it to a second triage (same precedent as #13354).
+- **Decision B (#13355 go/no-go): closed as HOLD** by jhelferty-nv's 10-05 assignment to jkwak-work. A bot fix starts only on a jkwak
+  request to @nv-slang-bot, routed via slang-triager on `gh-issue-shader-slang/slang-13355`.
+- **Decision A (#13356 CI gate):** asked 4 times (dashboard msg 17, 2nd ask, msg 21, id 13) with options (a) ci-approver approves the run,
+  (b) fixer rebases and marks ready, (c) park for jhelferty-nv. **Defaulted to (c) on 10-15. Never ask again.**
+- **10-30 gate expiry:** the triager asked for a CI re-dispatch; I did not pass it on (A = (c)). Through the triager, slang-fixer posted one
+  status comment (6534088003). A rerun would only ask for `falcor-ci` approval again. Precedents: #13127, #13201, see
+  [ci-babysitter-gate-expired-pr.md](ci-babysitter-gate-expired-pr.md).
+- **#8557 (std140/std430 on WGSL):** no new issue; the triager posted a Metal note there (cmt 5920354066): GLSL std140/std430 also fail with
+  E36107 on metal, so a WGSL-only `[require]` widen will not fix Metal.
+
+## #13359 — `filecheck=A,B` checks only prefix A
+
+- Filed 09-30 by the triager from the r2 review: four tests use `filecheck=A,B`; `slang-llvm-filecheck.cpp:92` builds
+  `CheckPrefixes = {fileCheckPrefix}`. slang-test's own option parser (`_parseCommandArguments`) splits on commas, so `B` becomes a
+  separate valueless option. A duplicated key (`filecheck=CHECK,filecheck=EXTRA`) crashes slang-test (`Dictionary::add` asserts).
+- jkwak-work (assignee) 10-06, cmt 6026415243: do both — fail loudly on `filecheck=A,B`, and support `filecheck=A,filecheck=B`.
+  I treated that as a design decision, not a go-ahead for us. The triager replied (6026863543) with the constraints and asked whether jkwak
+  wants a bot draft PR; it also added the 5th file `tests/compute/texture-format-through-param.slang:12` (from our #12766) to the issue body.
+- Constraints (verified on master 98c4f258c6, with the triager's corrections): `commandOptions` needs a multi-valued store;
+  `IFileCheck::performTest` takes one `const char*`, and a new IFileCheck GUID makes an LLVM-enabled slang-test fail at startup against the
+  last-tag prebuilt slang-llvm in local builds (`FETCH_BINARY_IF_POSSIBLE`). Handoff detail: the triager's `memory/issues/triage-13359.md`.
+- A jkwak PR request means the triager hands it to slang-fixer; a "we'll do it" closes the chain.
+
+## Lessons
+
+- A falcor-gated environment wait fails at GitHub's 30-day limit; predict the date from the run's `created_at` and time the re-chase after it.
+- Dashboard reads for re-chases: bounded `--since-seq` pages; jq chokes on control chars, so parse with python `json.loads(strict=False)`.

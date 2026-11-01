@@ -14,5 +14,5 @@ slangpy#1225, #12875). The operator reads silence as "not now", and each extra a
 - On timeout, that task records the chain in `memory/supervisor-state.json` (awaiting_human), posts **one** line saying it
   is parked with no timer and how to reopen it ("un-draft N" / "unpark N"), and schedules nothing.
 
-**Applied:** `chase-13726-ready-ask11-e4fb` (parked 10-27 19:07Z) and `chase-13413-ready-8524` (final ask about 11-06).
+**Applied:** `chase-13107-design-direc-98d5` (8 reminders → final, 10-31); `rechase-cla-bot-identity-10d0` (31 daily asks → weekly, change-only, 10-31); `chase-13726-ready-ask11-e4fb` (parked 10-27 19:07Z) and `chase-13413-ready-8524` (final ask about 11-06).
 New re-ask tasks should carry the cap in their prompt from the start.

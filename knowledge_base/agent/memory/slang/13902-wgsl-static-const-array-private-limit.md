@@ -27,3 +27,13 @@ Not sent to the #13669 owner yet (#13903 unmerged, #13669 parked on operator un-
 
 **Resume on:** a maintainer/bot mention on #13902/#13903; #13903 merging (→ tell the #13669 owner, on
 `gh-issue-shader-slang/slang-13658`, to merge master and update the `kFinite` CHECK to `const`); or an operator ask.
+
+**2026-10-31 14:03Z — PR #14132** (jkwak-work, fork, `wgsl-const-arrays-no-private-fallback`, "Fixes #13902") builds on
+#13903: keeps its commit `43b965ba`, adds `75706ba5` removing the `var<private>` fallback. `pr_ready_for_review`
+(opened) reached Main; **not forwarded** — `slang-pr-approver` paused=1; queued in `data/approver-pause-queue.md`.
+The #13669 `kFinite` CHECK clash applies to whichever of #13903/#14132 merges.
+
+**2026-10-31 17:23Z — CLOSED.** jkwak-work merged #14132, which closed #13902. The reporter's #13903 is still open but
+superseded, and we take no action on a reporter PR. The resume trigger fired: at tick 318 (11-01 00:11Z) the supervisor
+sent a pinned nudge to the #13669 owner `gj2lyx`, asking it to merge master and update the `kFinite` CHECK. It acked
+"On it" at 00:11:47Z. Follow-up lives in [13635-wgsl-nonfinite-const-expr-cluster.md](13635-wgsl-nonfinite-const-expr-cluster.md).

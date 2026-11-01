@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13948 — structType assert passing a pointer field of a local struct copy to a function
-description: External-filed (xdk78) 2026-10-25. Triaged (bug/high/P2, `reproduced`), fixed in bot draft PR #13951 (head 4e276bf, pr: non-breaking), reviewer APPROVE_WITH_NITS with nits applied. PARKED on the un-draft decision; shepherd kaizhangNV. Ask #2 sent 10-28; re-chase rechase-slang-13948-undraft-r2 (id `rechase-slang-13948-undr-d74c`) 10-31 22:30Z.
+description: External-filed (xdk78) 2026-10-25. Triaged (bug/high/P2, `reproduced`), fixed in bot draft PR #13951 (head 4e276bf, pr: non-breaking), reviewer APPROVE_WITH_NITS with nits applied. PARKED on the un-draft decision; PR shepherd kaizhangNV, issue assignee jkwak-work (10-28). Ask #3 sent 10-31; re-chase rechase-slang-13948-undraft-r3 (id `rechase-slang-13948-undr-726e`) 11-03 22:30Z.
 tags: [spirv, buffer-element-lowering, pointer, draft-pr, parked]
 ---
 
@@ -34,6 +34,8 @@ someone runs `gh pr ready`. Ask #1 went to orchestrator-dashboard on `gh-issue-s
 at 10-25 ~22:30Z. Re-chase `rechase-slang-13948-undr-bb3e` ran at 10-28 22:30Z (see below).
 
 - 10-28 22:30Z re-chase: no change (draft @4e276bf, 0 reviews, no human comments on #13951/#13948, CI 40239717468 still `waiting`, 6 ok/52 skipped) and no operator answer → ask #2 sent to orchestrator-dashboard on the canonical thread; one-shot `rechase-slang-13948-undraft-r2 (id `rechase-slang-13948-undr-d74c`)` armed for 10-31 22:30Z.
+
+- 10-31 22:30Z re-chase: still draft @4e276bf, 0 reviews, no human comments on #13951/#13948, CI 40239717468 still `waiting` (3 pass/52 skipped). Missed by the 10-28 run (it read comments only): on **10-28 17:19Z maintainer jkwak-work unassigned kaizhangNV from #13948, self-assigned, and milestoned it Q4 2026 (Fall)**, no comment; PR assignee/reviewer is still kaizhangNV. No operator answer on the dashboard (covered 10-28 22:31Z→now via `--reverse` + `--since-seq 508400`). Ask #3 sent on the canonical thread; one-shot `rechase-slang-13948-undraft-r3` (id `rechase-slang-13948-undr-726e`) armed for 11-03 22:30Z — its ask #4 says #5 is the last. Lesson: re-chases check issue timeline events, not just comments.
 
 **Out of scope, not filed:** the triager saw that `-emit-spirv-via-glsl` gives invalid GLSL for arrays
 inside buffer_reference structs. It needs an operator GO before a separate issue is filed.

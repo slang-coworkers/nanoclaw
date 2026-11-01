@@ -52,3 +52,8 @@ description: External bug (albertrodriguezclo), triaged and reproduced 10-29. Fi
   break. The body is to state why, and that maintainers may relabel.
 - **PARKED on the operator's un-draft sign-off** (asked on the orchestrator-dashboard thread gh-issue-shader-slang/slang-14013, 10-29 ~19:00Z). After that, maintainers decide the D3D12
   question and the label. Re-chase `rechase-slang-14013-r1-3357` at 10-31 16:00Z. ⚠️ When it goes ready, check `paused` before forwarding the approver webhook.
+- **10-31 16:00Z re-chase r1 (`rechase-slang-14013-r1-3357`): no change.** #14023 is still an OPEN draft at `1236549a8`, label `pr: non-breaking`, 0 reviews, last updated 10-29 19:04Z.
+  No human comment on #14023, #14013 or slang-rhi#959 since 10-29 (only bot rows). No operator answer: Main `4lc0u2` has no inbound after row 92, and the dashboard session paged
+  bounded (seq 509126→509724, to 10-31 15:55Z) has no reply to the 10-29 19:03Z ask. Action: ONE re-ask of the un-draft sign-off to `orchestrator-dashboard` on thread
+  `gh-issue-shader-slang/slang-14013` (msg id 25). Nothing went to the triager or fixer; nothing was posted on GitHub. `task-hygiene.py next` allowed r2 (count 1 of cap 3);
+  one-shot `rechase-slang-14013-r2-67eb` is scheduled for 11-02 16:00Z.

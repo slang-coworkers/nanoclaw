@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13737 — HLSL/DXIL Load/GetDimensions on combined texture-samplers emit an extra sampler argument
-description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR #13741 @fb36938 (R4 APPROVE) parked on falcor-ci, the ready flip, 7 unfiled follow-ups and maintainer review
+description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR #13741 @fb36938 (R4 APPROVE) parked on falcor-ci, the ready flip (operator) and maintainer review; follow-ups 1 = #14123, 3 = #14124, side observation = #14125 (filed 10-31 by the triager; their webhooks need no dispatch)
 ---
 
 # slang#13737 — combined texture-sampler: texture-only ops keep the sampler operand
@@ -11,20 +11,20 @@ HLSL, so DXC rejected them; WGSL/Metal `Load`/subscript used the sampler as the 
 (#10522) are the same bug. Dated history (dispatch → R4, SHAs, msg ids): [[slang/13737-hlsl-combined-sampler-history.md]] —
 **new dated entries append there**, not here.
 
-## Current state (10-29 15:25Z)
+## Current state (10-31 08:1xZ — no change since 10-29)
 
 | | |
 |---|---|
 | Issue | #13737 **closed by Buriola 10-18 15:12Z** (COMPLETED, no comment, before any merge). #10522 open. Triage cmt 6236169441 (`reproduced`, Bug, P2); thread `gh-issue-shader-slang/slang-13737` |
-| PR | **#13741 DRAFT @`fb36938e7`**, +970/−77, 16 files vs base 60a7c8c88, `Fixes #13737` + `Fixes #10522`, `pr: non-breaking`. MERGEABLE, 74 behind master. Issue artifact: fixer cmt 6243760176 |
+| PR | **#13741 DRAFT @`fb36938e7`**, +970/−77, 16 files vs base 60a7c8c88, `Fixes #13737` + `Fixes #10522`, `pr: non-breaking`. MERGEABLE, 95 behind master (10-31). Issue artifact: fixer cmt 6243760176 |
 | Owner | slang-fixer `sess-1792252474641-muhgh6` (the `pr-mappings` row for #13741) |
 | Reviews | R1 REQUEST_CHANGES @45d7d9f · R2 APPROVE_WITH_NITS @68f06ed · R3 REQUEST_CHANGES @c94e1d0 (B1) · **R4 APPROVE @fb36938** — a delta check only (`reviewers_complete:false`); the last full pass is R3 |
-| CI | `workflow_dispatch` **40897173994** @fb36938 `waiting`: priority yield + **`falcor-ci`** gate (`can_approve=false` for the bot). 30-day approval clock ≈ 11-28 |
+| CI | `workflow_dispatch` **40897173994** @fb36938 `waiting`: priority yield + **`falcor-ci`** gate (`can_approve=false` for the bot). queued 10-29 15:00Z ⇒ 30-day approval clock ≈ **11-28** (an older prompt said 11-17; that was a cancelled run) |
 | Stacked | #14017 (`fix/issue-14007`, chain [14007](14007-metal-parameterblock-combined-sampler-texture-only-ops.md)) sits on #13741; #13741 goes first |
-| Timer | one-shot `rechase-13737-pr13741-0272`, 10-31 08:00Z |
+| Timer | one-shot `rechase-13737-pr13741-564d`, 11-07 08:00Z |
 
-**Parked only on humans:** `falcor-ci` approval, the ready flip (operator), filing the 7 follow-ups (operator), maintainer review.
-**Resumes on:** an operator answer, a #13741 webhook, or the 10-31 one-shot.
+**Parked only on humans:** `falcor-ci` approval and the ready flip (operator; restated 10-31 dashboard msg 21), maintainer review. The filing question was **withdrawn 10-31**: filing is not operator-gated ([policy](../imported/feedback_github_writes_operator_authorized.md)).
+**Resumes on:** an operator answer, a #13741 webhook, or the 11-07 one-shot. (The triager's filing report for 1/3/6 arrived 10-31 08:11Z, its seq 29.) Follow-up filing is done (10-31): #14123, #14124, #14125, #14126.
 
 ## The fix (what fb36938 does)
 
@@ -43,10 +43,11 @@ HLSL, so DXC rejected them; WGSL/Metal `Load`/subscript used the sampler as the 
   only the decoration.
 - Tests: `gh-13737`, `-bindless`, `-cpu`, `-nested` (pins t1/t2/t3), `combined-texture-sampler-shared-layout` (DXC t0..t4 = reflection).
 
-## Follow-ups — 7, all unfiled, operator call
+## Follow-ups — 7 (filing is NOT an operator gate; withdrawn 10-31)
 
-Dedup on 10-18 found no existing issue for 1–5. Before filing 7, check overlap with **#14041** (WGSL `Sampler2D.Handle`
-`legalizeInst` abort, filed 10-29 by the 14007 chain; unverified whether it is the same crash).
+Dedup on 10-18 found no existing issue for 1–5. **7 = #14041** (filed 10-29 by the 14007 chain). 10-31 08:10Z slang-triager `4emo71` filed
+**1 = #14123** and **3 = #14124** (bot-authored, owned by this chain: their `issue_opened` webhooks need **no dispatch**). The `GetSamplePosition` GLSL/SPIR-V side observation = **#14125** (08:15Z, same ownership). **6 did not reproduce**
+on master `c959b561d` (not filed; it is a stack-only defect). **2, 4, 5 not filed** (reviewer did not recommend them).
 
 1. `Sampler2DMS.GetSamplePosition` (pre-existing).
 2. Plain `Texture2DMS[uint2]`.
