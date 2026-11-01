@@ -16,3 +16,10 @@ timer at all.
 a single `ncl tasks create`. Then read it back with `ncl tasks list | grep <key>` before quoting
 the id anywhere. If a one-shot needs to re-arm, its prompt must say "create a fresh one-shot";
 `update` can't revive a consumed one.
+
+## 2026-10-31: `ncl tasks update` is a write, never a probe
+
+While checking whether an update had persisted, I ran `ncl tasks update <id> --prompt "test"` to "see the
+output". It reported `touched: 1` and replaced a live task's 1.9 KB prompt with "test". I restored it
+straight away from the heredoc. Read with `ncl tasks get <id>`, which returns JSON with `.prompt` untruncated.
+`ncl tasks list --json` truncates prompts to about 120 chars with "...", so it cannot confirm an update.

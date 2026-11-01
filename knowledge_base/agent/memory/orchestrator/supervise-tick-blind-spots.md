@@ -105,6 +105,13 @@ pinned nudge acked in under a minute.
     `tickNNN/rl429.py` (429s since the previous tick with no later 200 → DEAD). A pinned nudge that names the
     unfinished step worked: all 3 nudges landed within 4 min.
 
+15. **A merged PR fires a resume trigger that lives only in chain memory** (tick 318, #13658). jkwak-work's #14132
+    (merged 10-31 17:23Z, closing #13902) changed WGSL emission and broke a CHECK in operator-held bot draft #13669.
+    The #13902 record said "Resume on: … merging (→ tell the #13669 owner …)". scan saw nothing: #13902 closed and dropped
+    out, and #13669's chain had no GitHub activity. Detector: for every merged PR and closed issue in `closed-since.txt`,
+    run `grep -rl '<num>' memory/slang/` and read each hit's **Resume on:** line. Then nudge the `pr-mappings` owner,
+    pinned. Here the fixer acked in 45 s.
+
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
 `prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned

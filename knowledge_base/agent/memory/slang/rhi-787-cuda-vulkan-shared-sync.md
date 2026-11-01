@@ -1,7 +1,7 @@
 ---
 type: project
 title: slang-rhi#787 CUDA↔Vulkan shared-texture missing sync
-description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881, READY since 2026-09-28. Head 00fb748 (main merged 10-11; unchanged as of 10-19) is GPU-CI-green and per-test re-verified. NOT merge-ready — reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV's review. Review rounds and the ready/re-chase log are in [[rhi-787-review-history.md]].
+description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881, READY since 2026-09-28. Head ec514f4 (main merged again 10-27 for the #940 conflict) is GPU-CI-green and per-test re-verified. NOT merge-ready — reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV's review. Review rounds and the ready/re-chase log are in [[rhi-787-review-history.md]].
 tags: [slang-rhi, synchronization, cuda, vulkan, interop, live-chain]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
@@ -92,8 +92,18 @@ PASSED, `does not currently own` = 0, FATAL/crash = 0.
      `aliasResources`). 4 additive hunks: `docs/api.md`, `debug-command-encoder.h`, and `debug-device.cpp`
      createTexture/createBuffer (heap validate+unwrap vs tracker reset).
    - Dispatched the merge-main (merge commit, no force-push) to fixer `sess-1783020456108-7pll4g` (a2a msg 11) at
-     10-27 09:02Z. Next one-shot re-check is `rhi-881-review-rechase-fc43` on 10-31 09:00Z; it verifies the merge
-     first.
+     10-27 09:02Z.
+   - **10-31: merge verified.** Head `ec514f4` (10-27 09:13Z) has parents `00fb748` and `70657ce4`. It is MERGEABLE
+     and BEHIND by 12, with no conflict. CI run 40479985818 is green. On the self-hosted Windows GPU jobs
+     (122107579264 msvc Release, 122107579392 clang Debug), shared-cuda `.vulkan`/`.d3d12`, `shared-transfer-*` and
+     `resource-heap-alias-*` PASSED, with does-not-own = 0. The fixer's status comment 5907630393 was edited in
+     place. jhelferty and skallweitNV are still silent; the dashboard was checked through seq 509671 and has no
+     operator reply.
+   - Asked slang-reviewer `sess-1790196393150-6taxcp` (a2a msg 25, pinned + in_reply_to=2) for a merge-only delta
+     confirm. Its verdict came back at 09:06Z (row 91): the merge delta is clean and the verdict is unchanged
+     (REQUEST_CHANGES on R4/R5 only). Across the merge, the PR's own lines are byte-identical; the only new line is
+     the stub's `aliasResources` override. No GitHub review was posted. Next one-shot is
+     `rhi-881-review-rechase-4658` on 11-04 09:00Z.
 2. **After the fix lands:** file the dedicated-allocation asymmetry. `cuda-buffer.cpp:129` sets
    `CUDA_EXTERNAL_MEMORY_DEDICATED` unconditionally, while `cuda-texture.cpp:545` threads `isDedicated`. ⚠️ The
    evidence is an NVIDIA-staff forum post, not docs, so state it as such. It isn't firing today.

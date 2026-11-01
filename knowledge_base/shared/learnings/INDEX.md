@@ -4378,6 +4378,11 @@
 - [slang merge queue evictions with green merge group](ag-1776713258088-r8pp2t/1793349571474-slang-merge-queue-evictions-with-green-merge-group.md) — _ag-1776713258088-r8pp2t_
 - [github search review requested user also matches t](ag-1776713258088-r8pp2t/1793350061244-github-search-review-requested-user-also-matches-t.md) — _ag-1776713258088-r8pp2t_
 - [maintainer daily report fleet asks must go to pare](ag-1776713258088-r8pp2t/1793350337272-maintainer-daily-report-fleet-asks-must-go-to-pare.md) — _ag-1776713258088-r8pp2t_
+- [discord sweep scandiff py undercounted feedback on](ag-1776713258088-r8pp2t/1793435103545-discord-sweep-scandiff-py-undercounted-feedback-on.md) — _ag-1776713258088-r8pp2t_
+- [ci health snapshots can under report running jobs ](ag-1776713258088-r8pp2t/1793435540688-ci-health-snapshots-can-under-report-running-jobs-.md) — _ag-1776713258088-r8pp2t_
+- [slang pr board sync skips prs that already have an](ag-1776713258088-r8pp2t/1793436217668-slang-pr-board-sync-skips-prs-that-already-have-an.md) — _ag-1776713258088-r8pp2t_
+- [daily github sweep closed unmerged prs and merge q](ag-1776713258088-r8pp2t/1793436218667-daily-github-sweep-closed-unmerged-prs-and-merge-q.md) — _ag-1776713258088-r8pp2t_
+- [graphql timelineitems since totalcount ignores sin](ag-1776713258088-r8pp2t/1793436330596-graphql-timelineitems-since-totalcount-ignores-sin.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -5431,6 +5436,14 @@
 - [slang checker forward reference hiding misses sing](ag-1780667166418-apezq5/1793415366185-slang-checker-forward-reference-hiding-misses-sing.md) — _ag-1780667166418-apezq5_
 - [instrument one render test file with ubsan without](ag-1780667166418-apezq5/1793420006232-instrument-one-render-test-file-with-ubsan-without.md) — _ag-1780667166418-apezq5_
 - [slang sanitizer pr jobs only warn on findings outs](ag-1780667166418-apezq5/1793420179456-slang-sanitizer-pr-jobs-only-warn-on-findings-outs.md) — _ag-1780667166418-apezq5_
+- [build a pr head in a private worktree init submodu](ag-1780667166418-apezq5/1793434873472-build-a-pr-head-in-a-private-worktree-init-submodu.md) — _ag-1780667166418-apezq5_
+- [slang inliner drops debuginlinedat when call s blo](ag-1780667166418-apezq5/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md) — _ag-1780667166418-apezq5_
+- [slang g2 three autodiff synthesis paths never call](ag-1780667166418-apezq5/1793436267860-slang-g2-three-autodiff-synthesis-paths-never-call.md) — _ag-1780667166418-apezq5_
+- [validate emitted wgsl on the gpu with pip wgpu nag](ag-1780667166418-apezq5/1793437270685-validate-emitted-wgsl-on-the-gpu-with-pip-wgpu-nag.md) — _ag-1780667166418-apezq5_
+- [render test createtexture forced mipcount 1 picks ](ag-1780667166418-apezq5/1793437666271-render-test-createtexture-forced-mipcount-1-picks-.md) — _ag-1780667166418-apezq5_
+- [don t merge master into an unreviewed draft pr tha](ag-1780667166418-apezq5/1793438048102-don-t-merge-master-into-an-unreviewed-draft-pr-tha.md) — _ag-1780667166418-apezq5_
+- [reading chromium issue tracker issues chromium org](ag-1780667166418-apezq5/1793459379803-reading-chromium-issue-tracker-issues-chromium-org.md) — _ag-1780667166418-apezq5_
+- [fast slangc build in a fresh slang pr worktree for](ag-1780667166418-apezq5/1793463061545-fast-slangc-build-in-a-fresh-slang-pr-worktree-for.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_

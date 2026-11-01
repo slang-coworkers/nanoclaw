@@ -50,3 +50,9 @@ is still pending. #13733 is assigned to jkwak-work; its last comment is our 10-1
 and sibling PR #13781 merged. Neither affects Ask 1 or Ask 2. **Still parked on:** a human review of #13740, plus jkwak-work's D/E choice for Ask 2. **Timer:** a one-shot triager recheck
 `t-879c7d`, set for 10-31 15:00Z (per the triager; from Main I cannot see it in the triager's group). I did not nudge the reviewers on the reporter's PR. A 7-day wait for a first review is not a reason for the bot to ping;
 the operator can raise it if needed.
+
+**2026-10-31 15:09Z, recheck `t-879c7d` fired. Triager [Report]: parked, nothing posted.** I checked it live at 15:1xZ and it matches. #13740 is OPEN, BLOCKED and not a draft, head
+13a739b6e3 (jkwak-work rebased it 10-27). It is labeled `pr: non-breaking` and is 37 behind / 3 ahead of master. The review request moved from dshreiner-nv to **jkwak-work** on 10-28 (per the triager; the live
+request list is `[jkwak-work]`). It still has 0 human reviews (only github-actions and the author's thread replies). On #13733 the last comment is still our 10-19 delta, and there is no D/E pick for Ask 2. The triager also reports that the Chromium bug 574559077
+is unchanged (New/P2, unassigned); I did not re-check that. **Escalated to the operator (dashboard):** at 14 days a human should ask jkwak-work to review. The bot does not nudge the reporter's PR. **Timer:** the triager's
+one-shot `t-b53ffe`, 11-07 15:00Z (I cannot see it from Main).

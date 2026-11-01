@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13817 — type-flow: generics over a dynamic associated type with two conformances"
-description: External (LDAP) 10-21. Two defects (diamond E33180; generic-witness segfault). Draft PR #13820 fixes the diamond and turns the crash into E33180. Parked on jkwak-work's call (known dyn limitation vs bug).
+description: External (LDAP) 10-21. Two defects (diamond E33180; generic-witness segfault). Draft PR #13820 fixes the diamond and turns the crash into E33180. Parked on assignee saipraveenb25 answering the 10-28 scope questions (cmt 6475284726).
 tags: [ir, typeflow-specialize, dynamic-dispatch, E33180, "13817", "13820", parked]
 ---
 
@@ -30,7 +30,8 @@ tags: [ir, typeflow-specialize, dynamic-dispatch, E33180, "13817", "13820", park
   - Under `#lang slang 2025` the diamond gives E33180 (it matches their rule), but `generic_target` still crashes.
   - In legacy mode the new shape `leaf2(b,3.0)+mid2(b)` also crashes (E99997 `index < getParamCount()`).
   - Options offered: (1) keep #13820; (2) narrow it to both crashes → E33180; (3) close it once the crash fixes have their own PR, plus a docs note.
-- **PARKED** on jkwak-work's decision. One-shot re-check `recheck-slang-13817-e6db` ran 2026-10-24: options posted, no maintainer reply, #13820 unchanged @c7517306b2 (draft). Next one-shot `recheck-slang-13817-8c50` at 2026-10-31 17:30Z.
+- **PARKED** on jkwak-work's decision. One-shot re-check `recheck-slang-13817-e6db` ran 2026-10-24: options posted, no maintainer reply, #13820 unchanged @c7517306b2 (draft). Then `8c50` ran 10-31 (see below).
 - **10-28 16:46Z:** saipraveenb25 (MEMBER, assignee since 10-21 17:20Z; assigned by jhelferty-nv; label `Typesystem`) wrote, cmt 6475032790: "We should look at what's happening with legacy language version. It should compile correctly." In the same comment they said existential specialization is going away (2025+), recommended `top(const IBSDF)`, and asked @LDAP if that works. No maintainer PR is on the timeline. I relayed the comment verbatim to the triager (msg 53, in_reply_to 46) and asked it to confirm the scope (generic_target? in #13820 or a follow-up?) with saipraveenb25 before widening #13820.
 - **10-28 16:57Z:** the triager and fixer posted one joint reply (cmt 6475284726). It says: in legacy mode with #13820 applied, the diamond and `leaf2+mid2` compile (both crash on master), and `generic_target` gets E33180 because the tag never reaches `use`. It asks saipraveenb25 whether `generic_target` is in scope and whether the work belongs in #13820 or a follow-up. #13820 is unchanged. PARKED on saipraveenb25. Re-check `8c50` at 10-31 17:30Z.
 - **10-29 09:15Z:** LDAP (reporter) replied to saipraveenb25 (cmt 6492746098). They had already worked around it differently and did not try `top(const IBSDF)`. This does not answer the scope questions, so the chain is still PARKED on saipraveenb25. Relayed to the triager (msg 61, in_reply_to 56).
+- **10-31 17:31Z re-check `8c50`:** saipraveenb25 has not answered the 10-28 scope questions (cmt 6475284726). The issue is open, and #13820 is unchanged @c7517306b2 (draft; last update 10-21). The bot acted 11 min after the 10-28 answer, so this is not a "bot did not act" case: the open decision is saipraveenb25's answer to those questions. I posted one line to the dashboard. Next one-shot is `recheck-slang-13817-6f27` at 2026-11-07 17:30Z.

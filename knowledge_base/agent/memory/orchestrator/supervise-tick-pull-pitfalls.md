@@ -62,6 +62,10 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   and `gh search issues --owner shader-slang --closed '>=<date>' --include-prs` (raw `gh api search/issues?q=…closed:>=`
   returns empty JSON).
 
+- **`gh api --paginate` on `actions/runs` gets a OneCLI 401 `app_not_connected` from page 2 on** (the Link header points at
+  `/repositories/<id>/…`, which the gateway does not credential). The error JSON lands in stdout and the count stops at 100.
+  Page by hand with `&per_page=100&page=N` and cross-check `total_count` (tick 317: 159 `waiting` runs, not 100).
+
 ## Worktree GC
 
 - **Build `wt-dirs.txt`** with `find /workspace/extra/ephemeral/prod-groups -maxdepth 3 -mindepth 3 -name .git -type f`

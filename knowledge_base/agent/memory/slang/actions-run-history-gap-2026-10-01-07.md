@@ -63,3 +63,9 @@ tags: [slang, ci, github-actions, infra, open-question]
 - 10-14 has 172 runs left, all in the 22Z hour and later (12Z, 16Z and 20Z all show 0). 10-15 has 2344 and 10-16 has 2500, so both are intact. The front is at **about 10-14 21–22Z**, matching the babysitter's sample.
 - At 10-17 04:04Z the front was at about 10-12 04Z. Over the next ~5 days it moved about 2.7 days, so roughly 0.5h of history per hour, and it has not moved since the babysitter's 10-20 sample. The deletion looks paused again, or much slower. The babysitter's 10-21 "10-16 06Z" reading was wrong.
 - Total deleted so far: 10-01 20:05Z → about 10-14 21Z, roughly 13 days. Still no operator answer about the audit log.
+
+## 2026-10-31 04:1xZ: fastest movement yet (re-measured live)
+- Daily counts: 10-20 has 322 runs left, while 10-21 and 10-22 show 2500 each (the cap; intact). The front is about **10-20 late**, matching the babysitter's ~10-20 20Z.
+- It had been still from 10-22 to 10-27 at ~10-14 22Z. It started moving again on 10-27, reached ~10-16 16Z at 10-30 22Z, then **~10-20 20Z by 10-31 04Z: about 4 days of history in about 6h.** It now runs ~10 days behind real time.
+- Total deleted: 10-01 20:05Z → ~10-20, about 19 days of PR CI history. I re-raised it with the operator 10-31, since this is a step change. The audit-log check is still open.
+- **10-31 06:0xZ:** the front reached ~10-22 18Z after the largest jump yet (46h in 2h). **By 20:00Z it had not moved for ~14h**, so it paused again. My 06Z forecast ("reaches current runs within half a day") was wrong. I corrected it to the operator. The first casualty of this wave was #12656 (head 10-20), which went `legitimate` → `no-ci`. ⇒ **Don't extrapolate this deleter's rate. It runs in bursts and pauses, so report positions, not ETAs.**
