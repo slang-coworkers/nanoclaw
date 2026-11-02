@@ -947,6 +947,8 @@ def main(port: int, transport: str) -> int:
                             name="discord_send_message",
                             description=(
                                 "Send a message to a Discord channel, thread, or forum. "
+                                "One message per topic, never numbered parts: long content goes to a thread "
+                                "opened with discord_create_thread. "
                                 "For forums, creates a new thread/post. "
                                 "Restricted to allowed channels."
                             ),
