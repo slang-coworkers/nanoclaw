@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13301 — header-guard PR #13742 (fixes slangpy#1204); slangpy#1206 parked on operator A/B/C"
-description: "#13742 MERGED 10-22 (653bfdeef), #13301 closed. slangpy#1204/#1206 open: waiting on the operator's A/B/C pick and on a Slang release after v2026.20 plus a slangpy pin bump. Re-chase rechase-slangpy-1204-pr1-1158 (11-01 10:30Z)."
+description: "#13742 MERGED 10-22 (653bfdeef), #13301 closed. slangpy#1204/#1206 open: waiting on the operator's A/B/C pick and on a Slang release after v2026.20 plus a slangpy pin bump. Re-chase rechase-slangpy-1204-pr1-d657 (11-04 10:30Z)."
 ---
 
 # slang#13301: header guard (#13742) and the slangpy#1204 / #1206 tail
@@ -18,7 +18,7 @@ Split out 2026-10-30 from the [#13169 index row](index.md) and
 | slangpy#1204 | open, assigned saipraveenb25 |
 | slangpy#1206 (draft workaround, head `27ddfd3b`) | open, CI green, no reviews, assigned jkwak-work; no human comments since 2026-10-09T22:37Z |
 | Slang release containing `653bfdeef` | none: latest is v2026.20 (10-17), slangpy pin still `e7bb22421` |
-| Re-chase | `rechase-slangpy-1204-pr1-1158` (11-01 10:30Z), thread `gh-issue-shader-slang/slangpy-1204` |
+| Re-chase | `rechase-slangpy-1204-pr1-d657` (11-04 10:30Z), thread `gh-issue-shader-slang/slangpy-1204` |
 
 ## Open decisions (operator, asked 10-19; re-reported 10-20/22/23/26/29)
 
@@ -40,7 +40,8 @@ Split out 2026-10-30 from the [#13169 index row](index.md) and
   load/store 0→3; #1206 test 0/20→20/20), matching slang-reviewer. The #1206 question was re-framed as A/B/C.
 - 10-21 07:29Z: saipraveenb25 marked #13742 ready (team `dev`); CI 39562318710 ran. 10-22: merged (above);
   `rechase-slang-13301-pr13-19d8` cancelled.
-- 10-23, 10-26, 10-29 re-chases: no movement (no release after v2026.20; the only new slangpy main commit is
-  slang-rhi bump `fc387a78c` #1248; no human comments; no operator answer).
+- 10-23, 10-26, 10-29, 11-01 re-chases: no movement (no release after v2026.20; new slangpy main commits
+  #1248 slang-rhi bump, #1244, #1252, #1253 are none of them Slang bumps; no human comments; no operator answer).
+  11-01: 7th report sent to the dashboard; next one-shot re-chase is 11-04 10:30Z.
 
 New re-chase results append to the History section here, not to the index row.

@@ -126,3 +126,17 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
     through a `Big*` splits into member `OpStore`s with only `Aligned`. The coherent flags are lost
     (a scalar store keeps them). Pre-existing and unrelated to #13734. The probe is in the triager's
     workspace: `scratch-13732/store-coh2.slang`. I asked the operator on the dashboard 10-29.
+- 2026-11-01 15:00Z re-check `-cb-7fd5` (live read): no change. The PR is OPEN and not merged. The head is still
+  cb4ad5253a. `mergeStateStatus` is now `BLOCKED` (it was `BEHIND`), and `mergeable` is MERGEABLE. The full CI matrix
+  is SUCCESS: builds, the test-slang/rhi jobs, SlangPy, Falcor perf and MaterialX. CodeRabbit is SKIPPED. The only
+  activity is a github-actions `deployed` event on 10-30 15:33Z (actor albertrodriguezclo, a CI environment gate),
+  with no review or comment. jkwak-work is still the requested reviewer. There is no human maintainer review: the
+  newest review is the author's at 10-28 15:04Z. There are no issue, PR or review comments since 10-29 15:00Z.
+  Comment 6278114155 is unchanged (updated_at 10-29 15:22:35Z) and names cb4ad5253a.
+  - Side finding (struct `storeCoherent` through `Big*` loses the coherent flags): I asked the operator in dashboard
+    row seq 65 (10-29 15:24Z) on Main session `sess-1792248849265-73m1n3`. There is **no answer**, because that
+    session has no inbound since then. The question is still open; repeat it once in the next dashboard row.
+  - Decision row (2): parked 3 days since 10-29, which is less than 7, so I sent nothing. I did not message the
+    triager, dispatch the fixer, or contact an approver. The successor one-shot `rechase-13732-pr13734-cb-affb` runs on
+    11-05 15:00Z. I picked 4 days instead of 3 so that it lands on the 7-day mark: it sends the dashboard row and
+    the side-finding question if nothing changes.
