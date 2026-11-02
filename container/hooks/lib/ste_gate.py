@@ -13,7 +13,8 @@ external-facing text the tool call would post:
 - Chat: `mcp__slang-mcp__discord_send_message` (`content`) and the Slack post and
   reply tools (`text`). A chat post is also refused outright when it is a numbered
   part of a split message: one post per topic, the rest in its thread
-  (`thread_name` on the anchor, then the returned `thread_id`).
+  (post the anchor, open a thread on it with discord_create_thread, then send the
+  rest to the returned `thread_id`).
 
 Reads the PreToolUse hook JSON on stdin. Exit 0 = allow (no checker installed in
 this group, nothing to check, or no findings). Exit 2 = deny, with one line on
@@ -96,7 +97,7 @@ def check_chat_post(content: str) -> int:
     if NUMBERED_PART_RE.search(content):
         print(
             "CHAT POST REFUSED: this is a numbered part of a split message. Post one message per "
-            "topic; put the rest in its thread (pass thread_name on the anchor message, then send "
+            "topic; put the rest in its thread (post the anchor, call discord_create_thread with its message_id, then send "
             "follow-ups to the returned thread_id). Never prefix parts with (part k/N).",
             file=sys.stderr,
         )
