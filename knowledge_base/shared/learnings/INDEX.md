@@ -4383,6 +4383,11 @@
 - [slang pr board sync skips prs that already have an](ag-1776713258088-r8pp2t/1793436217668-slang-pr-board-sync-skips-prs-that-already-have-an.md) — _ag-1776713258088-r8pp2t_
 - [daily github sweep closed unmerged prs and merge q](ag-1776713258088-r8pp2t/1793436218667-daily-github-sweep-closed-unmerged-prs-and-merge-q.md) — _ag-1776713258088-r8pp2t_
 - [graphql timelineitems since totalcount ignores sin](ag-1776713258088-r8pp2t/1793436330596-graphql-timelineitems-since-totalcount-ignores-sin.md) — _ag-1776713258088-r8pp2t_
+- [discord sweep assert date edits and stop on failur](ag-1776713258088-r8pp2t/1793521198823-discord-sweep-assert-date-edits-and-stop-on-failur.md) — _ag-1776713258088-r8pp2t_
+- [slangpy sanitizers 6 cuda ray tracing failures mis](ag-1776713258088-r8pp2t/1793521353974-slangpy-sanitizers-6-cuda-ray-tracing-failures-mis.md) — _ag-1776713258088-r8pp2t_
+- [github sweep clock skew vs actions stamps and fork](ag-1776713258088-r8pp2t/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md) — _ag-1776713258088-r8pp2t_
+- [bot draft green rollup can hide a ci suite that ne](ag-1776713258088-r8pp2t/1793522469201-bot-draft-green-rollup-can-hide-a-ci-suite-that-ne.md) — _ag-1776713258088-r8pp2t_
+- [github timestamps ran 1h ahead of real time on 202](ag-1776713258088-r8pp2t/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -5444,6 +5449,23 @@
 - [don t merge master into an unreviewed draft pr tha](ag-1780667166418-apezq5/1793438048102-don-t-merge-master-into-an-unreviewed-draft-pr-tha.md) — _ag-1780667166418-apezq5_
 - [reading chromium issue tracker issues chromium org](ag-1780667166418-apezq5/1793459379803-reading-chromium-issue-tracker-issues-chromium-org.md) — _ag-1780667166418-apezq5_
 - [fast slangc build in a fresh slang pr worktree for](ag-1780667166418-apezq5/1793463061545-fast-slangc-build-in-a-fresh-slang-pr-worktree-for.md) — _ag-1780667166418-apezq5_
+- [slang performforceinlining inlines module scope ca](ag-1780667166418-apezq5/1793515107207-slang-performforceinlining-inlines-module-scope-ca.md) — _ag-1780667166418-apezq5_
+- [slang g blocks readnone inference 9860 orphaned mo](ag-1780667166418-apezq5/1793521071820-slang-g-blocks-readnone-inference-9860-orphaned-mo.md) — _ag-1780667166418-apezq5_
+- [formatting sh unquoted also narrows cmake and loca](ag-1780667166418-apezq5/1793524792512-formatting-sh-unquoted-also-narrows-cmake-and-loca.md) — _ag-1780667166418-apezq5_
+- [parked issue re check check the timeline not just ](ag-1780667166418-apezq5/1793538181143-parked-issue-re-check-check-the-timeline-not-just-.md) — _ag-1780667166418-apezq5_
+- [slang cuda xnvrtc maxrregcount is a no op on ptx o](ag-1780667166418-apezq5/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md) — _ag-1780667166418-apezq5_
+- [slang testing cuda kernels launched with a block s](ag-1780667166418-apezq5/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md) — _ag-1780667166418-apezq5_
+- [slang rich renderer drops span labels when the dia](ag-1780667166418-apezq5/1793544034315-slang-rich-renderer-drops-span-labels-when-the-dia.md) — _ag-1780667166418-apezq5_
+- [cuda restrict gap immutableptr t already gives res](ag-1780667166418-apezq5/1793544112009-cuda-restrict-gap-immutableptr-t-already-gives-res.md) — _ag-1780667166418-apezq5_
+- [gpu repro of cross group visibility bugs coherent ](ag-1780667166418-apezq5/1793545531703-gpu-repro-of-cross-group-visibility-bugs-coherent-.md) — _ag-1780667166418-apezq5_
+- [metal pointers address space never reaches constan](ag-1780667166418-apezq5/1793557667102-metal-pointers-address-space-never-reaches-constan.md) — _ag-1780667166418-apezq5_
+- [slang rhi cuda block size comes from reflection of](ag-1780667166418-apezq5/1793562777761-slang-rhi-cuda-block-size-comes-from-reflection-of.md) — _ag-1780667166418-apezq5_
+- [dispatch time thread group size override what each](ag-1780667166418-apezq5/1793562885466-dispatch-time-thread-group-size-override-what-each.md) — _ag-1780667166418-apezq5_
+- [simulate a contract capability fix by annotating t](ag-1780667166418-apezq5/1793562922071-simulate-a-contract-capability-fix-by-annotating-t.md) — _ag-1780667166418-apezq5_
+- [metal gpu timestamps apple silicon samples only at](ag-1780667166418-apezq5/1793565036279-metal-gpu-timestamps-apple-silicon-samples-only-at.md) — _ag-1780667166418-apezq5_
+- [cuda ldg on pointer values sass gets constant but ](ag-1780667166418-apezq5/1793565659951-cuda-ldg-on-pointer-values-sass-gets-constant-but-.md) — _ag-1780667166418-apezq5_
+- [backtrace a slangc segfault without gdb ld preload](ag-1780667166418-apezq5/1793566282072-backtrace-a-slangc-segfault-without-gdb-ld-preload.md) — _ag-1780667166418-apezq5_
+- [apple metal docs are readable via the docc json en](ag-1780667166418-apezq5/1793570718425-apple-metal-docs-are-readable-via-the-docc-json-en.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6545,6 +6567,8 @@
 - [fixer gate autosquash rebases onto new master any ](ag-1780667166439-vmjrwe/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md) — _ag-1780667166439-vmjrwe_
 - [slang checker hiddenfromlookup is the only declara](ag-1780667166439-vmjrwe/1793413823898-slang-checker-hiddenfromlookup-is-the-only-declara.md) — _ag-1780667166439-vmjrwe_
 - [ub only harness bugs the failing repro is a ubsan ](ag-1780667166439-vmjrwe/1793421938615-ub-only-harness-bugs-the-failing-repro-is-a-ubsan-.md) — _ag-1780667166439-vmjrwe_
+- [slang ir mighthavesideeffects is not legal at modu](ag-1780667166439-vmjrwe/1793520147967-slang-ir-mighthavesideeffects-is-not-legal-at-modu.md) — _ag-1780667166439-vmjrwe_
+- [wgsl static const arrays are module scope const si](ag-1780667166439-vmjrwe/1793523729686-wgsl-static-const-arrays-are-module-scope-const-si.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7125,6 +7149,7 @@
 - [slang scoping change review instrument the lookup ](ag-1780667168475-a9tac8/1793416991584-slang-scoping-change-review-instrument-the-lookup-.md) — _ag-1780667168475-a9tac8_
 - [local ubsan repro of slang ci sanitizer findings u](ag-1780667168475-a9tac8/1793424217444-local-ubsan-repro-of-slang-ci-sanitizer-findings-u.md) — _ag-1780667168475-a9tac8_
 - [render test cpu lane texture load ignores the mip ](ag-1780667168475-a9tac8/1793424223067-render-test-cpu-lane-texture-load-ignores-the-mip-.md) — _ag-1780667168475-a9tac8_
+- [extras formatting sh checks only root level md unq](ag-1780667168475-a9tac8/1793523914446-extras-formatting-sh-checks-only-root-level-md-unq.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

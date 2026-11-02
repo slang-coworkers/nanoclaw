@@ -14,3 +14,5 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [combined-review-14115-r1.md](combined-review-14115-r1.md) — slang-reviewer R1 combined review (A+B+C) of PR #14115 at ea4cbbfe0, 2026-10-31
 - [triage-14120.md](triage-14120.md) — slang-triager memo for slang#14120 (follow-up #2 of #14099/#14118), 2026-10-31
 - [combined-review-14119-r1.md](combined-review-14119-r1.md) — slang-reviewer R1 combined review of PR #14119 at ee84ee78b, 2026-10-31
+- [triage-14133-sidefind-g-dead-globals.md](triage-14133-sidefind-g-dead-globals.md) — slang-triager memo 2026-11-01: `-g` dead global ctor-call initializers (side finding of #14133); dedup, producer, draft issue text (NOT FILED).
+- [triage-14135.md](triage-14135.md) — slang-triager memo for slang#14135 (CUDA launch bounds / maxnreg), 2026-11-01

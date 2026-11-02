@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14027 — standard module of portable parallel primitives (block/device scan, reduce, sort, compaction)
-description: Human-filed (albertrodriguezclo) feature/design proposal 2026-10-29 16:18Z, part of the reporter's cloth-sim batch #14026–#14031. Triaged feature/low/P3 by slang-triager; bot comment posted 16:52Z (unlike sibling #14029, held under R6). Parked on maintainer direction; re-check t-a4ca33 2026-11-05 15:30Z.
-tags: [standard-modules, memory-model, feature-request, parked, r6]
+description: Human-filed (albertrodriguezclo) feature/design proposal 2026-10-29 16:18Z, part of the reporter's cloth-sim batch #14026–#14031. Triaged feature/low/P3 by slang-triager; bot comment posted 16:52Z (unlike sibling #14029, held under R6). Stood down 11-01 (reporter goes package-first); R6 operator decision open.
+tags: [standard-modules, memory-model, feature-request, stood-down, r6]
 ---
 
 # slang#14027 — parallel-primitives standard module
@@ -43,6 +43,29 @@ A shared learning was filed on 10-29.
 That partly answers the placement question. Staging, the memory-model issues and the host helper are still open. I relayed it
 verbatim to the triager, with the no-post hold still on.
 
-**Next.** The triager's one-shot `t-a4ca33` (task session `sess-1793292797030-s34j0v`) runs 2026-11-05 15:30Z.
-If there is maintainer direction, the triager hands off. If the issue is silent, it stays parked with a one-line note.
-Owner: slang-triager, thread `gh-issue-shader-slang/slang-14027`. Memo: `/workspace/inbox/a2a-1793292830884-nykabg/triage-14027.md`.
+**11-01 14:38Z: the reporter is going package-first (6559409128).** albertrodriguezclo will build a standalone package outside
+the compiler repo. The v0 scope is scan, reduce, segmented reduce, compaction, radix sort and a block histogram. The API is
+buffer-based, so WGSL works. The design uses `__target_switch`, link-time constants and a reduce-then-scan fallback.
+Two questions go to the maintainers: (1) a naming and versioning convention; (2) API conventions for scratch memory and
+temp-size queries. The bot is asked nothing, so no bot work follows. I relayed it verbatim to the triager, with the hold still on.
+Operator Decisions 1 and 2 (R6) are still unanswered as of 11-01; I found nothing in the last 200 dashboard rows.
+
+**11-01 14:41Z: STOOD DOWN (triager).** Placement is settled (package-first), and the reporter owns the work. The triager says it
+cancelled `t-a4ca33`; I could not check that, since `ncl tasks` from Main can't see a peer's tasks. I lifted my no-post hold for one
+stand-down 5-bullet after the R6 window ends (11-02 16:18Z), skipped if the operator rules "delete" first.
+I sent the two unfiled triage gaps (`Atomic<T>` MemoryOrder dropped on HLSL/CUDA/GLSL; `globallycoherent` dropped on
+Metal/CUDA) to the triager under the 10-31 filing rule: dedupe against #3870 and #14010/#14011, then file only if it is a bug
+reproduced on master, without naming #14027 before the window ends.
+
+**11-01 15:05Z: gap follow-ups (triager; master 6815ed82d, L40S).** I checked each on GitHub.
+- `Atomic<T>` MemoryOrder → covered by **#10683** (skiminki-nv, assigned, already reproduced by the bot 04-10). The triager's runtime
+  evidence: a CUDA acquire spin hangs, and vk via GLSL loses the device. I chose **not** to post it on #10683, because the thread is
+  human-owned, the bot has already reproduced there, and skiminki answered jhelferty's question on 04-02. The evidence stays in the triager's memo.
+- `globallycoherent` Metal → covered by **#14010**.
+- `globallycoherent` CUDA → **filed #14140** (Type=Bug, `reproduced`, no @-mentions, no #14027). Filed only; no fixer without asking me.
+- WGSL `globallycoherent` silent drop → a feature gap, reported and not filed.
+- Stand-down post: the triager's one-shot **t-cc056c**, 11-02 16:30Z. It skips if 6502945982 is gone or a ruling is recorded.
+  Pass any operator ruling to the triager on the thread.
+
+**Open.** Operator R6 Decisions 1 and 2 (from 10-29, re-asked 11-01). Owner: slang-triager, thread `gh-issue-shader-slang/slang-14027`.
+Memo: `/workspace/inbox/a2a-1793292830884-nykabg/triage-14027.md`.
