@@ -2,8 +2,8 @@
 title: "Slang CUDA output: what reaches NVRTC vs an offline nvcc build — forwarded -D defines, front matter, prelude branches, FP contraction"
 type: concept
 group: slang-backends
-tags: [cuda, nvrtc, nvcc, ptx, prelude, downstream-compiler, defines, preprocessor-macros, front-matter, extension-tracker, pch, SLANG_CUDA_RTC, cccl, cooperative-groups, intptr_t, fp-contract, fma, fmad, precise, slang-14015, slang-14036, slang-14037]
-source_count: 6
+tags: [cuda, nvrtc, nvcc, ptx, prelude, downstream-compiler, defines, preprocessor-macros, front-matter, extension-tracker, pch, SLANG_CUDA_RTC, cccl, cooperative-groups, intptr_t, fp-contract, fma, fmad, precise, slang-14015, slang-14036, slang-14037, maxrregcount, launch_bounds, maxnreg, register-pressure]
+source_count: 7
 ---
 
 # Slang CUDA output: NVRTC vs an offline nvcc build
@@ -23,6 +23,7 @@ The CUDA source Slang emits has two consumers. Slang's own NVRTC call compiles i
 - **Guard sm_70-only prelude overloads with `!defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 700`**; the `defined(__CUDA_ARCH__) && ...` form hides them from nvcc's host pass.
 - **nvcc ignores every `FP_CONTRACT` pragma.** Only `__fadd_rn`/`__fmul_rn` (and the f64, f16 and half2 `_rn` families) keep a multiply and an add unfused in source. `-fp-mode precise` already passes `--fmad=false` to NVRTC, so only offline-nvcc users of `-target cuda` see contraction.
 - **On CUDA, Slang `fma()` and `mad()` both lower to `F32_fma` → `::fmaf`**, which stays fused even under `--fmad=false`.
+- **`-Xnvrtc --maxrregcount` reaches NVRTC but does nothing on Slang's PTX output**, because the option applies only when SASS is generated. A per-kernel register or occupancy limit has to be a source qualifier in the `.cu`: `__launch_bounds__(maxThreads, minBlocks)` or `__maxnreg__(N)` (CUDA 12.4+), never both on one kernel.
 
 ## Macro defines are forwarded to downstream compilers
 
@@ -46,12 +47,17 @@ The RTC branch fails in the opposite direction. At master 9b3ac252d with NVRTC 1
 
 Verified with CUDA 12.6 nvcc `-arch=sm_89 -ptx` while triaging #14036: `#pragma STDC FP_CONTRACT OFF`, `#pragma fp_contract(off)` and `#pragma clang fp contract(off)` are all silently ignored, and `a*b+c` still becomes `fma.rn.f32`. `__fadd_rn(__fmul_rn(a,b),c)` stays `mul.rn` + `add.rn` even under the default `--fmad=true`, and `fmaf()` stays `fma.rn` even under `--fmad=false`. So a Slang CUDA source fix for `-fp-mode precise` or the `precise` qualifier has to emit the `_rn` intrinsics, not a pragma; they exist for f32 (`__fadd_rn`/`__fsub_rn`/`__fmul_rn`), f64 (`__dadd_rn`...), f16 (`__hadd_rn`...) and half2 (`__hadd2_rn`...). Slang's own `-target ptx -fp-mode precise` path already passes `--fmad=false` to NVRTC (PR #12801, `slang-nvrtc-compiler.cpp:1250`), so only offline-nvcc users of `-target cuda` output are exposed. On CUDA, Slang's `fma()` and `mad()` both lower to `F32_fma` → `::fmaf` [nvcc ignores FP_CONTRACT pragmas; __fadd_rn/__fmul_rn are the only source-level anti-FMA lever](../learnings/1793294457044-nvcc-ignores-fp-contract-pragmas-fadd-rn-fmul-rn-a.md). The SPIR-V side of `precise` is on [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]].
 
-**Source learnings (6):**
+## Register limits: `-Xnvrtc --maxrregcount` is a no-op on PTX output
+
+Measured on 2026-11-01 for #14135 (L40S sm_89, CUDA/NVRTC 12.6.85, master 6815ed82d). `slangc -target ptx -Xnvrtc --maxrregcount=64` does reach `nvrtcCompileProgram`: a bogus `-Xnvrtc` option gets "unrecognized option" from NVRTC. It has no effect, though, because Slang asks NVRTC for PTX (`-arch=compute_XX`) and `--maxrregcount` applies only when SASS is generated. A 96-accumulator test kernel stays at 80 registers, and its PTX has no `.maxnreg`; direct NVRTC with `-arch=sm_89 --maxrregcount=64` (cubin) drops it to 64. So for Slang-driven PTX the only per-kernel control is a source qualifier in the emitted `.cu`, which Slang does not emit today. Hand-inserted `__launch_bounds__(128, 8)` or `__maxnreg__(64)` both give 64 registers and survive into the PTX as `.maxntid 128, 1, 1` + `.minnctapersm 8` or `.maxnreg 64`, which the driver JIT honours. nvcc accepts the qualifier before or after `__global__ void`. Putting `__launch_bounds__` and `__maxnreg__` on the same kernel is a hard nvcc/NVRTC error ("cannot be applied to the same kernel"), and `__maxnreg__` needs CUDA 12.4+. If `maxThreads × minBlocks` exceeds the SM thread limit, for example (256, 8) on sm_89 is 2048 > 1536, ptxas only warns ".minnctapersm will be ignored". A Slang attribute that carries these values cannot use named arguments: `[numthreads(x: 64)]` gives E20001. To re-measure, sed-insert the qualifier after `extern "C" __global__ void` in slangc's `.cu` and run `nvcc -c -arch=sm_89 -I<slang>/prelude -Xptxas -v` ([Slang CUDA: -Xnvrtc --maxrregcount is a no-op on PTX output; use __launch_bounds__/__maxnreg__ (mutually exclusive)](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md)). A `__launch_bounds__(N)` would also cap the block size a host may launch with; see [[wiki/concepts/slang-backends-compute-thread-group-size-and-dispatch-override.md]].
+
+**Source learnings (7):**
 - [Slang `-D` defines reach NVRTC, C++ hosts, FXC, Metal but not DXC/glslang; `-Doutput_0=)(` sentinel; `-D_WIN32` breaks NVRTC's builtin header; removal is breaking (#14015)](../learnings/1793278502436-slang-d-macros-reach-nvrtc-c-host-fxc-metal-but-no.md)
 - [`emitFrontMatterImpl` runs after `emitModule`, so it can emit `SLANG_CUDA_ENABLE_*` for offline nvcc (#14037)](../learnings/1793295336959-cuda-source-front-matter-can-read-the-extension-tr.md)
 - [front matter before the prelude include drops `-pch`; non-RTC prelude branches are compiled only by the nvcc CI fixture](../learnings/1793299799398-cuda-front-matter-defines-turn-off-nvrtc-pch-on-ta.md)
 - [RTC `intptr_t` typedefs clash with CCCL; `-target ptx` fails, nvcc passes falsely; blocks #14029](../learnings/1793291460496-slang-cuda-prelude-intptr-t-typedefs-break-any-ccc.md)
 - [nvcc ignores FP_CONTRACT pragmas; `_rn` intrinsics are the only source-level anti-FMA lever; NVRTC precise path already uses `--fmad=false` (#14036)](../learnings/1793294457044-nvcc-ignores-fp-contract-pragmas-fadd-rn-fmul-rn-a.md)
 - [`!defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 700` guard keeps sm_70 overloads visible to nvcc's host pass](../learnings/1793302322805-cuda-float-atomic-cas-loop-write-the-operand-s-own.md)
+- [`-Xnvrtc --maxrregcount` is a no-op on PTX output; use `__launch_bounds__` or `__maxnreg__`, never both (#14135)](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md) — the option needs SASS; qualifiers survive as `.maxntid`/`.minnctapersm`/`.maxnreg`; named attribute args give E20001
 
 _Catalog: [[wiki/index.md]]_

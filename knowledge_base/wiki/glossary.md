@@ -383,6 +383,7 @@ type: nav
 **Slang backends**
 - [C-like emitter names: name hints, linkage names, `_generateUniqueName`, and passes that emit source names verbatim](concepts/slang-backends-c-like-emitted-names-and-uniquing.md)
 - [Combined-sampler texture-only ops on HLSL, Metal and WGSL: the injected sampler operand, `$q`, and member-form intrinsics](concepts/slang-backends-hlsl-combined-sampler-texture-ops.md)
+- [Compute thread-group size: where the launch size comes from (reflection), what a dispatch-time override can do per backend, and what the shader sees](concepts/slang-backends-compute-thread-group-size-and-dispatch-override.md)
 - [CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude version-gating, noinline](concepts/slang-backends-f0909b0-cuda-optix.md)
 - [DescriptorHandle emit on bindless and non-bindless targets: spelling, bit_cast lowering, the E38204 skip, and WGSL resource tables](concepts/slang-backends-descriptor-handle-emit-and-bindless-targets.md)
 - [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)

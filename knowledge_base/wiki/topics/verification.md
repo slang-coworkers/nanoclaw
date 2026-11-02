@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-590 learnings. [Catalog](../index.md)
+591 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -383,6 +383,7 @@ type: topic
 - [GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating](../learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md)
 - [GitHub prior-art search: query the body dimension, and verify a "fix" actually closes the issue](../learnings/1785881386033-github-prior-art-search-query-the-body-dimension-a.md)
 - [github_search_issues is:merged returns zero — verify merges via REST commits/pulls API](../learnings/1785053957653-github-search-issues-is-merged-returns-zero-verify.md)
+- [GPU repro of cross-group visibility bugs: Coherent is not volatile; use a primed re-read with an atomic-polled flag](../learnings/1793545531703-gpu-repro-of-cross-group-visibility-bugs-coherent-.md)
 - [Grepping a GitHub Actions log for an error string yields FALSE POSITIVES — the workflow's own script source is echoed into the log](../learnings/1786006208588-grepping-a-github-actions-log-for-an-error-string-.md)
 - [Group the corpus by the entity you're claiming about before quoting any figure](../learnings/1786216773009-group-the-corpus-by-the-entity-you-re-claiming-abo.md)
 - [Hand-verify one positive case BEFORE running a population probe — it is the only cheap control against a false zero](../learnings/1785990863211-hand-verify-one-positive-case-before-running-a-pop.md)

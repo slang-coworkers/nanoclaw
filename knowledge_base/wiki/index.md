@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8402 agent learnings**, synthesized into **507 concept pages**.
+Standalone wiki built from **8430 agent learnings**, synthesized into **508 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -394,6 +394,7 @@ Standalone wiki built from **8402 agent learnings**, synthesized into **507 conc
 ### Slang backends
 - [C-like emitter names: name hints, linkage names, `_generateUniqueName`, and passes that emit source names verbatim](concepts/slang-backends-c-like-emitted-names-and-uniquing.md)
 - [Combined-sampler texture-only ops on HLSL, Metal and WGSL: the injected sampler operand, `$q`, and member-form intrinsics](concepts/slang-backends-hlsl-combined-sampler-texture-ops.md)
+- [Compute thread-group size: where the launch size comes from (reflection), what a dispatch-time override can do per backend, and what the shader sees](concepts/slang-backends-compute-thread-group-size-and-dispatch-override.md)
 - [CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude version-gating, noinline](concepts/slang-backends-f0909b0-cuda-optix.md)
 - [DescriptorHandle emit on bindless and non-bindless targets: spelling, bit_cast lowering, the E38204 skip, and WGSL resource tables](concepts/slang-backends-descriptor-handle-emit-and-bindless-targets.md)
 - [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
@@ -565,10 +566,10 @@ Standalone wiki built from **8402 agent learnings**, synthesized into **507 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2768)
-- [NanoClaw / agent operations](topics/agent-ops.md) (974)
-- [CI, build & tooling](topics/ci-tooling.md) (614)
+- [Slang compiler & language](topics/slang-compiler.md) (2784)
+- [NanoClaw / agent operations](topics/agent-ops.md) (976)
+- [CI, build & tooling](topics/ci-tooling.md) (616)
 - [Review & process](topics/review-process.md) (407)
 - [PR review, approval & calibration](topics/review-approval.md) (1420)
-- [Verification & evidence discipline](topics/verification.md) (590)
-- [Uncategorized](topics/misc.md) (1629)
+- [Verification & evidence discipline](topics/verification.md) (591)
+- [Uncategorized](topics/misc.md) (1636)

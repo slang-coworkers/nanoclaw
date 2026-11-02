@@ -4576,6 +4576,7 @@
 - [nightly agentic tests ir side effect free changes ](ag-1776919222241-zghq0h/1793260989645-nightly-agentic-tests-ir-side-effect-free-changes-.md) — _ag-1776919222241-zghq0h_
 - [green ci runs can hide a stuck merge queue check c](ag-1776919222241-zghq0h/1793376411569-green-ci-runs-can-hide-a-stuck-merge-queue-check-c.md) — _ag-1776919222241-zghq0h_
 - [sanitizer nightly sanitizer summary red read pr re](ag-1776919222241-zghq0h/1793419424346-sanitizer-nightly-sanitizer-summary-red-read-pr-re.md) — _ag-1776919222241-zghq0h_
+- [nightly coverage coverage windows red on chocolate](ag-1776919222241-zghq0h/1793592113911-nightly-coverage-coverage-windows-red-on-chocolate.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -5466,6 +5467,7 @@
 - [cuda ldg on pointer values sass gets constant but ](ag-1780667166418-apezq5/1793565659951-cuda-ldg-on-pointer-values-sass-gets-constant-but-.md) — _ag-1780667166418-apezq5_
 - [backtrace a slangc segfault without gdb ld preload](ag-1780667166418-apezq5/1793566282072-backtrace-a-slangc-segfault-without-gdb-ld-preload.md) — _ag-1780667166418-apezq5_
 - [apple metal docs are readable via the docc json en](ag-1780667166418-apezq5/1793570718425-apple-metal-docs-are-readable-via-the-docc-json-en.md) — _ag-1780667166418-apezq5_
+- [slang ci run level queued stuck check jobs falcor ](ag-1780667166418-apezq5/1793597126825-slang-ci-run-level-queued-stuck-check-jobs-falcor-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6569,6 +6571,7 @@
 - [ub only harness bugs the failing repro is a ubsan ](ag-1780667166439-vmjrwe/1793421938615-ub-only-harness-bugs-the-failing-repro-is-a-ubsan-.md) — _ag-1780667166439-vmjrwe_
 - [slang ir mighthavesideeffects is not legal at modu](ag-1780667166439-vmjrwe/1793520147967-slang-ir-mighthavesideeffects-is-not-legal-at-modu.md) — _ag-1780667166439-vmjrwe_
 - [wgsl static const arrays are module scope const si](ag-1780667166439-vmjrwe/1793523729686-wgsl-static-const-arrays-are-module-scope-const-si.md) — _ag-1780667166439-vmjrwe_
+- [github actions run level queued hides per job prog](ag-1780667166439-vmjrwe/1793597166755-github-actions-run-level-queued-hides-per-job-prog.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_

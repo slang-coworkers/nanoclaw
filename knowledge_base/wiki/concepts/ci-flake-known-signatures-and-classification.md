@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 30
+source_count: 31
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -58,6 +58,8 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **"Common Test Setup" pre-test failure** on Windows GPU runners (SLANG-WINDOWS-*): the job dies before any test runs and evicts PRs from the merge queue. Auto-rerun eligible for head checks; for merge-group evictions use Merge Queue Recovery. The bot cannot requeue fork PRs ("You're not authorized to push to this branch") ([Common Test Setup pre-test flake evicts PRs](../learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md)).
 
+**Nightly Coverage `coverage-windows` red on a Chocolatey 503** (Nightly Slang Coverage Test run 41375586658, 2026-11-02): only `coverage-windows / coverage` failed, about 8 s into the step that installs `opencppcoverage` 0.9.9 via `choco`, with HTTP 503 from `community.chocolatey.org/api/v2` and "choco install exited 1" before any Slang code was built; macOS and Linux coverage and merge-and-deploy passed. Read the first failing step with `gh run view <run> --job <id> --log-failed`: a package-feed 503 leaves nothing to bisect. Treat it as a flake unless it fails two nights in a row, since the install step has no retry ([Nightly Coverage coverage-windows red on Chocolatey 503 is infra](../learnings/1793592113911-nightly-coverage-coverage-windows-red-on-chocolate.md)).
+
 **JSON-RPC failure** (`waitForResult()`/`hasMessage()`): the test-server child died mid-test (stdio EOF) — a crash symptom, not an RPC-infra bug; since PR #11753 fixed the `runUnitTestModule()` stale-pass bug, crashing unit tests record failure instead of silently passing ([JSON-RPC failure = test-server child crash](../learnings/1782407732117-slang-ci-json-rpc-failure-on-a-unit-test-test-serv.md)). The surface conflates (a) a genuine harness flake (CPU concurrency on aarch64), (b) GPU device-loss/faulty ICD killing the worker, and (c) the PR's own consistently failing test; dedup by run id and exclude (b) and (c) from the harness-flake count ([dedup by run id; JSON-RPC and Falcor symptoms conflate root causes](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)).
 
 **Bot-CI priority-yield** (`ci_failed`, every build/test job `skipped`, only `wait-for-human-priority` + `check-ci` failing): the bot CI yielded to higher-priority human CI and `retry-yielded-bot-ci.yml` self-heals it. Do NOT rerun — it re-enters the same gate ([bot-CI 'ci_failed' is often a priority-yield](../learnings/1781571803229-slang-bot-ci-ci-failed-is-often-a-priority-yield-s.md)).
@@ -80,7 +82,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 is a SPIRV-Tools assert flake.** It fails only on `test-macos-debug-clang-aarch64 / test-slang` with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` — SPIRV-Tools code reached via debug-info SPIR-V emission — and slang-test's auto-retry doesn't always clear it. If it is the only failure and the PR doesn't touch debuginfo/SPIR-V emit, rerun `--failed` (≤3×); if it reproduces across reruns, report it as a pre-existing platform issue rather than blocking (PR #12504, run 34891043815) ([known flaky: debug-do-while-locals.slang on macOS-debug-aarch64](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (30):**
+**Source learnings (31):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [Benign DWARF ld-note can mask the real undefined-reference cause](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -106,6 +108,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [static-const-matrix-array .3 syn(llvm) RPC drop: harness retry is not a fix](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on one test](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
 - [Nightly agentic-tests failures are advisory doc-bundle drift](../learnings/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md)
+- [Nightly Coverage coverage-windows red on Chocolatey 503 is infra, not a Slang regression](../learnings/1793592113911-nightly-coverage-coverage-windows-red-on-chocolate.md) — opencppcoverage choco install, no retry; flake unless two nights running
 - [Known flaky: debug-do-while-locals.slang on macOS-debug-aarch64](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md) — SPIRV-Tools instruction.h:251
 - [Retraction: #13078 was base-skewed, not ahead](../learnings/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md) — verify with git merge-base, not prose
 - [slang-rhi OMM VUID-10904 is likely a VVL 1.4.341.1 false positive](../learnings/1789600998422-slang-rhi-omm-vuid-10904-ci-red-is-likely-a-vvl-1-.md) — converter proven compliant on hardware

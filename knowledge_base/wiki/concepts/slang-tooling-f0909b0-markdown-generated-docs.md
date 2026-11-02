@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -12,12 +12,9 @@ Two facts govern every Slang docs/markdown edit, and getting either backwards tu
 PR red or balloons a minimal diff into a rejected reformat.
 
 - **Prettier is NOT enforced on `docs/**` markdown in CI; it IS enforced on the six
-  top-level `*.md` files.** Until #12600 (2026-09-01) the markdown dispatch lacked
-  `run_all ||`, so CI's bare `--check-only` never ran prettier. Since then it does, but the
-  unquoted `git ls-files $@` expands `*.md` to the repo-root files only (`AGENTS`, `CLAUDE`,
-  `CODE_OF_CONDUCT`, `CONTRIBUTING`, `README`, `REVIEW`), which pass prettier@3.3.3. An edit
-  to one of those must stay prettier-clean; `docs/**` still carries hundreds of
-  nonconformant files with `check-formatting` green.
+  top-level `*.md` files.** Since #12600 CI's `--check-only` runs prettier, but the unquoted
+  `git ls-files $@` (bug #14134) expands `*.md` to the six repo-root files, which pass
+  prettier@3.3.3; `docs/**` carries hundreds of nonconformant files with `check-formatting` green.
 - **Therefore: never run `prettier --write` / `formatting.sh --md` on an existing `docs/*.md`.**
   It reflows hundreds of pre-existing lines (Setext→ATX headings, `*`→`-` bullets, table
   padding, blank-line-after-heading) that master never conformed to — a huge unrelated diff
@@ -83,6 +80,11 @@ paragraph above is history for the top-level files: a logging-stub `prettier` on
 `docs/**` stays unchecked only because the unquoted `git ls-files $@` lets the shell expand
 `*.md` against the repo root (427 of 594 tracked `.md` files still fail 3.3.3), so the
 delta-scoped advice below still holds for `docs/`.
+The bug is filed as #14134 (it also narrows nested json and CMake); quoting it
+(`"$@"`) would expose 315 failing files in `docs/generated` alone, and reformatting
+`docs/generated/design/*.md` changes the `source_doc_digest` that
+`docs/generated/tests/_meta/PIPELINE.md` tracks, marking the test bundles stale
+[formatting.sh unquoted $@ also narrows CMake and local C++; #14134](../learnings/1793524792512-formatting-sh-unquoted-also-narrows-cmake-and-loca.md).
 
 The practical consequence is the same across every docs-editing atom: **scope your format
 check to your delta, do not reflow the file.** Running whole-file prettier on
@@ -274,7 +276,7 @@ note from the same fix: `./extras/formatting.sh` with no arguments only prints h
 markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 [RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -295,3 +297,4 @@ markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 - [slang-test does not run docs/generated/tests when given the directory — pass the files](../learnings/1792762511063-slang-test-does-not-run-docs-generated-tests-when-.md) — a directory prefix runs zero tests; xargs the files; per-prefix `uniq -c` count before citing coverage.
 - [Nightly doc-test "No diagnostics found" can be an intentional diagnostic removal](../learnings/1792744585332-nightly-doc-test-no-diagnostics-found-can-be-an-in.md) — #13406 dropped in+inout and ref+ref alias warnings on purpose; read the PR's `tests/` diff first.
 - [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint (side note: language reference moved to shader-slang/spec)](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md) — `doc_ref` paths to `docs/language-reference/` are dead; read the spec via `gh api … application/vnd.github.raw`.
+- [formatting.sh unquoted $@ also narrows CMake and local C++; filed as #14134](../learnings/1793524792512-formatting-sh-unquoted-also-narrows-cmake-and-loca.md) — 315 generated md fail; reformat changes source_doc_digest
