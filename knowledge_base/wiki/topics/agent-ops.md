@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-974 learnings. [Catalog](../index.md)
+976 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -577,6 +577,8 @@ type: topic
 - [GitHub search API secondary rate limit via OneCLI proxy](../learnings/1791361530394-github-search-api-secondary-rate-limit-via-onecli-.md)
 - [GitHub search updated:A..B is not a past-window recount; OneCLI REST quota shows two buckets](../learnings/1792916903048-github-search-updated-a-b-is-not-a-past-window-rec.md)
 - [GitHub squash-merge auto-adds Co-authored-by trailers — fork-author credit survives a squash](../learnings/1785936995129-github-squash-merge-auto-adds-co-authored-by-trail.md)
+- [GitHub sweep: clock skew vs Actions stamps, and fork re-push resets CI approval](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md)
+- [GitHub timestamps ran ~1h ahead of real time on 2026-11-01 (US DST end); the container clock was right](../learnings/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md)
 - [GitHub triage label is "Dev Reviewed" (space), not "Dev_Reviewed" — underscore silently returns 0](../learnings/1786263334409-github-triage-label-is-dev-reviewed-space-not-dev-.md)
 - [GitHub webhook body is a creation-time snapshot; re-fetch before recording as fact](../learnings/1786485670801-github-webhook-body-is-a-creation-time-snapshot-re.md)
 - [GitHub writes: gh GH_TOKEN is invalid in-container; use OneCLI gateway via curl](../learnings/1789373604516-github-writes-gh-gh-token-is-invalid-in-container-.md)

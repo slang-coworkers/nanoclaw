@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1629 learnings. [Catalog](../index.md)
+1636 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -624,6 +624,8 @@ type: topic
 - [CUDA #12635 workaround: flat static const arrays compile to PTX on 2026.14.1](../learnings/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md)
 - [CUDA __constant__ group is classified immutable via ConstantBufferType type-case, not AddressSpace::Uniform](../learnings/1789474416332-cuda-constant-group-is-classified-immutable-via-co.md)
 - [CUDA __device__ matrix/vector globals: only a brace literal is static init — makeMatrix(...) of literals is dynamic](../learnings/1791305634716-cuda-device-matrix-vector-globals-only-a-brace-lit.md)
+- [CUDA __ldg on pointer values: SASS gets .CONSTANT but no speedup on L40S; matrix buffer loads miss __ldg (pass order)](../learnings/1793565659951-cuda-ldg-on-pointer-values-sass-gets-constant-but-.md)
+- [CUDA __restrict__ gap: ImmutablePtr<T> already gives restrict-equivalent SASS for read-only sources; vk_restrict_pointer is dead](../learnings/1793544112009-cuda-restrict-gap-immutableptr-t-already-gives-res.md)
 - [CUDA active-mask pass: rebuilt branches dropped [unroll]; prune ballots by region group; drill tests against the final state](../learnings/1793290583175-cuda-active-mask-pass-rebuilt-branches-dropped-unr.md)
 - [CUDA entry-point IRFuncType stays stale after varying legalization; cuh exports only __extern_cpp/[CudaKernel]](../learnings/1793295704302-cuda-entry-point-irfunctype-stays-stale-after-vary.md)
 - [CUDA float atomic CAS loop: write the operand's own bits, not fminf's result; guard 16-bit atomicCAS with !defined(__CUDA_ARCH__) || >= 700](../learnings/1793302322805-cuda-float-atomic-cas-loop-write-the-operand-s-own.md)
@@ -717,6 +719,7 @@ type: topic
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
 - [Discord support: do mandatory research before sending, not after](../learnings/1788755188581-discord-support-do-mandatory-research-before-sendi.md)
 - [Discord sweep scandiff.py undercounted feedback on new threads; summon-bot posts count as bot messages](../learnings/1793435103545-discord-sweep-scandiff-py-undercounted-feedback-on.md)
+- [Discord sweep: assert date edits and stop on failure before running the GitHub search batch](../learnings/1793521198823-discord-sweep-assert-date-edits-and-stop-on-failur.md)
 - [Discord sweep: DeepWiki may be hook-denied; use gh api for source facts](../learnings/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md)
 - [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)
 - [Discord sweep: watch linked GitHub trackers for movement on Discord-carried questions](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md)
@@ -805,6 +808,7 @@ type: topic
 - [Explore-typed subagents RETAIN Bash — "read-only agent" restricts file writes, not network writes (gh api --method POST still works)](../learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md)
 - [exported_symbols_list must not go through check_linker_flag helpers](../learnings/1787679115155-exported-symbols-list-must-not-go-through-check-li.md)
 - [extern static const link-time folding only works for bare-literal int/bool initializers (enum and non-literal get no map entry)](../learnings/1790993221985-extern-static-const-link-time-folding-only-works-f.md)
+- [extras/formatting.sh checks only root-level *.md (unquoted $@ globs the pathspec)](../learnings/1793523914446-extras-formatting-sh-checks-only-root-level-md-unq.md)
 - [Falcor full-duration external pipeline failure isolated by cross-PR corroboration check](../learnings/1786998078325-falcor-full-duration-external-pipeline-failure-iso.md)
 - [Falcor job can fail on EXPIRED test artifact when it runs ~24h late](../learnings/1786558246816-falcor-job-can-fail-on-expired-test-artifact-when-.md)
 - [FETCH_HEAD is mutable and a checkout of the wrong ref fails silently](../learnings/1786081698988-fetch-head-is-mutable-and-a-checkout-of-the-wrong-.md)
@@ -963,6 +967,7 @@ type: topic
 - [GitHub Actions pwsh run blocks hide failed git commands except the last one](../learnings/1791418811630-github-actions-pwsh-run-blocks-hide-failed-git-com.md)
 - [GitHub Actions refuses to rerun a single job while its parent workflow run is still "in progress"](../learnings/1789885681009-github-actions-refuses-to-rerun-a-single-job-while.md)
 - [GitHub Actions run listing caps at 1000 per query — slice by date to count a busy workflow](../learnings/1791404078372-github-actions-run-listing-caps-at-1000-per-query-.md)
+- [GitHub Actions run-level `queued` hides per-job progress](../learnings/1793597166755-github-actions-run-level-queued-hides-per-job-prog.md)
 - [GitHub Actions runs API: head_sha needs the FULL 40-char sha — a short sha silently returns total_count 0](../learnings/1786066503112-github-actions-runs-api-head-sha-needs-the-full-40.md)
 - [GitHub Actions workflow id is NOT stable across a rename — per-id run history truncates silently](../learnings/1785899745853-github-actions-workflow-id-is-not-stable-across-a-.md)
 - [GitHub Actions: event=schedule filter returns stale runs even on per-workflow endpoint](../learnings/1791015439528-github-actions-event-schedule-filter-returns-stale.md)
@@ -1213,6 +1218,7 @@ type: topic
 - [Outward-action guardrails must ride the initial dispatch, not a follow-up](../learnings/1788165792149-outward-action-guardrails-must-ride-the-initial-di.md)
 - [overrideDiagnostic numeric-id silent-ignore has a live severity-mismatch error branch](../learnings/1787315204452-overridediagnostic-numeric-id-silent-ignore-has-a-.md)
 - [Parked-issue re-check: a maintainer assigning a human counts as human ownership](../learnings/1793030545714-parked-issue-re-check-a-maintainer-assigning-a-hum.md)
+- [Parked-issue re-check: check the timeline, not just the comments](../learnings/1793538181143-parked-issue-re-check-check-the-timeline-not-just-.md)
 - [Parked-issue re-check: read the timeline, not just comments](../learnings/1792681430638-parked-issue-re-check-read-the-timeline-not-just-c.md)
 - [Parked-issue re-check: read the timeline, not only comments](../learnings/1793286184064-parked-issue-re-check-read-the-timeline-not-only-c.md)
 - [Parked-issue re-checks: read the timeline cross-references, not just the comments](../learnings/1793041485668-parked-issue-re-checks-read-the-timeline-cross-ref.md)
@@ -1429,6 +1435,7 @@ type: topic
 - [Silent vs loud errors — classify by what can catch them, and pin a scope term before testing a generalization](../learnings/1785961701699-silent-vs-loud-errors-classify-by-what-can-catch-t.md)
 - [Silent-cap detection: the differential test can prove a cap exists, never that one is absent](../learnings/1785803020077-silent-cap-detection-the-differential-test-can-pro.md)
 - [Silently-fixed issues: check whether the closing PR ever named the issue](../learnings/1785962249242-silently-fixed-issues-check-whether-the-closing-pr.md)
+- [Simulate a "contract" capability fix by annotating the interface requirement with all targets](../learnings/1793562922071-simulate-a-contract-capability-fix-by-annotating-t.md)
 - [Single-job rerun is impossible while the run is in_progress (403) — bank the intent, arm a monitor](../learnings/1785845763361-single-job-rerun-is-impossible-while-the-run-is-in.md)
 - [Singleton-designed class with no-op refcount LEAKS if heap-allocated (NULLFileSystem #12865)](../learnings/1788257348928-singleton-designed-class-with-no-op-refcount-leaks.md)
 - [Six instruments, one shape: a correct answer to a narrower question than you asked](../learnings/1785891882057-six-instruments-one-shape-a-correct-answer-to-a-na.md)

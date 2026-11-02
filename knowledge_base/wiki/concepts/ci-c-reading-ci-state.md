@@ -3,7 +3,7 @@ title: "Reading GitHub CI run/job state correctly"
 type: concept
 group: ci
 tags: [ci, github-actions, gh-cli, run-state, check-runs, rollup, zombie-runs, force-push]
-source_count: 16
+source_count: 18
 ---
 
 ## TL;DR
@@ -19,6 +19,7 @@ A green-looking CI signal is almost never the question you actually asked. The r
 - **A run-level `conclusion` hides job-level truth.** Descend to `/actions/runs/<id>/jobs`; a `cancelled` run can contain failures, and `cancelled` itself is three things separable only by timeout arithmetic.
 - **Zombie/parked runs poison aggregates.** A `waiting` run is parked on a human approval gate (consumes no runners); a days-old `queued` row whose `updated_at==created_at` is a stuck record, not workload.
 - **A `queued` run can be ~60 running jobs.** The Saturday 08:00Z `cmake-options.yml` matrix reads as one queued run while it starves `ubuntu-latest` for hours; count jobs per status, and read a fresh push's missing CI in that window as queued, not `no-ci`.
+- **A days-long run-level `queued` can be 44/45 jobs passed**, the last one (the Falcor build) gated on the `falcor-ci` approval and then a Windows runner. Count jobs before saying "stuck"; never cancel or re-run a run whose only pending job is gated.
 
 ---
 
@@ -60,7 +61,9 @@ Zombie `queued` runs poison queue metrics directly. `?status=queued&per_page=100
 
 A run-level `queued` can also hide a live load: count jobs, not runs. shader-slang/slang stalls around 08:00Z on Saturdays (seen 10-17 and 10-24), which is when `cmake-options.yml` (`cron: "0 8 * * 6"`, a ~478-job matrix on GitHub-hosted runners) starts. That run's own status stays `queued` while ~60 of its jobs run, so `actions/runs?status=in_progress` reads about 1 and shows no load. Count job statuses with `actions/runs/<id>/jobs?per_page=100&page=N` instead. Other workflows' `ubuntu-latest` jobs (filter, CI, REUSE) wait behind it for hours, so a fresh push in that window looks like `no-ci` but is only queued. That a concurrency limit causes the starvation is an inference, not a measurement. The same sweep hit the `--paginate` next-page 401 (`app_not_connected`, credential fine) described on [pagination and count limits](ci-github-pagination-and-count-limits.md), so loop over explicit `&page=N` ([repo-wide queued stall: count jobs, not runs](../learnings/1792836417682-repo-wide-queued-stall-count-jobs-not-runs-saturda.md))
 
-**Source learnings (16):**
+**A run-level `queued` that lasts for days can be 44 of 45 jobs already passed.** A run's top-level `status` stays `queued` while any one job still waits. On slang PR #14045 the `ci.yml` run read `queued` for 3 days and was wrongly reported as "never started"; in fact 44 of 45 jobs passed on 10-30. The last one, `build-windows-release-cl-x86_64-gpu-falcor / build`, is created only after `falcor-build-approval-gate` (`ci.yml:452`, `environment: falcor-ci`) gets its deployment approval, which usually comes right after the maintainer approves the PR, and then it queues for a Windows self-hosted runner. Before calling a run stuck, count its jobs: `gh run view <id> --json jobs --jq '[.jobs[] | .conclusion // .status] | group_by(.) | map("\(.[0]): \(length)")'`, or list `"\(.name) \(.status) \(.conclusion)"` per job. Never cancel or re-run a run whose only pending job is gated: that throws away the passed jobs and sends the run back behind the gate. A `workflow_dispatch` side run with `wait-for-human-priority`/`check-ci` failures does not block the merge, and a Windows runner problem is worth reporting only if the Falcor job sits queued with no runner for several hours ([run-level `queued` hides per-job progress](../learnings/1793597166755-github-actions-run-level-queued-hides-per-job-prog.md), [slang CI: run-level queued ≠ stuck; Falcor job waits on the falcor-ci gate](../learnings/1793597126825-slang-ci-run-level-queued-stuck-check-jobs-falcor-.md)). The other `falcor-ci` states (un-rerunnable sibling reds, 30-day expiry, yielded bot runs parked at the gate) are on [CI gate and rerun mechanics](agent-routing-f0909b0-ci-gate-and-rerun-mechanics.md).
+
+**Source learnings (18):**
 - [A PR rollup with zero FAILUREs is not green — count the NON-SKIPPED checks (a draft PR's build path is filtered out)](../learnings/1786065130962-a-pr-rollup-with-zero-failures-is-not-green-count-.md)
 - [GET /commits/<sha>/status reports success from one CLA check — never read CI state from it](../learnings/1786065560682-get-commits-sha-status-reports-success-from-one-cl.md)
 - [A CI probe must filter by event class, not by non-skipped-ness](../learnings/1786065641852-a-ci-probe-must-filter-by-event-class-not-by-non-s.md)
@@ -77,3 +80,5 @@ A run-level `queued` can also hide a live load: count jobs, not runs. shader-sla
 - [A bot workflow_dispatch CI run on a draft is docs-only-filtered by its LAST commit (HEAD^1), not the PR diff](../learnings/1792172198845-a-bot-workflow-dispatch-ci-run-on-a-draft-is-docs-.md) — trailing docs commit → all skipped, `check-ci` SUCCESS; #13716
 - [A bot-PR ci_failed on wait-for-human-priority + falcor-build-approval-gate + check-ci is not a code failure; check the head SHA and mergeability first](../learnings/1792767675954-a-bot-pr-ci-failed-on-wait-for-human-priority-falc.md) — `falcor-ci` env gate; late webhook for a superseded head; `git merge-tree` freshness (#13241); gersemi `--definitions` false positives
 - [Saturday cmake-options ~478-job matrix: run stays `queued`, in_progress reads ~1; count jobs; ubuntu-latest queues behind it](../learnings/1792836417682-repo-wide-queued-stall-count-jobs-not-runs-saturda.md)
+- [GitHub Actions run-level `queued` hides per-job progress](../learnings/1793597166755-github-actions-run-level-queued-hides-per-job-prog.md) — #14045: 3 days `queued`, 44/45 passed; group jobs by conclusion
+- [slang CI: run-level "queued" ≠ stuck — Falcor job waits on the falcor-ci environment gate](../learnings/1793597126825-slang-ci-run-level-queued-stuck-check-jobs-falcor-.md) — ci.yml:452 gate; never cancel/re-run; side-run failures don't block merge

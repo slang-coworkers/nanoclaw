@@ -3,7 +3,7 @@ title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-rep
 type: concept
 group: slangpy
 tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change, slang-rhi]
-source_count: 28
+source_count: 29
 ---
 
 ## TL;DR
@@ -19,7 +19,7 @@ Building slangpy from source, reasoning about its CI, and coordinating breaking 
 - **CI `unit-test-python` is UNSCOPED** (`[cpu]` tests run); locally `--device-types <x>` SKIPS tests with no `device_type` param.
 - **`sanitizers.yml` (LSan) has never been green on `main`** since #1107: a deterministic `sgl::ref` cycle leak in reflection/Python caches (#1130), no suppression path. Slang's own gate is clean.
 - **GPU tests abort under ASan (NVIDIA `RTLD_DEEPBIND`)**, so "0 project roots" there is vacuous; use the CPU backend.
-- **The nightly CUDA ray-tracing failures are asan-ubsan-build specific, not b650-host specific**; compare a non-sanitizer job on the same `runner_name`.
+- **The 6 nightly `sanitizers` CUDA ray-tracing failures are a workflow-config gap, not a host or new bug**: `sanitizers.yml` lacks the `SGL_MAX_CUDA_COMPUTE_CAPABILITY: 90` cap that `ci.yml`/`ci-latest-slang.yml` carry (#1214 → #1215); grep the workflows before filing.
 - **`check-ascii-source` fails on any non-ASCII char**; run full pre-commit.
 - **Review a slang-rhi bump inside the submodule**: ancestor check, `diff --stat include/` + touched backends, grep SGL per header change.
 - **Breaking slang changes need a companion slangpy PR, pin-bump-last** (production uses `SLANGPY_CHERRY_PICK_PR`).
@@ -75,7 +75,7 @@ From #1130 triage: (1) no LSan suppression path exists — `tools/asan-suppressi
 
 Local verification hits an ASan wall: GPU device tests on NVIDIA SIGABRT at device creation because the driver/Vulkan loader dlopens with `RTLD_DEEPBIND`, ASan's interceptor calls `Die()`, and `abort_on_error=1` aborts (LLVM through 22.x has no `handle_deepbind`). "0 project roots" there is VACUOUS. Use `spy.Device(type=cpu)`: the cache cycle and `m_args` are backend-independent, so it validates the fix mechanism (not GPU byte counts). Bookworm clang-14 ships no compiler-rt sanitizer runtime; PATH-prepend an LLVM release tarball ([GPU device tests abort under ASan (RTLD_DEEPBIND)](../learnings/1788168405905-slangpy-sgl-gpu-device-tests-abort-under-asan-on-n.md)).
 
-**The nightly CUDA ray-tracing failures come with the asan-ubsan build, not the host.** Six `[DeviceType.cuda]` tests (`test_raytrace_*`, `test_raytracing`, `test_opacity_micromap_trace`, `test_cluster_acceleration_structure_trace`) fail every night in `sanitizers`. A PR `build (linux, x86_64, gcc, Debug)` job on the same runner (`2u1g-b650-0053`), with the same prebuilt slang 2026.20 and OptiX headers, passed all six, as did the nightly `Slang branch: master` build on b650-0825, so the earlier "x570 passes, b650 fails" guess is wrong. The driver error points at PTX built under the clang sanitizer config: `Invalid PTX input ... Failed to translate PTX input to LLVM`, then `Argument[2] to function call _optix_trace_typed_32 is the incorrect type: expected ( float ), but got ( i32 )` and `Target architecture invalid`. To test a host-vs-config guess, find a non-sanitizer job with the same `runner_name` and grep its log for the test ids ([CUDA ray-tracing failures are asan-ubsan-build specific](../learnings/1793003214651-slangpy-sanitizers-cuda-ray-tracing-failures-are-a.md)).
+**The nightly CUDA ray-tracing failures come from `sanitizers.yml` missing the CUDA target cap, not from the host.** Six `[DeviceType.cuda]` tests (`test_raytrace_*`, `test_raytracing`, `test_opacity_micromap_trace`, `test_cluster_acceleration_structure_trace`) fail every night in both `sanitizers` asan-ubsan legs (Linux + Windows) with `createRayTracingPipeline ... SLANG_FAIL` / `finish ... SLANG_FAIL`. The log tail reads `Invalid PTX input ... Failed to translate PTX input to LLVM`, then `Argument[2] to function call _optix_trace_typed_32 is the incorrect type: expected ( float ), but got ( i32 )` and `Target architecture invalid`. That is exactly slangpy #1214 (closed 10-08): the same 6 tests in `ci-latest-slang.yml`, fixed by #1215 "Cap CUDA targets in latest-Slang CI", which set `SGL_MAX_CUDA_COMPUTE_CAPABILITY: 90`. As of 2026-11-01 that env var is at `ci.yml:76` and `ci-latest-slang.yml:28` but not in `sanitizers.yml`, so the likely fix [H, strong] is the same env there ([6 CUDA ray-tracing failures = missing SGL_MAX_CUDA_COMPUTE_CAPABILITY](../learnings/1793521353974-slangpy-sanitizers-6-cuda-ray-tracing-failures-mis.md)). This explains the earlier observation that the failures follow the sanitizer job, not the runner: a PR `build (linux, x86_64, gcc, Debug)` job on the same runner (`2u1g-b650-0053`), with the same prebuilt slang 2026.20 and OptiX headers, passed all six, as did the nightly `Slang branch: master` legs on b650, so the "x570 passes, b650 fails" guess is wrong ([CUDA ray-tracing failures are asan-ubsan-build specific](../learnings/1793003214651-slangpy-sanitizers-cuda-ray-tracing-failures-are-a.md)). Before calling the 6 tests an untracked bug, grep the slangpy workflows for `SGL_MAX_CUDA_COMPUTE_CAPABILITY`; to test any host-vs-config guess, find a non-sanitizer job with the same `runner_name` and grep its log for the test ids. The 2 LSan roots (#1130) are a separate problem.
 
 ## Cross-repo coordination: shipping a companion PR for a breaking slang change
 
@@ -96,7 +96,7 @@ Reviewing downstream `.slang` retypes (slangpy#1135): completeness is `git grep 
 
 On slangpy#1245 (d825f48→5a1d9da, 24 commits, 5 non-example files changed) this showed the bump needed no slangpy source change, which the fixer confirmed on the same range (#854; [d825f48→5a1d9da needed no slangpy changes](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md)). Coverage side effect: the CPU backend's limits now read 4294967295, so no backend exercises slangpy's zero-limit fallback end to end anymore; a review should say so rather than call it tested. Approver-side handling of the same class (the `no_protected_paths` abstain, reviewers blind to the gitlink) is on [SlangPy approver harness clauses](slangpy-f0909b0-approver-harness-clauses.md).
 
-**Source learnings (28):**
+**Source learnings (29):**
 
 - [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md) — _POSIX_C_SOURCE/_XOPEN_SOURCE redefined; PyPartMC#555
 - [Python 3.15 breaks -Werror C++ extensions; cross-fork REST PR needs maintainer_can_modify=false](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md) — both fix halves; cibuildwheel 4.x
@@ -126,3 +126,4 @@ On slangpy#1245 (d825f48→5a1d9da, 24 commits, 5 non-example files changed) thi
 - [slangpy worktrees: submodule init, slang-rhi fetch from GitHub](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md) — `git -C` hits the parent if init failed
 - [slangpy slang-rhi bump review: diff the submodule's public headers against SGL](../learnings/1793010441673-slangpy-slang-rhi-bump-review-diff-the-submodule-s.md) — ancestor check, diff --stat, DeviceLimits (#1245)
 - [slangpy sanitizers CUDA ray-tracing failures are asan-ubsan-build specific](../learnings/1793003214651-slangpy-sanitizers-cuda-ray-tracing-failures-are-a.md) — same runner passes in gcc Debug; PTX float vs i32
+- [slangpy sanitizers: 6 CUDA ray-tracing failures = missing SGL_MAX_CUDA_COMPUTE_CAPABILITY](../learnings/1793521353974-slangpy-sanitizers-6-cuda-ray-tracing-failures-mis.md) — same as #1214/#1215; env cap absent from sanitizers.yml

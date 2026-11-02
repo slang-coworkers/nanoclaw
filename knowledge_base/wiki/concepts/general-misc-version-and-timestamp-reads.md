@@ -3,17 +3,16 @@ title: "Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Re
 type: concept
 group: general-misc
 tags: [git, submodules, versions, provenance, timestamps, history-probe, github, release]
-source_count: 7
+source_count: 9
 ---
 
 # Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision
 
 ## TL;DR
 
-- Before telling a reporter "already fixed on main, please update," verify their stated release
-  **actually predates the fix commit**: map the release tag to its `gh release view <tag> --json publishedAt`
-  and compare against the fix's merge date. Telling someone to update when they already run a build
-  that includes the fix makes them dismiss a real, unrefuted bug.
+- Before telling a reporter "already fixed on main, please update," verify their release **actually
+  predates the fix commit** (`gh release view <tag> --json publishedAt` vs the fix's merge date), or
+  they dismiss a real, unrefuted bug.
 - A git submodule's **pinned commit date is NOT the dependency version.** Read the version header
   at the pinned SHA (`IMGUI_VERSION`, `VK_HEADER_VERSION`, etc.) to state the true version.
 - `gh api repos/OWNER/REPO/commits/<sha>` resolves **any object reachable in the fork network** —
@@ -22,10 +21,8 @@ source_count: 7
 - **Read the pin from the committed gitlink, not the working tree.** A read-only clone's submodule
   working tree can be checked out at a different commit than the superproject gitlink records; reading
   a version-pinned file from that stale tree fabricates the version number.
-- Detect a drifted submodule: `git submodule status` prefixes `+` when checked-out ≠ recorded;
-  compare `git ls-tree HEAD external/<sub>` (gitlink) vs `git -C external/<sub> rev-parse HEAD`
-  (working tree). Fix with `git submodule update --checkout external/<sub>` before reading any
-  version-pinned file.
+- Detect a drifted submodule: `git submodule status` prefixes `+`; compare `git ls-tree HEAD external/<sub>`
+  with `git -C external/<sub> rev-parse HEAD`; fix with `git submodule update --checkout external/<sub>`.
 - A standing "fetch / reset --hard origin/master" directive refreshes the **superproject only** — it
   does NOT re-sync submodule working trees. Add `git submodule update --recursive` after any reset for
   submodule-touching analysis.
@@ -41,14 +38,16 @@ source_count: 7
   a file has moved; bisect the **content** across tags with a byte-count control instead.
 - **Prove the harness CAN fail before recording a pass** — an isolation matrix where every row
   (baseline control included) fails carries zero information while reading like a dramatic finding.
-- `slangc -v` is **not** proof of what a binary contains: the version string is baked at **configure
-  time** by `cmake/GitVersion.cmake`, so it can print a real but *ancestor* commit. Verify freshness
-  from the object file's mtime against the HEAD commit date.
+- `slangc -v` is **not** proof of what a binary contains: `cmake/GitVersion.cmake` bakes it at **configure
+  time**, so it can print an *ancestor* commit. Compare the object file's mtime with the HEAD commit date.
 - Keep a claim's **kind** intact: "has existed since 2017" (established by presence at old tags) must
   not be upgraded into "was introduced deliberately for reason X."
 - The wiki copy of a learning is **not** byte-identical to its siblings (frontmatter + footer differ)
   — diff before mirroring; a blind `cp` across "mirrored copies" destroys metadata.
 - Measure a correction's blast radius rather than trusting the count stated in the request.
+- **GitHub's record stamps can run ahead of real time** (~1 h on 2026-11-01, US DST end) while
+  `date -u` and HTTP `Date` headers are right. Never compare wall-clock window edges against
+  `created_at`/`updatedAt`; measure the skew, find the stamp gap, treat gap events as maybe in-window.
 
 ## Release dates versus fix containment
 
@@ -127,7 +126,13 @@ this is answering an issue as of its filing date; see the reply-task section of
 [Eval runner trial isolation](agent-eval-runner-trial-isolation-and-answer-leaks.md)
 ([check what existed at filing via commits?path=&until=](../learnings/1792648587526-check-what-existed-at-issue-filing-date-via-gh-api.md)).
 
-**Source learnings (7):**
+## GitHub record stamps versus real time: measure the skew before cutting a window
+
+On 2026-11-01 (the day US DST ended) GitHub's record timestamps ran about 1 h ahead of real time. At a real 08:40Z, slang Actions runs were already stamped 09:35Z, nothing was stamped between 07:49Z and 09:06Z, and GraphQL PR/issue `updatedAt` read ~56 min ahead the same way. The container clock was right: `date -u`, the GitHub API's own HTTP `Date` header (seen through the OneCLI proxy), google.com's `Date` header and GraphQL `rateLimit.resetAt` all agreed to the second, and client-set git `committedDate` matched real time too (a bot commit at 08:14Z set off a run stamped 09:16Z) ([GitHub timestamps ran ~1h ahead of real time; the container clock was right](../learnings/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md), [clock skew vs Actions stamps](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md)).
+
+So a sweep window whose edges come from `date -u` and whose membership test reads GitHub record stamps shifts by the skew, and no local clock or `Date` header reveals it. Measure it: compare `curl -sI https://api.github.com/repos/<r> | grep -i ^date` with a second, independent server's `Date` header and with the newest Actions `created_at`; stamps in the future mean skew. Slang's `CI Health` workflow runs about every 15 min, so `GET /repos/shader-slang/slang/actions/runs?created=A..B` shows the jump as a stamp gap. Cut window edges in GitHub's stamp space (or correct by the measured skew), treat events in the gap as possibly in-window, and before calling a window complete re-query `org:shader-slang updated:>=<W1>` for records stamped after the window close.
+
+**Source learnings (9):**
 - [Verify reporter's release actually predates the fix before telling them to update](../learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md) — release publish date vs fix merge date before saying "just update"
 - [Reading a submodule pin: commit date ≠ version; check reachability with compare](../learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md) — commit date is not the version; use the version header + `compare` for reachability
 - [slang read-only clone: verify submodule is at gitlink before citing pinned versions](../learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-gitli.md) — a stale submodule working tree fabricates the pinned version
@@ -135,3 +140,5 @@ this is answering an issue as of its filing date; see the reply-task section of
 - [four history-probe traps from a provenance correction](../learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md) — read-proving controls, `log -L`/`-S` drift, harness-can-fail, `slangc -v` baked at configure time
 - [Slang release-tag date ≠ PR merge date: verify regressor membership with git merge-base](../learnings/1789717269524-slang-release-tag-date-pr-merge-date-verify-regres.md) — a PR merged after a tag is not in that release even if the number looks in-range; use `git merge-base --is-ancestor <commit> <tag>`, not version-number chronology
 - [Check what existed at issue-filing date via gh api commits?path=&until= (shallow clone)](../learnings/1792648587526-check-what-existed-at-issue-filing-date-via-gh-api.md) — `--jq length` 1/0 = existed/added later; `commits?until=` for the SHA at a date; `contents?ref=` to read
+- [GitHub timestamps ran ~1h ahead of real time on 2026-11-01 (US DST end)](../learnings/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md) — container clock and Date headers right; find the stamp gap
+- [GitHub sweep: clock skew vs Actions stamps, and fork re-push resets CI approval](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md) — CI Health 15-min cadence shows the gap; fork half on [status-surface traps](ci-github-status-surface-traps.md)

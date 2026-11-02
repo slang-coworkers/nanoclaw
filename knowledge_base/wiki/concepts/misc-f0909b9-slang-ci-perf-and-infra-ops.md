@@ -6,9 +6,11 @@ tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, c
 source_count: 30
 ---
 
-## TL;DR
+# Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 
-Operational facts for the Slang CI-health / maintainer / heartbeat roles:
+Operational facts for the Slang CI-health / maintainer / heartbeat roles: reading failures at the source, test-falcor rerun traps, heartbeat data quality, weekly load, and the compile-perf/BenchView landscape.
+
+## TL;DR
 
 - **Read the failing log line before asserting causation.** A verified correlated fact
   (an artifact TTL exists) is not a verified cause; the job-log line preceding
@@ -48,330 +50,100 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
 
 ## Causation must be read at the failure site
 
-A `test-falcor` cluster was diagnosed 403, then "corrected" to a ~24h artifact TTL; the
-orchestrator verified the TTL *exists* and escalated "it's the TTL, disregard the 403".
-The failing job log, read two days later, said `run-external-ci: trigger failed: HTTP
-Error 403: Forbidden` — a ~15s auth rejection *before any artifact is fetched*. The TTL
-was real and causally irrelevant. Read the failing log line (`gh run view <run-id>
---log-failed --job <job-id>`) before relaying a root cause with confidence words, and
-treat a coworker's root-cause label as a hypothesis, doubly so after it flip-flopped
-([verify causation at the failure site](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md)).
+A `test-falcor` cluster was diagnosed 403, "corrected" to a ~24h artifact TTL, and escalated as "it's the TTL" once the TTL was verified to *exist*. The failing job log said `run-external-ci: trigger failed: HTTP Error 403: Forbidden`, a ~15s auth rejection *before any artifact is fetched*: the TTL was real and causally irrelevant. Read the failing line (`gh run view <run-id> --log-failed --job <job-id>`) before relaying a root cause with confidence words, and treat a coworker's root-cause label as a hypothesis, doubly so after it flip-flopped ([verify causation at the failure site](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md)).
 
-Reading the failure site means reading the *output*, not the step's source. GitHub
-prints each step's script in its `##[group]Run …` block, so grepping job logs for "not
-found in GCS" matches the setup-llvm-from-gcs step's `echo "⚠️  LLVM prebuilt not found
-in GCS"` on a cache HIT as well as a miss (likewise "Downloaded LLVM prebuilt"). To
-confirm a real miss, drop lines containing `echo `, look for `🔨 Building LLVM from
-source`, and read `Checking for LLVM prebuilt: <url>` for the key probed. Fetch with
-`--allow-escape-sequences`, strip ANSI (`sed 's/\x1b\[[0-9;]*m//g'`). This grep
-nearly mis-verified a Windows LNK2019 link failure on #13526 as a cold-cache miss
-([the LLVM-not-found grep matches the script echo](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md)).
+Read the *output*, not the step's source. GitHub prints each step's script in its `##[group]Run …` block, so grepping for "not found in GCS" matches setup-llvm-from-gcs's `echo "⚠️  LLVM prebuilt not found in GCS"` on a cache HIT too (likewise "Downloaded LLVM prebuilt"). To confirm a real miss, drop lines containing `echo `, look for `🔨 Building LLVM from source`, and read `Checking for LLVM prebuilt: <url>` for the probed key. Fetch with `--allow-escape-sequences`, strip ANSI (`sed 's/\x1b\[[0-9;]*m//g'`). This grep nearly mis-verified a Windows LNK2019 failure on #13526 as a cold-cache miss ([LLVM-not-found grep matches the echo](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md)).
 
 ## test-falcor: two distinct failure modes, and the stale-rerun trap
 
-`gh run rerun <id> --failed` reruns only the failed job, not the build jobs that made
-its artifact, and the Windows-falcor build artifact has `retention-days: 1`. So a
-`--failed` rerun of a run more than ~1 day old fails at artifact resolution whatever the
-original error. A sweep reran 7 PRs re-classified as intermittent although their
-run_ids carried a durable `legitimate` verdict; all re-failed in seconds with "artifact
-unavailable (expired)." Check the run's `created_at` (>24h ⇒ do
-not `--failed`-rerun), and grep `rerun-log.jsonl` for the exact run_id before any rerun,
-whatever a fresh classify-only read says
-([test-falcor reruns fail once the parent run is stale](../learnings/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md)).
+`gh run rerun <id> --failed` reruns only the failed job, not the build jobs that made its artifact, and the Windows-falcor build artifact has `retention-days: 1`. So a `--failed` rerun of a run older than ~1 day fails at artifact resolution whatever the original error. A sweep reran 7 PRs whose run_ids carried a durable `legitimate` verdict; all re-failed in seconds with "artifact unavailable (expired)." Check `created_at` (>24h ⇒ no `--failed` rerun) and grep `rerun-log.jsonl` for the run_id before any rerun, whatever a fresh classify-only read says ([reruns fail once the parent run is stale](../learnings/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md)).
 
-The "same underlying condition" narrative that followed over-reached: the 403 and the
-artifact expiry are two failure modes on two code paths. Attempt 1 (artifact fresh) got
-a status back from external CI, then a 403 on a later call — a genuine bridge auth
-rejection. Attempt 2 (rerun of a stale run) died at artifact resolution *before*
-triggering, so it says nothing about whether the 403 is live. Before writing a unifying
-"structurally cannot" claim, read a second member of the class — here the original
-failure's raw log, not only the rerun's
-([CORRECTION: 403 and artifact-expiry are distinct](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md)).
-Even with the bridge confirmed healthy (a fresh unrelated run reached it, no 403), 6
-`--failed` reruns of day-old runs failed with "artifact unavailable": verifying one
-precondition says nothing about the other, and a test-job rerun cannot regenerate a stale
-artifact ([bridge-403 confirmation must also check artifact age](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md)).
-A `--job` rerun of `test-falcor` fails the same way, in ~19 s at `Run external CI`, with no
-GitLab pipeline started. What does regenerate the artifact is a fresh push, a full rerun, or a
-rerun of the producing `build-windows-release-cl-x86_64-gpu-falcor / build` job, which re-uploads
-it and cascades into `test-falcor`; check `artifacts?name=slang-tests-windows-x86_64-cl-release-falcor`
-(`total_count` 0 = gone) first. A rerun that reaches the bridge does submit a new Falcor pipeline
-(#13886) ([test-falcor --job rerun fails in 19s once the artifact is gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md)).
+The 403 and the artifact expiry are two failure modes on two code paths. A fresh run got a status back from external CI, then a 403: a genuine bridge auth rejection. A rerun of a stale run died at artifact resolution *before* triggering, so it says nothing about the 403. Before a unifying "structurally cannot" claim, read a second class member — here the original failure's raw log ([CORRECTION: 403 and expiry are distinct](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md)). With the bridge confirmed healthy, 6 `--failed` reruns of day-old runs still failed "artifact unavailable": the two preconditions are independent, and a test-job rerun cannot regenerate a stale artifact ([bridge-403 check must include artifact age](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md)). A `--job` rerun of `test-falcor` fails the same way in ~19 s at `Run external CI`, with no GitLab pipeline. A fresh push, a full rerun, or a rerun of the producing `build-windows-release-cl-x86_64-gpu-falcor / build` job regenerates it and cascades into `test-falcor`; check `artifacts?name=slang-tests-windows-x86_64-cl-release-falcor` (`total_count` 0 = gone) first. A rerun that reaches the bridge does submit a new Falcor pipeline (#13886) ([--job rerun fails in 19s](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md)).
 
 ## Flake vs. real: master merge breaks and the master branch name
 
-When `test-slang` fails **deterministically on every platform (incl. CPU-only/aarch64,
-no GPU) right after a rebase** on tests unrelated to the diff, suspect a master-level
-semantic merge conflict. Case: #12830 added warning E40021 while #12828 (last to touch
-the affected autodiff tests) merged ~2 min earlier without it; neither PR's CI saw the
-other, so master shipped tests that trigger an un-annotated warning and every rebasing
-PR inherited the red. Find the failure on a CPU/aarch64 job, attribute the diagnostic with
-`git log origin/master -S "<text>"` and `git log -- <testfile>`, prove master is broken
-independent of the PR, fix master, and tell the innocent author to rebase. Contrast: a `test-falcor` 403/download/VCS-root failure
-in ~18s, before any shader compiled, is infra
-([post-rebase cross-platform failure is a master merge break](../learnings/1788457867847-post-rebase-cross-platform-test-slang-failure-on-a.md)).
+When `test-slang` fails **deterministically on every platform (incl. CPU-only/aarch64) right after a rebase** on tests unrelated to the diff, suspect a master semantic merge conflict. Case: #12830 added warning E40021 while #12828 (last to touch the affected autodiff tests) merged ~2 min earlier without it; neither CI saw the other, so every rebasing PR inherited the red. Find the failure on a CPU/aarch64 job, attribute the diagnostic with `git log origin/master -S "<text>"` and `git log -- <testfile>`, prove master is broken independent of the PR, fix master, and tell the innocent author to rebase. Contrast: a `test-falcor` 403/download/VCS-root failure in ~18s, before any shader compiled, is infra ([post-rebase failure is a master merge break](../learnings/1788457867847-post-rebase-cross-platform-test-slang-failure-on-a.md)).
 
-`shader-slang/slang`'s default branch is `master`: a `--branch main` / `sha=main` query
-silently 404s and reads as "no base-branch CI run found," wrongly making a BEHIND PR
-look like a live regression. `gh pr view --json mergeStateStatus` — `BEHIND` plus a
-failing test that a recent master commit touched — separates "needs rebase" from
-"regression on master" with no live master run
-([default branch is master, not main](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md)).
+The default branch is `master`: a `--branch main` / `sha=main` query silently 404s and reads as "no base-branch CI run found," making a BEHIND PR look like a live regression. `gh pr view --json mergeStateStatus` (`BEHIND` plus a failing test a recent master commit touched) separates "needs rebase" from "regression on master" ([default branch is master](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md)).
 
-A recurring nightly red is not always new. The "Nightly Slang Test" `agentic-tests` job
-failed two nights with the same 6 test names, fully explained by open PR #12881 (adds
-them to expected-failures); it stays red until that merges, so check
-`expected-failures.txt` / #12881 before re-flagging. Diffing `FAILED test:` lines across
-nights' job logs (`.../jobs/{job_id}/logs`) gives a stable fingerprint
-([agentic-tests 2-night failure is a tracked cluster](../learnings/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md)).
+A recurring nightly red is not always new: the "Nightly Slang Test" `agentic-tests` job failed two nights with the same 6 tests, explained by open PR #12881 (adds them to expected-failures); check `expected-failures.txt` / #12881 before re-flagging. Diffing `FAILED test:` lines across nights' job logs (`.../jobs/{job_id}/logs`) gives a stable fingerprint ([agentic-tests is a tracked cluster](../learnings/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md)).
 
 ## Heartbeat monitoring reliability
 
-The heartbeat precheck's `workflow_failures.slang` field returns stale data (days-old
-runs, a wrong `total_count`) while `slangpy`/`slang-rhi` in the same payload match the
-live API, so it is not a systemic proxy or rate-limit outage. After a **3rd occurrence**
-isolated to slang's fetch, it is a standing characteristic: spot-check slang's field
-against a live API call every wake. A single anomalous read that self-corrects on an
-immediate retry is different: retry once
-([precheck stale for slang only](../learnings/1788404324277-heartbeat-precheck-workflow-failures-fetch-returne.md),
-[staleness confirmed recurring](../learnings/1788410539745-heartbeat-precheck-s-slang-workflow-failures-stale.md)).
+The precheck's `workflow_failures.slang` field returns stale data (days-old runs, a wrong `total_count`) while `slangpy`/`slang-rhi` in the same payload match the live API, so it is not a proxy or rate-limit outage. After a **3rd occurrence** it is a standing characteristic: spot-check slang's field against a live API call every wake. A single anomalous read that self-corrects on immediate retry is different: retry once ([precheck stale for slang only](../learnings/1788404324277-heartbeat-precheck-workflow-failures-fetch-returne.md), [staleness confirmed recurring](../learnings/1788410539745-heartbeat-precheck-s-slang-workflow-failures-stale.md)).
 
-When a report carries "since <anchor>, now ~Nh" across many wakes, recompute N from the
-anchor timestamp, not "last figure + elapsed". A base error (a ~24h off-by-one-day slip)
-survives indefinitely because every delta looks locally consistent; one carried figure
-read "~59h" when anchor-to-now was ~31h
-([verify the base, not just the deltas](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md)).
+When a report carries "since <anchor>, now ~Nh" across wakes, recompute N from the anchor, not "last figure + elapsed": a base error (a ~24h slip) survives indefinitely because every delta looks consistent; one figure read "~59h" when anchor-to-now was ~31h ([verify the base, not just the deltas](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md)).
 
 ### Scheduled workflows run on forks, and ci-health fails there every 15 minutes
 
-At master 9a4817c881 (2026-10-27), 16 of the 17 scheduled workflows in shader-slang/slang have
-no `if: github.repository == 'shader-slang/slang'` guard; only `sccache-populate.yml` has one.
-`ci-health.yml` runs on `*/15 * * * *` and needs the project's GCP Workload Identity, so on a
-fork with Actions enabled it fails every 15 minutes. GitHub disables workflows on new forks by
-default, but until jkwak-work's direct commit 9a4817c881 `CONTRIBUTING.md` (line 54, there since
-at least #5622, 2024-11) told contributors to enable them. If a contributor complains about
-failing fork workflows, the answer is Settings > Actions > General > Disable actions on the fork,
-because PR CI runs upstream; those reds are not upstream CI health
-([scheduled workflows lack fork guards](../learnings/1793089763873-slang-scheduled-ci-workflows-lack-fork-guards-ci-h.md)).
+At master 9a4817c881 (2026-10-27), 16 of 17 scheduled workflows lack an `if: github.repository == 'shader-slang/slang'` guard; only `sccache-populate.yml` has one. `ci-health.yml` runs `*/15 * * * *` and needs the project's GCP Workload Identity, so a fork with Actions enabled fails every 15 minutes. GitHub disables workflows on new forks, but until jkwak-work's commit 9a4817c881 `CONTRIBUTING.md` (line 54, since at least #5622) told contributors to enable them. Answer a complaint with Settings > Actions > General > Disable actions on the fork; PR CI runs upstream and those reds are not upstream CI health ([scheduled workflows lack fork guards](../learnings/1793089763873-slang-scheduled-ci-workflows-lack-fork-guards-ci-h.md)).
 
 ### The Saturday CMake Options burst is expected load, and it blinds CI Health
 
-Before flagging a `jobs_queued`/`hosted_runner_usage` Critical (e.g. `jobs_queued=93`
-past a >50 threshold with the hosted cap at 60/60), attribute the backlog to its
-dominant workflow and read its trigger config. "CMake Options" runs `schedule: cron "0 8
-* * 6"` (Saturday 08:00 UTC) + `workflow_dispatch` only; its OS-matrix fan-out
-(Windows/macOS/Linux/ARM64) taking up to half the org's hosted budget is a known,
-accepted cost, which is why its `merge_group` trigger was removed. The GCP self-hosted
-pools idling meanwhile is expected too. On a Saturday with CMake Options
-dominating, downgrade to informational/🟢
-([Saturday CMake Options saturation is expected](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md)).
-The dispatch need not be human or on a Saturday: on 2026-10-22 two nv-slang-bot
-dispatches on #13850's branch pushed `jobs_queued` to 458 and `runs_queued` to 43, so
-read `queue_by_group` / `hosted_runner_usage.queued.by_workflow` before calling a spike
-a capacity outage ([bot CMake Options dispatches fill the hosted cap](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md)).
+Before flagging a `jobs_queued`/`hosted_runner_usage` Critical (e.g. `jobs_queued=93` past >50 with hosted cap 60/60), attribute the backlog to its dominant workflow and read its triggers. "CMake Options" runs `schedule: cron "0 8 * * 6"` (Saturday 08:00 UTC) + `workflow_dispatch` only; its OS-matrix fan-out taking up to half the org's hosted budget is accepted (why its `merge_group` trigger was removed), and idle GCP self-hosted pools meanwhile are expected. On a Saturday with CMake Options dominating, downgrade to informational/🟢 ([Saturday saturation is expected](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md)). The dispatch need not be human or Saturday: on 2026-10-22 two nv-slang-bot dispatches on #13850's branch pushed `jobs_queued` to 458 and `runs_queued` to 43, so read `queue_by_group` / `hosted_runner_usage.queued.by_workflow` before calling a spike a capacity outage ([bot dispatches fill the hosted cap](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md)).
 
-The burst (about 479 GitHub-hosted jobs) also blinds the health feed: the CI Health
-`update-health` job is itself `ubuntu-latest` and cannot start, so
-`health_snapshots.jsonl` has a 106–152 min gap every Saturday from about 07:50Z (5
-Saturdays running through 10-17), and the first snapshot after it (jobs queued ~90–113)
-is a lower bound on the peak, not a runner outage
-([CMake Options burst blinds CI Health; MQ skips test-falcor](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)).
-On 2026-10-24 the run took 4 h 08 min (08:00→12:08Z), not the ~2 h first estimated,
-holding all 60 hosted slots until ~11:15Z: a ~2.5 h snapshot gap (07:52→10:23Z),
-cancelled queued CI Health and `Populate sccache` runs, a "critical" first snapshot (jq
-96 / rq 31), and other `CI` runs' hosted `filter` jobs waiting ~70 min. Read its verdict
-after ~12:30Z Saturday or in the Sunday report. Riders: a rate-limit sleep floor must
-skip the `search` resource (30/min), and a "rerun" regex matches "not rerunning bot CI."
-([CMake Options run lasts ~4 h](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md)).
+The burst (~479 hosted jobs) blinds the health feed: CI Health's `update-health` job is itself `ubuntu-latest` and cannot start, so `health_snapshots.jsonl` has a 106–152 min gap every Saturday from ~07:50Z, and the first snapshot after it (jobs queued ~90–113) is a lower bound on the peak, not a runner outage ([burst blinds CI Health](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)). On 2026-10-24 the run took 4 h 08 min (08:00→12:08Z), holding all 60 hosted slots until ~11:15Z: a ~2.5 h snapshot gap, cancelled queued CI Health and `Populate sccache` runs, a "critical" first snapshot (jq 96 / rq 31), and other `CI` runs' hosted `filter` jobs waiting ~70 min. Read its verdict after ~12:30Z Saturday or in the Sunday report. Riders: a rate-limit sleep floor must skip the `search` resource (30/min), and a "rerun" regex matches "not rerunning bot CI." ([run lasts ~4 h](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md)).
 
-Three more riders from the 10-17 sweep
-([same atom](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)):
-in `ci.yml` merge_group runs `test-falcor` is **skipped** (`falcor-build-approval-gate`
-is skipped for merge_group and `test-falcor` has no `always()`; only `test-falcor-perf`
-runs), so "MQ Falcor passed" needs the job's conclusion. The Actions API listing window
-moves (on 10-18 `created=2026-10-12` returned 0 runs, 940 the day before), so streak
-counts from `workflows/<id>/runs` can shrink day over day; carry streaks from earlier
-sweeps. And through the OneCLI proxy `/rate_limit` reports unauthenticated limits (60/h,
-GraphQL 0) while real calls are credentialed (6000/h); read `X-Ratelimit-*` headers on a
-real call.
+More riders ([same atom](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)): in `ci.yml` merge_group runs `test-falcor` is **skipped** (`falcor-build-approval-gate` skips for merge_group and `test-falcor` has no `always()`; only `test-falcor-perf` runs), so "MQ Falcor passed" needs the job's conclusion. The Actions API listing window moves (on 10-18 `created=2026-10-12` returned 0 runs, 940 the day before), so streak counts from `workflows/<id>/runs` can shrink; carry streaks from earlier sweeps. Through the OneCLI proxy `/rate_limit` reports unauthenticated limits (60/h, GraphQL 0) while real calls are credentialed (6000/h); read `X-Ratelimit-*` headers on a real call.
 
 ## Maintainer readying a bot draft PR
 
-A maintainer may flip a bot-authored draft PR to ready-for-review (a `ready_for_review`
-timeline event); do NOT revert it — "drafts only / never `gh pr ready`" constrains *our*
-actions. Check the timeline actor before assuming we readied it. With "dismiss stale
-reviews on push" on (slang has it), a force-push of review fixes dismisses the approval
-(`reviewDecision: REVIEW_REQUIRED`) — expected; say so when the delta is
-doc/comment/test-only. Once ready, `ci.yml` auto-runs on synchronize, so do NOT `gh
-workflow run ci.yml` again (manual dispatch is for drafts)
-([maintainer readying a bot draft PR](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md)).
+A maintainer may flip a bot-authored draft to ready-for-review (a `ready_for_review` timeline event); do NOT revert it: "drafts only / never `gh pr ready`" constrains *our* actions. Check the timeline actor first. With "dismiss stale reviews on push" on (slang has it), a force-push of review fixes dismisses the approval (`reviewDecision: REVIEW_REQUIRED`), which is expected; say so when the delta is doc/comment/test-only. Once ready, `ci.yml` auto-runs on synchronize, so do NOT `gh workflow run ci.yml` again ([maintainer readying a bot draft PR](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md)).
 
 ## Perf and benchview infrastructure
 
-The perf-CI landscape (epic #12941): **compile-TIME perf alerting is mature and the
-ready fork template** — `nightly-mdl-perf-test.yml` has a separate `analyze` job running
-`tools/compile-perf/trend.py` (two-tier `--rel 1.10` = 10% gate) that posts to Slack,
-with results in the external repo `shader-slang/slang-compile-perf` (gh-pages
-dashboard). **RUNTIME perf alerting is greenfield**: the runtime path is pass/fail only,
-metrics land in benchview (NVIDIA-internal) via a GitLab Falcor2 bridge, and placement
-needs a maintainer LOCUS decision. Egress gotcha: the NVIDIA perf-pool runner's proxy
-DENIES CONNECT to hooks.slack.com, which is *why* `analyze` runs on a GitHub-hosted
-runner ([compile-perf is the fork template](../learnings/1788881870741-slang-perf-alerting-compile-perf-is-the-fork-templ.md)).
+Perf-CI landscape (epic #12941): **compile-TIME alerting is mature and the fork template**: `nightly-mdl-perf-test.yml` has a separate `analyze` job running `tools/compile-perf/trend.py` (`--rel 1.10` = 10% gate) that posts to Slack, with results in external repo `shader-slang/slang-compile-perf` (gh-pages dashboard). **RUNTIME alerting is greenfield**: the runtime path is pass/fail only, metrics reach benchview (NVIDIA-internal) via a GitLab Falcor2 bridge, and placement needs a maintainer LOCUS decision. The NVIDIA perf-pool runner's proxy DENIES CONNECT to hooks.slack.com, which is *why* `analyze` runs on a GitHub-hosted runner ([compile-perf is the fork template](../learnings/1788881870741-slang-perf-alerting-compile-perf-is-the-fork-templ.md)).
 
-Grounding facts (several correct circulated mislabels):
+Grounding facts (correcting circulated mislabels):
 
-- **MDL benchmark results push to a PRIVATE repo.** `perf-push-benchmark-results.yml`
-  runs `tools/benchmark/compile.py --samples 16 --target dxil` — a COMPILE-TIME MDL
-  sweep, not runtime, despite a prior "runtime benchmark pipeline" label — and pushes
-  `benchmarks.json` to private `shader-slang/slang-material-modules-benchmark` via a
-  PAT. Whether a public benchview may expose those results is an ops/security/hosting
-  decision, not compiler code
-  ([results land in a PRIVATE repo](../learnings/1788881853471-slang-benchview-results-land-in-a-private-repo-the.md),
-  [perf-alerting facts corrected](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
-- **Compile-time results now reach BenchView from the repo; runtime results do not.**
-  Until 2026-10-19 "benchview" appeared only in `tools/compile-perf/bench.py` comments
-  (raw samples kept so a downstream BenchView format can recompute summaries), with no
-  ingestion code, endpoint or creds — so "benchview appears nowhere in the repo" was
-  false even then
-  ([benchview is a downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md),
-  [benchview IS in-repo (comments)](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
-  PR #13625 (master 68438b5e1, 2026-10-19) added `tools/compile-perf/benchview.py`, a
-  stdlib-only exporter, plus an "Export nightly results for BenchView" step and payload
-  artifact in `nightly-mdl-perf-test.yml`. Still absent: runtime GPU benchmarks and
-  MaterialX perf (`ci-materialx-regression-test.yml` compiles shaders but records no
-  timings); `ci-falcor2-perf-bridge-smoke.yml` is manual-dispatch only and just calls
-  `/opt/slang-ci/run-external-ci` on a self-hosted runner. The same PR deleted
-  `tools/compile-perf/COVERAGE-ANALYSIS.md` and moved the suite review into the README
-  ([BenchView export now in tree](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md)).
-  Verify an audit target branch exists before auditing (`dev/ccummings/benchview` does
-  not; use four probes, since one 404 is not conclusive)
-  ([downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md)).
-- **compile-perf emit workloads share one shader by design.** Every codegen workload
-  uses `gen=workloads.gen_codegen`, differing only in `-target`, to isolate the emit
-  path. The suite lacks backend-DISTINCTIVE source shapes, not backend coverage, so
-  better backend targeting means generators that stress each backend's legalization,
-  not more `-target` variants. It is compile-time-only and nightly-weight (no per-PR
-  tier), and `check-python-core.yml` hard-codes the module import list, so renaming a
-  `tools/compile-perf/*.py` module without updating it turns CI red
-  ([emit_* workloads share gen_codegen](../learnings/1788881942527-compile-perf-emit-workloads-all-share-one-shader-g.md)).
-- A straight fork of the compile-perf Slack template does NOT meet a rich-alert spec (a
-  generic sentence, no magnitude or commit/PR link), and `trend.py`'s adaptive
-  trailing median does NOT detect gradual drift
-  ([perf-alerting facts corrected](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
+- **MDL benchmark results push to a PRIVATE repo.** `perf-push-benchmark-results.yml` runs `tools/benchmark/compile.py --samples 16 --target dxil`, a COMPILE-TIME MDL sweep (not runtime), and pushes `benchmarks.json` to private `shader-slang/slang-material-modules-benchmark` via a PAT. Exposing them on a public benchview is an ops/security/hosting decision, not compiler code ([results in a PRIVATE repo](../learnings/1788881853471-slang-benchview-results-land-in-a-private-repo-the.md), [perf-alerting facts corrected](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
+- **Compile-time results reach BenchView from the repo; runtime results do not.** Until 2026-10-19 "benchview" appeared only in `tools/compile-perf/bench.py` comments (raw samples kept for a downstream BenchView format), with no ingestion code, endpoint or creds ([downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md), [benchview IS in-repo (comments)](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)). PR #13625 (master 68438b5e1) added `tools/compile-perf/benchview.py`, a stdlib-only exporter, plus an "Export nightly results for BenchView" step and payload artifact in `nightly-mdl-perf-test.yml`, and moved `COVERAGE-ANALYSIS.md` into the README. Still absent: runtime GPU benchmarks and MaterialX perf (`ci-materialx-regression-test.yml` records no timings); `ci-falcor2-perf-bridge-smoke.yml` is manual-dispatch only, calling `/opt/slang-ci/run-external-ci` on a self-hosted runner ([BenchView export now in tree](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md)). Verify an audit branch exists before auditing (`dev/ccummings/benchview` does not; use four probes, one 404 is not conclusive) ([downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md)).
+- **compile-perf emit workloads share one shader by design.** Every codegen workload uses `gen=workloads.gen_codegen`, differing only in `-target`, to isolate the emit path. The suite lacks backend-DISTINCTIVE source shapes, not coverage, so better targeting means generators stressing each backend's legalization. It is compile-time-only and nightly-weight, and `check-python-core.yml` hard-codes the module import list, so renaming a `tools/compile-perf/*.py` module without updating it turns CI red ([emit_* share gen_codegen](../learnings/1788881942527-compile-perf-emit-workloads-all-share-one-shader-g.md)).
+- A straight fork of the compile-perf Slack template does NOT meet a rich-alert spec (no magnitude or commit/PR link), and `trend.py`'s adaptive trailing median does NOT detect gradual drift ([perf-alerting facts corrected](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
 
-Perf-epic sub-tasks are maintainer-curated, no-repro ops/infra work: don't
-auto-dispatch a fixer; triage, 5-bullet, report up (closures and reply content:
-[[wiki/concepts/agent-fixer-codex-skills-f0909b0-triage-routing-and-classification.md]]).
+Perf-epic sub-tasks are maintainer-curated, no-repro ops/infra work: don't auto-dispatch a fixer; triage, 5-bullet, report up (closures and reply content: [[wiki/concepts/agent-fixer-codex-skills-f0909b0-triage-routing-and-classification.md]]).
 
-**Answering "does this pass change regress compile time?" deterministically.** A shared
-64-core box is too noisy (load 5→119 moved medians ±10%), so scope callgrind to the phase: `valgrind --tool=callgrind --toggle-collect='Slang::linkIR*'
-slangc ...` gives instruction counts identical across runs, and `callgrind_annotate
---inclusive=yes` shows which function absorbed the delta. Build Release base and fix
-from one tree, differing in one file (copy `bin/` and `lib/` out; slangc's rpath is
-`$ORIGIN/../lib`), pair with an ABBA-interleaved wall-clock run, and check the `.spv` is
-byte-identical. The compile-perf SPIR-V workloads fail with "failed to load downstream
-compiler 'spirv-opt'" unless you also build `--target slang-glslang` in Release and copy
-`libslang-glslang-*.so` next to `libslang-compiler`. Don't claim "X% of total compile"
-from phase-share × phase-delta: measure whole-process Ir and report a paired IQR that
-sits entirely above zero
-([callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md)).
+**Answering "does this pass change regress compile time?" deterministically.** A shared 64-core box is too noisy (load 5→119 moved medians ±10%), so scope callgrind to the phase: `valgrind --tool=callgrind --toggle-collect='Slang::linkIR*' slangc ...` gives run-identical instruction counts, and `callgrind_annotate --inclusive=yes` shows which function absorbed the delta. Build Release base and fix from one tree differing in one file (copy `bin/` and `lib/` out; slangc's rpath is `$ORIGIN/../lib`), pair with an ABBA-interleaved wall-clock run, and check the `.spv` is byte-identical. SPIR-V workloads fail "failed to load downstream compiler 'spirv-opt'" unless you build `--target slang-glslang` in Release and copy `libslang-glslang-*.so` next to `libslang-compiler`. Don't claim "X% of total compile" from phase-share × phase-delta: measure whole-process Ir and report a paired IQR entirely above zero ([callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md)).
 
-**Quick per-target evidence for a reply (under a minute).** To back "this pass is slow on CUDA", run the
-suite's generator instead of quoting the README table: import it from `tools/compile-perf/lib/workloads.py` (e.g.
-`gen_resource_load_chain(n)`), write the `.slang`, run `build/Release/bin/slangc <f>
--target cuda -entry computeMain -stage compute -report-detailed-perf-benchmark`, and grep
-the per-pass lines (`[*] deferBufferLoad`, `simplifyNonSSAIR`). For the SPIR-V control
-add `-emit-spirv-directly -O0`, which avoids the missing spirv-opt (E00100) without
-building slang-glslang. On 2026-10-22 ToT (L40S): at N=640 CUDA spends ~80 ms in each of
-those passes and SPIR-V under 2 ms; at N=160 CUDA is ~5 ms
-([quick CUDA vs SPIR-V evidence](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md)).
+**Quick per-target evidence for a reply (under a minute).** To back "this pass is slow on CUDA", run the suite's generator rather than quoting the README: import it from `tools/compile-perf/lib/workloads.py` (e.g. `gen_resource_load_chain(n)`), write the `.slang`, run `build/Release/bin/slangc <f> -target cuda -entry computeMain -stage compute -report-detailed-perf-benchmark`, and grep per-pass lines (`[*] deferBufferLoad`, `simplifyNonSSAIR`). For the SPIR-V control add `-emit-spirv-directly -O0`, avoiding the missing spirv-opt (E00100). On 2026-10-22 ToT (L40S), N=640: CUDA ~80 ms in each pass vs SPIR-V under 2 ms; N=160 CUDA ~5 ms ([quick CUDA vs SPIR-V evidence](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md)).
 
 ## Triaging the Nightly MDL Perf Test gate: split resize-noise from real regressions
 
-When `trend.py` flags a nightly with many workloads/metrics lit at once, split it.
-(1) **Check for a disclosed methodology change first**: recently merged PRs touching
-`tools/compile-perf/lib/manifest.py` `default_size`/`sweep_sizes` often *predict* the
-before/after ratio in their body (PR #13035: "one night of movement on those four
-workloads is expected"); a flagged workload matching that list and ratio is the gate
-correctly detecting a disclosed change. (2) **What remains is the signal — read which
-timer flagged**: a localized pass regression moves a sub-pass timer (`specializeModule`,
-`simplifyIR`, `linkAndOptimizeIR`) while the workload's `compileInner` stays under the
-workload-level threshold; if `compileInner` moves for every workload, suspect runner
-contention. (3) **Narrow suspects to PRs touching `core.meta.slang` /
-`hlsl.meta.slang`**: the shared prelude is checked and specialized on every compile
-(`bench.py` spawns a fresh `slangc` per sample, no cross-process module cache), so new
-generics there inflate `specializeModule`/`simplifyIR` across unrelated workloads, under
-titles with no perf hint ("Support generic builtin vector dot products"). (4)
-Self-merge (author == merged_by, no APPROVED review) marks where review was thinnest —
-a signal, not proof. Worked example (2026-09-19): four workloads' 2.4–10×
-jumps were PR #13035's resize; a separate ~1.7–2.4× `specializeModule`/`simplifyIR` jump
-traced to self-merged #13138/#13135 adding generics to the prelude
-([separating resize noise from real regressions](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md)).
+When `trend.py` lights many workloads/metrics at once, split it. (1) **Check for a disclosed methodology change first**: merged PRs touching `tools/compile-perf/lib/manifest.py` `default_size`/`sweep_sizes` often predict the ratio in their body (PR #13035: "one night of movement on those four workloads is expected"); a match is the gate correctly detecting a disclosed change. (2) **Read which timer flagged**: a localized pass regression moves a sub-pass timer (`specializeModule`, `simplifyIR`, `linkAndOptimizeIR`) while `compileInner` stays under threshold; `compileInner` moving for every workload suggests runner contention. (3) **Narrow suspects to PRs touching `core.meta.slang` / `hlsl.meta.slang`**: the prelude is checked and specialized on every compile (`bench.py` spawns a fresh `slangc` per sample, no cross-process cache), so new generics there inflate `specializeModule`/`simplifyIR` across unrelated workloads under titles with no perf hint. (4) Self-merge (author == merged_by, no APPROVED review) marks thin review, a signal not proof. Example (2026-09-19): four workloads' 2.4–10× jumps were #13035's resize; a separate ~1.7–2.4× `specializeModule`/`simplifyIR` jump traced to self-merged #13138/#13135 adding prelude generics ([separating resize noise from regressions](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md)).
 
-**A green night after a red one is usually a threshold miss, not baseline absorption.**
-`analyze` compares each night to a trailing-7 median. After a 10-07 step, 10-09 went
-green and one reading blamed absorption
-([trailing-median baseline hides real steps](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)),
-but the median was still 45.9 ms on 10-09 and 10-10 (only 2 of 7 trailing nights were
-post-step) and confirmation found 0 regressions: conformance measured 1.08×, under the
-1.10× ERROR threshold, so it only warned. Grep the analyze log for `Confirmation:` and
-`baseline: trailing 7 point(s) [...]` first
-([a green night is a threshold miss](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md)).
-The median moves only once 4 of 7 nights are post-step, after which a real step does go
-quiet, so localize early against a fixed known-green night. For front-end moves after
-2026-10-07, check #13445 (e2e217dd2) first: it turned `SemanticsVisitor::getTypeTags`
-from a cached `aggTypeDecl->typeTags` read into a per-call field/base walk with no `-Gec`
-gate (filed as #13565).
+**A green night after a red one is usually a threshold miss, not baseline absorption.** `analyze` compares each night to a trailing-7 median. After a 10-07 step, 10-09 went green and one reading blamed absorption ([trailing-median hides real steps](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)), but the median was still 45.9 ms (only 2 of 7 trailing nights post-step) and confirmation measured 1.08×, under the 1.10× ERROR threshold, so it only warned. Grep the analyze log for `Confirmation:` and `baseline: trailing 7 point(s) [...]` first ([green night is a threshold miss](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md)). The median moves only once 4 of 7 nights are post-step, after which a real step goes quiet, so localize early against a fixed green night. For front-end moves after 2026-10-07, check #13445 (e2e217dd2) first: it turned `SemanticsVisitor::getTypeTags` from a cached `aggTypeDecl->typeTags` read into a per-call walk with no `-Gec` gate (#13565).
 
-**Size a step with per-timer geomeans, not the `analyze` flags.** The `analyze` table
-lists only counters over ratio ≥1.1 / abs ≥2 ms against the trailing median, and chronic
-noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p
-'perf-confirmation-*'` gives `results.json` (per workload: `size`, `timers.<name>.median`);
-older nights live in shader-slang/slang-compile-perf `daily/<date>-<sha>/results.json`
-(`gh api … -H 'Accept: application/vnd.github.raw'`). Keep workloads whose `size` matches
-between nights (and a ≥1 ms baseline, which reproduced the checker's numbers exactly),
-then take the geomean ratio per timer against the fixed green night. A real front-end
-regression moves one phase broadly while `linkAndOptimizeIR`, `loadBuiltinModule` and
-other backend/IR timers stay ~1.00; runner noise moves every phase together and rotates
-nightly. Measured: SemanticChecking up in 48/54 workloads (~1.075×) after 10-07
-([per-timer geomean vs a fixed green night](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md));
-on the 10-16 nightly SemanticChecking 1.052 vs 10-12 (1.042 vs 10-15 alone), 39/54
-workloads above the prior four nights' max, with only #13537/#13615/#13626 in the window.
-The per-push store (slang-material-modules-benchmark) is DXIL-only, 7 metrics,
-bimodal across runners: it cannot localize a front-end shift. Artifacts expire after
-about a week (10-07/10-08 runs returned 404 on 10-16), so record geomeans durably when
-sizing a step
-([MDL perf nightly per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md)).
+**Size a step with per-timer geomeans, not the `analyze` flags.** `analyze` lists only counters over ratio ≥1.1 / abs ≥2 ms against the trailing median, and chronic noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p 'perf-confirmation-*'` gives `results.json` (per workload: `size`, `timers.<name>.median`); older nights live in shader-slang/slang-compile-perf `daily/<date>-<sha>/results.json` (`gh api … -H 'Accept: application/vnd.github.raw'`). Keep workloads whose `size` matches between nights (with a ≥1 ms baseline, which reproduced the checker exactly), then take the per-timer geomean ratio against the fixed green night. A real front-end regression moves one phase broadly while `linkAndOptimizeIR`, `loadBuiltinModule` and other backend timers stay ~1.00; runner noise moves every phase together and rotates nightly. Measured: SemanticChecking up in 48/54 workloads (~1.075×) after 10-07 ([per-timer geomean vs green night](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)); 10-16 SemanticChecking 1.052 vs 10-12, 39/54 above the prior four nights' max, with only #13537/#13615/#13626 in the window. The per-push store (slang-material-modules-benchmark) is DXIL-only, 7 metrics, bimodal across runners, so it cannot localize a front-end shift. Artifacts expire after ~a week (10-07/10-08 returned 404 on 10-16), so record geomeans durably ([size a step with per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md)).
 
 **Source learnings (30):**
 
-- [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
-- [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
-- [Heartbeat precheck workflow_failures fetch returned stale data for slang only](../learnings/1788404324277-heartbeat-precheck-workflow-failures-fetch-returne.md) — slang's field alone returned days-old runs while slangpy/slang-rhi were correct; spot-check against a live API call.
-- [slang CI: Saturday "CMake Options" queue saturation is expected weekly load, not Critical](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md) — a single-workflow spike on a `schedule`+`workflow_dispatch` cron (Saturday 08:00 UTC OS matrix, ~half the hosted-runner cap by design) is accepted weekly cost; check the dominant workflow's triggers before flagging jobs_queued/hosted_runner_usage 🔴.
-- [Slang CI: Saturday CMake Options burst blinds CI Health; MQ skips test-falcor](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)
-- [Weekly CMake Options run lasts ~4 h and blinds the CI Health snapshots](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md) — measured 4 h 08 min run, ~2.5 h snapshot gap
-- [Heartbeat precheck's slang workflow_failures staleness confirmed recurring (3rd occurrence)](../learnings/1788410539745-heartbeat-precheck-s-slang-workflow-failures-stale.md) — treat as a standing characteristic; distinguish recurring-same-shape from a single self-correcting anomaly.
-- [slang Nightly Slang Test agentic-tests: 2-night failure is a known, already-tracked cluster](../learnings/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md) — same 6 tests explained by open PR #12881 (expected-failures); diff `FAILED test:` lines across nights for a fingerprint.
-- [Post-rebase cross-platform test-slang failure on a PR is often a master semantic-merge break](../learnings/1788457867847-post-rebase-cross-platform-test-slang-failure-on-a.md) — deterministic failure on CPU/aarch64 unrelated to the diff ⇒ file against master; don't fix the innocent PR.
-- [Verify causation at the failure site — a verified correlated fact is not a verified cause](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md) — read the job-log line before asserting causation; a coworker's flip-flopping root-cause label is a hypothesis.
-- [test-falcor reruns fail deterministically once the parent workflow run is stale — check run age](../learnings/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md) — `--failed` doesn't rebuild the artifact; a >24h-old run can't succeed; grep rerun-log.jsonl for the run_id first.
-- [CORRECTION: test-falcor 403 and artifact-expiry are two distinct failure modes, not one](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md) — a fresh 403-after-status is bridge auth; artifact-expiry is manufactured by rerunning a stale run; draw a second class member before a unifying claim.
-- [Falcor bridge-403 confirmation must also check build-artifact age, not just bridge health](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md) — bridge health and artifact freshness are independent preconditions; only a fresh push regenerates a stale artifact.
-- [shader-slang/slang default branch is master, not main](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md) — a `main` query silently 404s; prefer `gh pr view --json mergeStateStatus` (BEHIND = needs rebase).
-- [Slang benchview results land in a PRIVATE repo — the crux of the public/internal split (#12961)](../learnings/1788881853471-slang-benchview-results-land-in-a-private-repo-the.md) — MDL benchmarks push to a private repo via PAT; a public instance is an ops/security decision, not compiler code.
-- [Slang perf-alerting: compile-perf is the fork template, runtime perf is greenfield (benchview)](../learnings/1788881870741-slang-perf-alerting-compile-perf-is-the-fork-templ.md) — compile-time alerting is mature (10% trend.py gate, external results repo); runtime is greenfield; Slack egress needs a GitHub-hosted runner.
-- [compile-perf emit_* workloads all share one shader (gen_codegen) by design](../learnings/1788881942527-compile-perf-emit-workloads-all-share-one-shader-g.md) — the suite lacks backend-distinctive source shapes, not coverage; check-python-core.yml hard-codes the module list.
-- [Slang "benchview" is a downstream-consumer-by-URL, not in-tree infra; verify audit branches exist](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md) — benchview lives only in bench.py comments; confirm a named audit branch exists (four checks) before auditing.
-- [Slang perf-alerting facts corrected: perf-push-benchmark-results.yml is COMPILE-TIME MDL; benchview IS in-repo (comments only)](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md) — source-verify inherited learnings; a forked Slack template lacks magnitude/PR links and adaptive median misses gradual drift.
-- [Slang BenchView export now in tree (tools/compile-perf/benchview.py, PR #13625)](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md) — corrects "comments only": exporter + nightly export step; runtime GPU/MaterialX perf still absent; Falcor2 perf workflow manual-only.
-- [separating disclosed benchmark-resize noise from genuine compiler perf regressions (Nightly MDL Perf Test)](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md) — check manifest.py default_size/sweep_sizes edits (PR body predicts the ratio); the real signal is a sub-pass timer moving while compileInner stays clean; narrow to core/hlsl.meta.slang prelude PRs; cross-ref self-merge.
-- [Grepping job logs for "LLVM prebuilt not found in GCS" matches the script echo, not the output](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md) — `##[group]Run` prints the step source; drop `echo ` lines, look for "Building LLVM from source".
-- [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — per-timer geomean vs a fixed green night; one phase shifting broadly = real, all phases together = runner noise.
-- [Nightly compile-perf: a green night after a red one is a threshold miss, not baseline absorption](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md) — median unchanged, 1.08× < 1.10× ERROR; grep `Confirmation:`; #13445 getTypeTags walk suspect (#13565).
-- [Deterministic compile-perf A/B for a Slang pass: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md) — --toggle-collect on the phase gives run-identical Ir; build slang-glslang for SPIR-V workloads; report whole-process Ir, not phase-share x delta (PR #13236).
-- [Quick CUDA vs SPIR-V compile-time evidence from the compile-perf generators](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md) — import a `workloads.py` generator, `-report-detailed-perf-benchmark`; SPIR-V control needs `-emit-spirv-directly -O0`; N=640: CUDA ~80 ms/pass vs SPIR-V <2 ms
-- [MDL perf nightly: size a front-end step with per-timer geomeans from perf-confirmation artifacts](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md) — size-matched workloads vs a fixed green night; artifacts expire ~1 week
-- [CI sweep: full ubuntu-latest log-header scan exhausts the shared 6000/hr REST budget](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md) — rider: two nv-slang-bot CMake Options dispatches pushed jobs_queued to 458; read `queue_by_group` first (quota half on the agent-ops page)
-- [Slang scheduled CI workflows lack fork guards; ci-health fails every 15 min on forks with Actions on](../learnings/1793089763873-slang-scheduled-ci-workflows-lack-fork-guards-ci-h.md) — 16 of 17 unguarded; CONTRIBUTING.md told contributors to enable Actions until 9a4817c881; advise disabling on the fork
-- [test-falcor --job rerun fails in 19s once the run's slang-tests-* artifact is gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md) — rerun the falcor build job; reruns do submit a new pipeline
+- [Maintainer readying a bot draft PR + force-push dismisses approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check timeline actor; don't re-dispatch ci.yml
+- [Heartbeat: verify the base, not just the deltas](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive carried durations from the anchor
+- [Heartbeat precheck workflow_failures stale for slang only](../learnings/1788404324277-heartbeat-precheck-workflow-failures-fetch-returne.md) — spot-check against a live API call
+- [Saturday CMake Options queue saturation is expected load](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md) — check the dominant workflow's triggers before flagging Critical
+- [Saturday CMake Options burst blinds CI Health; MQ skips test-falcor](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)
+- [Weekly CMake Options run lasts ~4 h](../learnings/1792916619171-weekly-cmake-options-run-lasts-4-h-and-blinds-the-.md) — 4 h 08 min run, ~2.5 h snapshot gap
+- [slang workflow_failures staleness confirmed recurring](../learnings/1788410539745-heartbeat-precheck-s-slang-workflow-failures-stale.md) — standing characteristic vs single self-correcting anomaly
+- [agentic-tests 2-night failure is a tracked cluster](../learnings/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md) — open PR #12881; diff `FAILED test:` lines
+- [Post-rebase cross-platform failure is a master merge break](../learnings/1788457867847-post-rebase-cross-platform-test-slang-failure-on-a.md) — file against master, not the innocent PR
+- [Verify causation at the failure site](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md) — read the job-log line before asserting cause
+- [test-falcor reruns fail once the parent run is stale](../learnings/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md) — check run age; grep rerun-log.jsonl first
+- [CORRECTION: test-falcor 403 and artifact-expiry are distinct](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md) — read a second class member before unifying
+- [Bridge-403 confirmation must also check artifact age](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md) — bridge health and artifact freshness are independent
+- [Default branch is master, not main](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md) — `main` query 404s; use mergeStateStatus
+- [benchview results land in a PRIVATE repo (#12961)](../learnings/1788881853471-slang-benchview-results-land-in-a-private-repo-the.md) — public instance is an ops/security decision
+- [compile-perf is the fork template; runtime perf greenfield](../learnings/1788881870741-slang-perf-alerting-compile-perf-is-the-fork-templ.md) — Slack egress needs a GitHub-hosted runner
+- [compile-perf emit_* workloads share one shader](../learnings/1788881942527-compile-perf-emit-workloads-all-share-one-shader-g.md) — lacks backend-distinctive shapes; check-python-core.yml module list
+- [benchview is a downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md) — verify audit branches exist (four checks)
+- [perf-alerting facts corrected](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md) — compile-time MDL; source-verify inherited learnings
+- [BenchView export now in tree (PR #13625)](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md) — runtime GPU/MaterialX perf still absent
+- [Separating benchmark-resize noise from real regressions](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md) — manifest.py edits; sub-pass timers; prelude PRs
+- [LLVM-not-found grep matches the script echo](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md) — drop `echo ` lines; find "Building LLVM from source"
+- [Detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — per-timer geomean vs a fixed green night
+- [Green night after red is a threshold miss](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md) — 1.08× < 1.10×; #13445 getTypeTags suspect
+- [Deterministic compile-perf A/B: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md) — whole-process Ir; build slang-glslang (PR #13236)
+- [Quick CUDA vs SPIR-V compile-time evidence](../learnings/1792649239351-quick-cuda-vs-spir-v-compile-time-evidence-from-th.md) — generator + `-report-detailed-perf-benchmark`
+- [MDL perf nightly: size a step with per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md) — size-matched workloads; artifacts expire ~1 week
+- [Log-header scan exhausts the 6000/hr REST budget](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md) — rider: bot CMake Options dispatches; read `queue_by_group`
+- [Scheduled workflows lack fork guards](../learnings/1793089763873-slang-scheduled-ci-workflows-lack-fork-guards-ci-h.md) — 16 of 17 unguarded; advise disabling on the fork
+- [test-falcor --job rerun fails in 19s once artifact gone](../learnings/1793081639779-test-falcor-job-rerun-fails-in-19s-once-the-run-s-.md) — rerun the falcor build job

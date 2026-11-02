@@ -6,13 +6,14 @@ tags: [reviewer-a, reviewer-c, clarity, slang-pr-review-runner, api-400, integri
 source_count: 25
 ---
 
-## TL;DR
+# Reviewer-runner infrastructure
 
 The `/slang-pr-review` workflow runs three reviewers — A (correctness, `slang-pr-review-runner` /
 `compose-and-run.sh`), B (Devin, `devin-fetch.sh`), C (clarity, `slang-clarity-review-runner` /
-`run-clarity.sh`). Their runners have infrastructure failure modes that read identically to success
-unless you check the right artifact. Silence, a clean-looking file, and a green terminal reason are
-all untrustworthy on their own.
+`run-clarity.sh`) — whose infrastructure failures read identically to success unless you check the
+right artifact; silence, a clean-looking file, and a green terminal reason are untrustworthy alone.
+
+## TL;DR
 
 - **Transient API-400 payload truncation kills Reviewer A/C** at turn 1 with `400 Invalid JSON
   payload: unexpected end of data: line 1 column ~199K–390K`. The char position is near-constant
@@ -45,181 +46,219 @@ all untrustworthy on their own.
 
 ## The API-400 payload truncation (Reviewer A and C)
 
-The signature: `terminal_reason: api_error`, `api_error_status: 400`, `result: "API Error: 400
-Invalid JSON payload: unexpected end of data: line 1 column ~199,42X"`, num_turns:1, ~$0 cost,
-~3s wall, no `final-review.md`. On PR #12650 Reviewer A died THREE times identically right after
-reading the large PR body; B and C (smaller contexts) completed first try — so the discriminator is
-REQUEST SIZE, not the PR
+Signature: `terminal_reason: api_error`, `api_error_status: 400`, `result: "API Error: 400 Invalid
+JSON payload: unexpected end of data: line 1 column ~199,42X"`, num_turns:1, ~$0, ~3s, no
+`final-review.md`. On PR #12650 A died three times identically after reading the large PR body
+while B and C (smaller contexts) completed — the discriminator is REQUEST SIZE, not the PR
 ([Reviewer A can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md)).
-The key operational fact: the char position is near-CONSTANT (~199,415–199,422) across independent
-dispatches and different PRs, so the truncation is in the ~195KB fixed initial request body at a
-Bedrock/gateway boundary — and it REPRODUCES on immediate back-to-back retries. Do not conclude
-"deterministic failure" from 2 fast retries and do not burn budget on instant re-dispatch; run a
-SPACED-retry driver (~180s apart, success observed on attempt ~3 of a 6-attempt loop) and proceed
-with B+C in parallel
+The char position (~199,415–199,422) is near-constant across dispatches and PRs, so the cut is in
+the ~195KB fixed initial body at a Bedrock/gateway boundary, and it REPRODUCES on back-to-back
+retries. Two fast retries don't prove a deterministic failure; run a SPACED-retry driver (~180s
+apart; success seen around attempt 3 of 6) and proceed with B+C in parallel
 ([Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md)).
 
-Reviewer C hits the SAME class but for a different reason: on PR #12670 and #12697 (both tiny diffs)
-clarity failed twice at `column ~235K–390K`, and #12697's 81-line diff proves it's NOT diff-size —
-it's payload ACCUMULATION, the multi-skill clarity pipeline (clarity → fine-grained → consolidate →
-scope-filter → resolve-judgment-calls, each re-reading `tmp/` state) bloating the request regardless
-of diff size. Two reproducible crashes at the same signature ⇒ a third retry is wasteful; skip C
-gracefully (it's advisory/lower-bar/non-gating — Reviewer A correctness is the gating reviewer), and
-check whether A's editorial filter already folded the top clarity concern into its KEPT findings
+Reviewer C hits the same class via payload ACCUMULATION: on #12670 and #12697 (an 81-line diff) it
+failed twice at `column ~235K–390K` because the multi-skill pipeline (clarity → fine-grained →
+consolidate → scope-filter → resolve-judgment-calls) re-reads `tmp/` state regardless of diff size.
+After two identical crashes skip C (advisory, non-gating — A is the gating reviewer) and check
+whether A's editorial filter already kept the top clarity concern
 ([Clarity reviewer API-400 is payload-accumulation, not diff-size, dependent](../learnings/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md)).
-Crucially, a `completed` terminal reason does NOT guarantee a valid clarity artifact: always grep for
-`API Error|Invalid JSON|unexpected end of data` first. Distinguish (a) an error-string artifact =
-failed; (b) a short verification-prose artifact (743 bytes, "Now let me write the candidate files")
-= ran but produced no formal candidates; the runner's own guard (`!!! CLARITY-INCOMPLETE:
-clarity-review.md is 96B (floor 500B)`) fires correctly — 96 bytes is exactly the fake-clean size,
-never a clean 0-findings result
+A `completed` terminal reason doesn't guarantee a valid clarity artifact: grep it for
+`API Error|Invalid JSON|unexpected end of data`. An error string = failed; short verification prose
+(743 bytes, "Now let me write the candidate files") = ran but produced no candidates; the runner's
+guard (`!!! CLARITY-INCOMPLETE: clarity-review.md is 96B (floor 500B)`) is correct — 96 bytes is the
+fake-clean size, never a clean 0-findings result
 ([Clarity reviewer C can hit reproducible API-400 payload-overflow; 3rd retry may under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md)).
 
 ## Absence-of-build and integrity-fail read like success
 
-Reviewer A can produce a clean `final-review.md` with drift==0 having done a purely STATIC review. On
-PR #12681 (where the fixer said the local build was the most useful signal) a grep of A's
-`tool-uses.jsonl` for `cmake|ninja|slang-test` returned ZERO — absence of a build reads identically to
-a passed build unless you check. When the request hinges on a local build, run
+A clean `final-review.md` with drift==0 can come from a purely STATIC review: on #12681 (where the
+local build was the key signal) `tool-uses.jsonl` had zero `cmake|ninja|slang-test` calls. When the
+request hinges on a build, run
 `grep -oE '"command": "[^"]*(cmake|slang-test|ninja)[^"]*"' <run_dir_A>/tool-uses.jsonl`; if empty,
-build it yourself. (Second gotcha: a passing spirv-asm FileCheck test with
-`SLANG_RUN_SPIRV_VALIDATION=0` confirms emit-SHAPE only, not Vulkan validity — say so explicitly)
+build it yourself. A spirv-asm FileCheck pass with `SLANG_RUN_SPIRV_VALIDATION=0` confirms emit
+shape only, not Vulkan validity — say so
 ([Reviewer A can silently do a static-only review — verify the build actually ran](../learnings/1787323074074-reviewer-a-can-silently-do-a-static-only-review-ve.md)).
 
-The inverse hazard is a reviewer that CANNOT build at all. Asked to independently BUILD an
-SGL/AppWindow slangpy PR (`src/sgl/*`), the slangpy-reviewer container could not configure CMake out
-of the box: `build/linux-gcc` held only a stale `CMakeCache.txt` (no `build.ninja` → `ninja: error:
-loading 'build-Debug.ninja'`), and re-configuring failed on missing system dev headers in order —
-`python3-dev` (`Python.h`), then GLFW's `libxinerama-dev`/`libxcursor-dev`/`libxi-dev` X11 extension
-headers — which the non-root (uid 1000, no sudo) container cannot `apt-get`. The trap: do NOT reach
-for `install_packages` mid-review — its admin-approval → image rebuild → **container restart** would
-destroy the in-progress review session. Instead do the source-level correctness review (which needs
-no build) and report the build step as an explicit ENVIRONMENT BLOCKER — "builds clean" then rests on
-the fixer's/codex's compile, not your own; if a real build is required, ask the operator to install
-`python3-dev libxinerama-dev libxcursor-dev libxi-dev` first (an `sgl`-target build with
-`-DSGL_BUILD_PYTHON=OFF` skips python3-dev but still needs the X11 headers)
+The inverse: a reviewer that CANNOT build. For an SGL/AppWindow slangpy PR (`src/sgl/*`),
+`build/linux-gcc` held only a stale `CMakeCache.txt` (`ninja: error: loading 'build-Debug.ninja'`),
+and re-configuring failed on missing `python3-dev` (`Python.h`) then GLFW's
+`libxinerama-dev`/`libxcursor-dev`/`libxi-dev` headers, which the non-root (uid 1000, no sudo)
+container can't install. Don't call `install_packages` mid-review — approval → rebuild → **container
+restart** destroys the review session. Do the source-level review, report the build as an explicit
+ENVIRONMENT BLOCKER ("builds clean" then rests on the fixer's/codex's compile), and if a build is
+required ask the operator for `python3-dev libxinerama-dev libxcursor-dev libxi-dev` first
+(`-DSGL_BUILD_PYTHON=OFF` skips python3-dev but still needs X11)
 ([SlangPy sgl build needs system dev headers not present in the reviewer container](../learnings/1789382093432-slangpy-sgl-build-needs-system-dev-headers-not-pre.md)).
 
-The diff-integrity NET in `compose-and-run.sh` (~lines 185-195) compares `tmp/pr-diff.patch`'s
-`+++ b/` paths to `gh pr view --json files` at A's exit and writes `INTEGRITY-FAIL.txt` on mismatch —
-but `/workspace/agent/slang` is a SHARED mutable checkout, so concurrent reviews clobber that file and
-the net can list files belonging to neither the PR under review nor even its racer. Do NOT re-run on
-the log line alone, and do NOT trust the model's self-report alone: triangulate the diff sha256 across
-FOUR sources that agree only if A reviewed the right diff — live `gh pr diff`, A's run-START
-`pr-diff.reference`, the `diff sha256` footer in `final-review.md`, and the diff-hash in Reviewer C's
-independently-named run dir — then positive-control one finding's file:line against the live diff. On
-PR 12647 all four agreed on `7bd29ae…` despite an INTEGRITY-FAIL listing a third PR's files — a valid
-review
+**INTEGRITY-FAIL under concurrency.** The net in `compose-and-run.sh` (~lines 185-195) compares
+`tmp/pr-diff.patch`'s `+++ b/` paths to `gh pr view --json files` at exit and writes
+`INTEGRITY-FAIL.txt` on mismatch — but `/workspace/agent/slang` is a SHARED checkout, so concurrent
+reviews clobber the file and the net can list files of a third PR. Don't re-run on the log line,
+and don't trust the model's self-report: triangulate the diff sha256 across live `gh pr diff`, A's
+run-start `pr-diff.reference`, the `diff sha256` footer in `final-review.md`, and the hash in C's
+run-dir name, then positive-control one finding's file:line. On PR 12647 all four agreed on
+`7bd29ae…` despite an INTEGRITY-FAIL listing a third PR's files
 ([Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)).
-
-Two fresh 2026-09-15 instances confirm this shared-checkout race is live and add the transcripts-dir
-half. On slang-rhi#867 Reviewer A tripped `INTEGRITY-FAIL` with a `tmp/context.json` recording
-`pr:868`'s Vulkan file list — a concurrent slang-rhi#868 review clobbered the shared
-`slang/tmp/{pr-diff.patch,context.json}` mid-run; the trip was a FALSE positive (A's
-`pr-diff.reference` sha256 was byte-identical to a fresh `gh pr diff 867` and to Reviewer C's
-independent hash) but it "passed by luck, not by construction" — absent that manual sha256 cross-check
-a concurrent collision could surface as a wrong-PR review reported valid, so until `compose-and-run.sh`
-isolates its scratch per-run, always confirm the reviewed `diff_hash` matches `gh pr diff <n>` before
-trusting the verdict ([slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)).
-The second (slang#13083 amid sibling reviews of #13081/#869/#868) names the operational rule and a
-SECOND shared path: (1) the `tmp/pr-diff.patch` clobber yields a false-positive `INTEGRITY-FAIL`
-(exit 1) — do NOT discard Reviewer A on exit-1 alone; the inner model usually detects the sha256
-mismatch, re-stages to an isolated path, and re-runs, stamping the correct `reviewed: <sha> · diff
-sha256 <hash>` in `final-review.md`, so verify head==`gh pr view <PR> --json headRefOid`, `summarize.py`
-run-state success + drift==0, and that the body cites the target PR's real symbols; and (2) both
-`slang-pr-review-runner` and `slang-clarity-review-runner` write `transcripts/<key>-<TS>/`, so
-`ls -1dt transcripts/*/ | head -1` picks whichever CONCURRENT run finished most recently, not yours —
-pin the run dir from the exact path the runner prints at launch (`>>> output → <dir>`; clarity dirs
-embed `pr-pr<N>-<headsha>-<diffhash>` for matching), and before merging grep each reviewer section for
-the target PR's unique symbols asserting 0 hits for the other PR's. The durable upstream fixes: stage
-each run's diff in an isolated per-run tmp, and have the runners print a machine-readable `RUN_DIR=`
-line the workflow captures instead of newest-dir discovery
+On slang-rhi#867 a concurrent #868 review rewrote `slang/tmp/{pr-diff.patch,context.json}`; the trip
+was false (A's reference hash matched `gh pr diff 867` and C's) but passed "by luck, not by
+construction" — until scratch is per-run, confirm the reviewed `diff_hash` matches `gh pr diff <n>`
+before trusting a verdict ([slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)).
+On slang#13083 (amid #13081/#869/#868): (1) don't discard A on exit-1 alone — the inner model often
+detects the mismatch, re-stages to an isolated path and stamps the correct `reviewed: <sha> · diff
+sha256 <hash>`; verify head == `gh pr view <PR> --json headRefOid`, `summarize.py` success +
+drift==0, and real target-PR symbols in the body. (2) Both runners write `transcripts/<key>-<TS>/`,
+so `ls -1dt transcripts/*/ | head -1` may pick a concurrent run — pin the dir from the launch line
+(`>>> output → <dir>`; clarity dirs embed `pr-pr<N>-<headsha>-<diffhash>`) and grep each section for
+the target PR's symbols with 0 hits for the other PR's. Durable fixes: per-run tmp staging and a
+machine-readable `RUN_DIR=` line
 ([concurrent slang PR reviews contaminate shared tmp/ and transcripts/ — pin run dirs, don't trust exit-1](../learnings/1789443118244-concurrent-slang-pr-reviews-contaminate-shared-tmp.md)).
 
-The related PATCH-MODE contamination is the same shared-checkout hazard but with a wrong-binding that
-IS real damage: patch mode does `git -c ... commit -q -am` on a temp branch, and `commit -am` stages
-ALL modified tracked files — so pre-existing uncommitted edits in the shared checkout get swept into
-the temp commit alongside the patch, and Reviewer A reviews `your_patch + unrelated_dirty_files`. On
-PR #12771 A's review came back about `EnumCase`/`slang-parser.cpp`/`core.meta.slang` — none in the
-36-line CI-YAML patch. The `diff sha256` footer is NOT enough (it hashes the contaminated diff and
-looks self-consistent); verify the temp commit's FILE SET (`git show --stat <temp-sha>` == the patch's
-`diff --git` set). Reviewer C is immune (it builds an isolated worktree); when A and C disagree wildly
-on WHAT the diff even is, suspect A-side contamination. Ensure the shared checkout is clean before
-dispatch (`git -C <repo> status --porcelain` empty — and run it with `-C`, or from `/workspace/agent`
-a naive `| wc -l` reads 0 = false all-clear)
+**Patch-mode contamination is real damage.** Patch mode runs `git -c ... commit -q -am` on a temp
+branch, which stages ALL modified tracked files, so dirty edits in the shared checkout get reviewed
+with your patch. On #12771 A reviewed `EnumCase`/`slang-parser.cpp`/`core.meta.slang`, none in the
+36-line CI-YAML patch. The `diff sha256` footer hashes the contaminated diff and looks consistent;
+verify `git show --stat <temp-sha>` equals the patch's `diff --git` set. C is immune (isolated
+worktree), so wild A/C disagreement on WHAT the diff is suggests A-side contamination. Before
+dispatch require `git -C <repo> status --porcelain` empty (without `-C`, from `/workspace/agent`, a
+`| wc -l` reads a false 0)
 ([Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md)).
 
 ## Reviewer A's background-wait kill and budget cap → a false 0/0/0 that looks like APPROVE
 
-A distinct Reviewer-A failure that reads as a clean approve: `compose-and-run.sh` drives an inner `claude -p` CLI whose lead dispatches the 5–7 `.claude/agents/*` review subagents with `run_in_background: true`, and print mode has a **600s background-task wait ceiling** (`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS`, default 600000). When subagents outlive it the CLI logs `Background tasks still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait indefinitely.`, stops every unfinished subagent (`task_notification` status `stop`/`killed`, 0 tokens) and ends without the editorial synthesis, so `final-review.md` is a stub of a few dozen to ~200 bytes ("Next I'll check …") and the summarizer reports **0 bugs / 0 gaps / 0 questions** — identical to a clean APPROVE, but *no review was produced*. `compose-and-run.sh`'s REVIEW-GUARD catches it (`!!! REVIEW-GUARD FAIL: final review is N bytes (<500)`, exit 1), yet a `nohup … ; echo exited $?` wrapper can mask that exit as 0, so check `final-review.md` size and grep the log for `REVIEW-GUARD FAIL` / `Background tasks still running after` before trusting any counts. On slang#12875 (CLI 2.1.29x, 2026-10-06) it burned $8.5 for nothing. Fix: export `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` before calling `compose-and-run.sh` — the scripts don't set it and `repro.sh` inherits it from the shell — at unchanged cost. A drift grep for `pulls/N/reviews` can false-positive on subagent prompt text, so check the PR's actual reviews list before calling a run drifted ([#12875 600s kill](../learnings/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md)).
+`compose-and-run.sh` drives an inner `claude -p` whose lead dispatches 5–7 `.claude/agents/*`
+subagents with `run_in_background: true`; print mode has a **600s background-wait ceiling**
+(`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS`, default 600000). Past it the CLI logs `Background tasks
+still running after 600s; terminating. Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 to wait
+indefinitely.`, stops every subagent (`task_notification` `stop`/`killed`, 0 tokens) and skips the
+editorial synthesis: `final-review.md` is a ~dozens-to-200-byte stub ("Next I'll check …") and the
+summarizer reports **0/0/0** — identical to a clean APPROVE. REVIEW-GUARD catches it (`!!!
+REVIEW-GUARD FAIL: final review is N bytes (<500)`, exit 1), but a `nohup … ; echo exited $?`
+wrapper can mask the exit, so check the file size and grep for `REVIEW-GUARD FAIL` / `Background
+tasks still running after`. slang#12875 burned $8.5 this way. Fix: export
+`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` before `compose-and-run.sh` (scripts don't set it; `repro.sh`
+inherits it) at unchanged cost. A drift grep for `pulls/N/reviews` can false-positive on subagent
+prompt text — check the PR's real reviews list ([#12875 600s kill](../learnings/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md)).
 
-**The kill recurs on every launch that omits the variable, so set it every time, not only on the re-run.** On 2026-10-02 it hit four PRs in one day. slang#13386 failed 3/3 plain `compose-and-run` runs: the inner coordinator dispatched 5–6 `Agent(run_in_background=true)` lenses and ended its turn with "The reviewers are still running; I'll wait for their completion notifications", so every subagent got `task_notification status: stopped` after a few tool calls and `final-review.md` held that 87–125-byte sentence; #13378, #13381 and #13384 also hit it, and a bare retry succeeded only sometimes ([compose-and-run can systematically kill its own background subagents — 3/3 on #13386](../learnings/1790924682986-reviewer-a-compose-and-run-can-systematically-kill.md)). #13410 then failed twice in a row ($21 → 80 bytes; $6 → `REVIEW-GUARD FAIL: 93 bytes`) ([ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md)). Diff size is no protection, and a "success" exit is no guard: on slang#13171 R2 (2026-10-06, a 274-line, 9-file diff) A exited 0 with run state "success" at $11, yet `final-review.md` was 223 bytes ("Seven reviewers are running in the background… I'll do the editorial filter once all of them report back"), all 7 `task_notification`s read `stopped`, and `subagents/` was empty, so nothing was recoverable — while the summarizer reported 0/0/0, identical to a clean review. Before treating any A 0/0/0 as clean, require `wc -c final-review.md` above ~1 KB **and** a `**Verdict**` line; otherwise grep `stream.jsonl` for `task_notification` status and re-run with the variable set ([Reviewer A truncated final-review.md on a SMALL diff too](../learnings/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md)). Detect this variant with `grep -c '"status":"stopped"' <run_dir>/stream.jsonl` equal to the dispatch count, `"status":"completed"` at 0, and a `type:"result"` text saying the coordinator is waiting; because the subagents died early, nothing in `stream.jsonl` is salvageable. It kept recurring on 2026-10-07: #13315 R3 failed twice identically (7 background lenses, the lead ended after ~50 turns with "All seven reviewer passes … are running in the background", `terminal_reason=completed`, 166–186-byte `final-review.md`, no subagent `.jsonl` left) ([compose-and-run can exit before its background subagents finish](../learnings/1791360790085-reviewer-a-compose-and-run-can-exit-before-its-bac.md)), and #13502 failed twice in two different ways at ~$8–10 each — run 1 by a concurrent #13503 review rewriting the shared `slang/tmp/{pr-diff.patch,context.json}` (`INTEGRITY-FAIL: reviewed diff != PR files`), run 2, isolated but without the variable, by the ceiling (5 subagents `stopped` after ~7 min, an 88-byte stub, only `.meta.json` files left) ([launch with the variable AND an isolated REPO_ROOT every time](../learnings/1791413704374-reviewer-a-launch-with-claude-code-print-bg-wait-c.md)). Neither `compose-and-run.sh` nor `run-clarity.sh` sets the variable (grep count 0), and the `/slang-pr-review` workflow's dispatch line still omits both settings, so use the full launch line every time: `git worktree add --detach /workspace/agent/wt-<N>-revA origin/master`, then `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 REPO_ROOT=/workspace/agent/wt-<N>-revA setsid nohup bash …/compose-and-run.sh … </dev/null &` (`bash`, because the scripts can lack the exec bit); the durable fix belongs in `repro.sh` (an env default, or making the lead wait for every subagent's `task_notification` before writing `final-review.md`). If a run still dies, dispatch the REVIEW.md lenses (code-quality, ir-correctness, test-coverage, cross-backend, security) as your own `Agent` subagents (their `subagent_type`) with targeted questions against a local diff and worktree, apply REVIEW.md Step 3's editorial table yourself, set `reviewers_complete=false`, and label the result "Reviewer A (lenses run directly — runner failed)" so it is not passed off as the production-equivalent run. Wait for every substitute lens before releasing a verdict, or label it "provisional — IR pass pending": on #13315 an APPROVE_WITH_NITS went out while the replacement IR-correctness lens was still running (~68 min), and that lens then found a real ICE, forcing an amended REQUEST_CHANGES ([don't release a verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md)).
+**It recurs on every launch that omits the variable.** A variant: the lead ends its own turn ("The
+reviewers are still running; I'll wait for their completion notifications") and every lens gets
+`status: stopped`. slang#13386 failed 3/3, and #13378/#13381/#13384 the same day; bare retries only
+sometimes worked ([compose-and-run can systematically kill its own background subagents — 3/3 on #13386](../learnings/1790924682986-reviewer-a-compose-and-run-can-systematically-kill.md)).
+#13410 failed twice ($21 → 80 bytes; $6 → `REVIEW-GUARD FAIL: 93 bytes`)
+([ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md)).
+Diff size and a "success" exit are no guard: slang#13171 R2 (274 lines, 9 files) exited 0 at $11
+with a 223-byte file, 7 `stopped` notifications and an empty `subagents/`. Treat an A 0/0/0 as clean
+only if `wc -c final-review.md` > ~1 KB **and** it has a `**Verdict**` line
+([Reviewer A truncated final-review.md on a SMALL diff too](../learnings/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md)).
+Detect: `grep -c '"status":"stopped"' <run_dir>/stream.jsonl` equals the dispatch count, `completed`
+is 0, and the `type:"result"` text says the lead is waiting; nothing is salvageable. #13315 R3
+failed twice (166–186 bytes, `terminal_reason=completed`, no subagent `.jsonl`)
+([compose-and-run can exit before its background subagents finish](../learnings/1791360790085-reviewer-a-compose-and-run-can-exit-before-its-bac.md)),
+and #13502 failed once to a concurrent #13503 rewriting shared `slang/tmp/` (`INTEGRITY-FAIL:
+reviewed diff != PR files`) and once, isolated but without the variable, to the ceiling (88-byte
+stub, only `.meta.json` left)
+([launch with the variable AND an isolated REPO_ROOT every time](../learnings/1791413704374-reviewer-a-launch-with-claude-code-print-bg-wait-c.md)).
 
-A low `--max-budget-usd` (at or below ~$15) is the other way A ends with no usable `final-review.md`: it dispatches six subagents, then hits `error_max_budget_usd` before the merge step, leaving no file or an "INCOMPLETE" note while the summarizer reports a misleading 0/0/0 (#13400 R2 at $15, #13384 R4 at $8). Read each subagent's interim report from `grep '"type":"result"' A-*.log`, read the clarity candidates in `$REPO_ROOT/tmp/review-candidates/`, and probe A's unverified leads yourself — on #13400 one was a real 🔴 (`NativeRef<int*>` hitting a new `SLANG_RELEASE_ASSERT` in `emitPtrTypeForwardDeclarationImpl`). Never report a capped A run as clean ([under a small budget cap Reviewer A often produces no final-review.md](../learnings/1790963554835-slang-pr-review-reviewer-a-under-a-small-budget-ca.md)). Lifting the wall-clock ceiling moves the cut to the budget even on a tiny diff: on #13503 R2 (a 7-line incremental diff, variable set) the subagents ran their full time and the lead hit `error_max_budget_usd` at $30.31 before writing `final-review.md`; a SendMessage asking the subagents to "finalize now" did not save it, and `compose-and-run.sh` then printed a misleading `REVIEW-GUARD FAIL: zero Task/Agent subagent dispatches` although 6 Agent calls had been made (that guard counts something else), so read `tail -1 stream.jsonl` for `subtype: error_max_budget_usd` / `terminal_reason: budget_exhausted` instead. Recovery: the finished lenses' full reports sit in the `summary` field of `{"type":"system","subtype":"task_notification","status":"completed"}` events — dedupe by (task_id, len), write each to a file (5 of 6 reports, 6–11 KB each), apply REVIEW.md's filter yourself, label the result "Reconstructed" and attach the raw outputs unedited. For a follow-up round on an already fully-reviewed PR consider `--max-budget-usd 45`, since 2–3 lenses tend to spend most of the budget chasing the same low-confidence lead (there, three chased `try fwd_diff(...)`, which was a real ICE but not the one predicted) ([$30 exhausted on a small PR; reconstruct from task_notification](../learnings/1791423170957-reviewer-a-can-exhaust-max-budget-usd-30-on-a-smal.md)).
+**Launch line, every time** (neither script sets the variable; the workflow dispatch line omits
+both): `git worktree add --detach /workspace/agent/wt-<N>-revA origin/master`, then
+`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 REPO_ROOT=/workspace/agent/wt-<N>-revA setsid nohup bash
+…/compose-and-run.sh … </dev/null &` (`bash` because the exec bit can be missing). The durable fix
+belongs in `repro.sh` (an env default, or a lead that waits for every `task_notification`). If a run
+still dies, dispatch the REVIEW.md lenses (code-quality, ir-correctness, test-coverage,
+cross-backend, security) as your own `Agent` subagents against a local diff + worktree, apply
+REVIEW.md Step 3's editorial table, set `reviewers_complete=false`, and label it "Reviewer A (lenses
+run directly — runner failed)". Wait for every lens or label the verdict "provisional — IR pass
+pending": on #13315 an APPROVE_WITH_NITS went out while the substitute IR lens ran (~68 min); it
+found a real ICE and forced an amended REQUEST_CHANGES
+([don't release a verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md)).
 
-Reviewer C (`run-clarity.sh`) has a mundane cousin: the script ships as `-rw-rw-r--` (**no execute bit** — and since 2026-09-30 `compose-and-run.sh` and `devin-fetch.sh` have lost it too, see [pipeline ops](review-process-f0909b2-pipeline-ops.md)), so executing it directly fails instantly with exit 126 `Permission denied`. Dispatch it via `bash /home/node/.claude/skills/slang-clarity-review-runner/scripts/run-clarity.sh --mode pr --pr <N> --repo <owner/repo> …` — `bash <script>` ignores the missing exec bit (prefer this over `chmod +x` on a skill file you didn't author). The tell after an exit-126 dispatch: the "newest transcripts dir" you find will be a STALE prior run (wrong PR number in the dir name), so validate the run_dir name contains the current PR/head before trusting its `clarity-review.md` ([slang-clarity-review-runner run-clarity.sh lacks the execute bit — invoke via `bash`](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md)).
+**Budget caps.** At `--max-budget-usd` ≤ ~$15, A dispatches six lenses then hits
+`error_max_budget_usd` before merging, leaving no file or an "INCOMPLETE" note and a misleading
+0/0/0 (#13400 R2 at $15, #13384 R4 at $8). Read interim reports via `grep '"type":"result"' A-*.log`
+and the clarity candidates in `$REPO_ROOT/tmp/review-candidates/`, and probe A's leads yourself — on
+#13400 one was a real 🔴 (`NativeRef<int*>` hitting a new `SLANG_RELEASE_ASSERT` in
+`emitPtrTypeForwardDeclarationImpl`). Never report a capped run as clean
+([under a small budget cap Reviewer A often produces no final-review.md](../learnings/1790963554835-slang-pr-review-reviewer-a-under-a-small-budget-ca.md)).
+With the wall-clock ceiling lifted the cut moves to the budget even on tiny diffs: #13503 R2 (7
+lines) hit the cap at $30.31 before writing `final-review.md`; a SendMessage "finalize now" didn't
+help, and `REVIEW-GUARD FAIL: zero Task/Agent subagent dispatches` was misleading (6 Agent calls
+were made) — read `tail -1 stream.jsonl` for `subtype: error_max_budget_usd` / `terminal_reason:
+budget_exhausted`. Recover from the `summary` field of `{"type":"system","subtype":"task_notification","status":"completed"}`
+events (dedupe by (task_id, len); 5 of 6 reports, 6–11 KB each), apply REVIEW.md's filter, label it
+"Reconstructed" and attach raw outputs. For a follow-up round consider `--max-budget-usd 45`, since
+2–3 lenses tend to chase the same lead (there, `try fwd_diff(...)` — a real ICE, not the predicted
+one) ([$30 exhausted on a small PR; reconstruct from task_notification](../learnings/1791423170957-reviewer-a-can-exhaust-max-budget-usd-30-on-a-smal.md)).
+
+**Missing exec bit.** `run-clarity.sh` ships `-rw-rw-r--` (since 2026-09-30 `compose-and-run.sh`
+and `devin-fetch.sh` too, see [pipeline ops](review-process-f0909b2-pipeline-ops.md)), so direct
+execution fails with exit 126. Invoke `bash /home/node/.claude/skills/slang-clarity-review-runner/scripts/run-clarity.sh --mode pr --pr <N> --repo <owner/repo> …`
+rather than `chmod +x` on a skill file you didn't author. After an exit-126 the newest transcripts
+dir is a STALE prior run — check the PR/head in its name
+([slang-clarity-review-runner run-clarity.sh lacks the execute bit — invoke via `bash`](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md)).
 
 ## Monitors, re-sends, and the transcripts-dir flag
 
-A Monitor watching a reviewer run must NOT grep the stream for generic failure words. The inner
-`claude --print` streams the PR body and diff into the log as `tool_result` content, and a layout/docs
-PR body legitimately contains "error"/"failed"/"no such file" — a `grep -qiE 'error|failed'` fires on
-that echoed content, emitting a FALSE `REVIEWER_*_ERROR` and latching `done=1` so the real completion
-never reports. Match only content-immune sentinels: `compose-and-run.sh` prefixes guard failures with
-literal `!!!` (`!!! INTEGRITY-FAIL`, `!!! REVIEW-GUARD FAIL`); `run-clarity.sh` emits
-`!!! CLARITY-INCOMPLETE`; success = the artifact present and non-empty (`final-review.md` /
-`clarity-review.md` / `devin-flags.md`); B writes `devin-error.txt` on skip
+**Monitors.** The inner `claude --print` streams the PR body and diff into the log as `tool_result`
+content, and a docs PR body legitimately says "error"/"failed"/"no such file", so
+`grep -qiE 'error|failed'` emits a FALSE `REVIEWER_*_ERROR` and latches `done=1`. Match only
+content-immune sentinels: `!!! INTEGRITY-FAIL` / `!!! REVIEW-GUARD FAIL` (`compose-and-run.sh`),
+`!!! CLARITY-INCOMPLETE` (`run-clarity.sh`); success = the artifact present and non-empty
+(`final-review.md` / `clarity-review.md` / `devin-flags.md`); B writes `devin-error.txt` on skip
 ([monitor grep for reviewer failure must not match streamed PR-body content](../learnings/1787605976090-monitor-grep-for-reviewer-failure-must-not-match-s.md)).
-The generalization: generic failure tokens (`Error:`, `exit code [1-9]`, `fatal`, `Traceback`) appear
-as ordinary CONTENT inside `tool_result` payloads during the normal mkdir/redirect retry dance —
-watch the OUTPUT ARTIFACT (present + non-empty + stream stopped growing), and for a genuine CLI failure
-grep the terminal result line anchored at line start (`grep -qE '^\{"type":"result"'`); a monitor's
-completion event is a trigger to re-verify on disk, not a fact
+Generic tokens (`Error:`, `exit code [1-9]`, `fatal`, `Traceback`) also appear in `tool_result`
+payloads during normal retries — watch the artifact (present, non-empty, stream stopped growing),
+detect real CLI failure with `grep -qE '^\{"type":"result"'`, and treat a monitor event as a trigger
+to re-verify on disk
 ([monitor for a claude-CLI reviewer run must not grep the stream for generic failure words](../learnings/1787869224351-monitor-for-a-claude-cli-reviewer-run-must-not-gre.md)).
 
-When a fixer/parent reports "message not answered, please re-send" days after a review, do NOT re-run
-the reviewers or reconstruct from memory. Check the artifact on disk first (the run dir's
-`combined-review.md` is GC-reaped after a few days); check PR state + head-delta (`gh pr view --json
-state,isDraft,headRefOid,mergedAt` — merged ⇒ moot; head unchanged ⇒ old verdict holds verbatim);
-the reviewer STREAM LOGS survive when the run dir is reaped — reconstruct faithfully (A's
-`final-review.md` = the LAST assistant text block in the stream JSONL, verified by the `reviewed:
-<sha>` footer; C's = the `Write` tool_use payload for `clarity-review.md`), rebuild combined-review.md,
-re-send with `in_reply_to=<the failure-notice id>`, and ask for receipt confirmation
+**Re-send after GC.** When asked to re-send a review days later, don't re-run or reconstruct from
+memory. Check the artifact first (`combined-review.md` is GC-reaped after a few days), then
+`gh pr view --json state,isDraft,headRefOid,mergedAt` (merged ⇒ moot; head unchanged ⇒ old verdict
+holds). Stream logs survive the reap: A's `final-review.md` is the LAST assistant text block in the
+stream JSONL (check the `reviewed: <sha>` footer); C's is the `Write` payload for
+`clarity-review.md`. Rebuild `combined-review.md`, re-send with `in_reply_to=<failure-notice id>`,
+and ask for receipt
 ([Review re-send after GC: check merge state + head-delta, reconstruct from stream logs](../learnings/1787558224979-review-re-send-after-gc-check-merge-state-head-del.md)).
 
-A small interface fact that cost a re-dispatch cycle: `compose-and-run.sh` (A) and `run-clarity.sh`
-(C) do NOT accept an `--out`/`--run-dir` flag — passing `--out <dir>` fails with `unknown flag --out`
-and the reviewer never starts (silent if backgrounded). Both self-assign a run dir under
-`<skill-dir>/transcripts/<mode>-<timestamp>` and print it as `>>> output → <path>`; grep the launch log
-for `output →`. Only `devin-fetch.sh` (Reviewer B) takes `--out`
+**No `--out` flag.** `compose-and-run.sh` and `run-clarity.sh` reject `--out`/`--run-dir`
+(`unknown flag --out`; silent if backgrounded). Both self-assign
+`<skill-dir>/transcripts/<mode>-<timestamp>` and print `>>> output → <path>`; only `devin-fetch.sh`
+takes `--out`
 ([slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md)).
 
-**Reviewing a `shader-slang/slang-rhi` PR** works even though slang-rhi ships no `REVIEW.md`/`.claude/agents`: keep `REPO_ROOT` at its default `/workspace/agent/slang` (the slang checkout owns the pipeline) and pass `--repo shader-slang/slang-rhi --pr <N>`. The slang checkout **vendors slang-rhi at `external/slang-rhi/`**, so A's subagents and C get REAL source context, not diff-only — e.g. on #868 the correctness reviewer read `external/slang-rhi/src/vulkan/vk-buffer.cpp` and cited exact lines to confirm the fix. Caveat: that vendored copy is a pinned submodule and may lag PR head by a few commits — use it for surrounding source, verify changed hunks against `gh pr diff`. `gh` read ops on public slang-rhi succeed even when `gh auth status` says `GH_TOKEN invalid` (only writes need the token). A peer fix-review handoff (request straight from `slang-fixer`, no `<github-post-authorized />`) → GitHub post-back is a no-op; return `combined-review.md` on the peer edge only, don't multicast to the parent ([slang-pr-review-runner reviews slang-rhi PRs with real source via vendored external/slang-rhi](../learnings/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md)).
+**slang-rhi PRs** work without a `REVIEW.md`/`.claude/agents` there: keep `REPO_ROOT` at
+`/workspace/agent/slang` and pass `--repo shader-slang/slang-rhi --pr <N>`. The slang checkout
+**vendors slang-rhi at `external/slang-rhi/`**, so lenses get real source (on #868 the correctness
+reviewer cited `external/slang-rhi/src/vulkan/vk-buffer.cpp` lines); it's a pinned submodule that may
+lag head, so verify changed hunks against `gh pr diff`. `gh` reads on public slang-rhi work even when
+`gh auth status` says `GH_TOKEN invalid`. A peer fix-review handoff from `slang-fixer` (no
+`<github-post-authorized />`) gets no GitHub post — return `combined-review.md` on the peer edge only
+([slang-pr-review-runner reviews slang-rhi PRs with real source via vendored external/slang-rhi](../learnings/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md)).
 
 **Source learnings (25):**
 
-- [slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md) — A/C self-assign `transcripts/<mode>-<ts>`; grep the launch log for `output →`; only devin-fetch.sh takes `--out`.
-- [slang-pr-review-runner reviews slang-rhi PRs with real source via vendored external/slang-rhi](../learnings/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md) — keep `REPO_ROOT=/workspace/agent/slang`, pass `--repo shader-slang/slang-rhi --pr <N>`; the vendored `external/slang-rhi/` submodule gives real source context (may lag head); peer fix-review handoffs return on the peer edge only.
-- [Reviewer A (slang-pr-review-runner) can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md) — PR #12650; 3 identical deaths after reading the large PR body; discriminator is request size; report A-absent and merge on B+C + own checks.
-- [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md) — PR 12647; shared `tmp/pr-diff.patch` clobber; triangulate the diff sha256 across four sources + positive-control a finding; fix is per-run worktree/TMPDIR.
-- [Clarity reviewer (C) can hit reproducible API-400 payload-overflow; 3rd retry may under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md) — PR #12670; a `completed` terminal reason ≠ valid artifact; 96B = fake-clean; distinguish error-string vs verification-prose artifacts.
-- [Reviewer A can silently do a static-only review — verify the build actually ran](../learnings/1787323074074-reviewer-a-can-silently-do-a-static-only-review-ve.md) — PR #12681; grep `tool-uses.jsonl` for cmake/ninja/slang-test; SLANG_RUN_SPIRV_VALIDATION=0 confirms shape, not Vulkan validity.
-- [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md) — the char position is near-constant across PRs (fixed request body); use a spaced ~180s retry driver, not instant re-dispatch.
-- [Clarity reviewer API-400 is payload-accumulation, not diff-size, dependent](../learnings/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md) — PR #12697 (81-line diff) crashed at ~360–390K; the multi-pass clarity chain re-reads tmp/ state; skip C after 2 crashes; check if A folded the concern.
-- [Review re-send after GC: check merge state + head-delta, reconstruct from stream logs](../learnings/1787558224979-review-re-send-after-gc-check-merge-state-head-del.md) — slang#12626; artifact-first, then PR state, then stream logs (A = last assistant text block; C = Write payload); re-send on the right edge with receipt.
-- [Monitor grep for reviewer failure must not match streamed PR-body content](../learnings/1787605976090-monitor-grep-for-reviewer-failure-must-not-match-s.md) — match content-immune sentinels (`!!!`, artifact presence, `devin-error.txt`), never the word "error" in the stream.
-- [Monitor for a claude-CLI reviewer run must not grep the stream for generic failure words](../learnings/1787869224351-monitor-for-a-claude-cli-reviewer-run-must-not-gre.md) — PR #12806; generic tokens appear in tool_result content; watch the artifact + the line-start `^{"type":"result"`; a monitor event is a trigger to re-verify.
-- [Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md) — PR #12771; verify the temp commit's FILE SET, not just the diff sha256; ensure the checkout is clean before dispatch (`git -C` matters); Reviewer C's isolated worktree is immune.
-- [SlangPy sgl build needs system dev headers not present in the reviewer container](../learnings/1789382093432-slangpy-sgl-build-needs-system-dev-headers-not-pre.md) — the inverse of static-only: the reviewer CAN'T build (missing `python3-dev` + X11 headers, non-root/no-sudo); don't `install_packages` mid-review (it restarts you); do source-level review and report the build as an env blocker.
-- [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md) — slang-rhi#867/#868; shared `slang/tmp/{pr-diff.patch,context.json}` clobbered → false INTEGRITY-FAIL that passed by luck; confirm the reviewed `diff_hash` == `gh pr diff <n>` before trusting the verdict.
-- [Concurrent slang PR reviews contaminate shared tmp/ and transcripts/ — pin run dirs, don't trust exit-1](../learnings/1789443118244-concurrent-slang-pr-reviews-contaminate-shared-tmp.md) — slang#13083; don't discard A on exit-1 (verify head/hash + summarize.py drift==0 + symbols); pin `run_dir` from the launch `output →` line, never newest-dir; propose per-run tmp + a `RUN_DIR=` line upstream.
-- [Reviewer A compose-and-run can systematically kill its own background subagents (3/3 on #13386)](../learnings/1790924682986-reviewer-a-compose-and-run-can-systematically-kill.md) — coordinator ends its turn while lenses run; nothing salvageable; run the REVIEW.md lenses yourself and label it
-- [Reviewer A under a small budget cap often produces no final-review.md](../learnings/1790963554835-slang-pr-review-reviewer-a-under-a-small-budget-ca.md) — ≤$15 cap hits error_max_budget_usd before merge; read interim result lines, probe leads (#13400 real 🔴)
-- [Reviewer A: ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md) — two guard-fails on #13410 without it; neither runner script sets it
-- [Reviewer A truncated final-review.md on a SMALL diff too — check size, not just counts](../learnings/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md) — #13171 R2: 274-line diff, exit 0 "success", 223-byte file, 7 subagents stopped; require >~1 KB + a `**Verdict**` line.
-- [slang-clarity-review-runner run-clarity.sh lacks the execute bit — invoke via `bash`](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md) — exit 126 Permission denied; `bash <script>` ignores the missing bit; after exit-126 the newest transcripts dir is a stale prior run — validate the PR/head in the dir name.
-- [Reviewer A killed by the 600s background-wait ceiling on #12875](../learnings/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md) — 183-byte stub, REVIEW-GUARD FAIL; export the variable; drift grep can false-positive on prompt text
-- [Reviewer A (compose-and-run) can exit before its background subagents finish → REVIEW-GUARD FAIL](../learnings/1791360790085-reviewer-a-compose-and-run-can-exit-before-its-bac.md) — #13315 R3 2/2: lead ends its turn with 7 lenses in background, 166–186 B stub; run lenses yourself with `reviewers_complete=false`
-- [Don't release a review verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md) — #13315: APPROVE_WITH_NITS sent while the substitute IR lens ran; it found a `__ref` ICE → amended REQUEST_CHANGES
-- [Reviewer A: launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 AND an isolated REPO_ROOT every time](../learnings/1791413704374-reviewer-a-launch-with-claude-code-print-bg-wait-c.md) — #13502 2/2: shared-tmp clobber, then the ceiling; the workflow dispatch line omits both; invoke via `bash`
-- [Reviewer A can exhaust --max-budget-usd 30 on a small PR; reconstruct from task_notification summaries](../learnings/1791423170957-reviewer-a-can-exhaust-max-budget-usd-30-on-a-smal.md) — #13503 R2 7-line diff at $30.31; misleading "zero dispatches" guard; dedupe completed summaries; consider $45
+- [slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md) — grep launch log for `output →`; only devin-fetch.sh takes `--out`.
+- [slang-pr-review-runner reviews slang-rhi PRs with real source via vendored external/slang-rhi](../learnings/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md) — default REPO_ROOT, `--repo shader-slang/slang-rhi`; vendored submodule may lag.
+- [Reviewer A (slang-pr-review-runner) can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md) — PR #12650; discriminator is request size; merge on B+C.
+- [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md) — PR 12647; triangulate diff sha256 across four sources.
+- [Clarity reviewer (C) can hit reproducible API-400 payload-overflow; 3rd retry may under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md) — PR #12670; `completed` ≠ valid artifact; 96B = fake-clean.
+- [Reviewer A can silently do a static-only review — verify the build actually ran](../learnings/1787323074074-reviewer-a-can-silently-do-a-static-only-review-ve.md) — PR #12681; grep `tool-uses.jsonl` for cmake/ninja/slang-test.
+- [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md) — near-constant char position; spaced ~180s retries.
+- [Clarity reviewer API-400 is payload-accumulation, not diff-size, dependent](../learnings/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md) — PR #12697; skip C after 2 crashes.
+- [Review re-send after GC: check merge state + head-delta, reconstruct from stream logs](../learnings/1787558224979-review-re-send-after-gc-check-merge-state-head-del.md) — slang#12626; artifact, then PR state, then stream logs.
+- [Monitor grep for reviewer failure must not match streamed PR-body content](../learnings/1787605976090-monitor-grep-for-reviewer-failure-must-not-match-s.md) — match `!!!` sentinels and artifact presence only.
+- [Monitor for a claude-CLI reviewer run must not grep the stream for generic failure words](../learnings/1787869224351-monitor-for-a-claude-cli-reviewer-run-must-not-gre.md) — PR #12806; watch artifact + line-start `^{"type":"result"`.
+- [Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md) — PR #12771; verify temp commit FILE SET; clean checkout first.
+- [SlangPy sgl build needs system dev headers not present in the reviewer container](../learnings/1789382093432-slangpy-sgl-build-needs-system-dev-headers-not-pre.md) — don't `install_packages` mid-review; report env blocker.
+- [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md) — slang-rhi#867/#868; confirm `diff_hash` == `gh pr diff <n>`.
+- [Concurrent slang PR reviews contaminate shared tmp/ and transcripts/ — pin run dirs, don't trust exit-1](../learnings/1789443118244-concurrent-slang-pr-reviews-contaminate-shared-tmp.md) — slang#13083; pin run_dir from launch `output →` line.
+- [Reviewer A compose-and-run can systematically kill its own background subagents (3/3 on #13386)](../learnings/1790924682986-reviewer-a-compose-and-run-can-systematically-kill.md) — lead ends turn while lenses run; run lenses yourself.
+- [Reviewer A under a small budget cap often produces no final-review.md](../learnings/1790963554835-slang-pr-review-reviewer-a-under-a-small-budget-ca.md) — ≤$15 cap; read interim results, probe leads (#13400).
+- [Reviewer A: ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md) — two guard-fails on #13410 without it.
+- [Reviewer A truncated final-review.md on a SMALL diff too — check size, not just counts](../learnings/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md) — #13171 R2; require >~1 KB + `**Verdict**` line.
+- [slang-clarity-review-runner run-clarity.sh lacks the execute bit — invoke via `bash`](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md) — exit 126; after it, newest transcripts dir is stale.
+- [Reviewer A killed by the 600s background-wait ceiling on #12875](../learnings/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md) — stub + REVIEW-GUARD FAIL; export the variable.
+- [Reviewer A (compose-and-run) can exit before its background subagents finish → REVIEW-GUARD FAIL](../learnings/1791360790085-reviewer-a-compose-and-run-can-exit-before-its-bac.md) — #13315 R3 2/2; `reviewers_complete=false`.
+- [Don't release a review verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md) — #13315: late IR lens found ICE → REQUEST_CHANGES.
+- [Reviewer A: launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 AND an isolated REPO_ROOT every time](../learnings/1791413704374-reviewer-a-launch-with-claude-code-print-bg-wait-c.md) — #13502 2/2: shared-tmp clobber, then the ceiling.
+- [Reviewer A can exhaust --max-budget-usd 30 on a small PR; reconstruct from task_notification summaries](../learnings/1791423170957-reviewer-a-can-exhaust-max-budget-usd-30-on-a-smal.md) — #13503 R2 at $30.31; dedupe completed summaries.

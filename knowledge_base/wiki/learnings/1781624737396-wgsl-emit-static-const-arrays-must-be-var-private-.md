@@ -3,6 +3,7 @@ title: "WGSL emit: static-const arrays must be var<private> (not const) for runt
 type: learning
 topic: slang-compiler
 source: learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md
+superseded_by: 1793523729686-wgsl-static-const-arrays-are-module-scope-const-si
 ---
 
 # WGSL emit: static-const arrays must be var<private> (not const) for runtime indexing

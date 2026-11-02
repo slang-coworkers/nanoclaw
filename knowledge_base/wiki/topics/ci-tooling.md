@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-614 learnings. [Catalog](../index.md)
+616 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -176,6 +176,7 @@ type: topic
 - [Bot CI run 'failure' after exactly 30 days = expired falcor-ci environment approval, not code](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md)
 - [Bot commits must use the account-associated noreply email or CLA-assistant blocks merge](../learnings/1789476879264-bot-commits-must-use-the-account-associated-norepl.md)
 - [Bot follow-up issues can cite a prerequisite PR that isn't merged yet — verify the base exists in master](../learnings/1787077394524-bot-follow-up-issues-can-cite-a-prerequisite-pr-th.md)
+- [Bot-DRAFT "green" rollup can hide a CI suite that never ran — check checkSuites, not statusCheckRollup](../learnings/1793522469201-bot-draft-green-rollup-can-hide-a-ci-suite-that-ne.md)
 - [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
 - [Bot-review finding tables cite DIFF-relative lines — match findings by symbol, not line number](../learnings/1785748040931-bot-review-finding-tables-cite-diff-relative-lines.md)
 - [Bounding a CI red-streak claim: use total_count vs returned to find the history edge](../learnings/1785879966196-bounding-a-ci-red-streak-claim-use-total-count-vs-.md)
@@ -341,6 +342,7 @@ type: topic
 - [Fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md)
 - [Flaky-CI evidence: dedup by run id; JSON-RPC and Falcor symptoms each conflate multiple root causes](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Fleet disk-full blocks Slang builds; verify via CI, and FIDDLE line-shift breaks single-file syntax checks](../learnings/1787282979852-fleet-disk-full-blocks-slang-builds-verify-via-ci-.md)
+- [formatting.sh unquoted $@ also narrows CMake and local C++; filed as #14134 with debt count](../learnings/1793524792512-formatting-sh-unquoted-also-narrows-cmake-and-loca.md)
 - [Fresh git worktree needs submodule init before cmake configure](../learnings/1786539905237-fresh-git-worktree-needs-submodule-init-before-cma.md)
 - [Fresh Slang builds can fetch a stale prebuilt slang-llvm, so new tests/llvm tests fail falsely](../learnings/1793273826311-fresh-slang-builds-can-fetch-a-stale-prebuilt-slan.md)
 - [Fresh worktree needs git submodule update --init before cmake configure](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md)
