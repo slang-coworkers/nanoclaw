@@ -71,7 +71,9 @@ Run the variant job with `--compare <baseline job id>`. The report pairs each ta
 repeats on both sides), gives the mean paired difference with a bootstrap 95% interval, and
 marks the comparison `smoke-signal` when fewer than 30 tasks were paired. Report the interval,
 not just the sign: a difference whose interval contains zero is "no measurable change". Tasks
-flagged `low-signal` (their repeats disagree) are listed; do not cite one of them as evidence.
+flagged `low-signal` are listed; do not cite one of them as evidence. For triage and fixer any
+disagreement between repeats flags the task; for reply and review, whose judge scores always
+move a little, the flag needs a reward gap above 0.2 (`LOW_SIGNAL_GAP`).
 
 ## Retry
 
