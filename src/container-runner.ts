@@ -2312,7 +2312,7 @@ export const EVAL_SANDBOX_GATE_CMD = 'bash /app/hooks/gate-eval-sandbox.sh';
 // The hook refuses the two MCP tools by name and classifies Bash commands; the
 // matcher lists exactly those so unrelated tool calls never spawn it.
 export const EVAL_SANDBOX_GATE_MATCHER =
-  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file';
+  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning';
 
 /**
  * Register gate-eval-sandbox.sh as a PreToolUse hook in a group's settings.json.
