@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # PreToolUse hook (matcher: Bash|mcp__slang-mcp__discord_send_message|
-# mcp__slang-mcp__github_create_or_update_file): keep an evaluation copy of a
+# mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning):
+# keep an evaluation copy of a
 # coworker from writing anywhere but the evaluation fork.
 #
 # Symmetric opt-in, like gate-critique-on-deliver.sh: the hook only fires for
@@ -10,8 +11,9 @@
 # exists, so the agent cannot switch the gate off by deleting the marker.
 #
 # What is refused, with a reason on stderr and exit 2:
-#   - the two MCP tools that reach humans or write repository files directly
-#     (Discord send, GitHub create-or-update-file);
+#   - the MCP tools that reach humans, write repository files directly or write
+#     the shared learnings (Discord send, GitHub create-or-update-file,
+#     append_learning);
 #   - any Bash command that would write to a GitHub repository outside
 #     EVAL_ALLOWED_REPOS (default slang-coworkers/slang-eval): mutating `gh pr`
 #     / `gh issue` / `gh repo` / `gh release` ... subcommands, `gh api` with a
@@ -56,6 +58,12 @@ case "$TOOL" in
     # The tool writes a file straight to a repository with no command line to
     # inspect for the target, so it is refused regardless of its arguments.
     deny "github_create_or_update_file: repository writes go through git push to the fork, where the target can be checked"
+    ;;
+  mcp__nanoclaw__append_learning)
+    # A shared learning written during a trial reaches every later trial and the
+    # production coworkers through the wiki; one that names the task's pull request
+    # or what its reviewers asked for hands the answer key to the next repeat.
+    deny "append_learning: an evaluation copy keeps its discoveries in its own answer, never in the shared learnings"
     ;;
   Bash) ;;
   *) exit 0 ;;
