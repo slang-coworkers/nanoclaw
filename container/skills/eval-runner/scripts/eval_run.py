@@ -110,6 +110,11 @@ FILE_KINDS = ("triage", "reply", "review")
 MAX_ATTEMPTS = 2
 # Below this many paired tasks a comparison is a smoke signal, not a result.
 SMOKE_SIGNAL_TASKS = 30
+# A task is low-signal when its repeats disagree by more than this much reward. Triage and
+# fixer rewards are discrete (a label set matches or not, CI is green or red), so any
+# difference counts; reply and review rewards are continuous judge scores that always move
+# a little between runs, so only a large gap says the task depends on the draw.
+LOW_SIGNAL_GAP = {"triage": 1e-9, "fixer": 1e-9, "reply": 0.2, "review": 0.2}
 BOOTSTRAP_SAMPLES = 2000
 BOOTSTRAP_SEED = 20261016
 MODEL_ALIASES = {"opus": "ANTHROPIC_DEFAULT_OPUS_MODEL", "sonnet": "ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -959,11 +964,11 @@ def _mean(xs: list[float]) -> float | None:
     return round(sum(xs) / len(xs), 4) if xs else None
 
 
-def aggregate_tasks(trials: list[dict]) -> dict[str, dict]:
+def aggregate_tasks(trials: list[dict], gap: float = 1e-9) -> dict[str, dict]:
     """Per-task view over the repeats: mean, pass@k (any repeat with reward 1), min, max,
     the repeat count, how many repeats produced a reward, and `low_signal` when the
-    scored repeats disagree (the task's answer depends on the draw, so a single
-    difference on it says little)."""
+    scored repeats disagree by more than `gap` (the task's answer depends on the draw,
+    so a single difference on it says little); see LOW_SIGNAL_GAP for the gap per kind."""
     by: dict[str, list[dict]] = {}
     for t in trials:
         by.setdefault(t["task_id"], []).append(t)
@@ -976,7 +981,7 @@ def aggregate_tasks(trials: list[dict]) -> dict[str, dict]:
             "pass_at_k": (1.0 if any(r >= 1.0 for r in rewards) else 0.0) if rewards else None,
             "k": len(ts),
             "stdev": round(statistics.pstdev(rewards), 4) if len(rewards) > 1 else None,
-            "low_signal": len(rewards) > 1 and (max(rewards) - min(rewards)) > 1e-9,
+            "low_signal": len(rewards) > 1 and (max(rewards) - min(rewards)) > gap,
             "base_commit": next((t.get("base_commit") for t in ts if t.get("base_commit")), None),
         }
     return out
@@ -996,12 +1001,12 @@ def bootstrap_ci(diffs: list[float], samples: int = BOOTSTRAP_SAMPLES, seed: int
     return round(lo, 4), round(hi, 4)
 
 
-def compare_jobs(baseline: list[dict], variant: list[dict]) -> dict:
+def compare_jobs(baseline: list[dict], variant: list[dict], gap: float = 1e-9) -> dict:
     """Paired comparison: for every task scored in both jobs, variant mean over repeats
     minus baseline mean over repeats; the mean paired difference with a bootstrap 95%
     interval over tasks; win/loss/tie counts; the low-signal tasks; and
     `smoke_signal` when fewer than SMOKE_SIGNAL_TASKS tasks were paired."""
-    b, v = aggregate_tasks(baseline), aggregate_tasks(variant)
+    b, v = aggregate_tasks(baseline, gap), aggregate_tasks(variant, gap)
     common = sorted(tid for tid in set(b) & set(v) if b[tid]["mean"] is not None and v[tid]["mean"] is not None)
     rows = []
     for tid in common:
@@ -1033,7 +1038,7 @@ def compare_jobs(baseline: list[dict], variant: list[dict]) -> dict:
 def summarize(cfg: JobConfig, trials: list[Trial], budget: Budget, started_at: float, finished_at: float,
               stopped_for_budget: bool, frozen: dict) -> dict:
     public = [t.public() for t in trials]
-    tasks = aggregate_tasks(public)
+    tasks = aggregate_tasks(public, LOW_SIGNAL_GAP.get(cfg.kind, 1e-9))
     scored = [t for t in trials if t.status == SCORED]
     with_reward = [t for t in trials if t.reward is not None]
     dispatched = [t for t in trials if t.status != SKIPPED]
@@ -1154,10 +1159,11 @@ def write_job(cfg: JobConfig, job: EvalJob) -> dict:
     trials = [t.public() for t in job.trials]
     summary = summarize(cfg, job.trials, job.budget, job.started_at, job.finished_at, job.stopped_for_budget,
                         job.frozen)
-    tasks = aggregate_tasks(trials)
+    gap = LOW_SIGNAL_GAP.get(cfg.kind, 1e-9)
+    tasks = aggregate_tasks(trials, gap)
     compare = None
     if cfg.compare:
-        compare = compare_jobs(load_trials(cfg.reports_dir, cfg.compare), trials)
+        compare = compare_jobs(load_trials(cfg.reports_dir, cfg.compare), trials, gap)
         summary["compare_result"] = {k: v for k, v in compare.items() if k != "rows"}
     job_dir = job.job_dir
     os.makedirs(job_dir, exist_ok=True)

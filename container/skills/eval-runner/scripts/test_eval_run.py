@@ -455,6 +455,16 @@ class StatisticsTest(unittest.TestCase):
         self.assertEqual((agg["c"]["mean"], agg["c"]["scored"], agg["c"]["repeats"]), (None, 0, 1))
         self.assertFalse(agg["c"]["low_signal"])
 
+    def test_low_signal_uses_the_kind_gap_for_continuous_rewards(self):
+        trials = [{"task_id": "r", "repeat": 1, "reward": 0.61}, {"task_id": "r", "repeat": 2, "reward": 0.55},
+                  {"task_id": "s", "repeat": 1, "reward": 0.72}, {"task_id": "s", "repeat": 2, "reward": 0.36}]
+        strict = er.aggregate_tasks(trials)
+        self.assertTrue(strict["r"]["low_signal"] and strict["s"]["low_signal"])
+        review = er.aggregate_tasks(trials, er.LOW_SIGNAL_GAP["review"])
+        self.assertFalse(review["r"]["low_signal"])
+        self.assertTrue(review["s"]["low_signal"])
+        self.assertEqual(er.LOW_SIGNAL_GAP["triage"], 1e-9)
+
     def test_bootstrap_ci_is_seeded_and_brackets_the_mean(self):
         diffs = [0.1, 0.2, 0.0, 0.3, 0.1, 0.2, 0.4, 0.0, 0.1, 0.2]
         ci = er.bootstrap_ci(diffs)
