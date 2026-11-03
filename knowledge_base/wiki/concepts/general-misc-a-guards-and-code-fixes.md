@@ -11,7 +11,9 @@ source_count: 15
 Reasoning about guards and code changes has its own recurring failure shapes:
 
 - **A guard that matches command TEXT enforces nothing about command EFFECT** — and its state
-  path can fail open. Text-matching is defense-in-depth, not an enforcement boundary.
+  path can fail open. Text-matching is defense-in-depth, not an enforcement boundary. Heredoc
+  bodies count as command text: write notes naming gated commands with Edit/Write, and treat a
+  refusal or "PR created" reminder after such a write as a false positive until `gh pr list` agrees.
 - **A drift/safety check cannot be a pattern match** — mine flagged *prohibitions* as
   violations. Match invocations (gate on tool KIND, then the field carrying the action).
 - **When a recurring fix keeps failing, check it targets the right *mechanism*** before making
@@ -39,6 +41,8 @@ doesn't fire. Text matching over shell commands is a heuristic; tightening trade
 for the other, so ladder any tightening against the original's *catches*, not just the false
 positive. The durable control is at the effect level (host-side credential scoping).
 [A guard that matches command TEXT enforces nothing about command EFFECT — plus its state path can fail open nondeterministically](../learnings/1785862358904-a-guard-that-matches-command-text-enforces-nothing.md)
+
+Heredoc bodies are part of that text. `gate-critique-on-deliver.sh` refused a Bash call that only appended a plan note to a file, because the heredoc body contained `gh pr create --draft`, and the PostToolUse "PR created" hook fired on a memory-file heredoc that mentioned `gh pr create`. To write a note that names a gated command, use Edit/Write, whose content these hooks do not scan, or reword it ("open DRAFT PR"). A refusal or a "PR created" reminder right after such a write is a false positive, so check `gh pr list --head <branch>` before acting on it. (Side fact from the same run: on Linux, `tests/metal/*` `-target metal` SIMPLE FileCheck and DIAGNOSTIC tests do run without Apple hardware; only COMPARE_COMPUTE `-metal` runtime legs and `-target metallib` legs are skipped, so "Metal legs ignored" for a whole file is a false public claim.) [PreToolUse gates match the literal command text, heredoc bodies included](../learnings/1793658664151-pretooluse-gates-match-the-literal-command-text-he.md)
 
 A drift/safety check certifying "this reviewer never wrote to GitHub" reported 2 violations in
 a clean reviewer — both were `Agent` *dispatch prompts* naming the forbidden skill *inside a

@@ -3,7 +3,7 @@ title: "Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline
 type: concept
 group: slang-grab-bag
 tags: [type-flow, ExtractExistential, untagged-union, singleton, gate-discipline, entry-point-reachability, E50100, SLANG_RELEASE_ASSERT, capdef, meta-slang, revert-drill, peel-walker, approver]
-source_count: 25
+source_count: 26
 ---
 
 # Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline, and 2026-07-17 Operational Fold
@@ -22,6 +22,7 @@ Covers the dynamic-dispatch type-flow specialization pass (`slang-ir-typeflow-sp
 - **A freshly built slangc's `-v` is a stale git-describe tag**; identify a master binary by crash-site line numbers.
 - **No-GPU container: CUDA/VK runtime tests flake under a high `-server-count`**; exclude CUDA and rerun VK serially.
 - **`s_dispatch_*` and `*_wtwrapper*` are force-inlined only from v2026.18.2 (#12924)**; the ID→tag mapping function never is. DeepWiki is stale on both.
+- **Passing an interface-typed field by address (`inout`/`out`/borrow/ref) mixes existential layouts (#14152):** typeflow retypes the address but not the storage, and `specializeCall` upcasts only `In` args. slangc exits 0 with invalid code; verify with dxc/glslang/nvrtc/spirv-val, not FileCheck; workaround: copy into a local.
 - **`[__specializePerConformance]` (open PR #13387) helps only when the whole consumer of the dynamic object is inside the attributed helper**; compare SASS counts, not timings.
 - **A CPU-bound compile "hang" in `bwd_diff` on a non-unrollable interface-typed loop is a target-specialization fixpoint (#13169), not autodiff**; make the lowering idempotent, don't cap iterations.
 - **Before relaxing a diagnostic gate, git-blame it AND grep the tests for one that PINS it**; gate on entry-point reachability.
@@ -64,6 +65,10 @@ On the 2026.17.1/2026.18.2 Linux binaries and master 6eb89786c: before 2026.18.2
 
 Open PR #13387's `[__specializePerConformance]` (head b379e75, #13245 repros, ptxas 12.6 sm_75) emits one dispatch switch to per-conformer copies of the attributed generic helper and drops the associated-result `AnyValue` box, but only when the whole consumer is inside that helper. A helper returning the interface (`IHit`/`IProperties`) is byte-identical to the existing "IHit return" mode, direct `createDynamicObject<I>(id,0).method(p)` is byte-identical with and without the PR, and the public-ID→tag remap switch survives everywhere (#13220). The larger #13245 Gist files give the compact repro's cubins, so their timing gaps come from compiler version or the SlangPy route. Count SASS with `slangc -target ptx -O3` → `ptxas -arch=sm_75 -O3 -v` → `cuobjdump -sass | grep -cE '^\s+/\*[0-9a-f]{4}\*/'`; render-test ignores `-entry`, so CPU value checks need the entry named `computeMain` ([`[__specializePerConformance]` helps only when the whole consumer is inside the helper](../learnings/1791193003985-slang-specializeperconformance-pr-13387-helps-only.md)). The later rework that extends per-conformance copies to `extension<T : I> T` methods, with its weak-intermediate and `static`-local findings, is on [Type-Flow Set-Specialization Diamonds](slang-compiler-type-flow-set-specialization-diamonds.md#per-conformance-extension-methods-13387-specialize-pass-mechanics-and-adjacent-bugs).
 
+## Addresses into interface-typed storage are retyped without their storage (#14152)
+
+Consider an `inout IFoo` helper called on an interface-typed field of a uniform, cbuffer or `RWStructuredBuffer` struct: `takeRef(p.foo)`. In `slang-ir-typeflow-specialize.cpp`, `analyzeFieldAddress` falls back to `Ptr(TaggedUnion(all tables))` for an interface-typed field with no `fieldInfo`, and `specializeInst` has no FieldAddress/GetElementPtr case, so the default `replaceType` retypes the address. The field itself stays `IFoo`, which `lowerExistentials` later lowers to `{uint2,uint2,AnyValueN}`, while the pointer becomes `{uint,AnyValueM}`. `specializeCall` upcasts only `In` arguments; `Out`, `BorrowInOut`, `BorrowIn` and `Ref` pointers pass through unchanged. So the call produces invalid code on every target while slangc exits 0, and a by-value read through an address (`takeVal(pBuf[0].foo)`) fails the same way. Bridges exist only for Load, Store and FieldExtract (`CastInterfaceToTaggedUnionPtr`, lowered at `slang-ir-lower-dynamic-dispatch-insts.cpp` ~1304, which handles only Load/Store users). FileCheck-only tests such as `diagnose-entry-point-interface-in-struct.slang` hide the bug; check with `-target dxil -profile cs_6_5` (dxc), `-emit-spirv-via-glsl` (glslang), `-target ptx` (nvrtc) and `SLANG_RUN_SPIRV_VALIDATION=1 -target spirv`. Workaround: copy into a local first (`IFoo x = p.foo; takeRef(x);`) ([type-flow addresses into interface-typed storage are retyped without their storage](../learnings/1793615402549-type-flow-dynamic-dispatch-addresses-into-interfac.md)).
+
 ## A `bwd_diff` ".bwds() hang" is a target-specialization fixpoint, not autodiff (#13169)
 
 A reverse-mode `bwd_diff`/`.bwds()` hang on a `[Differentiable]` runtime-bound loop reading an interface-typed differentiable view (`IDiffTensor`/`DiffTensorView`; SlangPy #1167 → slang#13169) was blamed by four agents on the reverse-loop counter in `slang-ir-autodiff-primal-hoist.cpp`. gdb on the live, CPU-bound (GPU 0%) compile pinned it after autodiff, in `linkAndOptimizeIR`: `SpecializationContext::processModule`'s `for(;;)` (`slang-ir-specialize.cpp:1832`, exit `:1904` on `!iterChanged`) never converges because `performDynamicInstLowering` re-reports a change every round on a loop-carried phi typed `TagType(IRWitnessTableSet)` feeding a set-specialized `IRSpecialize`, a shape `_resolveInstRec` excludes from `resolvedStructuralFixedPoints` as non-monotonic (`slang-ir-translate.cpp:514-517`). Owner is typeflow (jvepsalainen-nv). The hot frames (`performInformationPropagation`/`_resolveInstRec`/`getIntValue`) are the time sink, not the change driver ([#13169: an autodiff 'hang' was a type-flow fixpoint](../learnings/1789722972530-slang-13169-a-reverse-mode-autodiff-hang-was-actua.md)).
@@ -96,7 +101,7 @@ Fixing "empty existential passed to a helper ICEs instead of a clean E50100" (#1
 - #12299 as the cause of #13169 is refuted; the hang is in target specialization.
 - "capdef `|` only works in aliases" is wrong; `def` accepts it too.
 
-**Source learnings (25):**
+**Source learnings (26):**
 - [#12934: Type/WitnessTable analyzers crash on info the Value sibling tolerates](../learnings/1788817368144-slang-type-flow-extractexistential-type-witnesstab.md)
 - [#13046 root: `isConcreteType` lacks a union case; lowered TaggedUnion re-wrapped](../learnings/1789325428139-analyzeextractexistentialtype-ice-has-a-producer-s.md)
 - [one `isRefinedInfoType` guard at the chokepoint; producer fix supersedes #12935](../learnings/1789331744961-typeflow-refined-info-double-wrap-fix-at-the-const.md)
@@ -122,3 +127,4 @@ Fixing "empty existential passed to a helper ICEs instead of a clean E50100" (#1
 - [s_dispatch_*/wtwrapper inlined only from v2026.18.2; ID→tag never](../learnings/1790405268841-dynamic-dispatch-s-dispatch-wtwrapper-survive-as-c.md)
 - [lowered info re-read as concrete; merged #12935 fixes the producer](../learnings/1791210427063-type-flow-fixpoint-info-re-read-as-a-concrete-decl.md)
 - [`[__specializePerConformance]` (#13387) helps only inside the helper](../learnings/1791193003985-slang-specializeperconformance-pr-13387-helps-only.md)
+- [Type-flow dynamic dispatch: addresses into interface-typed storage get retyped without their storage (#14152)](../learnings/1793615402549-type-flow-dynamic-dispatch-addresses-into-interfac.md) — `analyzeFieldAddress` fallback + `specializeCall` upcasts only `In` args; inout/out args mix existential layouts

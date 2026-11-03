@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-616 learnings. [Catalog](../index.md)
+622 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -165,6 +165,7 @@ type: topic
 - [Background build exit code masked by trailing `tail`/`echo` — check BUILD_EXIT, not the wrapper](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
 - [Bare file-name #line CHECK-DAGs can be satisfied by struct types from incidental meta locations](../learnings/1792583190960-bare-file-name-line-check-dags-can-be-satisfied-by.md)
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md)
+- [Before building a bot fix, check for a reporter-opened PR that fixes the same issue](../learnings/1793622493442-before-building-a-bot-fix-check-for-a-reporter-ope.md)
 - [Before citing a "shared runner/pool" clue on a flake, control against passing jobs](../learnings/1792691453073-before-citing-a-shared-runner-pool-clue-on-a-flake.md)
 - [Before citing an identifier as evidence, prove it varies (cross-repo dispatch head_sha is a constant)](../learnings/1786093847191-before-citing-an-identifier-as-evidence-prove-it-v.md)
 - [Benign/valid-output severity calls must check every reachable emit target (validity is target-specific)](../learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md)
@@ -197,6 +198,7 @@ type: topic
 - [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
 - [Check check-ci's needs before calling a CI red merge-blocking or an eviction risk](../learnings/1791456069310-check-check-ci-s-needs-before-calling-a-ci-red-mer.md)
 - [Check issue timeline for cross-referenced PRs before building a fix](../learnings/1792076007832-check-issue-timeline-for-cross-referenced-prs-befo.md)
+- [Check offline CUDA prelude builds with nvcc -c, not only -cubin](../learnings/1793644733084-check-offline-cuda-prelude-builds-with-nvcc-c-not-.md)
 - [Check rerun-tracker.json's existing verdict before re-deriving a fresh classification from raw CI logs](../learnings/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md)
 - [Check the build graph before recommending a test shape](../learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md)
 - [Check the BUILD graph, not just the call graph, before recommending a test shape](../learnings/1785840805944-check-the-build-graph-not-just-the-call-graph-befo.md)
@@ -303,6 +305,7 @@ type: topic
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
 - [DIAGNOSTIC_TEST with -target ptx still runs on runners without NVRTC](../learnings/1791410667785-diagnostic-test-with-target-ptx-still-runs-on-runn.md)
 - [Differential compile sweeps: never rebuild a compared binary mid-sweep, and normalize #line](../learnings/1792547346513-differential-compile-sweeps-never-rebuild-a-compar.md)
+- [Diffing a competing PR: build master + PR + yours on the SAME base and run one matrix](../learnings/1793668061204-diffing-a-competing-pr-build-master-pr-yours-on-th.md)
 - [Discord forum parent channel reads return 0 messages — check the specific thread ID for follow-up activity](../learnings/1788404541359-discord-forum-parent-channel-reads-return-0-messag.md)
 - [Discriminate a per-job timeout-minutes cancel: PR-specific cost regression vs systemic capacity ceiling](../learnings/1786198665211-discriminate-a-per-job-timeout-minutes-cancel-pr-s.md)
 - [Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
@@ -358,6 +361,7 @@ type: topic
 - [gh CLI --field expands @ as file path](../learnings/1778859843367-gh-cli-field-expands-as-file-path.md)
 - [gh CLI shows App installation token as "invalid" — false negative; gh api still works on repo/issue endpoints](../learnings/1787310650484-gh-cli-shows-app-installation-token-as-invalid-fal.md)
 - [gh filter=all carry-over rows inflate CI success rates toward healthy](../learnings/1786070106710-gh-filter-all-carry-over-rows-inflate-ci-success-r.md)
+- [gh issue view --json has no authorAssociation; use gh api for it](../learnings/1793639840678-gh-issue-view-json-has-no-authorassociation-use-gh.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
 - [gh pr view --json files silently caps at 100 — counting files from it can invert a size-cap decision](../learnings/1785860688057-gh-pr-view-json-files-silently-caps-at-100-countin.md)
 - [gh run list --workflow does NOT constrain results — check workflowName before claiming a CI state](../learnings/1785847099622-gh-run-list-workflow-does-not-constrain-results-ch.md)
@@ -379,6 +383,7 @@ type: topic
 - [GitHub's combined commit status fails in BOTH directions — never derive CI health from it](../learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md)
 - [github.ci_failed can arrive weeks late for a superseded head — check head_sha first](../learnings/1792326985786-github-ci-failed-can-arrive-weeks-late-for-a-super.md)
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
+- [GraphQL CheckRun.isRequired(pullRequestNumber:) separates real from false CI failures in 1 point](../learnings/1793607720073-graphql-checkrun-isrequired-pullrequestnumber-sepa.md)
 - [Green CI can be vacuous — check the matrix pins the config your fix touches](../learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md)
 - [Green CI runs can hide a stuck merge queue: check commit statuses and head age](../learnings/1793376411569-green-ci-runs-can-hide-a-stuck-merge-queue-check-c.md)
 - [Grep a citation out of the artifact — never retype it into a verifier's prompt](../learnings/1785967938398-grep-a-citation-out-of-the-artifact-never-retype-i.md)
@@ -448,6 +453,7 @@ type: topic
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
 - [Parallelize the REST-fallback CI sweep — serial retry-wrapper sweeps time out at scale](../learnings/1785752832168-parallelize-the-rest-fallback-ci-sweep-serial-retr.md)
 - [Parking a chain on a human/operator decision needs a re-chase timer, or it stalls silently](../learnings/1790028684307-parking-a-chain-on-a-human-operator-decision-needs.md)
+- [Parser change review: compare core-module archives and a revert-only base build](../learnings/1793662836426-parser-change-review-compare-core-module-archives-.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
 - [Per-conformer specialization of a caller under dynamic dispatch: use a traversal-owned interface + blanket extension](../learnings/1790404968818-per-conformer-specialization-of-a-caller-under-dyn.md)
 - [Pin the denominator when comparing a CI rate to a stored baseline](../learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md)

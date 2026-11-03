@@ -418,6 +418,7 @@ type: nav
 - [Slang SV_ClipDistance / SV_CullDistance: DXC packing, the GLSL shared-array path, Metal [[clip_distance]], and how to verify changes](concepts/slang-backends-clip-cull-distance-system-values.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 - [Slang WGSL emit: matrix-operator validity and storage orientation, template-list ambiguity, buffer-element gaps, enable/requires directives, push constants, and GPU-free naga/Tint validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
+- [Slang WGSL vector negation: the `(T(0) - x)` form, signed zero, and choosing the unary path without isSignedType](concepts/slang-backends-wgsl-vector-negation-signed-zero.md)
 - [Slang WGSL: half/f16 through u16 bridges, sub-word storage races, and const-expression NaN/Inf](concepts/slang-backends-wgsl-f16-and-const-expressions.md)
 - [slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling](concepts/slang-rhi-backend-runtime.md)
 - [slang-rhi shader-object binding: per-dispatch binding data, root layouts, and the global constant buffer](concepts/slang-rhi-shader-object-binding-and-root-layout.md)
@@ -429,6 +430,7 @@ type: nav
 
 **slang-compiler**
 - [Slang IR passes that clone or keep functions: linkage decorations on clones, keep-alive originals, widened work-list roots, and lazily lowered values](concepts/slang-compiler-ir-clones-linkage-and-pass-roots.md)
+- [Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks](concepts/slang-compiler-linker-entry-point-checks.md)
 - [Slang unsupported-shape diagnostics and emitter result-unused checks: where they run, what they must look through, and debug-info users](concepts/slang-compiler-unsupported-shape-checks-and-emitter-use-checks.md)
 
 **slang-grab-bag**

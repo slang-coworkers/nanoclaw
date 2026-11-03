@@ -3,18 +3,21 @@ title: "Slang formatting.sh: false-greens, tool install, and safe scoping"
 type: concept
 group: slang-tooling
 tags: [formatting, clang-format, gersemi, shfmt, prettier, ci, false-green, worktree]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
 
 `extras/formatting.sh` is the gate for every Slang PR and is the single most trap-laden
-tool in the repo. The recurring failure is a **false green**: the script exits `0` (or
-prints a diff you never see) in exactly the states where it has verified nothing.
+tool in the repo. The recurring failure is a **false green**: a caller reads `0` (or
+misses a diff it never saw) in exactly the states where nothing was verified.
 
-- **A missing formatter → exit 0, checked nothing.** `--check-only` prints `This script
-  needs <tool>, but it isn't in $PATH` on stderr and still exits 0. "No formatter
-  available" and "all files clean" are the same exit code. Always assert the tools ran.
+- **A missing formatter → exit 1, formatted nothing.** `require_bin` prints `This script
+  needs <tool>, but it isn't in $PATH` on stderr and the script exits 1 before formatting
+  (re-measured 2026-11-03). Earlier "exit 0" reports were a pipe stage's status, not the
+  script's. Still assert the tools ran: that stderr line is the only record of which.
+- **Bare `./extras/formatting.sh` (no args) prints usage and exits 0** — a real vacuous
+  pass. Always pass `--since <base>`, `--check-only` or file arguments.
 - **Never discard its output.** `formatting.sh >/dev/null 2>&1` hides the missing-tool line,
   which is the only evidence C++ was skipped (#13880 shipped an over-long line this way).
   Before committing, diff each touched file: `clang-format <file> | diff <file> -`.
@@ -27,8 +30,8 @@ prints a diff you never see) in exactly the states where it has verified nothing
   fails. Install `clang-format==17.0.6` via pip/venv; the npm package ships v15 (rejects the
   repo `.clang-format`) — never use it.
 - **clang-format is present only as `clang-format-17`, unsymlinked** (the fleet container
-  shape). `formatting.sh` looks up bare `clang-format`, skips C++ and still exits 0, so
-  "fmt=0" proves nothing. Shim it: `ln -sf /usr/bin/clang-format-17 /tmp/cf17/clang-format`,
+  shape). `formatting.sh` looks up bare `clang-format`, so it fails `require_bin` and exits
+  1 without formatting C++; a "fmt=0" read through a pipe proves nothing. Shim it: `ln -sf /usr/bin/clang-format-17 /tmp/cf17/clang-format`,
   then `PATH=/tmp/cf17:$PATH ./extras/formatting.sh --check-only --cpp`, or run
   `clang-format-17 -i` / `--dry-run --Werror` directly. With the shim, a full `--check-only`
   still exits 1 if gersemi/shfmt are absent; for C++ diff `clang-format-17 --style=file $f`
@@ -52,15 +55,19 @@ prints a diff you never see) in exactly the states where it has verified nothing
 
 ## The core failure mode: a green that measured nothing
 
-The dominant lesson across these atoms is that `formatting.sh --check-only` returns a
-*plausible pass* in every state where it is blind. When none of its four tools
-(`clang-format`, `gersemi`, `shfmt`, `prettier`) is on `$PATH`, the script prints one
-`This script needs <tool>, but it isn't in $PATH` line per missing tool **on stderr** and
-still **exits 0** — so a caller gating on the exit code records a pass from an inert run
-[measured on two independent containers](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md),
-and again on slang#12454 where all four formatters had been lost across a restart
-[reported here](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md).
-The gate to use instead requires **both** exit 0 **and** zero missing-tool lines:
+When one of its four tools (`clang-format`, `gersemi`, `shfmt`, `prettier`) is absent or
+out of range, `require_bin` prints one `This script needs <tool>, but it isn't in $PATH`
+line per tool **on stderr**, sets `missing_bin`, and the script **exits 1** at the
+`if [ "$missing_bin" ]` gate before formatting anything. We confirmed this by running
+`--check-only --cpp` at `76a45e10c1` with only `clang-format-17` installed (rc=1), and the
+gate is present at every commit back to 2026-08-04 ([re-measured 2026-11-03](../learnings/1793688350274-correction-slang-formatting-sh-exits-1-not-0-when-.md)). The earlier reports of
+"exit 0 while checking nothing"
+[on two containers](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md)
+and [on slang#12454](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md)
+printed `exit=$?` after a pipe, which is the last stage's status — the plausible-negative
+was the measurement, not the script. The durable rule is unchanged: a missing-tool line
+means nothing was checked, so the gate requires **both** exit 0 **and** zero missing-tool
+lines, with the script's status captured outside any pipe:
 
 ```bash
 OUT=$(./extras/formatting.sh --check-only 2>&1); EXIT=$?
@@ -150,7 +157,7 @@ silently skipped — only touch those files if you can format them), while `pret
 md/yaml/json
 ([clang-format-17 present but bare clang-format absent — `formatting.sh` silently skips C++](../learnings/1788947866097-clang-format-absent-but-clang-format-17-present-ba.md)).
 It recurred on the `slang-fixer` container for #13332: `formatting.sh; echo $?` returned 0 having
-formatted nothing, and a peer reviewer caught a line that `clang-format-17` would have joined. Two
+formatted nothing (a bare call takes the usage path, which exits 0 before any tool check), and a peer reviewer caught a line that `clang-format-17` would have joined. Two
 refinements follow. With the shim in place, `--check-only` still returns rc 1 because gersemi and
 shfmt are missing, so for C++ use a direct per-file diff, which needs no shim at all; and a `/tmp`
 shim dir vanishes on container restart, so keep it under `/workspace/agent/`
@@ -260,7 +267,8 @@ yours), avoid bare `git add -A`, and evict a stray file by restoring it to the c
 parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- <file>`
 (origin/master may have advanced, reintroducing it as a spurious modification).
 
-**Source learnings (19):**
+**Source learnings (20):**
+- [Correction: formatting.sh exits 1 (not 0) when a required formatter is missing](../learnings/1793688350274-correction-slang-formatting-sh-exits-1-not-0-when-.md) — measured rc=1 at 76a45e10c1; bare call is the exit-0 case; earlier exit-0 reads were pipe status
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md) — The `[17,18)` bound, the PEP-668 venv install, and two positive-control traps (`--check-only` exit 0 masks a silent no-op; type flags narrow the file set to 5 extensions).
 - [formatting.sh --check-only exits 0 when its tools are missing — a green that checked nothing](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — On slang#12454 all four formatters were absent; the grep-for-missing-tool-lines gate, plus the same-session `xxd`-missing false negative.
 - [slang formatting.sh --check-only EXITS 0 WHILE CHECKING NOTHING — and pip clang-format vanishes across a restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md) — Two-container measurement; the require-both-exit-0-and-zero-missing gate; the `[17,18)` bound; the install disappearing later the same day.

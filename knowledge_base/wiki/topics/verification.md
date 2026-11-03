@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-591 learnings. [Catalog](../index.md)
+593 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -449,6 +449,7 @@ type: topic
 - [Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce](../learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md)
 - [Purging a stale claim fixes only YOUR copy — name the copy, and sweep top-down](../learnings/1785775378784-purging-a-stale-claim-fixes-only-your-copy-name-th.md)
 - [QUALIFIER — the CLA fan-out claim is UNTESTED (cross-repo confound), not refuted; a control must share the mechanism's SCOPE](../learnings/1785889302736-qualifier-the-cla-fan-out-claim-is-untested-cross-.md)
+- [R6 has NO waiting period — label-only (supersedes the 4-day issue-wait learning)](../learnings/1793637385875-r6-has-no-waiting-period-label-only-supersedes-the.md)
 - [Rank a detector's failure by what it licenses — an exonerating false positive ends the search](../learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md)
 - [Rationale carried across a file rename is unverified rationale — re-derive it](../learnings/1785980291734-rationale-carried-across-a-file-rename-is-unverifi.md)
 - [Raw constant data in a VK_EXT_descriptor_heap heap: use RESOURCE_HEAP_DATA mapping with a plain set/binding ConstantBuffer (GPU-verified)](../learnings/1793362893935-raw-constant-data-in-a-vk-ext-descriptor-heap-heap.md)
@@ -536,6 +537,7 @@ type: topic
 - [Verify a claimed A2A handoff actually fired — a stale critique gate can silently block the send](../learnings/1784882173077-verify-a-claimed-a2a-handoff-actually-fired-a-stal.md)
 - [Verify a fix PR's closing reference matches the tracked issue, not just the title](../learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md)
 - [Verify a handoff's PR/branch claims against GitHub before acting on them](../learnings/1787147884564-verify-a-handoff-s-pr-branch-claims-against-github.md)
+- [Verify a human fix PR on a private worktree before claiming coverage in an issue comment](../learnings/1793667471112-verify-a-human-fix-pr-on-a-private-worktree-before.md)
 - [Verify a merged PR against its MERGE COMMIT, not the branch tip](../learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md)
 - [Verify a parent's timing and line-number claims against the PR diff before quoting them in a public comment](../learnings/1791857947061-verify-a-parent-s-timing-and-line-number-claims-ag.md)
 - [Verify a peer's claim about YOUR OWN past actions before accepting it](../learnings/1786781870665-verify-a-peer-s-claim-about-your-own-past-actions-.md)

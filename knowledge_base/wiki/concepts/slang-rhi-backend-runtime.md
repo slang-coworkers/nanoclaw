@@ -2,8 +2,8 @@
 title: "slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling"
 type: concept
 group: slang-backends
-tags: [slang-rhi, vulkan, cuda, cuda-heap, memory-leak, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule, lavapipe, non_semantic_info, render-test, device-creation, push-constant, slangpy, metal, mtlfence, memory-barrier, encoder, timestamp-query, counter-sampling, thread-group-size]
-source_count: 20
+tags: [slang-rhi, abi, api-compatibility, vulkan, cuda, cuda-heap, memory-leak, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule, lavapipe, non_semantic_info, render-test, device-creation, push-constant, slangpy, metal, mtlfence, memory-barrier, encoder, timestamp-query, counter-sampling, thread-group-size]
+source_count: 21
 ---
 
 # slang-rhi backend runtime internals
@@ -31,6 +31,7 @@ source_count: 20
 - **slang-rhi Metal orders encoders only through one queue `MTLFence`, and `memoryBarrier` runs before every dispatch after the first**; `clearTexture` and `executeCallback` bypass encoder boundaries, so any encoder-coalescing change must fix both.
 - **slang-rhi Metal (and WGPU) never advertise `Feature::TimestampQuery`.** Apple silicon samples only at stage boundaries; use Dawn's empty-blit trick (`sampleBufferAttachments` + 1-byte fill).
 - **Thread-group size: slang-rhi CUDA and Metal always launch the reflected `[numthreads]` size;** a host-chosen size is on [[wiki/concepts/slang-backends-compute-thread-group-size-and-dispatch-override.md]].
+- **slang-rhi guarantees no ABI (and no source) compatibility between revisions since #895 (2026-10-08)**, so a pre-October "ABI break" objection is stale; still keep an inline wrapper for an old signature, because render-test and sgl call it.
 - **Shader-object binding is on [[wiki/concepts/slang-rhi-shader-object-binding-and-root-layout.md]]:** per-dispatch binding data, D3D12 root CBVs, Vulkan push-constant ranges, the global `$Globals` constant buffer.
 
 ## Vulkan buffer and queue lifetime
@@ -42,6 +43,10 @@ source_count: 20
 ## Guarding a public getter that the RHI also calls internally
 
 For slang-rhi#787 (forbid `getDeviceAddress`/bindless handles on `Shared` resources on Vulkan), `IBuffer::getDeviceAddress()` is also called ~20× during recording (AS/micromap inputs and scratch, cluster ops, cooperative-vector src/dst). A guard returning 0 corrupts those (codex flagged HIGH), and `BufferOffsetPair::getDeviceAddress()` computing `base + offset` turns a 0 sentinel into a plausible address; keep `base ? base + offset : 0`. Split a public guarded entry from `getDeviceAddressUnchecked()` plus a `getBufferDeviceAddress(BufferOffsetPair)` helper, rerouting internal sites whose operand is app-provided (could be `Shared`) but not RHI-owned buffers (SBT, AS/micromap backing); internal operands stay in `m_trackedObjects` and are reacquired normally ([split public/internal](../learnings/1790032907874-guarding-a-public-getter-that-rhi-calls-internally.md)).
+
+## Public API compatibility: no ABI guarantee since slang-rhi#895
+
+Since slang-rhi#895 (2026-10-08), README.md "Project status and compatibility" (lines 35-41) and CONTRIBUTING.md:15-19 say that neither source nor binary (ABI) compatibility is guaranteed between revisions, and that headers and binaries must come from the same revision. Maintainer PR #940 (2026-10-27) then inserted `createResourceHeap` and its siblings in the middle of `IDevice`. So an "this would be an ABI break" objection written before October 2026 is no longer a hard blocker; #811 (passing a session or `IComponentType` to `createShaderObjectFromTypeLayout`) is one such stale objection. Source compatibility still matters to downstream callers (slang render-test, sgl): keep an inline wrapper for the old signature, as `createShaderObject` does, whose virtual takes `ISession*` first and whose inline session-less overloads keep old call sites compiling. This differs from Slang's own `include/` rules, which still forbid vtable reordering ([slang-rhi no longer guarantees ABI (README policy since #895)](../learnings/1793622511423-slang-rhi-no-longer-guarantees-abi-readme-policy-s.md)).
 
 ## CUDA constant-buffer pool: interning by byte-content is lifetime-safe
 
@@ -95,7 +100,7 @@ Apple says untracked resources need "barriers, fences, or events"; within a pass
 
 Metal timestamps have been disabled since rhi#307, so `Feature::TimestampQuery` is never advertised and timestamp tests SKIP (WGPU likewise). On Apple silicon (M1–M4, macOS 26) `supportsCounterSampling` is true only for `AtStageBoundary`; blit/compute `sampleCountersInBuffer` errors. Use the pass descriptor's `sampleBufferAttachments` (start/endOfEncoderSampleIndex for compute/blit, start/endOfVertex and start/endOfFragment for render, ≤4 per pass). Dawn's `EncodeEmptyBlitEncoderForWriteTimestamp` (`CommandBufferMTL.mm`) encodes a blit pass with endOfEncoderSampleIndex = query index plus a 1-byte fill, since empty encoders store no samples (dawn:1473). Samples are GPU ticks; calibrate with `sampleTimestamps:gpuTimestamp:`. Zeros on macOS 26 when the GPU resolve commits before sampling completes (gfx-rs/wgpu#9414) are avoided by a CPU `resolveCounterRange` after completion. Triage memo: slang-triager `memory/issues/triage-slang-rhi-962.md` ([Metal stage-boundary timestamps](../learnings/1793565036279-metal-gpu-timestamps-apple-silicon-samples-only-at.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [Metal GPU timestamps: stage-boundary only; Dawn empty-blit trick (rhi#962)](../learnings/1793565036279-metal-gpu-timestamps-apple-silicon-samples-only-at.md) — `sampleBufferAttachments`, 1-byte fill, GPU-tick calibration.
 - [Apple Metal docs via DocC JSON; Metal barrier/encoder facts (rhi#964)](../learnings/1793570718425-apple-metal-docs-are-readable-via-the-docc-json-en.md) — one queue `MTLFence`; `clearTexture`/`executeCallback` traps.
 - [CUDA `main` renamed `main_0` (E40100) breaks `cuModuleGetFunction`](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md) — re-pin squash-merged submodules.
@@ -117,3 +122,4 @@ Metal timestamps have been disabled since rhi#307, so `Feature::TimestampQuery` 
 - [lavapipe Vulkan runs need non_semantic_info made optional](../learnings/1792028852820-observed-vulkan-runs-on-lavapipe-in-agent-containe.md)
 - [`VK_EXT_shader_atomic_float2` gated on float16 atomics (slang#14026)](../learnings/1793302322039-slang-rhi-enables-vk-ext-shader-atomic-float2-only.md)
 - [WebGPU readback via shared StagingHeap double-waits, maps 16 MiB (#953, #956)](../learnings/1793260323330-slang-rhi-webgpu-shared-stagingheap-readback-path-.md)
+- [slang-rhi no longer guarantees ABI (README policy since #895)](../learnings/1793622511423-slang-rhi-no-longer-guarantees-abi-readme-policy-s.md) — #940 inserted mid-`IDevice`; pre-Oct "ABI break" objections (#811) stale; keep source-compat inline wrappers

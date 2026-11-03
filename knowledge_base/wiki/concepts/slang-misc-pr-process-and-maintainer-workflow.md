@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 47
+source_count: 48
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -14,7 +14,7 @@ source_count: 47
 - Internal "APPROVE-clean" verdicts are invisible on GitHub; reconcile every handoff against live PR state.
 - `mergeable_state` says THAT a requirement is unmet, never WHICH; `mergeable=true` is not `reviewDecision=APPROVED`. "Approved at head" needs `commit_id == head` AND `submittedAt` later than the head commit (GitHub carries kept approvals forward). `COMMENTED` is not a verdict.
 - Don't push after an APPROVE unless required: any new head commit (even a requested reword) dismisses it; then say "dismissed, awaiting re-approval" in every status. `behind` is not a rebase cue and does not block the merge queue.
-- Events under jhelferty-nv's login (assignments, milestones, review requests, board moves) are mostly the triage automation; count only their written comments as their activity.
+- Events under jhelferty-nv's login (assignments, milestones, review requests, board moves) are mostly the triage automation; count only their written comments as their activity. jkiviluoto-nv's board adds and `falcor-ci` approvals are workflows too: an event within seconds of an Actions run is automation.
 - Verify a merge by CONTENT, not ancestry (squash rewrites SHAs); auto-close lags; a blocked verification call means UNKNOWN.
 - Required check names = kebab-case job key. A `failed_checks` eviction CLEARS auto-merge → manual requeue.
 - Verify against checkout HEAD, not a stale `build/Release/bin/slangc`; author-date in a [good,bad] window is not release membership; re-check `gh pr list` after a long build (the reporter may have self-fixed).
@@ -33,7 +33,7 @@ The on-call duty maintainer rotates roughly every two weeks and can be reassigne
 
 The recurring "who is the next Slang Maintainer?" prompt in `#slang-committers` (`1352357976878481468`) rarely gets a direct reply; humans name the maintainer in passing in unrelated threads. The PR-escalation report shows raw Discord IDs (`<@jkwaknv>`); reverse-look-up ID → handle in `/workspace/agent/memory/github-to-discord.json`, cross-checking PR sets across old and new reports. For "did a human answer our bot?", search for the topic, not a reply ([rotation from indirect evidence](../learnings/1785758534668-reconciling-the-slang-maintainer-rotation-from-ind.md)). A channel `discord_read_messages` call does not return thread replies, and the 10-27→11-09 answer (kaizhangNV, backup skiminki-nv) was posted in the thread of the *previous* (10-12) ask, so read the current and the previous ask's threads ([watch-list sweep: read thread replies for rotation answers](../learnings/1793177249369-watch-list-sweep-judge-a-ci-delivery-fix-by-the-ra.md)).
 
-**jhelferty-nv's GitHub login is used by the triage automation** ("a minor configuration error", #13693). Assignments, milestones, review requests and board events under that login are mostly the automation; only their written comments are their own. Don't count those events as their activity or a human triage pass, or ask them to act on them. The same login posts the PR-board-sync "do not reply" comments that the supervisor scan misreads as human (see [supervisor over-flag](agent-supervisor-staleness-and-overflag.md)). Community fork-PR CI is approved by the team reviewer after review (jkwak-work for the Clo3D PRs), not by them ([jhelferty-nv's identity is used by the triage automation](../learnings/1793176874441-jhelferty-nv-s-github-identity-is-used-by-the-slan.md)).
+**jhelferty-nv's GitHub login is used by the triage automation** ("a minor configuration error", #13693). Assignments, milestones, review requests and board events under that login are mostly the automation; only their written comments are their own. Don't count those events as their activity or a human triage pass, or ask them to act on them. The same login posts the PR-board-sync "do not reply" comments that the supervisor scan misreads as human (see [supervisor over-flag](agent-supervisor-staleness-and-overflag.md)). Community fork-PR CI is approved by the team reviewer after review (jkwak-work for the Clo3D PRs), not by them ([jhelferty-nv's identity is used by the triage automation](../learnings/1793176874441-jhelferty-nv-s-github-identity-is-used-by-the-slan.md)). Other logins carry workflow actions too. jhelferty-nv's project-status changes and project adds land within 10 s of "PR Review Fork Apply", "PR Checks Complete Sync" or "PR Maintenance" runs; jkiviluoto-nv's slang-rhi `added_to_project_v2` events land 7 s after each "Sync issues with the Slang project" run; and the `falcor-ci` environment approval that follows a maintainer's APPROVED review is recorded under jkiviluoto-nv (#14045). Before counting such an event as human triage or reviewer activity, compare its time with the Actions runs at that moment ([falcor-ci gate opens on a maintainer approval; automation acts under human logins](../learnings/1793609312966-slang-falcor-ci-gate-opens-when-a-maintainer-appro.md)).
 
 ## Reading Live PR State
 
@@ -117,7 +117,7 @@ A rename/branding request is a governance call: classify as feature request and 
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; source channels like #slang-discussion are read-only, so answers there come from a human or a summon thread ([support bot posts only to summon threads](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (47):**
+**Source learnings (48):**
 - [doc comments: brief, blank line, contract](../learnings/1791566071976-slang-doc-comments-one-sentence-what-it-does-brief.md)
 - [minimal comment churn](../learnings/1791941642114-slang-maintainers-want-minimal-comment-churn-keep-.md)
 - [verify review state before "idle-mergeable"](../learnings/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md)
@@ -156,6 +156,7 @@ A rename/branding request is a governance call: classify as feature request and 
 - [any push dismisses the approval](../learnings/1793204795938-shader-slang-slang-any-push-to-an-approved-pr-dism.md)
 - [review commit field moves forward](../learnings/1793176871441-github-review-commit-field-can-move-forward-to-a-l.md)
 - [jhelferty-nv login = triage automation](../learnings/1793176874441-jhelferty-nv-s-github-identity-is-used-by-the-slan.md)
+- [falcor-ci gate opens on a maintainer approval; automation acts under human logins](../learnings/1793609312966-slang-falcor-ci-gate-opens-when-a-maintainer-appro.md) — jhelferty-nv/jkiviluoto-nv board events and gate approvals within 7–16 s of Actions runs
 - [read thread replies for rotation answers](../learnings/1793177249369-watch-list-sweep-judge-a-ci-delivery-fix-by-the-ra.md)
 - [POST a comment once](../learnings/1784083867185-never-run-the-gh-post-comment-command-twice-to-cap.md)
 - [re-push before gh pr create](../learnings/1784316959883-re-push-after-every-amend-before-gh-pr-create-else.md)

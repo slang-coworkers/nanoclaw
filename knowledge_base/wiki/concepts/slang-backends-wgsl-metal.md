@@ -3,7 +3,7 @@ title: "Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)"
 type: concept
 group: slang-backends
 tags: [wgsl, metal, webgpu, static-const, buffer-layout, wave-intrinsics, deferBufferLoad, uniform, tint, PreventInfiniteLoops, loop, restructure]
-source_count: 30
+source_count: 32
 ---
 
 # Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)
@@ -24,6 +24,7 @@ The WGSL backend (`slang-emit-wgsl.cpp`) is a textual target that needs construc
 - `CHECK-DAG: WaveActiveCountBits` on CUDA/Metal is false confidence; check `__ballot_sync`/`__popc` or `simd_ballot`/`popcount`.
 - Look up layouts by KEY: a positional index into a pre-flatten layout segfaults Metal/WGSL (#8183).
 - WGSL `inout` arg from a global `static` gives `ptr<private>` into `ptr<function>` (#12173); fix `legalizeCall`'s skip-list on IR op/scope.
+- Metal and HLSL print a `half` NaN/Inf as float division `(1.0 / 0.0)`, so a 16-bit bit cast of it fails (#14158); byte-address `Load/Store<bool>` is a `bitcast<bool>`/`as_type<bool>` where an IntCast is needed (#14157).
 - Metal alone omits FP-literal suffixes. For a `-target glsl` text bug, check whether the WGSL emitter already solved it.
 - Widening `[require]` needs a matching `__target_switch` `case`/`default`, or E36107 becomes an emit gap (#12165).
 - groupshared-by-ref (#10641) breaks Metal, WGSL and CUDA differently; a green vk/HLSL/SPIR-V run clears none.
@@ -60,6 +61,10 @@ For `uniform S s; s.member.method()`, `collectGlobalUniformParameters` (`slang-i
 WGSL, like GLSL, is a constructor-syntax, no-brace-init target, so a `-target glsl` text bug (e.g. array brace init) often has an override in `slang-emit-wgsl.cpp` to port [WGSL is the stride outlier](../learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md).
 
 Metal is the **lone** C-like backend that prints FP literals without a type suffix: `MetalSourceEmitter::emitSimpleValueImpl` (`slang-emit-metal.cpp:1128-1164`) omits MSL `h`/`f`, so `61440.hf` becomes a bare double and breaks a size-sensitive `as_type<ushort>(...)`. The fix mirrors the WGSL/HLSL path (#11837) [Metal FP literals lack suffix (#11837)](../learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md), [Metal is the lone suffix-less backend](../learnings/1782832643994-metal-emitter-is-the-lone-backend-that-omits-fp-li.md).
+
+Special half values have the opposite gap on two targets (#14158, master 6815ed82d). Metal (`slang-emit-metal.cpp:1242-1256`) and HLSL (`slang-emit-hlsl.cpp:1763-1781`) write a NaN or ±Inf `FloatLit` as `(1.0 / 0.0)` / `(1.0f / 0.0f)` whatever its IR type, so a `half` constant becomes a float expression and a bit cast of it fails: Apple's `metal` rejects `as_type<ushort>((1.0 / 0.0))`, and DXC 1.9 rejects `asuint16((1.0f / 0.0f))` ("no known conversion from 'float' to 'half'"; reproducible GPU-free with `slangc -target dxil -profile sm_6_2`). GLSL already wraps the type (`_emitSpecialFloatImpl`, `slang-emit-glsl.cpp:1347`, emits `float16_t(1.0 / 0.0)`), and C++ and CUDA wrap the value in `half(...)`. Reporter PR #13927 (NaN-from-bits) leaves the half arms unchanged on every target. Grep the emitted MSL/HLSL for `as_type<ushort>((` or `asuint16((` [half NaN/Inf literals emit float-typed division](../learnings/1793614647737-half-nan-inf-literals-metal-and-hlsl-emit-float-ty.md).
+
+`bool` loads and stores through a byte-address buffer are a bit cast where a value conversion is needed (#14157). WGSL `Load/Store<bool>` comes out as `bitcast<bool>`, which naga rejects ("Unable to cast"), because `getSameSizeUIntBaseType` maps Bool→UInt and the `useBitCastFromUInt` sites call `emitBitCast`; the rule dates from D3D11/DXBC, where the HLSL emitter prints BitCast-to-bool as a C cast. On Metal scalar bool passes the legality check (its IR size is 4) and the emitter writes `as_type<bool>`, but an MSL bool is 1 byte. Both need an IntCast [WGSL validation without Tint/Dawn; bool bitcast root cause](../learnings/1793614821483-wgsl-validation-without-tint-dawn-wgpu-py-naga-on-.md).
 
 WGSL has 16-bit floats: a "WGSL missing f16" report is almost always the 16-bit **integer** (`bit_cast<uint16_t>`) path surfacing E56103 (#11835; see [[wiki/concepts/slang-backends-wgsl-f16-and-const-expressions.md]]) [E56103 is the 16-bit-INTEGER path](../learnings/1782813507927-wgsl-f16-floats-already-work-e56103-is-the-16-bit-.md). Exception: f16-returning subgroup builtins. Dawn/Tint removed `subgroups_f16` in April 2025, but the Windows test-only `slang-tint-0` pin (shader-slang/dawn 9255f960, Sept 2024) still requires it, so f16 subgroup code through `-target wgsl-spirv*` cannot satisfy both [Tint pin still requires subgroups_f16](../learnings/1792074066723-codex-critique-cwd-workspace-agent-can-make-codex-.md).
 
@@ -111,7 +116,7 @@ On **SPIR-V** a source `int*` has no address space until `specializeAddressSpace
 
 **`&` on Metal is blocked only by its capability gate, and the gate should stay (#14035).** `operator&` (`core.meta.slang:3091`) is `[require(cpp_cuda_spirv_llvm)]` (no Metal since #4710), while `__getAddress` is `cpp_cuda_metal_spirv_llvm` (`slang-check-decl.cpp:22442`). So on Metal `&p[i]` gives E36107, but `__getAddress(p[i])` and `__getAddress(p->f)` compile (emit `p + i`), and `-ignore-capabilities` shows the Metal path already handles `&` for device, threadgroup and thread pointers. Do not widen the `&` gate: maintainers plan to deprecate `&` (#10280 commit b1505c6e5, jkwak-work on #9148, jhelferty-nv on #10619, draft #10206 `RemovedSince(2026)`, which leaves `__getAddress` out of its guidance), and under #10206 there is no public spelling for a field address. Route such issues to maintainers. `slangc -ignore-capabilities` probes "is the `[require]` gate the only blocker". WGSL has no device pointers: `uniform int*` silently emits invalid `ptr<, T>` (#13399) [`&` is gate-only; being deprecated](../learnings/1793295608390-e36107-on-operator-for-metal-gate-only-getaddress-.md).
 
-**Source learnings (30):**
+**Source learnings (32):**
 - [output-struct flatten desyncs var-layout (Metal/WGSL segfault)](../learnings/1784382530471-slang-metal-wgsl-entry-point-output-struct-flatten.md)
 - [per-target stride for `StructuredBuffer<float3, ScalarDataLayout>`; WGSL outlier](../learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md)
 - [CUDA/Metal FileCheck on `WaveActiveCountBits` passes wrongly](../learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md)
@@ -142,4 +147,6 @@ On **SPIR-V** a source `int*` has no address space until `specializeAddressSpace
 - [uniform 16-byte rule is on array STRIDE (#13704)](../learnings/1792627107595-wgsl-uniform-16-byte-rule-is-on-array-stride-align.md)
 - [`operator&` gate omits Metal; `&` being deprecated (#14035)](../learnings/1793295608390-e36107-on-operator-for-metal-gate-only-getaddress-.md)
 - [static const arrays are module-scope `const` since #14132](../learnings/1793523729686-wgsl-static-const-arrays-are-module-scope-const-si.md)
+- [Half NaN/Inf literals: Metal and HLSL emit float-typed division; GLSL/C++/CUDA wrap the type](../learnings/1793614647737-half-nan-inf-literals-metal-and-hlsl-emit-float-ty.md) — `as_type<ushort>((1.0 / 0.0))` and `asuint16((1.0f / 0.0f))` rejected; PR #13927 does not fix it (#14158)
+- [WGSL validation without Tint/Dawn: wgpu-py (naga) on the GPU host](../learnings/1793614821483-wgsl-validation-without-tint-dawn-wgpu-py-naga-on-.md) — byte-address `bool` load/store is a bit cast on WGSL and Metal; needs IntCast (#14157)
 _Catalog: [[wiki/index.md]]_

@@ -283,8 +283,8 @@ to decide whether a rebase is *material*. `git merge-tree --write-tree` detects 
 conflicts with no worktree mutation but says nothing about *semantic* interaction; the compare
 API caps `.files` at 300. [gh compare behind_by/ahead_by are relative to the FIRST ref — one call cannot tell you who is behind](../learnings/1786065585317-gh-compare-behind-by-ahead-by-are-relative-to-the-.md)
 
-**Draft PRs have NO formatting instrument** — `extras/formatting.sh` exits 0 when it *cannot
-run* (clang-format absent from the container, so the C++ arm never runs), and `check-formatting`
+**Draft PRs have NO formatting instrument** — a bare `extras/formatting.sh` exits 0 having
+run nothing (usage path), and with clang-format absent from the container the C++ arm never runs (`require_bin` then exits 1, which a piped `echo $?` misreads as 0 — [re-measured](../learnings/1793688350274-correction-slang-formatting-sh-exits-1-not-0-when-.md)), and `check-formatting`
 is `skipped` on a draft. Two silent instruments read exactly like "formatting is fine"; it is
 *unmeasured*. Proof-of-run for the C++ arm is the version line (`found clang-format 17.x,
 required [17, 18)` — a half-open, max-*exclusive* gate, so repo docs saying "17-18" are wrong),

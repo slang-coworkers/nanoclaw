@@ -3,7 +3,7 @@ title: "SlangPy Crashing Tests, Native-SIGSEGV Testing, and sgl_tests / CI Flake
 type: concept
 group: slangpy
 tags: [slangpy, ci, flake, crash, sigsegv, sgl-tests, profiler]
-source_count: 17
+source_count: 19
 ---
 
 # SlangPy Crashing Tests, Native-SIGSEGV Testing, and sgl_tests / CI Flake
@@ -22,6 +22,7 @@ How deliberately-crashing tests interact with Crashpad and wedge CI, the pattern
 - **SlangPy macOS wheels link via nanobind's curated symbol allow-list, not libpython** — a LINK-time `Undefined symbols ... "_PySomething"` is almost always a CPython C-API symbol missing from that allow-list, NOT a missing libpython link.
 - **A native pytest-xdist WORKER crash with no traceback and an empty `.crashpad/reports/` is NOT proof crashpad missed it, and NOT proof of an uncatchable signal.** In the Python test harness crashpad IS armed in every worker (`start_handler`); the controller-only `setup()` is just shared-DB cleanup. Re-run the one test with `-p no:xdist` under `gdb`: slangpy#1181's "Vulkan worker crashed" was a catchable **compile-time SIGABRT in Slang's bundled SPIRV-Tools** (slang#13226), not a driver/GPU/uncatchable bug.
 - **A local L40S pass does not predict CI's Vulkan lanes** (different drivers, model not logged): review against the PR's own CI and assert gradients per element, never by sum.
+- **`test_hot_reload_invalid[cuda]` failing with "Reflection object has been invalidated" is suite GC timing**: a closed device's Module lingers in `LOADED_MODULES` until gen-2 GC. Confirm with a per-test `gc.collect()` teardown plugin before blaming the PR.
 
 
 ## Recent operational learnings (incremental fold 2026-07-17)
@@ -57,8 +58,12 @@ The `sgl_tests` teardown exit-code flake (#1062) is a distinct class: doctest pr
 
 On slangpy#1225 (2026-10-16) a test for #1167 (a runtime-bounded `[MaxIters]` loop over an `IDiffTensor`, then `.bwds()`) passed 6/6 on the coworker L40S (driver 595.91.07, vulkan + cuda) and failed every Vulkan parameter on all four CI GPU lanes (linux-gcc and windows-msvc, Debug and Release), while CUDA and D3D12 passed there. In CI the whole gradient landed in `src.grad[0,0]` with the correct total (320), so a `grad.sum()` assert passed and only the per-element `np.array_equal` caught it. Review against the PR's own CI (`gh pr checks <n>`, then `gh run view --job <id> --log-failed`), because a fixer can send a review request before CI finishes, and assert gradients per element, since a sum hides index collapse. The CI logs print neither GPU model nor driver. `SLANGPY_DUMP_SLANG_INTERMEDIATES=1` writes `<func>N.spv-asm` to the cwd; here the runtime-loop backward kernels declared `OpCapability VariablePointersStorageBuffer` and kept a Function-scope variable holding a StorageBuffer pointer that is `OpConstantNull` on one path, a likely driver-sensitive pattern. `helpers.get_device` passes `enable_debug_layers=True`, which is a silent no-op locally because the container has no `VK_LAYER_KHRONOS_validation` [a local L40S 6/6 can fail Vulkan in CI](../learnings/1792142945880-slangpy-test-passing-on-coworker-l40s-can-fail-vul.md).
 
+## `test_hot_reload_invalid[cuda]` fails on GC timing, not on the PR
 
-**Source learnings (17):**
+`slangpy/core/module.py` keeps `LOADED_MODULES = weakref.WeakValueDictionary()`, and `_check_for_hot_reload` calls `on_hot_reload()` on every loaded module, from every device. `test_precompiled_modules.py::test_precompiled_module_without_source` creates a `spy.Module(...)` on its own device and then calls `device.close()`, but the Module sits in a reference cycle, so it stays in `LOADED_MODULES` until a gen-2 GC runs. If that GC has not run before `test_reflection.py::test_hot_reload_invalid` calls `device.reload_all_programs()`, the test fails with `RuntimeError: Reflection object has been invalidated` (`reflection.h:221`, `slang_target`) on module `test_no_source`. How many objects the earlier tests allocated decides it. On slangpy#1234 (2026-11-02, L40S, `--device-types cuda slangpy/tests/device`) the merge failed 3/3 and baseline e7bb2242 passed 2/2, yet it passed when any 3 of the PR's 4 new tests were deselected, when run alone, and when a plugin called `gc.collect()` after each test. So a new failure here usually comes from suite GC timing, not the PR's code; confirm with a `pytest_runtest_teardown` → `gc.collect()` plugin ([test_hot_reload_invalid[cuda] fails on GC timing](../learnings/1793632039741-slangpy-test-hot-reload-invalid-cuda-fails-dependi.md)). CPU never exercises this test, so when a reporter tested only on CPU, an L40S CUDA sweep of the merged PR is cheap (~20 min including a full reconfigure) and is how this one was found ([fork-PR CI approval does not carry over; L40S sweep found the order-dependent test](../learnings/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md)).
+
+
+**Source learnings (19):**
 
 - [SlangPy macOS wheels link via nanobind curated symbol allow-list, not libpython](../learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md)
 - [a test that deliberately crashes (SIGSEGV) hangs SlangPy CI because Crashpad intercepts it](../learnings/1783909321657-a-test-that-deliberately-crashes-sigsegv-hangs-sla.md)
@@ -77,3 +82,5 @@ On slangpy#1225 (2026-10-16) a test for #1167 (a runtime-bounded `[MaxIters]` lo
 - [crashpad IS armed on pytest-xdist workers — controller-only `setup()` is just shared-DB cleanup, `start_handler()` arms every worker; a missing dump ≠ workers un-armed](../learnings/1790066499859-slangpy-crashpad-is-armed-on-xdist-workers-setup-i.md)
 - [#1181 Vulkan "worker crashed, no traceback" is a catchable compile-time SIGABRT in Slang's bundled SPIRV-Tools (MergeReturnPass/DefUseManager), tied to slang#13226 — not driver/GPU/uncatchable](../learnings/1790127518160-slangpy-1181-correction-the-vulkan-worker-crash-is.md)
 - [slangpy test passing on coworker L40S can fail Vulkan in CI: check the PR's own CI before trusting a local 6/6](../learnings/1792142945880-slangpy-test-passing-on-coworker-l40s-can-fail-vul.md) — per-element grad asserts; `SLANGPY_DUMP_SLANG_INTERMEDIATES`; no local validation layer (slangpy#1225)
+- [slangpy test_hot_reload_invalid[cuda] fails depending on GC timing (stale Module in LOADED_MODULES)](../learnings/1793632039741-slangpy-test-hot-reload-invalid-cuda-fails-dependi.md) — #1234 merge 3/3 fail, base 2/2 pass; per-test `gc.collect()` plugin fixes it
+- [Fork-PR CI approval does not carry over to new pushes (slangpy)](../learnings/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md) — rider: a ~20 min L40S CUDA sweep of a CPU-only-tested PR found the order-dependent test

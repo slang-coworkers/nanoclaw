@@ -3,7 +3,7 @@ title: "C-like emitter names: name hints, linkage names, `_generateUniqueName`, 
 type: concept
 group: slang-backends
 tags: [slang, emit, c-like, naming, name-hint, _generateUniqueName, generateName, extern_cpp, IRExternCppDecoration, obfuscate, linkage, cpp, cuda, nvrtc, wgsl]
-source_count: 3
+source_count: 4
 ---
 
 # C-like emitter names: name hints, linkage names, `_generateUniqueName`, and passes that emit source names verbatim
@@ -18,6 +18,7 @@ The C-like source emitters (HLSL, GLSL, Metal, WGSL, C++, CUDA) name each declar
 - **If an IR pass must make names unique, it assigns every name in that scope itself**, with a local used-name set: reserve explicit names first, keep unshared source names, then number the rest `hint_<smallest unused n>`. Guards that leave some names to the emitter's namer kept colliding.
 - **Bypassing uniquing also bypasses the only C++ keyword protection.** Slang accepts many C++ keywords as field names (`default`, `new`, `long`, `int`, `bool`, `union`, `template`), only the `_N` suffix keeps them valid C++, and no keyword dictionary exists.
 - **The C++ and CUDA *runtime* paths are affected too**, because `-cpu` and `-cuda` builds go through CPPSource/CUDASource intermediate text.
+- **Entry-point names are emitted verbatim but `_generateUniqueName` does not reserve them**, so an entry point `helper_0` beside a helper `helper` gives two `helper_0` on CUDA/HLSL/WGSL/Metal (#14229); nvcc "already been defined" on Slang output points here first.
 - **Probe:** compile with and without `-obfuscate` and compare the emitted name lists for duplicates; for verbatim field names, test inheritance with a field named like the base key, a field named like a generated name (`base_0`), and C++ keyword field names.
 
 ## Linkage names under `-obfuscate`
@@ -41,9 +42,14 @@ Second, the duplicate-hint guard ("a duplicated hint keeps its generated name") 
 
 Any change that bypasses uniquing also needs its own keyword and collision handling. Slang accepts many C++ keywords as field names (`default`, `new`, `long`, `int`, `bool`, `union`, `template`, and others), only the `_N` suffix keeps them valid C++, and no keyword dictionary exists (the TODO at `slang-emit-c-like.cpp` ~1007) ([same](../learnings/1793305640614-slang-ir-a-prefixed-name-hint-is-not-a-reliable-co.md)). The broader C++/CUDA emitter is on [[wiki/concepts/slang-backends-cuda-cpp.md]].
 
-**Source learnings (3):**
+## Entry-point names are emitted verbatim but not reserved (#14229)
+
+The C-like emitters write entry-point names verbatim, but `_generateUniqueName` builds `<hint>_<N>` without reserving those names. So an entry point named `helper_0` next to a helper function `helper` gives two `helper_0` definitions on CUDA, HLSL, WGSL and Metal, and a `main` renamed to `main_0` can collide with a real `main_0`. When nvcc reports "already been defined" on Slang output, check this first ([prototype attributes ignored in codegen; #14229 entry-point name collision](../learnings/1793680339435-slang-ignores-attributes-on-a-function-prototype-i.md)). Which emitters write the entry-point name verbatim at all (the Slang VM and LLVM paths do not) is on [[wiki/concepts/slang-compiler-linker-entry-point-checks.md]].
+
+**Source learnings (4):**
 - [-obfuscate: IR clones that keep [export] get the same emitted name](../learnings/1793263779351-obfuscate-ir-clones-that-keep-export-get-the-same-.md) — `generateName` uses the linkage name verbatim under `-obfuscate`, so a clone keeping export duplicates its original's name (#14004)
 - [A `$`-prefixed name hint is not a reliable compiler-synthesized marker](../learnings/1793305640614-slang-ir-a-prefixed-name-hint-is-not-a-reliable-co.md) — base-subobject key hinted `base` duplicates a source field; C++ keyword field names need the `_N` suffix (#14043)
 - [Naming members from an IR pass: own the struct's whole name set](../learnings/1793310523863-naming-members-from-an-ir-pass-own-the-struct-s-wh.md) — generated `base_0` collides with source and explicit names; assign all names per struct with a local used-name set
+- [Slang ignores attributes on a function prototype in codegen, but reflection reads them](../learnings/1793680339435-slang-ignores-attributes-on-a-function-prototype-i.md) — also #14229: entry-point names emitted verbatim collide with `_generateUniqueName` output
 
 _Catalog: [[wiki/index.md]]_

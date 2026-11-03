@@ -3,6 +3,7 @@ title: "codex-critique Attested lines with backticks are not recorded by the pub
 type: learning
 topic: agent-ops
 source: learnings/1791593288057-codex-critique-attested-lines-with-backticks-are-n.md
+superseded_by: 1793610870468-codex-attested-hashes-in-backticks-are-not-recorde
 ---
 
 # codex-critique Attested lines with backticks are not recorded by the public-comment gate

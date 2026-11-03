@@ -3,7 +3,7 @@ title: "CI Build Tooling & Workflow Structure"
 type: concept
 group: ci-tooling
 tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang, capability-atoms, doc-regen, cmdline-ref, shallow-clone, submodules, git-provenance]
-source_count: 27
+source_count: 28
 ---
 
 # CI Build Tooling & Workflow Structure
@@ -14,7 +14,7 @@ How the Slang CI build system is structured: workflow files and their scope, the
 
 ## TL;DR
 
-- **`nv-slang-bot[bot]` cannot push `.github/workflows/*.yml`** (no App `workflows` permission; rejected at push time, even on its own branch), and maintainers close cross-fork workaround PRs on security policy. Plan a CI change from triage: ship source/tests/docs, hand the workflow edit up as a `git format-patch` or proposed YAML.
+- **`nv-slang-bot[bot]` cannot push `.github/workflows/*.yml`** (no App `workflows` permission; rejected at push time, even on its own branch), and maintainers close cross-fork workaround PRs on security policy. Plan a CI change from triage: ship source/tests/docs, hand the workflow edit up as a `git format-patch` or proposed YAML. A review remedy that needs a workflow edit is a named-maintainer action and a merge-blocking open question, never a change request to the fixer.
 - **A check is "required" by being in `ci.yml`'s `check-ci.needs`**, not by branch-protection settings. Add a `pull_request` job that exits 1, then list it in `needs`; the `ci.yml` edit itself is maintainer-applied.
 - **Draft PRs get no `pull_request` CI** (`filter` is gated on `draft != true`); marking ready runs full CI. A `workflow_dispatch` runs `filter` but classifies only the head commit, so a docs-only or big merge-commit head skips the whole matrix and still reads `success`.
 - **GPU-test silencing is layered `-expected-failure-list` files**, matched by exact normalized path. An expected failure reclassifies a clean `SLANG_FAIL`; it cannot suppress a crash.
@@ -35,7 +35,7 @@ How the Slang CI build system is structured: workflow files and their scope, the
 
 **The push rejection is technical; the policy wall is fatal.** A bot can route around the push rejection through the `slang-coworkers/slang` fork (its App install has `workflows`) and a REST cross-fork PR (`gh api -X POST repos/shader-slang/slang/pulls -f head=slang-coworkers:<branch> ...`; `gh pr create` GraphQL fails "fork collab can't be granted"). Maintainers close such PRs unmerged on security policy. jkwak-work on #11989→PR #12001: *"coworker is not allowed to modify [workflow files] for security reasons. I will run an agent locally."* So the push rejection is the early tell that the fix is disallowed, not an obstacle to route around ([Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md), [Cross-fork workflow-file PR is policy-closed](../learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md)). Catch it at triage-scoping: when the change surface is or requires `.github/workflows/**` or `.github/actions/**`, mark the verdict maintainer-only and skip the fix cycle. Still triage, verify, recommend, and file spun-off *code* issues, which are landable (#11989 spun off compiler false-positive trackers #12006/#12007). If a bot PR already exists, annotate it maintainer-only and hand the diff over as a comment ([Workflow-file changes are policy-rejected — catch at triage](../learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-cowo.md)).
 
-**Plan for it from the start.** The rejection fires at push time, even on the bot's own fix branch (`refusing to allow a GitHub App to create or update workflow ... without workflows permission`). Only the non-workflow commits land, so a mixed commit costs a `git rm` + re-amend round-trip. Keep workflow commits separate. Push what the bot can (source, tests, docs). Hand the workflow change up as `git format-patch` output (for `git am`) or as proposed YAML in a PR-body `<details>` block, and say in the PR body that the CI change is proposed, not included. Do not build a verification plan on CI steps the bot cannot push (PR #13042's dropped `check-extras-scripts.yml`; #13079 for slang#13077) ([nv-slang-bot cannot push .github/workflows/ — deliver a format-patch](../learnings/1790375258801-nv-slang-bot-github-app-cannot-push-changes-under-.md)).
+**Plan for it from the start.** The rejection fires at push time, even on the bot's own fix branch (`refusing to allow a GitHub App to create or update workflow ... without workflows permission`). Only the non-workflow commits land, so a mixed commit costs a `git rm` + re-amend round-trip. Keep workflow commits separate. Push what the bot can (source, tests, docs). Hand the workflow change up as `git format-patch` output (for `git am`) or as proposed YAML in a PR-body `<details>` block, and say in the PR body that the CI change is proposed, not included. Do not build a verification plan on CI steps the bot cannot push (PR #13042's dropped `check-extras-scripts.yml`; #13079 for slang#13077) ([nv-slang-bot cannot push .github/workflows/ — deliver a format-patch](../learnings/1790375258801-nv-slang-bot-github-app-cannot-push-changes-under-.md)). The same wall binds review remedies. On #14194 (2026-11-02) a review asked for a new nvcc fixture compiled in `ci-slang-test.yml`, and the fixer's push was rejected on that file. The fixer commits the fixture, puts the YAML hunk in the PR explanation comment or a patch file, adds an "Open question (blocks merge)" line to the PR body, and names a maintainer with `workflows` permission as the next action. A reviewer does not request changes from the fixer for a hunk only a human can push ([the bot App cannot push .github/workflows changes — review remedies too](../learnings/1793648853326-the-slang-coworkers-github-app-cannot-push-github-.md)).
 
 ## Making a Slang CI Check "Required"
 
@@ -119,8 +119,9 @@ On `slang-coworkers/nanoclaw`, `ci.yml` does not test a sync PR into an `nv-*` b
 
 ---
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [nv-slang-bot GitHub App cannot push changes under .github/workflows/ (no workflows permission)](../learnings/1790375258801-nv-slang-bot-github-app-cannot-push-changes-under-.md) — even on its own fix branch; keep workflow commits separate and hand them up as `git format-patch` (#13079).
+- [The slang-coworkers GitHub App cannot push .github/workflows changes](../learnings/1793648853326-the-slang-coworkers-github-app-cannot-push-github-.md) — #14194 review remedy needing a `ci-slang-test.yml` step: YAML hunk in the explanation comment, "Open question (blocks merge)", name a maintainer; don't request changes from the fixer.
 - [make a slang check "required" by adding a `pull_request` exit-1 job to `check-ci.needs` (not branch-protection UI); the `ci.yml` edit is not bot-pushable → maintainer diff](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
 - [DISABLE CI jobs are build-only](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
 - [How GPU-requiring unit tests are silenced on no-GPU / aarch64 runners](../learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)
