@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14075 — explicit generic associated-type equality does not satisfy an interface `__constraint` requirement (E38029)"
-description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-30 00:19:34Z, found during portable-RT work. Triaged bug/medium/P2/frontend 10-30 00:35Z; NOT #13509's cause (equality-side sort in checkGenericTypeEqualityConstraintSubType + one-way isSubtype). Parked, owned by the reporter; R6 (not crash-exempt) to 11-03 00:19:34Z; triager one-shot t-1bc36e posts 11-03 00:30Z; no fixer without the reporter's go-ahead.
+description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-30 00:19:34Z, found during portable-RT work. Triaged bug/medium/P2/frontend; NOT #13509's cause (equality-side sort in checkGenericTypeEqualityConstraintSubType + one-way isSubtype). Bot triage comment 6592159047 posted 11-03 00:33Z; `reproduced` + Type=Bug verified. Parked on the reporter's go-ahead (bot draft PR vs self-fix); triager one-shot t-567683 runs 11-10 00:30Z.
 tags: [frontend, conformance, associated-type, equality-constraint, r6]
 resource: /workspace/agent/reports/triage/triage-14075.md
 ---
@@ -43,3 +43,10 @@ call at :4857 sits inside `shouldRunNonEssentialValidation()`.)** bug / medium /
 **Parked 10-30 00:35Z,** owned by the reporter. Nothing on GitHub (live check: 0 comments, no labels, no type). The draft is in the
 triager's memory (`issues/comment-14075.md`); worktree `wt-14075` (ToT + Fix A, uncommitted) is kept. One-shot **t-1bc36e** runs
 2026-11-03 00:30Z: if no reporter PR or maintainer comment, it posts the 5-bullet, then adds `reproduced` + Type=Bug only if still blank.
+
+**R6 re-check (t-1bc36e, 11-03 00:34Z; triager's report).** Re-verified on master 96a728c85: same results. Comment
+[6592159047](https://github.com/shader-slang/slang/issues/14075#issuecomment-6592159047) posted 00:33:20Z, the first on the issue.
+I verified it, the `reproduced` label and Type=Bug live. No reporter fix PR: their fork draft kaizhangNV/slang#25 only lists
+#14075 as a known issue, and #14051 adds PortableRT hooks only. Next: the reporter chooses a bot draft PR (Approach A) or a self-fix.
+One-shot **t-567683** runs 2026-11-10 00:30Z. No slang-fixer until the reporter agrees.
+(Hindsight: the 4-day R6 hold in my 10-30 dispatch was the stale #1993-draft rule, retired 11-02; see Core Memory.)

@@ -37,3 +37,23 @@ bot PR would cross-reference the issue during the hold. The triager's one-shot *
 does three things. (1) If a reporter or human PR exists, it stands down and reports. (2) If a maintainer replied, it posts a
 delta and follows their direction. (3) Otherwise it posts the 5-bullet (C recommended, A/B noted, default-value split offered)
 and sends the [Triage handoff] for C to slang-fixer; the PR must cite #13882. Triager confirmed 22:16Z that the order is in the task prompt verbatim (check order 4→1→2→3). Owner: slang-triager, thread `gh-issue-shader-slang/slang-14053`. Next touch: the one-shot report on 11-02 at 22:00Z.
+
+## 11-02 22:06Z: re-check fired; comment posted, Approach C handed to slang-fixer
+
+- These are the triager's checks: no newcomer label, no PR referencing #14053, no comments. jkwak-work was assigned by jhelferty-nv at 18:39:46Z.
+  That is a shepherd assignment, and under the sibling Main rule (recorded in [14055](14055-parser-multiply-deref-pointer.md), 11-02 ~21:5xZ) it is not a stand-down.
+- Verified by Main: bot comment [6589648302](https://github.com/shader-slang/slang/issues/14053#issuecomment-6589648302)
+  (22:05:56Z, the only comment, no @-mentions). It offers the draft PR ("the assignee may take it over or close it") and the default-value split for maintainers.
+  slang-fixer session `sess-1793657193763-f9uw61` is on the canonical thread (created 22:06Z).
+- **Overlap:** reporter PR #14147 (fixes #14137, not this issue) restructures `findFunctionDeclByName`: E38000 moves to
+  `findAndValidateEntryPoint` and the lookup runs on a temp sink. Our `-entry` ambiguity error touches the same hunks.
+  The fixer bases on master and notes the overlap; whichever merges second rebases.
+- **Default-value warning:** NOT filed. It is a reporter scope/diagnostic ask, not a verified bug, so the 10-31 filing rule's
+  "ask" branch applies. The comment leaves it to maintainers; file only on maintainer request.
+- Next: the fixer's draft PR → triager [Triage Resolution].
+
+## 11-03 01:29Z: draft PR #14221
+
+Bot DRAFT PR #14221 "Report entry points that share a name in one output, and ambiguous -entry names". Head `fix/issue-14053` @5c7e82507, label `pr: non-breaking`.
+The pr-mapping goes to fixer `sess-1793657193763-f9uw61` (verified). The fixer reports 8 new tests and a full suite run on Debug; I have not re-run them.
+The [Fix Review Request] went to slang-reviewer, and the fixer sends its [Fix Report] after the review. Un-draft needs operator sign-off (as with the other bot drafts).

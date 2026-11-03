@@ -73,3 +73,6 @@ A re-check prompt for a parked decision names the exact question comment and ask
   a user `spirv_asm` with `__imageType` of a never-written handle segfaults in Release (base only fails validation). Gaps: the recursion
   bound counts rounds, not work; `.10` relies on spirv-val; no stated UB rationale for removing whole asm blocks. R3 is the last round. Owner
   session is at $297.90 of $300, and the operator's ceiling decision (asked 03:22Z) is still pending.
+- **2026-11-02 17:00Z re-check (`recheck-slang-13700-vu-r-7fdb`):** #13700 is OPEN, a draft, at head dc9ed5b417. Q1 (VU) was answered in
+  6509087225, and the bot acted on it (#14076, draft #14081 @41c22bde29, no update since 10-30 18:20Z), so there was no dispatch. **Q2/R8 is still
+  unanswered**: 16 d since 6227965371, 4 d since 6506798882, and no human comment after 10-29 21:47Z. I reported it to orchestrator-dashboard and posted nothing to GitHub.

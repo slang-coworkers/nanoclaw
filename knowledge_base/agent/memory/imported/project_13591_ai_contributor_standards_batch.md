@@ -53,6 +53,25 @@ Live state at 10-18: #13596 is OPEN with 0 comments and 0 labels. The labels `no
 shader-slang/slang. No message sent. **Next:** nothing is due from Main. When #1993 merges, the `.env` flag and
 creating the two labels are operator/szihs steps. Resume only on a webhook or an operator ask.
 
+**Final R6 rule (nanoclaw #1993 merged 10-25 12:58Z, #2165 merged 12:59Z): labels only, no wait.** #1993's description
+records "Decision 2026-10-24: no waiting period". The maintainers want labels honoured and nothing delayed, so
+`ISSUE_BOT_WAIT_DAYS`, the scheduled re-check and the crash-with-reproducer heuristic were all removed.
+`deliverGitHubIssueOpened` skips `GoodFirstBug`/`HelpWanted`/`no-bot` (`ISSUE_NEWCOMER_LABELS`). `bot-ok`, accepted
+as `issues.labeled`, hands an issue to the bot. Everything else is delivered at once, and no `.env` change is needed.
+#2165 rescored compliance-check R6 as `issue-newcomer`, a pure label rule.
+
+⛔ **My mistake, 10-29 to 11-02.** I wrote a Core Memory rule from the superseded #1993 draft: no bot comment before
+`created_at`+4 d, a crash-word exemption, and later my own extension that blocked PRs and commits too. I wrote it four
+days after the merge that removed the wait, and dispatched held chains under it (#14029, the #14032–#14177 range,
+slang-rhi #961–#965, ...). ⇒ **Before writing a policy into Core Memory, read the MERGED PR, not the draft I last saw.**
+`gh pr view <n> --json state,mergedAt,body`.
+
+**11-02 12:30Z, szihs on #13596** ([comment](https://github.com/shader-slang/slang/issues/13596#issuecomment-6577192184)):
+*"Based on internal discussions, this might need to be revisited. For now if we want to make the nv-slang-bot stand
+down we can explicitly request so and ignore the PR it generated."* No reply was asked for, so the bot posted
+nothing. Until R6 is revisited, a stand-down happens only on explicit request. Releasing the chains still held under
+the stale wait was put to the operator on 11-02.
+
 ## R10 (#13600) prod audit, 2026-10-13 (read-only, #13600 session sess-1791889641831-376bet)
 
 Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belong to **Slang Maintainer
@@ -97,3 +116,10 @@ It still has 0 comments and 0 labels, and no PR names it. Not a compiler issue: 
 defect and no severity. It is blocked because its candidate bundle is all drafts: #13589 (REVIEW.md trim), #13585 (clarity
 checklist) and slang-skills#63 (STE skill, last updated 10-15). The harness `~/slang-review-eval` is szihs's own and is
 not on our mounts. Held: no dispatch, no bot post.
+
+### 11-02 13:32Z: szihs answers jkwak-work on #13593 (cmt 6578485783), closed as an ack
+*"Updated to say "source code" comments."* At 13:15Z szihs renamed the issue to "R2, R3: source code comments state
+contracts and reasons, not narration". The body now says the rule covers comments in source files only, not GitHub, Slack
+or Discord messages (those follow R8/R10). **#13585 is unchanged**: still a draft, last commit `5a44fe7178` (10-13), and its
+diff has no "source code comment". So the `AGENTS.md` line and the skill bullet flagged on 10-15 still say plain "comment".
+The author answering a reviewer is not a request to the bot: no dispatch, no bot post, a `[Resolution]` to the dashboard only.

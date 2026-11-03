@@ -57,3 +57,11 @@ treat any message to B as a sibling-session relay.** Use the recipe from the fir
 `in_reply_to` while handling msg 12 from the #14007 triager. It landed in the #14007 session (`…3hlxu4`).
 I then misdiagnosed it to the operator as a host pin bug and filed a duplicate shared learning (since deleted).
 The recall failure is why this rule now has a Core Memory pointer.
+
+**Recurred 2026-11-02 (#13107 → #14204), the 4th time, in the "fresh delegation" form.** While answering
+the #13107 fixer (`yofko5`, which had no budget left), I sent a *new* task to slang-fixer with
+`thread_id=gh-issue-shader-slang/slang-14204` and no `in_reply_to`. It was meant to open a fresh session
+on a different PR. Instead it landed in `yofko5`, which reported it couldn't afford the task. Re-sent with
+`in_reply_to=2` (my webhook row) + `thread_id=…-14204`: a new session `irht3p` was opened on the right
+thread within 20 s. ⇒ **The rule applies to new-session delegations too, not only sibling pins.**
+Any send to the group that wrote this turn's inbound needs `in_reply_to=2` unless it is a direct reply.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14133 — CUDA global `static const` struct from a `[ForceInline]` `__init` emitted as file-scope statements
-description: Human-filed (albertrodriguezclo) bug 2026-11-01 06:24:24Z. Triaged bug/high/IR/P2 on all targets (branchy-ctor variant segfaults). Handed to slang-fixer local-only under the R6 hold until 2026-11-05T06:24:24Z. Orthogonal to #13115.
+description: Human-filed (albertrodriguezclo) bug 2026-11-01. Triaged bug/high/IR/P2, all targets. Reporter PR #14150 (Fix A, jkwak-work approved) has 2 regressions vs master (int-div helper; pure helper under -g); bot comment 6592707618 posted 11-03, triager watching via t-700e05. Side finding filed as #14217 (filed-only; do not dispatch).
 tags: [cuda, emit, ir, static-const, force-inline, legalize-global-values, r6]
 ---
 
@@ -78,3 +78,66 @@ The draft issue text is in [raw/triage-14133-sidefind-g-dead-globals.md](raw/tri
 ⚠️ **The draft names #14133**, so filing it before 11-05T06:24:24Z would add a cross-reference to the
 #14133 timeline (R6). Asked the operator 11-01 08:2xZ to file or not file; I recommended filing after
 the hold ends. Re-check one-shot `recheck-14133-g-sidefind-beac` runs 11-05 07:15Z.
+
+**Reporter PR #14150 (11-03, Main sess-1793666763161-jjrjki).** albertrodriguezclo opened fork PR #14150
+(`fix/cuda-static-const-struct-init`, head `d79256b0f8`, created 11-01 23:54Z, ready 11-03). "Fixes #14133" =
+Fix A (`isInlinableAtGlobalScope` in `canInline`), +84/−0, jkwak-work APPROVED, CI green. Approver paused →
+queued in `data/approver-pause-queue.md`. No session on this thread had acted on the **R6 retirement (11-02)**:
+the fixer and triager sessions were silent since 11-01 08:18Z, and one-shots `t-200322`/`t-cca1b9` still held for
+11-05. Sent the triager (pinned `sess-1793514365085-a6bfnv`, msg id 19) four things: fixer stands down with no
+competing PR and drops `t-200322`; diff its local fix vs #14150 and report only real gaps (no branchy-ctor test, no
+GLSL/Metal/WGSL/SPIR-V lanes, `-g` debug insts vs `mightHaveSideEffects`); post the triage comment now and cancel
+`t-cca1b9`; file the `-g` dead-globals side finding now (no operator go-ahead needed). `recheck-14133-g-sidefind-beac`
+(11-05 07:15Z, my group) becomes a verify-it-was-filed check.
+
+**11-03 00:46–00:50Z: superseded by the reporter's PR #14150.** albertrodriguezclo opened fork PR **#14150**
+("Fixes #14133"; head `d79256b0f8`; Fix A as `isInlinableAtGlobalScope` in `InliningPassBase::canInline`;
+jkwak-work approved; CI green). Sibling Main session `sess-1793666763161-jjrjki` (thread
+`gh-pr-shader-slang/slang-14150`) handled the `pr_ready_for_review` webhook. It queued the approver forward
+in `data/approver-pause-queue.md` because the approver is paused, and told the triager (its msg 19 →
+triager row 20) that the R6 hold is gone (retired 11-02, see Core Memory). The triager is standing the fixer
+down (so `t-200322` must be cancelled, not published), checking whether #14150 covers the branchy-ctor
+segfault, posting the #14133 triage comment, and **filing the `-g` side finding now**. Filing a deduped bug
+needs no operator go-ahead, so my 11-01 dashboard ask was over-gated: I withdrew it and cancelled
+`recheck-14133-g-sidefind-beac`. Waiting on the triager's `[Triage Resolution]` with the new issue number
+and confirmation that the fixer stood down.
+
+**11-03 00:51:54Z: side finding FILED as #14217** (by slang-triager, from the draft in
+[raw/triage-14133-sidefind-g-dead-globals.md](raw/triage-14133-sidefind-g-dead-globals.md), text unchanged).
+Main-verified 11-03: author nv-slang-bot[bot], Type=Bug, labels `regression` + `reproduced`, no assignee,
+no @-mentions. Body cites #9860 (cause), #14216 (a different `-g` issue), and #14133/#13107 (same path).
+⚠️ **#14217's `issue_opened` webhook belongs to this chain, so do not dispatch it.** It is filed-only, with no
+fixer chain unless a maintainer asks. A human comment on it goes to the triager (`sess-1793514365085-a6bfnv`)
+as a live inbound. Still open: the triager's `[Triage Resolution]` (fixer stand-down, `t-200322`/`t-cca1b9`
+cancelled, #14150 gap diff).
+
+**`[Triage Resolution]` (11-03 00:57Z, triager).** The triager verified #14150 head `d79256b0f` on a local build:
+4 repros × 7 targets × {default, `-O0`} are clean, spirv-val passes, nvcc/NVRTC compile, and the **branchy-ctor
+segfault is fixed** (`getNextBlock()` check). Debug-assert item checked by code reading only. Triage comment
+6592497696 posted on #14133. `t-cca1b9` and `t-200322` were cancelled; the fixer keeps `fix/issue-14133` local
+and unpushed, and is diffing it against #14150 to find gaps. Triager-found gaps in #14150: (a) no
+branchy-ctor test; (b) only cuda/cpp/hlsl/cpu lanes are tested; (c) `-g` makes the guard over-refuse
+(correct output, and `array -g` is #14217).
+**My decisions (11-03).** #14217 stays filed-only (same as the sibling's call). **Nothing goes on #14150
+for coverage-only gaps** (a/b/c): the PR is maintainer-approved with CI green, and the #14133 comment
+already says #14150 covers the crash. Only a correctness gap goes there: a wrong output, crash or assert on
+a case #14150 is meant to fix. It needs a repro and comes to me before any post. On #14150 merge: the fixer
+deletes its branch/worktree, the triager closes, and the chain is done.
+
+**11-03 01:08Z: #14150 introduces two regressions against master** (the fixer found them; the triager reproduced
+both on its own Release builds of master `6815ed82d` and #14150 head `d79256b0f`). G1: a `[ForceInline]`
+helper doing integer `/` with a non-literal divisor, in `static const int arr[2]`. G2: any pure
+`[ForceInline]` helper in a scalar array under `-g`. On #14150 the call stays in the module-scope initializer,
+and NVRTC, glslang and C++ reject it. Cause: `isInlinableAtGlobalScope` refuses any `mightHaveSideEffects()`
+inst, which includes int div/rem with a non-literal divisor (`slang-ir.cpp:9799`) and debug insts. A scalar
+array root is a legal global, so legalization never moves the call into a function. The triager's brief
+assumed the struct-only case and missed this.
+**Main-verified 11-03:** on master, G1 and G2 `-g` fold to `{3,4}`/`{2.0,4.0}` and `-target ptx` passes; the
+#14150 diff refuses on `mightHaveSideEffects()` in its `default:` case. I did not build the #14150 head myself
+(two agents reproduced it there). **Approved the triager's draft comment as written**
+([raw/comment-14150-regressions.md](raw/comment-14150-regressions.md)). It contains no verdict and no
+@-mentions, and suggests skipping debug insts and refusing only no-use side-effecting insts.
+**Posted 11-03 01:10Z:** #14150 comment **6592707618**. The triager watches #14150 (replies, head, merge) and
+#14217 (human comments) with self-re-arming one-shot `t-700e05` (first run 11-03 13:00Z). A human PR without
+a bot mention may not raise a webhook to us, so this poll is the backstop. The fixer still holds
+`fix/issue-14133` locally. Patch requests come to Main first, and nothing is pushed to the fork.

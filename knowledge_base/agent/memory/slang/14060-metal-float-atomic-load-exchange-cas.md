@@ -60,3 +60,23 @@ The fp8-cuda failures also fail on clean 977df1246 and 1f0b33b86. No Metal compi
 Timer task sessions verified 10-30: `t-6cd00d` → `sess-1793311914259-kcm1qs` (triager), `t-0e0a49` →
 `sess-1793316801220-5f63gx` (fixer). **Next for me:** after 11-02 22:05Z, check that the draft PR exists and that `report_pr_created` was called.
 Also watch for the operator's R6×PR answer (asked on orchestrator-dashboard, thread gh-issue-shader-slang/slang-14060).
+
+**11-02 12:22Z (from the #14153 chain).** Human PR **#14170** (albertrodriguezclo, "Fixes #14153") conflicts textually with `fix/issue-14060`: it calls `diagnoseFloatAtomic` from `emitAtomicOp`, and #14060 renames that lambda. I told owner fixer `ytzi3p` (pinned, seq 44) to state the conflict in the 22:05Z draft PR and to rebase if #14170 merges first. **When checking the draft after 22:05Z, also check that the PR description mentions #14170.**
+
+**11-02 12:24Z, fixer ack.** Another chain sent a heads-up (not from this session) that open non-draft PR **#14170** (head `24c894f11`)
+moves `diagnoseFloatAtomic` above `emitAtomicOp` and calls it on the texture path. It also checks the old E55204 text in
+`tests/hlsl-intrinsic/texture/float-atomics.slang`. The fixer put a conflict section in its `memory/fix-14060.md`; the `t-0e0a49` prompt reads it first.
+If #14170 lands first, the plan is: merge master, keep one lambda, no double E55204 on the texture path, update #14170's test message.
+Nothing is pushed; the 22:05Z time is unchanged. The run will not comment on #14170.
+
+**11-02 22:02Z: R6 ended; triage comment posted.** issuecomment-6589572152 at 22:01:56Z. I verified it is the only comment.
+jhelferty-nv assigned **jkwak-work** at 18:44Z (assignee verified; no comment). Next: the fixer's `t-0e0a49` opens the draft PR at about 22:05Z.
+The triager then edits 6589572152 in place to add the PR link.
+
+**11-02 22:37Z: draft PR #14210 opened** (22:06Z, head `85e32a28b`, `pr: non-breaking`, `Fixes #14060`; I verified it live).
+The triager edited issuecomment-6589572152 in place with the PR link. ⚠️ **The PR mapping points at the fixer's one-shot task session**
+`sess-1793316801220-5f63gx` (`system:tasks:t-0e0a49`), not the chain session `ytzi3p`. That is first-claim-wins, as on #14037/#14058,
+and I did not request a remap. CI run 41536440200 has the usual bot-draft shape: `wait-for-human-priority` and `check-ci` failed, and every build was skipped.
+So there is no CI evidence, including the Metal legs. `license/cla` is pending (nit-patch commit a70747f88 has the nv-slang-bot identity; not required).
+Possible conflicts: #14170 and #14044. **PARKED** on a human ready-flip or review (assignee jkwak-work). My one-shot re-check
+`recheck-14210-human-6a1f-ddb2` runs 11-06 22:00Z. The operator's R6×PR question no longer matters for this chain, but the policy question is still open.

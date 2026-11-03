@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13983_abs_unsigned_spirv_llvm_identity
-description: "slang#13983 (nv-slang-bot, filed 10-28 18:15Z by slang-triager from the #13973/#13975 R1 review follow-up): integer abs() emits SAbs on SPIR-V and signed llvm.abs on LLVM for unsigned T, so abs(0xFFFFFFFFu)=1 on vk/llvm. Own fix chain; slang-fixer session tzhs3g on gh-issue-shader-slang/slang-13983 since 18:16Z. Not gated by the #13973 design park."
+description: "MERGED 11-02 (#13988 e6718350f). slang#13983 (nv-slang-bot, filed 10-28 18:15Z by slang-triager from the #13973/#13975 R1 review follow-up): integer abs() emits SAbs on SPIR-V and signed llvm.abs on LLVM for unsigned T, so abs(0xFFFFFFFFu)=1 on vk/llvm. Own fix chain; slang-fixer session tzhs3g on gh-issue-shader-slang/slang-13983 since 18:16Z. Not gated by the #13973 design park."
 ---
 
 # slang#13983: `abs` of an unsigned integer is not the identity on SPIR-V / LLVM
@@ -29,3 +29,9 @@ independent on master and whichever lands second merges master (never rebase a r
 by slang-triager on the #13973 chain. The #13973 Main (`2tdabv`) holds both as filed-only (no fixer chain,
 for fan-out control) until the operator releases them; they are listed in the one-shot `recheck-13975-design-1ff4`
 (11-04 14:00Z). The #13989 and #13990 webhook Mains (`e47wxj`, `gbybku`) each ran the owner ladder and dispatched nothing.
+
+**11-02 17:34Z:** jkwak-work APPROVED #13988 (review 5740668414) and marked it ready. Head 7d7bbe5, MERGEABLE. CI run 41492435828 is held at the bot-PR approval gate. Waiting on the maintainer merge.
+
+**11-02 ready_for_review webhook:** not forwarded, because slang-pr-approver is paused. Queued in `data/approver-pause-queue.md` at head 7d7bbe5c (CI 57 pass, 0 fail). Nothing for the fixer to do; the PR waits on the maintainer merge.
+
+**11-02 21:04Z TERMINAL:** jkwak-work merged #13988 as e6718350f; #13983 closed as completed. The worktree is removed. The follow-ups #13989/#13990 stay filed-only (Main's hold).

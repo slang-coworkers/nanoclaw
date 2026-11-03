@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "#14055 side-find PR stack — GLSL/SPIR-V pointer emit (#14078/#14080, #14082/#14088, #14084/#14085, #14087/#14090)"
-description: Four bot-filed issues spawned by the #14055 chain, each with a bot draft PR, all validated under the CI env and PARKED on the operator ready flip (#14088 also on #14080 merging). Their issue_opened webhooks need no dispatch.
+description: Four bot-filed issues spawned by the #14055 chain, each with a bot PR, all validated under the CI env. #14090 MERGED 11-02 22:14Z (jkwak-work). #14080/#14085 are PARKED on the operator ready flip; #14088 also waits on #14080 merging. Their issue_opened webhooks need no dispatch.
 tags: [glsl, spirv, pointers, side-find, ready-flip]
 ---
 
@@ -17,14 +17,14 @@ Main; forward them to the triager (`1k60r3`, pinned, `in_reply_to=2`).
 
 | issue | PR (base) | head | review | validated (CI env) | parked on |
 |---|---|---|---|---|---|
-| #14078 GLSL ptr→ptr cast `(float*)intPtr` → E99999, P2 | draft #14080 (master) | 94cdaea3e | R1 + delta APPROVE_WITH_NITS, 0 bugs; reviewer acked the scoping | 14/14, 65/65, 71/71, 3407/3407; spirv-val 7/7 via-GLSL | operator ready flip (re-offered 04:41Z) |
+| #14078 GLSL ptr→ptr cast `(float*)intPtr` → E99999, P2 | draft #14080 (master) | e71dda68b | R1 + delta APPROVE_WITH_NITS, 0 bugs; reviewer acked the scoping | 14/14, 65/65, 71/71, 3407/3407; spirv-val 7/7 via-GLSL | operator ready flip (re-offered 04:41Z) |
 | #14082 GLSL buffer-ref emit: null as `0`, `void _data`, P3 | draft #14088 (`fix/issue-14078`) | d8cb400a2 | R1 REQUEST_CHANGES → R2 APPROVE 0/0/0 (05:58Z) | 858/859 + 521/522 (only #14087), spirv-val 8/8 | #14080 merging → retarget to master (**merge** master/#14080 final head, not rebase — #12194 rule; fixer acked 06:02Z) → flip |
 | #14084 GLSL `bit_cast<uint64_t>(double)` requests no int64 ext, P3 | draft #14085 (master) | 8cb0f1142 | R1 APPROVE_WITH_NITS 0/0, nits applied | 8/8 + subset 1950/1950 (328 vk legs) | operator flip (re-offered 04:39Z, after #14080) |
-| #14087 SPIR-V `(int64_t)ptr` → OpConvertPtrToU with signed result | draft #14090 (master) | a07befd | R1 APPROVE_WITH_NITS 0/0/0, nits applied | full suite 11093/11096 (3 known fp8-cuda) | operator flip; assignee jkwak-work (shepherd) |
+| #14087 SPIR-V `(int64_t)ptr` → OpConvertPtrToU with signed result | #14090 (master), **ready** | a07befd | R1 APPROVE_WITH_NITS 0/0/0; **jkwak-work APPROVED 11-02 17:38Z** (review 5740742119), marked it ready, auto-merge armed | full suite 11093/11096 (3 known fp8-cuda) | **MERGED 11-02 22:14:55Z** by jkwak-work (dd93102a4); #14087 CLOSED 22:14:57Z. I verified both. TERMINAL. |
 
 Fixer owner sessions: #14078 `sess-1793320862886-o2rgdf`, #14084 `sess-1793329242871-4puih2`,
 #14087 `sess-1793334766276-bdw93c`; #14082 in worktree `wt-slang-14082`.
-**Follow-up:** drop #14080's `-DNO_SIGNED_PTR_TO_INT` scoping in whichever of #14080/#14090 merges second.
+**Follow-up:** drop #14080's `-DNO_SIGNED_PTR_TO_INT` scoping in whichever of #14080/#14090 merges second. #14090 merged first (11-02 22:14Z), so the #14080 fixer owes the cleanup: merge `origin/master` (plain push, no rebase), drop the `-DNO_SIGNED_PTR_TO_INT` row and note, re-validate. Main asked for it on 11-02 via the triager. **Done 22:33Z:** merge 94a2031b9 (master dd93102a4, plain push) plus e71dda68b (scoping removed). New head **e71dda68b**, re-validated: 14/14, 65/65, 71/71, 3442/3442, spirv-val 7/7. CI 41537195057. Still PARKED on the operator flip.
 **Real CI runs only after the ready flip.** On a draft, CI 41004061243 was the priority-yield
 (`wait-for-human-priority` + `check-ci` failed, 40 skipped, `falcor-build-approval-gate` waiting), so
 "wait for green CI before the flip" is circular; CI is the post-flip check.
@@ -56,6 +56,9 @@ pass skipped `IRPtrLit`, so a pointer type used only by a null literal never got
 (cross-backend scope). No restack needed (merge-tree clean). R1 05:27Z B1: a null groupshared ptr via GLSL
 gave an undeclared `_S2(0UL)`; fixed by gating the PtrLit ctor on `isUserPointerType`. R2 dropped the Q2
 stride sentence, so #14089 stays open. 06:01Z [Fix Report]: 7 files +133/−23.
+The direct-SPIR-V twin of B1 (null Workgroup ptr → `OpConvertUToPtr` in `processPtrLit`, plus
+`processComparison`'s `OpConvertPtrToU`) is **#14207**, filed-only 11-02 by the #14055 chain
+([[14055-parser-multiply-deref-pointer.md]]); #14088 does not close it.
 
 ## #14084 → #14085
 

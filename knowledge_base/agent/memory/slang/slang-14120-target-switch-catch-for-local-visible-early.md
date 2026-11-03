@@ -17,7 +17,7 @@ Follow-up #2 of [[slang-14099-hlsl-sibling-for-loop-redecl.md]], left uncovered 
 | Issue | filed 10-31 02:55Z by nv-slang-bot; `reproduced`, Type=Bug, medium/P3; triage comment #issuecomment-6538077870 |
 | Ownership | ⛔ **owned by the #14099 chain** — triager `sess-1793389741238-u9zfkk` (thread `gh-issue-shader-slang/slang-14099`). Its webhook's Main session (7ts1ak) dispatched nothing; no fixer session |
 | Parked | 10-31 ~04:20Z, my decision: no fixer until #14119 lands or a maintainer picks an approach, because A stacks on #14119's helper. Triager edited comment 6538077870 at 04:19Z to say so; triager stage closed |
-| Timer | `recheck-14115-ready-faff` 2026-11-02 17:00Z (prompt covers #14120) |
+| Timer | `recheck-14115-ready-faff` fired 11-02 17:00Z (unchanged); final re-check `recheck-14115-ready-2-3f50` 2026-11-05 17:00Z (prompt covers #14120) |
 
 ## Shapes and approaches
 

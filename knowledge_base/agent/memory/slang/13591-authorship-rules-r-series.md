@@ -46,3 +46,9 @@ the issue itself.
   touches `claude-pr-review.yml`, which at blob `0f4d3ec0` still fires on `pull_request_target`. Its gate is the
   replay-harness eval in #13602 (open, 0 comments). The fleet part is "slang-reviewer reviews new PRs". Turning that
   on is an operator decision, made once parity is shown.
+- **R4 #13594, 2026-11-02 12:12Z: szihs comment 6576832254**, the issue's first comment. It mentions no one. It reframes R4 around data: show whether the Claude
+  PR review and CodeRabbit find real issues and whether they overlap. If they overlap, disable one. If both add value,
+  keep both, but comments must follow guidelines. **Held: no dispatch, no bot post.** Operator offered fleet help to
+  produce the data. The existing `review-rounds.json` can't answer it, because it filters automation out; it only
+  counts volume (since 04-10: 12,683 `github-actions` comments, which cover all workflows, and 6,789 `coderabbitai`).
+  One-shot re-check task `rechase-13594-r4-data-as-0202` is set for 11-06 12:00Z.

@@ -34,3 +34,12 @@ Related: #14135 (`__launch_bounds__`), which does not conflict.
 if nothing has changed, re-verify and post the draft. No fixer until direction arrives (and after #14034, if both proceed).
 Owner: slang-triager, thread `gh-issue-shader-slang/slang-14136`.
 Host-side companion: [slang-rhi#961](slang-rhi-961-dispatch-time-threadgroup-size.md) (choose the dispatched size; filed 11-01 19:28Z).
+
+**11-02: reporter PR #14148 is open (verified).** albertrodriguezclo opened it 11-01 23:08:37Z, non-draft: "Add DispatchedWorkgroupSize()
+to read the dispatched workgroup size (Metal threads_per_threadgroup, CUDA blockDim)", body `Fixes #14136`. That fires this chain's
+reporter-PR resume trigger; the triager found it while triaging #14151. Nobody has checked it against the triage acceptance criteria yet.
+The triager's `t-c5502a` (11-05 14:30Z) should verify #14148 rather than post the old option draft. #14151 option A touches lines near
+#14148's hunk at :4466.
+11-02 10:22Z: the triager rewrote the `t-c5502a` prompt (same due time). The run builds the #14148 head and checks each Accept-when
+item: MSL `[[threads_per_threadgroup]]`, CUDA `blockDim`, the fold to `[numthreads]` on hlsl/spirv/glsl/wgsl, `WorkgroupSize()` unchanged,
+and an L40S CUDA run with a mismatched launch size. It posts nothing on #14136 or #14148 unless asked, then sends a per-item `[Report]`. No fixer.

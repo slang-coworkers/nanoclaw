@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14036 — CUDA `precise` / `-fp-mode precise` leave no trace in emitted .cu (FMA contraction)
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:20Z, cloth-sim batch. Triaged feature/medium/P2 (CUDA emit) by slang-triager. Parked on maintainer direction (jkwak-work, tangent-vector); R6 hold, re-check t-4a15ea 2026-11-02 17:30Z.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:20Z, cloth-sim batch. Triaged feature/medium/P2 (CUDA emit) by slang-triager. Parked on maintainer direction (jkwak-work, tangent-vector). Parked 5-bullet posted 2026-11-02 17:32Z after the R6 hold; no re-check scheduled — the supervisor register is the timer.
 tags: [cuda, precise, fp-mode, fma, feature-request, parked, r6]
 resource: /workspace/inbox/a2a-1793294503154-lqb5sc/triage-14036.md
 ---
@@ -30,5 +30,7 @@ No fixer has been dispatched.
 
 **Side note.** Reporter PR #13943 (Metal `-fno-fast-math` for `-fp-mode precise`) was MERGED 10-28 22:10:33Z (verified). That merge is one of #13689's resume triggers. The triager recorded it, and nothing else was done.
 
-**Next.** The triager's one-shot `t-4a15ea` runs 2026-11-02 17:30Z. It posts the parked 5-bullet unless a human has moved the issue on. If there is a reporter PR, it records the PR and does not compete.
+**11-02 re-check (t-4a15ea, fired).** No human movement since 10-29, and #13324 has been silent since 10-19. The triager posted the parked 5-bullet, cmt 6583831492, at 17:32:23Z. I verified that it is by nv-slang-bot and is now the only comment. The code pointers still hold on master 8229f2742. The triager has no further re-check, so the timer is the `supervisor-state.json` register entry (`advisory:maintainer-decision`).
+
+**Next (superseded, kept for history).** The triager's one-shot `t-4a15ea` runs 2026-11-02 17:30Z. It posts the parked 5-bullet unless a human has moved the issue on. If there is a reporter PR, it records the PR and does not compete.
 If there is maintainer direction, the triager hands off to slang-fixer. Owner: slang-triager, thread `gh-issue-shader-slang/slang-14036`. Memo: see `resource`.

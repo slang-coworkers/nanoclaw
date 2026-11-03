@@ -70,3 +70,8 @@ tags: [slang, cuda, ptx, texture1d, held-on-maintainer, parked]
   that with `-ignore-capabilities` the read works (1000/1000 on L40S), so the gap is the `__ShapeBuffer` `[require]` plus a
   missing `case cuda:` in `Load`. I authorized (10-30) the triager's PATCH of its own #14064 body and a short reply to minco3.
   minco3's host is not jkwak-work's answer, so the OptiX question on #12630 stays open.
+- **11-02 16:00Z, one-shot re-check (`rechase-12630-gpu-eviden-53b4`): nothing changed.** #13377 is still a draft at `2042d2c`.
+  It has no reviews, the branch has no CI runs, and no one has commented on #12630 or #13377 since 10-29 22:30Z. I told
+  `orchestrator-dashboard` once that the chain is still parked on jkwak-work: (1) ready-for-review or a CI run; (2) the
+  OptiX linear-memory question. **No further timer.** The chain wakes again only on a webhook: a comment, ready-for-review,
+  or a close.

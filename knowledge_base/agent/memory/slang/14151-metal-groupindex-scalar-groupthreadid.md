@@ -1,0 +1,47 @@
+---
+type: chain
+title: slang#14151 — Metal SV_GroupIndex subscripts a scalar SV_GroupThreadID (`gtid[2]`)
+description: Human-filed (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) Metal bug 2026-11-02 10:04:22Z. Invalid MSL from emitCalcGroupIndex reusing a narrowed SV_GroupThreadID param. Triaged bug/medium/P2, reproduced, order-dependent. PARKED: R6 to 2026-11-06 10:04:22Z; fixer go/A-vs-B2 with the operator; triager one-shot i14151-r6-recheck-e401 11-06 10:10Z.
+tags: [metal, system-values, r6]
+---
+
+# slang#14151 — Metal `SV_GroupIndex` with a narrowed `SV_GroupThreadID`
+
+**Bug (reporter's analysis; not reproduced by me).** On Metal, `SV_GroupIndex` is computed from the group thread ID
+(`emitCalcGroupIndex`, `slang-ir-legalize-varying-params.cpp`). The `GroupIndex` branch reuses
+`findSystemValueParam(entryPoint, GroupThreadID)` without checking its type. A user `uint gtid : SV_GroupThreadID`
+is later narrowed (`gtid_1 = gtid_0.x`), and the group-index calc ends up as `gtid_1[int(2)]` → Apple metal:
+"subscripted value is not an array, pointer, or vector". slangc returns 0. Existing tests that hit it:
+`tests/metal/thread_position_in_threadgroup.slang` (lane `-D GROUPID`, FileCheck text-only so it passes) and
+`tests/language-feature/system-value-extraction.slang` (`-mtl` lane disabled). Reported on master `6815ed82d`.
+
+**GitHub (11-02 10:0xZ).** 0 comments, no labels, no Type. Dedupe: `gh search` for "SV_GroupIndex metal" and
+`emitCalcGroupIndex` PRs → nothing. **R6:** no `bot-ok`; the fences hold MSL compile errors, not a crash word →
+hold until **2026-11-06 10:04:22Z** (comments, PRs and commits naming #14151).
+
+**Adjacent.** Same file and Metal system-value legalization as [#14034](14034-workgroupcount-cuda-metal.md) and
+[#14136](14136-metal-threads-per-threadgroup.md) (same reporter); watch for edit-site overlap if fixers run.
+
+**Dispatch (11-02).** slang-triager on `gh-issue-shader-slang/slang-14151`, with the R6 hold stated. Owner: slang-triager.
+
+**11-02 10:08Z (triager's report; not reproduced by me).** Reproduced on master 6815ed82d, with MSL identical to the report. The triager is still checking parameter order, the other derived SVs, and the CUDA/CPU paths.
+
+**11-02 10:20Z: triaged (triager's findings; I verified only the GitHub state).** Bug, medium, P2. Type=Bug and `reproduced`
+are set and there are 0 comments (verified 10:2xZ). Not a regression; the synthesis dates from #4536 (2024-07).
+- **The bug depends on parameter order.** It fires only when `SV_GroupIndex` comes before an `SV_GroupThreadID` with fewer
+  than 3 components. `uint`/`int` give a hard MSL error. `uint2`/`int2` give a **silent out-of-bounds `gtid_1[2]`**, which is a
+  wrong value and is not in the report. `uint3`, or gtid declared first, are correct. The live `-mtl` lane in
+  `compute-system-values.slang` declares gtid first, which is why CI never hit this.
+- No other target or derived SV is affected (SV_InstanceID reuse is correct). The sites are `slang-ir-legalize-varying-params.cpp:4768-4851`
+  (the GroupIndex branch) and `:3040-3060` (the retype and redirect in `legalizeSystemValue`).
+- **Fix options.** **A (rec.):** map to native `[[thread_index_in_threadgroup]]` and delete the ~90-line synthesis. This follows
+  the dispatched size, which ties it to #14136's decision (3), so it needs a maintainer. **B2:** legalize the reused gtid before
+  building the calculation. That keeps the `[numthreads]` value and has no blocker.
+- **Overlap.** Reporter PR **#14148** (for #14136): its hunk at :4466 sits near A's site and may cause a trivial textual conflict.
+  Our draft #13940 is near B's site.
+- **No fixer dispatched.** R6 blocks a PR until 11-06, and the reporter ships their own PRs. I put the fixer go and the A/B2
+  choice to the operator on 11-02. The triager's one-shot **i14151-r6-recheck-e401** runs 11-06 10:10Z: if a reporter PR
+  exists, verify it and don't post; otherwise re-verify and post the held draft.
+- Memo: `/workspace/inbox/a2a-1793614835371-ftd1ki/triage-14151.md`. The held draft is in the triager's group at `memory/issues/comment-14151.md`.
+
+**Reporter PR (supervisor tick 321).** albertrodriguezclo opened [#14169](https://github.com/shader-slang/slang/pull/14169) (`Fixes #14151`) at 11-02 10:44Z. It is non-draft and BLOCKED, waiting on a maintainer review. No bot fixer: the R6 release one-shot must reconcile with this PR instead of posting a planned fix.

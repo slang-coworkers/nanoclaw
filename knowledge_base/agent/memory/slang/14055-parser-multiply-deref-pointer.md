@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14055 — parser takes `a * *p` (multiply by a dereferenced pointer) as a pointer type
-description: Human-filed (albertrodriguezclo, cloth-sim batch) 2026-10-29 21:51:29Z. Regression from #6627 (v2025.6.3), frontend/parser, P1. Fix A is done locally by slang-fixer and unpushed (R6); the triager posts and the fixer opens a draft PR after 2026-11-02 21:51:29Z. Side finds live in their own records.
+description: Human-filed (albertrodriguezclo, cloth-sim batch) 2026-10-29 21:51:29Z. Regression from #6627 (v2025.6.3), frontend/parser, P1. Fix A was done locally by slang-fixer. On 11-02 the timer stood down on a stale-rule assignee check (jkwak-work, assigned by jhelferty-nv); Main overrode it, so the triage comment and draft PR go ahead. Draft PR #14203 opened 11-02; side finds filed as #14205–#14208 (filed-only). Side finds live in their own records.
 tags: [parser, pointers, r6]
 ---
 
@@ -95,6 +95,39 @@ declglobal baselines unchanged, with a `ParseStatement`→`ParseType` trace). Fu
 - Fixer reports on this chain drift to Main (01:54Z, 04:09Z, 04:53Z, 05:50Z, 06:01Z): forward each to the
   triager rather than acting on it.
 
+## 11-02 pre-timer check (live, 17:4xZ)
+
+- #14055 has 0 comments and an empty timeline, and no PR mentions it, so no stand-down condition is met.
+- The task lanes `system:tasks:t-766555` (triager) and `system:tasks:slang-14055-r6-push-2eff` (fixer) exist and are waiting.
+- **No operator answer to the fan-out question.** I searched the dashboard session from seq ~509172 to 510170. The hold stays, and I re-asked once on 11-02.
+  The hold is local to this chain: other Main sessions filed side finds freely on 10-31 to 11-02 (#14116/#14117/#14130/#14192, rhi#960).
+
+## 11-02 21:54Z: timer stood down; Main overrode it
+
+- t-766555 stood down on condition (b), an assignee: **jhelferty-nv assigned jkwak-work at 18:40:38Z**. Nothing was posted. The fixer's 22:00Z timer stands down on the same check.
+- ⛔ **That condition came from the STALE 4-day R6 rule** (see the Core Memory R6 line). nanoclaw #1993 merged 10-25 with no wait. A stand-down now needs an **explicit human request** (szihs on #13596, 11-02 12:30Z). An assignment is not one; it looks like the shepherd assignment, since jkwak-work also shepherded and approved #14090 that day.
+- **Main 11-02 ~21:5xZ: proceed.** The triager posts the triage comment (offering the draft PR; the assignee may take it over or close it) plus `reproduced` + `regression` + Type=Bug. The fixer merges master, re-runs in the CI env, and opens a draft PR with `Fixes #14055`, then calls report_pr_created and requests peer review. Stop at once on any explicit stand-down request.
+- **The fan-out question was moot.** My own 10-31 filing policy ([[../orchestrator/filing-verified-issues-policy.md]]) already says reproduced, deduped bugs are filed without asking.
+  The held list is released: file H1, H3 and H4 as filed-only (no fixer chains); H5 only if it reproduces in an isolated run; H2 is never filed. I withdrew the question on the dashboard.
+
+## 11-02 22:1xZ: posted and filed (verified on GitHub by Main)
+
+- Triage comment **6589471730** (21:56:40Z), labels `reproduced` + `regression`. Assignee jkwak-work is offered the PR.
+- Draft PR **#14203** (`fix/issue-14055` @ c91a9fd, `Fixes #14055`, `pr: non-breaking`, 22:08:56Z). Mapped to fixer session `dxst43`.
+- Side finds were filed filed-only (no fixer chain) and re-verified on master 9b46bca64: **#14205** (H1 render-test `-entry`), **#14206** (H3 GLSL bit_cast intptr), **#14207** (H4 SPIR-V null Workgroup ptr), **#14208** (H5 NVIDIA driver crash at pipeline creation; it reproduced in isolation). H2 was not filed. Their `issue_opened` webhooks need no dispatch.
+- The operator was told (dashboard a2a 13) that a fixer chain on any of the four is theirs to ask for. The triager was told no fixers (a2a 11).
+
+## 11-03 02:42Z: [Triage Resolution], with the triage side closed
+
+- **#14203 head 5872fb173** (I verified it: still a draft). Review: R1 REQUEST_CHANGES (small) → **R2 APPROVE_WITH_NITS**, with the remedy and N6–N13 applied.
+- It differs from the brief: a run of 2+ `*` before `(` asks `_mayNameType` about the left operand. So `a * *(p + 1)`, `h.k * *(p + 1)` and `p->k` multiply, while `int**(p)` and `ns.T**(p)` stay casts.
+- Tests (validated CI env, the fixer's numbers): 3/3 on cpu/vk/cuda; full suite 11414/11417 (3 known fp8-cuda).
+- Comment 6589471730 was refreshed in place. No human comments or reviews and no `no-bot` label.
+
 ## Next
 
-The 11-02 timers; then the triager sends the [Triage Resolution] when the PR opens.
+Human-gated only:
+- the ready flip of #14203, or jkwak-work taking it over or closing it;
+- the flips of #14080 and #14085; #14088 after #14080 merges;
+- maintainer decisions on #14086/#14089 (re-checks 11-06);
+- whether to put fixers on #14205–#14208.

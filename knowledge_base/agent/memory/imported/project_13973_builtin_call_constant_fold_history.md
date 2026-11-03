@@ -41,3 +41,5 @@ Current state, decisions and lessons: [[project_13973_builtin_call_constant_fold
 - **21:47Z** #13991 @497b7977f states the #13984 conflict and order. **21:52Z** #13986 [Fix Report]: parked; rebases after #13984.
 - **22:04Z** #13993 R1 applied @9b5f00221; comment on #13954 declined. **22:31Z R2 APPROVE_WITH_NITS** (`a2a-1793226674182-ipwx7y`, diff e07fcbd3…). **22:40Z** #13985 [Fix Report]: #13993 @963a7b086, parked.
 - **22:41Z** all 5 PRs verified drafts; no active fixer work; operator told.
+- **11-02 17:34Z #13988 APPROVED by jkwak-work** ("Looks good to me", review 5740668414) and marked ready by a human. Verified live 17:3xZ: not a draft, MERGEABLE, head 7d7bbe5. CI run 41492435828 is held at the standard bot-PR approval gate. Next: a maintainer CI approval and the merge. No bot action; the triager posted nothing.
+- **11-02 21:04Z #13988 MERGED** by jkwak-work as e6718350f; #13983 CLOSED (completed). Verified live 21:0xZ. The fixer removed wt-slang-13983. #13983 is terminal. #13975, when it un-parks, must rebase over e6718350f, which touches the same integer `abs` overloads.

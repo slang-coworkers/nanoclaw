@@ -117,3 +117,15 @@ description: skiminki-nv filed + self-assigned 10-19. Split by the triager 10-22
     disagrees); the #13718 land-second rule; the #13880/#13956 202c deferral.
   - Human steps: skiminki-nv answers Q3 and reviews; a human marks the PR ready. I told the fixer to
     cite slangpy#1254 in the PR's Risk line.
+- **11-02: slangpy#1254 marked ready_for_review** at head `6af8734f2`; skallweitNV APPROVED, CI pending at the event.
+  Not forwarded: slangpy-pr-approver is `paused=1`; queued in `data/approver-pause-queue.md`.
+- **11-02 10:45Z: slangpy#1254 maintainer-APPROVED** by skallweitNV. They merged main (head `6af8734f2`, diff
+  unchanged) and marked it ready. Verified: ready, APPROVED, CI 4 pass/12 pending. Merge is a human click
+  (skallweitNV or kaizhangNV). The explanation comment was briefly blanked by the fixer and is restored
+  (7,576 chars, verified).
+  - At the same time slang #14093 was still a draft @`e10ef70f6` with 0 reviews. #13752 had no new
+    comments after 10-30 13:17Z, so Q3 is still open.
+  - I scheduled my own one-shot re-check, `recheck-13752-14093-606d`, for **11-05 12:00Z**.
+- **11-02 12:07Z: slangpy#1254 MERGED** by skallweitNV (merge `a78ea62e6`, verified). The SlangPy side is terminal.
+  The fixer cleaned up its worktrees and sentinel. Hardening GridArg to use the struct's `N` is left to
+  the maintainers; it is flagged on the PR, and I filed nothing.

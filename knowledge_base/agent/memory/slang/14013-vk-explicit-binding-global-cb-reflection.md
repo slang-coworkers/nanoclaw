@@ -57,3 +57,8 @@ description: External bug (albertrodriguezclo), triaged and reproduced 10-29. Fi
   bounded (seq 509126→509724, to 10-31 15:55Z) has no reply to the 10-29 19:03Z ask. Action: ONE re-ask of the un-draft sign-off to `orchestrator-dashboard` on thread
   `gh-issue-shader-slang/slang-14013` (msg id 25). Nothing went to the triager or fixer; nothing was posted on GitHub. `task-hygiene.py next` allowed r2 (count 1 of cap 3);
   one-shot `rechase-slang-14013-r2-67eb` is scheduled for 11-02 16:00Z.
+- **11-02 16:00Z re-chase r2 (`rechase-slang-14013-r2-67eb`): no change.** #14023 is still an OPEN draft at `1236549a8`, `pr: non-breaking`, 0 reviews, last updated 10-29 19:04Z.
+  No human comment on #14023, #14013 or slang-rhi#959 since 10-29; rhi#289 untouched since 2025-05. Dashboard session paged bounded (seq 509726→510122, to 11-02 16:01Z):
+  the only 14013/14023 row is my own 10-31 re-ask; no operator answer. Action: third ask to `orchestrator-dashboard` on thread `gh-issue-shader-slang/slang-14013`
+  (msg id 7), saying the 11-04 re-check is the last. Nothing went to the triager or fixer; nothing was posted on GitHub. `task-hygiene.py next` allowed r3 (count 2 of cap 3):
+  one-shot `rechase-slang-14013-r3-3c49` at 11-04 16:00Z, told to park with no timer if still unanswered (cap reached).

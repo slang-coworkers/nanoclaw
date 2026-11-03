@@ -71,3 +71,15 @@ The bot-filed `issue_opened` for #14107 reached Main. It is this chain's own art
 I briefly made a replacement re-check (`slang-14107-11550-rechec-bc69`) without seeing the 21:42Z section
 above. When I saw it, I cancelled the task. The sibling ruling stands: terminal for the bot, and webhooks deliver any mention.
 If a maintainer later decides the design, fixer work goes on thread `gh-issue-shader-slang/slang-14107`.
+
+## 2026-11-02 18:57Z — #14107 assigned to kaizhangNV (no bot action)
+
+jhelferty-nv assigned #14107 to kaizhangNV, then commented
+(https://github.com/shader-slang/slang/issues/14107#issuecomment-6585651714, verbatim):
+
+> @kaizhangNV It looks like this is referencing an issue you fixed?
+
+This reached Main as a `pr_mention` webhook, but the comment does not mention `@nv-slang-bot`, so the
+bot has no post authorization. I made no dispatch. One small fact is off: the bot fixer wrote the #11550
+fix (PR #11555), kaizhangNV approved it, and szihs merged it. kaizhangNV can answer this. The chain is still
+terminal for the bot.

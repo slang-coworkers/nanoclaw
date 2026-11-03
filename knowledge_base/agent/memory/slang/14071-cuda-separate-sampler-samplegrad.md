@@ -140,3 +140,38 @@ F1/F3); (3) the dropped offset (F4) is a maintainer call, because :5055 drops it
     repo makes the gate and retry ignore runs parked on `pending_deployments`.
   - Decision: the fixer stays idle (a dispatch would only add one more stranded run). #14079 gets CI when the operator
     un-drafts it. Escalated on the dashboard thread `ci-falcor-gate-deadlock`.
+
+**11-02 17:4xZ: #14079 approved and out of draft (fixer msg 56; ✅ Main-verified live).** The operator un-drafted it.
+jkwak-work APPROVED at 17:43:28Z ("Looks good to me"). Head is still e601ae75a6, mergeState BEHIND (15 commits; the
+fixer says `git merge-tree` is clean). `pull_request` CI 41493865345 is queued. My call: **no master merge push**,
+because a push could dismiss the approval and restart CI, while pull_request CI already builds the merge ref and the
+merge queue handles BEHIND. Enqueueing or merging belongs to the maintainer/operator. #14073 stays open for F4.
+- **R6 note:** the 4-day hold behind this chain was the stale #1993 draft rule, retired in Core Memory on 11-02
+  ([13591 record](../imported/project_13591_ai_contributor_standards_batch.md)). Releasing held chains early is
+  pending with the operator. #14071 is due to release on its own at 23:56Z today, and t-3160ea posts at 11-03 00:10Z,
+  so I did not run it early.
+
+**11-02 21:21Z: #14079 MERGED (✅ Main-verified live).** jkwak-work merged it as `9b46bca644` (from head e601ae75a6)
+after pull_request CI 41493865345 passed. The fixer cleaned up its worktree. **jkwak-work is now assigned #14071,
+#14073 and #14083**, all OPEN with 0 comments. #14073 stays open for F4 (the offset). I asked the fixer for one
+5-bullet on #14073 (items 1–3 merged, item 4 awaiting the maintainer). #14083 is parked with jkwak-work, and no bot
+fixer is on it. #14071 is unchanged: t-3160ea posts 11-03 00:10Z.
+- **11-02 21:27Z:** the fixer posted the #14073 status 5-bullet,
+  [6588878093](https://github.com/shader-slang/slang/issues/14073#issuecomment-6588878093), and went idle. Correction to
+  my brief: not every CUDA offset overload is E36107. `Load(location, offset)` supports CUDA and applies the offset
+  (hlsl.meta.slang ~:5380); only `Sample*` leaves CUDA out. #14073 is parked with jkwak-work for F4.
+
+**11-03 00:14Z: t-3160ea HELD the post (triager msg 68), which was correct, because behaviour had changed.** On master
+96a728c85: separate `SampleGrad` is still E36107, and separate `Sample`/`SampleLevel`/`Gather` still drop `s`. Since
+#14079, `GatherCmp*` is E36107 and the combined `Gather` ICE is fixed. ✅ Main-verified: **human triage on 11-02
+18:46Z (jhelferty-nv) assigned jkwak-work, labelled `optix`, and set Type=Bug**, so the bot sets no label or Type. The
+master docs cuda-target.md:139 match the revised draft. The revised draft is
+`/workspace/inbox/a2a-1793664863001-lzfn73/comment-14071.md`. **My OK came with two edits:** (1) drop `Sample` from the
+"compile for SPIR-V and DXIL" sentence (it needs a derivative context); (2) reword "The E36107 is intentional" so it
+doesn't argue with the human Type=Bug ("kept on purpose in #13559 … the asymmetry is real"). Post now, after
+re-verifying at that day's master. t-35ef08 (11-10 00:10Z) becomes the parked check for a maintainer reply.
+- **11-03 00:15Z: triage comment posted**,
+  [6591886780](https://github.com/shader-slang/slang/issues/14071#issuecomment-6591886780) (✅ Main-verified: bot
+  author, both edits present, SHA 96a728c85, no @-mention). **PARKED for jkwak-work (A/B/C).** The re-check is
+  triager one-shot `t-35ef08` at 11-10 00:10Z: it reports a maintainer reply to me, posts nothing otherwise, and
+  dispatches no fixer.
