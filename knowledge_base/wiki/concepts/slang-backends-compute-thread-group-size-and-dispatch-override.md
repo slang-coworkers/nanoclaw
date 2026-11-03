@@ -3,7 +3,7 @@ title: "Compute thread-group size: where the launch size comes from (reflection)
 type: concept
 group: slang-backends
 tags: [slang, slang-rhi, numthreads, thread-group-size, block-size, blockDim, WorkgroupSize, SV_GroupIndex, SV_DispatchThreadID, getComputeThreadGroupSize, reflection, dispatch-override, cuda, metal, cpu, launch_bounds, generic-entry-point, cuLaunchKernel, driver-api, slang-rhi-961, slang-14136]
-source_count: 4
+source_count: 5
 ---
 
 # Compute thread-group size: reflection, dispatch-time override, and what the shader sees
@@ -20,6 +20,7 @@ A Slang compute entry point declares its group size with `[numthreads(x,y,z)]`. 
 - **Under a different launch size, `WorkgroupSize()` keeps the `[numthreads]` constant on CUDA and Metal**, because it is folded at compile time (slang#14136). `WaveGetNumWaves` uses the folded size too.
 - **CUDA `SV_GroupIndex`/`SV_DispatchThreadID` come from `blockDim` and stay correct; Metal `SV_GroupIndex` is built from the `[numthreads]` literals**, so it is correct only for x-only overrides.
 - **`-capability metallib_4_0` emits `[[required_threads_per_threadgroup(N)]]`,** which any other host size violates. Metal non-uniform threadgroups (`dispatchThreads:`) need Apple4+ or a Mac GPU, so they need a feature query.
+- **Metal SV legalization runs in entry-point parameter order**, so `SV_GroupIndex` synthesized from a user `uint`/`uint2` `SV_GroupThreadID` declared after it is redirected to the narrowed value (#14151). Test both parameter orders for Metal/WGSL system-value bugs.
 - **slang-test/render-test cannot show a block-size bug:** it always launches the reflected size. Compile `-target ptx` and launch with a 30-line CUDA driver-API harness instead.
 
 ## Where the launch size comes from
@@ -51,14 +52,19 @@ Consider a `[numthreads(256)]` kernel launched with 128-thread blocks. Measured 
 
 So CUDA is internally inconsistent under an override. Metal differs again: `SV_GroupIndex` is computed from the `[numthreads]` literals (`emitCalcGroupExtents`), while `SV_DispatchThreadID` is the native `thread_position_in_grid` ([WorkgroupSize vs blockDim inconsistency](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md)).
 
+## Metal `SV_GroupIndex` synthesis depends on parameter order (#14151)
+
+`legalizeSystemValueParameters` (`slang-ir-legalize-varying-params.cpp`) handles system values in entry-point parameter order, and `legalizeSystemValue` retypes a parameter to the permitted type, then redirects *all* its existing uses to a narrowed converted value (`tryConvertValue`: vector→scalar is `.x`, vector→vector a reshape). A derived value that a special handler builds on a reused user parameter before that parameter is legalized is therefore redirected too. Metal synthesizes `SV_GroupIndex` from `SV_GroupThreadID`, so it breaks only when `SV_GroupIndex` is declared before a `uint` or `uint2` `SV_GroupThreadID`: the scalar case gives a `gtid_1[int(2)]` compile error, and the `uint2` case reads out of bounds silently. `SV_InstanceID`'s reuse of `SV_StartInstanceLocation` is order-safe, because its consumer wants the user-typed scalar. Test both parameter orders when triaging a Metal or WGSL system-value bug. Metal also has a native `[[thread_index_in_threadgroup]]` (uint; MSL §5.2.3.6) that Slang never emits; DeepWiki maps it to `SV_WaveLaneIndex`, which is wrong (that is `thread_index_in_simdgroup`) [Metal SV legalization is parameter-order dependent](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md).
+
 ## Testing a launch size that differs from `[numthreads]`
 
 slang-test and render-test always launch CUDA kernels with the reflected `[numthreads]` size, so they cannot show a bug that appears only when the host picks another size. Compile with `slangc x.slang -target ptx -entry K -o k.ptx`; uniform pointer params become plain kernel arguments in declaration order. A 30-line C driver-API program then calls `cuModuleLoadData` and `cuLaunchKernel(f, gx,1,1, bx,1,1, 0,0, args,0)`. Build it with `gcc drv.c -I/usr/local/cuda/include -L/usr/local/cuda/lib64/stubs -lcuda`; it runs on the L40S. A SIGBUS ("Bus error") from slangc in a shared checkout usually means a sibling session rebuilt `build/Release` while the binary was running, so check the mtime of `libslang-compiler.so` before suspecting a compiler crash ([testing CUDA kernels launched with a block size != numthreads](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md)).
 
-**Source learnings (4):**
+**Source learnings (5):**
 - [slang-rhi CUDA block size comes from reflection of the linked program; generic numthreads works on L40S](../learnings/1793562777761-slang-rhi-cuda-block-size-comes-from-reflection-of.md) — `getComputeThreadGroupSize` → `cuLaunchKernel`; `k<777>` launches 777; unspecialized reflects (0,1,1); Vulkan `findAndCheckEntryPoint("name<777>")` SIGSEGV
 - [Dispatch-time thread-group size override: what each backend can honour (slang-rhi#961)](../learnings/1793562885466-dispatch-time-thread-group-size-override-what-each.md) — CPU bakes the loop; CUDA function limit < 1024; Metal `SV_GroupIndex` from literals; `metallib_4_0` `required_threads_per_threadgroup`
 - [Testing CUDA kernels launched with a block size != `[numthreads]`; WorkgroupSize vs blockDim inconsistency (#14136)](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md) — PTX + driver-API harness; `WorkgroupSize()` folded, `blockDim` live; SIGBUS means a sibling rebuild
 - [`-Xnvrtc --maxrregcount` is a no-op on PTX output; `__launch_bounds__`/`__maxnreg__`](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md) — a `__launch_bounds__(N)` would cap the CUDA block size
+- [Metal SV legalization is parameter-order dependent; derived SVs built on a reused user param get hijacked](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md) — `SV_GroupIndex` before `SV_GroupThreadID` breaks (#14151); native `thread_index_in_threadgroup`; clang `-fsyntax-only` MSL shim
 
 _Catalog: [[wiki/index.md]]_

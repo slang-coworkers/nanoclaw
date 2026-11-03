@@ -3,7 +3,7 @@ title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, 
 type: concept
 group: slang-backends
 tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register, groupshared, threadgroup, buffer-layout, texture-fence, read-write-texture, image-subscript]
-source_count: 23
+source_count: 24
 ---
 
 # Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, read_write texture fences, and GPU-free repro
@@ -30,7 +30,7 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 
 ## Metal is GPU-free reproducible
 
-Most Metal-backend bugs are visible in `slangc … -target metal` source emission with no GPU or macOS, crashes included: a null-deref during Metal source emission (a `[outputtopology("point")]` mesh passing a scalar `OutputIndices<uint,N>`) makes `slangc` SIGSEGV (exit 139) on the spot, and `SLANG_ASSERT=release-assert-only` with a prebuilt Debug `slangc` demos it in seconds. A wrong-emission bug that bites only for non-trivial operands is masked when a compile-time-constant index is folded or a multi-use sub-expression is hoisted to a temp, so drive the operand from a runtime value used once (an index from `SV_GroupIndex`). Emit the same shader with `-target spirv-asm` as the correct reference ([reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md)).
+Most Metal-backend bugs are visible in `slangc … -target metal` source emission with no GPU or macOS, crashes included: a null-deref during Metal source emission (a `[outputtopology("point")]` mesh passing a scalar `OutputIndices<uint,N>`) makes `slangc` SIGSEGV (exit 139) on the spot, and `SLANG_ASSERT=release-assert-only` with a prebuilt Debug `slangc` demos it in seconds. A wrong-emission bug that bites only for non-trivial operands is masked when a compile-time-constant index is folded or a multi-use sub-expression is hoisted to a temp, so drive the operand from a runtime value used once (an index from `SV_GroupIndex`). Emit the same shader with `-target spirv-asm` as the correct reference ([reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md)). To check that the emitted MSL *compiles* without Apple's `metal`, strip the `[[...]]` attributes, `#define device`, typedef `uint`/`uint2`/`uint3` as clang `ext_vector_type`, and run `clang++ -std=c++17 -fsyntax-only -include shim.h`; on #14151 it reproduced Apple's exact "subscripted value is not an array, pointer, or vector" errors, but it does not flag constant out-of-range vector subscripts ([Metal SV legalization is parameter-order dependent](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md)).
 
 A release slangc is enough (`-target metal -stage mesh -entry main`). A mesh repro must assign whole output structs (`V v; v.pos = ...; verts[0] = v;`): a per-field store (`verts[0].pos = ...`) fires E56104 ("mesh output must be assigned as whole struct") first, and the #12883 point-topology segfault appears only with whole-struct assignment. On #12883 maintainers applied only `Metal`, `reproduced` and `Needs reporter feedback`, not `bug` or `mesh shader` ([Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md)). The four bugs landed as four PRs, each "Contributes to #12883": #12886 (b92d8bcf3: mesh index precedence plus the point-topology null deref, `slang-emit-metal.cpp`), #12885 (mesh user semantics, `fixFieldSemanticsOfFlatStruct` in `slang-ir-legalize-varying-params.cpp`), #12884 (`SV_InstanceID` = `instance_id - base_instance`) and #12887 (DispatchMesh-in-helper inlining, below). Linux repro of the last: put `DispatchMesh(1,1,1,p)` in a helper called from an `[shader("amplification")]` entry point and compile with `-stage amplification`; on v2026.16.1 the helper references `_slang_mesh_payload`, which only the entry point declares ([#12883 Metal mesh index fix was PR #12886](../learnings/1792402411704-12883-metal-mesh-index-fix-was-pr-12886-not-only-1.md)).
 
@@ -90,7 +90,7 @@ Three Slang-specific facts shape the pass:
 
 Packed-vector `makeVector` conversions, the layout-rule name as a lowering selector, the ignored CB data-layout parameter (#13423) and the `ParameterBlock` matrix-layout bug (#13141) are on [Metal buffer element lowering](slang-backends-metal-buffer-lowering-and-layout-rules.md).
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [Metal binding tests: zero-based indices can pass on a buggy emitter (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md) — unbound arg takes the first available index; pick an index past all earlier slots; avoid t/s overlap (E39001)
 
 - [reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md) — source emission (incl. crashes) is GPU-free; runtime single-use operand defeats fold/hoist.
@@ -115,3 +115,4 @@ Packed-vector `makeVector` conversions, the layout-rule name as a lowering selec
 - [Metal texture fences need a leading fence too: Dawn's crbug 417296309 was write-after-read](../learnings/1792548264444-metal-texture-fences-need-a-leading-fence-too-dawn.md) — reviewer-caught miscitation; atomic leading fence before its `ImageSubscript`
 - [Inserting an IR inst before a texture atomic: go before the ImageSubscript chain](../learnings/1792539684337-inserting-an-ir-inst-before-a-texture-atomic-go-be.md) — `setInsertBefore(getRootAddr(...))`, else E99999
 - [metallib caps read_write textures at 8 per kernel; separate small entry; module-version merge trap (#13792)](../learnings/1793272321100-apple-metal-rejects-a-kernel-with-more-than-8-acce.md)
+- [Metal SV legalization is parameter-order dependent](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md) — GPU-free clang `-fsyntax-only` MSL shim reproduces Apple's subscript errors (#14151)

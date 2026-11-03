@@ -4,14 +4,6 @@ author_session: sess-1793290703305-w4738i
 written_at: 2026-10-29T16:57:27.741Z
 ---
 
-# R6 issue-wait is not enforced by the triage spine — triagers post on new human issues immediately
+# SUPERSEDED — R6 has no waiting period (this learning was wrong)
 
-**Rule (R6, `issue-wait`, defined in `/app/skills/compliance-check/README.md`):** the bot's first comment on a new human-filed issue must come at least 4 days after `created_at`. Two things exempt an issue: the `bot-ok` label, or a crash word plus a fenced code block in the body. A `GoodFirstBug`, `HelpWanted` or `no-bot` label means the bot must never comment.
-
-**Gap (verified 2026-10-29):** step 9 of the slang triage workflow says "Always post". Its only listed suppression is a ready or merged PR with `Closes #N`. R6 reaches a triager session only if that session's recall step happens to surface it. On one reporter's batch, #14029 was held correctly, but #14020 (posted 7 min after opening) and #14027 (34 min) got bot comments at once. Neither had an exemption.
-
-**Why it matters:** an R6 fail on the weekly compliance score, and bot comments burying human work on human issues.
-
-**Until the spine carries R6:**
-- When dispatching an `issue_opened` for a human-filed issue, Main states the R6 hold date in the dispatch: `created_at` + 4 d, unless the issue is exempt.
-- Triagers check R6 at the post step every time, not only through recall.
+**Corrected 2026-11-02 by the author.** The 4-day wait this learning described came from the superseded nanoclaw #1993 draft. The merged policy (#1993 + #2165, 2026-10-25) is labels only: `GoodFirstBug`/`HelpWanted`/`no-bot` are dropped at the webhook, `bot-ok` hands an issue back, and everything else is delivered and may be commented on at once. The immediate bot comments on slang#14020 and #14027 were therefore correct, and triage step 9 needs no R6 check. Do **not** add a 4-day check to any triage step. See [the correcting learning](1793622873492-r6-slang-13596-has-no-waiting-period-read-the-merg.md).

@@ -3,7 +3,7 @@ title: "Slang Scope Lookup, Function-Local Types, and Declaration Checking"
 type: concept
 group: slang-language-core
 tags: [slang, lookup, _lookUpInScopes, scope, function-local-type, local-struct, ParamDecl, isLocalVar, _isUncheckedLocalVar, extension, namespace, hiddenFromLookup, self-reference, EmptyDecl, GenericDecl, checkInterfaceConformance, checkTypeModifier, ModifiedTypeExpr, isOverloaded, refineLookup, using-namespace, e30015, e31201, e38100, e99999]
-source_count: 16
+source_count: 17
 ---
 
 # Slang Scope Lookup, Function-Local Types, and Declaration Checking
@@ -70,7 +70,7 @@ The `ExtensionDecl` branch of `_lookUpInScopes` (`slang-lookup.cpp:895-915`) doe
 
 The continuation also fires inside struct and extension scopes — a member plus the interface requirement it satisfies, or one `static const` in two extensions — and the "prefer non-extension" rule in `CompareLookupResultItems` can then pick the outer global: `return K;` in `extension E<int>` returned the global (100) instead of the member (2). `/code-review medium` found these type-scope cases, not the triage brief [the continuation also fires inside type scopes](../learnings/1792755685949-slang-lookup-isoverloaded-continuation-also-fires-.md).
 
-Peer order decides what a test proves: `addSiblingScopeForContainerDecl` (`slang-check-expr.cpp:317-324`) inserts each scope right after the head, so `using namespace A; using namespace B;` gives Inner → B → A and `result.item` comes from the last directive. A test separating "any hit overloadable" from "first hit overloadable" must put the non-overloadable decl in the later directive, or a first-item-only helper still passes (drill D1; PR tests passed 3/3). Stopping earlier does not change `isOverloaded()`/`isValid()` consumers (2+ hits either way); the behaviour changes come from post-lookup filters: `refineLookup(mask)` in `_resolveOverloadedExprImpl` (two variables now hide an outer *type*, so `S s;`, `StructuredBuffer<S>` and parameter types go to E30060), the visibility filter (E30600), and overload resolution (two modules each exporting a `max` variable hide builtin `max(a,b)`). Probe all three, plus type scopes (member + requirement, two extensions, typealias + associatedtype) [peer order is reversed; refineLookup hides breaks](../learnings/1792757829971-slang-lookup-using-namespace-peer-order-is-reverse.md).
+Peer order decides what a test proves: `addSiblingScopeForContainerDecl` (`slang-check-expr.cpp:317-324`) inserts each scope right after the head, so `using namespace A; using namespace B;` gives Inner → B → A and `result.item` comes from the last directive. A test separating "any hit overloadable" from "first hit overloadable" must put the non-overloadable decl in the later directive, or a first-item-only helper still passes (drill D1; PR tests passed 3/3). Stopping earlier does not change `isOverloaded()`/`isValid()` consumers (2+ hits either way); the behaviour changes come from post-lookup filters: `refineLookup(mask)` in `_resolveOverloadedExprImpl` (two variables now hide an outer *type*, so `S s;`, `StructuredBuffer<S>` and parameter types go to E30060), the visibility filter (E30600), and overload resolution (two modules each exporting a `max` variable hide builtin `max(a,b)`). Probe all three, plus type scopes (member + requirement, two extensions, typealias + associatedtype) [peer order is reversed; refineLookup hides breaks](../learnings/1792757829971-slang-lookup-using-namespace-peer-order-is-reverse.md). Same-scope order matters too: lookup of a prototype followed by its definition lists the definition first, so a "prefer the declaration with a body" dedup rule fires only for a definition followed by a redeclaration. Test that order, or the lane cannot fail when the rule is reverted; confirm with a revert drill (#14221, [FileCheck traps in SIMPLE lanes; prototype-then-definition lookup order](../learnings/1793686330054-filecheck-traps-in-slang-test-simple-lanes-error-m.md)).
 
 ## A local's initializer that names itself binds the outer name (#2958)
 
@@ -110,7 +110,7 @@ The ordinary-member requirement loop in `checkInterfaceConformance` (`slang-chec
 - The conformance page records `if (as<EmptyDecl>(member)) continue;` as the #13337 fix; that misses `__generic<U> ;` — the complete skip uses `maybeGetInner`.
 - The frontend page's earlier `checkTypeModifier` triage names E31201 as the replacement; the newer atom confirms it and adds the `TypeModifier` condition and `inout` side effect.
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [function-local struct members resolve enclosing params/locals (#13435)](../learnings/1792157985562-slang-function-local-types-see-enclosing-locals-pa.md) — unbounded walk; no-capture ruling; `m_parentFunc` trap
 - [lookup boundary after `AggTypeDeclBase` (PR #13718)](../learnings/1792176216247-slang-function-local-types-must-not-see-enclosing-.md) — drop ParamDecl/locals; filter breadcrumbs; break on empty
 - [C++ local class: a shadowed global is not reachable by unqualified name](../learnings/1792163585759-c-local-class-shadowed-global-is-not-reachable-by-.md) — g++/clang reject; `::x` escapes
@@ -127,3 +127,4 @@ The ordinary-member requirement loop in `checkInterfaceConformance` (`slang-chec
 - [isOverloaded() continuation also fires inside type scopes (PR #13889)](../learnings/1792755685949-slang-lookup-isoverloaded-continuation-also-fires-.md) — member+requirement, two extensions; codex recall blurb
 - [`using namespace` peer order is reversed; refineLookup hides breaks (#13889)](../learnings/1792757829971-slang-lookup-using-namespace-peer-order-is-reverse.md) — Inner → B → A; E30060, E30600, `max` hiding
 - [a per-container pass needs the block-statement path too](../learnings/1793195272647-slang-checker-a-per-container-pass-needs-the-block.md) — `DefinitionChecked` skips `BlockStmt::scopeDecl`
+- [FileCheck traps in slang-test SIMPLE lanes (also: prototype-then-definition lookup order)](../learnings/1793686330054-filecheck-traps-in-slang-test-simple-lanes-error-m.md) — lookup lists the definition first, so a body-preference dedup must be tested definition-then-redeclaration (#14221)

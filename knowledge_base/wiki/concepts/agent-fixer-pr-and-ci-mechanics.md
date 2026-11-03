@@ -3,7 +3,7 @@ title: "Fixer PR Creation, Fork & CI Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, pr-hygiene, commit-attribution, report-up, priority-gate, push-rights, drafts-only, fork-permissions, ci, tools-gfx, slang-rhi, devin, critique-gate, slang]
-source_count: 34
+source_count: 35
 ---
 
 # Fixer PR Creation, Fork & CI Mechanics
@@ -21,6 +21,7 @@ source_count: 34
 - **`upsert_pr_body.py` exit 5 "edited by nv-slang-bot" is usually our own edit** (GraphQL drops `[bot]`). Confirm `__typename: Bot` and databaseId = REST `user.id`, re-run with `EXPLAIN_DIFF_ACTOR=nv-slang-bot`; never a human's login. Edit the comment only through the script.
 - **Quiz letters follow the head SHA**: after every push re-run `--quiz-positions --head <new sha>` and re-slot answers.
 - **Never pipe or truncate `upsert_pr_body.py` stdout** (use `--quiet`). Both hooks learn freshness only from the whole `EXPLAIN_DIFF_RECEIPT {...}` line.
+- **Keep the `--explanation` source under `/workspace/agent/tmp/<task>/`, not `/tmp`** (a restart empties it, and an empty file blanks the live comment); `wc -c` or `--dry-run` before every refresh.
 - **After merging master into a PR that marks macro-generated declarations, re-sweep the marks.**
 - **`tools/gfx/` is legacy, paralleling `external/slang-rhi/`** — grep the twin first; in-tree tests exercise only slang-rhi, so state the coverage limit.
 - **On a fork PR the failing check is rarely the real blocker** — check fork permissions first; if a human owns the blocker and is engaged, watch only.
@@ -57,6 +58,8 @@ A section is a `**Label.**` or `## Heading` line plus every following non-empty 
 
 **Quiz answer letters derive from the head SHA.** `upsert_pr_body.py --quiz-positions --head <sha>` returns the slots, which change per head (PR #14024: 8f31746 → A D D C B, 52ae1d8 → D A B B D). After a push, move each correct option to its new slot and update the `**X.**` letter; the HTML quiz shuffles on load and is unaffected. The public-comment gate counts the whole Bash command's bytes, so write the body with a heredoc in one step and post with a short `gh api ... -F body=@file` ([quiz letters are derived from the head SHA](../learnings/1793294291217-explain-diff-quiz-letters-are-derived-from-the-hea.md)).
 
+**Keep the explanation source out of `/tmp`.** The skill writes the comment body to `/tmp/explain-body.md`, and a container restart empties `/tmp`. Three days later a `sed … /tmp/explain-body.md > new.md` head-line refresh produced a 0-byte file, and `upsert_pr_body.py` accepted it and overwrote the PR's explanation comment with only the marker, seal and disclaimer (~300 chars). Recovery: take the live comment saved earlier (`gh api repos/<r>/issues/comments/<id> --jq .body > saved.md`), drop the `<!-- explain-diff-html:... -->` marker, the seal lines and the `<sub>🤖` disclaimer line, fix the head line, run with `--dry-run` and check that the char count matches the original, then rerun. Keep the source under `/workspace/agent/tmp/<task>/`, and `wc -c` or `--dry-run` the `--explanation` file before every refresh ([explain-diff-html: keep the explanation source outside /tmp](../learnings/1793616498738-explain-diff-html-keep-the-explanation-source-outs.md)).
+
 ## tools/gfx legacy code and the slang-rhi twin
 
 `tools/gfx/` parallels `external/slang-rhi/`, and all in-tree tests go through slang-rhi, so no regression test catches a `tools/gfx/` runtime bug. Grep the twin in `external/slang-rhi/src/` first — it is often already patched. State the limit in the PR: a compile-only filecheck guards the language surface; runtime coverage needs downstream CI such as Falcor's gfx tests ([tools/gfx/ is legacy code paralleling slang-rhi](../learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md)).
@@ -81,7 +84,7 @@ For off-repo slang-rhi triage from slang-triager, anonymous clone works but `GH_
 
 `gate-critique-on-deliver.sh` keys off delivery markers (`[Fix Report]`, `[Resolution]`, `[Report]`, `gh pr create`/`gh api .../pulls`), so a zero-diff triage confirmation is blocked until PLAN_REVIEW, CODE_REVIEW and OUTPUT_REVIEW (`approve`) are recorded. Satisfy it honestly: write the deliverable to a file, run `/codex-critique` per stage, and frame a zero-diff CODE_REVIEW as the scope-shrinkage guard ("did I silently drop an in-scope fix?", pointing codex at `git status --porcelain` + `git diff --stat`) ([Critique gate fires on no-code triage-confirmations too](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md)). The parser is exact: STAGE only from a FRESH `mcp__codex__codex` call with a `STAGE: <X>` line, and the verdict only from the exact `### Verdict\napprove` block (free text shows "verdicts: none"). A `codex-reply` carries no STAGE tag and is never recorded, so after a must-fix issue a NEW STAGE-tagged call with the canonical developer-instructions and `ROUND: n/3` ([upsert_pr_body.py … `codex-reply` rounds aren't recorded](../learnings/1791234547680-upsert-pr-body-py-now-writes-the-explanation-as-a-.md)); every in-container codex call needs `sandbox: "danger-full-access"`. A STAGE call can return wiki-recall bullets instead of a verdict — treat that as no review and re-ask (one session re-asked via `codex-reply`; the fresh-call form is the one the parser records) ([codex STAGE prompts can return wiki recall](../learnings/1791912236710-codex-stage-prompts-can-return-wiki-recall-instead.md)). The no-code diagnoses this gate sees usually come from the STEP-0 byte-compare for "did this diff change emitted output?" ([STEP-0 byte-compare and delivery-gate verdict format](../learnings/1783352556452-step-0-byte-compare-to-decide-if-a-diff-changed-em.md)).
 
-**Source learnings (34):**
+**Source learnings (35):**
 - [slang-fixer can push fix/ branches direct to origin](../learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md) — fork-only wording is stale.
 - [szihs fork master is stale/divergent](../learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md) — gap carries workflow changes → permission rejection.
 - [Fixer PRs must use a Closes/Fixes #N keyword](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md) — prose refs don't link; no `--reviewer`.
@@ -114,6 +117,7 @@ For off-repo slang-rhi triage from slang-triager, anonymous clone works but `GH_
 - [Don't truncate upsert_pr_body.py output](../learnings/1793231501137-don-t-truncate-upsert-pr-body-py-output-the-explai.md) — `2>&1 | tail -1` cleared it.
 - [slang#14026 recurrence: run with `--quiet`, no pipe](../learnings/1793308363614-never-pipe-upsert-pr-body-py-through-cut-head-the-.md) — `| tail -1 | cut -c1-200` lost it.
 - [Quiz letters derive from the head SHA](../learnings/1793294291217-explain-diff-quiz-letters-are-derived-from-the-hea.md) — re-slot after every push (#14024).
+- [explain-diff-html: keep the explanation source outside /tmp](../learnings/1793616498738-explain-diff-html-keep-the-explanation-source-outs.md) — a restart emptied /tmp; a 0-byte `--explanation` blanked the PR comment; recover from the saved live body, `--dry-run` first.
 - [Lambda capture fields (side note: PR-description budget)](../learnings/1793366451861-slang-lambda-capture-fields-copy-the-captured-name.md) — budget excludes `<sub>` + closing lines.
 - [Priority-yielded draft dispatch not rerun while 'waiting'](../learnings/1793105473572-a-priority-yielded-bot-ci-yml-dispatch-on-a-draft-.md) — don't promise retry or re-dispatch.
 _Catalog: [[wiki/index.md]]_

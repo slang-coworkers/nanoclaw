@@ -1,0 +1,82 @@
+---
+title: "Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks"
+type: concept
+group: slang-compiler
+tags: [slang, linker, slang-ir-link, specializeIRForEntryPoint, cloneGlobalValueWithLinkage, isFunctionDefinedOrImported, findBestValueForTarget, IREntryPointDecoration, LinkedIR, IRSpecialize, E45001, E38016, extern_cpp, DllImport, llvm, slang-vm, diagnostic-tests]
+source_count: 5
+---
+
+# Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks
+
+The linker (`slang-ir-link.cpp`) clones each selected entry point, and everything it reaches, into a per-target module. Several checks run there or just after it: the E45001 "unresolved external symbol" error for a function with no body, and post-link checks over "the entry points of the output", such as the duplicate entry-point name checks of #14053 and #14221. Each check needs a reliable answer to two questions: is this function an entry point, and which symbol will the emitter write for it? The obvious answers to both are wrong in several ways, and this page records the traps found on #14200 / PR #14202, #14053 and #14221.
+
+## TL;DR
+
+- **`isFunctionDefinedOrImported` treats `ExternC`, `ExternCpp` and `UserExtern` as "defined"** (added by #9492 so CPU code can bind library functions), so a body-less `__extern_cpp` or `[DllImport]` entry point skips E45001. It then segfaults in varying-param legalization on cuda/cuh/cpp/hpp/spirv, or is silently dropped with rc 0 on hlsl/glsl/metal/wgsl (#14200).
+- **`IREntryPointDecoration` on the source function is not a reliable entry-point marker.** It is present only when the front end knew at lowering time (`[shader]`, or `slangc -entry X`). On the API path (`findAndCheckEntryPoint` on a function without `[shader]`), only the clone gets it, inside `specializeIRForEntryPoint`, after cloning.
+- **A callee clone keeps the source decoration.** A `[shader]` function that another entry point only calls is "just a callee" in that link, but later passes still legalize it as an entry point.
+- **What worked for E45001 (PR #14202): one shared predicate on one best value, checked in two disjoint places.** Cloning reports when `isFunctionDefinedOrImported(bestVal)` is false; `specializeIRForEntryPoint` reports a body-less clone only when it is true. Each body-less entry point gets exactly one E45001 per link, in any clone order, with no dedup state.
+- **For a specialized generic entry point, `sym` names the `IRSpecialize`, but cloning checks the base generic.** A post-clone re-check on `sym` double-reports. Look up `specialize->getBase()`'s linkage name instead, and probe every entry-point linker change with `-entry 'G<float>'` on a body-less generic.
+- **`UserExternDecoration` always comes paired with `IRImportDecoration`**, so excluding only `UserExtern` does nothing. `ExternCDecoration` comes only from the PyTorch binding pass. A plain `extern` body-less entry point asserts earlier (#12728 `IRPtrLit`).
+- **Post-link checks iterate `LinkedIR::entryPoints`, not every function carrying `IREntryPointDecoration`.** Imported `[shader]` callees keep the decoration until `fixEntryPointCallsites` and DCE demote them. The list can hold the same IRFunc twice (`-entry X -entry X`), so compare by identity.
+- **Not every emitter writes `IREntryPointDecoration::getName()` verbatim.** The Slang VM writes qualified, uniqued names (`A.run`); LLVM writes a named dispatcher only for compute entry points, so vertex and fragment entry points keep their mangled names.
+- **At link time the target format is the intermediate one** (hlsl for dxil, glsl for `-emit-spirv-via-glsl`, CUDA source for ptx, C++ source for host-callable via C++), except on the LLVM path, where it is already the final format. Use `getFinalTargetFormat()` for user-facing target names.
+- **Several targets link one entry point per output when writing to stdout** (HLSL, WGSL, LLVM, `-target cpp` without `-o`). A test with several entry points in one linked module needs `-whole-program` or `-o`. Compare base and head over the full list of target formats.
+- **Non-CUDA sessions discover a `[numthreads]` function as a compute entry point and decorate it at lowering**, so a unit test for the "no decoration before linking" API path must drop `[numthreads]`.
+- **Diagnostic tests:** for a given prefix, caret annotations resolve against the previous line that is not an annotation of that prefix. One E45001 gives two matchable items (the code/title and the span message), and each note is another.
+
+## Body-less `__extern_cpp` entry points skip E45001 (#14200)
+
+Consider a compute entry point declared with no body:
+
+```slang
+[shader("compute")]
+__extern_cpp void K(uint3 t : SV_DispatchThreadID);
+```
+
+Without `__extern_cpp`, every target reports E45001 correctly. With it, `isFunctionDefinedOrImported` (`slang-ir-link.cpp` ~1824-1871) treats `kIROp_ExternC`, `ExternCpp` and `UserExternDecoration` as "defined", so the link-time E45001 check (~:1673) is skipped. #9492 added that exemption so CPU code can bind extern C/C++ library functions, but entry points get the same pass. The function then reaches `slang-ir-legalize-varying-params.cpp`, which dereferences null at ~:2440 (CUDA) and ~:2720 (CPU), so cuda/cuh/cpp/hpp/spirv segfault; on hlsl/glsl/metal/wgsl the entry point is silently dropped with rc 0 ([__extern_cpp on a body-less entry point skips E45001 and crashes the legalizer](../learnings/1793651929353-extern-cpp-on-a-body-less-entry-point-skips-e45001.md)). Body-less `__extern_cpp` helpers that are not entry points must keep compiling. Related history: #12515 / PR #12542 (`[CudaKernel]`).
+
+The first proposed fix, "do not apply the extern exemption to functions with `IREntryPointDecoration`", is not enough, for the reason in the next section: the decoration is missing on the API path. The fix that worked keys both checks on the same best value instead ([linker "is this an entry point?" has two answers](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md)).
+
+## Which function is an entry point at link time (PR #14202)
+
+`IREntryPointDecoration` sits on the source IR function only when the front end knew at lowering time, through a `[shader]` attribute or `slangc -entry X`, which decorates the listed entry points. With the API (`loadModuleFromSourceString` plus `IModule::findAndCheckEntryPoint("X")` on a function without `[shader]`), no link candidate carries it; `specializeIRForEntryPoint` adds it to the clone only, after cloning. So a gate keyed on the decoration in `cloneGlobalValueWithLinkage` or `isFunctionDefinedOrImported` misses the API path.
+
+The opposite case also exists. A callee clone keeps the source decoration, and `slangc -target cpp` without `-o` links each entry point separately. In `Caller`'s link, a `[shader]` callee `NoBody` is "just a callee", yet later passes legalize it as an entry point, so a check that lives only in `specializeIRForEntryPoint` lets it through to the segfault.
+
+What worked was both checks with one shared predicate on the same best value (an extracted `findBestValueForTarget`). Cloning reports when `isFunctionDefinedOrImported(bestVal)` is false. `specializeIRForEntryPoint` reports a body-less clone only when it is true. The two cases are disjoint, so each body-less entry point gets one E45001 per link in any clone order, without dedup state.
+
+Three decoration facts matter for any variant of this fix. In `addLinkageDecoration` (lower-to-ir), `UserExternDecoration` is always paired with `IRImportDecoration`, so excluding only `UserExtern` changes nothing. `extern "C"` is not Slang syntax; `ExternCDecoration` comes only from the PyTorch binding pass. A plain `extern` body-less entry point crashes earlier, at the #12728 `IRPtrLit` assert in `cloneDecorations` ([same](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md)).
+
+## Generic entry points: `sym` names the `IRSpecialize` (PR #14202 R1)
+
+When the entry point is a specialized generic, `getEntryPointMangledName` returns the specialized name and `lowerProgramEntryPointToIR` exports it on the `IRSpecialize`, so the `sym` in `specializeIRForEntryPoint` names that `IRSpecialize`. Cloning (`cloneGlobalValueWithLinkage`) checks the base generic instead, which it reaches through `maybeCloneValue` → `cloneGlobalValue`. After the clone, `findBestValueForTarget(context, sym)` returns the `IRSpecialize`, and `isFunctionDefinedOrImported` says "not a function, defined" for it.
+
+So any post-clone check that re-evaluates the cloning predicate on `sym` to infer "cloning already reported this" double-reports generic entry points. PR #14202 R1 did exactly that: a plain body-less generic got E45001 three times where master gave two, and the extra error had no location (only the note `see declaration of '<A>'`). The fix is to look up the linkage mangled name of `specialize->getBase()` when the best value is an `IRSpecialize`, and check that symbol. Probe any entry-point linker change with `-entry 'G<float>'` on a body-less generic ([link-time "already reported?" re-checks diverge for generic entry points](../learnings/1793663209615-link-time-already-reported-re-checks-diverge-for-g.md)).
+
+## Post-link checks over the output's entry points (#14053, #14221)
+
+A post-link check over "the entry points of the output", such as #14053's duplicate entry-point name check, iterates `LinkedIR::entryPoints` (what `linkIR` returns), not every global IRFunc that carries `IREntryPointDecoration`. A `[shader]` function from an imported module that the selected entry point only calls is cloned into the linked module with its decoration; `fixEntryPointCallsites` and DCE later turn it into an ordinary function. Scanning decorations therefore gives false positives. Repro: a module with `[shader]` functions `A::K` and `B::K`, imported, with `-entry Main` calling both. The list can contain the same IRFunc twice (`-entry X -entry X`), so compare entries by identity. `checkEntryPointDecorations`'s `target` is the intermediate format (hlsl for dxil, glsl for `-emit-spirv-via-glsl`); use `CodeGenContext::getFinalTargetFormat()` for user-facing target names ([link-time entry-point checks use LinkedIR::entryPoints](../learnings/1793669339765-slang-link-time-entry-point-checks-use-linkedir-en.md)).
+
+A check that predicts which entry-point symbols an emitter will write, as #14221's E38016 does, must model two emitters that do not write `IREntryPointDecoration::getName()` verbatim:
+
+- **Slang VM** (`-target slang-vm`) names functions by their qualified name hint (`A.run`) and makes repeated names unique, so two VM entry points never share a name.
+- **LLVM** (llvm-ir, host-object-code, `-emit-cpu-via-llvm`): `slang-emit-llvm.cpp` (~2829) writes a named dispatcher only for `Stage::Compute`. Vertex and fragment entry points keep their mangled names (`_S6mod1A1Vp1pi…`).
+
+Both were false positives in review, and both were found by comparing base and head on the full set of target formats. At link time `codeGenContext->getTargetFormat()` is the intermediate format (CUDA source for ptx, C++ source for host-callable when it goes through C++), but the final format (HostLLVMIR and so on) on the LLVM path, so "CPU target and not a Source artifact kind" identifies the LLVM emitter ([entry-point symbol checks: LLVM names only compute dispatchers, HostVM qualifies names](../learnings/1793679006975-entry-point-symbol-checks-llvm-names-only-compute-.md)). On the C-like emitters, where names are written verbatim, the collision with `_generateUniqueName` output is on [[wiki/concepts/slang-backends-c-like-emitted-names-and-uniquing.md]].
+
+## Testing linker changes
+
+- **Several entry points in one module.** HLSL, WGSL and LLVM to stdout link one entry point per output, and `slangc -target cpp` without `-o` links each entry point separately. A test that needs several entries in one linked module uses `-whole-program` or `-o`; some targets compile whole-program only with one of them ([LinkedIR::entryPoints](../learnings/1793669339765-slang-link-time-entry-point-checks-use-linkedir-en.md), [LLVM/VM entry-point names](../learnings/1793679006975-entry-point-symbol-checks-llvm-names-only-compute-.md)).
+- **The API path needs a function without `[numthreads]`.** For non-CUDA sessions, `Module::_discoverEntryPointsImpl` discovers a `[numthreads]` function as a compute entry point, so it is decorated at lowering. A unit test meant to exercise the "no `IREntryPointDecoration` before linking" path must drop `[numthreads]`, or only the CUDA variant reaches the path ([generic entry-point re-checks](../learnings/1793663209615-link-time-already-reported-re-checks-diverge-for-g.md)).
+- **Diagnostic tests (`diag=`).** For a given prefix, caret annotations resolve against the previous line that is not an annotation of that prefix. Another prefix's annotation lines count as code, so a second prefix should use position-free substring annotations. One E45001 produces two matchable items (the code/title and the span message `unresolved external symbol 'X'.`), and each note is another item ([linker two answers](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md)).
+- **Remedies in this code** dereference what they check, so they take `SLANG_RELEASE_ASSERT`, not `SLANG_ASSERT`; see [[wiki/concepts/slang-build-release-divergences-and-sanitizers.md]].
+
+**Source learnings (5):**
+- [__extern_cpp on a body-less entry point skips E45001 and crashes the legalizer](../learnings/1793651929353-extern-cpp-on-a-body-less-entry-point-skips-e45001.md) — extern exemption in `isFunctionDefinedOrImported` covers entry points; null deref in varying legalization (#14200)
+- [Linker "is this an entry point?" has two answers — IREntryPointDecoration on the source func is NOT reliable](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md) — API path lacks the decoration; shared predicate in cloning and `specializeIRForEntryPoint` (PR #14202)
+- [Link-time "already reported?" re-checks diverge for generic entry points (IRSpecialize symbol)](../learnings/1793663209615-link-time-already-reported-re-checks-diverge-for-g.md) — check `specialize->getBase()`'s linkage name; `[numthreads]` discovery trap
+- [Slang link-time entry-point checks: use LinkedIR::entryPoints, not every IREntryPointDecoration func](../learnings/1793669339765-slang-link-time-entry-point-checks-use-linkedir-en.md) — imported `[shader]` callees keep the decoration; compare by identity; final target format (#14053)
+- [Entry-point symbol checks: LLVM names only compute dispatchers, HostVM qualifies names](../learnings/1793679006975-entry-point-symbol-checks-llvm-names-only-compute-.md) — #14221 E38016 false positives; intermediate vs final target format at link time
+
+_Catalog: [[wiki/index.md]]_

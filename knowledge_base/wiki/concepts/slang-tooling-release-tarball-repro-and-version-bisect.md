@@ -3,7 +3,7 @@ title: "Reproducing version-specific Slang bugs with release tarballs, and bisec
 type: concept
 group: slang-tooling
 tags: [slang, release-tarball, gh-release-download, bisect, version-matrix, nvrtc, ptx, cuda, c-api, libslang-compiler, exit-codes, triage, regression, git-tag-contains, shallow-clone, first-fixed-release, workaround]
-source_count: 42
+source_count: 43
 ---
 
 # Reproducing version-specific Slang bugs with release tarballs, and bisecting across releases
@@ -23,6 +23,7 @@ Prebuilt Linux release tarballs answer "does version X have this bug?" without a
 - Bisect library source without a clone: the contents API with `Accept: application/vnd.github.raw`, then grep.
 - `-target ptx` runs NVRTC: a real CUDA compile check in seconds.
 - C++ compilation-API bugs: link a tiny repro against each tarball (`-lslang-compiler`, or `-lslang`). A runtime result on release binaries beats "reproduced by code inspection".
+- GPU runtime bugs: run master's slang-test against a release's `libslang-compiler` renamed to master's NEEDED SONAME via `LD_LIBRARY_PATH`; confirm with `LD_DEBUG=libs` and keep `libslang-llvm.so` beside it.
 - Exit codes mislead: an NVRTC error can exit 0; a Release crash is exit 139 with no ICE text; `| head` hides the exit code (`${PIPESTATUS[0]}`). `-skip-codegen`/`-target none` still run IR lowering. Old releases (v2025.1x) write nothing for `-o -`: write to a file.
 - A crash report on a version older than the fix: tell the reporter to upgrade to the earliest fixed release. A failure on the fix release or later is probably a separate variant. Reporters on an affected release get the status plus a verified workaround (status table).
 - A variant matrix on one release is a good acceptance test set for a fix. Re-check open issues on each new release.
@@ -66,6 +67,8 @@ A bracket narrows the search to a commit window, not one commit: #13273's v2025.
 
 Compilation-API bugs (`loadModuleFromSource` and similar) need no source build: compile a tiny repro against each extracted tarball, `g++ -std=c++17 repro.cpp -I<X>/include -L<X>/lib -lslang-compiler -Wl,-rpath,$PWD/<X>/lib` (`-lslang` when there is no `libslang-compiler.so`), about a minute per version. #12852 works on v2026.12.2, fails on v2026.16.1 with "assert failure: slang-session.cpp(56): blob", and is fixed on v2026.19 (PR #12853), stronger evidence than code inspection ([C++ API bisect](../learnings/1792154932443-bisect-slang-c-api-regressions-by-linking-a-tiny-r.md)). The fix (merge e81aa6be) first ships in v2026.17; master reads the file when `source` is null and reports E00001 for an unreadable path. On v2026.16.x, read the file yourself and call `ISession::loadModuleFromSourceString(name, path, text, &diag)`, which wraps `text` in a `StringBlob` so `SLANG_RELEASE_ASSERT(blob)` never fires ([#12852 workaround](../learnings/1792401919012-12852-workaround-on-v2026-16-1-loadmodulefromsourc.md)).
 
+**Run a release's compiler under master's slang-test on the GPU by SONAME swap.** To ask whether a GPU bug in release vX is fixed on master without building vX, copy the tarball's `lib/*` into a dir and add a copy of `libslang-compiler.so.0.<X>` renamed to the SONAME master's slang-test/render-test NEED (`readelf -d build/Release/lib/librender-test-tool.so | grep NEEDED`, e.g. `libslang-compiler.so.0.2026.13.1`). `LD_LIBRARY_PATH=<dir> ./build/Release/bin/slang-test tests/...` then wins over the `$ORIGIN` RUNPATH; prove which lib loaded with `LD_DEBUG=libs ... | grep 'calling init:.*slang-compiler'`. Keep `libslang-llvm.so` in that dir, or `filecheck-buffer` tests pass vacuously. The same swap with lib-only worktree builds of `<fix>^` and `<fix>` (Release slangc + slang-glslang, ~4 min at `-j64`, ~1.5 min incremental) bisect-confirms a fix commit: on #14231 v2026.20 gave `[0,3]`, master `[2,3]`, confirming #13742 ([run a released compiler under the master slang-test harness via SONAME swap](../learnings/1793683623557-run-a-released-slang-compiler-under-the-master-sla.md)).
+
 ## Pitfalls: exit codes, hidden ICE text, and `-o -`
 
 slangc can print an NVRTC error and exit 0: check the output file exists, or grep stderr ([CUDA/PTX triage](../learnings/1792153192040-fast-gpu-free-build-repro-compare-slang-release-bi.md)). Release builds omit the ICE text a debug build shows: #12640 is exit 139 with no message, so check `$?`, and `${PIPESTATUS[0]}` through `head` ([#12640 v2026.19](../learnings/1792153782868-12640-interface-only-default-arg-crash-still-repro.md)). Nor can a release binary name the crashing phase: #12640 also segfaults under `-target none` and `-skip-codegen`, but IR lowering (`addDirectCallArgs`, `SLANG_ASSERT(argExpr)` in `slang-lower-to-ir.cpp`) runs in both, so use a debug build or a backtrace ([#12640 v2026.20, -skip-codegen](../learnings/1792304859137-12640-still-segfaults-on-v2026-20-skip-codegen-doe.md); same trap on [Slang compiler crash triage](../concepts/misc-f0909b3-slang-compiler-crash-triage.md)). Older releases (v2025.1x) write nothing for `-o -`; in a cross-version bisect write to a file (`-o file.glsl`) or they score as failures ([#13273 bisect](../learnings/1792159067590-13273-emit-fold-reorder-regressed-v2025-18-1-v2025.md)).
@@ -102,7 +105,7 @@ slangc can print an NVRTC error and exit 0: check the output file exists, or gre
 
 Related: [Slang build, binary-freshness, and shared-clone hazards](../concepts/slang-b-build-and-freshness.md) · [slangc CLI behavior](../concepts/slang-tooling-f0909b0-slangc-cli-behavior.md)
 
-**Source learnings (42):**
+**Source learnings (43):**
 - [Bisect on a glibc-2.36 host with the -glibc-2.27 tarballs](../learnings/1792917334487-bisect-old-slang-behavior-on-a-glibc-2-36-host-use.md) — #13931 → #9260
 - [Repro version-specific bugs from release tarballs; #12634](../learnings/1792152922166-repro-version-specific-slangc-bugs-from-release-ta.md)
 - [#12634 scope: every 3-component CUDA texture sample](../learnings/1792400048814-slang-12634-scope-every-3-component-cuda-texture-s.md)
@@ -145,5 +148,6 @@ Related: [Slang build, binary-freshness, and shared-clone hazards](../concepts/s
 - [Local slangc: -target hlsl for front-end checks (E30047/E30049)](../learnings/1792649817653-local-release-slangc-in-eval-container-can-t-emit-.md)
 - [653bfdeef rebuild emits SPIR-V; try local first](../learnings/1792659932300-container-release-slangc-now-emits-spir-v-directly.md)
 - [Fast fresh Slang source + cross-release codegen diff without REST quota](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md) — broken shared clone → 2 s `--filter=blob:none` clone; `releases/download` tarballs; ID-normalized `spirv-asm` diff
+- [Run a released Slang compiler under the master slang-test harness (GPU) via LD_LIBRARY_PATH SONAME swap](../learnings/1793683623557-run-a-released-slang-compiler-under-the-master-sla.md) — rename to the NEEDED SONAME; `LD_DEBUG=libs` proof; keep `libslang-llvm.so`; lib-only `<fix>^`/`<fix>` builds (#14231)
 
 _Catalog: [[wiki/index.md]]_

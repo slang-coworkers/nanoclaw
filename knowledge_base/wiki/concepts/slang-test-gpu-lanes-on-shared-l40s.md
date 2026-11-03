@@ -3,7 +3,7 @@ title: "slang-test GPU lanes on the shared L40S: run suites serially, orphaned t
 type: concept
 group: slang-grab-bag
 tags: [slang-test, gpu, l40s, nvidia, vulkan, cuda, vk, test-server, server-count, concurrency, oversubscription, d-state, vram, nvidia-smi, ignored, groupshared, race, barrier, also-fails-on-master, push-constant, validation-layer, render-test, reflection, slang]
-source_count: 27
+source_count: 28
 ---
 
 # slang-test GPU lanes on the shared L40S: run suites serially, orphaned test-servers, "ignored" that is contention, and what the GPU confirms
@@ -28,6 +28,7 @@ Every coworker container shares one NVIDIA L40S (46 GB). Since passthrough retur
 - **Count VUIDs with `grep -c '^error: .*VUID-'`, per run** (a plain grep counts each twice, slang-test's retry doubles it again). Use core validation only: GPU-AV adds a spurious acceleration-structure VUID from render-test itself.
 - **Rebuild `render-test` before a push-constant repro**: a binary from before slang-rhi#848 aborts with `Unsupported binding type: 14`.
 - **Reflection cannot place push constants for a global push-constant block plus entry-point uniforms**: the PUSH_CONSTANT_BUFFER index is a program-wide counter with no byte meaning, and `isParameterLocationUsed` says every index is unused (#5685). Entry-point uniform bindings also come from one program-wide pool; the guide's push/pop claim is not implemented (#13203).
+- **A render-test SIGSEGV gets a backtrace in-process:** `LD_PRELOAD` a SIGSEGV `backtrace()` shim and run slang-test without `-use-test-server`; the frames name the layer (driver, render-test, slang-rhi, emit). Crash repros use your own test server, never a shared one.
 
 ## Concurrency on one GPU: the failure shapes
 
@@ -88,11 +89,13 @@ For a SlangPy module-scope `[[vk::push_constant]]` block on Vulkan (slangpy#1232
 
 **A `passed test: '…(cuda)'` line hides the values.** Copy the test to `tests/<dir>/zz-probe.slang` with an unmatchable CHECK, read each API's `<file>.actual.txt`, then delete the probe and outputs; that showed identical CUDA and Vulkan `Gather*` values on a `content=gradient` 4x4 texture ([proving a GPU run](../learnings/1793323215178-slang-worktree-submodules-proving-a-slang-test-gpu.md)).
 
+**A render-test SIGSEGV: backtrace it in-process to name the layer.** The containers have no gdb, lldb or `libSegFault.so` (glibc 2.36). A 10-line C shim whose constructor installs a SIGSEGV/SIGBUS `sigaction` handler that calls `backtrace()` + `backtrace_symbols_fd(…, 2)` and re-raises, built with `gcc -shared -fPIC -o /tmp/segv/libsegv.so segv.c`, runs as `LD_PRELOAD=/tmp/segv/libsegv.so slang-test tests/x.slang -v` with NO `-use-test-server`, so render-test runs in-process and the trace reaches stderr. On #14208 the frames were in `libnvidia-glvkspirv.so` under `rhi::vk::DeviceImpl::createComputePipeline2`: an NVIDIA driver crash at pipeline creation. Confirm with the bad code in a branch that never runs; a crash that persists is compile/pipeline-time, not execution. Use your own `-use-test-server -server-count 1` (or in-process) for crash repros, never a shared server ([backtrace a slang-test/test-server SIGSEGV without gdb](../learnings/1793657696451-get-a-backtrace-for-a-slang-test-test-server-sigse.md)). Shim details and symbolization are on [[wiki/concepts/misc-f0909b3-slang-compiler-crash-triage.md]].
+
 **A "hang" can be CUDA context creation.** At a busy time (2026-10-29) about half the runs of an nvcc deadlock harness hung before launch (first `cudaMalloc`/`cudaMemcpyToSymbol`), mimicking a deadlock. Print unbuffered stderr progress (`start`, `pre-launch`, `launched`, `sync: <err>`), count a timeout as a kernel hang only if `launched` printed, use ≥40 s timeouts and ≥8 runs; then master asym2/brk2 (#14016) hung 8/8 in the kernel and PR #14025 passed 8/8 ([context vs kernel hangs](../learnings/1793299898427-gpu-hang-tests-on-the-shared-l40s-separate-context.md)).
 
 **A cross-group visibility repro needs a primed re-read, not a spin on a coherent load.** `Coherent` is not `volatile`, so the NVIDIA Vulkan driver and NVCC hoist a non-atomic spin and it hangs everywhere. Shape: group 1 reads `shared[0]` once (into L1), polls `InterlockedAdd(flag, 0)`, re-reads; group 0 delays ~200k atomic adds, writes `shared[0] = 42`, `DeviceMemoryBarrier()`, `InterlockedExchange` on the flag. On the L40S (6815ed82d) vk with `globallycoherent` gives `0 42`, without `0 0`, CUDA `0 0` because it drops the qualifier (slang#14140). It lacks a reader acquire (codex's objection), so present it as an illustration backed by a PTX/CUDA diff with and without the qualifier. An `Atomic<T>.load(Acquire)` spin really hangs on CUDA (hoisted `bra.uni` self-loop): run under `timeout -s KILL` from a private root (`mkdir root/tests`; slang-test accepts only `tests/` files). render-test is a library; use `-compute-dispatch 2,1,1` on the test line for multiple groups ([Coherent is not volatile](../learnings/1793545531703-gpu-repro-of-cross-group-visibility-bugs-coherent-.md)).
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [cross-group visibility: Coherent is not volatile; primed re-read](../learnings/1793545531703-gpu-repro-of-cross-group-visibility-bugs-coherent-.md) — CUDA drops `globallycoherent` (slang#14140); private `tests/` root.
 - [run GPU slang-test jobs serially (D state, 'ignored')](../learnings/1792140793972-run-gpu-slang-test-jobs-serially-concurrent-vk-cud.md) — `ps -o stat,wchan`; serial 2/2 in ~100 s.
 - [don't run two GPU suites concurrently on one L40S](../learnings/1792140794509-don-t-run-two-gpu-slang-test-suites-concurrently-o.md) — `CUDA_ERROR_LAUNCH_FAILED`; serial 68/68; #13659 3/3.
@@ -120,5 +123,6 @@ For a SlangPy module-scope `[[vk::push_constant]]` block on Vulkan (slangpy#1232
 - [run GPU tests from outside the slang tree via -test-dir](../learnings/1793278419722-run-slang-test-gpu-vk-cuda-tests-from-outside-the-.md) — `vulkaninfo --summary` hangs; ~1 min probe.
 - [proving a slang-test GPU run executed](../learnings/1793323215178-slang-worktree-submodules-proving-a-slang-test-gpu.md) — `zz-probe.slang` + unmatchable CHECK; `-DSLANG_ENABLE_CUDA=ON`.
 - [separate context-creation hangs from kernel hangs](../learnings/1793299898427-gpu-hang-tests-on-the-shared-l40s-separate-context.md) — `launched` marker; ≥40 s, ≥8 runs; #14016 vs #14025.
+- [Get a backtrace for a slang-test/test-server SIGSEGV without gdb: LD_PRELOAD a backtrace() handler](../learnings/1793657696451-get-a-backtrace-for-a-slang-test-test-server-sigse.md) — run in-process (no `-use-test-server`); #14208 NVIDIA driver crash in `createComputePipeline2`; never a shared server
 
 _Catalog: [[wiki/index.md]]_

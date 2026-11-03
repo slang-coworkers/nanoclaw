@@ -3,7 +3,7 @@ title: "gh CLI CI Status & Merge Signals — Instrument-Lie Folds"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, ci, graphql, rerun, merge-detection, corrections, slang]
-source_count: 10
+source_count: 11
 ---
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
@@ -15,7 +15,7 @@ source_count: 10
 - **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** — proof is a second rerun's 403 "already running"; key reruns on `(workflow_id, event, name)`.
 - **A `success` conclusion can mean "declined to act"** — priority-yield aging is contention-gated (12h yield-out / 16h lookback, then expires unrerun), not a timer; grep the decision line from the log output, not the echoed `run:` block.
 - **Bucket a red by terminal outcome, never by a signature string** — `slang-test` retries, so signature-presence over-counts; a correct total can hide a wrong composition. Presence proves an event occurred, never that it caused the red.
-- **"CI failing" means a REQUIRED check concluded `failure`** — not a CANCELLED approval gate (`falcor-build-approval-gate` on external PRs) or a non-required job like `board-sync`. Read required contexts from `branches/master` (`/protection` 403s), or audit every label at once with one aliased GraphQL `isRequired(pullRequestNumber:)` query (1 point for six PRs, no REST); `gh pr checks` folds CANCELLED into fail, so use `statusCheckRollup` or check-run `conclusion`. Filter the label on required checks; don't drop it.
+- **"CI failing" means a REQUIRED check concluded `failure`** — not a CANCELLED approval gate (`falcor-build-approval-gate` on external PRs) or a non-required job like `board-sync` or `review`, and a required `check-ci` that is absent (fork runs awaiting approval) is "not run", not failing. Read required contexts from `branches/master` (`/protection` 403s), or audit every label at once with one aliased GraphQL `isRequired(pullRequestNumber:)` query (1 point for six PRs, no REST); `gh pr checks` folds CANCELLED into fail, so use `statusCheckRollup` or check-run `conclusion`. Filter the label on required checks; don't drop it.
 - **A merge-queue eviction's reason (`failed_checks` / `checks_timed_out` / `merged`) is only in GraphQL `RemovedFromMergeQueueEvent.reason`**; the REST timeline omits it.
 - **`gh .user.login` omits the `[bot]` suffix** — the REST API returns `nv-slang-bot`, not `nv-slang-bot[bot]`; edit-if-last-poster-is-self guards must compare against the bare login or they mis-fire and post a duplicate.
 
@@ -73,7 +73,7 @@ repository(owner:"O",name:"R"){ pullRequest(number:N){ commits(last:1){ nodes{ c
   ... on StatusContext{ context state isRequired(pullRequestNumber:N) } }}}}}}}}
 ```
 
-Six PRs across slang and slang-rhi cost 1 point, with no REST branch-protection or check-runs call, which matters when three sweeps share the REST quota. The label bug was still live on 2026-10-26 (`summarize_ci` at `pr_report.py:896-914`): slang#11964 was again the one false label, its three required checks (`check-formatting`, `check-ci`, `SlangPy Tests`) green and its only reds the non-required `board-sync` and `check-pr-label`, while the other five "CI failing" labels (slang#13776, #13630, #12489, #12415, slang-rhi#899) each had a red required check. So the fix is to filter the label on required checks, not to drop it. `isRequired` is per repo: on slang-rhi it also flags the required Windows build jobs, not just slang's three contexts ([Verify PR-report "CI failing" labels with one GraphQL isRequired query](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)).
+Six PRs across slang and slang-rhi cost 1 point, with no REST branch-protection or check-runs call, which matters when three sweeps share the REST quota. The label bug was still live on 2026-10-26 (`summarize_ci` at `pr_report.py:896-914`): slang#11964 was again the one false label, its three required checks (`check-formatting`, `check-ci`, `SlangPy Tests`) green and its only reds the non-required `board-sync` and `check-pr-label`, while the other five "CI failing" labels (slang#13776, #13630, #12489, #12415, slang-rhi#899) each had a red required check. So the fix is to filter the label on required checks, not to drop it. `isRequired` is per repo: on slang-rhi it also flags the required Windows build jobs, not just slang's three contexts ([Verify PR-report "CI failing" labels with one GraphQL isRequired query](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)). On 2026-11-02 the weekly Community PR Report still had the bug, and 3 of 8 "CI failing, needs fixes" labels were false. On slang#13901 and #13959 the only red check was the non-required `review`, and `check-ci` was absent because the fork runs were still waiting for approval (an absent required check is "not run", not "failing"); on #11964 the reds were again only `board-sync` and `check-pr-label`. Several PRs still fit in one query at cost 1. Through the OneCLI proxy GraphQL `rateLimit.remaining` jumped between consecutive calls (4170, 5590, 5407, 3482), so one reading is not a reliable budget [H] ([GraphQL CheckRun.isRequired(pullRequestNumber:) separates real from false CI failures](../learnings/1793607720073-graphql-checkrun-isrequired-pullrequestnumber-sepa.md)).
 
 ## Merge-queue eviction reason lives only in GraphQL
 
@@ -87,7 +87,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (10):**
+**Source learnings (11):**
 
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -99,5 +99,6 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - [Merge-queue eviction reason: use GraphQL RemovedFromMergeQueueEvent.reason (REST timeline omits it)](../learnings/1792139409374-merge-queue-eviction-reason-use-graphql-removedfro.md) — `checks_timed_out` vs `failed_checks`; SM80Plus queue wait (#13615)
 - [`gh pr checks` can hide failing check runs — read CI state from the commit check-runs API](../learnings/1792703301263-gh-pr-checks-can-hide-failing-check-runs-read-ci-s.md) — #13880: 5 pass / 52 skipping vs check-runs `check-ci` + `wait-for-human-priority` failed; report a bot priority yield as "CI red, not yet run"
 - [audit PR-report "CI failing" labels with one aliased GraphQL isRequired query; 10-26 only #11964 false (board-sync, check-pr-label)](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)
+- [GraphQL CheckRun.isRequired(pullRequestNumber:) separates real from false CI failures in 1 point](../learnings/1793607720073-graphql-checkrun-isrequired-pullrequestnumber-sepa.md) — 11-02: 3 of 8 labels false (#13901/#13959 red only on non-required `review`, `check-ci` absent); `rateLimit.remaining` jumps through the proxy
 
 _Catalog: [[wiki/index.md]]_

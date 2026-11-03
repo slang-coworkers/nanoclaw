@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 30
+source_count: 31
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -44,7 +44,8 @@ chain routing and PR-body limits; stage counting and attestation parsing are on
   ≤2 lines per `##` section; put the 5-bullet block before the first `##`, and pre-check with
   `upsert_pr_body.description_problems(...)`.
 - **Comment hygiene is strictly enforced**, even in test files: timeless invariants only, no change-history
-  narration, no line-restating comments.
+  narration, no line-restating comments. Slang maintainer rule (PR #14115): no issue/PR numbers or URLs in
+  source or test comments, test headers included; process history goes in commits and PR descriptions.
 
 Through-line: sequence discipline (edit → format → commit → critique → send) and clean prose avoid treadmills.
 
@@ -260,6 +261,15 @@ From the `Namespace::operator+` parse-gap fix (slang#12971 → PR #12976)
   narration ("newly", "prior to the fix", "for the first time", "already worked pre-fix") and comments that
   restate the adjacent line. Write TIMELESS invariants ("X must diagnose Y"); keep change-history in the PR
   body/commit. Don't overclaim a test-coverage analogy either.
+- **A Slang maintainer made this a standing rule.** tangent-vector, CHANGES_REQUESTED on PR #14115
+  (2026-11-02): "Stop adding *process* information (e.g., issue/PR numbers) as documentation in the
+  codebase … written in a more 'timeless' fashion". So no `(#NNNN)`, `shader-slang/slang#NNNN` or issue URLs
+  in source or test comments, test headers included (many older tests have them); no "before the fix this
+  was E30200" / "master returned X" narration; no "version N is the first with …" history, state the
+  invariant instead. This overrides peer-review or bot nits asking a test comment to "name the old failure
+  it guards". Self-check before review:
+  `git diff <base> HEAD | grep -nE '^\+.*(#[0-9]{4,}|issues/|before the fix)'`
+  ([no process information in code comments](../learnings/1793662633860-slang-maintainer-rule-no-process-information-issue.md)).
 - **A 5-bullet chain report is not the PR-description shape.** codex may demand the triager's "five-part body"
   or a 5-bullet body; `/slang-fix-issue` mandates Summary / Root cause / Tests / Risk, ≤2 lines per section and
   <1,000 chars excluding the `Fixes` and disclaimer lines. Cite that rule when declining
@@ -300,7 +310,7 @@ Rewriting README `## Claims` entries to HEAD behaviour, against `_claims.md` §1
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (30):**
+**Source learnings (31):**
 
 - [attestation treadmill: batch edits, OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — edit events not hash diffs; push isn't gated.
 - [gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — literal `WOULD_APPROVE`.
@@ -312,6 +322,7 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [chain-routing hook rejects peer handoff without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md)
 - [recorded rounds require fresh codex](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md) — `danger-full-access`; omit model.
 - [`::`-qualified operator-name fix; PR-gate gotchas](../learnings/1788914603700-slang-qualified-operator-name-references-fix-pr-ga.md) — timeless comments even in tests.
+- [Slang maintainer rule: no process information (issue/PR numbers, fix history) in code comments](../learnings/1793662633860-slang-maintainer-rule-no-process-information-issue.md) — tangent-vector on PR #14115; overrides nits asking a test to name its old failure; grep self-check
 - [hand-editing docs/generated/tests](../learnings/1788384936519-hand-editing-docs-generated-tests-coverage-tree-li.md) — lint 0 errors, honest META, disclose.
 - [any Bash after approve counts; arm text-matches reads/heredocs](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md) — 3 denials escalate.
 - [bundle-test retarget must fix `_prompt.md`](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)

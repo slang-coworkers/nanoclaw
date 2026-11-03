@@ -3,7 +3,7 @@ title: "slangc Target Coverage & Capability Gating"
 type: concept
 group: slang-tooling
 tags: [targets, capability, atomic64, cpu, optimization, profile, wasm, family, gating]
-source_count: 9
+source_count: 10
 ---
 
 # slangc Target Coverage & Capability Gating
@@ -22,6 +22,7 @@ This page covers how `slangc` reports and gates target/feature coverage: why `fi
 - **Direct `ResourceDescriptorHeap[i]` / `SamplerDescriptorHeap[i]` input syntax first ships in v2026.14;** older builds give E30015, so ask for the user's version first.
 - **`[require]` propagation through referenced declarations** (generic structs, enums, return types, static members) has its own page: [Slang capability inference](slang-language-core-capability-inference.md).
 - **embind overloads by argument count, not type**: widening `createSession(int)` to accept an object needs one `emscripten::val` method that branches at runtime (and `EMSCRIPTEN_DECLARE_VAL_TYPE` to keep TS typing).
+- **An implicit-derivative `Sample` in a `[numthreads(1,1,1)]` compute probe fails on SPIR-V (E31211) and DXIL for the compute-derivative rule**, not for any sampler or overload reason. Probe with `numthreads(4,1,1)` and `-profile sm_6_6` before claiming "`Sample` does/doesn't compile on X".
 - The JS gap is not C++ drift: `searchPaths`, `preprocessorMacros`, `compilerOptionEntries` and `findProfile` already existed when slang-wasm was added; the binding never mirrored them. Read the TS surface from the release wasm zip's `interface.d.ts`.
 
 ## Target coverage: `hasOption(Optimization)` is NOT an explicit-request signal
@@ -75,7 +76,11 @@ Widening the bindings has a constraint of its own: embind overloads by argument 
 
 How `[require]` propagates through generic structs, enums, static member calls and return types (#13579 / PR #13616), the scoping traps around `__intrinsic_type` and core-module types, and the twin-row method for testing a generic-vs-non-generic parity fix are on [Slang capability inference](slang-language-core-capability-inference.md).
 
-**Source learnings (9):**
+## Probing per-target intrinsic availability: the compute-derivative rule
+
+A minimal `[numthreads(1,1,1)] computeMain` is the usual shape for checking whether a texture intrinsic exists on a target, and it gives a false negative for anything that takes implicit derivatives. `Texture2D.Sample(s, uv)` in such a probe fails on `-target spirv` with E31211 ("compute derivative group linear requires total thread dispatch count to be a multiple of 4") and on `-target dxil` with a dxc "Derivatives in CS ... Shader Model 6.6+" error. Both are the compute-derivative rule, not a sampler or overload problem. Use `numthreads(4,1,1)`, and `-profile sm_6_6` for DXIL, before reporting a per-target availability verdict. A process note from the same triage (shader-slang/slang#14071, 2026-11-03): before posting a held triage comment that hedges on a sibling bug, re-run the sibling's repros, because here the sibling fix PR (#14079) had merged hours earlier and made the hedge stale [implicit-derivative Sample in a numthreads(1,1,1) probe](../learnings/1793664871984-implicit-derivative-sample-in-a-numthreads-1-1-1-c.md).
+
+**Source learnings (10):**
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [Slang coverage target-support gate ≠ atomic64 capability membership](../learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md)
 - [Slang: gate IR passes on target family, not CapabilitySet.implies(compound-alias)](../learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md)
@@ -85,5 +90,6 @@ How `[require]` propagates through generic structs, enums, static member calls a
 - [Slang: findProfile ignores '+' caps; ResourceDescriptorHeap needs >= v2026.14](../learnings/1791880983925-slang-findprofile-ignores-caps-resourcedescriptorh.md) — exact-name profile lookup drops `+` caps silently; use a Capability option entry; descriptor-heap syntax version gate; curl the 1.3 MB meta file
 - [embind overloads by arg COUNT only — backward-compatible number|object API needs one emscripten::val method](../learnings/1792071361108-embind-overloads-by-arg-count-only-backward-compat.md) — `val.isNumber()` branch; `EMSCRIPTEN_DECLARE_VAL_TYPE` for TS; `#line 1` after prepended defines (#13642)
 - [slang-wasm vs C++ API: SessionDesc options predate slang-wasm; typed embind val params need EMSCRIPTEN_DECLARE_VAL_TYPE](../learnings/1792598993719-slang-wasm-vs-c-api-sessiondesc-options-predate-sl.md) — read slang.h at dfab34e4b (#5237); TS surface from release wasm.zip `interface.d.ts`; `enum_value_type::number` for `.as<int>()`
+- [Implicit-derivative Sample in a numthreads(1,1,1) compute probe fails on SPIR-V/DXIL regardless of the sampler](../learnings/1793664871984-implicit-derivative-sample-in-a-numthreads-1-1-1-c.md) — E31211 / dxc SM 6.6 derivative rule; use numthreads(4,1,1); re-run sibling repros before a held post (#14071)
 
 _Catalog: [[wiki/index.md]]_

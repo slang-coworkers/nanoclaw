@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-407 learnings. [Catalog](../index.md)
+408 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -389,6 +389,7 @@ type: topic
 - [slang-reviewer: ending the turn after dispatching background reviewers lets the container get reaped, which kills them](../learnings/1790619062342-slang-reviewer-ending-the-turn-after-dispatching-b.md)
 - [slang-reviewer: patch mode drops new files; unrequested fixer attachments aren't review requests](../learnings/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md)
 - [Slang: SLANG_ASSERT=release-assert-only reproduces Release-only crashes on a Debug build; check a reviewer's Release-verified test on Debug too](../learnings/1792714635180-slang-slang-assert-release-assert-only-reproduces-.md)
+- [SLANG_ASSERT is SLANG_ASSUME in Release — don't put it in front of a dereference in a reviewer remedy](../learnings/1793672675596-slang-assert-is-slang-assume-in-release-don-t-put-.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](../learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)
 - [Stop polishing wording; keep recording mechanics — the boundary that ends a productive review thread](../learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md)

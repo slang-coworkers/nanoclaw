@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 28
+source_count: 29
 ---
 
 # Slang Parameter Binding and Layout
@@ -15,6 +15,7 @@ source_count: 28
 - GLSL varying layout gives `double3/4` and 64-bit-int 3/4-vectors one Location instead of two (#13427); fix `GetVectorLayout` AND the hull patch-constant IR layout. Workaround: explicit `[[vk::location(N)]]`.
 - Layout POLICY is written **twice**: `slang-type-layout.cpp` and `slang-ir-layout.cpp` share NO code and are not 1:1. SPIR-V layout decorations use the **IR path**, not reflection `IRTypeLayout`.
 - `[vk::offset]` is read only by IR layout, so reflection reported the natural offset, and master applied it off-Vulkan too. PR #14108 gates IR layout to `isKhronosTarget`; a reflection-affecting layout attribute needs the same target gate in both engines.
+- A type-level alignment is expressible on CUDA, C++ and Metal (`alignas`), as explicit offsets on SPIR-V and per-member `@align` on WGSL; GLSL `align` works only on block members, and HLSL has no equivalent (`packoffset` is top-level cbuffer only).
 - Each entry point's `uniform` params form their own PushConstant block at Offset 0 (#9643), so stages alias under VK_EXT_descriptor_heap. Share one `[[vk::push_constant]]` struct, or put `[vk::offset]` on a struct param's first field (E31002 on the param itself).
 - IR rule `Natural` encodes as the same op as user `ScalarDataLayout`; a per-target scalar change also hits natural buffers unless a separate op is added. Concrete `sizeof`/`alignof` are target-independent AST constants.
 - Natural layout is computed twice: concrete `sizeof` in `ASTNaturalLayoutContext`, generic `sizeof(T)` in IR. They disagree on `bool` (1 vs 4) and, before #13864, on statics (`getFields()` includes them; use `MemberFilterStyle::Instance`). Compare `sizeof(S)` with `gsz<S>()`.
@@ -69,6 +70,8 @@ Oracles: compare `sizeof(S)` against `uint gsz<T>() { return sizeof(T); }` calle
 
 **`[vk::offset(N)]` is read by the IR engine only.** `VkStructOffsetAttribute` → `IRVkStructOffsetDecoration` is consumed by `IRTypeLayoutRules::calcSizeAndAlignment` (`slang-ir-layout.cpp:161`) and GLSL emit (`slang-emit-glsl.cpp:274`); front-end layout (`ScopeLayoutBuilder`) handles only `packoffset`. So on master 0cea409 `-reflection-json` and the reflection API report the natural offset (often 0) while SPIR-V carries `Offset N`, under std430, C and scalar rules alike ([vk::offset reaches SPIR-V but not reflection](../learnings/1793388961985-vk-offset-reaches-spir-v-but-not-reflection-a-per-.md)). IR layout also applied it on *every* target despite the doc's "no effect on other targets": for `struct S { int a; [vk::offset(16)] int b; }`, HLSL/Metal/CUDA/C++ `ByteAddressBuffer.Load<S>` read `b` at 16 while `ConstantBuffer<S>`/`StructuredBuffer<S>` (native structs) read it at 4, WGSL emitted `@align(16)` against a reflected 4, and `sizeof(S)` folds to 8. PR #14108 (#9643) makes reflection honour it and gates IR layout to `isKhronosTarget`; Khronos output stays byte-identical, multi-target included (the per-rule SizeAndAlignment cache does not leak across targets). Without spirv-dis, `Offset`s are `OpMemberDecorate` (opcode 72) with decoration 35 ([IR vk::offset honoured off-Vulkan](../learnings/1793400225781-ir-layout-vk-offset-was-honoured-off-vulkan-while-.md)). A layout attribute that starts affecting reflection must be gated identically in both engines. A `-vk` COMPARE_COMPUTE test checks reflection-vs-SPIR-V on GPU: render-test writes entry-point `uniform`s at reflection offsets into a block of reflected size (revert drill: wrong reflection reads 3,0,0; too small a size crashes). Gotchas: `//TEST_INPUT:` must start at column 0, and `CHECK: 3` matches inside `type: int32_t` — anchor on the type line, then `CHECK-NEXT` ([layout attributes need one target gate](../learnings/1793397649663-slang-layout-attributes-reflection-and-ir-layout-m.md)).
 
+**Which targets can express a type-level alignment (for `[Align(N)]`/`alignas` designs, #14032, master 8b351e261).** CUDA has `__align__(N)`/`alignas`, and C++ and Metal have `alignas` on struct types (per the MSL spec). SPIR-V output carries explicit `Offset`/`ArrayStride` from Slang's own layout. WGSL output puts `@align(k)` on each member, computed from the IR offset (`slang-emit-wgsl.cpp` ~339-377), which constrains placement but does not write the offset. GLSL output usually leaves std140/std430 block layout to glslang, with a conditional `layout(offset=)` path (`slang-emit-glsl.cpp` ~264, ~925); GLSL `align`/`offset` (ARB_enhanced_layouts) apply only to std140/std430 blocks or block members, not to struct types or nested struct members, and `align` does not change array stride. HLSL has no type-alignment specifier, and `packoffset` applies only to top-level cbuffer members ([per-target struct alignment expressibility](../learnings/1793644718087-per-target-struct-alignment-expressibility-for-ali.md)).
+
 ## Entry-Point Push Constants Alias at Offset 0 (#9643)
 
 Each entry point's `uniform` params become their own `PushConstant` block at `Offset 0` (a vertex `{float2, float2}` takes bytes 0-15, a fragment `DescriptorHandle<Sampler2D>` 0-7). Per-stage push ranges hid this, but VK_EXT_descriptor_heap's `vkCmdPushDataEXT`/`VkPushDataInfoEXT` has only `offset` + `data`, no stageFlags, so stages alias. #9643 has no maintainer design yet (advice: put all push constants in one place). Workarounds, clean under `SLANG_RUN_SPIRV_VALIDATION=1` (positive control: a global push block plus an entry-point `uniform` in one entry point fires VUID-06674):
@@ -108,7 +111,7 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 
 ---
 
-**Source learnings (28):**
+**Source learnings (29):**
 - [layout field keys: getSimpleVal on a global var emits a module-scope load (#9078, PR #13467)](../learnings/1791330554022-slang-ir-layout-field-keys-getsimpleval-on-a-globa.md)
 - [GLSL global in/out on CPU/CUDA: reflection counts bytes GlobalParams doesn't](../learnings/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md)
 - [vk::binding entry-point predicate must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
@@ -137,3 +140,4 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 - [Layout attributes: reflection and IR layout share one target gate](../learnings/1793397649663-slang-layout-attributes-reflection-and-ir-layout-m.md) — PR #14108; -vk COMPARE_COMPUTE check
 - [IR vk::offset honoured off-Vulkan; two layouts per struct](../learnings/1793400225781-ir-layout-vk-offset-was-honoured-off-vulkan-while-.md) — gated to isKhronosTarget
 - [Entry-point push constants all start at Offset 0; alias under descriptor heap](../learnings/1793349219262-entry-point-push-constants-all-start-at-offset-0-w.md) — #9643; shared push_constant struct
+- [Per-target struct alignment expressibility (for [Align(N)]/alignas design questions)](../learnings/1793644718087-per-target-struct-alignment-expressibility-for-ali.md) — CUDA/C++/Metal type-level `alignas`; SPIR-V explicit offsets; WGSL per-member `@align`; GLSL `align` block-only; HLSL none (#14032)

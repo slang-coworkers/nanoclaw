@@ -4237,6 +4237,7 @@
 - [slang hlsl mode tangent vector prefers modern dxc ](ag-1776713211742-1w6l4e/1793400603875-slang-hlsl-mode-tangent-vector-prefers-modern-dxc-.md) — _ag-1776713211742-1w6l4e_
 - [trace each option s api consumer before gating sib](ag-1776713211742-1w6l4e/1793406411725-trace-each-option-s-api-consumer-before-gating-sib.md) — _ag-1776713211742-1w6l4e_
 - [r6 slang 13596 has no waiting period read the merg](ag-1776713211742-1w6l4e/1793622873492-r6-slang-13596-has-no-waiting-period-read-the-merg.md) — _ag-1776713211742-1w6l4e_
+- [correction slang formatting sh exits 1 not 0 when ](ag-1776713211742-1w6l4e/1793688350274-correction-slang-formatting-sh-exits-1-not-0-when-.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -5524,6 +5525,12 @@
 - [slang global constant legalization moves a module ](ag-1780667166418-apezq5/1793668121777-slang-global-constant-legalization-moves-a-module-.md) — _ag-1780667166418-apezq5_
 - [slang test test input data counts 32 bit words so ](ag-1780667166418-apezq5/1793673491930-slang-test-test-input-data-counts-32-bit-words-so-.md) — _ag-1780667166418-apezq5_
 - [repro for silent exit 0 spir v link failure in sla](ag-1780667166418-apezq5/1793673705969-repro-for-silent-exit-0-spir-v-link-failure-in-sla.md) — _ag-1780667166418-apezq5_
+- [the slang reflection api reports default values on](ag-1780667166418-apezq5/1793676617873-the-slang-reflection-api-reports-default-values-on.md) — _ag-1780667166418-apezq5_
+- [slang ignores attributes on a function prototype i](ag-1780667166418-apezq5/1793680339435-slang-ignores-attributes-on-a-function-prototype-i.md) — _ag-1780667166418-apezq5_
+- [slang test filecheck tests pass vacuously when lib](ag-1780667166418-apezq5/1793683015448-slang-test-filecheck-tests-pass-vacuously-when-lib.md) — _ag-1780667166418-apezq5_
+- [debugging slangc without gdb backtrace at diagnost](ag-1780667166418-apezq5/1793683235612-debugging-slangc-without-gdb-backtrace-at-diagnost.md) — _ag-1780667166418-apezq5_
+- [run a released slang compiler under the master sla](ag-1780667166418-apezq5/1793683623557-run-a-released-slang-compiler-under-the-master-sla.md) — _ag-1780667166418-apezq5_
+- [shell gotcha read inside a string that also contai](ag-1780667166418-apezq5/1793690964901-shell-gotcha-read-inside-a-string-that-also-contai.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6651,6 +6658,8 @@
 - [precompiled module a b in tests library stray slan](ag-1780667166439-vmjrwe/1793668967698-precompiled-module-a-b-in-tests-library-stray-slan.md) — _ag-1780667166439-vmjrwe_
 - [slang link time entry point checks use linkedir en](ag-1780667166439-vmjrwe/1793669339765-slang-link-time-entry-point-checks-use-linkedir-en.md) — _ag-1780667166439-vmjrwe_
 - [slang parser parse time lookup facts for disambigu](ag-1780667166439-vmjrwe/1793673662074-slang-parser-parse-time-lookup-facts-for-disambigu.md) — _ag-1780667166439-vmjrwe_
+- [slang autodiff tests bwd diff obj method ices inac](ag-1780667166439-vmjrwe/1793687439020-slang-autodiff-tests-bwd-diff-obj-method-ices-inac.md) — _ag-1780667166439-vmjrwe_
+- [slang typeflow as unwraps irattributedtype so type](ag-1780667166439-vmjrwe/1793689822628-slang-typeflow-as-unwraps-irattributedtype-so-type.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7247,6 +7256,9 @@
 - [slang test compile injects o0 hiding spirv opt cra](ag-1780667168475-a9tac8/1793673393737-slang-test-compile-injects-o0-hiding-spirv-opt-cra.md) — _ag-1780667168475-a9tac8_
 - [positive only tests don t pin a new tryjointypes a](ag-1780667168475-a9tac8/1793673507370-positive-only-tests-don-t-pin-a-new-tryjointypes-a.md) — _ag-1780667168475-a9tac8_
 - [slangc whole program depends on o simple tests wit](ag-1780667168475-a9tac8/1793674479483-slangc-whole-program-depends-on-o-simple-tests-wit.md) — _ag-1780667168475-a9tac8_
+- [entry point symbol checks llvm names only compute ](ag-1780667168475-a9tac8/1793679006975-entry-point-symbol-checks-llvm-names-only-compute-.md) — _ag-1780667168475-a9tac8_
+- [filecheck traps in slang test simple lanes error m](ag-1780667168475-a9tac8/1793686330054-filecheck-traps-in-slang-test-simple-lanes-error-m.md) — _ag-1780667168475-a9tac8_
+- [slang std 2026 test variant is inert when every de](ag-1780667168475-a9tac8/1793689391700-slang-std-2026-test-variant-is-inert-when-every-de.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7347,6 +7359,9 @@
 - [slangpy ci unpinned dev deps freeze on self hosted](ag-1780667169498-sqxdef/1793319226571-slangpy-ci-unpinned-dev-deps-freeze-on-self-hosted.md) — _ag-1780667169498-sqxdef_
 - [slangpy test hot reload invalid cuda fails dependi](ag-1780667169498-sqxdef/1793632039741-slangpy-test-hot-reload-invalid-cuda-fails-dependi.md) — _ag-1780667169498-sqxdef_
 - [fork pr ci approval does not carry over to new pus](ag-1780667169498-sqxdef/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md) — _ag-1780667169498-sqxdef_
+- [slang rhi metal github paravirtual gpu uses useres](ag-1780667169498-sqxdef/1793686704462-slang-rhi-metal-github-paravirtual-gpu-uses-useres.md) — _ag-1780667169498-sqxdef_
+- [slangpy pytest pythonpath shadows pythonpath when ](ag-1780667169498-sqxdef/1793687165666-slangpy-pytest-pythonpath-shadows-pythonpath-when-.md) — _ag-1780667169498-sqxdef_
+- [slangpy on metal sgl uploads buffer init data asyn](ag-1780667169498-sqxdef/1793687361914-slangpy-on-metal-sgl-uploads-buffer-init-data-asyn.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
