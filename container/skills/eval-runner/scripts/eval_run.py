@@ -351,6 +351,26 @@ def ncl_json(run: Runner, argv: list[str], timeout: int = 60) -> dict:
     return payload.get("data") if isinstance(payload.get("data"), dict) else {"data": payload.get("data")}
 
 
+def resolve_group(group: str, run: Runner = default_run) -> tuple[str, str]:
+    """(agent group id, workspace folder) for `--group`, which may be either. `ncl tasks
+    create --group` accepts only the id (a folder fails with "FOREIGN KEY constraint
+    failed" after the trial list is already planned), while the answers live under the
+    folder, so both are needed. An `ag-` value is taken as the id and looked up for its
+    folder; anything else is matched against the folders of `ncl groups list`."""
+    try:
+        rows = ncl_json(run, ["groups", "list"]).get("data") or []
+    except OSError as exc:  # no `ncl` on this host
+        raise RuntimeError(f"ncl groups list unavailable: {exc}") from exc
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if row.get("id") == group or row.get("folder") == group:
+            return str(row.get("id")), str(row.get("folder") or group)
+    if group.startswith("ag-"):
+        return group, group
+    raise RuntimeError(f"no agent group with id or folder {group!r} in `ncl groups list`")
+
+
 @dataclass
 class Dispatched:
     session_id: str
@@ -1181,7 +1201,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bank", required=True, help="checkout of slang-eval-tasks (MANIFEST.json at its root)")
     p.add_argument("--kind", required=True, choices=["triage", "fixer", "reply", "review"])
-    p.add_argument("--group", required=True, help="agent group id of the eval coworker (ncl --group)")
+    p.add_argument("--group", required=True, help="the eval coworker's agent group: its id (ag-…) or its workspace folder")
     p.add_argument("--group-folder", help="the eval group's workspace folder (default: --group)")
     p.add_argument("--prod-groups-root", default=DEFAULT_PROD_GROUPS,
                    help="read-only mount of every group directory (default %(default)s)")
@@ -1233,10 +1253,17 @@ def main(argv: list[str] | None = None) -> int:
     log = (lambda s: None) if args.quiet else (lambda s: print(s, file=sys.stderr, flush=True))
     now = dt.datetime.now(dt.timezone.utc)
     job_id = args.job_id or make_job_id(args.kind, args.variant, now)
-    group_dir = args.group_dir or os.path.join(args.prod_groups_root, args.group_folder or args.group)
+    try:
+        group_id, folder = resolve_group(args.group)
+    except RuntimeError as exc:
+        # Without a group listing the value is used as given; a folder then fails at
+        # dispatch with the CLI's own "FOREIGN KEY constraint failed" on every trial.
+        group_id, folder = args.group, args.group_folder or args.group
+        log(f"could not resolve --group {args.group!r} ({exc}); using it as the group id")
+    group_dir = args.group_dir or os.path.join(args.prod_groups_root, args.group_folder or folder)
     repeats = args.repeats if args.repeats and args.repeats > 0 else DEFAULT_REPEATS[args.kind]
     cfg = JobConfig(
-        job_id=job_id, kind=args.kind, group=args.group, group_dir=group_dir, bank=os.path.abspath(args.bank),
+        job_id=job_id, kind=args.kind, group=group_id, group_dir=group_dir, bank=os.path.abspath(args.bank),
         variant=args.variant, fork=args.fork, budget_usd=args.budget_usd, concurrency=max(1, args.concurrency),
         limit=args.limit, repeats=repeats, poll_interval_sec=args.poll_interval, ci_grace_sec=args.ci_grace_sec, ci_check=args.ci_check or None,
         reports_dir=args.reports, compare=args.compare, retry_from=args.retry_from,

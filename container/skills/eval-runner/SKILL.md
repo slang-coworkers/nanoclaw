@@ -39,6 +39,9 @@ python3 /home/node/.claude/skills/eval-runner/scripts/eval_run.py \
     --variant baseline --limit 60 --budget-usd 300 --concurrency 2
 ```
 
+- `--group` takes the eval group's workspace folder or its `ag-…` id; the runner resolves one
+  to the other through `ncl groups list`, because `ncl tasks create` accepts only the id and the
+  answers live under the folder.
 - `--kind triage`, `--kind reply` and `--kind review` score with the bank's `tests/test.sh`
   (`AGENT_OUTPUT`, `REWARD_DIR`); a reply or review task's verifier also needs the judge
   endpoint variables the container already carries (`ANTHROPIC_BASE_URL` and its
