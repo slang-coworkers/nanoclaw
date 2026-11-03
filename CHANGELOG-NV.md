@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 738 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 742 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 300 |
 | `nv-slang` | slang project spine, skills, workflows | 207 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 125 |
@@ -15,6 +15,14 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-03
+
+### nv-main (4 PRs)
+- **#2202** `eval-runner: add the review task kind`
+- **#2203** `eval-runner: accept the eval group's folder or id for --group`
+- **#2204** `eval-sandbox: refuse shared learnings and isolate trial workspaces`
+- **#2205** `eval-runner: give the low-signal flag a per-kind reward gap`
 
 ## 📅 2026-10-27
 
