@@ -75,3 +75,10 @@ rollup** on head; the previous head `0b5fe56b3d` had 8 runs. It's a fork PR (`jv
 so CI likely needs a maintainer approve/re-trigger or a new push. No human activity since 10-19 on #13276 / #10877 / #12131 / #8957.
 Flag sent to `orchestrator-dashboard` (msg 5) with options: (a) ping reviewers/author, (b) keep a weekly re-check (default).
 Nothing posted on GitHub. Next re-chase is set for 11-02.
+
+**11-02 re-chase — no change, operator hasn't answered the 10-26 flag.** #13370: OPEN, non-draft, MERGEABLE/BEHIND, head
+`3c85a6cfa7`, `updatedAt` 10-05, no human review, saipraveenb25 + dshreiner-nv still pending, **177 behind** master (135 on 10-26).
+Still 0 workflow runs / 0 check-runs / null rollup on head. No human timeline events since 10-26 on #13276 / #10877 / #12131 / #8957.
+Dashboard read 10-24→11-02 (seq 507902–509946): the only hit is my own 10-26 flag (seq 508102); there is no operator reply. Delta sent to
+`orchestrator-dashboard` (msg 15). The next one-shot re-chase is set for 11-09. It is capped: if nothing changes, it sends one FINAL delta, then parks
+the chain on webhooks and the supervise parked-chain register, with no further re-check.

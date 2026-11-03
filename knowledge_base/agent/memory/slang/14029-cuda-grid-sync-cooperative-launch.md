@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14029 — CUDA grid-wide sync intrinsic + cooperative-launch reflection
-description: Human-filed (albertrodriguezclo, CONTRIBUTOR) feature request 2026-10-29 16:18Z, part of the reporter's cloth-sim batch #14026–#14031. Triaged P2 by slang-triager. Parked on maintainer design direction; R6 4-day no-comment window, re-check t-6f4b45 2026-11-02 16:30Z.
+description: Human-filed (albertrodriguezclo, CONTRIBUTOR) feature request 2026-10-29 16:18Z, part of the reporter's cloth-sim batch #14026–#14031. Triaged P2 by slang-triager. Parked on maintainer design direction. Parked 5-bullet posted 2026-11-02 16:32Z; next re-check t-dc64ec 2026-11-09 16:30Z.
 tags: [cuda, capabilities, reflection, feature-request, parked]
 ---
 
@@ -28,6 +28,14 @@ not verified by me.
 **GitHub state.** Issue Type set to Feature by the bot (verified 10-29). 0 comments: R6 holds a
 bot comment on a new human issue for 4 days. No fixer dispatched.
 
-**Next.** Re-check `t-6f4b45` (triager's group) 2026-11-02 16:30Z. On maintainer direction → slang-fixer;
+**Next (superseded 11-02, see below).** Re-check `t-6f4b45` (triager's group) 2026-11-02 16:30Z. On maintainer direction → slang-fixer;
 on a reporter PR → validate it, no competing work; on silence → post the parked 5-bullet. Owner:
 slang-triager, thread `gh-issue-shader-slang/slang-14029`. Memo: the triager's `memory/issues/triage-14029.md`.
+
+**11-02 re-check (t-6f4b45, triager).** No change: 0 human comments, no labels, assignee or milestone, and no PR says
+`Fixes #14029`. The triager posted the parked 5-bullet:
+[6582487816](https://github.com/shader-slang/slang/issues/14029#issuecomment-6582487816) (nv-slang-bot, 16:32:43Z; I verified it,
+and it does not state the stale wait). It lists the 5 decisions and the NVRTC 12.6 finding (prelude lines unchanged on
+master 8229f2742). The 10-29 to 11-02 hold came from my stale R6 rule (see Core Memory); the post itself is fine under
+no-wait. Next: one-shot `t-dc64ec` 2026-11-09 16:30Z. If nothing has changed then, it posts no new comment and decides
+whether to keep the chain parked or close it.

@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14039 — unused ByteAddressBuffer + -preserve-params ICEs in spirv-emit
-description: Human bug (pdeayton-nv, `bot-ok`) 2026-10-29 17:34Z. Triaged and reproduced (not a regression; the remainder of #9262). Bot PR #14045 is ready for review (head 35e787227). tangent-vector's review round 1 is handled (10-30). Resting on approval and merge.
-tags: [spirv, byte-address-buffer, legalization, preserve-params, bug, awaiting-maintainer]
+description: Human bug (pdeayton-nv, `bot-ok`) 2026-10-29. Fixed by bot PR #14045, MERGED 2026-11-02 19:50:24Z (merge commit 2518a942d); the issue closed as completed. Terminal record.
+tags: [spirv, byte-address-buffer, legalization, preserve-params, bug, merged, closed]
 ---
 
 # slang#14039 — unused BAB with -preserve-params → spirv-emit ICE
@@ -52,6 +52,25 @@ Memo: `/workspace/inbox/a2a-1793296121016-hn4r1o/triage-14039.md`.
 - The nit is applied in comment-only commits 5b7db2519 and 35e787227. The bot replied at r4426670317.
 - `reviewDecision` is empty, pdeayton-nv's review is still pending, and the subset passes 1133/1133.
 
-**Next.** A maintainer approves and merges #14045. The chain rests until the PR is merged or closed, and the webhooks route to the fixer.
+**11-02 05:21Z: approved.** pdeayton-nv (MEMBER) APPROVED on 35e787227. mergeState is BLOCKED and reviewDecision is still "".
+The triager reported that CI "never started" (queued since 10-30) and advised a cancel and re-run. ❌ **That diagnosis was wrong**, and I corrected it:
+- pull_request run 41100753757 finished 44/45 jobs green on 10-30.
+- The 45th job waited on purpose. `falcor-build-approval-gate` (ci.yml:452) uses `environment: falcor-ci`, which needs a deployment approval. That approval landed at 05:21:45Z.
+- `build-windows-release-cl-x86_64-gpu-falcor` was then created at 05:21:47Z and queued for a `Windows,self-hosted,build` runner.
+- A re-run would have thrown away the 44 green jobs.
+- The dispatch run 41100768311 is a side run (`wait-for-human-priority` and `check-ci` failed). It does not matter here.
+**Lesson:** a run with `status=queued` whose `updated_at` is fresh is usually a gated job just released. Check the jobs list before calling it stuck.
+
+**Next.** The Falcor build runs on Windows, then a maintainer merges. If the job is still queued with no runner after several hours, that is a runner problem for the babysitter or the operator. The triager accepted the correction at 05:26Z. It had posted nothing on GitHub, it relayed the correction to the fixer and filed a shared learning, and it set one-shot re-check `t-676488` for 11-02 09:30Z. The chain rests until the PR is merged or closed, and the webhooks route to the fixer.
 ⚠️ Both pr-approvers are paused (re-checked 10-30). Do not forward a `pr_ready_for_review` webhook for #14045 to an approver.
 **10-30:** first approver webhook (synchronize, head still 0c1668d5) reached Main; not forwarded, queued in `data/approver-pause-queue.md`, operator told. tangent-vector left a COMMENTED review 10-30 17:30Z (routes to the fixer via pr-mapping).
+**11-02 09:31Z: CI all green (re-check t-676488; the triager's report, which I checked on GitHub at ~09:35Z).**
+- Run 41100753757 completed/success. The Falcor build got a runner at 05:38Z and passed at 05:46Z; `test-falcor` passed 05:58→06:43Z.
+- Rollup: 56 SUCCESS, 6 SKIPPED, 0 failed or pending. The 2 null-conclusion rows are status contexts (`SlangPy Tests`, `license/cla`) with state SUCCESS.
+- Still OPEN at 35e787227. mergeState BLOCKED, mergeable MERGEABLE, reviewDecision "", no auto-merge, no requested reviewers left.
+- The master rulesets (`rules/branches/master`) hold only deletion, non_fast_forward and copilot_code_review, so the block comes from classic branch protection (403 for our token). It is probably a second or code-owner approval. Unconfirmed.
+- No dispatch and no GitHub post. A maintainer must merge it or add the missing approval. The merge or close webhook routes to the fixer. The triager then removes the `active-work/shader-slang-slang-14039` sentinel. The supervise-issues tick walks this PR, so no extra timer is set.
+
+**11-02 19:50Z: TERMINAL (checked on GitHub).** pdeayton-nv merged #14045 at 19:50:24Z (head 35e787227, merge commit 2518a942d).
+#14039 closed as COMPLETED at 19:50:26Z. The fixer removed its worktree, the triager removed its sentinel, and `t-676488` has already run. Nothing is open.
+Follow-up candidate, not filed: nested `[2][3]` BAB arrays already fail spirv-val on master (from the reviewer's notes).

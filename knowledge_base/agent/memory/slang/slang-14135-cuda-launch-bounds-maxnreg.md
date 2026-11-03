@@ -44,3 +44,7 @@ The draft comment for after the hold is in the triager's memory/issues/comment-1
 **Next.** The triager's one-shot `t-422839` fires 2026-11-05T14:35Z. It posts the parked 5-bullet unless a
 `Fixes #14135` PR or maintainer direction appears first. A fixer chain needs maintainer direction on Q1–4 and the operator's go-ahead.
 Owner: slang-triager, thread `gh-issue-shader-slang/slang-14135`.
+
+**11-02 (reported by the #14029 triager).** The reporter opened **#14149** "CUDA: add [CudaLaunchBounds] and
+[CudaMaxRegisters] kernel attributes" (`Fixes #14135`; open, not a draft, head d8501858d; I verified it). `t-422839`
+already defers to a `Fixes #14135` PR, so it should validate #14149 and must not post a competing plan. No dispatch.

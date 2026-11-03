@@ -40,3 +40,12 @@ fails the same way (#6020/#6022 only added `select` overloads). **Parked on R6:*
 one-shot **t-e8c92f (2026-11-02 22:00Z)** checks for a reporter PR or maintainer comment
 first. If there is neither, it posts the 5-bullet + `reproduced` + Type=Bug and hands A to
 slang-fixer. Next touch: t-e8c92f report.
+
+**R6 re-check t-e8c92f (11-02 22:0xZ).** No reporter PR, no maintainer comment. The triager posted
+5-bullet cmt 6589612444 (22:04:01Z) + `reproduced`; Type was already Bug. Handed fix A to
+slang-fixer `sess-1793657061973-qcgux1` (one session on the thread, verified). **Assignee call:**
+jhelferty-nv assigned jkwak-work at 18:44:02Z and set Type=Bug 9 s later (timeline-verified).
+jkwak-work has ≥100 open assigned issues, so Main reads this as triage routing, not a claim of
+ownership, and agrees with the triager: proceed. **The stand-down trigger is jkwak-work (or
+the reporter) saying they will fix it** — a comment, a self-authored PR, or a request to the bot.
+Next: the fixer opens a draft PR, which jkwak-work reviews.

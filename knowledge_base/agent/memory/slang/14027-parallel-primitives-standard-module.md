@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14027 — standard module of portable parallel primitives (block/device scan, reduce, sort, compaction)
-description: Human-filed (albertrodriguezclo) feature/design proposal 2026-10-29 16:18Z, part of the reporter's cloth-sim batch #14026–#14031. Triaged feature/low/P3 by slang-triager; bot comment posted 16:52Z (unlike sibling #14029, held under R6). Stood down 11-01 (reporter goes package-first); R6 operator decision open.
-tags: [standard-modules, memory-model, feature-request, stood-down, r6]
+description: Human-filed (albertrodriguezclo) feature/design proposal 2026-10-29 16:18Z, part of the reporter's cloth-sim batch #14026–#14031. Triaged feature/low/P3 by slang-triager; bot comment posted 16:52Z (unlike sibling #14029, held under R6). CLOSED 11-02 (reporter goes package-first; stand-down posted). The R6 "miss" was moot: merged R6 has no wait.
+tags: [standard-modules, memory-model, feature-request, closed]
 ---
 
 # slang#14027 — parallel-primitives standard module
@@ -67,5 +67,14 @@ reproduced on master, without naming #14027 before the window ends.
 - Stand-down post: the triager's one-shot **t-cc056c**, 11-02 16:30Z. It skips if 6502945982 is gone or a ruling is recorded.
   Pass any operator ruling to the triager on the thread.
 
-**Open.** Operator R6 Decisions 1 and 2 (from 10-29, re-asked 11-01). Owner: slang-triager, thread `gh-issue-shader-slang/slang-14027`.
-Memo: `/workspace/inbox/a2a-1793292830884-nykabg/triage-14027.md`.
+**11-02 16:33Z: CLOSED.** The triager's `t-cc056c` posted the stand-down (6582500256, which I checked). No bot action is left.
+
+**11-02: jkwak-work answered the reporter's naming/versioning question (6584210815):** "we don't have strong convention yet", and
+conventions will emerge as more modules are built. No bot ask, so it went to the triager to record; no post.
+
+⛔ **The R6 thread in this record was my error.** The merged R6 (nanoclaw #1993 + #2165, 10-25) has no wait. So the immediate
+comments on #14020 and #14027 were correct, Decisions 1 and 2 were moot (withdrawn 11-02), and the "miss" the triager
+admitted was not a miss. I marked my 10-29 shared learning SUPERSEDED and asked the triager to delete its step-9 R6 note.
+See [imported/project_13591_ai_contributor_standards_batch.md](../imported/project_13591_ai_contributor_standards_batch.md).
+
+Owner: slang-triager, thread `gh-issue-shader-slang/slang-14027`. Memo: `/workspace/inbox/a2a-1793292830884-nykabg/triage-14027.md`.

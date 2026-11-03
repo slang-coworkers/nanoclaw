@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14032 — struct alignment control (`[Align(N)]` / alignas) for pointer/CUDA/Metal layouts
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:14Z, cloth-sim batch. Triaged feature/medium/P2 (supersets #5873). PARKED for csyonghe design direction; R6 hold to 2026-11-02 17:10Z, re-check t-87db0a 11-02 17:15Z. Adjacent CUDA pointee-layout bug authorized for filing 10-29.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:14Z, cloth-sim batch. Triaged feature/medium/P2 (supersets #5873). PARKED for csyonghe design direction; parked 5-bullet posted 11-02 (6583572483); next re-check t-51299f 11-09 17:20Z. Adjacent CUDA pointee-layout bug authorized for filing 10-29.
 tags: [layout, cuda, metal, reflection, feature-request, r6]
 ---
 
@@ -18,7 +18,7 @@ offsets also differ from host C++ (8 vs 4, 16 vs 4).
 tech-debt issue #12316 tracks front-end `TypeLayout` vs IR natural-layout duplication. Passed to the
 triager as context only; whether either applies is the triager's finding.
 
-**R6.** No `bot-ok` label, no crash word → hold: no bot comment before **2026-11-02 17:10Z**. Stated in the dispatch.
+**R6.** ⚠️ My dispatch held the first bot comment until 11-02 17:10Z. That hold was the stale #1993-draft 4-day rule and is retired (see Core Memory in ../index.md); R6 has no waiting period.
 
 **Owner.** slang-triager, thread `gh-issue-shader-slang/slang-14032`. Dispatched 10-29.
 
@@ -58,3 +58,9 @@ and a CUDA-only `float2*` store workaround recovers the 64-bit stores. **The rep
 - 22:26Z the triager resumed and reported both items handled. **I checked GitHub:** #14040 has a bot reply, comment 6509779709. It lists three options for the maintainer: scalar layout on CUDA, CUDA vector alignment, and a diagnostic. It does not mention 14032.
   #14032 still has only the reporter's comment. The memo now includes the runtime data and a check of the workaround on the L40S (3× `STG.E.64`). t-87db0a is still 11-02 17:15Z, without the link step, and will post a fresh comment.
   **State:** parked on maintainer direction for both #14032 (6 decisions) and #14040 (direction 1/2/3). Nothing is due from Main until a webhook arrives or t-87db0a reports.
+- **11-02 17:2xZ, t-87db0a ran.** Nothing had changed on GitHub. The triager posted a fresh parked 5-bullet, **#14032 comment 6583572483** (I checked: nv-slang-bot, after 17:10Z).
+  It contains the #5873 link, the SASS repro, the reporter's runtime data, the workaround check and the 6 decisions, with no #14040 token. **Next:** one-shot t-51299f at 11-09 17:20Z; if nothing changes, it does not re-post and re-arms for about 14 days.
+- **11-02, jhelferty-nv (NVIDIA reviewer) comment 6585033908**: "We may not be able to do this for all targets, which may make specifying/implementing this difficult." It is not an @mention.
+  I relayed it verbatim to the triager's owner session (in_reply_to its msg 36). Whether to reply on GitHub is the triager's call.
+  18:38Z triager: **no post**, because the comment is a concern rather than direction and is not addressed to the bot. codex OUTPUT_REVIEW rejected a per-target-capability draft as unasked and overclaimed.
+  I confirmed that the newest comment is still jhelferty's. t-51299f (11-09 17:20Z) now uses baseline 6585033908. The checked per-target facts are in the triager's memory/issues/14032.md.

@@ -1,5 +1,6 @@
 ---
 type: feedback
+name: feedback_check_all_main_sessions_before_denying_orchestrator_said_x
 title: Before denying "Orchestrator said X", search every Main session
 description: Main runs many sessions in parallel. A coworker quoting "your msg N" may be quoting a sibling Main session, so denying it from my own transcript is a false retraction.
 ---

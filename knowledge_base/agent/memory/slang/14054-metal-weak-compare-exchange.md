@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14054 — Metal compareExchange emits one weak CAS, so a spurious failure reads as success
-description: "Human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z. Metal kIROp_AtomicCompareExchange (and the texture-atomic branch) emits a single atomic_compare_exchange_weak_explicit; HLSL semantics are strong. Metal twin of #13917/#13918 (WGSL). Triaged 22:08Z: emit reproduced, premise CONTESTED (MSL 4.1 spec text is strong). Parked on maintainer call to harden; triager timer i14054-r6-expiry-cb1c 11-02 21:55Z posts the park comment."
+description: "Human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z. Metal kIROp_AtomicCompareExchange (and the texture-atomic branch) emits a single atomic_compare_exchange_weak_explicit; HLSL semantics are strong. Metal twin of #13917/#13918 (WGSL). Triaged 22:08Z: emit reproduced, premise CONTESTED (MSL 4.1 spec text is strong). Park 5-bullet POSTED 11-02 21:56Z (issuecomment-6589472862), Type=Bug, assignee jkwak-work (set by jhelferty-nv 18:40Z). Awaiting jkwak-work harden/no-harden; one-shot re-check t-c62394 11-09 22:00Z."
 tags: [metal, atomics, target-emit, r6]
 ---
 
@@ -40,5 +40,13 @@ bug, premise contested / high if real / target-emit Metal / P2. Not a regression
   `sess-1793311695450-tzxzny` is on `system:tasks:i14054-r6-expiry-cb1c`. It fires 11-02 21:55Z: it re-checks the issue,
   posts the park 5-bullet (spec finding plus a question to a Metal maintainer, cc jkwak-work), and sets Type Bug. No `reproduced` label.
 
+**[Report] 11-02 21:57Z (triager, R6-expiry timer).** I verified both on GitHub at 22:0xZ. The park 5-bullet was posted
+21:56:44Z (https://github.com/shader-slang/slang/issues/14054#issuecomment-6589472862). Type is now Bug. There are no labels and
+no `reproduced`. jhelferty-nv assigned jkwak-work at 18:40Z without a comment. The reporter has no Metal CAS PR. The emit site is
+unchanged on master 9b46bca64. Next: jkwak-work decides whether to harden; if yes, send the triage-14054.md brief to slang-fixer
+on this thread. The triager's one-shot re-check **t-c62394** is verified (session `sess-1793656623666-ai7h11` on
+`system:tasks:t-c62394`). It fires 2026-11-09 22:00Z. The R6 hold was stale (retired 11-02, see Core Memory), so the 4-day delay
+on this post was an artifact of that rule.
+
 **Open / resume on:** a maintainer reply after the 11-02 post; an author fix PR; or an operator go-ahead to harden it now
-(dispatch the memo's fixer brief to slang-fixer on this thread). The R6 window still governs the GitHub post either way.
+(dispatch the memo's fixer brief to slang-fixer on this thread).

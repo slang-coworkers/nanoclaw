@@ -14,64 +14,110 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#14222 — generic `T(uintVar)` converts through int (≥ 2^31 → negative)](14222-generic-float-init-from-uint-via-int.md) —
+  bot-filed side find S1 from the #14062 review, 11-03. FILED-ONLY; dispatch when #14218 merges (timer `recheck-14062-pr14218-55f1`).
+- [slang#14211 — double core-module constants float-rounded (getPi)](14211-core-module-double-constants-float-rounded.md) —
+  bot-filed side find from #14062, 11-02. FILED-ONLY; dispatch to slang-fixer when #14062 PR #14218 merges.
+- [slang#14020 — RFC: standard module for small dense linear algebra](14020-dense-linalg-module-rfc.md) —
+  human RFC 10-29, triaged P3, parked for maintainers, no fixer. 11-02 jhelferty-nv leaned toward a separate repo + package manager ("we'd need to discuss this more"). Triager re-check t-4765e8 11-09 18:00Z.
+- [slang#14190 / #14191 / #14192 / #14193 — #14183 side bugs (accessor caps; LLVM atomics; Append/Consume; location-less span text)](14190-14192-cpu-atomic-side-bugs.md) —
+  BOT-filed 11-02 ~15:17–15:58Z by the #14183 triager. Filed-only; fan-out held; **their issue_opened needs no dispatch**. The #14183 session asks the operator for go/no-go.
+- [slang#13251 — out-param lowering wrapper shares the original's DebugFunction](13251-out-param-debugfunc-share.md) —
+  latent P3; draft PR #13252 held for owner jkwak-work. **Parked 11-02** after 3 unanswered operator asks; default is to keep holding, no re-chase scheduled.
+- [slang#14183 — CPU `Atomic<float>::add` -> E99999 in emit](14183-cpu-atomic-float-add-ice.md) —
+  human bug 11-02 13:33Z, triaged P2 (approach B). Draft PR #14189 @555cf1f, R1 nits applied; **needs a human "Ready for review"**. Side bugs #14190–#14192 need no dispatch; their fixer chains await the operator's OK.
+- [slang#14182 — Metal vector atomics emit `atomic_packed_*`](14182-metal-vector-atomic-packed.md) —
+  BOT-filed 11-02 12:39Z by the #14153 fixer (side finding, low priority). Filed-only; fan-out held; **its issue_opened needs no dispatch**.
+- [slang#14181 — existential tuple: reflection says 16+N bytes, emit pads it (std140 N<16, CUDA N=4/12)](14177-render-test-untyped-object-conformance-id-session.md) —
+  BOT-filed 11-02 12:34Z by the #14177 triager (side find (b)). Filed-only; **its issue_opened needs no dispatch**. Record lives in the #14177 chain file.
+- [slang#14180 — static specialization of an interface-array field passes the AnyValue payload to the concrete method](14177-render-test-untyped-object-conformance-id-session.md) —
+  BOT-filed 11-02 12:28Z by the #14177 triager (side find (a)). Filed-only; **its issue_opened needs no dispatch**. Record lives in the #14177 chain file.
+- [slang#14177 — render-test untyped `new{...}` input takes its conformance ID from slang-rhi's device session](14177-render-test-untyped-object-conformance-id-session.md) —
+  human test-harness bug 11-02 12:06Z, triaged P2 (rec A). Parked on R6 to 11-06 (one-shot r6-release-14177-c2f9). Reporter fix PR #14178; the slang-rhi half is slang-rhi#965 (triager, one-shot r6-release-rhi-965-f9f6), tracked in this record.
+- [slang#14173 — SPIR-V: `Atomic<float>.sub` aborts with "Unhandled global inst in spirv-emit: neg"](14173-spirv-atomic-float-sub-neg-ice.md) —
+  BOT-filed 11-02 11:49Z by the #14153 fixer (side finding). Filed-only; fan-out held; **its issue_opened needs no dispatch**. ICE reproduced by me 11:52Z; parked on an operator go/no-go for a fixer; one-shot recheck-14173-operator-d2f3 (11-04 12:00Z).
+- [slang#14174 — Metal: `Atomic<T>.store` on `half`, or on `float` in groupshared memory, emits atomics MSL lacks](14174-metal-atomic-store-half-groupshared-float.md) —
+  BOT-filed 11-02 11:49Z by the #14153 fixer (side finding). Filed-only; fan-out held; **its issue_opened needs no dispatch**. Reproduced by me; parked on an operator go/no-go (would stack on #14060's helper); one-shot recheck-14174-operator-4575 (11-04 12:00Z).
+- [slang#14175 — Metal: groupshared float atomic add/sub needs MSL 4.1, but Slang compiles for metal3.1 with no diagnostic](14175-metal-groupshared-float-add-msl41.md) —
+  BOT-filed 11-02 11:49Z by the #14153 fixer (side finding). Filed-only; fan-out held; **its issue_opened needs no dispatch**.
+- [slang#14162 — float `InterlockedAnd/Or/Xor` accepted on every target](14162-float-bitwise-interlocked-ops.md) —
+  BOT-filed 11-02 10:23Z by the #14153 triager (side finding). Filed-only; fan-out held; **its issue_opened needs no dispatch**. Parked on an operator go/no-go for a fixer; one-shot recheck-14162-operator-da12 (11-04 10:30Z).
+- [slang#14153 — Metal `RWTexture2D<float>.InterlockedAddF32` emits non-existent `atomic_fetch_add`](14153-metal-float-texture-atomic-add.md) —
+  human bug (albertrodriguezclo) 11-02. **DEFERRED 12:22Z to the reporter's PR #14170**; the bot branch stays local, nothing posted. Triager stood down; awaiting the fixer's close-out.
+- [slang#14160 — Metal emits `[[raster_order_group(0)]]` on a ROV in a compute kernel](14160-metal-raster-order-group-compute.md) —
+  human bug 11-02; Triaged bug/medium/P2 (Metal emitter, no stage check). R6 to 11-06 10:04Z (one-shot r6-release-14160-aa3d). No fixer; operator asked 11-02.
+- [slang#14166 — Metal ROV in a ParameterBlock gets no `[[raster_order_group]]`](14166-metal-rov-parameterblock-no-raster-order-group.md) —
+  bot side bug from the #14160 triage (DescriptorHandle(ROV) misses the emit hook). Not dispatched; a fixer chain waits for the operator's OK (asked by the #14160 session), bundle with #14160.
+- [slang#14152 — `inout IFoo` on a uniform-struct interface field mixes two existential layouts](14152-inout-existential-field-layout-mismatch.md) —
+  human bug (albertrodriguezclo) 11-02 10:04Z; Metal rejects, HLSL mistyped, slangc exits 0. Triaged bug/medium/P2, rec A (copy in/out through a tagged-union temp in typeflow-specialize). PARKED: R6 to 11-06 10:04:23Z (`r6-release-14152-013b`), then post + fixer.
+- [slang#14155 — C-like targets emit INT64_MIN as `-9223372036854775808LL`](14155-int64-min-literal-emit.md) — human bug (albertrodriguezclo) 11-02 10:04Z; reporter has a fix prepared (Int64 case only; expect own PR). TRIAGED 10:17Z bug/medium/P2: IntPtr + GLSL sites also affected, and `case INT64_MIN:` is a hard error. Draft held under R6 to 11-06 10:04Z (`r6-release-14155-755e`). Same value, other layer: #13986.
+- [slang#14156 — Metal emits `vector<intptr_t/uintptr_t,N>` as scalar `long`/`ulong`](14156-metal-intptr-vector-emit.md) —
+  human bug (albertrodriguezclo) 11-02 10:04Z; reporter has a 2-line fix prepared. Triaged P2, rec A (+ packed-vector surface). PARKED on R6 (to 11-06 10:04:30Z); triager one-shot `r6-release-14156-3c09` 11-06 10:10Z; no fixer without the reporter/maintainer go-ahead.
+- [slang#14154 — Metal read-only StructuredBuffer/ByteAddressBuffer emitted as writable `T device*`](14154-metal-readonly-buffer-const-device.md) —
+  human bug 11-02; Triaged bug/low/P2. Reporter offered the PR, so no bot fixer chain. PARKED on R6 (to 11-06 10:04Z, one-shot r6-release-14154-33ea), then csyonghe.
 - [slang#13206 — logical pointers in structs (draft PR #13305)](13206-logical-pointer-struct-legalization.md) —
   draft PR parked on tangent-vector's A/B/C array-scope question since 09-29. The operator ping ask was withdrawn as over-gated on 10-31; the fixer (etva7e) is doing a master merge and a no-ping comment. One-shot 11-07 parks the chain with no timer.
 - [Nightly agentic-tests stale fixtures (#13810, #13887)](nightly-agentic-fixtures-13810-13887.md) —
   tests-only refresh drafts waiting on a maintainer merge; 13 stale fixtures as of 11-01. Side find #14134 (formatting.sh unquoted `$@`) is filed-only, parked on a maintainer decision.
 - [Nightly sanitizer — render-test gradient NaN cast](nightly-sanitizer-render-test-gradient-nan.md) —
-  10-31 nightly sanitizer red (UBSan, `shader-input-layout.cpp:1564/1565`, 1x1 mip 0/0). Exposed by #13999's `-cpu` gradient test. Filed as **#14121** (10-31 04:14Z); fixer owns it; draft PR **#14122** open, sanitizer acceptance pending (re-check 11-02 06:00Z).
+  10-31 nightly sanitizer red (UBSan, `shader-input-layout.cpp:1564-1566`, 1x1 mip 0/0), exposed by #13999. Filed #14121. **TERMINAL 11-02:** fixed by jkwak-work's #14163; our draft #14122 was closed as a dup. Side finds were filed as slang-rhi#960 and #14131. The post-merge nightly-green check is the fixer's `t-fb1628` (11-03 12:00Z). Main's `recheck-14121-sanitizer-0460` was cancelled 11-02 as redundant.
 - [slang#14112 — modf (float, out int) overload](14112-modf-float-out-int-overload.md) —
   tangent-vector's own feature request (self-assigned), P2, rec A. PARKED on the reporter; R6 to 11-03, triager one-shot t-b0c226; no fixer without the reporter's go-ahead.
 - [slang#14103 — IGlobalSession::parseCommandLineArguments returns SLANG_OK for invalid arguments](14103-parse-command-line-arguments-ignores-errors.md) —
-  human bug (pdeayton-nv, `bot-ok`). Draft PR #14111 (R2 APPROVE); PARKED on pdeayton-nv (review, E00044 question, un-draft); re-check `recheck-14111-ready-af0a` 11-04 01:15Z. Detail in the record.
+  human bug (`bot-ok`). PR #14111 (parse-purpose redesign) READY @cd923c72da, R4 APPROVE; slangc follow-up #14195 (jkwak-work, no dispatch). PARKED on pdeayton-nv's review; one-shot `recheck-14111-ready-af0a` 11-04 01:15Z.
+  - [Dated history](14103-history-triage-to-ready.md)
+- [slang#14214 — SPIR-V constant resource choice across helper call / struct copy → E56004](14214-constant-resource-choice-fold.md) —
+  human bug (pdeayton-nv, `bot-ok`), constant-condition sibling of #14101; bug/P2, A1 (SRU inline fallback) + A2 (SSA field-store promotion). PARKED on the reporter; no fixer. One-shot t-815b50 11-06 16:10Z.
 - [slang#14101 — SPIR-V `?:` between independently declared Texture2D/SamplerState/Buffer → E56004](14101-spirv-select-independent-resources.md) —
   feature/P2, PARKED on the reporter; no fixer. Side find **#14102** was bot-filed (its webhooks need no dispatch). One-shot t-5434f7 11-06 16:00Z covers both.
 - [slang#9643 — overlapping push-constant ranges across vertex/fragment EPs (SPIR-V)](9643-overlapping-push-constant-ranges.md) —
   jkwak-work picked A → draft PR #14108 (R1 AWN applied) parked on 2 merge-blocking questions to jkwak-work; S1 filing held. Re-check `recheck-slang-9643-pr141-cb9b` 11-04. Related: slangpy#1232 / #13713.
 - [slang#14071 — CUDA separate-sampler SampleGrad rejected vs SampleLevel dropping the sampler](14071-cuda-separate-sampler-samplegrad.md) —
-  human feature request (minco3). Draft PR #14079 (`pr: breaking change`, APPROVE_WITH_NITS); PARKED for jkwak-work (A/B/C), R6 hold to 11-02 23:56Z, re-check `t-3160ea` 11-03 00:10Z. Bot-filed #14073, #14083 are owned here (no dispatch). Detail in the record.
+  human feature request (minco3) 10-29, P3, PARKED for jkwak-work (now assignee) on A/B/C; triage comment 6591886780 posted 11-03; re-check `t-35ef08` 11-10 00:10Z. Spin-outs owned here (dispatch nothing on their webhooks): **#14073** CUDA Gather ICE + GatherCmp, items 1–3 **MERGED** in #14079 (`9b46bca644`, 11-02), F4 offset open; **#14083** CudaKernel/CudaDeviceExport skip capability checks, parked with jkwak-work.
 - [slang#14077 — DXR CreateStateObject crashes (NVIDIA) for TraceRay in a `[noinline]` helper](14077-dxr-noinline-traceray-pipeline-crash.md) —
-  P3; likely a driver issue (DXIL matches DXC). Parked on the reporter's DXC-only repro; re-check t-c511aa 11-03 00:30Z; no fixer.
+  P3; likely a driver issue (DXIL matches DXC). Parked on the reporter; re-check t-c511aa ran 11-03 (no reply; reporter's fork draft rejects a compiler workaround); no timer left, no fixer.
 - [slang#14075 — generic `where T.A == C` does not satisfy an interface `__constraint` equality (E38029)](14075-generic-assoc-equality-conformance.md) —
-  human bug (kaizhangNV, MEMBER, self-assigned) 10-30 00:19Z, portable-RT. Triaged bug/medium/P2; distinct from #13509 (equality-side sort + one-way isSubtype; order-dependent). PARKED on the reporter; R6 to 11-03 00:19Z; triager one-shot t-1bc36e 11-03 00:30Z.
+  human bug (kaizhangNV, MEMBER, self-assigned) 10-30 00:19Z, portable-RT. Triaged bug/medium/P2; distinct from #13509 (equality-side sort + one-way isSubtype; order-dependent). Bot comment 6592159047 posted 11-03. PARKED on the reporter's go-ahead; triager one-shot t-567683 11-10 00:30Z.
 - [slang#14070 — DXIL `[noinline]` helper calling IgnoreHit fails DXC validation](14070-dxil-noinline-ignorehit-validation.md) —
-  human bug (kaizhangNV, self-assigned), P2, rec A. Parked, owned by the reporter; R6 one-shot t-9a039e 11-02 23:55Z; no fixer without the reporter's go-ahead.
+  human bug (kaizhangNV, self-assigned), P2, rec A. Bot comment 6591620569 posted 11-02 23:59Z (+`reproduced`, Type=Bug). Parked on the reporter's go-ahead; triager gated re-check i14070-reporter-recheck-e308 11-10.
 - [slang#14069 — MSVC 2019 ICE C1001 on `constexpr std::to_array` in unit-test-string.cpp](14069-msvc2019-ice-unit-test-string-to-array.md) —
-  human build-break regression from #13217 (minco3), P2; fix A = plain array. PARKED on minco3 opening the PR; triager re-check `i14069-recheck-35d7` 11-02 23:55Z. Option D (drop vs2019 presets) is with the operator.
+  human build-break regression (minco3, NONE) 10-29, from #13217. **TERMINAL 11-02**: the reporter's PR #14072 (fix A) merged 22:32Z as `8e0a545`; no bot fixer. Option D (drop vs2019 presets/docs) still the operator's call.
 - [slang#12972 — RFC: aliased imports + using (design-gated) + E30600 follow-up](12972-module-import-alias-rfc.md) —
   tangent-vector RFC, fixer held since 09-08. 10-29: the E30600 module-qualifier diagnostic is spun out as bot-filed **#14063** → draft PR **#14074** (slang-fixer; parked on maintainer review + CI gate 10-30), owned by this chain (do not dispatch its issue_opened).
 - [slang#14067 — `-validate-ir` aborts on a legal `throw` terminator (getSuccessors lacks kIROp_Throw)](14067-ir-validate-throw-terminator.md) —
   human bug (kaizhangNV, MEMBER, self-assigned) 10-29 23:14Z, sibling of #14066. R6 crash-exempt. Triaged bug/medium/P2 (fix A: `case kIROp_Throw` in getSuccessors); bot comment 6510939393 posted. PARKED on the reporter's bot-PR go-ahead; triager re-check t-537822 11-02 23:30Z.
 - [slang#14066 — Result<void,E> error extraction returns the result struct](14066-result-void-error-extraction.md) —
-  reporter-owned (kaizhangNV); fix PR #14068 (approver paused, not forwarded). R6 one-shot t-5fbc4b 11-02 23:15Z; no fixer without the reporter's go-ahead.
+  reporter-owned (kaizhangNV). CLOSED 10-30 by their PR #14068 (fix A, d34a5eb54); no bot post, no fixer. Terminal.
 - [slang#14062 — generic `T(0.1)` over __BuiltinFloatingPointType rounds through float for double](14062-generic-float-literal-rounds-through-float.md) —
-  human bug (albertrodriguezclo, cloth-sim batch) 10-29 22:05Z. Dispatched to slang-triager under the R6 hold (no bot post before 11-02 22:05Z).
+  human bug (albertrodriguezclo, cloth-sim batch) 10-29 22:05Z. Triaged P2; comment posted 11-02 after R6. Draft PR #14218 (Refs, head 8762d89) reviewed APPROVE_WITH_NITS 11-03; waiting on jkwak-work to take it out of draft. Side finds #14211 + #14222 filed-only; timer recheck-14062-pr14218-55f1 (11-10). Side bug #14211 filed.
 - [slang#14061 — SPIR-V double log/exp/pow/sin → invalid GLSL.std.450, no diagnostic](14061-spirv-double-glsl450-transcendentals.md) —
-  human bug (albertrodriguezclo) 10-29 22:05Z. Triaged bug/medium/P2 (fix layer: core-module intrinsics; rec. `static_assert(!__isDouble<T>())`). Parked under the R6 hold; re-check t-e9b64f 11-02 22:30Z.
+  human bug (albertrodriguezclo) 10-29 22:05Z. Triaged bug/medium/P2 (fix layer: core-module intrinsics; rec. `static_assert(!__isDouble<T>())`). Posted 11-02 (Type=Bug, `reproduced`); parked on assignee jkwak-work (A vs B). Final re-check recheck-14061-maintainer-aa6e 11-09 22:30Z.
 - [slang#14059 — `cond ? ptr : nullptr` rejected (no `?:` overload for Ptr/NullPtr)](14059-ternary-ptr-nullptr-overload.md) —
-  human bug (cloth-sim batch 3), P2; fix A in `TryJoinTypes`. PARKED on R6; one-shot `t-e8c92f` 11-02 22:00Z (checks for a reporter PR, then posts and hands off to the fixer).
+  human bug (cloth-sim batch 3), P2; fix A in `TryJoinTypes`. Triager posted 11-02 (cmt 6589612444, `reproduced`). Fixer `qcgux1` is on fix A. jkwak-work was assigned by jhelferty-nv as triage routing; stand down if they claim it.
 - [slang#14053 — overloaded same-name compute entry points → invalid CUDA/Metal/SPIR-V, no diagnostic](14053-overloaded-entry-points-same-name.md) —
-  human bug (albertrodriguezclo) 10-29 21:51Z, P2, reproduced, fixer-ready (C: link-time target-aware check). Fixer HELD to R6 (reporter self-PRs); triager one-shot `i14053-r6-post-b43c` 11-02 22:00Z posts + hands off.
+  human bug (albertrodriguezclo) 10-29 21:51Z, P2, reproduced. 11-02 22:06Z: triage comment 6589648302 posted, Approach C (link-time target-aware check + `-entry` ambiguity error) slang-fixer `sess-1793657193763-f9uw61` opened bot DRAFT PR #14221 @5c7e825 (11-03); in peer review. Overlaps reporter PR #14147. Default-value warning not filed (maintainer call).
 - [slang#14054 — Metal compareExchange is a single weak CAS (spurious failure reads as success)](14054-metal-weak-compare-exchange.md) —
-  human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z; Metal twin of #13917/#13918. Triaged 22:08Z: premise contested (MSL spec reads strong); parked on maintainer call; triager timer i14054-r6-expiry-cb1c 11-02 21:55Z.
+  human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z; Metal twin of #13917/#13918. Triaged 22:08Z: premise contested (MSL spec reads strong). Park posted 11-02 21:56Z; awaiting assignee jkwak-work; re-check t-c62394 11-09.
 - [slang#14058 — Metal discarded atomic results → `-Wunused-variable` temps](14058-metal-discarded-atomic-unused-variable.md) —
-  fixed locally by slang-fixer `uy6784` (unpushed, R6). Resume task `slang-14058-resume-0060` pushes the draft 11-02 22:00Z; triager post `t-944bbf` 22:45Z. ⚠️ Conflicts with draft #14044.
+  human bug, P2. WIDENED 11-02 to all 0-use IRCalls. **Draft PR #14209** @315e95a52 (11-02 22:14Z; `reproduced`, Type=Bug); Head 8d9dd07cc, R1 APPROVE_WITH_NITS applied, CI held at the priority gate. PARKED 11-03 on operator un-draft (a human must click Ready); re-chase `rechase-slang-14058-r1-1d3f` 11-05 16:00Z. The PR maps to the fixer task session `fejlik`. Side find S1 filed as **#14216** (bot, filed-only, no fixer); its `issue_opened` belongs to this chain, so do not dispatch it. ⚠️ Overlaps drafts #14044/#14170.
 - [slang#14057 — warn when an unsuffixed float literal is rounded to float then used as double](14057-unsuffixed-float-literal-double-warning.md) —
-  human feature request (albertrodriguezclo) 10-29, cloth-sim batch, P3. Reproduced, not a regression; Type=Feature + `reproduced` set, 0 comments (R6). PARKED on 4 skiminki-nv decisions (new value-gated warning); re-check `t-b1d19a` 11-02 21:56Z. Overlaps #14062.
+  human feature request (albertrodriguezclo) 10-29, cloth-sim batch, P3. Reproduced, not a regression; Type=Feature + `reproduced` set, 0 comments (R6). Parked comment posted 11-02 (6589504025). PARKED on 4 jkwak-work/skiminki-nv decisions (new value-gated warning); re-check `t-aec81c` 11-09 22:00Z. Overlaps #14062 and stale bot draft #12932 (same E30082 block).
 - [slang#13685 / draft PR #13700 — all-undefined Texture2D phi → E56004](13685-undefined-texture-phi-fold.md) —
   R4 APPROVE_WITH_NITS; merge blocked on pdeayton-nv's R2/R8 choice and on spirv-val rejecting image `OpUndef`. That blocker is **#14076** (fix = draft PR #14081), owned by this chain: do not dispatch its issue_opened.
 - [slang#14056 — no diagnostic for a group barrier after a thread-dependent `return`](14056-group-barrier-after-divergent-return.md) —
-  human feature request (albertrodriguezclo) 10-29, P2, reproduced; 0 bot comments (R6). PARKED on csyonghe/skiminki-nv picking A–D; re-check `t-01c222` 11-02 21:55Z.
+  human feature request (albertrodriguezclo) 10-29, P2, reproduced. 11-02: assigned to jkwak-work; bot 5-bullet posted 21:56Z (6589464727). PARKED on the assignee picking A–D; no timer, parked register.
 - [slang#14039 — unused ByteAddressBuffer + `-preserve-params` ICE in spirv-emit](14039-bab-preserve-params-spirv-ice.md) —
-  human bug (`bot-ok`), P2. Bot PR #14045 (ready; also fixes the ROV BAB GetDimensions ICE) RESTING on maintainer review and merge.
+  human bug (pdeayton-nv, `bot-ok`) 10-29, P2. **MERGED** as PR #14045 on 11-02 19:50Z (2518a942d), and the issue is closed. Terminal.
 - [slang#14065 — WGSL WaveSize → @subgroup_size PR (jkwak-work)](14065-wavesize-wgsl-subgroup-size.md) —
   approver queued (paused); 10-30 maintainer filing ask (checks before simplifyIR) → filed as #14095 (assigned jkwak-work).
+- [slang#14000 — AST-to-IR lowering adds linkage decorations to non-public functions](14000-linkage-decorations-non-public.md) —
+  maintainer-filed; parked on tangent-vector choosing A/B/C. Walked by `/supervise-issues` as awaiting_human; no extra timer.
 - [slang#14091 — SIGSEGV compiling slang.numerics code with `-obfuscate`](14091-numerics-obfuscate-sigsegv.md) —
   split: draft PR #14092 (crash→error, AWN applied, ready flip asked); bug 2 (std modules under `-obfuscate`) parked on a maintainer, one-shot t-e356e3 11-06.
 - [slang#14089 — `void*` arithmetic: 4-byte stride on SPIR-V vs error/1-byte on C-like targets](14086-14089-pointer-semantics-parked.md) —
   BOT-filed 10-30 04:58Z by slang-triager (a #14088 side find), P2. PARKED on a maintainer choosing the semantics; one-shot t-e18700 11-06 16:30Z. Its `issue_opened` webhook needs no dispatch. Spawned by the #14055 chain.
 - [slang#14087 — SPIR-V `(int64_t)ptr` emits OpConvertPtrToU with a signed result (spirv-val)](14078-pointer-emit-pr-stack.md) —
-  BOT-filed 10-30 04:33Z by slang-triager (exposed by #14080's test). Draft PR #14090 (base master), @ a07befd, R1 APPROVE_WITH_NITS with the nits applied. PARKED on the operator flip. Its `issue_opened` webhook needs no dispatch. Spawned by the #14055 chain.
+  BOT-filed 10-30 04:33Z by slang-triager (exposed by #14080's test). PR #14090 MERGED 11-02 22:14Z by jkwak-work (dd93102a4); #14087 CLOSED. TERMINAL. (Its ready_for_review webhook was not forwarded; the approver is paused.) Its `issue_opened` webhook needs no dispatch. Spawned by the #14055 chain.
 - [slang#14086 — explicit narrow-int cast of a pointer gives `ptr != nullptr` (0/1), no diagnostic](14086-14089-pointer-semantics-parked.md) —
   BOT-filed 10-30 03:54Z by slang-triager (a #14080 side find), P2. PARKED on a maintainer choosing the diagnostic shape; one-shot t-fb3521 11-06 16:00Z. Its `issue_opened` webhook needs no dispatch. Spawned by the #14055 chain.
 - [slang#14084 — GLSL `bit_cast<uint64_t>(double)` requests no int64 extension](14078-pointer-emit-pr-stack.md) —
@@ -81,39 +127,43 @@ decay and must be re-read, not remembered.
 - [slang#14078 — GLSL ptr→ptr cast `(float*)intPtr` → E99999](14078-pointer-emit-pr-stack.md) —
   bot-filed side find of #14055; draft PR #14080 (AWN, 0 bugs) PARKED on the operator ready flip. Signed direct-SPIR-V case → #14087. Its `issue_opened` needs no dispatch.
 - [slang#14055 — parser takes `a * *p` as a pointer type (E20001)](14055-parser-multiply-deref-pointer.md) —
-  human regression from #6627 (albertrodriguezclo), P1/P2. Fix A held local under R6; triager `t-766555` posts 11-02 21:52Z, fixer `slang-14055-r6-push-2eff` opens the PR 22:00Z.
+  human regression from #6627 (albertrodriguezclo), P1, assignee jkwak-work. Main overrode the stale-rule timer stand-down. **Draft PR #14203** @ 5872fb173 passed R2 review (APPROVE_WITH_NITS) and is PARKED on the ready flip or the assignee. Held side finds filed 11-02 as #14205–#14208 (filed-only).
 - [slang#14060 — Metal rejects `Atomic<float>` load/exchange/CAS (E55204)](14060-metal-float-atomic-load-exchange-cas.md) —
-  human (albertrodriguezclo) 10-29 21:51Z, P2, sibling of #14054 (own chain). Fixed locally (fd5ab6116, review APPROVE_WITH_NITS). PARKED on R6: triage post t-6cd00d 11-02 22:00Z, then draft PR t-0e0a49 22:05Z.
+  human (albertrodriguezclo) 10-29 21:51Z, P2, sibling of #14054 (own chain). Fixed locally (fd5ab6116, review APPROVE_WITH_NITS). Draft PR #14210 (11-02 22:06Z), CI skipped while draft; PARKED on human ready-flip/review (jkwak-work); re-check recheck-14210-human-6a1f-ddb2 11-06 22:00Z.
 - [slang#14035 — Metal/WGSL reject `&ptr[i]` (`operator&` gated cpp_cuda_spirv_llvm)](14035-metal-wgsl-address-of-device-pointer.md) —
-  human feature request (albertrodriguezclo) 10-29, cloth-sim batch, P3, reproduced. Type and `reproduced` set, 0 comments (R6). PARKED on jkwak-work/aidanfnv (A widen gate / B diagnostic / C #10206) because `&` is slated for deprecation; re-check `i14035-r6-post-30ba` 11-02 17:15Z.
+  human feature request (albertrodriguezclo) 10-29, cloth-sim batch, P3, reproduced. Type and `reproduced` set. PARKED on jkwak-work/aidanfnv (A widen gate / B diagnostic / C #10206) because `&` is slated for deprecation; 5-bullet posted 11-02 (6583479145); re-check `t-b1a9ee` 11-09 17:15Z.
 - [slang#14036 — CUDA `precise` / `-fp-mode precise` → `_rn` intrinsics (FMA contraction)](14036-cuda-precise-fp-mode-rn-intrinsics.md) —
-  human feature request (albertrodriguezclo) 10-29, cloth-sim batch, P2. Triaged and reproduced, with Type and `reproduced` label set and 0 comments (R6). PARKED on jkwak-work/tangent-vector (approach A vs the #13324 overlap); re-check `t-4a15ea` 11-02 17:30Z.
+  human feature request (albertrodriguezclo) 10-29, cloth-sim batch, P2. Triaged and reproduced. Parked 5-bullet posted 11-02 17:32Z (cmt 6583831492). PARKED on jkwak-work/tangent-vector (approach A vs the #13324 overlap); no timer except the supervisor register.
 - [slang#14037 — CUDA source output needs `-DSLANG_CUDA_ENABLE_HALF` for `half`](14037-cuda-half-enable-define.md) —
-  human bug (albertrodriguezclo) 10-29, P2, reproduced. Fix ready locally (slang-fixer); draft PR from `slang-14037-r6-push-7218` 11-02 17:45Z, after triager comment `t-8bb71d` 17:15Z.
+  human bug (albertrodriguezclo) 10-29, P2, reproduced. DRAFT PR **#14194** (head baef466b5, R2 approve-with-nits, nits applied). PARKED on humans: a maintainer must commit the CI-step hunk (bot has no `workflows` permission), then review + un-draft; re-check `i14194-recheck-4c40` 11-09 15:00Z. PR mapped to the fixer's task session. Side finds filed as **#14196** and **#14199** (bot-filed; their webhooks need no dispatch).
 - [slang#14034 — WorkgroupCount() on CUDA (gridDim) / Metal ([[threadgroups_per_grid]])](14034-workgroupcount-cuda-metal.md) —
-  human feature request (albertrodriguezclo) 10-29, P2, reproduced. Fix = the #13920 WGSL pattern for cuda/metal. PARKED under R6 + maintainer direction (likely reporter PR); re-check `t-f093d7` 11-02 17:15Z.
+  human feature request (albertrodriguezclo) 10-29, P2, reproduced. Fix = the #13920 WGSL pattern for cuda/metal. Parked 5-bullet posted 11-02. PARKED on maintainer direction (likely reporter PR, see sibling #14148); re-check `t-f136f9` 11-09 17:15Z.
+- [slang#14151 — Metal `SV_GroupIndex` subscripts a narrowed scalar `SV_GroupThreadID`](14151-metal-groupindex-scalar-groupthreadid.md) —
+  human bug (albertrodriguezclo) 11-02 10:04Z, invalid MSL (`gtid[2]` on a `uint`). Triaged P2, reproduced, order-dependent (uint2 = silent OOB). PARKED: R6 to 11-06 10:04:22Z, fixer go + A/B2 with the operator; triager one-shot i14151-r6-recheck-e401 11-06 10:10Z.
+- [slang#14157 — Metal/WGSL `ByteAddressBuffer` `bool` load/store bit-cast](14157-metal-wgsl-bab-bool-bitcast.md) —
+  human bug (albertrodriguezclo) 11-02 10:04:32Z; reporter states a prepared fix (expect a reporter PR). Triaged Bug/P2 11-02 (Approach A, legalize-side; supersets #10207). PARKED: no fixer while a reporter PR is expected; R6 to 11-06 10:04:32Z; triager one-shot `t-92b792` 11-06 10:20Z asks me for the fixer decision.
 - [slang#14136 — Metal `[[threads_per_threadgroup]]` / CUDA `blockDim` (dispatched group size)](14136-metal-threads-per-threadgroup.md) —
-  human feature request (albertrodriguezclo) 11-01, P2, reproduced (no Metal workaround). PARKED on maintainer API pick (A opt-in getter / B semantic / C dynamic `WorkgroupSize()`); stack after #14034. R6 to 11-05 14:29Z; re-check `t-c5502a` 11-05 14:30Z.
+  human feature request (albertrodriguezclo) 11-01, P2, reproduced (no Metal workaround). **Reporter PR #14148 open 11-01 23:08Z (`Fixes #14136`).** Was PARKED on maintainer API pick (A opt-in getter / B semantic / C dynamic `WorkgroupSize()`); stack after #14034. R6 to 11-05 14:29Z; re-check `t-c5502a` 11-05 14:30Z.
 - [slang#14027 — parallel-primitives standard module (block/device scan, reduce, sort)](14027-parallel-primitives-standard-module.md) —
-  human design proposal, P3. STOOD DOWN 11-01 (reporter goes package-first); stand-down post `t-cc056c` 11-02 16:30Z. Gap filed as #14140. The R6 operator decision is open.
+  human feature/design proposal (albertrodriguezclo) 10-29, P3. CLOSED 11-02: the reporter goes package-first, and the stand-down was posted (6582500256). It filed #14140 (CUDA globallycoherent). My 10-29 R6 flag was wrong: merged R6 has no wait.
 - [slang#12714 — layout rules: docs #12716 + `-layout-rules-version 202c` draft #13300](12714-layout-rules-version.md) —
-  parked since 10-01 on jkwak's GLSL pick, then tangent-vector concurrence; triager owner `…1053r5` (not zjzu07, which is the fixer). 10-29 cloth-sim pointer-layout comment reproduced + answered.
+  parked since 10-01 on jkwak's GLSL pick, then tangent-vector concurrence; triager owner `…1053r5` (not zjzu07, which is the fixer). 10-29 cloth-sim pointer-layout comment reproduced + answered. 11-02: over-gated operator menu withdrawn; no-ping nudge on #13300; master merge deferred to jkwak's pick.
 - [slang#14032 — struct alignment control (`[Align(N)]`)](14032-struct-alignment-attribute.md) —
-  feature P2 PARKED for csyonghe design; R6 to 11-02 17:10Z, re-check `t-87db0a` 11-02 17:15Z. CUDA side bug **#14040** is owned by this chain (its webhook needs no dispatch).
+  feature P2 PARKED for csyonghe design; parked 5-bullet posted 11-02 (6583572483), re-check `t-51299f` 11-09 17:20Z. CUDA side bug **#14040** is owned by this chain (its webhook needs no dispatch).
 - [slang#14029 — CUDA grid-wide sync intrinsic + cooperative-launch reflection](14029-cuda-grid-sync-cooperative-launch.md) —
-  human feature request (albertrodriguezclo) 10-29, P2. Triaged; side finding: `-target ptx` + `<cooperative_groups.h>` fails on NVRTC 12.6 (prelude typedef clash). PARKED on maintainer design decisions; R6 window, re-check `t-6f4b45` 11-02 16:30Z.
+  human feature request (albertrodriguezclo) 10-29, P2. Triaged; side finding: `-target ptx` + `<cooperative_groups.h>` fails on NVRTC 12.6 (prelude typedef clash). PARKED on maintainer design decisions. Parked 5-bullet posted 11-02 16:32Z (cmt 6582487816); next re-check `t-dc64ec` 11-09 16:30Z.
 - [slang#14013 — explicit vk::binding(0) + global uniform, CB binding on the scope var layout](14013-vk-explicit-binding-global-cb-reflection.md) —
-  bot DRAFT PR #14023 (R1 AWN applied) PARKED on operator un-draft (dashboard msg 25). Re-chase `rechase-slang-14013-r2-67eb` 11-02 16:00Z. Companion slang-rhi#959 is owned here (no dispatch).
+  bot DRAFT PR #14023 (R1 AWN applied) PARKED on operator un-draft (asked 3×; last dashboard msg 7, 11-02). FINAL re-chase `rechase-slang-14013-r3-3c49` 11-04 16:00Z, then park with no timer. Companion slang-rhi#959 is owned here (no dispatch).
 - [slang#8557 — Std430DataLayout missing, GLSL→WGSL](8557-glsl-to-wgsl-std430datalayout.md) —
   maintainer re-triage ask (jkwak-work) on 10-28. Verdict: #13908 alone doesn't fix it, and it can close once human PR #13935 merges. PARKED on the maintainer. Re-chase `rechase-slang-8557-r1` 11-04 21:00Z.
 - [slang#13982 — `-g` emits DebugSource for an unused imported module](13982-spirv-debugsource-unused-import.md) —
-  external bug, P3; bot draft PR #13992 (module-version collision). PARKED on operator un-draft sign-off, then a #7203 maintainer question; next `rechase-slang-13982-r2-7c56` 11-02 16:00Z.
+  external bug, P3; bot draft PR #13992 (module-version collision). PARKED on operator un-draft sign-off (asked 3×), then a #7203 maintainer question; last re-chase `rechase-slang-13982-r3-fc3b` 11-05 16:00Z.
 - [slangpy#1227 — Vulkan .bwds() gradient in grad[0,0], RTX 5090 driver 617](slangpy-1227-vulkan-bwds-grad-rtx5090-driver.md) —
   bot-filed off the #1167/#1225 chain. 10-28 jkwak-work took it over (driver bug route). Optional operator "repro" offer, default nothing; no timer.
 - [slang#13804 — SPIR-V decorations on global resource OpVariables](13804-spirv-decorations-global-resources.md) —
   feature request, P2. Side-bug crash fix is bot draft PR #13809 (kaizhangNV, 0 reviews). The feature waits on tangent-vector (assignee) to pick A/B/both. PARKED 10-28 in the register after re-check t-26dd74 found no change; no re-arm.
 - [slang#13964 — HLSL default-inout receiver rejects immutable receivers](13964-hlsl-default-inout-receiver-immutable.md) —
-  regression from #13615, P1; bot draft PR #13966 (new warning E30134), design settled 10-28. PARKED on operator un-draft sign-off; re-chase `rechase-slang-13964-r2` 11-02 16:00Z.
+  regression from #13615, P1; bot draft PR #13966 (new warning E30134), design settled 10-28. PARKED on operator un-draft sign-off (3rd ask 11-02); final re-chase `rechase-slang-13964-r3` 11-05 16:00Z.
 - [slang PR #13911 — WGSL WaveGetNumWaves; Dawn follow-up issue](13911-wgsl-wave-get-num-waves-dawn-followup.md) —
   fork PR, APPROVED. Bot filed follow-up #13967 (assigned jkwak-work); terminal for the bot.
 - [slang#13011 + #13061 — optional-constraint lookup leak](13011-optional-constraint-lookup.md) —
@@ -142,13 +192,13 @@ decay and must be re-read, not remembered.
 - [slang#13865 — `/format` fails: slangbot push + comment 403](13865-format-slash-command-slangbot-pat-403.md) —
   maintainer CI-credential issue (jkwak-work). Assignee chose the org App-token design; jkiviluoto-nv raised a security blocker. HELD; resumes only on a bot mention or an operator GO.
 - [slang#13752 — missing shadowing diagnostics](13752-shadowing-diagnostics.md) —
-  skiminki-nv self-assigned. Part 1 = DRAFT PR #14093 (bot peer review done); waits on skiminki-nv for Q3 and a human ready-mark. Part 2 parked on Q1–Q2. SlangPy rename: draft shader-slang/slangpy#1254.
+  skiminki-nv self-assigned. Part 1 = DRAFT PR #14093 (bot peer review done); waits on skiminki-nv for Q3 and a human ready-mark. Part 2 parked on Q1–Q2. SlangPy rename shader-slang/slangpy#1254 MERGED 11-02 (`a78ea62e6`). Re-check `recheck-13752-14093-606d` 11-05 12:00Z.
 - [slang#13757 — slangd crashes on an array `settings` in didChangeConfiguration](13757-slangd-array-settings-crash.md) —
   bot-filed 10-20 by the #13179 fixer; maintainer-assigned to tangent-vector, milestone Q4 2026. Held; 1-line fix ready on an operator GO or `bot-ok`.
 - [slang#13807 — `-wgpu -render-feature half` rows always ignored on NVIDIA](13807-wgpu-half-tests-ignored-dawn-shaderf16.md) —
   bot-filed 10-21 by the triager on jkwak-work's #13647 ask; assignee jkwak-work says "slang-rhi issue". Triage verdict given 10-22 (test infra / slang-rhi, low, P2). Held; resumes on a bot mention or an operator GO to file in slang-rhi.
 - [slang#13841 — DebugDeclare on real storage](13841-debug-declare-real-storage.md) —
-  Draft PR #13872 kept open; design rejected 10-30 (IR debug-info redesign wanted), tracked by #14106 (owned by fixer efb8e6, no dispatch); phase-1 draft #14114 waits on the efb8e6 ceiling. ⚠️ stable id 910 collides with #13564. Detail in the record.
+  Draft PR #13872 kept open; design rejected 10-30 (IR debug-info redesign wanted), tracked by #14106 (owned by fixer efb8e6, no dispatch); phase-1 draft #14114 waits on the efb8e6 ceiling. 11-02: jhelferty-nv assigned #14106 to pdeayton-nv and asked them about its origin. The question was not to the bot, so no reply. ⚠️ stable id 910 collides with #13564. Detail in the record.
 - [slang#13875 — update mimalloc v2.1.7 → v2.5.2](13875-mimalloc-bump-2-5-2.md) —
   pdeayton-nv filed + self-labelled `bot-ok` 10-22 (follow-on to #13827). Fixed by PR #13879, **MERGED 10-26 23:26Z** (`f80573815`); issue closed. Terminal; r2 re-chase cancelled.
 - [slang#13828 — memory retained after unloading Slang DLLs with mimalloc](13828-mimalloc-dll-unload-memory.md) —
@@ -156,7 +206,7 @@ decay and must be re-read, not remembered.
   only; MinGW scope never answered, so MinGW stays untracked unless a human files a follow-up.
 - [Hosted ubuntu-latest pickup lag, Oct 2026](hosted-runner-pickup-lag-2026-10.md) — 4+ episodes 10-27→10-30; not the bot, not the 60 cap; needs an org Actions admin; don't re-alert per episode.
 - [slang#13238 — per-derivative DebugFunction](13238-autodiff-derivative-debugfunction.md) —
-  bot draft PR #13239 PARKED on jkwak-work (R2 APPROVE_WITH_NITS at `6850aac48`). Owns follow-ups #14128, #14129 (no dispatch, no fixer).
+  bot draft PR #13239 PARKED on jkwak-work (R2 APPROVE_WITH_NITS at `6850aac48`). Owns follow-ups #14128, #14129 (no dispatch, no fixer). #14128 human-assigned to pdeayton-nv 11-02.
 - [slang#13827 — duplicate operator new/delete with newer mimalloc on Windows](13827-mimalloc-windows-duplicate-operator-new.md) —
   pdeayton-nv (reporter + assignee). DRAFT PR #13850 @aedafd686 (`MI_OVERRIDE OFF` once), R1 APPROVE_WITH_NITS applied; triage resolved 10-22 01:26Z. **MERGED 10-22 17:41Z** (`80e4385a4`, merge queue); #13827 closed. Terminal.
 - [slang#13840 — test coverage for modern-style syntax](13840-modern-syntax-test-coverage.md) —
@@ -200,7 +250,7 @@ decay and must be re-read, not remembered.
 - [slang#13661 — WGSL BAB `Store<half>` rejected; atomic view?](13661-wgsl-bab-store-half-atomic-view.md) —
   triaged P2; the reporter owns every fix path (#13735, #13852, Metal filing), jkwak-work assigned. Bot hands off; waiting on jkwak-work's reviews. No timer.
 - [slang#13654 — Metal `StructuredBuffer<S>` with a `Texture2D` field aborts slangc](13654-metal-structuredbuffer-texture-field-abort.md) —
-  DRAFT PR #13681 PARKED on maintainer review + operator (ready/CI, 2 unfiled side-finds); do not re-ask. Re-check `rechase-13654-pr13681-2299` 11-02 08:00Z.
+  DRAFT PR #13681 PARKED on maintainer review + operator (ready/CI, 2 unfiled side-finds); do not re-ask. Re-check `rechase-13654-pr13681-a39d` 11-05 08:00Z.
   - [Triage/fix/GPU history](13654-history-triage-fix-gpu.md)
 - [slang#13643 — WGSL address-space specialization re-clones its own clones](13643-wgsl-address-space-specialization-reclone.md) —
   TERMINAL: reporter PR #13648 MERGED 10-21, issue closed. #12563 must rebase onto it.
@@ -240,11 +290,13 @@ decay and must be re-read, not remembered.
 - [slang#13640 — WGSL `diagnostic(...)` directive emission](13640-wgsl-diagnostic-directive.md) —
   human feature request, P2 (rec A: a compiler option). HANDED OFF to reporter PR #13660 and jkwak-work; re-check `recheck-13640-diag-surfa-f817` 10-27.
 - [slang#13617 — WGSL fragment `SV_PrimitiveID`](13617-wgsl-fragment-primitive-id.md) —
-  human feature request (rhendry), P2; DRAFT PR #13619 (Approach A), jkwak-work assigned. PARKED on maintainer + operator ready; re-chase `rechase-13617-primitive-600a` 11-02 10:30Z.
+  human feature request (rhendry), P2; DRAFT PR #13619 (Approach A), jkwak-work assigned. PARKED on maintainer + operator ready; re-chase `rechase-13617-primitive-e6ef` 11-04 10:30Z.
 - [slang#13590 — WGSL emits `bool` members in `var<uniform>` structs](13590-wgsl-bool-uniform-host-shareable.md) —
   human-filed (j8asic) WGSL bool not lowered to int in host-shareable address spaces; P2. DRAFT PR #13607 (R1 APPROVE_WITH_NITS applied). **PARKED** 10-16 in the parked-chain register on kaizhangNV/jkwak-work review + CI approval. 2 follow-ups unfiled (operator).
 - [slang#13571 — WGSL matrix negation emitted as `matNxM<f32>(0) - m`](13571-wgsl-matrix-negation.md) —
-  human WGSL emit bug, P2; draft PR #13572 awaits jkwak-work, CI to re-trigger at ready. PARKED 10-20 (register, no re-arm); 4 follow-ups unfiled, do not re-ask.
+  human WGSL emit bug, P2; draft PR #13572 @5be2d78f1b (master merged 11-02, CI 41452561641 queued) awaits jkwak-work. #14179 fold-in local until 11-06 (or operator release). 4+1 follow-ups filed by the triager 11-02 13:42Z as #14184–#14188; their webhooks are owned by this chain, no dispatch.
+- [slang#14179 — WGSL vector negation loses -0.0](14179-wgsl-vector-negation-signed-zero.md) —
+  human WGSL emit bug, P2; folded into #13572 (decided 11-02); R6 hold to 11-06 12:21Z, triager post t-c47654 12:30Z.
 - [slang#13558 — SlangPy ARM64 segfault draining the current-device stack](13558-slangpy-arm64-current-device-stack-segfault.md) —
   **TERMINAL, closed 10-12.** jkwak fixed it in slangpy#1219 (`~Device()` erases its stack entries, merged as fb1bca1). The 10-14 post-fix nightly ASan passes test_push_pop_current_device; the remaining red is unrelated.
 - [slang-rhi#876 — in-flight command buffers retain the device](slang-rhi-876-inflight-cmdbuf-device-retention.md) —
@@ -254,10 +306,11 @@ decay and must be re-read, not remembered.
   **PARKED 10-24** after 6 silent re-chases (task-hygiene register; no re-arm). Still waiting on maintainer jvepsalainen-nv (re-review + Windows-run question). The head has no CI since the Actions purge and is 120 behind; the operator can resume with `go 12875 rebase|ping`.
 
 - [slang#13107 — static const struct arrays rebuilt per invocation](13107-cuda-static-const-struct-array.md) —
-  DRAFT PR #13115 held: jkwak-work assessing side effects; narrowed fix built locally, blocked on the fixer's cost ceiling (operator); tangent-vector's direction question open; CI never ran. Re-chase `chase-13107-design-direc-941b`.
+  external P2, **closed on our side 11-02**. #13115 was closed in favor of jkwak-work's #14204. We confirmed #14204 carries the CUDA vector/matrix/`half` struct-table regression and posted a repro note there (comment 6590344457), offering our `a6d49136b` patch. No timer.
+  - [Dated history](13107-history-triage-to-close.md)
 
 - [slang#14133 — CUDA `[ForceInline]` `__init` global constant emitted at file scope](14133-cuda-static-const-forceinline-init-file-scope.md) —
-  human-filed (albertrodriguezclo) 11-01; bug/high/IR/P2 on all targets, and a branchy-ctor variant segfaults. Handed to slang-fixer local-only under R6 (no PR or post before 11-05T06:24:24Z). Orthogonal to #13115.
+  human-filed (albertrodriguezclo) 11-01; bug/high/IR/P2 on all targets, and a branchy-ctor variant segfaults. 11-03: reporter PR #14150 (approved) has 2 regressions vs master, posted as 6592707618 (triager watches, t-700e05); fixer holds a local branch; `-g` side finding filed 11-03 as **#14217** (bot, filed-only; its `issue_opened` belongs to this chain, so do not dispatch it). Orthogonal to #13115.
 - [slang#13108 — CUDA by-value struct copies an unread array](13108-cuda-byvalue-struct-copy.md) —
   **TERMINAL for the bot 10-14**: jkwak-work deprioritized it; minco3's draft #13583 is the maintainers' call. No further re-checks.
 
@@ -339,7 +392,7 @@ decay and must be re-read, not remembered.
 - [slang#13704 — WGSL forced scalar layout on entry-point uniforms](13704-wgsl-forced-scalar-entry-point-uniforms.md) —
   **TERMINAL** — reporter PR #13706 (option A, ignore the flag on WGSL) MERGED 10-23 00:10Z (340047a3ce); issue closed. Operator: file the 2 adjacent layout bugs?
 - [slang#13391 + #8323 — WGSL-via-Tint std140 layout, draft PR #13402](13391-wgsl-tint-std140.md) —
-  our gates have passed (review r2 APPROVE_WITH_NITS). Its CI run was deleted (404 as of 10-08), and only un-drafting (B) gets around the bot-dispatch throttle. Waiting on the operator's B/C decision; re-chased weekly since 10-12 (8 asks unanswered).
+  our gates have passed (review r2 APPROVE_WITH_NITS). Its CI run was deleted (404 as of 10-08), and only un-drafting (B) gets around the bot-dispatch throttle. Waiting on the operator's B/C/park decision; re-chased weekly since 10-12 (11 asks unanswered as of 11-02). The 11-09 re-chase is the last one: with no reply, it parks the chain with no timer.
 
 - [slang#13298 — GCP-T4 runner dies mid-test in release-gpu-dx (pagefile)](13298-gcp-t4-runner-loss-pagefile.md) —
   CLOSED 10-22 by maintainer; 32 GiB pagefile fix held (0 recurrences post-rollout). Terminal record.
@@ -364,7 +417,7 @@ decay and must be re-read, not remembered.
   superseded by maintainer #13317, then rescoped by a master merge after jkwak-work's approval was dismissed. It is non-draft and mergeable. The operator's (a)/(b)/(c) decision went unanswered for 3 rounds, so on 10-02 it was HANDED OFF to maintainer review. No re-chase is scheduled.
 
 - [slang#13385 — HLSL `Append` of a non-default-layout matrix struct segfaults](13385-hlsl-append-matrix-layout-segfault.md) —
-  draft PR #13386 (AWN) has no CI; un-draft is the operator's call. Bare-matrix gap #13388 belongs to jkwak-work, unrouted. Re-chase `rechase-13386-13388-c681` (10-12).
+  draft PR #13386 (AWN) has no CI; un-draft is the operator's call. Bare-matrix gap #13388 belongs to jkwak-work, unrouted. **Parked with no timer since 11-02** after the 10th unanswered ask; "un-draft 13386" unparks it.
 
 - [slang#13350 — glsl-module matrix `operator*`/`*=` gated off wgsl+metal (E36107)](13350-glsl-matrix-mul-wgsl-metal-gate.md) —
   draft PR #13356 parked for jhelferty-nv (decision A = (c), don't re-ask); follow-ups #13355 + #13359 HOLD on jkwak-work.
@@ -411,24 +464,29 @@ decay and must be re-read, not remembered.
   TERMINAL: superseded by kaizhangNV's PR #13798; design question held with tangent-vector/skiminki-nv. Lesson: check the timeline for a reporter PR before dispatching a fixer.
 - [slang#13387 — whole-helper specialization per conformance](13387-helper-per-conformance.md) —
   fork PR by jvepsalainen-nv; 10-24 saipraveenb25 asked the bot for an extension-based rework. The fixer's proposal is on slang-coworkers fix/issue-13387 (8c5bb99, 11 commits). Parked on Q1–Q5 to saipraveenb25; re-check task slang-13387-maintainer-r-c5d6 runs 10-27.
-- [slang#14038 — `a -= b` not synthesized from user `operator-`](14038-compound-assignment-from-binary-operator.md) — human-filed 10-29 (cloth-sim reporter); triaged feature/P3, rec A (diagnostic note); R6-parked, triager one-shot t-bb303f posts 11-02 17:10Z; operator decision pending on early fixer handoff
-- [slang#14033 — `-target cuh` host header](14033-target-cuh-host-header.md) — triaged 10-29: not a regression; sub-bug A (P2) held under R6, B–D parked; triager one-shot t-11a7cd 11-02 18:00Z posts + hands A to fixer if no reporter PR
+- [slang#14038 — `a -= b` not synthesized from user `operator-`](14038-compound-assignment-from-binary-operator.md) — human-filed 10-29 (cloth-sim reporter); triaged feature/P3, rec A (diagnostic note); parked 5-bullet posted 11-02, awaiting maintainer A/B; re-check i14038-recheck-df24 11-09 17:15Z
+- [slang#14033 — `-target cuh` host header](14033-target-cuh-host-header.md) — draft PR #14197 (sub-bug A) peer-approved 11-02; waits on a human `gh pr ready` + jkwak-work review; B–D parked; re-check recheck-14197-ready-revi-40e1 11-05 18:00Z
+- [slang#14200 — body-less `__extern_cpp` entry point ICE](14200-bodyless-extern-cpp-entry.md) — draft PR #14202 Fix Report 11-03 (head 32859719b), parked on operator ready flip; G2 = #14213 (filed-only)
 - [slangpy#1250 — pyright/nodeenv breaks ci-latest-slang](slangpy-1250-pyright-nodeenv-alpha-index.md) — bot-filed 10-30; "SlangPy Tests" red on every Slang PR since 10-29 22:13Z (infra, not PR); **CLOSED 10-30 13:49Z** by maintainer PR slangpy#1253 (`pyright[nodejs]`); bot #1251 closed unmerged; Slang-side reruns left to babysitter
-- [slang#11550 — synthesized-init debug info, merged fix disputed](11550-synthesized-init-debug-info-dispute.md) — bot PR #11555 merged 06-26; 10-30 tangent-vector says the old behavior is "not a bug"; reporter pdeayton-nv asked for a FlagArtificial tracking issue; triager filed **#14107** 10-30 21:40Z; terminal for the bot (re-check cancelled)
+- [slang#11550 — synthesized-init debug info, merged fix disputed](11550-synthesized-init-debug-info-dispute.md) — bot PR #11555 merged 06-26; 10-30 tangent-vector says the old behavior is "not a bug"; reporter pdeayton-nv asked for a FlagArtificial tracking issue; triager filed **#14107** 10-30 21:40Z; terminal for the bot (re-check cancelled); 11-02 #14107 assigned to kaizhangNV (human-to-human question, no bot action)
 - [slang#14100 — float3→float user implicit conversion builds `vector<vector<float,3>,4>`](14100-implicit-conversion-nested-vector.md) — human-filed (pdeayton-nv, `bot-ok`); draft PR #14110 PARKED on maintainer review + un-draft, re-check `recheck-14110-maintainer-1369` 11-03 15:00Z; bot-filed #14109, #14116, #14117 owned here (no dispatch). Detail in the record.
 - [slang#14099 — HLSL sibling `for (int i…)` loops conflict](slang-14099-hlsl-sibling-for-loop-redecl.md) —
-  approach B (tangent-vector, `pr: breaking change`); draft PR #14115 (AWN applied) parked on the operator un-draft (dashboard msgs 147/191). Re-check `recheck-14115-ready-faff` 11-02 17:00Z.
+  approach B (tangent-vector, `pr: breaking change`); draft PR #14115 (AWN applied) parked on the operator un-draft (dashboard msgs 147/191). Re-check #1 11-02 unchanged; final re-check `recheck-14115-ready-2-3f50` 11-05 17:00Z.
 - [slang#14118 — unbraced if/else/while/do body local visible before its declaration](slang-14118-unbraced-body-local-visible-early.md) —
   bot-filed follow-up of #14099, **owned by that chain** (no dispatch on its issue_opened). Medium/P2; draft PR #14119 R2 APPROVE_WITH_NITS, parked on operator un-draft (dashboard msg 191).
 - [slang#14120 — locals visible before declaration in `__target_switch` case / unbraced `catch` / unbraced `$for` body](slang-14120-target-switch-catch-for-local-visible-early.md) —
-  bot-filed follow-up #2 of #14099, **owned by that chain** (no dispatch). P3; parked until #14119 lands or a maintainer picks; re-check `recheck-14115-ready-faff` 11-02 17:00Z.
+  bot-filed follow-up #2 of #14099, **owned by that chain** (no dispatch). P3; parked until #14119 lands or a maintainer picks; final re-check `recheck-14115-ready-2-3f50` 11-05 17:00Z.
 - [slang-rhi#961 — Metal/CUDA dispatch-time thread-group size + `dispatchThreads`](slang-rhi-961-dispatch-time-threadgroup-size.md) — human feature request 11-01, host side of slang#14136; feature/P2. PARKED on maintainer API direction; R6 to 11-05, triager one-shot t-b6e981. Owns bot #14143 (no dispatch); fixer decision with the operator, re-check `recheck-14143-fixer-deci-c5df` 11-03.
 - [slang-rhi#962 — Metal timestamp queries not implemented](slang-rhi-962-metal-timestamp-queries.md) — human feature request 11-01; feature/medium/P2. **Reporter PR #963 implements it.** PARKED on a maintainer pick; R6 to 11-05, triager one-shot t-bf3f6d; no fixer without the operator.
 - [slang-rhi#964 — Metal compute pass costs 16-30 us (per-encoder queue-fence wait/update)](slang-rhi-964-metal-compute-pass-fence-cost.md) — human perf report 11-01 (cloth-sim batch with #961/#962); perf/medium/P2, rec A, lands after reporter PR #963. PARKED on a maintainer pick; R6 to 11-05, triager one-shot t-46390d; a fixer needs the operator and a Metal machine.
 - [slang-rhi#943 — `[SpecializationConstant]` reads 0 instead of its default on D3D11/D3D12/CUDA/CPU](rhi-943-specialization-constant-default.md) — confirmed bug, parked on a maintainer direction pick (assignee jkwak-work since 10-26; #942 merged 10-29 with tests limited to Vulkan/Metal/WGPU). No fixer dispatch; triager one-shot t-7aa5f5 11-08 13:00Z
-- [slang#14135 — CUDA `__launch_bounds__` / `__maxnreg__` attribute](slang-14135-cuda-launch-bounds-maxnreg.md) — human-filed feature request 11-01, triaged medium/P2. **Parked** for maintainer direction under the R6 hold (ends 11-05 14:29Z). Triager one-shot t-422839 is at 11-05 14:35Z. A fixer chain needs the operator's go-ahead.
-- [slang#14137 — unknown `-entry` name prints an empty E30015 before E38000](14137-entry-unknown-name-empty-e30015.md) — human bug (albertrodriguezclo) 11-01 14:29Z. Triaged Bug/low/P3 (D1 duplicate error, D2 empty name from #10125); rec A'. PARKED on R6; triager one-shot `i14137-r6-post-a7ff` 11-05 14:35Z posts + hands off after #14053 (same lines).
+- [slang#14135 — CUDA `__launch_bounds__` / `__maxnreg__` attribute](slang-14135-cuda-launch-bounds-maxnreg.md) — human feature request 11-01, triaged medium/P2. **Parked** for maintainer direction under R6 (to 11-05 14:29Z; one-shot t-422839 11-05 14:35Z). Reporter PR #14149 (`Fixes #14135`) is open. Fixer chain needs the operator's go-ahead.
+- [slang#14137 — unknown `-entry` name prints an empty E30015 before E38000](14137-entry-unknown-name-empty-e30015.md) — human bug 11-01, Bug/low/P3. **Deferred 11-02 to reporter PR #14147**; D2/B1 split to #14193. One-shot `i14137-r6-post-a7ff` (11-05 14:35Z) records state only; a close-unmerged comes back to Main.
 - [slang#14138 — CUDA no-alias (`__restrict__`) pointer spelling](14138-cuda-restrict-pointer.md) —
   human feature request 11-01, P2. PARKED: R6 to 11-05 (`r6-release-14138-c527`) + maintainer surface pick; the reporter volunteered to implement, so no bot fixer. Owns bot #14139 (no dispatch).
 - [slang#14141 — Metal read-only pointers always `T device*` (want `constant`)](14141-metal-readonly-pointer-constant-address-space.md) — human perf/feature request 11-01; feature/medium/P2, rec B (opt-in `AddressSpace.Constant`). PARKED: R6 to 11-05 (`r6-release-14141-cfb7`). Owns bot #14142 (no dispatch).
 - [slang#14144 — CUDA `ImmutablePtr` pointer-typed loads skip `__ldg`](14144-cuda-immutable-ptr-pointer-ldg.md) — human perf report 11-01; enhancement/low/P3, rec A. PARKED: R6 to 11-05 (`r6-release-14144-eb4e`) + operator/csyonghe call. Owns bot #14145, #14146 (no dispatch).
+- [slang#14159 — Metal BFloat16/FP8 emit undeclared `*Type` names](14159-metal-bfloat16-fp8-undeclared-types.md) — human bug (albertrodriguezclo) 11-02 10:04Z. Triaged Bug/medium/P2: `cuda_sm_*` [require] aliases are cross-target, so the types are legal everywhere (12-line decl fix). PARKED: R6 to 11-06 (`i14159-r6-release-7343`) + maintainer option pick; reporter owns the PR, no bot fixer.
+- [slang#14158 — Metal `half` NaN/Inf literal emitted as float `(1.0 / 0.0)`](14158-metal-half-nonfinite-literal.md) — human bug (albertrodriguezclo) 11-02 10:04Z; reporter has a fix prepared (expect own PR). Triaged Bug/medium/P2, rec A (reporter fix). PARKED: R6 to 11-06 10:04Z, triager one-shot t-03c361 11-06 10:10Z; no bot fixer. Owns bot HLSL twin #14161 (filed-only, no dispatch).
+- [slang#14212 — `-incomplete-library -target spirv` segfault on `extern` call inside a loop](14212-spirv-incomplete-library-extern-call-in-loop-crash.md) — human bug (tomaszbk) 11-02 23:39Z. Triaged Bug/high/P2. Root cause is in SPIRV-Tools (spirv-opt on a body-less import) plus missing Import linkage. Draft PR #14220 (B+C), R1 remedy applied @ de95590c8: waiting on human review + ready flip. OPEN: operator go-ahead on an upstream SPIRV-Tools filing. Owns bot-filed #14223, #14224, #14225, #14226 (filed-only, no dispatch). Related #6607.
+- [slang#14215 — proposal: `-validate-with-downstream-compiler` for SIMPLE text-target tests](14215-validate-with-downstream-compiler.md) — maintainer (jkwak-work) self-filed + self-assigned 11-03 00:32Z. HELD: no dispatch, no bot post; resume on an @nv-slang-bot mention or operator ask.

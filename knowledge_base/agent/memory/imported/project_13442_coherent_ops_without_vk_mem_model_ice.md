@@ -35,3 +35,7 @@ filing already is the public triage. Reran the repro on the reviewer's current-m
 With `-capability vk_mem_model`: rc 0. With `-profile spirv_1_3`: E41012 warning, then the same E99997. Verdict
 given: SPIR-V backend memory-model selection, P3, maintainer-owned. A bot fixer stays off unless the operator or
 assignees ask for one, because it would step on assigned maintainers.
+
+**11-02 re-chase: no change.** This is the 4th silent weekly check. No comments, timeline events or linked PRs exist on
+#13440, #13442 or #10852 since 10-26. I posted the 5-bullet to the dashboard on `gh-issue-shader-slang/slang-13440`.
+The next one-shot is `rechase-13440-coherent-fd42`, due 2026-11-09 16:30Z, with a 2026-11-02T16:35Z baseline.

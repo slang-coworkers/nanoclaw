@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14069 — `unit-test-string.cpp` hits MSVC 2019 (14.29) ICE C1001 on `constexpr std::to_array` (since #13217)
-description: Human-filed (minco3, NONE) build-break regression 2026-10-29 23:40:21Z, R6 crash-exempt. Triaged low/P2 (fix A, plain array). PARKED on the reporter opening the PR; triager re-check i14069-recheck-35d7 at 2026-11-02T23:55Z.
+description: Human-filed (minco3, NONE) build-break regression 2026-10-29, R6 crash-exempt. Triaged low/P2 (fix A, plain array). TERMINAL 11-02 — the reporter's PR #14072 merged (8e0a545). Option D (vs2019 presets) open with the operator.
 tags: [build, msvc, unit-test, tools, r6]
 ---
 
@@ -37,3 +37,13 @@ Dispatched to slang-triager on `gh-issue-shader-slang/slang-14069`. No fixer unt
 - 10-29 23:56Z: the triager confirmed the re-check is scheduled as `i14069-recheck-35d7`, one-shot at 2026-11-02T23:55:00Z, in the triager's
   group (not visible from Main, so `ncl tasks get` from here says not found). If minco3 asks for more time, it reports to me instead of
   handing off. Option D was put to the operator on the dashboard 10-29 23:55Z; no answer yet.
+- **11-02 ~20:52Z: minco3 opened PR #14072** (branch `fix/msvc142-to-array-ice`, 1 file +2/-2 in `unit-test-string.cpp`, closes #14069,
+  head `97aeb194f1`, created 10-30 00:11Z; the ready_for_review webhook reached me only now). This is fix A by the reporter, so **no bot fixer PR**.
+  slang-pr-approver is paused: not forwarded, queued in `data/approver-pause-queue.md`. I did not ping the triager; its 23:55Z re-check
+  covers "minco3 opened a PR". If it hands off to slang-fixer anyway, stop that (it would duplicate #14072).
+- **11-02 23:57Z TERMINAL, fixed by the reporter.** I checked GitHub: minco3 opened fork PR **#14072** (`fix/msvc142-to-array-ice`) on 10-30 00:11Z,
+  18 min after our invite. The diff is exactly fix A (1 file, +2/−2, `Fixes #14069`, `pr: non-breaking`). jkwak-work merged it 11-02 22:32:05Z as
+  `8e0a5457e0`, and the issue closed `completed` at 22:32:07Z. No fixer was dispatched, and only one bot comment (6511336250) was posted; the triager
+  added nothing, since the merged `Fixes #` records the outcome. The approver-pause queue entry (data/approver-pause-queue.md:133) is marked MOOT.
+  The re-check `i14069-recheck-35d7` has fired and is done. **Only open item:** option D (drop the vs2019 presets and docs) is still the operator's call,
+  unanswered as of 11-02. From now on, observe only; a human comment webhook would reopen the chain.

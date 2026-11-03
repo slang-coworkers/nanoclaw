@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13882_entry_point_representation_proposal
-description: "slang#13882 (tangent-vector, MEMBER, 10-23 00:44Z; assigned to its author by jhelferty-nv at 00:44:56Z): long design proposal 'Improve the compiler's representation of entry points' (canonical entry_point/entry_point_code AST+IR encoding, IREntryPoint nesting, warn-then-error on module-scope varyings). Maintainer-owned plan, nothing asked of the bot -> held: NO dispatch, NO bot post."
+description: "slang#13882 (tangent-vector, MEMBER; assigned to its author by jhelferty-nv; type Refactoring, milestoned): maintainer design proposal 'Improve the compiler's representation of entry points' (canonical entry-point scope + IREntryPointCode). 10-23 issue_opened and 11-03 00:11Z agent-authored rollout comment 6591811561 (no bot mention) both HELD: no dispatch, no bot post. Bears on parked #14000 (option C) and #13726/#13687."
 metadata:
   node_type: memory
   type: project
@@ -32,3 +32,28 @@ the bot waits on human issues (R6, #13596).
 
 **Resume** only on a comment that @-mentions @nv-slang-bot, or on an operator ask. A mention arrives as
 a webhook, so no re-chase timer is needed. Sub-issues filed later get their own `issue_opened`.
+
+**Between 10-23 and 11-02 (timeline):** tangent-vector cross-referenced #13730 (10-23) and #13899 (10-26), and set a
+milestone and issue type `Refactoring` on 10-26. Bot triage comments on #14000 (10-29) and #14053 (11-02)
+cross-referenced it, so the bot now "touches" the thread. Every human comment therefore arrives as `pr_mention`.
+
+**11-03 00:11Z, `pr_mention` (comment [6591811561](https://github.com/shader-slang/slang/issues/13882#issuecomment-6591811561)).**
+tangent-vector posted "agent: Proposed representation and rollout." The `agent:` prefix marks it as AI-authored.
+It @-mentions nobody, so it is not a summons. Held: no dispatch, no reaction, no post. What changed from the
+original proposal:
+- Front end: a `ProgramParameterScope` hierarchy (global → GLSL-style module scope → `EntryPointParameterScope`).
+  Entry-point checking no longer mutates the AST.
+- IR: `IRParameterScope` plus a non-callable `IREntryPointCode`, one IR module per selected entry point, with
+  linkage distinct from the implementing function. Nested linking: every inst with linkage needs a parent that
+  has linkage, or an `IRModuleInst` parent.
+- It softens the original "reject" stance. Multiple selected entry points that share module varyings get a
+  **warning**, with varying-location reservations and per-entry-point scope copying. Source `import` of a module
+  with module varyings is still rejected.
+- Rollout step 3 replaces compiler-owned builtin backing globals with operations.
+- 8-step rollout: checked parameter records → semantics → layout/builtins → IR foundations → entry-point IR
+  modules → GLSL-style scopes → common passes → target legalization.
+
+**Bearing on parked chains (operator FYI on 11-03, not a dispatch):**
+- [slang#14000 chain](../slang/14000-linkage-decorations-non-public.md): option C ("B under #13882") now has a concrete linkage design to point to.
+- #13726/#13687 (WGSL builtins across several entry points; parked on the operator): the softened multi-entry-point
+  stance and rollout step 3 are relevant to the "maintainer direction pulls against the PR" note.

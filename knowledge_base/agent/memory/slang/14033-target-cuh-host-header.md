@@ -42,3 +42,38 @@ goes to the #14028 fixer via the triager, with no #14033 reference before the R6
 were made. Main verified that the #14028 FYI landed in fixer `sess-1793291431051-8575nm` (inbound
 17:45:44Z, fixer replied 17:45:59Z) and that no extra session was minted. Next touch: t-11a7cd
 report, 11-02 18:00Z.
+
+**11-02 18:03Z — R6 lift, Case N (no reporter PR, no maintainer reply).** The triager posted the
+5-bullet, comment 6584476895. Main verified it: no @-mentions, no links. The triager applied
+`reproduced` and Type=Feature. The fixer owns A1 in `sess-1793642623699-409axb` on
+`fix/issue-14033` (worktree wt-slang-14033, base 8b351e261), independent of #14028's draft PR #14043.
+B–D stay parked for jkwak-work and csyonghe. Next: the fixer's PR (`report_pr_created`).
+
+**11-02 19:44Z — draft PR #14197** ("Declare __extern_cpp kernels in -target cuh headers",
+`fix/issue-14033`, head `64d3833cf`). Body says "Part of #14033" (not `Fixes`), so the issue stays
+open for B–D. Main verified the `pr-mappings` row: it maps to fixer `sess-1793642623699-409axb` on
+`gh-issue-shader-slang/slang-14033`. The triager reported (not yet verified by Main): A1 is done
+(the entry `IRFuncType` is rebuilt after CUDA varying legalization, and cuh emits
+`extern "C" __global__`), 2 header tests were added, the suites pass, and an nvcc launch ran on the
+L40S. Watch item for the reviewer: 15 OptiX `.cu` outputs drop or move an unused hit-attribute
+struct. Issue metadata: jhelferty-nv assigned **jkwak-work** at 18:31:51Z. The triager's report
+said "assigned to jhelferty-nv", which is wrong, and Main corrected it. jkwak-work milestoned the
+issue Q4 2026 (Fall) at 19:14Z. Next: the fixer's peer review and CI, then the [Fix Report], then
+the triager's [Triage Resolution].
+**11-02 19:58Z.** Draft PR **#14197** "Declare __extern_cpp kernels in -target cuh headers" is open
+(head 64d3833, `pr: non-breaking`). The pr-mapping points to fixer session
+`sess-1793642623699-409axb`; verified. Peer review was requested from slang-reviewer. Next: the
+fixer's `[Fix Report]` after the reviewer's verdict.
+**11-02 20:51Z — `[Fix Report]`.** PR #14197 head 50c63a7, still a draft. slang-reviewer said
+APPROVE_WITH_NITS; the fixer applied the reviewer's patch for the gap (a non-`__extern_cpp` kernel
+stays out of the cuh) and nits N1–N3 and N5. For N4 it kept the `m_firstBlock` guard and explained
+why. Fixer's numbers: 1850/1850 targeted tests pass, the reviewer's full suite is 11154/11157 (the
+3 `fp8-cuda*` failures), and the nvcc host launch was correct on the L40S. CI run 41521888535 was
+queued; the branch is BEHIND master but mergeable. A side find (pre-existing codegen crash) went
+to slang-triager.
+**Human step sent to orchestrator-dashboard (msg 35):** run `gh pr ready` once CI is green, then a
+jkwak-work review; B–D still need a maintainer decision. One-shot **`recheck-14197-ready-revi-40e1`**
+runs 2026-11-05 18:00Z.
+
+**Caveat (11-02, triager on #14053):** build/Release `slangc -v` reports `2026.13.1-50-g3649fb982` even though the build contains #14065 (10-30).
+The version string is fixed at configure time, so "re-repro on master 3649fb982" is probably a stale label, not proof of an old build. Check the actual HEAD instead.

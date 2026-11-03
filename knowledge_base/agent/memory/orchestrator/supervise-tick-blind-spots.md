@@ -40,6 +40,8 @@ old-PR thread — `ncl pr-mappings list` names it), died 06:48Z mid-prototype af
 `awaiting_human` and blind.py only saw the chain's own sessions. For every 🔼 row with a fresh human instruction, look up
 the PR's `pr-mappings` session and check its `.claude-trace` last `request.timestamp`. Pinned nudge → working in <1 min.
 
+Shape 3 is now routine for R6-release work (tick 322): a release one-shot opens the PR from its own `system:tasks:<series>` session, so the PR owner is on no `gh-issue-` thread (#14209 → `fejlik` on `system:tasks:slang-14058-resume-0060`, #14210 → `5f63gx`, #14194 → `j9up0v`). For every fresh bot PR, read `ncl pr-mappings list` and check that session's `lastreq.py` before calling the chain idle.
+
 Shape 1 recurred at tick 280 (#11803 R2 request, reviewer `bokz3c` stopped 6.7 h); blind.py caught it and the
 pinned nudge acked in under a minute.
 
@@ -111,6 +113,16 @@ pinned nudge acked in under a minute.
     out, and #13669's chain had no GitHub activity. Detector: for every merged PR and closed issue in `closed-since.txt`,
     run `grep -rl '<num>' memory/slang/` and read each hit's **Resume on:** line. Then nudge the `pr-mappings` owner,
     pinned. Here the fixer acked in 45 s.
+16. **The reporter's own fix PR lands after dispatch, and the chain never learns of it** (tick 321, batch #14151–#14160).
+    Within ~1 h of filing 10 R6-held issues, the reporter opened 8 `Fixes #N` PRs (#14164–#14176). A cross-reference
+    triggers no issue webhook, and scan sees only the issue. Only #14152's chain noticed. #14153 had a fixer and a
+    reviewer building a wider local fix in parallel with #14170. Detector: for every new or R6-held human-filed
+    chain, run `gh api repos/<o>/<r>/issues/<n>/timeline` and keep `cross-referenced` events whose source is a PR by
+    the reporter. Then `grep` the chain record for that PR number. If the chain has a fixer, send it a pinned
+    heads-up: compare the PRs, report to the parent, and make no GitHub writes. In the heads-up, state only what the
+    PR is and what it touches, never what it fails to cover: I read #14170's diff and wrote "no `RWBuffer<float>`/half",
+    but its `isTextureAccess` check includes `RWBuffer`. The fixer's 14-probe matrix corrected me in 3 min, and the
+    parent deferred to #14170 at 12:21Z.
 
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are

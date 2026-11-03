@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14038 — `a -= b` not synthesized from a user `operator-`
-description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z, same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked on maintainer direction under R6; triager one-shot t-bb303f posts 2026-11-02 17:10:23Z.
+description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z, same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z; awaiting maintainer A/B; triager re-check i14038-recheck-df24 2026-11-09 17:15Z.
 tags: [operators, overload-resolution, diagnostics, feature-request, r6]
 ---
 
@@ -44,4 +44,10 @@ triager: a task in a peer group cannot be seen from Main.
 **Open decision (operator).** Hand A to slang-fixer now, with no PR that references #14038 before the R6 lift? Or wait for
 maintainer direction after the 11-02 post?
 
-**Next.** Owner: slang-triager on thread `gh-issue-shader-slang/slang-14038`.
+**11-02 (verified).** nv-slang-bot posted the parked 5-bullet at 17:12:36Z:
+https://github.com/shader-slang/slang/issues/14038#issuecomment-6583399540. No labels; the issue is OPEN.
+The triager re-ran the repro on master 6815ed82d and still gets E39999 (its finding). The operator did not answer the
+early-handoff question, so the issue was not handed to a fixer.
+
+**Next.** Maintainers choose A, B or not planned. The triager's one-shot `i14038-recheck-df24` runs 2026-11-09T17:15Z
+and posts nothing if nothing changed. Owner: slang-triager on thread `gh-issue-shader-slang/slang-14038`.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14056 — no diagnostic for a group barrier reachable after a thread-dependent `return`
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 21:51:31Z, cloth-sim batch. Triaged Feature/medium/P2 (IR uniformity validation) by slang-triager 10-29 22:12Z. Parked on maintainer direction (csyonghe / skiminki-nv); R6 hold, one-shot post t-01c222 2026-11-02 21:55Z.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 21:51:31Z, cloth-sim batch. Triaged Feature/medium/P2 (IR uniformity validation) by slang-triager 10-29 22:12Z. Assigned to jkwak-work 11-02 18:41Z (by jhelferty-nv). Bot 5-bullet posted 11-02 21:56Z (cmt 6589464727). PARKED on the assignee; no timer, rests on the /supervise-issues parked register.
 tags: [uniformity, barrier, spirv, metal, wgsl, diagnostics, feature-request, parked, r6]
 resource: /workspace/inbox/a2a-1793311950097-rc2rct/triage-14056.md
 ---
@@ -25,9 +25,13 @@ CUDA tolerates it. The reporter points to the existing uniformity pass, #13977.
   Open questions: opt-in or default-on? Does CUDA warn? Group barriers only, or also wave barriers and derivatives?
 - Side finding, not acted on: the `float*` parameter on `-target wgsl` emits invalid `ptr<, f32>` with exit code 0. #13399 already tracks it.
 
-**GitHub state (verified 10-29 22:1xZ).** Issue Type=Feature and the `reproduced` label were set by the bot. 0 comments, R6 hold until 2026-11-02T21:51:31Z.
+**GitHub state (verified 11-02 ~22:00Z).** The issue is open, with Type=Feature and the `reproduced` label.
+jhelferty-nv assigned it to **jkwak-work** at 11-02 18:41Z, without a comment.
+The bot's triage 5-bullet is the only comment: `nv-slang-bot[bot]` at 21:56:19Z, https://github.com/shader-slang/slang/issues/14056#issuecomment-6589464727.
+It names the assignee as the decision owner and offers a bot PR.
 
-**Next.** The triager's one-shot `t-01c222` runs 11-02 21:55Z. Its task session `sess-1793311883249-5dzcw5` exists (verified).
-It posts the parked 5-bullet (draft `drafts/comment-14056.md` in the triager's workspace), or a delta if a human has replied.
-No fixer handoff until csyonghe or skiminki-nv gives direction.
+**Next.** PARKED on jkwak-work, optionally with csyonghe/skiminki-nv. They decide (a) opt-in vs on by default, (b) whether CUDA warns, and (c) barrier scope.
+If they give direction AND ask for a bot PR, the triager hands Rec A to slang-fixer on this thread. If jkwak-work implements it, the triager sends a [Resolution] and posts nothing.
+No timer, because a maintainer owns it and webhooks deliver replies. The chain rests on the /supervise-issues parked register.
+The 10-29 one-shot `t-01c222` has fired, so it is spent.
 Owner: slang-triager `sess-1793310873716-vp23c7`, thread `gh-issue-shader-slang/slang-14056`. Memo: see `resource`.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14061 — SPIR-V double log/exp/pow/sin emit GLSL.std.450 ops that allow only 16/32-bit floats (invalid module, no diagnostic)
-description: Human-filed (albertrodriguezclo) bug 2026-10-29 22:05:28Z. Triaged bug/medium/P2 by slang-triager 22:19Z (core-module intrinsics own the fix). Parked under R6 (no bot comment before 2026-11-02T22:05:28Z); re-check t-e9b64f 11-02 22:30Z.
+description: Human-filed (albertrodriguezclo) bug 2026-10-29 22:05:28Z. Triaged bug/medium/P2 by slang-triager 22:19Z (core-module intrinsics own the fix). Posted 11-02 22:36Z; parked on assignee jkwak-work (fix A vs B); final re-check recheck-14061-maintainer-aa6e 11-09 22:30Z.
 tags: [spirv, emit, fp64, glsl-std-450, capabilities, r6]
 ---
 
@@ -38,3 +38,11 @@ has listed it as a limitation since 2025. Related: #4947 (capability check for u
 Nothing is on GitHub (R6). The one-shot **t-e9b64f** runs 2026-11-02 22:30Z. It checks for a reporter PR or maintainer comment first,
 then posts the 5-bullet and sets Type=Bug and `reproduced`. Owner: slang-triager on `gh-issue-shader-slang/slang-14061`.
 Memo: `/workspace/inbox/a2a-1793312349505-0psyre/triage-14061.md` (triager copy: `memory/issues/triage-14061.md`).
+
+**11-02 22:36Z: re-check t-e9b64f ran (this is the triager's report).** There is no reporter PR and no maintainer comment.
+jhelferty-nv assigned jkwak-work at 18:44Z. The triager reproduced it again on dd93102a4 and posted the 5-bullet in
+[6590218785](https://github.com/shader-slang/slang/issues/14061#issuecomment-6590218785). It set Type=Bug and added `reproduced`
+(no `regression`). **Parked on jkwak-work:** fix A or B, and how scalar exp2/ldexp should behave. A human comment with
+direction resumes the chain: the triager sends a [Triage handoff] to slang-fixer.
+Main's final one-shot is `recheck-14061-maintainer-aa6e` at 2026-11-09 22:30Z. It schedules nothing further, and the chain then
+rests on the /supervise-issues parked-chain register.

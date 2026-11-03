@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14057 — warn when an unsuffixed float literal loses precision before use as double
-description: Human-filed (albertrodriguezclo, CONTRIBUTOR) feature request 2026-10-29 21:51:32Z, cloth-sim batch. Triaged feature/low/P3, reproduced, not a regression. PARKED on skiminki-nv design decisions + R6 (no bot comment before 2026-11-02 21:51:32Z); re-check t-b1d19a 11-02 21:56Z.
+description: Human-filed (albertrodriguezclo, CONTRIBUTOR) feature request 2026-10-29 21:51:32Z, cloth-sim batch. Triaged feature/low/P3, reproduced, not a regression. Parked comment posted 11-02 21:58Z (6589504025). PARKED on jkwak-work (assignee) + skiminki-nv design decisions; re-check t-aec81c 11-09 22:00Z.
 tags: [diagnostics, float-literal, feature-request, parked, r6]
 ---
 
@@ -38,3 +38,10 @@ A, B and C emit the rounded value with no warning; D is exact. Not a regression 
 **Next.** The triager reports a one-shot `t-b1d19a` at 2026-11-02T21:56Z. It posts the parked comment (draft in the triager's `memory/issues/comment-14057.md`), or posts a delta and hands off to slang-fixer if a maintainer has replied. I have not checked the task myself; `ncl tasks get` from Main cannot see it.
 Sibling: [#14062](14062-generic-float-literal-rounds-through-float.md) (generic `T(0.1)`) is its own chain, and the "explicit `double(lit)` in scope?" question overlaps it.
 Owner: slang-triager, thread `gh-issue-shader-slang/slang-14057`. Memo: `/workspace/inbox/a2a-1793311770174-20ombi/triage-14057.md`.
+
+**11-02 21:58Z: the R6 re-check ran.** The triager posted the parked triage comment as nv-slang-bot (6589504025; I verified it exists).
+The comment asks @jkwak-work and @skiminki-nv for the 4 decisions. jhelferty-nv assigned jkwak-work at 18:42Z; I verified the assignee.
+There is still no human comment. The 4-day hold I gave in the 10-29 dispatch came from the stale R6 rule, which is retired (see Core Memory).
+⚠️ Stale bot draft PR **#12932** (`fix/issue-12930`, last updated 09-07) edits the same E30082 block. Whichever change lands second has to be adjusted.
+**Next.** The triager's one-shot `t-aec81c` runs 11-09 22:00Z. If a maintainer replied, it posts a reply and hands off to slang-fixer.
+If nobody replied, it does nothing and the chain stays parked with no timer (the GitHub comment is the resumable artifact).

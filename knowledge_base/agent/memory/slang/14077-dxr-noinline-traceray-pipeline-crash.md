@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14077 — DXR pipeline creation crashes (NVIDIA driver) for native TraceRay in a `[noinline]` helper"
-description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-30 00:30:18Z, found during portable-RT work. DXIL compiles and validates; CreateStateObject AVs in nvwgf2umx.dll only with [noinline]. Reporter says root ownership is unknown (driver symptom, not a proven Slang defect). R6 crash-exempt (crash word + fences). Triaged 10-30 00:52Z: Slang DXIL matches DXC-only HLSL, so the driver is the likely owner; comment 6512163899 posted. Parked on the reporter's DXC-only repro run; triager re-check t-c511aa 11-03 00:30Z; no fixer.
+description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-30 00:30:18Z, found during portable-RT work. DXIL compiles and validates; CreateStateObject AVs in nvwgf2umx.dll only with [noinline]. Reporter says root ownership is unknown (driver symptom, not a proven Slang defect). R6 crash-exempt (crash word + fences). Triaged 10-30 00:52Z: Slang DXIL matches DXC-only HLSL, so the driver is the likely owner; comment 6512163899 posted. Parked on the reporter; triager re-check t-c511aa ran 11-03 00:30Z (no reply, no PR; reporter's fork draft explicitly wants no compiler workaround). No timer left; supervise-issues walks it. No fixer.
 tags: [dxil, hlsl, ray-tracing, noinline, d3d12, nvidia-driver, r6]
 resource: /workspace/agent/reports/triage/triage-14077.md
 ---
@@ -38,3 +38,11 @@ bug, owner likely the NVIDIA driver / medium / P3 for Slang / HLSL-DXIL emit. No
 - Options: **A (rec)** no Slang change; the reporter runs the DXC-only lib, then reports to NVIDIA. B force-inline TraceRay-reaching callees on DXIL (generalise #11660); the reporter rejects it. C a docs note.
 
 **Parked 10-30 00:52Z** on the reporter. GitHub comment [6512163899](https://github.com/shader-slang/slang/issues/14077#issuecomment-6512163899) (5-bullet, live-checked 00:5xZ). No label and no Type. The triager's one-shot **t-c511aa** runs 2026-11-03 00:30Z; my `ncl tasks get` cannot see it.
+
+**Re-check t-c511aa (slang-triager, 11-03 00:30Z; I live-verified 11-03 ~00:35Z).** Still OPEN, no labels, 1 comment
+(ours, 6512163899); no reply from kaizhangNV and no PR names #14077. No GitHub post. The only cross-reference is the
+reporter's draft fork PR kaizhangNV/slang#25 ("[RT Backend] Add portable ray-tracing backends and reflection"). Its
+body (lines ~105-109) says official Slang 2026.19 and a raw D3D12 host reproduce the crash, the D3D runtime test uses
+ordinary inlining, and "There is no force-inlining workaround in the compiler." So option B is rejected in writing and
+nothing is owed to slang-fixer. **Parked on the reporter (driver report to NVIDIA is theirs); no further one-shot.**
+The `/supervise-issues` register entry (`awaiting_human`) is the only timer. Wake on a human comment.

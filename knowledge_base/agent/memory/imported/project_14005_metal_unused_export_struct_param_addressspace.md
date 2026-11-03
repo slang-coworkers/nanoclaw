@@ -85,3 +85,7 @@ reports a full suite of 11275/11278 (fp8-cuda x3). CI run 40892314609 was `waiti
 **Parked on humans.** Maintainer review and merge. Operator asks on the dashboard: (a) file the atomics follow-up
 (default: don't file); (b) mark #12014 ready (default: leave as a draft). Timer: one-shot `rechase-14005-draft-pr-1-203f` at 2026-11-02 15:00Z.
 After the merge: tell the triager so #14004 rebases.
+
+**Re-check 2026-11-02 15:00Z (`rechase-14005-draft-pr-1-203f`): no change.** #12014 is still a draft at `1b7300925` with 0 reviews
+and no comments since 10-29 14:40Z. #14005 and #11981 are open with no new comments. Operator asks (a) and (b) are still
+unanswered on the dashboard, so nothing was routed or posted. Next one-shot re-check is set for 2026-11-06 15:00Z.

@@ -32,7 +32,7 @@ was **not** rerun on the final heads. The reviewer's 11076/11079 run used the pr
 3 `fp8-cuda*` failures were also seen on master on 10-28.
 
 **Unfiled follow-ups (operator asked 10-29 whether to file them; held for fan-out control):**
-1. float `InterlockedAnd/Or/Xor` accept float through `IArithmeticAtomicable` and emit invalid HLSL with no diagnostic.
+1. float `InterlockedAnd/Or/Xor` accept float through `IArithmeticAtomicable` and emit invalid HLSL with no diagnostic. **Filed 11-02 as #14162** by the #14153 triager ([record](../slang/14162-float-bitwise-interlocked-ops.md)).
 2. slang-rhi `vk-device.cpp:832-840` enables `VK_EXT_shader_atomic_float2` only when
    `shaderBufferFloat16Atomics` is set, so float min/max loses the device on the L40S.
 3. The SPIR-V min/max block in glsl.meta names the extension `_float_add`. The direct emitter hides this.
@@ -64,3 +64,7 @@ Sent to the fixer as well. Resume on: the fixer applies the nits → maintainer 
 **10-30 02:04Z [Fix Report] R2:** #14048 is at head **eded196** with the R2 nits applied. The early exit now compares integer keys, so it is exact under FTZ and Devin's flag is resolved. Every sign-split branch is tested. cuda+atomic 164/164.
 #14046 is at c416ff9 and #14047 at 0a3a415, both unchanged. The open maintainer question (should `reduceMin/Max` drop the post-check?) still stands. **5th unfiled follow-up:** double `InterlockedExchange` on CUDA
 fails in NVRTC (there is no `atomicExch(double*)`), on master as well; added to the follow-ups held for the operator. PARKED on human review again; timer 6eb1 unchanged.
+
+**11-02 14:00Z re-check (timer 6eb1), checked live:** there has been no human activity since 10-30. All three PRs are OPEN drafts with 0 reviews: #14046 c416ff9 (kaizhangNV requested), #14047 0a3a415, and #14048 eded196 (jkwak-work requested).
+CI is skipped (53 runs) and merge state is BEHIND with no conflicts. The issue has no new comments after the bot's 10-30 01:20Z reply. The fixer `vskx9v` has been idle since 10-30 01:50 and has nothing pending.
+I sent the operator one line on orchestrator-dashboard (msg 11) asking whether the fixer should ping the reviewers. The **final** one-shot timer `recheck-14026-maintainer-d880` is set for 11-09 14:00Z. It schedules nothing further, and the chain then rests on the /supervise-issues parked-chain register.

@@ -54,3 +54,12 @@ An hour later the review found a segfault (B1), and I had to send a correction. 
 the review status, and say the CI/ready gate is worth acting on only after that head's review verdict is in.
 
 ⚠️ **2026-10-30, slangpy#1250: a babysitter filing that I learn of from a sweep report also mints a canonical Main session through its `issue_opened` webhook, and that session dispatches too.** The babysitter's 00:06Z report reached my non-canonical session (`jmv3wy`, which the pinned-send reroute above sends sweeps to). The `issue_opened` webhook had already minted `qsff21` on `gh-issue-shader-slang/slangpy-1250` at 00:02Z, and it dispatched slangpy-triager at 00:04Z. I dispatched slangpy-fixer at 00:07Z without checking. Result: two Main parents. The fixer's replies went to `qsff21`, a "who directed this" mix-up had to be corrected and retracted, and both sessions reported to the operator. ⇒ **Before dispatching on any issue a coworker has just filed, run `ncl sessions list --limit 10000 | grep <repo>-<N>`. If a Main session already exists on the canonical thread, it owns the issue; send nothing.**
+
+## Sibling Main sessions also report owed items to the dashboard (2026-11-02/03, #14200 chain)
+
+Several Main sessions can take the same chain's inbound, and each one sees the same "owed: report X to
+dashboard" line in the chain record. On #14200 this caused a duplicate dashboard row twice: the
+20:44Z new-chain ack, and the #14213 filing report (sibling at 00:04Z, mine at 00:11Z).
+**Before sending an owed report, read the last ~10 rows of the dashboard session**
+(`ncl sessions messages sess-1776713576150-9fon2n --reverse --json --limit 10`). After sending, mark the
+owed item closed in the chain record **with the seq**, so the next session can see it was delivered.

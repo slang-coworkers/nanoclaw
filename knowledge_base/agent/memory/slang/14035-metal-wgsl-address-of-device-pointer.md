@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14035 — Metal/WGSL reject `&ptr[i]` / `&ptr->field` (`operator&` gated cpp_cuda_spirv_llvm)
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:18Z, cloth-sim batch. Triaged enhancement/low/P3 by slang-triager. Parked on maintainer direction (jkwak-work, aidanfnv) because `operator&` is slated for deprecation; R6 hold, re-check i14035-r6-post-30ba 2026-11-02 17:15Z.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:18Z, cloth-sim batch. Triaged enhancement/low/P3 by slang-triager. Parked on maintainer direction (jkwak-work, aidanfnv) because `operator&` is slated for deprecation; Parked 5-bullet posted 2026-11-02 17:16Z (comment 6583479145); re-check t-b1a9ee 2026-11-09 17:15Z.
 tags: [metal, wgsl, pointers, address-of, capabilities, feature-request, parked, r6]
 resource: /workspace/inbox/a2a-1793295608357-kcvdxm/triage-14035.md
 ---
@@ -25,7 +25,8 @@ allow `&` on Metal (and WGSL) when the operand is reached through a device point
 **GitHub state (verified 10-29 17:4xZ).** Issue Type=Feature and the `reproduced` label were set by the bot. 0 comments and no assignee.
 R6 holds a bot comment until 11-02 17:10:18Z.
 
-**Next.** The triager's one-shot `i14035-r6-post-30ba` runs 11-02 17:15Z. Its task session
-`sess-1793295542513-wn3ixw` exists (verified). It posts the parked 5-bullet (A/B/C for jkwak-work/aidanfnv,
-plus the workaround `count + i` / `__getAddress(p->field)`), or a delta if someone has replied. Once a maintainer picks A or B, it goes to slang-fixer.
+**11-02 R6 re-check (verified).** At 17:15Z the triager found no drift and re-verified at master 8229f2742: the gate is unchanged, #10206 is still a draft, and #10280 is merged.
+It posted the parked 5-bullet as comment **6583479145** (nv-slang-bot, 17:16:09Z, 1 comment total, verified), which pings @jkwak-work/@aidanfnv for A/B/C.
+
+**Next.** The triager's one-shot `t-b1a9ee` runs 2026-11-09 17:15Z. If a maintainer picks A or B, it sends a [Triage handoff] to slang-fixer; option C stays parked.
 Owner: slang-triager, thread `gh-issue-shader-slang/slang-14035`. Memo: see `resource`.

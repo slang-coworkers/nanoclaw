@@ -32,3 +32,9 @@ only inside `IRExpand` (an untested hypothesis). 15 of 32 throw/try tests abort 
 PARKED: the triager asked kaizhangNV on the issue whether they want a bot PR. Nothing goes to the fixer.
 The triager's one-shot re-check `t-537822` runs 2026-11-02T23:30Z (in the triager's group; it is not visible from Main).
 Memo copy: `/workspace/agent/reports/triage/triage-14067.md`.
+
+**Re-check t-537822 (2026-11-02 23:31Z; the triager reported, and I verified the GitHub side).** The issue is still open and still
+has only one comment, the bot's 6510939393. It was last updated 10-29 and the only label is `reproduced`. kaizhangNV has not replied.
+Their PR #14068 is the #14066 fix, not this one. The triager did not schedule another re-check, so the timer for this park is
+now the parked-chain register entry in `supervisor-state.json` (`awaiting_human`), which `/supervise-issues` walks. No fixer
+handoff yet.

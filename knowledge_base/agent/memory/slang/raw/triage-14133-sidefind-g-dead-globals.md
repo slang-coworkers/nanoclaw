@@ -1,10 +1,10 @@
 ---
 type: triage
-title: "Side finding from #14133: -g leaves orphaned module-scope ctor calls after inlineGlobalConstantsForLegalization (not filed)"
+title: "Side finding from #14133: -g leaves orphaned module-scope ctor calls after inlineGlobalConstantsForLegalization (filed as #14217)"
 tags: [debug-info, dce, readnone, global-constant, static-const, regression, not-filed]
 ---
 # Side finding (from the #14133 fix): `-g` leaves dead `static const` element initializers at module scope
-Date: 2026-11-01 | bug | **regression** (release-bisected) | P2 | IR (slang-ir-legalize-global-values.cpp + readNone inference) | NOT FILED — operator decides (parent msg 14)
+Date: 2026-11-01 | bug | **regression** (release-bisected) | P2 | IR (slang-ir-legalize-global-values.cpp + readNone inference) | FILED 11-03 as #14217
 Found by slang-fixer; parent reproduced on 6815ed82d5. Local only: no GitHub writes.
 
 ## Repro (TOT 6815ed82d Release; /tmp/t14133/g/)

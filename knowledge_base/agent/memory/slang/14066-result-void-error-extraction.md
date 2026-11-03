@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14066 — Result<void,E> error extraction returns the whole result struct instead of the error
-description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-29 23:09:26Z, found during portable-RT work. Triaged bug/high/P2 by slang-triager 23:22Z (reproduces on all targets; new silent-wrong-value rethrow case). Parked, owned by the reporter; R6 one-shot t-5fbc4b runs 2026-11-02 23:15Z.
+description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-29 23:09:26Z, found during portable-RT work. Triaged bug/high/P2 by slang-triager 23:22Z (reproduces on all targets; new silent-wrong-value rethrow case). CLOSED 10-30 by the reporter's PR #14068 (fix A); nothing was posted by the bot. Terminal.
 tags: [ir, result-type-lowering, error-handling, throws, spirv, hlsl, r6]
 resource: https://github.com/shader-slang/slang/issues/14066
 ---
@@ -46,3 +46,9 @@ Owner: slang-triager on `gh-issue-shader-slang/slang-14066`. Memo: `/workspace/i
 `tests/language-feature/error-handling/void-error-value.slang`. Head 68d0235d at 10-30; CI 56 pass, 1 fail (fleet-wide SlangPy Tests break).
 Its 10-30 `pr_ready_for_review` was **not** forwarded: slang-pr-approver is paused; queued in `data/approver-pause-queue.md`.
 The t-5fbc4b one-shot's "reporter PR exists" branch now applies, so it should not post the triage draft on the issue.
+
+**CLOSED 2026-10-30 19:44Z (terminal; I checked it live on 11-02).** The reporter's PR #14068 merged (d34a5eb54, `Closes #14066`) with fix A: the void
+shortcut is deleted. Its test `tests/language-feature/error-handling/void-error-value.slang` uses `[noinline]` (vk, cpu, SPIR-V/HLSL filecheck).
+It does not test a void→value rethrow, but that case has the same single cause. On 11-02 23:17Z, t-5fbc4b saw the closure and posted nothing.
+The issue has 0 comments; there was no fixer. The chain reopens only on a new human comment.
+Still open and not filed: the `marshal-native-call.cpp` ~:332 `resultVar`-passed-twice observation. It was not reproduced.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14137 — unknown `-entry` name prints an empty `error[E30015]: undefined identifier` before E38000
-description: Human-filed (albertrodriguezclo) diagnostics bug 2026-11-01 14:29:23Z. Triaged Bug/low/P3, two defects (D1 duplicate error, D2 empty E30015 from #10125). Rec A'. PARKED on R6 (to 11-05 14:29:23Z); triager one-shot i14137-r6-post-a7ff 11-05 14:35Z posts + hands A' to slang-fixer after #14053.
+description: Human-filed (albertrodriguezclo) diagnostics bug 2026-11-01 14:29:23Z. Triaged Bug/low/P3. DEFERRED to the reporter's PR #14147 (opened 11-01 23:00Z, same shape as A'); D2/B1 split out to bot-filed #14193 (owned by the #14190 chain). Triager one-shot i14137-r6-post-a7ff 11-05 14:35Z records state only; no post, no fixer.
 tags: [entry-points, diagnostics, r6]
 ---
 
@@ -57,3 +57,21 @@ fixer starts, base on master and note the overlap on both PRs. (3) The post must
 is not lost. Owner: slang-triager, thread `gh-issue-shader-slang/slang-14137`. Next touch: the one-shot report 11-05 14:35Z.
 Triager confirmed 11-01 14:42Z that all rulings are in the one-shot prompt and in comment-14137.md (R6 guard first,
 then (0)→(a)→(b)→(c)), and that it corrected the #14053 state page, which had said to build on the #14053 branch.
+
+**11-02 ~16:00Z (Main `3oaflr`, from the #14183 chain): DEFER to the reporter's PR #14147.** albertrodriguezclo opened PR #14147
+("Fixes #14137", non-draft, reviewer jhelferty-nv) on 11-01 at 23:00:57Z, after this triage; this record did not know about it.
+Following the #14153 → #14170 precedent, I told the triager (pinned `jjf21j`, landed as seq 26) to amend the one-shot
+`i14137-r6-post-a7ff`: no fixer handoff, no bot PR, no triage post while #14147 is open, and report to Main if it closes
+unmerged. B1 (renderer drops location-less span text) is now tracked by #14193, which #14147 doesn't fix.
+
+**Triager applied the defer (11-02 16:01Z); GitHub verified by this Main session 11-02 16:0xZ.** #14147
+"Report an unknown entry point or patch-constant function name once" by albertrodriguezclo, opened 11-01 23:00:57Z,
+OPEN, not draft, body "Fixes #14137", review requested from jhelferty-nv; touches only slang-check-shader.cpp + two
+diagnostics tests (same shape as A'). D2/B1 (renderer drops the primary label without a location) is now bot-filed
+**#14193** (11-02 15:58Z, from the #14189 R1 reviewer finding), owned by a sibling Main session's
+[#14190 chain](14190-14192-cpu-atomic-side-bugs.md), not this one. #14137 still has 0 comments.
+One-shot `i14137-r6-post-a7ff` (11-05 14:35Z) now: #14147 open or merged → record state, no post; #14147 closed
+unmerged → report to Main and wait for a go-ahead before reviving A'. Never: fixer hand-off, bot PR, `regression`
+label, or B1/`-specialize` text (that is #14193's). #14053's C(2) now overlaps #14147: base on master and note
+#14147, or rebase after it merges (triager recorded this on the #14053 page). Next touch: a #14147 merge/close
+webhook or the one-shot.

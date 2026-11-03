@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13964 — HLSL default-inout receiver rejects immutable receivers
-description: Regression from #13615; triage resolved, bot draft PR #13966 (call-site-dialect design) design settled by tangent-vector; parked on operator un-draft sign-off
+description: Regression from #13615; triage resolved, bot draft PR #13966 (call-site-dialect design) design settled by tangent-vector; parked on operator un-draft sign-off (3 asks, final re-chase r3 11-05)
 ---
 
 # slang#13964 — HLSL methods no longer callable on immutable receivers
@@ -40,5 +40,10 @@ description: Regression from #13615; triage resolved, bot draft PR #13966 (call-
   session rows back to 10-27). GitHub, checked live: still a draft at `e785e0710`, `BEHIND` master, CI 5 pass / 53 skipped,
   0 reviews, and no maintainer comment since 10-28 06:38Z (the fixer answered it at 06:40Z). I sent the **2nd un-draft ask**
   to `orchestrator-dashboard` on the chain thread (msg 19). On a yes, the fixer **merges** master (no rebase) before `gh pr ready`.
-- **Timer:** one-shot `rechase-slang-13964-r2`, 2026-11-02 16:00Z (task-hygiene allowed r2 of 3; it carries the r1 decision
-  table, and its no-answer branch is the 3rd ask).
+- **11-02 16:03Z, re-chase r2:** still no operator answer. I scanned dashboard session `9fon2n` (bounded, 400 rows back
+  to 10-30 02:30Z) and Main `81yz2f`. GitHub, checked live: still a draft at `e785e0710`, **41 behind** master (13 ahead),
+  CI 3 pass / 53 skipped, 0 reviews, and nothing new since 10-28 06:40Z. I sent the **3rd un-draft ask** to `orchestrator-dashboard`
+  on the chain thread (msg 21, dashboard row 510134). The first send failed with `database is locked` and wrote no row, because
+  several 16:00Z re-chases fired at once. I checked the dashboard, found nothing, retried once, and it was delivered once.
+- **Timer:** one-shot `rechase-slang-13964-r3`, 2026-11-05 16:00Z. task-hygiene allowed r3 of 3, so this is the **final** re-chase.
+  Its no-answer branch is a one-line "re-chases exhausted, still parked" note plus a parked-chain register entry, not a 4th full ask.

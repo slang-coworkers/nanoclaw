@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14070 — DXIL: a `[noinline]` helper that calls IgnoreHit fails DXC validation
-description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-29 23:47:08Z, found during portable-RT work (#14051). Triaged bug/medium/P2 10-30 00:01Z (rec A: run the CUDA-only shader-terminating-callee inliner for HLSL too). Parked, owned by the reporter; R6 one-shot t-9a039e posts 11-02 23:55Z; no fixer without the reporter's go-ahead.
+description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-29 23:47:08Z, found during portable-RT work (#14051). Triaged bug/medium/P2 (rec A: run the CUDA-only shader-terminating-callee inliner for HLSL too). Bot comment 6591620569 posted 11-02 23:59Z, plus `reproduced` + Type=Bug. Parked on the reporter's go-ahead; triager gated re-check i14070-reporter-recheck-e308 runs 11-10 00:00Z.
 tags: [dxil, hlsl, ray-tracing, noinline, capabilities, r6]
 resource: /workspace/agent/reports/triage/triage-14070.md
 ---
@@ -39,3 +39,9 @@ bug / medium / HLSL-DXIL emit + IR inlining / P2. Not a regression, not a duplic
 **Parked 10-30 00:01Z,** owned by the reporter. Nothing on GitHub (R6). The draft is in the triager's memory (`issues/comment-14070.md`).
 Its one-shot **t-9a039e** runs 2026-11-02 23:55Z. If there is no reporter PR or maintainer comment, it posts the 5-bullet, then adds `reproduced` + Type=Bug
 only if both are still blank. (My `ncl tasks get` cannot see the triager's tasks, so "not found" there proves nothing.)
+
+**11-02 23:59Z: posted (checked live 11-03).** Bot comment 6591620569 (the 5-bullet). Labels `reproduced` and Type=Bug were set, since both were blank. The issue is OPEN with 1 comment.
+Before posting, the triager re-ran the repro on master 96a728c85: it still fails at sm_6_3/6_6/6_9. It found no upstream PR naming #14070. The reporter's draft
+fork PR kaizhangNV/slang#25 lists #14070 under "Known nonblocking independent issues" ("no force-inlining workaround"), so that PR is not a fix.
+Next: kaizhangNV decides whether to fix it themselves or ask the bot for a PR. Until then, no fixer. The triager's gated one-shot **i14070-reporter-recheck-e308**
+runs 2026-11-10T00:00Z and wakes only on a close, a new comment or a new cross-reference.
