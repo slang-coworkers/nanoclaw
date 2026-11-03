@@ -286,6 +286,39 @@ class DispatcherTest(unittest.TestCase):
         self.assertEqual(seen[0][:4], ["gh", "api", "--method", "GET"])
 
 
+GROUP_ROWS = {"ok": True, "data": [{"id": "ag-1", "name": "Eval Slang Triage", "folder": "eval-slang-triage"},
+                                   {"id": "ag-2", "name": "Eval Slang Reviewer", "folder": "eval-slang-reviewer"}]}
+
+
+class ResolveGroupTest(unittest.TestCase):
+    def run_ok(self, argv, timeout=None, **kw):
+        self.calls.append(argv)
+        return subprocess.CompletedProcess(argv, 0, stdout=json.dumps(GROUP_ROWS), stderr="")
+
+    def test_missing_ncl_is_a_runtime_error_the_cli_falls_back_from(self):
+        def no_ncl(argv, timeout=None, **kw):
+            raise FileNotFoundError("ncl")
+        with self.assertRaises(RuntimeError):
+            er.resolve_group("eval-slang-reviewer", no_ncl)
+
+    def setUp(self):
+        self.calls = []
+
+    def test_folder_resolves_to_the_id_ncl_tasks_create_needs(self):
+        self.assertEqual(er.resolve_group("eval-slang-reviewer", self.run_ok), ("ag-2", "eval-slang-reviewer"))
+        self.assertEqual(self.calls[0][:3], ["ncl", "groups", "list"])
+
+    def test_id_resolves_to_its_folder_for_the_answer_mount(self):
+        self.assertEqual(er.resolve_group("ag-1", self.run_ok), ("ag-1", "eval-slang-triage"))
+
+    def test_unknown_folder_is_an_error_before_anything_is_planned(self):
+        with self.assertRaises(RuntimeError):
+            er.resolve_group("eval-nowhere", self.run_ok)
+
+    def test_unlisted_id_is_kept_as_both(self):
+        self.assertEqual(er.resolve_group("ag-9", self.run_ok), ("ag-9", "ag-9"))
+
+
 class FreezeTest(unittest.TestCase):
     def test_model_resolution_never_reports_an_alias_as_an_id(self):
         env = {"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-1-20250805", "ANTHROPIC_MODEL": "sonnet",
@@ -421,6 +454,16 @@ class StatisticsTest(unittest.TestCase):
         self.assertFalse(agg["b"]["low_signal"])
         self.assertEqual((agg["c"]["mean"], agg["c"]["scored"], agg["c"]["repeats"]), (None, 0, 1))
         self.assertFalse(agg["c"]["low_signal"])
+
+    def test_low_signal_uses_the_kind_gap_for_continuous_rewards(self):
+        trials = [{"task_id": "r", "repeat": 1, "reward": 0.61}, {"task_id": "r", "repeat": 2, "reward": 0.55},
+                  {"task_id": "s", "repeat": 1, "reward": 0.72}, {"task_id": "s", "repeat": 2, "reward": 0.36}]
+        strict = er.aggregate_tasks(trials)
+        self.assertTrue(strict["r"]["low_signal"] and strict["s"]["low_signal"])
+        review = er.aggregate_tasks(trials, er.LOW_SIGNAL_GAP["review"])
+        self.assertFalse(review["r"]["low_signal"])
+        self.assertTrue(review["s"]["low_signal"])
+        self.assertEqual(er.LOW_SIGNAL_GAP["triage"], 1e-9)
 
     def test_bootstrap_ci_is_seeded_and_brackets_the_mean(self):
         diffs = [0.1, 0.2, 0.0, 0.3, 0.1, 0.2, 0.4, 0.0, 0.1, 0.2]
@@ -645,6 +688,22 @@ class JobTest(unittest.TestCase):
         prompt = dict(dispatcher.calls)["slang-9#r1"]
         self.assertIn('exactly one key "reply"', prompt)
         self.assertIn("/workspace/agent/eval/slang-9/r1/answer.json", prompt)
+        self.assertNotIn("triage answer", prompt)
+
+    def test_review_tasks_poll_and_score_like_triage_with_their_own_contract(self):
+        write_task(self.bank, "slang-pr-7-abcdef0", "review", timeout=100)
+        tasks = er.load_bank(self.bank, "review")
+        self.assertEqual([t.kind for t in tasks], ["review"])
+        dispatcher = FakeDispatcher(lambda task, repeat: self.write_answer(
+            task.id, repeat, {"summary": "Narrow change.", "findings": [{"file": "a.cpp", "line": 3, "comment": "Assert this."}],
+             "subsystem": "parser"}))
+        job = er.EvalJob(self.cfg(kind="review", repeats=1), tasks, dispatcher, er.Budget(300.0, lambda s: 0.5, 3.0),
+                         clock=self.clock, sleep=self.clock.sleep)
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.SCORED, 1.0))
+        prompt = dict(dispatcher.calls)["slang-pr-7-abcdef0#r1"]
+        self.assertIn('"summary" (string) and "findings"', prompt)
+        self.assertIn("/workspace/agent/eval/slang-pr-7-abcdef0/r1/answer.json", prompt)
         self.assertNotIn("triage answer", prompt)
 
     def test_timeout_and_dispatch_failure_are_trial_states_not_crashes(self):
