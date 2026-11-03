@@ -647,6 +647,22 @@ class JobTest(unittest.TestCase):
         self.assertIn("/workspace/agent/eval/slang-9/r1/answer.json", prompt)
         self.assertNotIn("triage answer", prompt)
 
+    def test_review_tasks_poll_and_score_like_triage_with_their_own_contract(self):
+        write_task(self.bank, "slang-pr-7-abcdef0", "review", timeout=100)
+        tasks = er.load_bank(self.bank, "review")
+        self.assertEqual([t.kind for t in tasks], ["review"])
+        dispatcher = FakeDispatcher(lambda task, repeat: self.write_answer(
+            task.id, repeat, {"summary": "Narrow change.", "findings": [{"file": "a.cpp", "line": 3, "comment": "Assert this."}],
+             "subsystem": "parser"}))
+        job = er.EvalJob(self.cfg(kind="review", repeats=1), tasks, dispatcher, er.Budget(300.0, lambda s: 0.5, 3.0),
+                         clock=self.clock, sleep=self.clock.sleep)
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.SCORED, 1.0))
+        prompt = dict(dispatcher.calls)["slang-pr-7-abcdef0#r1"]
+        self.assertIn('"summary" (string) and "findings"', prompt)
+        self.assertIn("/workspace/agent/eval/slang-pr-7-abcdef0/r1/answer.json", prompt)
+        self.assertNotIn("triage answer", prompt)
+
     def test_timeout_and_dispatch_failure_are_trial_states_not_crashes(self):
         write_task(self.bank, "slang-1", "triage", timeout=50)
         write_task(self.bank, "slang-2", "triage", timeout=50)

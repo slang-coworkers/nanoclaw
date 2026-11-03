@@ -103,10 +103,10 @@ DEFAULT_VERIFIER_TIMEOUT_SEC = 300
 # How long after the PR appears the runner waits for the fork's CI to report at least
 # one check run before calling the trial unknown.
 DEFAULT_CI_GRACE_SEC = 900
-FALLBACK_COST_USD = {"triage": 1.5, "fixer": 20.0, "reply": 1.5}
-DEFAULT_REPEATS = {"triage": 3, "fixer": 2, "reply": 3}
+FALLBACK_COST_USD = {"triage": 1.5, "fixer": 20.0, "reply": 1.5, "review": 3.0}
+DEFAULT_REPEATS = {"triage": 3, "fixer": 2, "reply": 3, "review": 2}
 # Kinds whose deliverable is an answer.json on the eval group mount, scored by the bank's verifier.
-FILE_KINDS = ("triage", "reply")
+FILE_KINDS = ("triage", "reply", "review")
 MAX_ATTEMPTS = 2
 # Below this many paired tasks a comparison is a smoke signal, not a result.
 SMOKE_SIGNAL_TASKS = 30
@@ -210,14 +210,14 @@ def task_kind(toml: dict, path: str) -> str:
     meta = toml.get("metadata") or {}
     for key in ("kind", "category"):
         v = str(meta.get(key) or "").lower()
-        if v in ("triage", "fixer", "reply"):
+        if v in ("triage", "fixer", "reply", "review"):
             return v
     tags = [str(t).lower() for t in (meta.get("tags") or [])]
-    for k in ("triage", "fixer", "reply"):
+    for k in ("triage", "fixer", "reply", "review"):
         if k in tags:
             return k
     parts = [p.lower() for p in path.split(os.sep)]
-    for k in ("triage", "fixer", "reply"):
+    for k in ("triage", "fixer", "reply", "review"):
         if k in parts:
             return k
     return "unknown"
@@ -298,6 +298,14 @@ def build_prompt(task: Task, repeat: int, fork: str) -> str:
             f"\"reply\" whose value is the Markdown text you would post. The file is the deliverable; do not "
             f"comment on, label or edit any GitHub issue, and do not message anyone. If you cannot answer, "
             f"write {{\"error\": \"<why>\"}} to the same path."
+        )
+    elif task.kind == "review":
+        contract = (
+            f"Evaluation trial id: {tid}.\n"
+            f"You are an evaluation copy. Write your review to {path} as one JSON object with exactly two keys: "
+            f"\"summary\" (string) and \"findings\" (list of objects with \"file\", \"line\" and \"comment\"). "
+            f"The file is the deliverable; do not post a review, comment on or label any pull request, and do not "
+            f"message anyone. If you cannot answer, write {{\"error\": \"<why>\"}} to the same path."
         )
     elif task.kind == "triage":
         contract = (
@@ -840,7 +848,7 @@ class EvalJob:
                     answer = None
             if answer is not None:
                 trial.answer = answer
-                if "error" in answer and not {"subsystem", "severity", "next_step", "labels", "reply"} & set(answer):
+                if "error" in answer and not {"subsystem", "severity", "next_step", "labels", "reply", "findings"} & set(answer):
                     self._finish(trial, ERROR, 0.0, f"agent reported: {str(answer.get('error'))[:200]}")
                     return True
                 answer_file = os.path.join(answer_dir(self.cfg.group_dir, task.id, trial.repeat), "answer.json")
@@ -1172,7 +1180,7 @@ def make_job_id(kind: str, variant: str, now: dt.datetime) -> str:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bank", required=True, help="checkout of slang-eval-tasks (MANIFEST.json at its root)")
-    p.add_argument("--kind", required=True, choices=["triage", "fixer", "reply"])
+    p.add_argument("--kind", required=True, choices=["triage", "fixer", "reply", "review"])
     p.add_argument("--group", required=True, help="agent group id of the eval coworker (ncl --group)")
     p.add_argument("--group-folder", help="the eval group's workspace folder (default: --group)")
     p.add_argument("--prod-groups-root", default=DEFAULT_PROD_GROUPS,
