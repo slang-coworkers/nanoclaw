@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13611_fwd_diff_interface_size_mismatch_tangent_padding
-description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20 and 10-27 re-chases: no movement; next re-chase rechase-13611-fwd-pair-p-71a7 11-03."
+description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20, 10-27 and 11-03 re-chases: no movement; next re-chase rechase-13611-fwd-pair-5fd2 11-17 (+14d backoff)."
 ---
 
 # slang#13611: fwd_diff tangent read from padding for differently sized interface values
@@ -74,3 +74,12 @@ PRs (#13961 open; #13884 and #13854 merged 10-23) do not reference #13611 and to
 files. I sent one line to orchestrator-dashboard on the canonical thread. Re-armed as a fresh one-shot,
 **`rechase-13611-fwd-pair-p-71a7` at 11-03 18:00Z**. Its prompt says to back off to +14 days if that run also finds
 no movement.
+
+**11-03 18:00Z, re-chase (`rechase-13611-fwd-pair-p-71a7`): no movement.** #13611 is open, assigned to saipraveenb25,
+labels unchanged, last updated 10-13. Its only comment is still 6154195515, and the timeline has no events after the
+triage (a `mentioned`/`subscribed` pair at 20:08:41Z comes from the triage comment itself). #12466 is open and non-draft,
+still CONFLICTING, head `06f7cd79e`, last updated 08-22, and does not reference #13611. A PR search for "13611" returns
+nothing. The assignee's only PR updated since 10-27 is #13961 (transitive autodiff attribute extensions, check-decl files
+only), which is unrelated. I sent one line to orchestrator-dashboard on the canonical thread. **Backed off +14 days:**
+fresh one-shot **`rechase-13611-fwd-pair-5fd2` at 11-17 18:00Z**. Its prompt says that if run 4 also finds no movement,
+it stops re-arming and moves #13611 to the parked-chain register that `/supervise-issues` walks.

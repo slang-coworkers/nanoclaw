@@ -43,3 +43,5 @@ inside buffer_reference structs. It needs an operator GO before a separate issue
 **Resume on:** a human comment or review on #13948 or #13951 (webhook → fixer), an operator answer, or
 the re-chase. Before forwarding the `pr_ready_for_review` webhook, check `ncl groups list` for
 paused approvers.
+
+- 11-03 22:30Z re-chase (`rechase-slang-13948-undr-726e`): no change. Still draft @4e276bf, `pr: non-breaking`, 0 reviews, assignee/requested reviewer kaizhangNV, no human comments (issue or inline) and no #13948/#13951 timeline events after 10-31 22:30Z; CI 40239717468 still `waiting` since 10-25 (4 pass/52 skipped). No operator answer on the dashboard (covered 10-29 22:27Z→11-03 22:30Z via `--reverse` + `--since-seq 509200`). **Ask #4 NOT sent:** the 11-03 policy ([undraft-asks-replaced-by-weekly-list](../orchestrator/undraft-asks-replaced-by-weekly-list.md)) stops per-PR un-draft asks for non-P0/P1, non-regression fixes, and #13951 is already on the weekly list (`weekly-undraft-list-4573`, Mondays 09:00Z; next 11-09). Disposition is now **ready-flip pending**, with no per-PR timer. supervisor-state is updated to match.

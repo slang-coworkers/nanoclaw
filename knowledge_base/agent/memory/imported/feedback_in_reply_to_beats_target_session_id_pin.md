@@ -65,3 +65,11 @@ on a different PR. Instead it landed in `yofko5`, which reported it couldn't aff
 `in_reply_to=2` (my webhook row) + `thread_id=…-14204`: a new session `irht3p` was opened on the right
 thread within 20 s. ⇒ **The rule applies to new-session delegations too, not only sibling pins.**
 Any send to the group that wrote this turn's inbound needs `in_reply_to=2` unless it is a direct reply.
+
+**2026-11-03, #14038: the webhook-turn variant.** The turn's inbound was a GitHub webhook, not the triager. My final
+`<message to="slang-triager" thread_id="gh-issue-shader-slang/slang-14038">` (row 31, 14:28Z) still never reached the
+owner session `0tqhaw`. It most likely went to the CLOSED one-shot task session `t-bb303f`, which sent the triager's
+last message (id 20) to me. A sibling hit the same thing on #14032 (relay → closed `t-87db0a`). Re-sent at 16:29Z with
+`target_session_id=<owner>` and `in_reply_to=26` (my webhook row): it landed as seq 48 within 1 s.
+⇒ **When a peer's last report came from a task session, every later send on that chain needs `in_reply_to=<my webhook
+row>` plus a pin to the owner session, even in a webhook turn.** Check the owner's `messages --reverse --limit 3`.

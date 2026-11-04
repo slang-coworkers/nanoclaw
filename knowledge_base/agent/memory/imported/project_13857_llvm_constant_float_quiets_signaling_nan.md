@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13857_llvm_constant_float_quiets_signaling_nan
-description: "HUMAN-OWNED, nothing dispatched (10-22 07:45Z). slang#13857 (albertrodriguezclo, external): LLVM targets quiet a signaling NaN float constant, because maybeEmitConstant passes a double to ILLVMBuilder::getConstantFloat and slang-llvm calls ConstantFP::get(type, double) (confirmed on master 653bfdeef4). Follow-up to #13845/#13846 (still open). The author offers to implement it and asks maintainers how to build and test an ILLVMBuilder change. Does not touch our #13816 chain. 10-22 22:25Z: maintainer juliusikkala answered the build questions on the issue (comment 6352657620, no bot mention); nothing for the bot. 10-25 07:00Z: author proposes a slang-llvm-only fix (no interface change) and asks whether CI builds slang-llvm from source; not a bot mention, not routed."
+description: "HUMAN-OWNED, nothing dispatched (10-22 07:45Z). slang#13857 (albertrodriguezclo, external): LLVM targets quiet a signaling NaN float constant, because maybeEmitConstant passes a double to ILLVMBuilder::getConstantFloat and slang-llvm calls ConstantFP::get(type, double) (confirmed on master 653bfdeef4). Follow-up to #13845/#13846 (still open). The author offers to implement it and asks maintainers how to build and test an ILLVMBuilder change. Does not touch our #13816 chain. 10-22 22:25Z: maintainer juliusikkala answered the build questions on the issue (comment 6352657620, no bot mention); nothing for the bot. 10-25 07:00Z: author proposes a slang-llvm-only fix (no interface change) and asks whether CI builds slang-llvm from source; not a bot mention, not routed. 11-03 12:42Z: juliusikkala confirms CI builds slang-llvm when its sources change and invites the PR; not routed. Author PR not yet open. 11-03 17:59Z: author will open the slang-llvm PR only after #13846 merges; #13846 has no human review since 10-21 and blocks our draft #13816 too."
 ---
 
 # slang#13857: LLVM targets quiet a signaling NaN in a `float` constant
@@ -50,6 +50,20 @@ and asks whether CI builds slang-llvm from source for a PR that touches `source/
 `true` and then configures with `USE_SYSTEM_LLVM` on an LLVM that CI builds or restores from cache (~line 255);
 Windows debug builds slang-llvm in release and feeds it in as `FETCH_BINARY` with a local URL. Only the linux wasm
 job (`ci.yml` ~203) and the macOS aarch64 release job (~277) set `build-llvm: false`. #13846 still open at 10-25.
+
+**11-03 12:42:37Z, maintainer reply** (comment 6604067967, juliusikkala; no bot mention, not routed): CI builds
+slang-llvm when its sources change, so the author can open the PR with a test. The CI question is closed. At that
+time #13846 was still open, and the author had a related open PR #13927 (NaN constants from bits in the GLSL, HLSL,
+Metal, C++ and CUDA emitters), which has no LLVM fix.
+
+**11-03 17:59:22Z, author reply** (comment 6611564273; no bot mention, not routed). The author is preparing the
+`getConstantFloat` change and test, but the test cannot pass without #13846, so they will open the slang-llvm PR
+only after #13846 merges (no stacking). They ask juliusikkala to look at #13846.
+
+**#13846 at 11-03 ~18:00Z:** open, not a draft, `mergeable_state: behind`, no requested reviewers (lujinwangnv was
+requested on 10-21 and is no longer listed), no human review (only github-actions[bot] on 10-21), last update 10-25.
+It also blocks our draft PR #13816: the bot's plan comment there (10-21 22:37Z) starts after #13846 lands.
+Flagged to the operator on 11-03.
 
 **Resume on:** a maintainer asking the bot to act on #13857, a `bot-ok` label, or the operator asking for
 the facts above to be posted.

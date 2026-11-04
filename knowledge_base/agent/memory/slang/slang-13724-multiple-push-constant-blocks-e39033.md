@@ -76,3 +76,17 @@ Parent chain: [[slangpy-1232-vulkan-module-push-constant.md]]. Branch `fix/issue
 - 10-27 15:04Z slang-triager re-check t-83bd76: no movement since 10-22, verified (rhi#810 untouched since 08-05, #915 last activity is our 10-21 edit, #12349 since 08-26, #1235/#1232
   unchanged). B/C has no open Slang tracker; #5685 (usage reflection) has been idle since 2025-05. Two operator decisions from 10-21/10-22 are still unanswered: (1) mark #810 ready + cross-link,
   (2) file the B/C Slang tracker, plus the 00292 narrow rhi PR. Next triager one-shot: t-0df978 on 11-03 15:00Z.
+- **11-03 15:02Z triager re-check t-0df978:** still parked; no maintainer action on #915/#1232. New facts (verified):
+  - **slang-rhi#810 DEADLINE 11-12.** skallweitNV (MEMBER, 10-29 cmt 6494506121) wants an owner and next step by Nov 12 or the draft closes. The bot (cmt 6495858611) merged main →
+    head `9f7cf2b`, re-verified on the L40S (the repro fails without the fix, passes with it), CI 27/27. kaizhangNV is assigned but hasn't confirmed. Under the 11-03 weekly-list policy (no per-PR un-draft asks), #810 went onto the
+    weekly list in supervisor-state with the deadline flag; `weekly-undraft-list-4573` fires Mon 11-09 09:00Z, before the deadline.
+  - jkwak-work on slang#9643 (10-30 cmt 6532465465) asked for `[vk::offset]` on EP uniforms as an interim fix → bot draft PR #14108 (another chain).
+- Decisions re-scoped on 11-03 under the new policies: (1) #810 → weekly list (no more asks from me); (2) narrow 00292 rhi PR → **parked filed-only** (2 unanswered asks;
+  a new fixer chain is the operator's call, low severity); (3) B/C Slang tracker → **the triager files it without asking** if it is deduped against #9643/#5685/#13713, or adds one #9643
+  comment if #9643 covers it. It also tests the #14108 `[vk::offset]` hypothesis on the #915 repro. Waiting for its report.
+- 11-03 15:17Z triager: **#14108 `[vk::offset]` tested** (head `f72fbf2cf`, own worktree `wt-14108`, rhi `b856e635`, L40S). Slang moves `k` to byte 16 in both SPIR-V and reflection, but
+  **rhi still gives wrong values** (`0 1 2 3`): rhi writes at 16+N and the shader reads N, and 00292/10069 still fire. With the opt-in, #915 becomes an **rhi-only** fix (base 0 per block + reflected
+  offsets + one merged range). Dedup: **covered by #9643 → #14108 + #5685; nothing filed** (#9643 cmt 6531861693 already names the single-compute shape). The B/C tracker question is CLOSED.
+  Told the triager to put the step-1 result on rhi#915 as an in-place edit of cmt 6320398694 (no new comment, no @-mentions, nothing on #14108/#9643).
+- 11-03 15:23:07Z triager edited rhi#915 cmt 6320398694 in place (verified: it has the 2026-11-03 section, links shader-slang/slang#14108, and the bare cross-repo refs are fixed). Upstream side is now **PARKED on maintainers**: jkwak-work on the #915 rhi fix, kaizhangNV + skallweitNV's 11-12 deadline on #810. Next triggers: weekly-undraft-list 11-09, triager t-e33937 11-10, webhooks.
+- 11-03 15:23:07Z triager edited rhi#915 cmt 6320398694 in place (verified: it has the 2026-11-03 section and links shader-slang/slang#14108; the bare cross-repo refs were fixed per the triager). Upstream side is now **PARKED on maintainers**: jkwak-work on the #915 rhi fix, kaizhangNV + skallweitNV's 11-12 deadline on #810. Next triggers: weekly-undraft-list 11-09, triager t-e33937 11-10, webhooks.

@@ -89,3 +89,31 @@ separate, real gap. Orchestrator receipt: `tint_CompileRequest` has only `wgslCo
 an issue, file it then. The 10-27 re-check stands.
 
 **2026-10-27 14:0xZ, re-check `recheck-13640-diag-surfa-f817`: no change.** #13640 OPEN (assignee jkwak-work; labels WebGPU, Office-Tess (added 10-21 22:24Z), reproduced); its last comment is still jkwak-work's 10-22 13:01Z questions. No meeting outcome has been posted. #13660 OPEN, non-draft, head 425771bcf8, `reviewDecision` empty; reviews are only from bots and the reporter. Its last activity is the reporter's CodeRabbit replies on 10-22 13:34Z/13:47Z. On 10-26 22:38Z, in a comment on #13693, the reporter asked for fork CI-run approval on about 45 of their PRs, #13660 included. That is not a decision. Nobody mentioned the bot. No dispatch, no post, not re-armed. The chain now resumes only on a webhook.
+
+**2026-11-03 17:57Z, reporter answered the maintainer** ([cmt 6611519703](https://github.com/shader-slang/slang/issues/13640#issuecomment-6611519703),
+no bot mention). The reporter confirms `-X` can't reach Tint today (`tint_CompileRequest` carries only `wgslCode`), calling it
+"fixable, but it would only cover Slang's own WGSL -> SPIR-V path". The browser's compiler (Tint/Naga via `createShaderModule`)
+has no command line. `--allow-non-uniform-derivatives` covers derivatives only. `diagnostic(...)` is WGSL-spec (not a pragma):
+the two triggering rules are spec-defined, and an unknown rule only warns, so filecheck tests are Tint-version-independent. There
+is still no meeting outcome. #13660 is OPEN with no human review (last update 10-28).
+**Disposition:** no post on #13640. The jkwak-work condition "If that's the case, we should fix it" is now met, so under
+[filing-verified-issues-policy](../orchestrator/filing-verified-issues-policy.md) I asked slang-triager to reproduce
+"`-X<tint>` arguments are silently dropped" on master, dedupe it, and file it as a separate bug (no @-mentions, no Fixes link).
+That work runs on thread `gh-issue-shader-slang/slang-13640`.
+
+**2026-11-03 18:04Z, side bug filed: [#14244](https://github.com/shader-slang/slang/issues/14244)** (slang-triager; I checked it
+live: nv-slang-bot, `reproduced`, Type=Bug, no @-mentions, no Fixes link). It is "`-Xtint` arguments are silently dropped".
+Repro on master 76a45e10c used a stub `libslang-tint.so` via `-tint-path` (Tint is only fetched for Windows x64), with
+`-target wgsl-spirv-asm`: bogus `-Xtint` options give rc=0 and identical output, while `-Xdxc`/`-Xnvrtc`/`-Xspirv-opt` reject
+them. A fix needs a new Slang↔slang-tint ABI plus a rebuilt prebuilt from the shader-slang/dawn fork (`slang-tint-0`).
+**Disposition:** low severity, **filed-only**, no fixer chain. Its suggested smaller first step is to report `-Xtint` args as ignored.
+Side findings: (1) `-Xglslang` is dropped silently under `-emit-spirv-via-glsl` (`slang-glslang-compiler.cpp:317-325`
+forwards `compilerSpecificArguments` only for SPIRV_OPT). It has an independent, simpler fix, so I asked the triager to dedupe it
+and file it **separately**. (2) `-target wgsl-spirv` aborts with E99997; this is already covered by the bot's draft PR #13402, so not filed.
+**2026-11-03 18:08Z, second side bug filed: [#14245](https://github.com/shader-slang/slang/issues/14245)** ("`-Xglslang`
+arguments are silently dropped with `-emit-spirv-via-glsl`"; slang-triager). Reproduced on master 76a45e10c: the output is
+identical with and without bogus/real `-Xglslang` flags, the Generator line proves glslang ran, and `-Xspirv-opt` with a bad flag
+gives rc=255. `glslang_CompileRequest_1_3` has no options field; it is built in-repo, so no prebuilt binary is involved. Prior art:
+closed #2552, cmt 1341622063, where a contributor says slang-glslang "doesn't honor any GLSLANG specific command line options";
+my earlier note calling #2552 "unrelated" was wrong. **Disposition:** low severity, filed-only, no fixer.
+Its `issue_opened` webhook reached Main on 11-03; no dispatch (owned here, filed-only).

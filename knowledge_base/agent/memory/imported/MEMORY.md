@@ -109,16 +109,17 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | [[index-project-6]] | `12356_default_value_blob_c_abi_gap` … `12428_bare_func_ref_silent_dropped_codegen` |
 | [[index-project-7]] | `12430_existential_static_requirement_ice` … `13492_throws_on_accessors_ctors_lambdas` |
 | [[index-project-8]] | `13496_unify_struct_class_parsing` … `13678_slangd_experimental_feature_setting` |
-| [[index-project-9]] | `13701_reopened_nested_namespace_scope` … `13858_ast_natural_layout_static_members_sizeof` |
-| [[index-project-10]] | `13859_metal_subword_byte_address_load_store` … `13944_target_desc_resets_session_fp_mode` |
-| [[index-project-11]] | `13946_metal_mesh_per_primitive_system_values` … `9085_glsl_samplecmp_takeover` |
-| [[index-project-12]] | `9146_glslang_stdlib_reexport_lto` … `docs_site_push_401_use_rest` |
-| [[index-project-13]] | `dup_pr_cross_instance` … `nanoclaw_1100_clamp_escalation_strip` |
-| [[index-project-14]] | `nanoclaw_1102_claude_trace_vendor` … `nanoclaw_1158_lease_claim_dropped_early` |
-| [[index-project-15]] | `nanoclaw_1159_deploy_validates_templates` … `nanoclaw_pr879_slangpy_approver_gap_severity` |
-| [[index-project-16]] | `nanoclaw_pr881_slangpy_approve_offline_launch` … `slangpy_1002_py314_wheels_abstain_policy` |
-| [[index-project-17]] | `slangpy_1014_scalar_layout_metal_vulkan` … `upstream_sync_incident` |
-| [[index-project-18]] | `workspace_deletion_incident` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
+| [[index-project-9]] | `13701_reopened_nested_namespace_scope` … `13853_target_ignore_capabilities_e36112` |
+| [[index-project-10]] | `13857_llvm_constant_float_quiets_signaling_nan` … `13924_wgsl_metal_fragment_return_semantic` |
+| [[index-project-11]] | `13931_sv_clipdistance_vector_form` … `14005_metal_unused_export_struct_param_addressspace` |
+| [[index-project-12]] | `14009_oversized_vector_matrix_lower_to_arrays` … `9146_glslang_stdlib_reexport_lto` |
+| [[index-project-13]] | `9153_public_by_default_structs` … `dup_pr_inadequate_existence_check` |
+| [[index-project-14]] | `fixer_restart_tripwire` … `nanoclaw_1102_claude_trace_vendor` |
+| [[index-project-15]] | `nanoclaw_1103_host_grant_ledger` … `nanoclaw_1159_deploy_validates_templates` |
+| [[index-project-16]] | `nanoclaw_1160_empty_state_torn_publish` … `nanoclaw_pr881_slangpy_approve_offline_launch` |
+| [[index-project-17]] | `nv_slang_bot_readonly_incident` … `slangpy_1014_scalar_layout_metal_vulkan` |
+| [[index-project-18]] | `slangpy_1040_ci_gpu_oom_peak_vram` … `upstream_sync_incident` |
+| [[index-project-19]] | `workspace_deletion_incident` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
 | [[index-technique]] | Reusable measurement/tooling procedures. |
 | [[index-reference]] | Pointers to external resources. |
 | [[index-command]] | Exact command invocations with their traps. |
@@ -153,3 +154,4 @@ the linked shards — were pruned, and the anchor prose was compressed to
 triggers, its derivations already living in the named leaves. Prior full-prose
 form: `MEMORY-full-archive-2026-08-05.md`.</sub>
 - [Search all Main sessions before denying a quoted Orchestrator instruction](feedback_check_all_main_sessions_before_denying_orchestrator_said_x.md) — sibling Main sessions dispatch in parallel (slangpy#1250, 2026-10-30)
+- [in_reply_to a closed task session loses the relay](feedback_in_reply_to_closed_task_session_loses_relay.md) — relay later comments to the owner session (pinned), never in_reply_to a system:tasks:* report

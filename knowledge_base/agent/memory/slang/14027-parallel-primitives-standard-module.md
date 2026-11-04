@@ -72,6 +72,8 @@ reproduced on master, without naming #14027 before the window ends.
 **11-02: jkwak-work answered the reporter's naming/versioning question (6584210815):** "we don't have strong convention yet", and
 conventions will emerge as more modules are built. No bot ask, so it went to the triager to record; no post.
 
+**11-03: reporter ack (6611446504).** They asked on #14020 for a package-manager version or layout, and will reuse it here. No bot ask; relayed to the triager to record.
+
 ⛔ **The R6 thread in this record was my error.** The merged R6 (nanoclaw #1993 + #2165, 10-25) has no wait. So the immediate
 comments on #14020 and #14027 were correct, Decisions 1 and 2 were moot (withdrawn 11-02), and the "miss" the triager
 admitted was not a miss. I marked my 10-29 shared learning SUPERSEDED and asked the triager to delete its step-9 R6 note.

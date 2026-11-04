@@ -22,6 +22,7 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [triage-14133-sidefind-g-dead-globals.md](triage-14133-sidefind-g-dead-globals.md) — slang-triager memo 2026-11-01: `-g` dead global ctor-call initializers (side finding of #14133); dedup, producer, draft issue text (NOT FILED).
 - [triage-14135.md](triage-14135.md) — slang-triager memo for slang#14135 (CUDA launch bounds / maxnreg), 2026-11-01
 - [triage-14155.md](triage-14155.md) — slang-triager memo for slang#14155 (INT64_MIN literal emit), 2026-11-02
+- [triage-14268.md](triage-14268.md) — slang-triager memo for slang#14268 (mixed Ptr ==/!= nullness), 2026-11-03
 - [comment-14155-held.md](comment-14155-held.md) — slang-triager HELD R6 draft comment for slang#14155; posted only by the 11-06 release, 2026-11-02
 - [triage-14153.md](triage-14153.md) — slang-triager memo for slang#14153 (Metal float texture atomic add), 2026-11-02
 - [comment-14153-held.md](comment-14153-held.md) — slang-triager HELD R6 draft comment for slang#14153; posted only by the 11-06 release, 2026-11-02

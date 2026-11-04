@@ -1,3 +1,7 @@
+---
+type: source
+description: "slang-triager draft PR comment for #14150: two regressions vs master (int-div helper; pure helper under -g) where isInlinableAtGlobalScope refuses the callee. Approved by Main 2026-11-03; verbatim."
+---
 Two cases compile on master (`6815ed82d`) but fail with this PR (head `d79256b0f`). In both, `isInlinableAtGlobalScope` refuses a callee because an instruction in its body returns true from `mightHaveSideEffects()`. The call then stays in a module-scope initializer. The enclosing array is a legal global constant, so `inlineGlobalConstantsForLegalization` does not move the call into a function.
 
 **1. Integer division in the helper (no `-g` needed).** Integer `/` and `%` with a non-literal divisor report side effects (`slang-ir.cpp`, `mightHaveSideEffects`).

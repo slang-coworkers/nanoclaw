@@ -39,3 +39,8 @@ stride sentence, so #14088 does not close this.
 
 Re-grep before acting on a grep miss: my first `grep 14086` ran before a sibling Main session wrote the
 #14086 line, so it found nothing.
+
+## Sibling: #14268 (11-03)
+
+Human-filed #14268 (mixed `Ptr` `==`/`!=` compares nullness) has the same root, `bool.__init(Ptr)`. Its
+option 3 (make Ptr→bool contextual-only) would fix #14086 too. See [[14268-mixed-ptr-equality-nullness.md]].

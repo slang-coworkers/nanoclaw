@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14038 — `a -= b` not synthesized from a user `operator-`
-description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z, same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z; awaiting maintainer A/B; triager re-check i14038-recheck-df24 2026-11-09 17:15Z.
+description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z, same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z. 11-03 skiminki-nv leaned to diagnostics (A), floated an opt-in `[AddCompoundOp]` attribute, labeled 'slang 202c', then asked tangent-vector; held for tangent-vector, no fixer handoff.
 tags: [operators, overload-resolution, diagnostics, feature-request, r6]
 ---
 
@@ -49,5 +49,48 @@ https://github.com/shader-slang/slang/issues/14038#issuecomment-6583399540. No l
 The triager re-ran the repro on master 6815ed82d and still gets E39999 (its finding). The operator did not answer the
 early-handoff question, so the issue was not handed to a fixer.
 
-**Next.** Maintainers choose A, B or not planned. The triager's one-shot `i14038-recheck-df24` runs 2026-11-09T17:15Z
-and posts nothing if nothing changed. Owner: slang-triager on thread `gh-issue-shader-slang/slang-14038`.
+**11-03 (verified on GitHub: labels `slang 202c` and `Office-Tess`, with comments at 14:26Z and right after it).**
+skiminki-nv wrote two comments; neither mentions the bot.
+- Comment 6606383191: *"right now the best cause of action would be to improve diagnostics"*. The comment doubts option B
+  ("easy to get into trouble with Slang's overload system, especially with generics") and floats an explicit opt-in
+  `[AddCompoundOp]` attribute on the binary operator. It ends "tagging this for 202c".
+- Comment 6606416494: *"@tangent-vector Do you have an opinion on this?"*
+
+That makes the direction not final, so I am holding. There is no fixer handoff and no bot post, as on #13793, where a
+maintainer-to-maintainer question went to tangent-vector. The diagnostic patch site (`slang-check-overload.cpp`)
+overlaps skiminki-nv's own 202c overload-resolution overhaul, #13956
+([record](../imported/project_13956_name_lookup_overload_resolution_overhaul_202c.md)). On #11829 the same maintainer
+closed a bot PR as "wrong direction".
+
+The 14:28Z relay to the triager was misrouted (see [the in_reply_to hazard](../imported/feedback_in_reply_to_beats_target_session_id_pin.md)). I re-sent it pinned at 16:29Z, and it landed as owner seq 48.
+
+**11-03 16:30Z.** The triager applied the hold and changed the prompt of `i14038-recheck-df24` (still 11-09 17:15Z, one-shot)
+so both comments, the labels and the assignments count as already seen. It acts only on a new skiminki-nv or
+tangent-vector comment, a mention of the bot, a `Fixes #14038` PR, or a no-bot-type label. The issue is
+**maintainer-assigned**: jhelferty-nv assigned skiminki-nv on 11-02, and skiminki-nv assigned tangent-vector on 11-03
+(triager's finding; I checked the assignees). A fixer handoff needs a maintainer to ask the bot, or the operator's approval.
+
+**11-03 17:50Z: the reporter takes on option A.** albertrodriguezclo (comment 6611378591) agrees that implicit synthesis
+is risky, says they will write the diagnostic PR (option A) themselves and link it, and will do the attribute after
+tangent-vector gives a view. They asked: one attribute per operator or one per family? I relayed this to the triager
+pinned (in_reply_to=68). The bot does no competing work. When the reporter's PR appears, the triager reads it and
+reports it, and does not post. 17:55Z: the triager confirmed report-only mode. `i14038-recheck-df24` (11-09 17:15Z) now also
+runs `gh pr list --author albertrodriguezclo` and notes any overlap with #13956.
+
+**11-03 18:09Z: the reporter opened PR #14246** (`fix/compound-assign-binary-op-note`, not a draft, references #14038). It adds note
+E40026 on a failed `x op= y` when `x = x op y` type-checks, covers all ten compound operators, and generic tests
+(comment 6611784073). Files: `slang-check-impl.h`, `slang-check-overload.cpp`, `slang-diagnostics.lua`, a new
+diagnostics test. I relayed it to the triager pinned (in_reply_to=80, my msg 91) for a report-only read against the
+memo's gates. During this turn `ncl sessions messages` timed out repeatedly, so I read the webhook row id from
+`/workspace/inbound.db` (`messages_in`, kind='webhook').
+
+**11-03 18:19Z.** The triager's report confirms delivery. Its read of #14246 at head b00c86d35 (+271/−1; diff read only, not
+built; these are its findings): the PR passes all three memo gates. It requires an exact LHS-type match rather than a
+conversion, and it builds a fresh probe with a temporary sink. The note also fires on the E30019 single-candidate path.
+Possible reviewer points, not posted: re-use of checked nodes in the probe, errors swallowed by the sink, a lua comment
+that says "converts" while the code needs an exact match, and literal `x`/`y` in the note text. It touches `ResolveInvoke`, which
+#13956 (still a proposal) would rework, so there is no conflict today. The prompt of `i14038-recheck-df24`
+(11-09 17:15Z) now follows the PR: merge or close, maintainer reviews, commits that change the gates.
+
+**Next.** Follow PR #14246 (human-owned; the bot does not review it) and wait for tangent-vector's view on the attribute. A reply comes in through the webhook. The triager's
+one-shot `i14038-recheck-df24` runs 2026-11-09T17:15Z, and I told it to treat the 11-03 comments as already seen. Owner: slang-triager on thread `gh-issue-shader-slang/slang-14038`.

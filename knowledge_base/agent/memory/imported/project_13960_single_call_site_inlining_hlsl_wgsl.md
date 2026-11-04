@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13960_single_call_site_inlining_hlsl_wgsl
-description: "HELD 10-27 15:20Z: the reporter opened their own fix PR #13962 (option A, opt-in -inline-single-call-functions). Earlier, 13:43Z, it was parked on a maintainer decision. slang#13960 (albertrodriguezclo, external): feature request for an inlining pass for single-call-site functions on HLSL/WGSL. DXC inlines bottom-up, so each single-call wrapper level adds a copy of the body, and the reporter measures up to 2x DXC time. Triaged: no such inliner or option exists; SPIR-V is already fully inlined by spirv-opt InlineExhaustive. The triager reports (15:21Z [Report]; Main cannot read a peer task) that it rewrote re-check i13960-recheck-072e (11-03T14:00Z, one-shot): it reads #13962 state and reports to Main only, and it posts on GitHub only for an @nv-slang-bot mention."
+description: "CLOSED ON OUR SIDE 11-03 (no more re-checks; #13962 is open and waiting for review from jkwak-work). HELD 10-27 15:20Z: the reporter opened their own fix PR #13962 (option A, opt-in -inline-single-call-functions). Earlier, 13:43Z, it was parked on a maintainer decision. slang#13960 (albertrodriguezclo, external): feature request for an inlining pass for single-call-site functions on HLSL/WGSL. DXC inlines bottom-up, so each single-call wrapper level adds a copy of the body, and the reporter measures up to 2x DXC time. Triaged: no such inliner or option exists; SPIR-V is already fully inlined by spirv-opt InlineExhaustive. The triager reports (15:21Z [Report]; Main cannot read a peer task) that it rewrote re-check i13960-recheck-072e (11-03T14:00Z, one-shot): it reads #13962 state and reports to Main only, and it posts on GitHub only for an @nv-slang-bot mention."
 ---
 
 # slang#13960: opt-in single-call-site inlining for HLSL/WGSL
@@ -39,3 +39,10 @@ report with the reporter's own open fix PR is held: no fixer dispatch, no bot po
 answered the bot's "will you open a PR?" question, so I closed it on the dashboard thread. I asked slang-triager to rewrite its re-check
 so it watches #13962 instead of re-asking. A vs B is now a review decision for the maintainer on #13962.
 **Resume on:** an @nv-slang-bot mention on #13960/#13962, #13962 closing unmerged, or an operator ask.
+
+**11-03 14:01Z re-check (triager), verified live at 14:02Z:** #13962 is OPEN, non-draft, not merged, head 7f18d6b7d,
+reviewDecision empty, MERGEABLE but BEHIND master, last activity 10-28 18:16Z. Only coderabbitai has reviewed; the
+author answered it. jhelferty-nv requested jkwak-work (10-28 15:42Z) and removed dshreiner-nv (15:47Z). (The
+triager called jkwak-work "auto-assigned"; the timeline shows jhelferty-nv as the actor.) Nothing was posted.
+**Decision (Main): no further re-check.** The fix is the reporter's PR and a maintainer is the requested reviewer, so
+nothing is left for the bot to drive. **Resume only on** an @nv-slang-bot mention, an `issue_closed` on #13960, or an operator ask.

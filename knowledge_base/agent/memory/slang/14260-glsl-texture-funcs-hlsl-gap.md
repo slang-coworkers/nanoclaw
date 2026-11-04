@@ -1,0 +1,74 @@
+---
+type: chain
+title: slang#14260 — GLSL texture functions do not all compile for HLSL (intrinsic-texture.slang HLSL lines disabled)
+description: Human bug (jkwak-work, self-filed + self-assigned) 11-03 21:46Z, from the #14215 work. TRIAGED 22:2xZ (cmt 6616981515; bug/medium/P2, Type=Bug). Idle on the assignee; fixer NO-GO. Split-offs #14271 (4-offset Gather) and #14272 (SM floors) are FILED-ONLY.
+tags: [glsl-module, texture, shadow-sampler, hlsl, capability-gate, test-infra, self-assigned]
+---
+
+# slang#14260 — GLSL texture functions → HLSL gap
+
+**11-03 21:46:35Z, `issue_opened`.** Live read: OPEN, author **jkwak-work**, assigned to jkwak-work by
+jkwak-work 2 s after filing, 0 labels, 0 comments, no PR.
+
+**Ask.** `tests/glsl-intrinsic/intrinsic-texture.slang` (`-lang glsl -target hlsl -DHLSL`) never compiled; its HLSL
+lines matched only `void TEST_main(` inside the error text. Author's per-clause inventory: (1) E36108, 29 clauses —
+shadow `textureGrad*`/`textureProjGrad*` and `shadow1D/2D*` are `[require(glsl_spirv, texture_shadowlod)]`, no hlsl
+arm; (2) E36104, 12 clauses — shadow `texture*` with `bias` need `sm_6_8` vs `sm_5_1`; (3) E41400 ~12 clauses —
+`textureQueryLod` static-asserts in compute (fragment not checked). HLSL lines disabled with a TODO naming #14260.
+
+**Related.** #9085 (merged 10-01, GLSL SampleCmpBias/Grad) and its bot draft follow-up **#13333**
+(`tests/glsl-intrinsic/texture-shadow-bias-hlsl.slang`, parked on ready-flip; [record](../imported/project_9085_glsl_samplecmp_takeover.md));
+#12244 (closed, capability naming). Siblings from the same #14215 work: [#14249](14249-glsl-subgroup-hlsl-cuda-gap.md),
+[#14257](14257-glsl-matrix-mul-metal-dup-13350.md), [#14248](14248-glsl-inverse-hlsl-other-targets.md) (held).
+
+**Disposition (Orchestrator 11-03 ~21:5xZ).** Bug class, same shape as #14249 -> slang-triager on
+`gh-issue-shader-slang/slang-14260`: verify the three classes on master, find HLSL equivalents (SampleCmpGrad sm_6_8,
+SampleCmpLevel sm_6_7, CalculateLevelOfDetail + compute derivatives), dedupe, post ONE triage comment (may offer a
+bot draft PR). No fixer: reporter self-assigned. Self-assignment precedent conflict still unresolved by the operator
+(see #14248 record).
+
+**Dispatched 11-03 21:52Z** as send_message id 3; triager session sess-1793742766161-gwve3b on the canonical thread.
+
+**Triaged 11-03 22:25Z** (triager comment on #14260): Bug; rows 1a/1b need compiler changes (widen `shadow*` gates;
+add HLSL `SampleCmpGrad` sm_6_8 to `textureGrad*`), rows 2/3 are test changes (SM 6.8); offers a draft PR on top of
+jkwak-work's PR #14269 if asked. Filed two bot follow-ups, **both owned by this chain (no dispatch on their webhooks)**:
+- **#14271** (22:24:43Z, `reproduced`) — HLSL four-offset `Gather`/`GatherCmp` emitted under names HLSL lacks
+  (component 0 must be `GatherRed`/`GatherCmpRed`; `hlsl.meta.slang` ~5110-5152). issue_opened webhook 11-03: no dispatch.
+- **#14272** (22:24:55Z, `reproduced`) — `SampleCmpLevel` / `CalculateLevelOfDetail` on a comparison sampler accepted
+  below the SM DXC needs.
+
+**Resume on:** triager `[Report]`; a human comment asking for a bot PR (-> slang-fixer, canonical thread).
+
+## 11-03 22:25Z — triager posted; bot-filed follow-ups #14271 / #14272 (no dispatch)
+
+The triager posted ONE triage comment on #14260 at 22:25:27Z: Bug; rows 1a/1b (shadow `shadow*` gates, shadow
+`textureGrad*` needs an HLSL `SampleCmpGrad` case) need compiler changes; rows 2/3 are test changes (HLSL lines at
+SM 6.8). It offers a draft PR for rows 1a, 1b, 2, 3 on top of **#14269** (the PR that disables the two HLSL lines), only if
+the assignee asks. It also filed two `reproduced` follow-ups 22:24Z, both bot-authored, unassigned, 0 comments:
+
+- **#14271**: HLSL `Gather`/`GatherCmp` with four offsets emit an overload that HLSL does not have (row 5).
+- **#14272**: HLSL `SampleCmpLevel` (SM 6.7) and `CalculateLevelOfDetail*` on a comparison sampler (SM 6.8) are
+  accepted from SM 4.1 (row 6). Proposes new HLSL-only atoms, the way `texture_shadowgrad` does it, and leaves
+  `texture_shadowlod` alone (#12244 pattern). Also covers the GLSL wrappers' `[require]`.
+
+**Both `issue_opened` webhooks need no dispatch.** They are this chain's own artifacts. A fixer for either is a NEW
+fixer chain, which goes to the operator or a human ask, not a Main dispatch. #14272 reached Main 11-03 ~22:25Z and I made no dispatch.
+
+**Resume on:** triager `[Report]` (still running at 22:25Z); a human comment on #14260/#14271/#14272 asking for a bot PR
+(-> slang-fixer, that issue's canonical thread).
+
+**11-03 22:26Z — triaged ([Report] msg 6, notes `/workspace/inbox/a2a-1793744815213-q45oo8/triage-14260.md`).**
+Comment 6616981515 (codex OUTPUT_REVIEW APPROVE r4); Type set to Bug, labels/assignee untouched. Verified on master
+f1cd35ff8 + DXC 1.9, 294 clauses x 2 stages. Rows: 1a 12 `shadow*` -> widen gate (callees already have hlsl);
+1b 17 shadow `textureGrad*` -> hlsl `SampleCmpGrad` arm, sm_6_8; 2 bias forms -> real sm_6_8 need (test change);
+3 `textureQueryLod` compute -> not a bug (passes at sm_6_6). Fragment stage: no E41400. Unfiled extra in the
+comment: shadow `textureLodOffset` drops `lod` on HLSL. Comment offers a bot draft PR (1a/1b + re-enable HLSL lines at
+sm_6_8, on top of jkwak-work's #14269 which adds the TODO). DXC also rejects 46 combined GetDimensions/Load clauses
+(dup #13737/#10522, our draft **#13741**).
+
+**Split-offs (bot-filed, this chain owns them; their `issue_opened` webhooks need no dispatch):**
+- **#14271** — HLSL 4-offset `Gather`/`GatherCmp` component 0 emitted under the plain name (DXC rejects; fix: `GatherRed`/`GatherCmpRed`, hlsl.meta.slang ~5110/5136). Triager recommended GO. **Orchestrator: FILED-ONLY** (11-03 22:3xZ) — low severity (downstream compile error, not silent), 8 slang-fixer sessions running; policy holds low-severity fan-out when shepherds are loaded. Dispatch when load drops or on a human ask.
+- **#14272** — `SampleCmpLevel` (needs SM 6.7) and comparison `CalculateLevelOfDetail` (6.8) accepted from SM 4.1. NO-GO: raising floors on public intrinsics is a behavior change; needs maintainer direction. FILED-ONLY.
+
+**Resume on:** jkwak-work asking for the offered bot PR (-> slang-fixer, canonical thread, base on #14269); a human
+comment on #14271/#14272; fixer capacity for #14271.

@@ -24,3 +24,4 @@ Chain record and current state: [[slang/13350-glsl-matrix-mul-wgsl-metal-gate.md
   comment, no rerun. 21:43: posted, cmt 6534088003.
 - **10-31 r7:** handled correctly, nothing else moved; 178 behind; master still has 69 gates. Dashboard seqs 507152–509671: no reply,
   and no Main session had told the dashboard about the expiry, so I sent a 5-bullet (no ask). Re-armed `rechase-13350-13355-r8-6fd2` for 11-07.
+- **11-03 21:29:** jkwak-work filed **#14257** (Metal only, self-assigned), a duplicate of #13350. Triager dispatched on `gh-issue-shader-slang/slang-14257` for one pointer comment; #13356 still parked, no push. Record: [14257](14257-glsl-matrix-mul-metal-dup-13350.md).

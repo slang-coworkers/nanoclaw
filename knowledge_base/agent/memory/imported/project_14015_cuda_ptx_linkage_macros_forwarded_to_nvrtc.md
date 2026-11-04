@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_14015_cuda_ptx_linkage_macros_forwarded_to_nvrtc
-description: "slang#14015 (albertrodriguezclo, human, filed 10-29 12:40Z): -D / preprocessorMacros given to Slang are also forwarded to NVRTC for PTX (slang-code-gen.cpp 'Add any preprocessor definitions associated with the linkage' TODO(JS)), so -D_WIN32=1 breaks NVRTC's builtin header (CUDART_CB → __stdcall). Dispatched to slang-triager on the canonical thread 10-29."
+description: "slang#14015 (human, 10-29): linkage -D macros forwarded to NVRTC/C++ downstream (slang-code-gen.cpp TODO(JS)), so -D_WIN32=1 breaks NVRTC builtin header. Triaged+reproduced (options A–E, comment 6497225816). PARKED awaiting_human; since 11-02 maintainer jkwak-work owns it (assigned, Q4 2026 milestone) — bot stands by, resume only on a maintainer comment."
 ---
 
 # slang#14015: linkage `-D` macros leak into NVRTC on PTX
@@ -38,3 +38,11 @@ generated front matter; fixes NVRTC, not CPU). Memo: `/workspace/inbox/a2a-17932
 (lane `sess-1793278464975-wz7wiz`, triager group). Operator told on orchestrator-dashboard 10-29 12:5xZ.
 
 **Resume on:** maintainer comment on #14015 (webhook), or the t-bf5d39 re-check.
+
+**11-03 12:0xZ — maintainer-owned; bot stands by.** Triager's t-bf5d39 re-check (their [Report], verified live by me):
+still open, only comment is our triage 6497225816, no option A–E chosen, no linked/cross-referenced PR. New since the
+park: jhelferty-nv assigned **jkwak-work** (11-02 18:17Z) and jkwak-work milestoned it **Q4 2026 (Fall)** (11-02 19:12Z).
+Decision (Main): no GitHub post, no @-nudge (the triage comment already lays out A–E and the maintainer has taken the
+issue), no fixer, no new timer. Stays `awaiting_human` in `supervisor-state.json` (the parked register supervise-issues
+walks). **Resume only on** a maintainer comment on #14015 (webhook) choosing an option or asking the bot to implement —
+then route to slang-fixer on `gh-issue-shader-slang/slang-14015`. A PR by jkwak-work closes the chain on our side.

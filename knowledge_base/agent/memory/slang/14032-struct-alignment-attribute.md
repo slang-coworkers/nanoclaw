@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14032 — struct alignment control (`[Align(N)]` / alignas) for pointer/CUDA/Metal layouts
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:14Z, cloth-sim batch. Triaged feature/medium/P2 (supersets #5873). PARKED for csyonghe design direction; parked 5-bullet posted 11-02 (6583572483); next re-check t-51299f 11-09 17:20Z. Adjacent CUDA pointee-layout bug authorized for filing 10-29.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:14Z, cloth-sim batch. Triaged feature/medium/P2 (supersets #5873). Human-owned since 11-02 (assignees jkwak-work + skiminki-nv, label Office-Yong); no fixer handoff unless asked. Parked 5-bullet 6583572483; re-check t-51299f 11-09 17:20Z. Adjacent CUDA pointee-layout bug authorized for filing 10-29.
 tags: [layout, cuda, metal, reflection, feature-request, r6]
 ---
 
@@ -64,3 +64,26 @@ and a CUDA-only `float2*` store workaround recovers the 64-bit stores. **The rep
   I relayed it verbatim to the triager's owner session (in_reply_to its msg 36). Whether to reply on GitHub is the triager's call.
   18:38Z triager: **no post**, because the comment is a concern rather than direction and is not addressed to the bot. codex OUTPUT_REVIEW rejected a per-target-capability draft as unasked and overclaimed.
   I confirmed that the newest comment is still jhelferty's. t-51299f (11-09 17:20Z) now uses baseline 6585033908. The checked per-target facts are in the triager's memory/issues/14032.md.
+- **11-03, skiminki-nv comment 6605977963.** A per-target summary of `alignas` equivalents, marked "(summary by Claude)":
+  - CUDA and Metal have `alignas` (and CUDA `__align__`).
+  - GLSL has `layout(align=N)`, on blocks and their members only.
+  - WGSL has `@align(N)`, on host-shareable struct members only.
+  - HLSL has none.
+  - SPIR-V Shader has `Offset` only; Kernel has `Alignment`.
+
+  It is informational, not direction, and is not an @mention. I relayed it verbatim to the triager (in_reply_to its msg 42).
+- **11-03 14:08Z skiminki-nv comment 6605977963.** It is a per-target `alignas` summary, informational. My 14:10Z relay used `in_reply_to` 42, the t-87db0a task's report, and was **lost** because that task session had closed.
+  16:29Z I re-sent it pinned to the owner `sess-1793293942921-jhfet7`; it landed as seq 44. Lesson: [../imported/feedback_in_reply_to_closed_task_session_loses_relay.md](../imported/feedback_in_reply_to_closed_task_session_loses_relay.md).
+- 16:31Z triager: **no post** on skiminki's summary. It found no conflict with the saved facts and noted `alignas(type)` as a possible 7th question, held internally.
+  ⚠️ **Human-owned since 11-02 18:26Z:** jhelferty-nv assigned **jkwak-work + skiminki-nv** and added label `Office-Yong`; the 11-02 re-check had missed this.
+  No fixer handoff unless an assignee or maintainer asks the bot. t-51299f (11-09 17:20Z) now uses baseline 6605977963 and carries the human-owned rule.
+- **11-03 17:52Z reporter comment 6611416291** narrows the ask:
+  - Alignment is raise-only, a power-of-two N, allowed on a struct type and on a member.
+  - CUDA/Metal/C++ emit `alignas`; GLSL/WGSL emit `align`/`@align` per member; SPIR-V gets offsets computed with the raised alignment; HLSL errors.
+  - Lowering alignment and `alignas(type)` are out of scope.
+  - The reporter offers a design note, then CUDA and Metal PRs, one per target. The question is addressed to the assignees.
+
+  I relayed it verbatim, pinned to the owner jhfet7 (in_reply_to my webhook row 76). The bot must not endorse the design or hand it off.
+- 18:03Z triager posted a **fact-only GLSL correction, 6611584817** (I checked: by the bot, latest comment). It says GLSL `align` works only on std140/std430 blocks and their members and does not change array stride.
+  So GLSL source output cannot carry the alignment into nested aligned-struct members or array strides. If the clear-error rule is chosen, it also covers those cases. No endorsement, no handoff.
+  t-51299f (11-09 17:20Z) uses baseline 6611416291 and skips the bot's own post; its PR branch also covers a reporter design note or per-target PRs.
