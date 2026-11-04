@@ -20,9 +20,12 @@ import type { ContainerConfig } from './container-config.js';
 import {
   EVAL_SANDBOX_GATE_CMD,
   EVAL_SANDBOX_GATE_MATCHER,
+  REVIEW_LENGTH_GATE_CMD,
+  REVIEW_LENGTH_GATE_MATCHER,
   buildMounts,
   ensureEvalSandboxGate,
   ensurePrDescriptionGate,
+  ensureReviewLengthGate,
 } from './container-runner.js';
 import type { AgentGroup, Session } from './types.js';
 
@@ -126,6 +129,30 @@ describe('overlay hook registration', () => {
     const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
     expect(count(hooks.PreToolUse, 'gate-eval-sandbox.sh')).toBe(1);
     expect(hooks.PreToolUse[0]).toMatchObject({ matcher: EVAL_SANDBOX_GATE_MATCHER });
+  });
+
+  it('registers gate-review-length.sh as a PreToolUse hook for every group, once', async () => {
+    // Self-scoped by the review-length marker, so every group carries it and only a
+    // group with the overlay has its review text capped.
+    let hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-review-length.sh')).toBe(1);
+    const entry = hooks.PreToolUse.find((e) => e.hooks?.some((h) => h.command?.includes('gate-review-length.sh')));
+    expect(entry?.matcher).toBe(REVIEW_LENGTH_GATE_MATCHER);
+    expect(entry?.matcher).toContain('mcp__github__submit_pending_pull_request_review');
+    expect(entry?.hooks?.[0].command).toBe(REVIEW_LENGTH_GATE_CMD);
+    hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-review-length.sh')).toBe(1);
+    hooks = await settingsAfterSpawn({ disable_overlays: 1 });
+    expect(count(hooks.PreToolUse, 'gate-review-length.sh')).toBe(1);
+  });
+
+  it('registers the review-length gate without the dashboard hook block, idempotently', () => {
+    fs.writeFileSync(settingsFile, '{}');
+    ensureReviewLengthGate(settingsFile);
+    ensureReviewLengthGate(settingsFile);
+    const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
+    expect(count(hooks.PreToolUse, 'gate-review-length.sh')).toBe(1);
+    expect(hooks.PreToolUse[0]).toMatchObject({ matcher: REVIEW_LENGTH_GATE_MATCHER });
   });
 
   it('is not registered when overlays are disabled for the group', async () => {
