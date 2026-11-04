@@ -319,6 +319,18 @@ class ResolveGroupTest(unittest.TestCase):
         self.assertEqual(er.resolve_group("ag-9", self.run_ok), ("ag-9", "ag-9"))
 
 
+class JudgeEnvTest(unittest.TestCase):
+    def test_verifier_gets_the_gateway_route_and_a_placeholder_token(self):
+        env = er.judge_env({"ANTHROPIC_BASE_URL": "http://127.0.0.1:37469"})
+        self.assertEqual(env["ANTHROPIC_BASE_URL"], "https://inference-api.nvidia.com")
+        self.assertEqual(env["ANTHROPIC_AUTH_TOKEN"], er.JUDGE_PLACEHOLDER_TOKEN)
+
+    def test_existing_credential_and_explicit_route_are_respected(self):
+        env = er.judge_env({"EVAL_JUDGE_BASE_URL": "https://gw.example", "ANTHROPIC_API_KEY": "k"})
+        self.assertEqual(env, {"ANTHROPIC_BASE_URL": "https://gw.example"})
+        self.assertEqual(er.judge_env({"EVAL_JUDGE_BASE_URL": ""}), {})
+
+
 class FreezeTest(unittest.TestCase):
     def test_model_resolution_never_reports_an_alias_as_an_id(self):
         env = {"ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-1-20250805", "ANTHROPIC_MODEL": "sonnet",

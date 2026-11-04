@@ -46,6 +46,7 @@ Both are committed. CI and the Dockerfile run `--frozen-lockfile` variants — a
 - **`tini` as init** — reaps Chromium zombies, forwards signals so in-flight `outbound.db` writes finalize on SIGTERM.
 - **`entrypoint.sh`** (extracted) — `exec bun run /app/src/index.ts` under tini. Readable and diffable.
 - **No compiled `/app/dist`** — Bun runs TS directly. The host mounts `container/agent-runner/src/` over `/app/src` at session start, read-only and shared by every group, so an edit there takes effect without rebuilding the image and reaches every group on its next container start. (A restart IS required — bun already has the old modules loaded.)
+- **Derived images follow the base, not automatically** — a group that ran `install_packages` is pinned to `nanoclaw-agent-v2-<slug>:<agent-group-id>`, built `FROM` the base at that moment and labelled `dev.nanoclaw.derived-from=<base id>`. A base rebuild leaves that pin and image in place, so the group keeps the previous agent-runner until the derived image is rebuilt. `pnpm run rebuild:derived-images` rebuilds every stale pinned image on the current base and re-points the tag without restarting anything (`-- --dry-run` reports FRESH/STALE/MISSING; `-- --force` rebuilds fresh ones too). Run it after every base rebuild on an install with derived images; `ncl groups restart --rebuild --id <id>` remains the one-group variant that also restarts.
 
 ## Session wake (two paths)
 
