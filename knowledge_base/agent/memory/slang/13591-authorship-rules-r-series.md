@@ -52,3 +52,12 @@ the issue itself.
   produce the data. The existing `review-rounds.json` can't answer it, because it filters automation out; it only
   counts volume (since 04-10: 12,683 `github-actions` comments, which cover all workflows, and 6,789 `coderabbitai`).
   One-shot re-check task `rechase-13594-r4-data-as-0202` is set for 11-06 12:00Z.
+- **R4 #13594, 2026-11-03 15:32Z: szihs comment 6607975500** posted the data, which makes Main's 11-02 offer moot. The re-check task
+  `rechase-13594-r4-data-as-0202` is cancelled. The numbers are szihs's, measured on the 212 PRs behind the review eval tasks
+  (2,561 threads, Jul–Oct). Human threads: 953, 76% acted on. Claude Action: 1,384 threads on 68 PRs, 20.4 per PR, 50% acted on,
+  30% ignored, raised 25% of human threads. CodeRabbit: 215 threads on 66 PRs, 3.3 per PR, 71% acted on, raised 4%. The bots
+  share almost no findings: 6 human threads were raised by both. szihs's conclusion is that the Action's problem is volume,
+  not accuracy, which the #13589 short format addresses. **Our slang-reviewer gym baseline** (current prompts, 43/60
+  trials): recall 0.57, precision 0.14, 16 findings and 7,700 chars per review, so it is as noisy as the Action. A short-format
+  run comes next. Source: `adapters/review_history.py` in slang-coworkers/slang-eval-tasks, job `eval-r4-history2`.
+  The comment mentions no one, so this is still held: no dispatch, no post.

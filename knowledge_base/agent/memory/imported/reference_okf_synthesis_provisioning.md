@@ -20,7 +20,7 @@ gap is closed, and a local edit to SKILL.md is **overwritten on re-provision** â
 10-15 run scanned 1,119 false NO-FRONTMATTER + 86 false DOSSIER (backlog 0 â†’ 1,765,478) and printed a false
 ESCALATE. The pre-#2039 tool is kept at `/workspace/agent/tools/okf_synth.py.before-2039` (it reads the same tree as
 0 offenders). Owner decision pending: upstream the fix, or normalize every leaf to a top-level `type:` line.
-Escalated once (dashboard msg 239, 10-15 12:11Z). No reply as of 11-03 00:00Z.
+Escalated once (dashboard msg 239, 10-15 12:11Z). No reply as of 11-04 00:00Z.
 
 **Interim run policy (from 10-15 18:00Z):** never fold the 1,118 NO-FRONTMATTER or the nested-type DOSSIERs (all are
 dialect false positives). Each run, also run `tools/okf_synth.py.before-2039 scan`; fold only what it lists
@@ -35,7 +35,7 @@ and is not `okf_synth: exempt`. The 21 original real dossiers were all folded by
 - Siblings may still be writing the file: snapshot it, and swap in the split only after an md5 check against the snapshot.
   If a write landed mid-split, merge it first (10-30 #14055, 10-31 #13350).
 - Neither tool flags folder `index.md` size, but `slang/index.md` reached ~79 KB on 11-01 because re-chase prompts append history into
-  index rows. Trims hold every entry at <= 450 B (~70 KB at 11-02 18:00Z, from new chains) (one state line + link), so it has
+  index rows. Trims hold every entry at <= 450 B (~83 KB at 11-04 00:00Z, from new chains) (one state line + link), so it has
   no slack left: from here its size tracks the number of chains, and only an entry that regrows past ~450 B is a target. Trim rows to one state line + a link once the detail is in the record, and point a re-chase prompt's
   "History:" at the chain record, never at an index.
 - Verbatim raw memos >= 12 KB that are `resource:` targets (`slang/raw/`) get `type: source` + `okf_synth: exempt`, not a split;

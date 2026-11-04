@@ -93,3 +93,10 @@ spec-const-derived `static const` (pre-existing, **not filed**).
 `recheck-14049-maintainer-a085` 11-03 14:00Z. Operator told on orchestrator-dashboard 10-30 00:4xZ.
 
 **Resume on:** maintainer review/comment (webhook); triager [Triage Resolution]; timers; maintainer comment on #14030 (webhook); t-3605ec.
+
+**11-03 14:00Z re-check (`recheck-14049-maintainer-a085`), live:** no human activity on #14049 or #14030 since 10-30 00:44Z. Still a draft at
+head d73c1ea6d, 0 reviews, kaizhangNV still assigned and review-requested, checks 5 SUCCESS / 53 SKIPPED. mergeStateStatus BEHIND
+(31 commits behind master), but MERGEABLE, so no merge-master dispatch. Master's top code in the block is still 55218, so E55222/E55223
+do not collide. **Ready-flip pending** (weekly list; no per-PR un-draft ask). On orchestrator-dashboard (msg 7) I asked the operator
+whether to ping kaizhangNV. **Final** one-shot `recheck-14049-maintainer-2` runs 11-10 14:00Z; after that, no more timers, and the chain goes
+on the /supervise-issues parked register.

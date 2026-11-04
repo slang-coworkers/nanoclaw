@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14103 — IGlobalSession::parseCommandLineArguments returns SLANG_OK for invalid arguments
-description: "Human bug (pdeayton-nv, `bot-ok`): invalid argv still parsed OK. PR #14111 (CommandLineParsePurpose redesign) un-drafted 11-02, R4 APPROVE + capability test @cd923c72da; PARKED on pdeayton-nv's review; slangc follow-up #14195 (jkwak-work, no dispatch)."
+description: "Human bug (pdeayton-nv, `bot-ok`): invalid argv still parsed OK. TERMINAL: PR #14111 (CommandLineParsePurpose redesign) merged 11-03 21:05Z as f1cd35ff8, #14103 closed completed; slangc follow-up #14195 (jkwak-work, no dispatch) still open."
 tags: [slang, api, command-line]
 ---
 
@@ -12,20 +12,16 @@ tags: [slang, api, command-line]
 returned `SLANG_OK`, with the diagnostics sent to a temp sink the caller never sees. Dated history (dispatch → un-draft,
 SHAs, comment ids, review inboxes): [[slang/14103-history-triage-to-ready.md]] — **new dated entries append there**, not here.
 
-## Current state (11-02 21:1xZ)
+## Current state (TERMINAL, verified 11-04 01:16Z)
 
 | | |
 |---|---|
-| Issue | #14103 OPEN, reporter + assignee pdeayton-nv (MEMBER); triage cmt 6533041941 (`reproduced`, Bug, P2); live artifact cmt 6533791303 ("Blocker: None"); thread `gh-issue-shader-slang/slang-14103` |
-| PR | **#14111 READY** (un-drafted by pdeayton-nv 11-02 19:21:56Z) @`cd923c72da`, `fix/issue-14103`, `pr: non-breaking`, 11 files +1362/−440; mergeStateStatus BLOCKED (no review) |
-| Owner | slang-fixer `sess-1793395338785-cyyd6y` (parent edge = slang-triager; `report_pr_created` mapping) |
-| Reviews | R1 REQUEST_CHANGES @8c2926c · R2 APPROVE @27a627a (superseded by the redesign) · R3 REQUEST_CHANGES @4972b71 · **R4 APPROVE @4161c93**; the last commit is test-only (no extra round, by agreement) |
-| CI | full run after un-draft: 56 pass / 0 fail / 2 pending at 21:1xZ; CI webhooks route to the fixer |
-| Approver | paused → `ready_for_review` queued in `data/approver-pause-queue.md`, not forwarded ([pause note](../pr-approvers-paused.md)) |
-| Follow-up | #14195 (slangc: report target options given before several targets with E00045; may be `pr: breaking change`), filed by the fixer at the maintainer's request; jkwak-work self-assigned → a bot fix needs that maintainer's explicit go-ahead. No dispatch |
-| Timer | Main one-shot `recheck-14111-ready-af0a`, 2026-11-04T01:15Z (waits on pdeayton-nv's review + CI) |
-
-**PARKED on pdeayton-nv's GitHub review.** No open questions remain. Resumes on a #14111 webhook or the 11-04 one-shot.
+| Issue | #14103 **CLOSED (completed)** 11-03 21:05:21Z; triage cmt 6533041941; thread `gh-issue-shader-slang/slang-14103` |
+| PR | **#14111 MERGED** by pdeayton-nv 11-03 21:05:19Z as `f1cd35ff8` (head `cd923c72da`), after three merge-queue evictions caused by infra; final checks 68 pass / 54 skipped / 0 fail |
+| Owner | slang-fixer `sess-1793395338785-cyyd6y`. Its `[Fix]` close-out (row 79, 21:07Z) reports worktrees `wt-slang-14103` + `-base` and the `active-work/slang-14103` sentinel removed. No GitHub close-out comment; the merged PR and the closed issue are the terminal artifact |
+| Approver | the queued `ready_for_review` in `data/approver-pause-queue.md` is marked MERGED, so it is not dispatched on unpause |
+| Follow-up | #14195 (slangc E00045 before several targets; may be `pr: breaking change`), jkwak-work self-assigned. A bot fix needs that maintainer's explicit go-ahead. No dispatch |
+| Timer | none. The one-shot `recheck-14111-ready-af0a` fired 11-04 01:15Z and found the chain merged |
 
 ## The fix (what cd923c72da does)
 
@@ -56,3 +52,5 @@ SHAs, comment ids, review inboxes): [[slang/14103-history-triage-to-ready.md]] �
   instruction). Conversely, two back-to-back bot comments mean the second should have been an edit.
 - **An ask that no test can fail is dead code** — my FG006 instruction stopped being reachable once E00045 was session-only.
 - A triage "no behavior change" table can miss masked breaks; the fixer's full suite found three.
+- **11-03:** pdeayton-nv queued #14111 at 02:22Z. It was evicted at 03:43Z with `failed_checks` because a Windows GPU runner lost its connection (job 125692432093). That is infra, not the PR. The fixer posted a no-mention explanation (cmt 6598550596). Next: a human re-queues it.
+- **TERMINAL 11-03 21:05Z:** pdeayton-nv merged #14111 (`f1cd35ff8`) after three infra evictions, and #14103 closed as completed. The fixer cleaned up its worktrees. Follow-up #14195 (slangc E00045) is still open.

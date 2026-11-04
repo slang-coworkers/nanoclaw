@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13330 — array-of-struct shader IO field crashes SPIR-V/GLSL
-description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD (reporter co-assigned); operator 3-way ask unanswered since 10-13; default hold applied 10-20; next check 11-03
+description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD; external user binaryfire working on a fix since 10-28; PARKED indefinitely 11-03 (no re-checks; webhooks only)
 tags: [slang, spirv, glsl, varying-legalization, parked]
 resource: /workspace/inbox/a2a-1790714475432-85ez5y/triage-13330.md
 ---
@@ -92,3 +92,16 @@ reply on GitHub: the comment asks the bot nothing, and the triage comment alread
 including the GS/hull `Flavor::array` caveat. The 3-way operator ask is moot for #13330; #13427 is unaffected.
 `rechase-13330-fifth-e954` (11-03 21:00Z) was rewritten. A human PR, or silence, parks the chain for good. Only
 bot-ok, an explicit ask, or both contributors declining releases the fixer.
+
+**Re-chase 5 (2026-11-03T21:00Z, `rechase-13330-fifth-e954`): nothing new (case e), so the chain is PARKED indefinitely.** No re-check is
+scheduled, and webhooks deliver any new comment. GitHub (read at about 21:02Z): there are still only 2 comments (the triage comment and
+binaryfire's 6475208532), and nothing on the timeline after 10-28 16:54Z. Labels: `GLSL`, `reproduced`, `SPIR-V`, with no `bot-ok`. Assignees are
+still georgeouzou and jhelferty-nv. No PR references #13330: a search for "13330" finds only the unrelated #11772. binaryfire has no PRs on the repo;
+georgeouzou's only PR, #13078, is merged. Dashboard rows 507394 to 510580 (10-22 17:03Z to 11-03 20:31Z) mention 13330 only in my own 10-28
+stand-down report (seq 508644), and there is no operator instruction about it. The fixer stays HELD and was not messaged. I sent ONE line to
+`orchestrator-dashboard` (thread `gh-issue-shader-slang/slang-13330`).
+**Open point, flagged to the operator once and not acted on:** szihs's 11-02 #13596 rule says the bot stands down only on an explicit
+request (see [R6 record](../imported/project_13591_ai_contributor_standards_batch.md)). binaryfire's "investigating a fix" is not such a
+request, so the 10-28 stand-down rests on the older competing-PR judgement. A one-word operator release is enough to restart it. Otherwise it waits for
+case (b)/(c)/(d) via webhook. **To release:** send slang-fixer the A+B1 go-ahead on thread `gh-issue-shader-slang/slang-13330`, quoting the authorizing human.
+

@@ -106,3 +106,10 @@ pattern. Nothing more to file from this chain.
 Main post was made. A fixer chain for #14181 still needs the operator.
 **#14178 ready_for_review webhook 11-02 (synchronize, head eb8906fb; Orchestrator).** Not forwarded: slang-pr-approver is
 paused. Queued in `data/approver-pause-queue.md` with the triager's two gaps. jkwak-work APPROVED; CI 57 pass / 0 fail.
+**#14181 maintainer direction 11-03 15:07Z** ([comment](https://github.com/shader-slang/slang/issues/14181#issuecomment-6607371225), tangent-vector):
+*"I believe we never intended for existentials to be allowed to have an any-value size below 16. I would propose that we
+diagnose a warning when a declared any-value size is <16 and tell the user it will always be rounded up to at least 16
+bytes. Then in layout computation we should do just that."* The comment does not mention the bot. jkwak-work self-assigned
+the issue and set milestone Q1 2027 (11-02 18:29Z), so it is **maintainer-driving**: no bot post, no fixer. Main withdrew
+the #14181 fixer go/no-go from the operator list (supervisor-state updated). Re-engage only if jkwak-work, tangent-vector
+or the operator asks the bot.

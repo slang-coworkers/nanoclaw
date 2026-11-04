@@ -21,7 +21,7 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
   repo (`payload3r.json`), re-scan.
 
-- **`payload3.json` `chains` is a dict keyed by thread** (no `key` field; `sessions` is a list of ids) — build `lo-cache.json` as `{thread:{ts:our_last_outbound,text:last_outbound_text,sess:sessions}}`.
+- **`payload3.json` `chains` is a dict keyed by thread** (no `key` field; `sessions` is a list of ids) — build `lo-cache.json` as `{thread:{ts:our_last_outbound,text:last_outbound_text,sess:sessions}}`. Include **every** chain, also those with `ts: null` — `pull.sh:594` reuses an entry only on a key hit, so dropping the null ones turns ~1,300 chains into `ncl` cache misses (tick 324 caught it before launch).
 - **The mid-tick `ncl sessions list` re-list can come back empty** (0-byte stdout, exit 0) — `moved.py` then dies on `json.load`. Retry until the file is non-empty (tick 307).
 - **`ncl sessions messages` truncates every row to 300 chars unless `--full` is passed** — hold reasons and operator asks get cut mid-sentence. `tick305/msgs.py` passes `--full`. Any `ncl` call made while `pull.sh` is running fails with `database is locked`; do GitHub-only checks (auto-merge sweep, closed-since) during the pull instead (tick 305).
 - **Relayed posts in the dashboard session are stored cut to ~500 chars even with `--full`** (tick 319: the 08:44Z maintainer relay ended mid-sentence). Find the sending Main session by `last_active` near the post time and read its own `out` row with `--full`.
@@ -78,5 +78,6 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
 - **The payload since tick 280 omits `kind`/`idle_days`.** Without them only closed/merged trees are reaped (12 at tick
   290); with them (`kind` from the `wt-<repo>[-pr]-<n>` name, `idle_days` from dir/build mtimes) scratch trees idle > 2 d
   go too (45). Open question: decide once which input is right before comparing tick-to-tick counts.
+- **Read the free-space trend from a tier's `.worktree-gc/history.log`, not one `df`** (tick 324: 681→232 GB in 12 h, 9.4% at 00:07Z, 313 GB at 00:2xZ; every tier reaped 0). The tier GC only covers the six prod tiers: `eval-slang-*` groups have no worktree-gc task, and `eval-slang-reviewer` alone held 328 GB. `du -sh prod-groups/*` names the consumer; that goes to the operator, since the supervisor never reaps.
 - Common REAP shape: merged-PR reviewer worktrees (`wt-<pr>-verify/-revA/-base/-master`), owned by the reviewer
   session on the chain whose `pr.number` matches (or the `slang-ci-nightly-*` thread for nightly-PR chains).

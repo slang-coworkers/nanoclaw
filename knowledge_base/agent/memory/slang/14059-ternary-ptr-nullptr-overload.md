@@ -49,3 +49,15 @@ jkwak-work has ≥100 open assigned issues, so Main reads this as triage routing
 ownership, and agrees with the triager: proceed. **The stand-down trigger is jkwak-work (or
 the reporter) saying they will fix it** — a comment, a self-authored PR, or a request to the bot.
 Next: the fixer opens a draft PR, which jkwak-work reviews.
+
+**Draft PR #14219 (11-03 ~01:08Z; resolution reported 03:07Z).** `fix/issue-14059`, head 5ab02f8,
+8 files +317/−21, `pr: non-breaking`. The PR mapping goes to fixer `sess-1793657061973-qcgux1`
+(verified). It adds the Ptr⊕NullPtr arm in `TryJoinTypes`. A second commit, wider than the
+brief, makes the C++/CUDA emit `_slang_select<T>`, because clang/nvrtc rejected
+`select(c,p,nullptr)`; master fails the same way with `(int*)nullptr`. slang-reviewer R1
+APPROVE_WITH_NITS; its nits and the negative test `ternary-nullptr-negative-14059.slang` are
+applied. Tests (fixer-reported): 13/13 new tests pass on cpu/cuda/vk; `pointer/`+`enums/`
+105/105; the full suite fails only on the pre-existing `fp8-cuda*` tests. Live CI on the draft:
+5 SUCCESS, 53 SKIPPED. Issue comment 6592746132 is updated. **RESTING on jkwak-work**
+(review + ready flip; the bot cannot flip it). Out of scope: Optional/`none` (#6020 area), and
+HLSL/WGSL, which still stop at #13632.

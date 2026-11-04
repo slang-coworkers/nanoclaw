@@ -124,6 +124,14 @@ pinned nudge acked in under a minute.
     but its `isTextureAccess` check includes `RWBuffer`. The fixer's 14-probe matrix corrected me in 3 min, and the
     parent deferred to #14170 at 12:21Z.
 
+17. **The operator's Continue is recorded but never takes** (tick 324, #13685 fixer `yiuh5a`). The dashboard Continue at
+    11-03 11:24Z (and a second `cost_override` row at 18:11Z) set the ledger episode `cst-ioav1ri` to `continued`, but
+    `ncl cost-cap status --session` still read `stopped` with the old $300 ceiling, and the trace had no model request
+    since 10-30 04:00Z. The same 11:24Z press on `yofko5` did take (ceiling → $496.77), so tick 323 recorded the batch
+    as done. Detector: for every row of `ncl cost-cap stopped`, read `ncl cost-cap escalations --group <folder>`; a
+    `continued` episode on a session that is still `stopped` means the Continue failed. Board it as an operator call
+    (`set-ceiling` or a session restart); don't press it again from here.
+
 Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
 finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
 `prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned

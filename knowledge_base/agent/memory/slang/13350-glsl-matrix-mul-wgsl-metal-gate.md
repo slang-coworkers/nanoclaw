@@ -16,6 +16,7 @@ update only the state table below in this file.
 | PR **#13356** | OPEN draft, fix/issue-13350 @ 39e7f04 (+101/−8, 2 files), 2 ahead / 178 behind, MERGEABLE. Review requested from jhelferty-nv; 0 reviews, no human comments. Checks 5 pass / 56 skipping. Last comment: our status cmt 6534088003 | **parked for jhelferty-nv**: no push, no rerun, no re-dispatch |
 | CI run 36780286138 | `completed/failure` 10-30 21:34:36Z (falcor-ci 30-day env wait expired; no build steps) | not a code fault |
 | #13355 (62 gated builtins) | bot-filed, assigned jkwak-work by jhelferty-nv 10-05, Q4 2026, 0 comments, no competing PR | **HOLD** |
+| #14257 (dup, Metal only) | jkwak-work self-filed + self-assigned 11-03 21:29Z; same 7 gates. Triager posts a pointer to #13350/#13356 ([record](14257-glsl-matrix-mul-metal-dup-13350.md)) | no fixer; a maintainer ask for #13356 → slang-fixer on this chain's thread |
 | #13359 (`filecheck=A,B`) | assigned jkwak-work, last human cmt 6026415243, our reply 6026863543 | **HOLD** |
 
 - Master `glsl.meta.slang` still has 69 `cpp_cuda_glsl_hlsl_spirv_llvm` gates (r7), so #13356 is not superseded.

@@ -63,3 +63,12 @@ dashboard" line in the chain record. On #14200 this caused a duplicate dashboard
 **Before sending an owed report, read the last ~10 rows of the dashboard session**
 (`ncl sessions messages sess-1776713576150-9fon2n --reverse --json --limit 10`). After sending, mark the
 owed item closed in the chain record **with the seq**, so the next session can see it was delivered.
+
+## The turn-start grep can miss a record a sibling writes moments later (2026-11-03, #14261)
+
+The #14251 fixer filed four follow-ups (#14261–#14264) at once. Each `issue_opened` webhook minted its own Main
+session, and the Main session that received the fixer's `[Report]` decided all four together. My turn-start
+`grep -rl 14261 memory/slang/` returned nothing at ~21:49Z, but the sibling wrote `14261-*.md` (filed-only,
+"siblings must NOT dispatch") at 21:50Z. I had already drafted a fixer dispatch, and I saw the record only
+because I happened to read `slang/index.md` again. ⇒ **When an issue is one of a batch a coworker has just
+filed, run `ls memory/slang/<N>-*` again immediately before sending any dispatch.**

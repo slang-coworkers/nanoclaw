@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang-rhi#961 — Metal/CUDA dispatch with a host-chosen thread-group size, or a partial last group (dispatchThreads)
-description: Human-filed (albertrodriguezclo) feature request 2026-11-01 19:28:28Z, cloth-sim porting batch. Host-side companion of slang#14136. Triaged 11-01 feature/medium/P2, both claims confirmed (rec A: one appended args-struct dispatch method). PARKED on slang-rhi maintainer API direction under R6 (to 2026-11-05 19:28:28Z); triager one-shot t-b6e981 11-05 19:30Z posts the held draft.
+description: Human-filed (albertrodriguezclo) feature request 2026-11-01 19:28:28Z, cloth-sim porting batch. Host-side companion of slang#14136. Triaged 11-01 feature/medium/P2, both claims confirmed (rec A: one appended args-struct dispatch method). PARKED on slang-rhi maintainer API direction (assignee jkwak-work); triager one-shot t-b6e981 11-05 19:30Z posts the held draft. Side bug slang#14143 is maintainer-owned (jkwak-work, Q1 2027) since 11-02; fixer ask withdrawn 11-03.
 resource: https://github.com/shader-slang/slang-rhi/issues/961
 tags: [slang-rhi, metal, cuda, dispatch, feature-request, r6]
 ---
@@ -54,7 +54,7 @@ the GitHub state (0 comments, Type=Feature set by the bot 19:46:56Z, no labels) 
   resolve at finish(). The SPIR-V is identical on both paths, but slang still reports `getSpecializationParamCount()=1` after
   `findAndCheckEntryPoint("k<777>")`, so rhi treats the program as specializable. 20:11Z filed as bot **slang#14143** (Type=Bug, `reproduced`, does not
   name #961); its issue_opened webhook needed no dispatch (this chain owns it). Fixer chain + rhi-hardening filing asked
-  on the dashboard ~20:15Z; re-check `recheck-14143-fixer-deci-c5df` 11-03 16:00Z.
+  on the dashboard ~20:15Z; 11-03 re-check: jkwak-work self-assigned #14143, fixer ask withdrawn (see below).
   **20:12Z: filed as bot issue slang#14143** (Type=Bug, `reproduced`, 0 comments; I verified that it does not name #961 and
   @-mentions no one). The triager reproduced it with a standalone Slang API program at v2026.17.1 and master 6815ed82d:
   `findAndCheckEntryPoint("f<777>")` gives specialized code but `getSpecializationParamCount()==1`. slang-rhi then builds a
@@ -64,6 +64,13 @@ the GitHub state (0 comments, Type=Feature set by the bot 19:46:56Z, no labels) 
   (asked 11-01 20:15Z): a fixer chain for #14143, and a separate slang-rhi hardening issue (reject a still-specializable
   program after specialization). My one-shot `recheck-14143-fixer-deci-c5df` runs 11-03 16:00Z. The repro is in the triager's
   `scratch-961/specparam/`.
+
+**11-03 16:00Z re-check (`recheck-14143-fixer-deci-c5df`).** No operator answer in the dashboard session (seq 509402–510522, 10-30 → 11-03 15:46Z;
+the only #14143 row is my 20:14Z ask). GitHub: on 11-02 jkwak-work **self-assigned #14143** (18:54:59Z) and set the milestone
+**Q1 2027 (Winter)** (18:55:10Z). They are also the assignee of slang-rhi#961, which still has 0 comments. #14143 has 0 comments and no PR names it.
+Sent to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-14143`): **fixer go/no-go withdrawn** (maintainer-owned, as with the
+#14181 precedent). The **rhi-hardening filing stays an open file/skip question**; with no reply it stays unfiled. **No further timer.**
+The R6 hold is retired (Core Memory, 11-02), so a hardening filing may name #961.
 
 **Next.** At t-b6e981 (11-05 19:30Z): post the draft, or reply to a human comment. A slang-rhi maintainer picks A/B/C
 and the names. No fixer chain and no SlangPy issue without the operator's go-ahead. The SlangPy recommendation

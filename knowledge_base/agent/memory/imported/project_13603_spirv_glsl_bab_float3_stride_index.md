@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13603_spirv_glsl_bab_float3_stride_index
-description: "slang#13603 (bot-filed 10-13 15:18Z by slang-fixer while applying #11803 R2 nits): on SPIR-V/GLSL, plain ByteAddressBuffer Load<float3>/Store<float3> at a non-zero multiple of 12 index the stride-16 v3float alias by offset/12 -> wrong bytes, silent. Pre-existing on master, separate from #11803, sibling of closed #9931. Owned by the #11545 chain; NO fixer dispatched. 10-15: operator asked for triage; Main found the struct-member/immediate-offset case is a REGRESSION since v2026.11 (#11430 by code trace), slang-triager posted it 11:51Z (issuecomment-6191375234, labels regression+reproduced, Type Bug, #11430 confirmed by build bisect); r1 (10-20) found it still quiet and asked the operator dispatch/wait/ping; r2 (10-27) no answer, #11803 merged 10-22 without fixing it, re-verified on master 9a4817c881; r3 rechase-slang-13603-r3-6781 11-03 15:00Z is the LAST (R11 3/3). The 10-13 recurring gate is gone (R10)."
+description: "slang#13603 (bot-filed 10-13 15:18Z by slang-fixer while applying #11803 R2 nits): on SPIR-V/GLSL, plain ByteAddressBuffer Load<float3>/Store<float3> at a non-zero multiple of 12 index the stride-16 v3float alias by offset/12 -> wrong bytes, silent. Pre-existing on master, separate from #11803, sibling of closed #9931. Owned by the #11545 chain; NO fixer dispatched. 10-15: operator asked for triage; Main found the struct-member/immediate-offset case is a REGRESSION since v2026.11 (#11430 by code trace), slang-triager posted it 11:51Z (issuecomment-6191375234, labels regression+reproduced, Type Bug, #11430 confirmed by build bisect); r1 (10-20) found it still quiet and asked the operator dispatch/wait/ping; r2 (10-27) no answer, #11803 merged 10-22 without fixing it, re-verified on master 9a4817c881; r3 (11-03) unchanged -> PARKED, no further re-chase; open decision a/b/c sits in the weekly parked-chains digest. The 10-13 recurring gate is gone (R10)."
 metadata:
   node_type: memory
   type: project
@@ -62,3 +62,11 @@ not enough for SPIR-V, it also needs the `slang-glslang` target): `Load<float3>(
 `Load<V>(0).n` same; GLSL same; `-fvk-use-scalar-layout` correct. Open PRs in the file (#13863, #13852, #13815, #13776) are
 all WGSL/Metal. Sent orchestrator-dashboard the 5-bullet restating (a)/(b)/(c). Nothing dispatched. Scheduled the final
 re-chase `rechase-slang-13603-r3-6781` for 11-03 15:00Z. If still unchanged, PARK (no r4).
+
+## 11-03 re-chase r3 → PARKED
+
+Unchanged: open, only our 10-15 triage comment, `updated_at` 10-15, no linked PR. The only legalizer commit since r2 is #14045
+(`2518a942d5`, 11-02, unused BABs + `-preserve-params`), which does not touch the natural-stride divide. Open PRs on the file
+(#14167, #13863, #13852, #13815, #13776) are all Metal/WGSL. Not rebuilt for r3. No operator answer in dashboard rows 508390–510502.
+Sent orchestrator-dashboard the PARK 5-bullet (msg id 19, thread `gh-issue-shader-slang/slang-13603`). Nothing dispatched, and
+**no re-chase is scheduled (R11 3/3 used).** Reopen triggers: an operator a/b/c reply, or a non-bot comment on the issue (webhook).

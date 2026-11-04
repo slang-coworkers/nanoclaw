@@ -26,3 +26,9 @@ resource: raw/triage-14112.md
   conversion) is a separate design question.
   Labels `reproduced` + Type=Feature were set with 0 comments, which matches R6 precedent (#14056/#14057).
   **PARKED on tangent-vector**; triager one-shot `t-b0c226` 11-03 23:40Z posts the 5-bullet and asks for direction.
+- 11-03 23:42Z: re-check `t-b0c226` done. Triager posted the 5-bullet
+  ([comment](https://github.com/shader-slang/slang/issues/14112#issuecomment-6618360167); I verified it exists,
+  bot-authored, no @-mention). Nothing had changed since 10-30. Re-reproduced at e73d26897: E39999 on 7 targets,
+  in `.slang` and `-lang hlsl`. **Still PARKED on tangent-vector.** If they want a bot PR for A, the triager hands
+  off to slang-fixer; if they fix it themselves, the triager sends a [Resolution]. No timer is set: the
+  supervise-issues register (`awaiting_human`) walks it. (The R6 hold above is retired; see Core Memory.)

@@ -76,3 +76,8 @@ A re-check prompt for a parked decision names the exact question comment and ask
 - **2026-11-02 17:00Z re-check (`recheck-slang-13700-vu-r-7fdb`):** #13700 is OPEN, a draft, at head dc9ed5b417. Q1 (VU) was answered in
   6509087225, and the bot acted on it (#14076, draft #14081 @41c22bde29, no update since 10-30 18:20Z), so there was no dispatch. **Q2/R8 is still
   unanswered**: 16 d since 6227965371, 4 d since 6506798882, and no human comment after 10-29 21:47Z. I reported it to orchestrator-dashboard and posted nothing to GitHub.
+- **2026-11-04 00:2xZ (supervisor tick 324):** the operator's dashboard Continue for fixer `yiuh5a` (11-03 11:24Z, plus a 2nd
+  `cost_override` row 18:11Z) **did not take**. The ledger episode `cst-ioav1ri` reads `continued`, but the live status is still
+  `stopped` at $301.34 / $300 ceiling, and there has been no model request since 10-30 04:00Z. The queued work is unchanged: #14081 R2,
+  tangent-vector's 10-30 CHANGES_REQUESTED, and #13700 R8. Boarded as an operator call (`ncl cost-cap set-ceiling --session
+  sess-1792135091874-yiuh5a --ceiling <N>` or a session restart), msg 15913. **Resume on:** yiuh5a's next model request or `out` row.

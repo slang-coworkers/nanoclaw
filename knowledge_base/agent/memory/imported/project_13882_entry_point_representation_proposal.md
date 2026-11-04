@@ -57,3 +57,12 @@ original proposal:
 - [slang#14000 chain](../slang/14000-linkage-decorations-non-public.md): option C ("B under #13882") now has a concrete linkage design to point to.
 - #13726/#13687 (WGSL builtins across several entry points; parked on the operator): the softened multi-entry-point
   stance and rollout step 3 are relevant to the "maintainer direction pulls against the PR" note.
+
+**11-03 17:54Z, `pr_mention` (comment [6611460902](https://github.com/shader-slang/slang/issues/13882#issuecomment-6611460902)).**
+albertrodriguezclo (CONTRIBUTOR, author of #14053) commented, addressing tangent-vector. They propose #13687
+(several WGSL compute entry points: only the first gets the system-value param) and #13730 as regression tests,
+and offer to write them "against your branch when there is one". It @-mentions nobody, so it is not a summons.
+Held: no dispatch, no reaction, no post, and no operator row, since the 00:13Z FYI already covers #13726.
+Local fact, in case anyone asks: our draft #13726 (head `ec1f0a4868`, DIRTY) already carries the #13687 repro as
+`tests/wgsl/global-varying-multi-entry.slang` (and `global-varying-out-multi-entry.slang`). Those tests could be
+reused for #13882 whatever the operator decides about the PR.

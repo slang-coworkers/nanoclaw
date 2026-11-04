@@ -13,6 +13,7 @@ the one mount detail the spine omits.
 
 ## Map
 
+- [Fleet disk: review-eval worktrees](fleet-disk-eval-worktrees.md) — 11-03 eval-slang-reviewer runs left ~330 GB of worktrees on the 2.5 TB shared volume. Covers how to find the writer, the GC blind spot for standalone review clones, and how one fleet-wide alert reaches several Main sessions at once (check siblings first).
 - [Container mounts](mounts.md) — the mount map, incl. the `/workspace/project`
   read-only mount the spine's table omits.
 - [Spawning agents: create_agent vs SDK Agent](agent-spawning.md) — companion vs
@@ -36,3 +37,5 @@ the one mount detail the spine omits.
 - [Fixer reports drift to Main](fixer-fix-reports-drift-to-main.md) - slang-fixer `[Fix Report]`s often land on Main, not the handing-off triager; forward to the triager (cases 10-22→10-29)
 - [Re-ask cap](reask-cap-park-after-final-ask.md) - operator re-ask series get one announced final ask, then park in supervisor-state.json; never re-ask indefinitely
 - [Filing verified issues](filing-verified-issues-policy.md) - reproduced+deduped shader-slang bugs are filed without operator approval; external-repo filings, scope requests and fixer fan-out are asked/reported
+- [Un-draft asks → weekly list](undraft-asks-replaced-by-weekly-list.md) - no per-PR 'may #N leave draft?' asks; maintainers flip drafts themselves; one weekly list (P0/P1 excepted)
+- [Infra-alert dedupe](infra-alert-dedupe-across-sessions.md) - parallel Main sessions re-alert the same infra event (8× disk on 11-04); grep the dashboard's last rows first, post only new facts

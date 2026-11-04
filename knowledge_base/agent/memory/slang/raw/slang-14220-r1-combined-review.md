@@ -1,3 +1,8 @@
+---
+type: source
+description: "slang-reviewer R1 combined review (lead + Reviewers A/B/C) of PR #14220 (fixes #14212), 2026-11-03 02:35Z: APPROVE_WITH_NITS, 0 bugs, 2 gaps, remedy patch pr14220-r1-remedy.patch. Verbatim memo; distilled into slang/14212-spirv-incomplete-library-extern-call-in-loop-crash.md."
+okf_synth: exempt
+---
 # Combined PR Review — shader-slang/slang#14220 (pr)
 
 ## Reviewer A — Correctness (nv-slang-bot)

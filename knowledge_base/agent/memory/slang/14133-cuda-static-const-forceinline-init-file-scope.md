@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14133 — CUDA global `static const` struct from a `[ForceInline]` `__init` emitted as file-scope statements
-description: Human-filed (albertrodriguezclo) bug 2026-11-01. Triaged bug/high/IR/P2, all targets. Reporter PR #14150 (Fix A, jkwak-work approved) has 2 regressions vs master (int-div helper; pure helper under -g); bot comment 6592707618 posted 11-03, triager watching via t-700e05. Side finding filed as #14217 (filed-only; do not dispatch).
+description: Human-filed (albertrodriguezclo) bug 2026-11-01. Triaged bug/high/IR/P2. Reporter PR #14150 MERGED 11-03 02:06Z with our 2 flagged regressions unaddressed; G2 later filed by a human as #14235 (own PR #14236), G1 being verified/filed by the triager. Side finding #14217 (filed-only).
 tags: [cuda, emit, ir, static-const, force-inline, legalize-global-values, r6]
 ---
 
@@ -141,3 +141,17 @@ assumed the struct-only case and missed this.
 #14217 (human comments) with self-re-arming one-shot `t-700e05` (first run 11-03 13:00Z). A human PR without
 a bot mention may not raise a webhook to us, so this poll is the backstop. The fixer still holds
 `fix/issue-14133` locally. Patch requests come to Main first, and nothing is pushed to the fork.
+
+**11-03 02:06:54Z: #14150 MERGED** at `d79256b0f` (merge `76a45e10c1`), with no change after 6592707618, so G1
+and G2 are on master. **07:15Z: G2 filed by a human as #14235** (jvepsalainen-nv), with own fix PR #14236
+(debug-inst skip only). See [14235](14235-cuda-global-const-g-debug-inline.md). 07:18Z: sent this triager session
+the follow-up (verify, file G1 if it still fails, re-aim `t-700e05`); acked 07:20Z.
+
+**11-03 07:28Z: G1 filed as #14238** (bot, by the #14133 triager; Type=Bug, `regression` + `reproduced`, no
+assignee). It fails on master `76a45e10c` and on #14236 head `4c34875db` (the triager tested both). The
+triager's `[Triage Resolution]` reached this Main session (row 70, 07:29Z); `t-700e05` was re-aimed (first
+run 19:00Z, daily) to watch #14236, #14217, #14235 and #14238. ⚠️ **#14238's `issue_opened` belongs to this
+chain, so do not dispatch it** (the #14238-thread Main session `sess-1793690897967-0o6crb` checked and sent
+nothing). **07:30:40Z: this session asked the operator** whether to start a fixer chain for #14238. The
+recommendation is yes: a scoped draft PR that refuses side-effecting insts only when they have no uses. The
+fixer holds the patch locally on `fix/issue-14133`. If there is no answer, nothing starts.
