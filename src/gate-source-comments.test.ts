@@ -99,9 +99,13 @@ describe.skipIf(!hasPython || !hasJq || !hasGit)('gate-source-comments.sh', () =
     expect(hook('git commit -m "code"').status).toBe(0);
   });
 
-  it('ignores files that are not source files', () => {
+  it('ignores files that are not source files, and regression tests under tests/', () => {
     stage('notes.md', 'see #1234 and #5678, before this change\n');
     expect(hook('git commit -m "docs"').status).toBe(0);
+    fs.mkdirSync(path.join(repo, 'tests'), { recursive: true });
+    stage('tests/gh-1234.slang', '// Regression test for #1234\n');
+    expect(hook('git commit -m "test"').status).toBe(0);
+    expect(hook('git commit -m "test"', { SOURCE_COMMENT_SKIP_PREFIXES: '' }).status).toBe(2);
   });
 
   it('reads the working tree for git commit -a and -am, and honours git -C', () => {

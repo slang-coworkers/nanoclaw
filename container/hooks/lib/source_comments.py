@@ -19,7 +19,8 @@ Exit 0 = allow (nothing added, no source file, no finding). Exit 2 = deny, with 
 stderr naming each file:line and its rule, and what to do instead. Text the hook cannot read
 (a commit built by another program, a repository git cannot open) is allowed: the gate checks
 what it can see and never guesses. SOURCE_COMMENT_GATE=0 disables it; SOURCE_COMMENT_EXTS
-(comma-separated, e.g. `.cpp,.h`) overrides the file set.
+(comma-separated, e.g. `.cpp,.h`) overrides the file set; SOURCE_COMMENT_SKIP_PREFIXES (comma-separated
+path prefixes, default `tests/,test/,external/`) overrides the trees left unchecked.
 """
 
 from __future__ import annotations
@@ -33,6 +34,8 @@ import sys
 
 DEFAULT_EXTS = {".c", ".cc", ".cpp", ".cxx", ".cu", ".cuh", ".h", ".hpp", ".hxx", ".inl", ".slang", ".lua"}
 MAX_REPORTED = 8
+# A regression test names the issue it covers by convention, so test trees are not checked.
+DEFAULT_SKIP_PREFIXES = ("tests/", "test/", "external/")
 
 REFERENCE_RE = re.compile(
     r"(?<![\w/])#\d{3,}\b|\b(?:issues|pull)/\d+\b|\b(?:PR|pull request|issue)\s*#?\s*\d{3,}\b", re.IGNORECASE
@@ -51,6 +54,13 @@ def source_exts() -> set[str]:
     if not raw:
         return DEFAULT_EXTS
     return {e.strip() if e.strip().startswith(".") else "." + e.strip() for e in raw.split(",") if e.strip()}
+
+
+def skip_prefixes() -> tuple[str, ...]:
+    raw = os.environ.get("SOURCE_COMMENT_SKIP_PREFIXES")
+    if raw is None:
+        return DEFAULT_SKIP_PREFIXES
+    return tuple(p.strip() for p in raw.split(",") if p.strip())
 
 
 def commit_invocation(command: str) -> tuple[bool, str | None, bool, list[str]]:
@@ -174,12 +184,12 @@ def lua_comment(line: str) -> str:
     return m.group(1) if m else ""
 
 
-def findings(rows: list[tuple[str, int, str]], exts: set[str]) -> list[tuple[str, int, str]]:
+def findings(rows: list[tuple[str, int, str]], exts: set[str], skipped: tuple[str, ...] = DEFAULT_SKIP_PREFIXES) -> list[tuple[str, int, str]]:
     out: list[tuple[str, int, str]] = []
     block_state: dict[str, bool] = {}
     for path, line, text in rows:
         ext = os.path.splitext(path)[1].lower()
-        if ext not in exts:
+        if ext not in exts or path.startswith(skipped):
             continue
         if ext == ".lua":
             comment = lua_comment(text)
@@ -213,7 +223,7 @@ def main() -> int:
     rows = added_lines(repo, all_tree, paths)
     if not rows:
         return 0
-    hits = findings(rows, source_exts())
+    hits = findings(rows, source_exts(), skip_prefixes())
     if not hits:
         return 0
     shown = "; ".join(f"{p}:{n} ({r})" for p, n, r in hits[:MAX_REPORTED])
