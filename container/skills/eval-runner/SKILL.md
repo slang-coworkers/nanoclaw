@@ -28,8 +28,18 @@ are under `/workspace/agent/reports/evals/`. The eval copies do the work; the ru
    start (exit 2, naming the files) when one is present; the mount is read-only here, so ask
    the operator to move the previous job's `eval/` aside on the host (for example to
    `eval.<previous job id>/`), then start again.
-4. **Preview.** Run the command below with `--dry-run` and read the trial list and the
+4. **Clear the eval copy's workspace of the last job.** Besides `eval/`, a job leaves
+   `wt-*` worktrees (a trial may reuse another trial's build and its stray test files) and,
+   on a host without the learnings gate, shared learnings under
+   `/workspace/shared/learnings/<eval group id>/` that name the tasks. Ask the operator to
+   move `eval/` aside, remove `wt-*`, and quarantine those learnings before the first trial.
+5. **Preview.** Run the command below with `--dry-run` and read the trial list and the
    `ncl tasks create` invocation it prints. The trial count is tasks × repeats.
+6. **Keep the judge reachable.** The verifiers call the judge through the container's gateway
+   route (`EVAL_JUDGE_BASE_URL`, default `https://inference-api.nvidia.com`), not through the
+   agent's per-turn relay on 127.0.0.1, so a runner left in the background between turns still
+   scores. A trial that ends `unknown` with "judge unavailable" is re-scored by running its
+   `tests/test.sh` on the saved `answer.json` with the same `REWARD_DIR`.
 
 ## Start a job
 
