@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile, probe-matrix, pass-reordering]
-source_count: 23
+source_count: 25
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -32,6 +32,9 @@ compiles, exit 0, green validators and passing tests all prove less than they ap
 - **A static IR gate is necessary, not sufficient.** Exercise the survival path or say "unverified".
 - **Valid is not correct.** Always set `SLANG_RUN_SPIRV_VALIDATION=1` (slangc exits 0 on invalid
   SPIR-V); `-target ptx` is a real CUDA check; a remedy that passes spirv-val can still mislink.
+- **A remedy patch gets the PR's own probe matrix before anyone adopts it**: diagnostic counts,
+  non-constant and spec-constant inputs, decl-synthesizing expressions. Checker loops over a
+  ContainerDecl's members that can call `ensureDecl`/`CheckExpr`/folding iterate by index.
 - **Compile a reviewer-proposed test snippet on head before forwarding it**; if it crashes, offer a
   compiling alternative that reaches the same branch.
 - **Exercise new `SLANG_ASSERT`s on a Debug build**: in Release they are `[[assume]]`.
@@ -213,6 +216,30 @@ needs `requestDevice({requiredFeatures:['subgroups']})` for subgroup builtins, o
 `enable subgroups;` and every output reads 0 on base and head alike
 [rejecting a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md).
 
+A reviewer's "tested remedy" needs the same adversarial pass as the PR, and so does adopting one.
+On #14284 the fixer applied the reviewer's remedy patches verbatim, the PR tests passed, and the next
+review rounds found four regressions that came from the patches. (1) A use-after-free: the patch
+looped `for (auto d : parentDecl->getMembersOfType<EmptyDecl>())` while calling `checkConstantIntVal`
+on sibling expressions, and checking can `addMember` on the module (`[__AttributeUsage]` struct
+validation synthesizes an attribute decl in `slang-check-modifier.cpp`), so when the List regrows the
+iterator reads freed memory. It crashed deterministically only at 27 and 59 padding decls, with or
+without `MALLOC_PERTURB_`, which a probe over padding sizes 0–140 found. Iterate by index
+(`for (Index i = 0; i < getDirectMemberDeclCount(); ++i)`) whenever semantic checking can run in the
+loop body, as `ensureAllDeclsRec` documents. (2) Making `checkGLSLLayoutAttribute` drop every
+attribute that fails validation removed `binding` from `atomic_uint` and added a spurious E20016
+"missing binding"; scope such a drop to the one attribute whose consumer needs the invariant
+(`VkConstantIdAttribute`). (3) Folding a sibling's expression with `checkConstantIntVal` reports "not
+constant" on every call, so E39999 appeared twice; the remedy had been tested only with an undefined
+identifier, which `CheckExpr` reports once. Fold silently with `CheckExpr` and then
+`CheckIntegerConstantExpression(..., sink=nullptr)`; a temporary sink is wrong because it swallows a
+later E30015. (4) Folding a specialization-constant `local_size_x` as a compile-time constant added a
+new E39999 ([reviewer remedies need the same adversarial pass](../learnings/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md),
+[probe a reviewer's remedy patch before adopting it](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md)). So a reviewer runs their own remedy through
+the PR's probe matrix and diagnostic-count checks (undefined-name and non-constant inputs, every
+attribute kind the function touches), and a fixer runs CODE_REVIEW on a remedy before adopting it and
+probes later declarations, non-constant and spec-constant arguments, and expressions that synthesize
+declarations.
+
 **A new `SLANG_ASSERT` has to run on a Debug build.** In Release `SLANG_ASSERT` is `SLANG_ASSUME`
 (`[[assume]]`), so a false condition is silent UB, and a Release-only fixer and reviewer never see it.
 On #13811 a new `SLANG_ASSERT(oldArrayCount % oldElementCount == 0)` in `_createArrayTypeLayoutLike`
@@ -286,7 +313,7 @@ also reject the buggy variant: `//CHECK: cyclic reference '$inheritance'`, not a
 `//CHECK: cyclic reference` that also matches a wrong `'E'` diagnostic and would not catch a revert
 [never cite file.cpp:line in durable text; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md).
 
-**Source learnings (23):**
+**Source learnings (25):**
 - [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: single-block test hid the conjunct; pin emit `SLANG_FAIL` via `CHECK-NOT: glslang`
 - [Stale-CHECK refresh: run the block against the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` never covered case 0
 - [Reject a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: valid SPIR-V, silent Location mislink; dawn.node subgroups need a feature flag
@@ -310,3 +337,5 @@ also reject the buggy variant: `//CHECK: cyclic reference '$inheritance'`, not a
 - [Review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md) — slang-rhi#881: five rounds missed two spec rules; `gh run list --commit` needs full SHA
 - [Never cite file.cpp:line in durable text](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md) — cite stable symbols; `DIAGNOSTIC_TEST` is substring-only, reject the buggy variant
 - [Release-only review misses SLANG_ASSERT regressions](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md) — #13811: assert fires only in Debug; marker-instrument a ~12k-compile corpus
+- [Reviewer remedies need the same adversarial pass; member-list range-for inside checking is a UAF](../learnings/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md) — #14284 R2: UAF at 27/59 padding decls, broad attribute drop → spurious E20016, duplicate E39999; fold with `sink=nullptr`
+- [Probe a reviewer's remedy patch before adopting it verbatim](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md) — #14284: 4 bugs over 2 rounds incl. spec-constant `local_size_x` folded as constant; CODE_REVIEW + adversarial probes; iterate members by index

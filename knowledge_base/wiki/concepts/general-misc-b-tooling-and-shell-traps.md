@@ -3,7 +3,7 @@ title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
 tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments, pgrep, pkill, timeout]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -19,7 +19,8 @@ result, no zero — a real value about a set you never saw.** The concrete traps
 - **Exit status after a pipe is the LAST stage's** — `head`/`tail` answer for the real
   command. Use `${PIPESTATUS[0]}` or redirect instead of piping.
 - **A `$(…)` substitution resets `$?` before you read it** — `echo "$(basename $f) rc=$?"`
-  prints basename's 0 and hides a segfault's 139. Capture `rc=$?` in its own statement.
+  prints basename's 0 and hides a segfault's 139 (same in `line="$line $(f)=$?"`). Capture
+  `rc=$?` in its own statement.
 - **`cmd_A 2>/dev/null || cmd_B` launders a guessed identifier** — the pipeline validates B
   only; A's arguments were checked by nothing.
 - **`gh api` exits 1 on HTTP errors AND writes the error JSON to stdout, even with `--jq`** —
@@ -87,7 +88,7 @@ under either exit-code semantics, which is why it beats a guard built on "exit 0
 coverage loop over 18 issues printed `0/18` when the true answer was 15/18, during a 403
 rate-limit window, for exactly this reason. [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 
-**A command substitution resets `$?` before you read it — no pipe required.** In `slangc …; echo "$(basename $f) rc=$?"` the word is expanded left to right, so `$(basename …)` runs first and `$?` then reports *basename's* status, which is always 0. Plain `$var` expansions leave `$?` alone; only substitutions reset it. Crash-regression drills hit this independently three times on 2026-09-29 (the #13322 review, the #13332 triage, and its round-2 review): segfaulting `slangc` runs (rc 139) printed `rc=0`, a release matrix briefly signalled a false "fixed in v2026.7", and five crashing drills looked like passes until they were re-run. Capture the status in its own statement straight after the command — `cmd; rc=$?; echo "… rc=$rc $(…)"` — and corroborate it with the output file's size, since a crash leaves no output; when a version matrix contradicts an earlier run, audit the capture before believing the contradiction. A neighbouring blind spot: a compiler segfault that takes down in-process `slang-test` can print nothing at all for that test, so rerun it with `-use-test-server` or under plain `slangc` to see the FAILED line. [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) [Shell rc capture: `echo "$(cmd) rc=$?"` reports the substitution's rc, not the prior command's](../learnings/1790713338019-shell-rc-capture-echo-cmd-rc-reports-the-substitut.md)
+**A command substitution resets `$?` before you read it — no pipe required.** In `slangc …; echo "$(basename $f) rc=$?"` the word is expanded left to right, so `$(basename …)` runs first and `$?` then reports *basename's* status, which is always 0. Plain `$var` expansions leave `$?` alone; only substitutions reset it. Crash-regression drills hit this independently three times on 2026-09-29 (the #13322 review, the #13332 triage, and its round-2 review): segfaulting `slangc` runs (rc 139) printed `rc=0`, a release matrix briefly signalled a false "fixed in v2026.7", and five crashing drills looked like passes until they were re-run. Capture the status in its own statement straight after the command — `cmd; rc=$?; echo "… rc=$rc $(…)"` — and corroborate it with the output file's size, since a crash leaves no output; when a version matrix contradicts an earlier run, audit the capture before believing the contradiction. A neighbouring blind spot: a compiler segfault that takes down in-process `slang-test` can print nothing at all for that test, so rerun it with `-use-test-server` or under plain `slangc` to see the FAILED line. [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) [Shell rc capture: `echo "$(cmd) rc=$?"` reports the substitution's rc, not the prior command's](../learnings/1790713338019-shell-rc-capture-echo-cmd-rc-reports-the-substitut.md) It recurred on 2026-11-03 in a string assignment, not an `echo`: an A/B matrix for #14236 built `line="$line $(name_fn)=$?"` and recorded rc=0 for every case. The same script showed a second trap: when `cd /tmp/x && cat > f <<EOF` fails because `/tmp` was wiped between turns, the later heredocs in the script still run and write into the CURRENT directory, which may be the shared slang checkout. Run `mkdir -p` first, use absolute paths, and keep scratch files under `/workspace/agent/scratch/` ([`$?` inside a string that also contains `$(...)`; heredocs after a failed cd](../learnings/1793690964901-shell-gotcha-read-inside-a-string-that-also-contai.md)).
 
 **`cmd_A 2>/dev/null || cmd_B` launders a fabricated identifier into a correct answer.** A
 published GitHub comment id 404'd; the substance attached to it was entirely correct. Traced:
@@ -262,7 +263,7 @@ On v2026.20 the same repro compiles in 0.3 s at -O0 and at -O, so the long timeo
 for releases before v2026.20
 ([#13250 compiles in 0.3 s on v2026.20](../learnings/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
@@ -283,3 +284,4 @@ for releases before v2026.20
 - [pkill -f on a slangc command line kills your own Bash tool shell](../learnings/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md) — exit 144, kills sibling jobs; `pkill -x`; `timeout N` around slangc in autodiff bisects (#13250)
 - [#13250 repro compiles in 0.3 s on v2026.20 but still fails spirv-val](../learnings/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md) — long timeout needed only before v2026.20
 - [grep -c gates miss phrases that Markdown line-wrapping splits](../learnings/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md) — 0 hits for a pin present in all 60 instruction.md files; `tr '\n' ' ' | grep -o | wc -l`; `git pull` on a branch with a deleted remote merges nothing
+- [Shell gotcha: `$?` read inside a string that also contains `$(...)` gives that subshell's status](../learnings/1793690964901-shell-gotcha-read-inside-a-string-that-also-contai.md) — #14236 A/B matrix printed rc=0 everywhere; a failed `cd /tmp/x` lets later heredocs write into the current dir (keep scratch under `/workspace/agent/scratch/`)

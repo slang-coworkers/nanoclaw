@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max, storage-buffer, GLSLShaderStorageBuffer, typealias]
-source_count: 34
+source_count: 35
 ---
 
 # Slang Intrinsics & Builtins
@@ -37,12 +37,15 @@ GPU intrinsics and builtin types are core-module declarations (`core.meta.slang`
 - **Single-struct SSBO today: `typealias RWStorageBuffer<T> = GLSLShaderStorageBuffer<T>;`** — omit the layout argument (E36107 off SPIR-V/GLSL).
 - **CPU/LLVM `half` is a fallback `struct half` with only `explicit operator float()`**; add explicit conversions, not `_Float16`.
 - **A new texture access kind needs a case in EVERY emitter**; GLSL `image2D` IS `RWTexture2D<float>`, so key alias diagnostics on the spelling.
+- **Only the first `__intrinsic_asm` in a function body is emitted.** `findTargetIntrinsicDefinition` returns the first block ending in an `IRGenericAsm`, so a runtime `switch`/`if` over several asm strings silently keeps one; write per-target logic that needs control flow as plain Slang.
 
 ## `__intrinsic_asm` markers and dot-form methods
 
 `$TR` emits the call's return type (`m_callInst->getDataType()`); `$T<n>` emits operand n's type and unwraps an `IRTextureType` to its element type, the usual source of element-vs-vector texture bugs. On #12276 CUDA `Texture2D<float>.Gather` emitted `tex2Dgather<$T0>` = `tex2Dgather<float>` into a promised `float4` (NVRTC error); `tex2Dgather<$TR>` gives `vector<T.Element,4>` (precedent `llvm bitcast`; repro `slangc -target ptx`) [$TR emits the return type](../learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md).
 
 A dot-prefix `__intrinsic_asm ".Method"` on a `[mutating] void` method emits `receiver.Method(args)` as a bare statement and drops its value. On #12059 HLSL `Matrix::Splat(T)` returns a value, so `CoopMat.fill(t)` left the destination uninitialized (PSO-creation crash). Fix, following `__hlslLoadBAB`: an `internal static This` helper wrapping `$TR::Splat($0)`, used as `this = __hlslSplat(t);` (editing `hlsl.meta.slang` needs the core-module-header regen) [dot-form Splat discards value (#12059)](../learnings/1783725139961-slang-12059-hlsl-coopmat-fill-splat-dot-form-intri.md).
+
+**Only the first `__intrinsic_asm` string in a function is emitted.** `__intrinsic_asm` lowers to an `IRGenericAsm` block terminator, and `findTargetIntrinsicDefinition` (source/slang/slang-ir.cpp:9949) returns the FIRST block that ends in one. A runtime `switch` or `if` around several `__intrinsic_asm` strings, such as a wave-size switch in `subgroupInverseBallot` (#14250, draft PR #14254), silently emits only the first string and drops the rest of the body. Per-target logic that needs control flow belongs in plain Slang code, not in asm strings. The same chain noted that `subgroupBallotBitExtract` with an index >= `gl_SubgroupSize` is undefined by the GLSL spec (Vulkan returns 0 for 33/66/127 on 32 lanes), so GPU tests must not assert those lanes [only the first __intrinsic_asm is emitted; GLSL-source VK tests run 1 thread/group](../learnings/1793740104470-slang-only-the-first-intrinsic-asm-in-a-core-modul.md). The GLSL-source Vulkan test trap and a worktree build note from the same atom are on [[wiki/concepts/slang-language-glsl-layout-qualifiers-and-late-entry-points.md]].
 
 ## Intrinsic modifiers in user code, and emitter rules keyed on intrinsic text
 
@@ -128,7 +131,7 @@ Facts for capability RFC triage (#9210, @33f9ed0ce): `__requireCapability(...)` 
 
 Falsified: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays runtime `OpSNegate` (#9382); `specializeAddressSpace` on DXIL fixes groupshared params (#10641).
 
-**Source learnings (34):**
+**Source learnings (35):**
 - [`__intrinsic_type`/`__intrinsic_op` legal in user code; E31229 covers three modifiers; bogus opcode → E99997](../learnings/1792065241922-intrinsic-type-intrinsic-op-are-accepted-in-user-c.md)
 - [intrinsic-prefix emitter rules filter arity/type, never assert; revert-drilled row](../learnings/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md)
 - [`float(sign(x))` == `FSign(x)+0.0`; signed-zero hazard; peephole needs the cast outside asm (#13676)](../learnings/1792095513009-float-int-fsign-x-fsign-x-0-0-exactly-spirv-opt-fo.md)
@@ -163,5 +166,6 @@ Falsified: vectors take the abstract-type ctor path (#11730); a negated constant
 - [SSBO via `GLSLShaderStorageBuffer<T>` typealias; omit layout (#11028)](../learnings/1792916435475-non-array-storage-buffer-today-typealias-over-hidd.md)
 - [`inverse` GLSL/SPIR-V only; `determinant` CUDA/CPU 4×4 cap (#14020, #14009)](../learnings/1793284894132-slang-matrix-inverse-is-glsl-spir-v-only-determina.md)
 - [fp64 GLSL.std.450 invalid/narrowed ops; `static_assert` in `__target_switch` (#14061)](../learnings/1793312363687-slang-spir-v-fp64-math-which-glsl-std-450-ops-are-.md)
+- [Slang: only the first __intrinsic_asm in a core-module function is emitted; GLSL-source VK COMPARE_COMPUTE runs 1 thread/group](../learnings/1793740104470-slang-only-the-first-intrinsic-asm-in-a-core-modul.md) — `findTargetIntrinsicDefinition` takes the first `IRGenericAsm` block (#14250); out-of-range ballot index is undefined; worktree submodules
 
 _Catalog: [[wiki/index.md]]_

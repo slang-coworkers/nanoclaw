@@ -3,7 +3,7 @@ title: "Slang link-time entry-point checks: E45001 for body-less entry points, w
 type: concept
 group: slang-compiler
 tags: [slang, linker, slang-ir-link, specializeIRForEntryPoint, cloneGlobalValueWithLinkage, isFunctionDefinedOrImported, findBestValueForTarget, IREntryPointDecoration, LinkedIR, IRSpecialize, E45001, E38016, extern_cpp, DllImport, llvm, slang-vm, diagnostic-tests]
-source_count: 5
+source_count: 6
 ---
 
 # Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks
@@ -24,6 +24,7 @@ The linker (`slang-ir-link.cpp`) clones each selected entry point, and everythin
 - **Several targets link one entry point per output when writing to stdout** (HLSL, WGSL, LLVM, `-target cpp` without `-o`). A test with several entry points in one linked module needs `-whole-program` or `-o`. Compare base and head over the full list of target formats.
 - **Non-CUDA sessions discover a `[numthreads]` function as a compute entry point and decorate it at lowering**, so a unit test for the "no decoration before linking" API path must drop `[numthreads]`.
 - **Diagnostic tests:** for a given prefix, caret annotations resolve against the previous line that is not an annotation of that prefix. One E45001 gives two matchable items (the code/title and the span message), and each note is another.
+- **A decoration from a non-best link candidate survives only if its opcode is on `cloneExtraDecorationsFromInst`'s allowlist.** Attributes that `validateEntryPoint` lifts for a late entry point exist only on the layout IR's copy, so each such lift needs an allowlist entry (PR #14275).
 
 ## Body-less `__extern_cpp` entry points skip E45001 (#14200)
 
@@ -47,6 +48,8 @@ The opposite case also exists. A callee clone keeps the source decoration, and `
 What worked was both checks with one shared predicate on the same best value (an extracted `findBestValueForTarget`). Cloning reports when `isFunctionDefinedOrImported(bestVal)` is false. `specializeIRForEntryPoint` reports a body-less clone only when it is true. The two cases are disjoint, so each body-less entry point gets one E45001 per link in any clone order, without dedup state.
 
 Three decoration facts matter for any variant of this fix. In `addLinkageDecoration` (lower-to-ir), `UserExternDecoration` is always paired with `IRImportDecoration`, so excluding only `UserExtern` changes nothing. `extern "C"` is not Slang syntax; `ExternCDecoration` comes only from the PyTorch binding pass. A plain `extern` body-less entry point crashes earlier, at the #12728 `IRPtrLit` assert in `cloneDecorations` ([same](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md)).
+
+The same late-validation path loses attributes, not only the decoration. `validateEntryPoint` lifts GLSL `layout(local_size_x) in;` and `early_fragment_tests` onto the function as `NumThreadsAttribute`/`EarlyDepthStencilAttribute` after the module IR exists, so only the per-program layout IR (`TargetProgram::createIRModuleForLayout`, which lowers an import declaration of the entry function after validation) carries them. The linker keeps a decoration from a non-best copy only if its opcode is on the `cloneExtraDecorationsFromInst` allowlist in `slang-ir-link.cpp`; PR #14275 (slang#14256) adds `kIROp_NumThreadsDecoration` and `kIROp_EarlyDepthStencilDecoration`, and any future lift needs the same entry [late entry-point AST attributes reach IR only via the layout IR + linker allowlist](../learnings/1793747942677-late-entry-point-ast-attributes-reach-ir-only-via-.md). The GLSL details (the one-thread-per-group symptom, `derivative_group_*NV`, implicit `local_size_*_id` spec constants) are on [[wiki/concepts/slang-language-glsl-layout-qualifiers-and-late-entry-points.md]].
 
 ## Generic entry points: `sym` names the `IRSpecialize` (PR #14202 R1)
 
@@ -72,11 +75,12 @@ Both were false positives in review, and both were found by comparing base and h
 - **Diagnostic tests (`diag=`).** For a given prefix, caret annotations resolve against the previous line that is not an annotation of that prefix. Another prefix's annotation lines count as code, so a second prefix should use position-free substring annotations. One E45001 produces two matchable items (the code/title and the span message `unresolved external symbol 'X'.`), and each note is another item ([linker two answers](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md)).
 - **Remedies in this code** dereference what they check, so they take `SLANG_RELEASE_ASSERT`, not `SLANG_ASSERT`; see [[wiki/concepts/slang-build-release-divergences-and-sanitizers.md]].
 
-**Source learnings (5):**
+**Source learnings (6):**
 - [__extern_cpp on a body-less entry point skips E45001 and crashes the legalizer](../learnings/1793651929353-extern-cpp-on-a-body-less-entry-point-skips-e45001.md) — extern exemption in `isFunctionDefinedOrImported` covers entry points; null deref in varying legalization (#14200)
 - [Linker "is this an entry point?" has two answers — IREntryPointDecoration on the source func is NOT reliable](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md) — API path lacks the decoration; shared predicate in cloning and `specializeIRForEntryPoint` (PR #14202)
 - [Link-time "already reported?" re-checks diverge for generic entry points (IRSpecialize symbol)](../learnings/1793663209615-link-time-already-reported-re-checks-diverge-for-g.md) — check `specialize->getBase()`'s linkage name; `[numthreads]` discovery trap
 - [Slang link-time entry-point checks: use LinkedIR::entryPoints, not every IREntryPointDecoration func](../learnings/1793669339765-slang-link-time-entry-point-checks-use-linkedir-en.md) — imported `[shader]` callees keep the decoration; compare by identity; final target format (#14053)
 - [Entry-point symbol checks: LLVM names only compute dispatchers, HostVM qualifies names](../learnings/1793679006975-entry-point-symbol-checks-llvm-names-only-compute-.md) — #14221 E38016 false positives; intermediate vs final target format at link time
+- [Late entry-point AST attributes reach IR only via the layout IR + linker allowlist](../learnings/1793747942677-late-entry-point-ast-attributes-reach-ir-only-via-.md) — slang#14256 / PR #14275: NumThreads and EarlyDepthStencil added to `cloneExtraDecorationsFromInst`
 
 _Catalog: [[wiki/index.md]]_

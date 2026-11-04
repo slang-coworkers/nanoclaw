@@ -3,7 +3,7 @@ title: "Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plu
 type: concept
 group: agent-infra
 tags: [persistence, tracker, disposition, reporting, scheduled-task, thread-backpressure, stale-comment]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -22,6 +22,9 @@ distinguish a config-skip from a transient error.
 - **When you add an honesty field to a payload (`totalNonDraft`, `prsTruncated`), the fix isn't
   done until every consumer is audited** — the human-facing report is a consumer, and it's the one
   place field-passing failures are invisible until someone with independent ground truth calls it.
+- **Before alerting the operator about a fleet incident, grep `memory/orchestrator/` for a
+  record of it** — sibling Main sessions each receive a copy of the same report; append to the
+  existing record and reuse its dashboard thread instead of opening a second one.
 - **Fleet asks inside a human-facing report reach no agent.** When a read-only role's report lists
   GitHub writes or fleet actions it cannot do, send them to `parent` as a separate `[Report]`
   5-bullet, not only as a "Fleet" section on the dashboard.
@@ -62,6 +65,18 @@ guard — if parent (or anyone) says "we settled this already," the fix is to gr
 rule should live and write it there, not to acknowledge and move on. (This is the coordination-side
 twin of the supervisor rule that fixing a classifier is only real once the disposition is persisted
 to `supervisor-state.json`.)
+
+The read side matters as much as the write side when several sessions of one role run at once.
+A fleet-wide event, such as disk pressure on the shared `/dev/root` volume, is reported to Main
+by several coworkers within minutes, and each report can land in a different sibling Main
+session. On 2026-11-04 slang-triager, slangpy-fixer and slangpy-reviewer each reported 232 GB
+free between 00:07Z and 00:20Z; one session had already measured the cause and asked the
+operator on dashboard thread `fleet-disk-pressure`, and a later session opened a second thread
+with the same heads-up. Before alerting the operator about an infrastructure incident, run
+`grep -ril <keyword> /workspace/agent/memory/orchestrator/` (e.g. `disk`); if a record exists,
+append the new facts to it and reuse its dashboard thread. Duplicate operator threads split the
+decision, and the operator may answer the wrong one
+([check memory/orchestrator for an incident before alerting](../learnings/1793751912227-check-memory-orchestrator-for-an-incident-before-a.md)).
 
 ### Audit every consumer of a payload, especially the human-facing report
 
@@ -132,7 +147,7 @@ doesn't cover the issue's own footprint. Rule of thumb for the `github.pr_closed
 handler: after cleanup, ask "does any GitHub comment I authored still assert a next-action against
 this now-dead PR?" — if yes, edit it to point at the replacement.
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [Cross-sweep chat commitments must be persisted to tracker, not left in transcript](../learnings/1786782427154-cross-sweep-chat-commitments-must-be-persisted-to-.md) — write a future-sweep conditional trigger into the tracker/memory the same turn; chat doesn't survive to the next sweep.
 - [CI babysitter: author-owned red disposition and clean-sweep silence, now persisted](../learnings/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md) — a disposition settled in chat evaporates like an unpersisted guard; grep for where the rule lives and write it there.
 - [Sweep report must echo totalNonDraft/prsTruncated, not just the capped count](../learnings/1787286325789-sweep-report-must-echo-totalnondraft-prstruncated-.md) — audit every consumer of a new honesty field; the human report is a consumer; a field only in JSON is invisible to the reader.
@@ -140,3 +155,4 @@ this now-dead PR?" — if yes, edit it to point at the replacement.
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md) — PATCH your PR-opened issue comment to redirect to the superseding PR; a stale-fact correction is not a banned echo.
 - [Slang Discord heartbeat: don't mint fresh thread_ids for routine reports](../learnings/1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id.md) — keep the canonical heartbeat thread and in_reply_to its newest inbound; the 678-row guard backlog is benign; supersedes the rotate-thread_id advice.
 - [Maintainer daily report: fleet asks must go to parent, not only the dashboard](../learnings/1793350337272-maintainer-daily-report-fleet-asks-must-go-to-pare.md) — 10-20..10-29 report reached only `slang-maintainer-dashboard`; h7per issue unfiled 3 days
+- [Check memory/orchestrator for an incident before alerting the operator about it](../learnings/1793751912227-check-memory-orchestrator-for-an-incident-before-a.md) — 2026-11-04 disk pressure: three coworker reports hit sibling Main sessions; a second operator thread duplicated `fleet-disk-pressure`

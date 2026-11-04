@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 35
+source_count: 36
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -24,6 +24,7 @@ The Lua-driven definition layer, the generated catalog tests and `regenerate.py`
 - **E36110/E36108 false positive on a public interface impl calling a portable stdlib fn** (`normalize`, #12755): inference is target-agnostic and a Public decl's set is clamped. Spurious = extra TARGET the impl merely supports; legit = extra SUB-CAP needed within a shared target.
 - **E30082 (float→double) tags only scalar `double.__init(float)`**; vector/matrix go through one untagged generic init and warn silently (#12930); key off the concrete element `BaseType` at the coercion site. Its float-literal exemption is syntactic (a paren or `?:` around the literal warns), and since #11513 the lexer stores unsuffixed literals already float-rounded, so a value-exactness check needs the raw token text (#14057).
 - **The rich renderer drops all span labels when the location does not resolve** (`hasValidLocation`), so E30015 loses the name; `parseTermString` locations (`-entry`, `-specialize`) never resolve. `-diagnostic-format vs` still shows the label (#14137).
+- **A core-module `note: ... --> hlsl.meta.slang:N` cites a line one LOWER than the file on GitHub.** Look up the real line with `git show <sha>:source/slang/hlsl.meta.slang | sed -n Np` before citing it, and prove which source a binary was built from by comparing files and mtimes, not `slangc -version` (its `git describe` tag can be stale).
 - Worked incident case studies are on the companion page (see end).
 
 ## Lua-Driven Diagnostic Definitions
@@ -55,6 +56,8 @@ Known renderer bugs: a zero-width EOF span duplicates the last character (color 
 **An unresolved location loses every span label** (#14137, 6815ed82d). In `slang-rich-diagnostics-render.cpp:897-929`, `hasValidLocation` (line > 0 or non-empty file name) gates the location line and every span label, including `renderOrphanedLabels`, so only the Lua summary prints. Since #10125 (v2026.4) many summaries take no parameters: E30015 "undefined identifier" carries the name only in its label. `Linkage::parseTermString` (`slang-session.cpp:1075`) parses into a stack-local `SourceManager` destroyed before `CheckTerm`, so `-entry`, `[patchconstantfunc]` and `-specialize` locations never resolve (`-specialize Bogus` → bare `error[E30015]: undefined identifier`). `-diagnostic-format vs` and `-enable-machine-readable-diagnostics` still print the label; DeepWiki's "orphaned labels print without a location" is wrong for master; v2026.3.1 classic format still printed the name [labels dropped without location](../learnings/1793544034315-slang-rich-renderer-drops-span-labels-when-the-dia.md).
 
 **Range underlining is not a rendering change** (#10476). `DiagnosticSpan` is `{ SourceRange range; String message; }` and `makeLayoutSpan` underlines when `begin != end`. The flattening is in authoring/plumbing: DSL `getLocationExpr` maps each location to ONE SourceLoc and codegen emits `SourceRange{<single loc>}` — the choke point. "Span accepts a SourceRange" is a small DSL+codegen change; "AST/IR insts *store* SourceRange" (~668/~313 sites + serialization) is a separate large follow-up ([render layer supports SourceRange](../learnings/1783523470770-slang-rich-diagnostics-render-layer-already-suppor.md)). A multi-mode type-display flag (type-alias "aka") copies the `DiagnosticColor` option pattern and decorates in the diagnostics formatter, since `Type::toText` has no sink ([type-display flag](../learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md)).
+
+**Core-module note locations are off by one.** On master f1cd35ff8, when E36107 cites a core-module overload, its `note: see definition of 'X' --> hlsl.meta.slang:N:col` and `see declaration of 'require' --> hlsl.meta.slang:N:2` give an N one lower than the line in `source/slang/hlsl.meta.slang` on GitHub or in git. For `WaveMaskPrefixBitAnd` (matrix) the notes say 17650:15 (definition) and 17649:2 (require), while the file has the `[require]` at 17650 and the declaration at 17651, with matching columns. Before citing a meta-file line in an issue or PR, run `git show <sha>:source/slang/hlsl.meta.slang | sed -n Np` to get the file line instead of copying the note's N. In a shared checkout, `slangc -version` can show a stale `git describe` tag (g3649fb982, 612 commits behind HEAD in this case); to prove what a build was made from, `cmp` the meta file against `git show <sha>:...` and check the binary's mtime [core-module note line numbers are one lower than hlsl.meta.slang](../learnings/1793744600900-slangc-core-module-note-line-numbers-are-one-lower.md).
 
 ## Severity Changes and PR Labels
 
@@ -100,7 +103,7 @@ Root cause (master): stdlib fns advertise targets they WORK ON — `normalize` i
 
 The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site guard fix complete, "a warning is not the end of a compile" (#8785 ICE/SIGSEGV), the severity-downgrade-receiver rule, shared-formatter golden regressions, `(Struct)0` deprecation, and the std140 source-loc drop — live on the companion page [Slang Diagnostics: Deep-Dive Incidents & Case Studies](slang-misc-diagnostics-deep-dives.md).
 
-**Source learnings (35):**
+**Source learnings (36):**
 - ['Is it breaking?' — answer from the compiler, not the design doc](../learnings/1791569984990-is-it-breaking-answer-from-the-compiler-not-from-t.md) — #13537 master-vs-PR repro table; grep base doc comments.
 - [Empty-statement lint (20101) is a parser check keyed on parent-stmt type](../learnings/1785434273353-empty-statement-lint-unintendedemptystatement-2010.md) — volatile if/else pattern; 202c error blocked on #12179.
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
@@ -136,4 +139,5 @@ The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site 
 - [note→error: pin the SEVERITY in never-emitted code](../learnings/1792580635936-promoting-a-slang-diagnostic-note-error-pin-the-se.md) — #13809 E29103; drill on master's build.
 - [E30082 literal exemption is syntactic; #11513 lexer rounding](../learnings/1793311782255-e30082-literal-exemption-is-syntactic-unsuffixed-f.md) — E40016 is the value-based precedent.
 - [rich renderer drops span labels without resolvable location](../learnings/1793544034315-slang-rich-renderer-drops-span-labels-when-the-dia.md) — `parseTermString`; nameless E30015; `-diagnostic-format vs` (#14137).
+- [slangc core-module note line numbers are one lower than hlsl.meta.slang on GitHub](../learnings/1793744600900-slangc-core-module-note-line-numbers-are-one-lower.md) — E36107 notes off by one; look up the file line with `git show`; `slangc -version` tag can be stale in a shared checkout
 _Catalog: [[wiki/index.md]]_

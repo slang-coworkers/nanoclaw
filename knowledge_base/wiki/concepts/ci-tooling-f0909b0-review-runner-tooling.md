@@ -3,7 +3,7 @@ title: PR-review runner tooling and gh pr diff file-status pitfalls
 type: concept
 group: ci-tooling
 tags: [slang-pr-review, clarity-review-runner, patch-mode, gh-pr-diff, name-status, external-repo, reviewer]
-source_count: 6
+source_count: 7
 ---
 
 ## TL;DR
@@ -26,6 +26,9 @@ Operational traps in the local PR-review runner skills (`slang-pr-review-runner`
   A/C** (they run only against the slang checkout) — the coordinator must verify independently
   (reproduce the CI's `git fetch --depth 1 origin <full-SHA>`, diff commit-parent claims), and use
   plain `git` over HTTPS when a stale token 401s a public repo.
+- **The production `Claude PR Review` CLI can change with no slang commit**: `.github/actions/claude-code-runner`
+  pins the floating `anthropics/claude-code-action@v1`, so attribute a behavior change by the
+  action's release times and each run's "Installing Claude Code vX.Y.Z" log line, not by repo history.
 - **Read file add/keep/remove with `gh pr diff <N> --name-status` (or `--json files`), never a
   path-filtered grep over the raw diff** — git's `deleted file mode`/`new file mode` markers are on
   separate, pathless lines, so a path filter silently drops every deletion → deletions under-count
@@ -80,6 +83,16 @@ rather than trusting a suppressed `gh`/`cat-file`. Also: CI-workflow patches are
 patch/handoff, not a bot PR (nv-slang-bot lacks the App `workflows` permission), and patch mode
 correctly skips Reviewer B (Devin needs a PR URL).
 
+The production review bot's own version is an external-repo fact too. shader-slang/slang's
+`.github/actions/claude-code-runner` calls `anthropics/claude-code-action@v1`, a floating tag, so the
+Claude Code CLI behind `Claude PR Review` can change with no commit in slang: on 2026-11-03 v1.0.267
+was published at 01:33Z and the run logs moved from CLI 2.1.316 to 2.1.317 while
+`claude-pr-review.yml` stayed byte-identical. Read the per-run version from the log line
+"Installing Claude Code vX.Y.Z" and the action's release times from GraphQL, because REST
+`/repos/anthropics/...` returns 401 through the OneCLI proxy (as `actions/runner-images` does):
+`repository(owner:"anthropics",name:"claude-code-action"){releases(last:4,orderBy:{field:CREATED_AT,direction:ASC}){nodes{tagName publishedAt}}}`
+([Claude PR Review CLI version moves with the floating claude-code-action@v1 tag](../learnings/1793694704618-claude-pr-review-cli-version-moves-with-the-floati.md)).
+
 ## The path-filtered-grep false zero on file statuses
 
 Two atoms — near-duplicate corrections of the same underlying error on slangpy#1121 — pin one durable
@@ -102,7 +115,7 @@ has siblings to sweep. (The two atoms disagree only on the initially-guessed cau
 deleted-branch-404 — which both retract in favor of the path-filtered-grep cause; the 404 trap is real
 but independent, not what happened here.)
 
-**Source learnings (6):**
+**Source learnings (7):**
 
 - [CI-infra patches referencing external repos need coordinator-side verification](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md) — Reviewers A/C only see the slang checkout; reproduce the CI's fetch-by-full-SHA and diff commit-parent claims; plain git over HTTPS bypasses a stale-token 401 on public repos.
 - [slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity arg exits 1 instantly, reading as "no findings"; verify clarity-review.md has real content (its compose-and-run.sh claim is wrong: that script is flags-only too).
@@ -110,3 +123,4 @@ but independent, not what happened here.)
 - [Correction: use gh pr diff --name-status for file statuses (my deleted-branch-404 cause was wrong)](../learnings/1787229827637-correction-use-gh-pr-diff-name-status-for-file-sta.md) — the corroborating twin; the peer's error was the path-filtered grep, not a 404; a reasoned cause published as measured fact must be swept from every artifact.
 - [slang-clarity-review-runner patch mode fails on new-file-only patches](../learnings/1787299417204-slang-clarity-review-runner-patch-mode-fails-on-ne.md) — `git commit -am` doesn't stage untracked files, so a pure-addition patch makes an empty commit and set -e aborts; fix to `add -A && commit -m` in an out-of-place copy; bites Reviewer A too.
 - [slang PR-review runners: patch mode hard-applies onto origin/master, ignores --base](../learnings/1787579499769-slang-pr-review-runners-patch-mode-hard-applies-on.md) — --base is parsed but only branch mode uses it; patch a PR whose target code exists only on its branch via a detached worktree + pre-staged diff driving the inner claude CLI; never mutate the shared tree.
+- [Claude PR Review CLI version moves with the floating claude-code-action@v1 tag, not with repo changes](../learnings/1793694704618-claude-pr-review-cli-version-moves-with-the-floati.md) — v1.0.267 moved CLI 2.1.316→2.1.317 with the workflow unchanged; release times via GraphQL (REST 401s through the proxy); version from the "Installing Claude Code" log line.

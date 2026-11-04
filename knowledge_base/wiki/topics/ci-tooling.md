@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-622 learnings. [Catalog](../index.md)
+628 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -198,6 +198,7 @@ type: topic
 - [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
 - [Check check-ci's needs before calling a CI red merge-blocking or an eviction risk](../learnings/1791456069310-check-check-ci-s-needs-before-calling-a-ci-red-mer.md)
 - [Check issue timeline for cross-referenced PRs before building a fix](../learnings/1792076007832-check-issue-timeline-for-cross-referenced-prs-befo.md)
+- [Check memory/orchestrator for an incident before alerting the operator about it](../learnings/1793751912227-check-memory-orchestrator-for-an-incident-before-a.md)
 - [Check offline CUDA prelude builds with nvcc -c, not only -cubin](../learnings/1793644733084-check-offline-cuda-prelude-builds-with-nvcc-c-not-.md)
 - [Check rerun-tracker.json's existing verdict before re-deriving a fresh classification from raw CI logs](../learnings/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md)
 - [Check the build graph before recommending a test shape](../learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md)
@@ -272,6 +273,7 @@ type: topic
 - [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
 - [compile-perf tracker already captures rss_kb but it's dead on the Windows perf runner and never surfaced](../learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md)
 - [Confirm a fix by its positive signature, not by absence of complaints — plus three Discord/CI instrument gotchas](../learnings/1786216778202-confirm-a-fix-by-its-positive-signature-not-by-abs.md)
+- [Confirm a Slang regression in minutes with official release tarballs (no rebuild)](../learnings/1793750844303-confirm-a-slang-regression-in-minutes-with-officia.md)
 - [Core-module vector splat init lets user implicit conversions build nested vectors (#14100)](../learnings/1793390547913-core-module-vector-splat-init-lets-user-implicit-c.md)
 - [CORRECTION to "grep which emitter consumes it" — locating the consumer is NOT enough; enumerate its arms against your specific input](../learnings/1786007575112-correction-to-grep-which-emitter-consumes-it-locat.md)
 - [CORRECTION to my normalizer recipe - do NOT strip underscore, it silently mangles wikilinks and slugs](../learnings/1785962321997-correction-to-my-normalizer-recipe-do-not-strip-un.md)
@@ -329,6 +331,7 @@ type: topic
 - [Editing source/slang-llvm/ — default build fetches a PREBUILT libslang-llvm.so, so your edit is NOT compiled locally](../learnings/1784096455719-editing-source-slang-llvm-default-build-fetches-a-.md)
 - [Equivalence-to-incumbent is circular: a byte-for-byte review can pass a real bug](../learnings/1785767751083-equivalence-to-incumbent-is-circular-a-byte-for-by.md)
 - [Establish an intermittent CI failure's BASE RATE before accepting a regression window (annotations outlive expired logs)](../learnings/1785746835066-establish-an-intermittent-ci-failure-s-base-rate-b.md)
+- [eval-runner review kind: placeholder answer.json drafts get scored before the final answer](../learnings/1793723059993-eval-runner-review-kind-placeholder-answer-json-dr.md)
 - [eval-runner: setsid PID trap and date-pinned reply baseline](../learnings/1792653207139-eval-runner-setsid-pid-trap-and-date-pinned-reply-.md)
 - [Evicted-PR requeue decision needs three independent surfaces, each alone misleading](../learnings/1786494014693-evicted-pr-requeue-decision-needs-three-independen.md)
 - [Failed merge-group check-ci does not imply eviction: a stacked later entry's green run merges earlier entries](../learnings/1791564244082-failed-merge-group-check-ci-does-not-imply-evictio.md)
@@ -422,6 +425,7 @@ type: topic
 - [Measure CI freshness by failing-check started_at, not just head commit date](../learnings/1785809336773-measure-ci-freshness-by-failing-check-started-at-n.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
 - [Merge-queue checks_timed_out can be a self-hosted sm80 runner queue wait, not a code/LLVM issue](../learnings/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md)
+- [Merge-queue eviction with all statuses green can be a self-hosted runner drop; read job annotations, not logs](../learnings/1793693100985-merge-queue-eviction-with-all-statuses-green-can-b.md)
 - [Merge-queue failure:1 can be a same-run GPU-flake auto-retry, not a stall](../learnings/1787581056199-merge-queue-failure-1-can-be-a-same-run-gpu-flake-.md)
 - [Merged Windows GPU CI job (-api all) measured: Debug 90.8 min, Release 21.5 min](../learnings/1792592295131-merged-windows-gpu-ci-job-api-all-measured-debug-9.md)
 - [METHOD: verifying a negative — reproducible recipes for sweeps, GitHub reads, rewritten history, and "is my green real?"](../learnings/1785936194762-method-verifying-a-negative-reproducible-recipes-f.md)
@@ -537,6 +541,7 @@ type: topic
 - [Slang ci.yml: on merge_group test-falcor always skips even though the Falcor-only build runs](../learnings/1791462328513-slang-ci-yml-on-merge-group-test-falcor-always-ski.md)
 - [Slang CI: "Common Test Setup" pre-test flake evicts PRs from merge queue](../learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md)
 - [Slang CI: .slang-module gen failure with E99997 assert = real bug, not infra flake](../learnings/1781720061070-slang-ci-slang-module-gen-failure-with-e99997-asse.md)
+- [Slang CI: busy==total is not saturation for autoscaled runner groups; SM80 runners are per-job ephemeral](../learnings/1793694707623-slang-ci-busy-total-is-not-saturation-for-autoscal.md)
 - [Slang CI: Falcor image-test flakes vs artifact-not-found classification](../learnings/1780762074181-slang-ci-falcor-image-test-flakes-vs-artifact-not-.md)
 - [slang CI: falcor-build-approval-gate "failure" 30 days later = expired environment approval, not a code failure](../learnings/1793318217230-slang-ci-falcor-build-approval-gate-failure-30-day.md)
 - [Slang CI: GPU jobs (test-falcor, win-gpu-vk test-slang) flake/timeout; classify before reacting](../learnings/1788268233722-slang-ci-gpu-jobs-test-falcor-win-gpu-vk-test-slan.md)
@@ -596,6 +601,7 @@ type: topic
 - [Two correct CI scans can disagree on failure count — reconcile the UNIT (current vs completed) before conceding or disputing](../learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md)
 - [Two top CI infra buckets are distinct: external Falcor pipeline vs own-fleet runner preemption](../learnings/1786494033565-two-top-ci-infra-buckets-are-distinct-external-fal.md)
 - [Two-commit build bisect is cheap when the suspect touches one .cpp](../learnings/1792065111999-two-commit-build-bisect-is-cheap-when-the-suspect-.md)
+- [Type-flow E33180 from a mismatched rebuilt Specialize type; in 2025+, two flowing types always give E33180](../learnings/1793691843957-type-flow-e33180-from-a-mismatched-rebuilt-special.md)
 - [Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [Validate must-fail repro against CURRENT source, not a stale prebuilt binary — lowering drifts](../learnings/1786636025197-validate-must-fail-repro-against-current-source-no.md)
 - [Verify a "green once PR X lands" dependency by applying X's actual diff — #12935 is insufficient for genuinely-multi-type is/as (#13261)](../learnings/1790318063842-verify-a-green-once-pr-x-lands-dependency-by-apply.md)

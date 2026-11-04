@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-408 learnings. [Catalog](../index.md)
+414 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -101,6 +101,7 @@ type: topic
 - [Clarity-runner (Reviewer C) can lose its output to a tmp/ file — recover it from the Write tool call in stream.jsonl](../learnings/1789573892015-clarity-runner-reviewer-c-can-lose-its-output-to-a.md)
 - [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md)
 - [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)
+- [Claude PR Review CLI version moves with the floating claude-code-action@v1 tag, not with repo changes](../learnings/1793694704618-claude-pr-review-cli-version-moves-with-the-floati.md)
 - [Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)
 - [Claude PR Review green check does not mean a review was posted (background subagents)](../learnings/1793176878442-claude-pr-review-green-check-does-not-mean-a-revie.md)
 - [CodeRabbit findings live on pulls/N/comments, not reviews[].body — a successful exit-0 harvest can score 0 findings when 11 exist](../learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md)
@@ -161,6 +162,7 @@ type: topic
 - [Don't release a review verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md)
 - [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Enumerate every write site before asserting an invariant — grep beats mutual review](../learnings/1785928854026-enumerate-every-write-site-before-asserting-an-inv.md)
+- [eval-bank review_history.py hides judge failures and has no gh retry](../learnings/1793713929111-eval-bank-review-history-py-hides-judge-failures-a.md)
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md)
 - [formatting.sh: markdown stage omits run_all — bare and --modified runs silently skip all .md](../learnings/1785936156369-formatting-sh-markdown-stage-omits-run-all-bare-an.md)
 - [Gating: answering a formal human review verdict is pre-authorized; only discretionary chatter is held](../learnings/1788247484430-gating-answering-a-formal-human-review-verdict-is-.md)
@@ -221,6 +223,7 @@ type: topic
 - [pr-approver must re-fetch reviews at record time not just staging](../learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md)
 - [PR-review heuristic: when a fix adds a null-possible invariant + helper, audit ALL structurally-identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md)
 - [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)
+- [Probe a reviewer's remedy patch before adopting it verbatim](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md)
 - [Re-check maintainer direction right before sending a verdict, not only at review start](../learnings/1793210524900-re-check-maintainer-direction-right-before-sending.md)
 - [Re-check PR state right before posting a delta that names PRs (a reporter closed theirs mid-review)](../learnings/1792622217093-re-check-pr-state-right-before-posting-a-delta-tha.md)
 - [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](../learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md)
@@ -243,6 +246,7 @@ type: topic
 - [Review round deltas: diff the PR's own net change across a merge, and watch for silently reverted nits](../learnings/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md)
 - [Review severity: doc-vs-behavior conflict on a maintainer-owned design point is a QUESTION, not a BLOCK](../learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md)
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
+- [Review-eval verifier: judge "Connection refused" unknowns, and how to re-score them](../learnings/1793741894835-review-eval-verifier-judge-connection-refused-unkn.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
 - [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md)
 - [Reviewer A '🔴 traced not reproduced' can be real: always run it with ulimit+timeout before relaying](../learnings/1791542333563-reviewer-a-traced-not-reproduced-can-be-real-alway.md)
@@ -308,6 +312,7 @@ type: topic
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)
 - [Reviewer discipline: don't close a self-raised finding on the author's unverifiable EXIT=0; the critique gate exists to catch it](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md)
 - [Reviewer heuristic: a PR that lifts a subclass override into a shared base changes EVERY inheriting subclass](../learnings/1787580519409-reviewer-heuristic-a-pr-that-lifts-a-subclass-over.md)
+- [Reviewer remedies need the same adversarial pass; member-list range-for inside checking is a UAF](../learnings/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md)
 - [Reviewer reuse-nit trap: check the local's STATIC type before suggesting an accessor swap (IRInst* vs IRFunc*)](../learnings/1789990436303-reviewer-reuse-nit-trap-check-the-local-s-static-t.md)
 - [Reviewer run-dir selection: never pick by mtime when multiple reviews share the transcripts dir](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md)
 - [Reviewer trap: an IRGlobalParam gate doesn't prove a getTypeNameHint reflection side-effect is "non-manifesting"](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md)
@@ -415,3 +420,4 @@ type: topic
 - [When a reviewer disputes your claim with a runnable check, run it before defending — stale memory of a fast-moving sibling loses to fresh source](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md)
 - [When gh GraphQL 401s, verify PR state and review-approval binding via REST](../learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md)
 - [When push cadence beats review turnaround, widen the quiescence window — don't chase per-push](../learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-th.md)
+- [worktree-gc never sees standalone wt-* clones (bare-clone review trees)](../learnings/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md)
