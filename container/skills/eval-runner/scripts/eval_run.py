@@ -115,6 +115,14 @@ SMOKE_SIGNAL_TASKS = 30
 # difference counts; reply and review rewards are continuous judge scores that always move
 # a little between runs, so only a large gap says the task depends on the draw.
 LOW_SIGNAL_GAP = {"triage": 1e-9, "fixer": 1e-9, "reply": 0.2, "review": 0.2}
+# The reply and review verifiers call a judge model through ANTHROPIC_BASE_URL. Inside a
+# coworker container that variable names a relay on 127.0.0.1 that lives only while the
+# agent's turn is active, so a runner left in the background between turns gets
+# "Connection refused" and the trial ends unknown. The container's gateway route is
+# always up and the OneCLI proxy injects the real key; the token below is a placeholder
+# that only tells the scorer a judge is configured.
+DEFAULT_JUDGE_BASE_URL = os.environ.get("EVAL_JUDGE_BASE_URL", "https://inference-api.nvidia.com")
+JUDGE_PLACEHOLDER_TOKEN = "ROUTED_VIA_ONECLI_PROXY"
 BOOTSTRAP_SAMPLES = 2000
 BOOTSTRAP_SEED = 20261016
 MODEL_ALIASES = {"opus": "ANTHROPIC_DEFAULT_OPUS_MODEL", "sonnet": "ANTHROPIC_DEFAULT_SONNET_MODEL",
@@ -568,6 +576,20 @@ def read_reward_text(text: str) -> float | None:
     return None
 
 
+def judge_env(environ: dict | None = None) -> dict[str, str]:
+    """The judge endpoint a verifier should use: the container's gateway route rather than
+    the agent's per-turn relay (see DEFAULT_JUDGE_BASE_URL). An operator who sets
+    EVAL_JUDGE_BASE_URL to "" keeps the inherited environment untouched."""
+    environ = os.environ if environ is None else environ
+    route = environ.get("EVAL_JUDGE_BASE_URL", DEFAULT_JUDGE_BASE_URL)
+    if not route:
+        return {}
+    out = {"ANTHROPIC_BASE_URL": route}
+    if not environ.get("ANTHROPIC_AUTH_TOKEN") and not environ.get("ANTHROPIC_API_KEY"):
+        out["ANTHROPIC_AUTH_TOKEN"] = JUDGE_PLACEHOLDER_TOKEN
+    return out
+
+
 def score_triage(task: Task, answer_file: str, verifier_dir: str, run: Runner = default_run) -> tuple[float | None, str]:
     """Run the task's verifier on the answer. The bank's contract: AGENT_OUTPUT is the
     answer, REWARD_DIR receives reward.txt (and summary.json), the script exits 0. The
@@ -578,7 +600,7 @@ def score_triage(task: Task, answer_file: str, verifier_dir: str, run: Runner = 
     os.makedirs(verifier_dir, exist_ok=True)
     reward_path = os.path.join(verifier_dir, "reward.txt")
     env = dict(os.environ, AGENT_OUTPUT=answer_file, REWARD_DIR=verifier_dir, REWARD_PATH=reward_path,
-               TASK_DIR=task.dir, TASK_ID=task.id)
+               TASK_DIR=task.dir, TASK_ID=task.id, **judge_env())
     try:
         r = run(["bash", task.test_script], timeout=task.verifier_timeout_sec, cwd=task.dir, env=env)
     except subprocess.TimeoutExpired:

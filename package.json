@@ -37,6 +37,7 @@
     "auth": "tsx src/whatsapp-auth.ts",
     "validate:templates": "tsx scripts/validate-templates.ts",
     "rebuild:claude": "tsx scripts/rebuild-claude-md.ts",
+    "rebuild:derived-images": "tsx scripts/rebuild-derived-images.ts",
     "dashboard": "echo 'Dashboard runs inside the host process. Use: DASHBOARD_PORT=3737 npm run dev' && exit 1",
     "dashboard:preview": "npx tsx dashboard/server.ts",
     "lint": "eslint src/",
