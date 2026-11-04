@@ -45,6 +45,8 @@ container/config/**
 
 # Base infrastructure spine + skills (NOT project overlays):
 container/skills/spine-base/**
+# Review-length cap overlay: the marker that turns gate-review-length.sh on for a group.
+container/overlays/review-length/**
 container/spines/base/**
 
 # Upstream-originated skills (on main but not overlay-owned):
