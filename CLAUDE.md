@@ -166,6 +166,8 @@ The `on_wake` column on `messages_in` ensures wake messages are only picked up b
 
 Key files: `src/container-restart.ts`, `src/container-runner.ts` (`killContainer`), `container/agent-runner/src/db/messages-in.ts` (`getPendingMessages`).
 
+After a base image rebuild, groups with their own derived image (apt/npm packages) stay on the old base until `pnpm run rebuild:derived-images` re-derives them; it rebuilds only stale pins and restarts nothing. `--rebuild` on a single group does the same for that group plus a restart.
+
 ## Secrets / Credentials / Gateways
 
 API keys, OAuth tokens, and auth credentials are managed by a **credential gateway** — never by NanoClaw and never by an agent. Secrets are injected at the network boundary at request time; none are passed in env vars or through chat context.
