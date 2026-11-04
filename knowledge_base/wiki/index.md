@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8543 agent learnings**, synthesized into **510 concept pages**.
+Standalone wiki built from **8612 agent learnings**, synthesized into **515 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -33,6 +33,7 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 ### Agent fixer / codex / skills
 - [Codex & Provider Parity](concepts/agent-fixer-codex-provider.md)
 - [Eval Runner: Fixer Trials on the slang-eval Fork](concepts/agent-eval-runner-fixer-fork-mechanics.md)
+- [Eval Runner: Review-Kind Scoring, Judge Failures, and Bank Freshness](concepts/agent-eval-runner-review-kind-scoring-and-judge.md)
 - [Eval Runner: Trial Isolation, Answer Contract, and Answer-Key Leaks](concepts/agent-eval-runner-trial-isolation-and-answer-leaks.md)
 - [Fixer Dispatch & Coordination Failure Modes](concepts/agent-fixer-dispatch-coordination.md)
 - [Fixer engineering craft: toolchain, CI infra, NVRTC PCH, OKF synthesis, and codex judgment](concepts/agent-fixer-codex-skills-f0909b0-fixer-engineering-and-empirical-craft.md)
@@ -414,7 +415,7 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 - [Slang GLSL legalization: entry-point parameters, varyings, and precise outputs](concepts/slang-backends-glsl-entry-point-and-varying-legalization.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
-- [Slang specialization constants across targets: spec-constant array sizes, glslang spellings, and dangling [numthreads] operands](concepts/slang-compiler-specialization-constants-across-targets.md)
+- [Slang specialization constants across targets: spec-constant array sizes, glslang spellings, dangling [numthreads] operands, and spec-const-rate module-scope initializers](concepts/slang-compiler-specialization-constants-across-targets.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang SPIR-V capabilities, extensions, and version gating](concepts/slang-backends-spirv-capabilities-and-version-gating.md)
 - [Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName](concepts/slang-backends-spirv-debug-info-emission.md)
@@ -427,6 +428,7 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 - [Slang SPIR-V: `precise`, NoContraction, and floating-point reassociation](concepts/slang-backends-spirv-precise-and-nocontraction.md)
 - [Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels](concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md)
 - [Slang SV_ClipDistance / SV_CullDistance: DXC packing, the GLSL shared-array path, Metal [[clip_distance]], and how to verify changes](concepts/slang-backends-clip-cull-distance-system-values.md)
+- [Slang wave ops across element types and targets: bool gaps, WaveMatch lane masks, control columns and self-checking GPU probes](concepts/slang-backends-wave-ops-element-types-and-cross-target-probes.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 - [Slang WGSL emit: matrix-operator validity and storage orientation, template-list ambiguity, buffer-element gaps, enable/requires directives, push constants, and GPU-free naga/Tint validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
 - [Slang WGSL vector negation: the `(T(0) - x)` form, signed zero, and choosing the unary path without isSignedType](concepts/slang-backends-wgsl-vector-negation-signed-zero.md)
@@ -468,6 +470,7 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 - [Slang Maintainer Scope-vs-Design Approval, Evidence Discipline, and Draft-PR Footprint](concepts/slang-pr-maintainer-scope-and-evidence.md)
 - [Slang Parameter Binding and Layout](concepts/slang-compiler-parameter-binding-and-layout.md)
 - [Slang PR Process, Maintainer Workflow, and Issue Lifecycle](concepts/slang-misc-pr-process-and-maintainer-workflow.md)
+- [Slang printf/abort variadic arguments: opaque handles in packs, split-resource legalization, and where an all-targets check runs](concepts/slang-compiler-printf-and-abort-variadic-arguments.md)
 - [Slang Serialization, Module Cache, Link/Output Order, and Enum/Sentinel Discipline](concepts/slang-compiler-serialization-and-enums.md)
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
 - [Slang Test — FileCheck Authoring and Opt-Levels](concepts/slang-test-filecheck-authoring-and-opt-levels.md)
@@ -495,6 +498,7 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 - [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
 - [Slang Front-End Design Review Principles (tangent-vector, #13406)](concepts/slang-compiler-frontend-design-review-principles.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
+- [Slang GLSL layout(...) in; qualifiers and late entry points: lifted attributes, implicit workgroup-size spec constants, and their tests](concepts/slang-language-glsl-layout-qualifiers-and-late-entry-points.md)
 - [Slang integer constant folding: signed int64 storage, un-narrowed front-end IntVals, and what folds](concepts/slang-language-core-integer-constant-folding.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang new semantic checks: unmarked compiler-made declarations and twice-visited bodies](concepts/slang-language-synthesized-declarations-and-double-visits.md)
@@ -531,6 +535,7 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 - [slangc Wave Intrinsics, VM Emitter & Inliner](concepts/slangc-wave-vm-and-inliner.md)
 - [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
 - [Triaging slangd (language-server) crashes: version-triage, direct-LSP repro, and completion-mode modifier retention](concepts/slang-tooling-slangd-lsp.md)
+- [Worked Slang release version matrices: per-issue status across releases](concepts/slang-tooling-release-worked-version-matrices.md)
 
 ### SlangPy
 - [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
@@ -568,10 +573,10 @@ Standalone wiki built from **8543 agent learnings**, synthesized into **510 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2853)
-- [NanoClaw / agent operations](topics/agent-ops.md) (988)
-- [CI, build & tooling](topics/ci-tooling.md) (622)
-- [Review & process](topics/review-process.md) (408)
+- [Slang compiler & language](topics/slang-compiler.md) (2892)
+- [NanoClaw / agent operations](topics/agent-ops.md) (992)
+- [CI, build & tooling](topics/ci-tooling.md) (628)
+- [Review & process](topics/review-process.md) (414)
 - [PR review, approval & calibration](topics/review-approval.md) (1420)
-- [Verification & evidence discipline](topics/verification.md) (593)
-- [Uncategorized](topics/misc.md) (1659)
+- [Verification & evidence discipline](topics/verification.md) (594)
+- [Uncategorized](topics/misc.md) (1672)

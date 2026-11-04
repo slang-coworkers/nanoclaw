@@ -3,7 +3,7 @@ title: "gh CLI CI Status & Merge Signals — Instrument-Lie Folds"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, ci, graphql, rerun, merge-detection, corrections, slang]
-source_count: 11
+source_count: 12
 ---
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
@@ -17,6 +17,7 @@ source_count: 11
 - **Bucket a red by terminal outcome, never by a signature string** — `slang-test` retries, so signature-presence over-counts; a correct total can hide a wrong composition. Presence proves an event occurred, never that it caused the red.
 - **"CI failing" means a REQUIRED check concluded `failure`** — not a CANCELLED approval gate (`falcor-build-approval-gate` on external PRs) or a non-required job like `board-sync` or `review`, and a required `check-ci` that is absent (fork runs awaiting approval) is "not run", not failing. Read required contexts from `branches/master` (`/protection` 403s), or audit every label at once with one aliased GraphQL `isRequired(pullRequestNumber:)` query (1 point for six PRs, no REST); `gh pr checks` folds CANCELLED into fail, so use `statusCheckRollup` or check-run `conclusion`. Filter the label on required checks; don't drop it.
 - **A merge-queue eviction's reason (`failed_checks` / `checks_timed_out` / `merged`) is only in GraphQL `RemovedFromMergeQueueEvent.reason`**; the REST timeline omits it.
+- **A PR comment does not stop the merge queue.** A regression found on an already-queued PR must reach whoever queued it by name, or be filed at once, or a human must dequeue the PR. A ready, all-green PR on a merge-queue branch reads `mergeStateStatus: BLOCKED` until someone queues it; that is not a failing gate.
 - **`gh .user.login` omits the `[bot]` suffix** — the REST API returns `nv-slang-bot`, not `nv-slang-bot[bot]`; edit-if-last-poster-is-self guards must compare against the bare login or they mis-fire and post a duplicate.
 
 Incident folds where `gh`/git status- and merge-reading tools returned coherent-but-wrong answers: the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, `success`-means-declined-to-act aging, red-classification by terminal outcome, the bare-`[bot]`-login quirk, and the resulting corrections/supersessions.
@@ -79,6 +80,8 @@ Six PRs across slang and slang-rhi cost 1 point, with no REST branch-protection 
 
 The REST issue-timeline `removed_from_merge_queue` event has no reason field. To tell a real merge-queue failure from a timeout eviction, query `pullRequest(number:N){ timelineItems(itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT],first:5){ nodes{ ... on RemovedFromMergeQueueEvent{ createdAt reason } } } }` via `POST https://api.github.com/graphql` (it works through the proxy without an auth header). Reasons seen: `failed_checks`, `checks_timed_out`, `merged`. On 2026-10-16 this showed slang #13615 evicted with `checks_timed_out` although its group CI run finished SUCCESS one second later; the cause was a 100-min SM80Plus queue wait, a recurrence of the closed #13614, confirmed by computing job `started_at - created_at` from `actions/runs/<id>/jobs` [merge-queue eviction reason via GraphQL](../learnings/1792139409374-merge-queue-eviction-reason-use-graphql-removedfro.md).
 
+**The queue does not read PR comments.** On 2026-11-03 jkwak-work queued external PR #14150 at 00:45Z; at 01:10Z nv-slang-bot commented two cases that compile on master and fail with the PR (integer `/` or `%` in a `[ForceInline]` helper; a user constructor under `-g`). The queue merged it at 02:06Z anyway, and the next morning jvepsalainen-nv filed #14235 (CUDA broken in the falcor2-slang nightly) and the bot filed #14238. A regression found on a queued PR therefore has to reach the person who queued it by name, be filed as an issue immediately, or be acted on by a human who removes the PR from the queue; a plain PR comment is not seen in time. The same day showed the opposite misreading: GitHub reports a ready, all-green PR on this merge-queue branch as `mergeStateStatus: BLOCKED` until someone queues it (#14045), so BLOCKED there is not a failing gate ([a bot comment on a queued PR does not stop the merge queue](../learnings/1793695966509-a-bot-comment-on-a-queued-pr-does-not-stop-the-mer.md)).
+
 ## Contradictions / supersessions
 
 - **`--paginate` "gives no non-zero exit code"** — superseded. `gh` does exit 1; a pipe into `jq` (or `2>/dev/null`) launders it. The mechanism claim must always name the *invocation form* measured.
@@ -87,7 +90,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (11):**
+**Source learnings (12):**
 
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -100,5 +103,6 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - [`gh pr checks` can hide failing check runs — read CI state from the commit check-runs API](../learnings/1792703301263-gh-pr-checks-can-hide-failing-check-runs-read-ci-s.md) — #13880: 5 pass / 52 skipping vs check-runs `check-ci` + `wait-for-human-priority` failed; report a bot priority yield as "CI red, not yet run"
 - [audit PR-report "CI failing" labels with one aliased GraphQL isRequired query; 10-26 only #11964 false (board-sync, check-pr-label)](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)
 - [GraphQL CheckRun.isRequired(pullRequestNumber:) separates real from false CI failures in 1 point](../learnings/1793607720073-graphql-checkrun-isrequired-pullrequestnumber-sepa.md) — 11-02: 3 of 8 labels false (#13901/#13959 red only on non-required `review`, `check-ci` absent); `rateLimit.remaining` jumps through the proxy
+- [A bot comment on a queued PR does not stop the merge queue (#14150 → #14235/#14238)](../learnings/1793695966509-a-bot-comment-on-a-queued-pr-does-not-stop-the-mer.md) — name the queuer, file an issue or have a human dequeue; all-green unqueued PR shows `BLOCKED`
 
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: "Slang new semantic checks: unmarked compiler-made declarations and twice
 type: concept
 group: slang-language-core
 tags: [slang, semantic-checking, SynthesizedModifier, lambda, maybeCaptureDecl, LambdaDecl, InterfaceDefaultImplDecl, ASTSynthesizer, emitVarDeclStmt, bitfield, SetterDecl, extendContainerDecl, autodiff, shadowing, E30515, E30022, language-server, semantic-tokens]
-source_count: 3
+source_count: 5
 ---
 
 # Slang new semantic checks: unmarked compiler-made declarations and twice-visited bodies
@@ -20,6 +20,8 @@ A new per-declaration or per-block check in the Slang semantic checker sees more
 - An interface method with a body is parsed twice, into the requirement and an `InterfaceDefaultImplDecl`. Its params and generic params exist twice at one location, and neither copy is marked. Skip the signature decls whose parent chain reaches an `InterfaceDefaultImplDecl`.
 - A block-bodied lambda's `BlockStmt` is checked twice: in `visitLambdaExpr`, then as the body of the synthesized `()` method. Locals are safe; a loop over `scopeDecl` members is not. Report on the first visit.
 - Normal tests never check warnings. Only a 202c error run or an exhaustive DIAGNOSTIC_TEST shows these false reports, so test both twice-visited shapes and the synthesized-name cases for every new check on params, generic params or block contents.
+- **Unnamed synthesized module-level declarations share one mangled name, and the IR linker merges them silently.** Give each a unique `$`-prefixed name. A sibling-modifier lookup at `ModifiersChecked` misses later siblings unless each is `ensureDecl`'d first.
+- **Folding an expression through a temporary `DiagnosticSink` before its real check hides the error**: the cached error result makes the second visit silent. Fold with the visitor's own sink.
 
 ## Compiler-made declarations without `SynthesizedModifier`
 
@@ -33,11 +35,15 @@ A new per-declaration or per-block check in the Slang semantic checker sees more
 
 These diagnostics have no source location or point into `core`, and in a strict mode they fail valid code. To find them, list the names the checker synthesizes (`grep -o 'getName("…")' slang-check-*.cpp slang-ast-synthesis.cpp`), compile a generic parameter named after each one (`struct G<let NAME : int> : IDifferentiable {…}`, a `[Differentiable]` method, a bitfield) and compare with master. The fix marks the `VarDecl` in `emitVarDeclStmt`, marks the bitfield setter and propagates the mark to its `newValue`, and marks the `ExtensionDecl` in `extendContainerDecl`; a "members of a synthesized type" skip then covers the aliases. The other readers of `SynthesizedModifier` are the LSP filters, `shouldDocumentDecl`, `isSynthesizedMethod` (which needs an `AggTypeDeclBase` parent) and the FuncDecl-only `in` default, so these marks are low-risk, and the full suite stays green ([unmarked compiler-made decls; fuzz generic-param names against synthesized names](../learnings/1793377375556-checks-that-skip-slang-compiler-made-declarations-.md)).
 
+**Unnamed synthesized globals collide at link time.** A compiler-made declaration can also break code generation, not only diagnostics. The checker synthesizes a module-level `VarDecl` with no name for each undeclared GLSL `local_size_*_id`, and every unnamed sibling of the same type gets the same mangled export name (`_SV3<module>0`). The IR linker then merges them into one symbol silently: the implicit spec constants for ids 5 and 6 became one `OpSpecConstant` with only `SpecId 6`. A synthesized global therefore needs a unique name; a `$` prefix (`$local_size_id_5`) cannot collide with user identifiers, and the GLSL emitter scrubs `$` to `x24`. A related ordering trap: declarations reach `DeclCheckState::ModifiersChecked` in source order, so a lookup over sibling modifiers at that phase misses later siblings that still hold `Unchecked*Attribute`; `ensureDecl(member, ModifiersChecked)` each sibling, iterating by index because members can be appended mid-scan [unnamed checker-synthesized globals get merged by the IR linker](../learnings/1793754626265-slang-unnamed-checker-synthesized-globals-get-merg.md). The GLSL side of this case is on [[wiki/concepts/slang-language-glsl-layout-qualifiers-and-late-entry-points.md]].
+
 ## Bodies the checker visits twice
 
 **Interface method with a body.** `parseInterfaceDefaultCallableAsExplicitGeneric` (`slang-parser.cpp` ~6464) parses the method a second time into an `InterfaceDefaultImplDecl`. Its `ParamDecl`s and generic params therefore exist twice at the same source location, and neither copy carries `SynthesizedModifier`. Master already reports E30515 twice for `interface I<T> { int h<T>() { return 0; } }`. The fix skips the signature decls whose callable or generic parent chain reaches an `InterfaceDefaultImplDecl`: the requirement copy keeps the signature, and body locals exist only in the default copy.
 
 **Block-bodied lambda.** `visitLambdaExpr` runs `dispatchStmt(bodyStmt)` with `m_parentLambdaExpr` set, and then the same `BlockStmt` is checked again as the body of the synthesized `()` `FuncDecl`, so code in `visitBlockStmt` runs twice. Locals are safe, because the declaration state machine runs once for each decl; a loop over `scopeDecl` members is not. Detect the second visit with `!m_parentLambdaExpr && getParentFunc() && as<LambdaDecl>(getParentFunc()->parentDecl)`, and report on the first visit: diagnostics from the second visit get an extra `note[E30022]: ... while synthesizing method '()' of '_slang_Lambda_...'` ([interface default bodies and lambda bodies are seen twice](../learnings/1793371675023-slang-ast-interface-default-bodies-and-lambda-bodi.md)).
+
+**Expressions folded once through a temporary sink.** A check that folds an AST expression with a sub-visitor and a temporary `DiagnosticSink`, before the real check visits the same expression, poisons it: the first visit stores the error result in the node, so the real check emits nothing. In #14284, `layout(local_size_x = undefinedSize)` compiled with no E30015. Fold with the visitor's own sink, so the error is reported once [temp-sink folding poisons AST exprs](../learnings/1793757488047-glsl-local-size-x-id-default-comes-from-local-size.md).
 
 The same class of bug in expressions is the non-idempotent `visitMemberExpr` re-check behind `foo->Bar<T>()` E30101 ([[wiki/concepts/misc-f0909b9-slang-compiler-internals.md]]): when a check fails in only one syntactic combination, suspect a second visit.
 
@@ -45,7 +51,9 @@ The same class of bug in expressions is the non-idempotent `visitMemberExpr` re-
 
 Ordinary tests do not look at warnings, so a check that fires on synthesized or twice-visited declarations passes the full suite. Run the check as a 202c error, or pin it with an exhaustive `DIAGNOSTIC_TEST`, and include an interface method with a body, a block-bodied lambda that captures a generic value parameter, and a generic parameter named after each synthesized name. When the 202c error text extends the warning text, a message-only annotation matches both severities; pin the severity and code on the primary row ([[wiki/concepts/misc-f0909b9-slang-diagnostics-warnings-and-test-authoring.md]]).
 
-**Source learnings (3):**
+**Source learnings (5):**
 - [Slang lambda capture fields copy the captured name but are not SynthesizedModifier-marked](../learnings/1793366451861-slang-lambda-capture-fields-copy-the-captured-name.md) — `maybeCaptureDecl` fields carry the user's name and loc; skip members of a synthesized `AggTypeDeclBase`; marking the fields breaks LSP semantic tokens.
 - [Slang AST: interface default bodies and lambda bodies are seen twice](../learnings/1793371675023-slang-ast-interface-default-bodies-and-lambda-bodi.md) — `InterfaceDefaultImplDecl` duplicates signature decls; a block lambda body is checked in `visitLambdaExpr` and again in the synthesized `()`; report on the first visit.
 - [Checks that skip Slang compiler-made declarations need the marker at every producer](../learnings/1793377375556-checks-that-skip-slang-compiler-made-declarations-.md) — `emitVarDeclStmt`, bitfield setter + `newValue`, `extendContainerDecl` aliases are unmarked; fuzz generic-param names against `getName("…")`; mark at the producer.
+- [Slang: unnamed checker-synthesized globals get merged by the IR linker](../learnings/1793754626265-slang-unnamed-checker-synthesized-globals-get-merg.md) — implicit `local_size_*_id` spec constants shared `_SV3<module>0`; `$`-prefixed unique names; `ModifiersChecked` source-order lookup misses later siblings (#14284)
+- [GLSL local_size_x_id default comes from local_size_x; temp-sink folding poisons AST exprs](../learnings/1793757488047-glsl-local-size-x-id-default-comes-from-local-size.md) — a temporary `DiagnosticSink` fold caches the error and hides E30015 (#14284); GLSL details on the layout-qualifier page

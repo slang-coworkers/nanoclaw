@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-988 learnings. [Catalog](../index.md)
+992 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -287,6 +287,7 @@ type: topic
 - [codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md)
 - [codex-critique with cwd=/workspace/agent returns a recall summary instead of a review — reply on the same thread](../learnings/1792429620370-codex-critique-with-cwd-workspace-agent-returns-a-.md)
 - [codex-critique: a first call can return wiki-recall bullets instead of a review, and the tracker still records "approve"](../learnings/1793228747743-codex-critique-a-first-call-can-return-wiki-recall.md)
+- [codex-critique: a fresh call may return wiki-recall bullets instead of the review](../learnings/1793694480358-codex-critique-a-fresh-call-may-return-wiki-recall.md)
 - [codex-critique: codex-reply cannot record a gate stage; verify the round actually counted](../learnings/1785908614073-codex-critique-codex-reply-cannot-record-a-gate-st.md)
 - [codex-critique: cwd=/workspace/agent can make codex answer with recall bullets, not a review](../learnings/1792074066723-codex-critique-cwd-workspace-agent-can-make-codex-.md)
 - [codex-critique: developer-instructions must be a TOP-LEVEL mcp__codex__codex param, not inside config](../learnings/1785437953553-codex-critique-developer-instructions-must-be-a-to.md)
@@ -582,6 +583,7 @@ type: topic
 - [GitHub review-body edits fire no webhook — verify live review text at source](../learnings/1789627631809-github-review-body-edits-fire-no-webhook-verify-li.md)
 - [GitHub search API secondary rate limit via OneCLI proxy](../learnings/1791361530394-github-search-api-secondary-rate-limit-via-onecli-.md)
 - [GitHub search updated:A..B is not a past-window recount; OneCLI REST quota shows two buckets](../learnings/1792916903048-github-search-updated-a-b-is-not-a-past-window-rec.md)
+- [GitHub search: org-scoped user qualifiers can silently return 0; fork CI approvals expire to failure](../learnings/1793695451179-github-search-org-scoped-user-qualifiers-can-silen.md)
 - [GitHub squash-merge auto-adds Co-authored-by trailers — fork-author credit survives a squash](../learnings/1785936995129-github-squash-merge-auto-adds-co-authored-by-trail.md)
 - [GitHub sweep: clock skew vs Actions stamps, and fork re-push resets CI approval](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md)
 - [GitHub timestamps ran ~1h ahead of real time on 2026-11-01 (US DST end); the container clock was right](../learnings/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md)
@@ -701,6 +703,7 @@ type: topic
 - [OneCLI gh: /users/<login>/events and branch-protection endpoints fail while repos/* works](../learnings/1793285334593-onecli-gh-users-login-events-and-branch-protection.md)
 - [OneCLI GitHub grant: /rate_limit returns 401 app_not_connected while repo endpoints work](../learnings/1792398714877-onecli-github-grant-rate-limit-returns-401-app-not.md)
 - [OneCLI GitHub: gh CLI 401s while raw REST/GraphQL works (2026-10-16)](../learnings/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md)
+- [OneCLI GitHub: REST, GraphQL and git can fail independently](../learnings/1793708995976-onecli-github-rest-graphql-and-git-can-fail-indepe.md)
 - [OneCLI proxy 403s on GitHub /repositories/<id>/ pagination links](../learnings/1791449130477-onecli-proxy-403s-on-github-repositories-id-pagina.md)
 - [Operator-gated vs mention-authorized GitHub replies: re-show codex-corrected text before posting](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)
 - [Orchestrator double-dispatch spawns duplicate fixer sessions on one branch](../learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
@@ -809,6 +812,7 @@ type: topic
 - [SCOPE CORRECTION — /workspace/shared mount flags are PER-CONTAINER (ro on coworker edges, rw on Main): my previous title asserting the store "is ro-mounted" over-generalized one edge into a property of the store](../learnings/1786438399718-scope-correction-workspace-shared-mount-flags-are-.md)
 - [Second correction: the DNS theory for that OneCLI 502 is REFUTED — four resolvable hosts return resolution_failed](../learnings/1785942743113-second-correction-the-dns-theory-for-that-onecli-5.md)
 - [Second issue riding an existing PR splits the fixer's inbox: check the PR owner session first](../learnings/1790404807814-second-issue-riding-an-existing-pr-splits-the-fixe.md)
+- [send_message handoff to a peer needs in_reply_to (gate-chain-routing hook)](../learnings/1793733010558-send-message-handoff-to-a-peer-needs-in-reply-to-g.md)
 - [send_message routing: in_reply_to beats target_session_id](../learnings/1791461751862-send-message-routing-in-reply-to-beats-target-sess.md)
 - [send_message to=parent can fail as unaddressable — send_file and message-block still route](../learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
 - [send_message: implicit in_reply_to overrides target_session_id (misroutes cross-session relays)](../learnings/1793267230708-send-message-implicit-in-reply-to-overrides-target.md)

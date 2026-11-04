@@ -3,7 +3,7 @@ title: "Slang Test — FileCheck Authoring and Opt-Levels"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, FileCheck, slang-llvm, libslang-llvm, CHECK-NOT, vacuous-assertion, ordered-match, spirv-asm, opt-level, goldens, OpSource, g2, gitattributes]
-source_count: 32
+source_count: 33
 ---
 
 # Slang Test — FileCheck Authoring and Opt-Levels
@@ -19,7 +19,7 @@ FileCheck as slang-test runs it: where the checker comes from and how to prove i
 - **A correctly-scoped `-NOT` is still vacuous if DCE removed its subject** — grep for the instruction with the decoration stripped, fence every negative with a positive, and flip it to a known-present pattern to confirm RED.
 - **Place a negative by EMISSION order:** direct SPIR-V emits `OpDecorate %v NonReadable` before `OpDecorate %v Binding`, so a `-NOT` after a Binding anchor never sees it.
 - **Mutation-drill every `-NOT` guard on the base build** (inject another source of the forbidden effect; green there = a hole). Back up a fixture edit first: `git checkout -- <file>` restores the pre-edit HEAD.
-- **`-DAG` lines do not bind a value to its function, and a bare `1` matches `10`.** One prefix per helper with `-NEXT`, anchor `{{^}}1{{$}}`, mutant-drill every new pin test.
+- **`-DAG` lines do not bind a value to its function, and a bare `1` matches `10` or the hex word `AAAAAA01`.** One prefix per helper with `-NEXT`, anchor `{{^}}1{{$}}`, mutant-drill every new pin test.
 - **An order-only CHECK failure with equal counts points at an emitter fold/inline change**; `CHECK-DAG` accepts both forms. Refresh a CHECK broken by an incidental token by pinning the claim (`if{{[(]+}}a_N > ...`).
 - **`PREFIX:` anywhere in a line — prose, backticks — is a live directive**; a fix can be verified statically with a regex.
 - **Diff emit/lowering changes against goldens whenever you have not PROVED FileCheck ran.** Uniform failure across arches = real regression; one platform only = drift or flake.
@@ -83,7 +83,7 @@ Prove a negative live by flipping it to a known-present pattern and requiring RE
 
 ## Positive pins and refreshing stale CHECK lines
 
-**`-DAG` pins prove each line exists, not which function it is in**: `WGSL-DAG: fn A`, `WGSL-DAG: let bits = X`, `WGSL-DAG: fn B`, `WGSL-DAG: let bits = Y` passes with X and Y swapped. Give each helper its own prefix (`HNAN: fn …` then `HNAN-NEXT:` lines) to bind bodies without locking emission order. **Small integers match larger ones**: expecting `1`, `2`, `3` passes on `10`, `12`, `13`, worst when an encoding uses 1..3 for NaN/Inf and 10+v for finite values; write `// CHECK: {{^}}1{{$}}` or use non-overlapping codes (header variant on [Output Assertions](slang-test-output-assertions-and-truncated-runs.md)). A mutant drill (change the expected value at the source, confirm FAIL) caught both on #13669/#13680 ([unanchored small integers and -DAG pins](../learnings/1792149954051-filecheck-unanchored-small-integer-check-lines-mat.md)).
+**`-DAG` pins prove each line exists, not which function it is in**: `WGSL-DAG: fn A`, `WGSL-DAG: let bits = X`, `WGSL-DAG: fn B`, `WGSL-DAG: let bits = Y` passes with X and Y swapped. Give each helper its own prefix (`HNAN: fn …` then `HNAN-NEXT:` lines) to bind bodies without locking emission order. **Small integers match larger ones**: expecting `1`, `2`, `3` passes on `10`, `12`, `13`, worst when an encoding uses 1..3 for NaN/Inf and 10+v for finite values; write `// CHECK: {{^}}1{{$}}` or use non-overlapping codes (header variant on [Output Assertions](slang-test-output-assertions-and-truncated-runs.md)). A mutant drill (change the expected value at the source, confirm FAIL) caught both on #13669/#13680 ([unanchored small integers and -DAG pins](../learnings/1792149954051-filecheck-unanchored-small-integer-check-lines-mat.md)). The same substring match hides partial writes: in a `filecheck-buffer` dump `// CHECK: 1` matches inside `AAAAAA01`, so a 1-byte write into a `0xAAAAAAAA`-filled word passes (#14283). Anchor the value (`// CHECK: {{^}}1{{$}}`), and when a test probes partial writes, read the per-backend `tests/<t>.slang[.N].actual.txt` files and check the real words. A scratch probe like this needs no edit to a shared checkout: slang-test only wants `tests/` under the current directory, so `mkdir -p /tmp/x/tests && cp t.slang /tmp/x/tests/ && cd /tmp/x && <checkout>/build/Release/bin/slang-test tests/t.slang` runs it and writes the `.actual.txt` files beside it ([out-of-tree slang-test runs; anchor filecheck-buffer CHECKs](../learnings/1793752818996-slang-test-runs-out-of-tree-tests-anchor-filecheck.md)).
 
 **Refresh a stale CHECK by pinning the claim, not the token that broke it.** When WGSL began wrapping comparisons in parentheses (#13569, `if(a > b)` → `if((a > b))`), the robust refresh is `if{{[(]+}}a_N > ...` (docs/generated `_meta/prompts/_common.md` rule 8: "Pin only what the claim depends on"). The same review (PR #13731) found a `WGSL-NOT: break;` after `default :` that never covered case 0's tail, per the region rule. Prove a refreshed block non-vacuous with a scratch copy that violates the claim ([refreshing a stale FileCheck line](../learnings/1792230758914-refreshing-a-stale-filecheck-line-don-t-re-pin-the.md)).
 
@@ -109,7 +109,7 @@ For a bug in the GLSL/HLSL text emitters, `//TEST:COMPARE_COMPUTE(filecheck-buff
 - **"Whole-file negatives need a top anchor"** — superseded by the lone-prefix negative.
 - **"Agent containers have no GPU"** (2026-09-28 passthrough outage) — historical; containers have an L40S again.
 
-**Source learnings (32):**
+**Source learnings (33):**
 - [CHECK-NOT is bounded by surrounding positive CHECKs](../learnings/1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi.md)
 - [a `CHECK-NOT` can be vacuous because DCE removed its subject (#12116)](../learnings/1785754047907-a-filecheck-check-not-can-be-vacuous-because-dce-r.md)
 - [Attempt a crafted minimal repro before concluding a sanitizer witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)
@@ -142,5 +142,6 @@ For a bug in the GLSL/HLSL text emitters, `//TEST:COMPARE_COMPUTE(filecheck-buff
 - [The slang-coworkers GitHub App cannot push .github/workflows changes](../learnings/1793648853326-the-slang-coworkers-github-app-cannot-push-github-.md) — rider: all-types `-DAG` lane (#14194)
 - [slang-test FileCheck tests pass vacuously when libslang-llvm is missing next to the swapped compiler lib](../learnings/1793683015448-slang-test-filecheck-tests-pass-vacuously-when-lib.md) — #14231 bisect 26/26 → 13/26
 - [Agent containers have NO GPU since ~2026-09-28 (passthrough off)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md) — historical; superseded
+- [slang-test runs out-of-tree tests; anchor filecheck-buffer CHECKs or partial writes pass](../learnings/1793752818996-slang-test-runs-out-of-tree-tests-anchor-filecheck.md) — #14283: `CHECK: 1` matches `AAAAAA01`; anchor `{{^}}1{{$}}`, read `.actual.txt`; scratch `tests/` dir in /tmp
 
 _Catalog: [[wiki/index.md]]_

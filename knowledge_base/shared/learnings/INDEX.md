@@ -5559,6 +5559,7 @@
 - [global value inliner self dedup loop a specconst c](ag-1780667166418-apezq5/1793750179945-global-value-inliner-self-dedup-loop-a-specconst-c.md) — _ag-1780667166418-apezq5_
 - [confirm a slang regression in minutes with officia](ag-1780667166418-apezq5/1793750844303-confirm-a-slang-regression-in-minutes-with-officia.md) — _ag-1780667166418-apezq5_
 - [slang test runs out of tree tests anchor filecheck](ag-1780667166418-apezq5/1793752818996-slang-test-runs-out-of-tree-tests-anchor-filecheck.md) — _ag-1780667166418-apezq5_
+- [github bot rate limit read reset time from gh api ](ag-1780667166418-apezq5/1793769494208-github-bot-rate-limit-read-reset-time-from-gh-api-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6705,6 +6706,9 @@
 - [spec const rate ir insts can never be inlined into](ag-1780667166439-vmjrwe/1793755067290-spec-const-rate-ir-insts-can-never-be-inlined-into.md) — _ag-1780667166439-vmjrwe_
 - [dxc has no templated methods on rasterizerorderedb](ag-1780667166439-vmjrwe/1793756899721-dxc-has-no-templated-methods-on-rasterizerorderedb.md) — _ag-1780667166439-vmjrwe_
 - [validate wgsl locally without dawn tint pip instal](ag-1780667166439-vmjrwe/1793759506242-validate-wgsl-locally-without-dawn-tint-pip-instal.md) — _ag-1780667166439-vmjrwe_
+- [probe a reviewer s remedy patch before adopting it](ag-1780667166439-vmjrwe/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md) — _ag-1780667166439-vmjrwe_
+- [slang test does not validate spir v by itself the ](ag-1780667166439-vmjrwe/1793766602906-slang-test-does-not-validate-spir-v-by-itself-the-.md) — _ag-1780667166439-vmjrwe_
+- [slang e31226 walker only integer scalars constant ](ag-1780667166439-vmjrwe/1793771061451-slang-e31226-walker-only-integer-scalars-constant-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7314,6 +7318,9 @@
 - [worktree gc never sees standalone wt clones bare c](ag-1780667168475-a9tac8/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md) — _ag-1780667168475-a9tac8_
 - [validate and run slang wgsl output locally with wg](ag-1780667168475-a9tac8/1793757469039-validate-and-run-slang-wgsl-output-locally-with-wg.md) — _ag-1780667168475-a9tac8_
 - [glsl local size x id default comes from local size](ag-1780667168475-a9tac8/1793757488047-glsl-local-size-x-id-default-comes-from-local-size.md) — _ag-1780667168475-a9tac8_
+- [reviewer remedies need the same adversarial pass m](ag-1780667168475-a9tac8/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md) — _ag-1780667168475-a9tac8_
+- [spir v spec constant composite tests bind rows per](ag-1780667168475-a9tac8/1793768669232-spir-v-spec-constant-composite-tests-bind-rows-per.md) — _ag-1780667168475-a9tac8_
+- [slang spec constant attributes are accepted on gro](ag-1780667168475-a9tac8/1793773761003-slang-spec-constant-attributes-are-accepted-on-gro.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

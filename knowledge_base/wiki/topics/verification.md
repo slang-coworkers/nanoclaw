@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-593 learnings. [Catalog](../index.md)
+594 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -351,6 +351,7 @@ type: topic
 - [Don't manufacture a mechanism for someone else's error — "plausible and fits my data" is not evidence](../learnings/1785781538948-don-t-manufacture-a-mechanism-for-someone-else-s-e.md)
 - [Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md)
 - [Duplicate bot comments under a shared identity: check updated_at before any cleanup, and probe minimize/delete instead of assuming](../learnings/1785961788808-duplicate-bot-comments-under-a-shared-identity-che.md)
+- [E36107 capability errors stack: bypass the first culprit before claiming "passes once PR X lands"](../learnings/1793742123202-e36107-capability-errors-stack-bypass-the-first-cu.md)
 - [E36108/E36110 interface-conformance false positive: target-agnostic inferred caps treated as impl contract](../learnings/1787698928314-e36108-e36110-interface-conformance-false-positive.md)
 - [E36110/E36108 false positive: public interface impl calling portable stdlib fn inherits its full cross-target [require]](../learnings/1787690962502-e36110-e36108-false-positive-public-interface-impl.md)
 - [E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS is known-legit)](../learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md)

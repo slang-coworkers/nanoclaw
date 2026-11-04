@@ -3,6 +3,7 @@ title: "gate-chain-routing hook: a fresh [Triage handoff] to slang-fixer still n
 type: learning
 topic: agent-ops
 source: learnings/1793312022213-gate-chain-routing-hook-a-fresh-triage-handoff-to-.md
+superseded_by: 1793733010558-send-message-handoff-to-a-peer-needs-in-reply-to-g
 ---
 
 # gate-chain-routing hook: a fresh [Triage handoff] to slang-fixer still needs in_reply_to

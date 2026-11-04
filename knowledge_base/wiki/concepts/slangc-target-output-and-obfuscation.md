@@ -3,7 +3,7 @@ title: "slangc Target Output & Obfuscation"
 type: concept
 group: slang-tooling
 tags: [targets, output, obfuscate, cuda, spirv, metal, slangpy, triage, reflection, falcor, vcpkg]
-source_count: 19
+source_count: 21
 ---
 
 # slangc Target Output & Obfuscation
@@ -19,6 +19,8 @@ This page covers what `slangc` actually writes per target and why output can be 
 - **slangpy functional-API textures emit no `[format]`** → CUDA UNORM/SNORM writes silently corrupt (even post-#11090); slangpy must thread `self.format` onto the `value` field.
 - **`-fvk-bind-globals <binding> <set>` with set≠0** collides a split-out sampler/texture onto the `$Globals` CB binding (flag path skips the shared-bucket +1 bump) — repro via `-target spirv-asm`.
 - **Triage:** `slangc -emit-spirv-via-glsl` DOES run via direct slangc in-container (only the slang-test harness crashes); when glslang won't load, triage SPIR-V binding/layout via `-target spirv -O0 -reflection-json`; SPIR-V delta-checks need the `slang-glslang` target built. A "newly failing" `SLANG_RUN_SPIRV_VALIDATION` VUID on old output is often the validator's target env (Universal 1.6 → Vulkan 1.4 since v2025.20) catching an always-invalid module, not a regression. Bisect Falcor CI regressions by `merged_at` with an emit-diff arbiter; suspect a stale vcpkg 2024 build (`slangc -version`) when nothing reproduces; a follow-up-refactor's target code may live only on the still-open originating PR branch.
+- **`-DSLANG_ENABLE_DXIL=OFF` compiles DXC support out.** Copying `libdxcompiler.so` in does not help, and slang-test reports the DXIL lines as ignored under a green "100% passed". Check DXC acceptance by emitting HLSL and compiling it with any DXIL-ON slangc `-pass-through dxc`; `slangc -D` is not forwarded to that pass-through.
+- **`-X<compiler>` args reach DXC, NVRTC, gcc/clang, VS and spirv-opt, which reject a bad flag, but Tint and glslang (outside its spirv-opt use) drop them silently.**
 
 ## `-target hpp/cpp` no-output: suspect a crash from graphics-stage entry points
 
@@ -60,6 +62,12 @@ Relatedly, SPIR-V delta-checks need the `slang-glslang` target built, not just `
 
 The validator's verdict also depends on the **target env** that embedded spirv-val runs under, not only on the spirv-tools version. #8752 (2495e0880, first shipped in v2025.20) switched `glslang_validateSPIRV` (`source/slang-glslang/slang-glslang.cpp:178`) from `SPV_ENV_UNIVERSAL_1_6` to `SPV_ENV_VULKAN_1_4`. Some spirv-tools memory-semantics checks fire only under a Vulkan env: VUID 10866 (SeqCst, e.g. `MemoryOrder.SeqCst` lowered to `SequentiallyConsistent`) is gated on `spvIsVulkanEnv || memory_model == VulkanKHR` (`validate_memory_semantics.cpp:35/:90`). Others fire under any env (10867/10868 load/store order, 10875/10876 CAS unequal semantics). So when output "passed `SLANG_RUN_SPIRV_VALIDATION=1` in 2025.12 but fails now", the module was usually always invalid and is only now being caught; it is not a codegen regression. Check which env each release used with `git show vX:source/slang-glslang/slang-glslang.cpp | grep target_env` before bisecting the compiler (found triaging #13519) ([VUID 10866+ on old output: check the validator env](../learnings/1791460646597-vulkan-vuids-10866-firing-on-old-slang-output-chec.md)).
 
+## Downstream compilers in-container: DXC availability and `-X<compiler>` forwarding
+
+**DXC.** A build configured with `-DSLANG_ENABLE_DXIL=OFF` defines `SLANG_ENABLE_DXIL_SUPPORT=0` (cmake/CompilerFlags.cmake), which compiles out `source/compiler-core/slang-dxc-compiler.cpp`. Copying a working `libdxcompiler.so`/`libdxil.so` into `build/Release/lib` does not help: slangc reports `E00100 failed to load downstream compiler 'dxc'`, and slang-test marks `//TEST:SIMPLE(...):-target dxil-assembly` lines as ignored while the run still shows "100% passed", so it looks green although DXC never ran. To check DXC acceptance without a DXIL-ON rebuild, emit HLSL with the build under test (`slangc x.slang -target hlsl -entry main -profile cs_6_0 -o x.hlsl`) and compile that file with any DXIL-ON slangc: `slangc -pass-through dxc x.hlsl -target dxil-assembly -entry main -stage compute -profile cs_6_0`. Pass-through mode does not use the other build's core module, so version skew does not matter ([`SLANG_ENABLE_DXIL=OFF` builds compile DXC out; DXIL lines report "ignored"](../learnings/1793742807861-slang-builds-with-dslang-enable-dxil-off-compile-d.md), [fresh DXIL-OFF builds cannot load DXC](../learnings/1793744564384-wave-op-bool-fixes-vk-runtime-rows-don-t-discrimin.md)). Linux containers have no runnable standalone `dxc` (a downloaded one needs GLIBC 2.38); point `LD_LIBRARY_PATH` at a DXIL-ON worktree's `build/_deps/dxc_source-build/lib` (or its `build/Release/lib`) and run `slangc ... -target dxil-asm -profile cs_6_6`, adding `-pass-through dxc` for hand-written HLSL ([DXC on Linux via LD_LIBRARY_PATH](../learnings/1793743040440-dxc-deduces-float-from-a-bare-hlsl-literal-only-in.md)). `slangc -D` is not forwarded to the dxc pass-through, so put the `#define` in the file, and test a rasterizer-ordered buffer in a pixel stage, because an ROV in a compute shader fails DXIL validation for an unrelated reason ([pass-through `-D` and ROV stage](../learnings/1793751394553-dxc-rejects-explicit-template-args-on-rasterizeror.md)).
+
+**`-X<compiler>` forwarding.** `-X<name>` arguments are collected in `CodeGenContext::emitWithDownstreamForEntryPoints` (slang-code-gen.cpp:425-440) into `options.compilerSpecificArguments`. DXC, NVRTC, gcc/clang, VS and spirv-opt read them, and each rejects an invalid flag (rc 255). `TintDownstreamCompiler::compile` ignores them, because the `tint_CompileRequest` C ABI carries only the WGSL pointer and length, and `GlslangDownstreamCompiler::compile` forwards them only for the SPIRV_OPT type, so `-Xglslang` is also silently ignored under `-emit-spirv-via-glsl` (#14244, master 76a45e10c). slang-tint is fetched for Windows x64 only; to reproduce on Linux, compile a ~15-line C stub that exports `tint_compile` and `tint_free_result` and returns a 5-word SPIR-V header, then run `slangc ... -target wgsl-spirv-asm -tint-path <dir>`. The binary `-target wgsl-spirv` gives E99997 "unhandled code generation target" even with the library present (draft PR #13402 covers it), so use `wgsl-spirv-asm` ([`-X<compiler>`: tint and glslang silently drop args; stub slang-tint](../learnings/1793729076280-slang-x-compiler-pass-through-tint-and-glslang-sil.md)).
+
 ## Falcor CI regression triage: bisect by merged_at, use emit diff as arbiter
 
 Falcor CI runs against a pre-built Falcor with fresh Slang binaries copied on top. Falcor is fixed; only Slang changes between runs. A numeric regression LOOKS like Slang codegen, but:
@@ -81,7 +89,7 @@ When triaging a "follow-up from PR #X" refactor issue, verify where the target c
 
 ---
 
-**Source learnings (19):**
+**Source learnings (21):**
 - [slang -target hpp/cpp "no output file" is usually a crash from a graphics-stage entry point](../learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md)
 - [Slang library code compiles to empty output without -whole-program + public](../learnings/1783369782920-slang-library-code-compiles-to-empty-output-withou.md)
 - [Slang cannot minify/obfuscate-locals its own source text — no Slang-source target (emit-slang is a stub), -obfuscate mangles all names, text emit is post-preprocess (#12313)](../learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md)
@@ -101,5 +109,7 @@ When triaging a "follow-up from PR #X" refactor issue, verify where the target c
 - [nvcc harness for `-target cuda` output: `extern` fix, wrapper-TU per-variant `#define`s, entry-point uniforms as kernel args; benchmarking on the shared L40S](../learnings/1793278728292-benchmarking-slang-generated-cuda-kernels-with-a-n.md)
 - [harness tip: transient `cudaMalloc` OOM on the shared GPU makes later launches fail; check every call before calling a hang](../learnings/1793280013857-slang-cuda-synthesizeactivemask-exit-ballots-are-o.md)
 - [-obfuscate: IR clones that keep [export] get the same emitted name](../learnings/1793263779351-obfuscate-ir-clones-that-keep-export-get-the-same-.md) — name hints stripped, linkage name emitted verbatim; clones keeping export collide (#14004)
+- [`-DSLANG_ENABLE_DXIL=OFF` builds compile DXC out; DXIL test lines report "ignored", not pass](../learnings/1793742807861-slang-builds-with-dslang-enable-dxil-off-compile-d.md) — check DXC via emitted HLSL + another build's `-pass-through dxc`
+- [`-X<compiler>` pass-through: tint and glslang silently drop args; a stub slang-tint proves it on Linux (#14244)](../learnings/1793729076280-slang-x-compiler-pass-through-tint-and-glslang-sil.md) — `compilerSpecificArguments`; `wgsl-spirv` E99997, use `wgsl-spirv-asm`
 
 _Catalog: [[wiki/index.md]]_

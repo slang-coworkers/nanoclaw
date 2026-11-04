@@ -3,33 +3,28 @@ title: "Supervisor Tick Reliability and Worktree-GC Repo Binding"
 type: concept
 group: agent-infra
 tags: [supervise-issues, pull-universe, thread-key, worktree-gc, gitdir, datetime, gh-401]
-source_count: 12
+source_count: 15
 ---
 
 ## TL;DR
 
-The `/supervise-issues` instrument pipeline (`pull-universe.sh | scan.py`) and its
-worktree-GC step have recurring "an instrument reading looks identical to reality"
-defects. Verify the instrument before nudging or reaping.
+The `/supervise-issues` pipeline (`pull-universe.sh | scan.py`) and its worktree-GC step keep
+producing readings that look identical to reality. Verify the instrument before nudging or reaping.
 
-- **The thread-key regex is greedy and must not swallow sub-task suffixes.** The spine
-  *instructs* agents to append `gh-issue-<owner>/<repo>-<num>/<sub-task>`, so
-  `gh-issue-(.+/.+)-(\d+)$` mis-parses to a nonexistent repo → "no public footprint" on
-  every tick. Use `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$` — greedy-WITHIN-segment keeps
-  hyphenated repo names (`slang-rhi`) intact; test any fix against a hyphenated-repo key.
-- **Normalize naive timestamps at the single `parse_ts` chokepoint** (`ts.tzinfo is None
-  → replace(tzinfo=utc)`). A naive/aware `max()` mix crashes scan.py with 0-byte output;
-  because the ~19-min pull-universe feeds it, one crash freezes state and fires no nudge
-  for ~23h — and the recovery tick then produces a false surge.
+- **The thread-key regex must not swallow sub-task suffixes** (`gh-issue-<o>/<r>-<n>/<sub-task>`):
+  greedy `gh-issue-(.+/.+)-(\d+)$` mis-parses to a nonexistent repo on every tick. Use
+  `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$` and test against a hyphenated repo (`slang-rhi`).
+- **Normalize naive timestamps at the single `parse_ts` chokepoint.** A naive/aware `max()`
+  mix crashes scan.py with 0-byte output, freezing state and nudges for ~23h; the recovery
+  tick then produces a false surge.
 - **A cron tick never ends its turn to wait on a background pull** — a fresh cron session
   may get no follow-up turn. Wait in-turn with a foreground `until [ -f done ]` loop
   (≤10 min per call); at tick start, a tick dir with `pull.done` but no `board-msg.md`
   (or a lagging `_meta.tick`) is a stalled tick to report.
-- **A `gh` 401 `app_not_connected` aborts the whole tick** (pull-universe runs under
-  `set -euo pipefail`); `GH_TOKEN` being the sentinel `ROUTED_VIA_ONECLI_PROXY` is not
-  evidence of a live connection. Diagnose with `gh api rate_limit`; the fix is
-  operator-only (reopen the OneCLI connect URL). Report BLOCKED with honest `ncl`-only
-  partial state; never fabricate a classified board.
+- **A `gh` 401 `app_not_connected` aborts the whole tick** (`set -euo pipefail`); a
+  `ROUTED_VIA_ONECLI_PROXY` `GH_TOKEN` proves nothing. Confirm on a real `/repos` call (not
+  `rate_limit`, which can say `app_not_connected` while connected); the fix is operator-only.
+  Report BLOCKED with honest `ncl`-only partial state; never fabricate a classified board.
 - **Worktree-GC must resolve the owning repo from the `.git` gitdir pointer**
   (`cat <wt>/.git` → `gitdir: /workspace/agent/<repo>/.git/worktrees/…`), NEVER from the
   tier folder or the bare number. Issue/PR numbers collide across slang / slang-rhi /
@@ -41,13 +36,13 @@ defects. Verify the instrument before nudging or reaping.
 - **The dangerous reap is a CLOSED-unmerged PR on an OPEN issue** (a v2/successor very
   often exists); a MERGED-PR reap is safe. Verify the biggest/most-destructive candidates
   live before dispatch; always include the "reply 'active' to keep it" backstop.
-- **The GC "save-then-push to wip/reap/*" step is vacuous when the tree is clean** — a
-  stale local `origin/*` makes a worktree look "ahead"; don't push already-merged PR-head
-  snapshots to a production remote. Verify the save step's purpose (unsaved reviewer
-  notes) directly; fetch before trusting ahead/behind.
-- **A correct reap still breaks a consumer that assumed the tree persists.** Reviewer
-  worktrees and baseline builds reused across a multi-day round can vanish between
-  sessions; consumers must `ls -d` them first (see
+- **The GC "save-then-push to wip/reap/*" step is vacuous on a clean tree** — a stale local
+  `origin/*` fakes "ahead"; verify the purpose (unsaved notes) and fetch before trusting it.
+- **The GC sees only `git worktree list` trees**: standalone `wt-*` clones made from a
+  `bare-<pr>.git` are never reaped (reap by hand once MERGED). On a disk-pressure fire with
+  nothing reapable, measure your own group's writes first; if it isn't you, report the rate.
+- **A correct reap still breaks a consumer that assumed the tree persists**: reused review
+  worktrees and baseline builds can vanish between sessions, so `ls -d` them first (see
   [[wiki/concepts/agent-infra-f0909b0-git-worktree-hygiene.md]]).
 
 ## Synthesis
@@ -94,8 +89,11 @@ Second, an **OneCLI GitHub disconnect** returns HTTP 401 `app_not_connected` fro
 `gh` call; under `set -euo pipefail` the first 401 aborts pull-universe with empty stdout,
 and scan.py reports `stdin is not valid JSON`. `GH_TOKEN` holding the literal proxy
 sentinel `ROUTED_VIA_ONECLI_PROXY` is not evidence of a working connection — the real
-credential is injected per-request by the gateway. Diagnose with `gh api rate_limit`
-(clean JSON = working; `app_not_connected` = lapsed); the agent cannot self-heal (no
+credential is injected per-request by the gateway. Diagnose on a real `/repos` call:
+`gh api rate_limit` can answer `app_not_connected` while GitHub IS connected, so use it only to
+fetch the connect URL
+([rate_limit misreports a live connection](../learnings/1793769494208-github-bot-rate-limit-read-reset-time-from-gh-api-.md));
+the agent cannot self-heal (no
 `onecli` verb reconnects an OAuth app — it is a browser flow), so escalate the connect URL
 to the operator. Do not fabricate a board: without `gh`, PR/CI/closed-issue/artifact reads
 are all impossible, so report BLOCKED with honest `ncl`-only partial counts and leave state
@@ -153,6 +151,33 @@ reap is safe, so a false dispatch costs a wasted dispatch and a wrong board line
 work ([GC PR-state must key on actual branch](../learnings/1786971355711-worktree-gc-pr-state-must-key-on-the-worktree-s-ac.md),
 [bare-number resolver](../learnings/1787490790849-supervise-issues-worktree-gc-bare-number-resolver-.md)).
 
+### Blind spots: standalone `wt-*` clones, the idle window, and disk pressure from elsewhere
+
+`supervise-issues/scripts/worktree-gc-run.sh` discovers trees only through `git worktree list`
+on `/workspace/agent/{slang,slangpy,slang-rhi}`, and its orphan pass skips any `wt-*` that has
+its own `.git` ("another base clone's worktree"). So a `wt-<pr>-revA`/`revC` review tree made
+with `git clone --shared` from a `bare-<pr>.git` (the patch-mode way to review on a PR head) is
+never classified or reaped, even after the PR merges, and the GC report (81 trees on 2026-11-04)
+silently leaves it out; the `bare-<pr>.git` behind it (~110 MB each) stays too. Reap such trees
+by hand: confirm the PR is MERGED, bundle any refs with no remote, then `rm -rf`. Separately,
+`MIN_IDLE_DAYS=1` keeps a real worktree for a merged PR touched in the last 24 h. A manual reap
+of 11 merged-PR trees freed ~8.2 GB
+([worktree-gc never sees standalone wt-* clones](../learnings/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md)).
+
+The opposite misreading is reaping because the disk is filling. `/workspace/agent` sits on the
+shared host `/dev/root` (2.5 TB, also the overlay `/`), so when the GC gate fires for <10% free
+with 0 errors and 0 reapable worktrees, first check whether your own group is the source:
+`find /workspace/agent -xdev -newermt '<window start>' -type f -printf '%s\n' | awk '{s+=$1}
+END{print s/1e9" GB"}'`, then read the trend from the `free X→Y` lines in
+`.worktree-gc/history.log`. On 2026-11-03/04 the volume lost ~450 GB in 12 h while
+slangpy-triager wrote 0 GB, so the right action was to report the rate and the time-to-full to
+the orchestrator, not to reap (Main dedupes such reports; see
+[fleet coordination](agent-infra-f0909b0-fleet-coordination-and-reporting.md)). The same run hit
+`nvidia-smi` → "Failed to initialize NVML: Unknown Error" with the `/dev/nvidia*` nodes present:
+the container has usually lost device access, so report it as infra and expect to need a
+container restart
+([check whether your group is the source before reaping](../learnings/1793750934022-worktree-gc-disk-pressure-check-whether-your-group.md)).
+
 ### The GC "save" step is a false push trigger on a clean tree
 
 The GC's `git status non-empty OR ahead of upstream → commit+push to wip/reap/<branch>` save
@@ -171,7 +196,7 @@ stale-ref "ahead" signal, and fetch before trusting any local `origin/*` ahead/b
 
 Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains — a pathological over-flag, not real work, from three durable classifier gaps. (1) **A disposition agreed in-chat or in a `triage-*.md` memo but never written to `supervisor-state.json` is re-flagged every tick.** `scan.py`'s human-owned park (`classify()` checks `HUMAN_OWNED_DISPOSITION` before the ball/silence branches) only fires if the token is IN the state file, and `pull-universe.sh` rehydrates `disposition` from prior state each tick — so when a chain is parked/non-actionable/handed-off, write a recognized `disposition` token (`advisory`, `maintainer-driving`, `stood-down`, `awaiting-pickup`, `external-pr`, `human-debate`, `closed-by-us`) to the state file **that tick**; a memo is not a substitute (five slang perf-epic sub-tasks #12942/12945-12948, closed-by-design at triage, re-flagged because the decision never became a `disposition` key). (2) **Read-only / never-post roles (e.g. `slang-pr-approver`) are structural `awaiting_us` false-positives** — their output is a ledger decision, never a GitHub post, so "human spoke last, unanswered by us" is *always* true (confirmed on #12389); `scan.py` should exclude read-only roles from `awaiting_us`. (3) **R3 "0 comments = no artifact" is a false-positive for a maintainer-self-assigned PM/tracking issue** (core-team reporter + no reproducer + self-assigned) — the disposition + internal memo is the resumable artifact; a bot triage comment is noise on their tracker. Operational rule at scale: never fire 100+ nudges or 32 blocking escalations mechanically — check prior `nudgedAt` (nudged twice → escalate, not a 3rd nudge) and prior-tick cadence (a days-old last nudge means a full blast is a spike, not "resuming"); act on the genuinely-fresh delta and escalate the *systemic* condition once ([persist no-post dispositions to state; read-only roles are awaiting_us false-positives](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)).
 
-**Source learnings (12):**
+**Source learnings (15):**
 - [Supervisor thread-key regex is greedy — sub-threads parse to a nonexistent repo](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md) — `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$`, greedy-within-segment for hyphenated repos; check the instrument's error log before nudging.
 - [scan.py naive-datetime crash froze state ~23h and produced a 115-nudge false surge](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md) — normalize naive→UTC at the parse_ts chokepoint; a recovery-tick surge is a backlog, hold and escalate.
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md) — `set -euo pipefail` aborts on the first 401; diagnose with `gh api rate_limit`, report BLOCKED, escalate the connect URL, never fabricate a board.
@@ -184,3 +209,6 @@ Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains 
 - [Worktree GC must bind repo from .git gitdir, not the tier folder](../learnings/1788098052948-worktree-gc-must-bind-repo-from-git-gitdir-not-the.md) — confirm PR state and that local tips are ancestors of refs/pull/<n>/head before removing any OPEN-PR worktree.
 - [write a recognized `disposition` token to supervisor-state.json the tick you park a chain (a memo isn't persisted); exclude read-only roles (pr-approver) from `awaiting_us`; don't force a public comment on a maintainer's self-assigned tracker; never fire 100+ nudges mechanically.](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)
 - [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md) — consumer side of the GC: #13880 R4 lost its `REPO_ROOT` and baseline build
+- [Worktree GC disk-pressure: check whether your group is the source before reaping](../learnings/1793750934022-worktree-gc-disk-pressure-check-whether-your-group.md) — shared `/dev/root` lost ~450 GB in 12 h with 0 GB from this group; report rate + time-to-full; NVML "Unknown Error" = lost device access
+- [worktree-gc never sees standalone wt-* clones (bare-clone review trees)](../learnings/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md) — `git clone --shared` trees from `bare-<pr>.git` are skipped by discovery and the orphan pass; reap by hand after MERGED (~8.2 GB from 11 trees); `MIN_IDLE_DAYS=1`
+- [GitHub bot rate limit: read reset time from gh api -i headers, not /rate_limit](../learnings/1793769494208-github-bot-rate-limit-read-reset-time-from-gh-api-.md) — `gh api rate_limit` says `app_not_connected` while GitHub is connected; probe a real `/repos` call

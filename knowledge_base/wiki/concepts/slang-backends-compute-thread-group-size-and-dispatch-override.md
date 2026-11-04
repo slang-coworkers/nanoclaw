@@ -3,7 +3,7 @@ title: "Compute thread-group size: where the launch size comes from (reflection)
 type: concept
 group: slang-backends
 tags: [slang, slang-rhi, numthreads, thread-group-size, block-size, blockDim, WorkgroupSize, SV_GroupIndex, SV_DispatchThreadID, getComputeThreadGroupSize, reflection, dispatch-override, cuda, metal, cpu, launch_bounds, generic-entry-point, cuLaunchKernel, driver-api, slang-rhi-961, slang-14136]
-source_count: 5
+source_count: 6
 ---
 
 # Compute thread-group size: reflection, dispatch-time override, and what the shader sees
@@ -60,11 +60,14 @@ So CUDA is internally inconsistent under an override. Metal differs again: `SV_G
 
 slang-test and render-test always launch CUDA kernels with the reflected `[numthreads]` size, so they cannot show a bug that appears only when the host picks another size. Compile with `slangc x.slang -target ptx -entry K -o k.ptx`; uniform pointer params become plain kernel arguments in declaration order. A 30-line C driver-API program then calls `cuModuleLoadData` and `cuLaunchKernel(f, gx,1,1, bx,1,1, 0,0, args,0)`. Build it with `gcc drv.c -I/usr/local/cuda/include -L/usr/local/cuda/lib64/stubs -lcuda`; it runs on the L40S. A SIGBUS ("Bus error") from slangc in a shared checkout usually means a sibling session rebuilt `build/Release` while the binary was running, so check the mtime of `libslang-compiler.so` before suspecting a compiler crash ([testing CUDA kernels launched with a block size != numthreads](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md)).
 
-**Source learnings (5):**
+A GLSL-source COMPARE_COMPUTE (`-source-language glsl`) on Vulkan without `[shader("compute")]` currently runs a 1x1x1 group, because the post-lowering entry lookup drops `layout(local_size_*) in;` (#14256); add the attribute and a fixed-size `gl_WorkGroupSize` control before trusting a launch-size result ([GLSL-source GPU tests need `[shader("compute")]`](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md); details on [[wiki/concepts/slang-backends-glsl-entry-point-and-varying-legalization.md]]).
+
+**Source learnings (6):**
 - [slang-rhi CUDA block size comes from reflection of the linked program; generic numthreads works on L40S](../learnings/1793562777761-slang-rhi-cuda-block-size-comes-from-reflection-of.md) — `getComputeThreadGroupSize` → `cuLaunchKernel`; `k<777>` launches 777; unspecialized reflects (0,1,1); Vulkan `findAndCheckEntryPoint("name<777>")` SIGSEGV
 - [Dispatch-time thread-group size override: what each backend can honour (slang-rhi#961)](../learnings/1793562885466-dispatch-time-thread-group-size-override-what-each.md) — CPU bakes the loop; CUDA function limit < 1024; Metal `SV_GroupIndex` from literals; `metallib_4_0` `required_threads_per_threadgroup`
 - [Testing CUDA kernels launched with a block size != `[numthreads]`; WorkgroupSize vs blockDim inconsistency (#14136)](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md) — PTX + driver-API harness; `WorkgroupSize()` folded, `blockDim` live; SIGBUS means a sibling rebuild
 - [`-Xnvrtc --maxrregcount` is a no-op on PTX output; `__launch_bounds__`/`__maxnreg__`](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md) — a `__launch_bounds__(N)` would cap the CUDA block size
 - [Metal SV legalization is parameter-order dependent; derived SVs built on a reused user param get hijacked](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md) — `SV_GroupIndex` before `SV_GroupThreadID` breaks (#14151); native `thread_index_in_threadgroup`; clang `-fsyntax-only` MSL shim
+- [GLSL-source GPU tests: add `[shader("compute")]` and a fixed-size control](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md) — without it the GLSL `local_size` is lost and the group is 1x1x1 (#14256)
 
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: "Slang CUDA: active-mask synthesis — exit-ballot groups, deadlocks, pru
 type: concept
 group: slang-backends
 tags: [cuda, wave-ops, active-mask, synthesize-active-mask, ballot, __ballot_sync, deadlock, barrier, unroll, decorations, nvcc, sass, redux, benchmark, filecheck, revert-drill, slang-14016, slang-14025]
-source_count: 5
+source_count: 6
 ---
 
 # Slang CUDA: active-mask synthesis and its exit ballots
@@ -71,11 +71,16 @@ Removing ballots did not change results that depend on reconvergence. CUDA intri
 
 A native nvcc harness runs `slangc -target cuda` output directly; the `extern "C" __constant__ SLANG_globalParams` fix it needs is on [[wiki/concepts/slangc-target-output-and-obfuscation.md]]. To compare several variants in one binary, include each `.cu` in a wrapper translation unit that `#define`s `computeMain`, `SLANG_globalParams` and the groupshared variables (`partial_0`) to per-variant names. `ncu` is installed, but performance counters are blocked in coworker containers (`ERR_NVGPUCTRPERM`), so time with `cudaEvent` and read static SASS (`cuobjdump -sass`) instead. The GPU is shared with other tenants: `cudaMalloc` can transiently fail and medians move by about 10-20%, so report the minimum as well as the median [Benchmarking Slang-generated CUDA kernels with a native nvcc harness (L40S)](../learnings/1793278728292-benchmarking-slang-generated-cuda-kernels-with-a-n.md).
 
-**Source learnings (5):**
+## Related wave-op pages
+
+Wave-op element-type gaps (bool on CUDA, SPIR-V, DXC and WGSL), the CUDA `WaveMatch` prelude bug (`__match_all_sync` where `__match_any_sync` is needed, hidden by uniform test values and the `uint4` splat) and self-checking lane probes are on [[wiki/concepts/slang-backends-wave-ops-element-types-and-cross-target-probes.md]] ([CUDA WaveMatch: test non-uniform values and `.yzw`](../learnings/1793745788116-cuda-wavematch-test-with-non-uniform-values-and-ch.md)).
+
+**Source learnings (6):**
 - [exit ballots are one collective per region; an early-returning arm leaves it incomplete and deadlocks with a following barrier (#14016); harness OOM trap](../learnings/1793280013857-slang-cuda-synthesizeactivemask-exit-ballots-are-o.md)
 - [rebuilt branches dropped `[unroll]`; prune ballots by region group; tests need a live group; unreachable-block assert exemption; 16 → 5 ballots (PR #14025)](../learnings/1793290583175-cuda-active-mask-pass-rebuilt-branches-dropped-unr.md)
 - [nvcc keeps unused ballots as REDUX.OR; ~10x slowdown in #14016; ncu blocked; wrapper-TU harness; report min and median](../learnings/1793278728292-benchmarking-slang-generated-cuda-kernels-with-a-n.md)
 - [corpus ballot diff found missing `break` exit ballots; ≥200 s before calling a hang; `__intrinsic_asm` arm ICE replaces a master miscompile; hardware reconverges](../learnings/1793295534316-cuda-active-mask-review-corpus-ballot-diff-hang-ti.md)
 - [`CUDA-LABEL: __global__` excludes ballots in helpers emitted before the kernel; compile and grep before disputing a count (#14050)](../learnings/1793305986589-filecheck-cuda-label-on-global-excludes-ballots-in.md)
+- [CUDA WaveMatch: `__match_all_sync` → `__match_any_sync`; uniform input and the `uint4` splat hide both bugs (#14273)](../learnings/1793745788116-cuda-wavematch-test-with-non-uniform-values-and-ch.md) — details on the wave-ops page
 
 _Catalog: [[wiki/index.md]]_

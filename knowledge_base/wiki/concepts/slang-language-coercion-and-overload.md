@@ -3,7 +3,7 @@ title: "Slang Coercion & Overload Resolution"
 type: concept
 group: slang-language-core
 tags: [type-system, coercion, optional, generic-container, initializer-list, overload-resolution, vector, conversion-cost-cache, matrix-layout, BuiltinCast, finalizeSpecialization, IRMemoryScopeAttr, IRAlignedAttr, compound-assignment, operator-overloading, E30073, IArithmetic]
-source_count: 18
+source_count: 19
 ---
 
 # Slang Coercion & Overload Resolution
@@ -24,6 +24,7 @@ How Slang coerces values into generic containers (`Optional<T>` and friends) and
 - **When a result changes from scalar `bool` to `vector<bool,N>`, test `any(a == b)` and `all(a != b)`**: they flip, while `all(a == b)` and `any(a != b)` keep their value. Vector `?:` also changes (per-component, E30056; E30055 in `[Differentiable]` code).
 - **Compound assignment `x -= y` calls a function named `-=` found by lookup; it is never derived from `operator-`.** A user type with only `operator-` gets E39999, and the only working user spelling is a free `T operator-=(inout T l, T r)`, because member, static and extension operators are rejected (E30073). `IArithmetic`/`IFloat` get no compound ops in core, while `ILogical` gets `&= |= ^=` (#14038).
 - **An `out`/`inout` argument may differ from the parameter type only between same-size integers** (`_canLValueCoerceScalarType`); DXC accepts `int` → `out float` and converts on copy-out. The IR l-value-cast lowering already handles any pair, so relaxing it is a check-side change.
+- **`Ptr` `==`/`!=` across different `Ptr` parameters silently compares nullness.** Inference fails on the shared `Ptr<T, access, addrSpace, L>` signature, so both operands convert to `bool` (cost 400, below the 500 warning threshold); ordering operators error instead. Compare addresses with `uint64_t(a) == uint64_t(b)`.
 
 ## Optional<T> and Generic-Container Coercion
 
@@ -75,7 +76,11 @@ Before #13969 the builtin-operator fast path (`convertToBuiltinArithmeticOp`, `s
 
 `x -= y` is an `InfixExpr` calling a function named `-=` found by scope lookup; the checker never rewrites it to `x = x - y`, so a type with only `operator-` gets E39999 (master 9b3ac252d). The only working user spelling is a free `T operator-=(inout T l, T r)`; member, static and extension operators get E30073 (#12781). `IArithmetic` doesn't help: `core.meta.slang` generates binary but no compound ops for `IArithmetic`/`IFloat` (open PR #12765), while `ILogical` gets `&= |= ^=`. DeepWiki's "core has `+=` for IAdditive" is only the experimental slang.numerics module (`wrappers.slang:332`). The local `external/spec` clone was stale (June 2026) — read operator rules from upstream shader-slang/spec `expressions-operators.md` [Slang compound assignment: never derived from binary op; member operators E30073; IArithmetic has no op=](../learnings/1793296003069-slang-compound-assignment-never-derived-from-binar.md).
 
-**Source learnings (18):**
+## `Ptr` `==`/`!=` with mismatched parameters falls back to `bool == bool` (#14268, #14086)
+
+The `Ptr` comparison operators in `core.meta.slang:1672-1694` use one shared `Ptr<T, access, addrSpace, L>` for both operands. If any of the four parameters differs (pointee type, `Access`, `AddressSpace`, layout, or `Ptr<void>`), generic inference fails, and `==`/`!=` resolve to `bool == bool` through the implicit `bool.__init(Ptr)` at cost 400. The comparison then tests only nullness, with no warning, because warning 30081 starts at cost 500. This was seen on master f1cd35ff8 and on an L40S with vk and cuda (#14268). Ordering operators (`<` and the rest) do not fall back, because `bool` has no ordering operator, so they give an error. The same `Ptr` → `bool` init makes `int(p)` give 0 or 1 (#14086). The declared implicit `Ptr<T>` → `Ptr<void>` conversion (`core.meta.slang:2251-2254`) does not apply even when the target type is known (`Ptr<void> v = p;` gives E30019), so a fix cannot use `Ptr<void>` as the common type. To compare two different pointers on purpose today, write `uint64_t(a) == uint64_t(b)`. For a GPU repro, `//TEST_INPUT: set ptr = ubuffer(...)` with `uniform uint* ptr;` gives a real device address, and `(uint64_t)ptr` plus `+16` gives two distinct non-null addresses for COMPARE_COMPUTE on `-vk`/`-cuda`; slang-test needs the file under `tests/`, so use a temporary directory there and delete it after the run [Ptr ==/!= with mismatched Ptr params silently compares nullness](../learnings/1793744628906-slang-ptr-with-mismatched-ptr-params-silently-comp.md).
+
+**Source learnings (19):**
 - [init-list→vector (vec2,vec2) ctor splats scalars](../learnings/1784025263407-slang-init-list-vector-vec2-vec2-composition-ctor-.md) — diverges from the tail-pad path (#12093)
 - [generic-container covariance unsupported](../learnings/1783523269992-slang-generic-container-covariance-unsupported-coe.md) — `_coerce` has no type-arg recursion (#7406)
 - [Optional-of-opaque escapes E30902 (#7878)](../learnings/1783523243524-slang-7878-optional-of-opaque-via-generic-member-e.md) — T abstract at check time; generic member path
@@ -94,4 +99,5 @@ Before #13969 the builtin-operator fast path (`convertToBuiltinArithmeticOp`, `s
 - [bool→vector<bool>: test any(a==b), all(a!=b)](../learnings/1793194698608-bool-to-vector-bool-result-change-test-any-a-b-and.md) — two reductions flip; `?:` E30056/E30055
 - [compound assignment never derived](../learnings/1793296003069-slang-compound-assignment-never-derived-from-binar.md) — free `operator-=` only; E30073; no IArithmetic op=
 - [out-arg mismatch: DXC converts on copy-out](../learnings/1793404049449-hlsl-out-arg-type-mismatch-dxc-converts-on-copy-ou.md) — Slang only same-size int↔int (#14112)
+- [Slang Ptr ==/!= with mismatched Ptr params silently compares nullness (bool fallback)](../learnings/1793744628906-slang-ptr-with-mismatched-ptr-params-silently-comp.md) — shared-parameter operator; `bool.__init(Ptr)` cost 400 < warning 500; `Ptr<void>` implicit conversion does not apply; GPU repro recipe (#14268)
 _Catalog: [[wiki/index.md]]_
