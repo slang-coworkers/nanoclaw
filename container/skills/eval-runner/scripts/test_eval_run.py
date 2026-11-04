@@ -449,6 +449,23 @@ class ScorerTest(unittest.TestCase):
         self.assertEqual(er.poll_fixer(gh, "slang-coworkers/slang-eval", t2, 1)["number"], 9)
         self.assertTrue(gh.paths[0].startswith("repos/slang-coworkers/slang-eval/pulls?"))
 
+    def test_fixer_poll_ignores_pull_requests_from_before_the_dispatch(self):
+        # A closed PR of an earlier job carries the same tag. With the dispatch time it is
+        # skipped; a PR created after the dispatch is taken; one with no created_at (a stub) is accepted.
+        old = dict(pr(3, "slang-1", 1, "old"), state="closed", created_at="2026-10-16T15:51:00Z")
+        new = dict(pr(12, "slang-1", 1, "new"), created_at="2026-11-04T18:30:00Z")
+        undated = pr(13, "slang-1", 2, "und")
+        gh = FakeGh(pulls=[new, old, undated])
+        task = er.Task("slang-1", "/b", "fixer", "x", {}, 100, 30)
+        dispatch = er.pr_created_at({"created_at": "2026-11-04T18:00:00Z"})
+        self.assertEqual(er.poll_fixer(gh, "slang-coworkers/slang-eval", task, 1, not_before=dispatch)["number"], 12)
+        self.assertEqual(er.poll_fixer(gh, "slang-coworkers/slang-eval", task, 1)["number"], 12)
+        self.assertEqual(er.poll_fixer(gh, "slang-coworkers/slang-eval", task, 2, not_before=dispatch)["number"], 13)
+        gh_old_only = FakeGh(pulls=[old])
+        self.assertIsNone(er.poll_fixer(gh_old_only, "slang-coworkers/slang-eval", task, 1, not_before=dispatch))
+        self.assertEqual(er.poll_fixer(gh_old_only, "slang-coworkers/slang-eval", task, 1)["number"], 3)
+        self.assertIsNone(er.pr_created_at({"created_at": "not a date"}))
+
 
 class StatisticsTest(unittest.TestCase):
     def test_aggregate_tasks_mean_pass_at_k_min_max_and_low_signal(self):
