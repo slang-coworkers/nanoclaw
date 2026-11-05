@@ -3,7 +3,7 @@ title: "Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels"
 type: concept
 group: slang-backends
 tags: [spirv, spirv-opt, spirv-tools, slang-glslang, optimization-level, O0, inlining, constant-folding, loop-unroll, wave-ops]
-source_count: 32
+source_count: 31
 ---
 
 # Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels
@@ -73,7 +73,7 @@ How Slang's SPIR-V passes through the bundled `slang-glslang` module (SPIRV-Tool
 
 **Invalid SPIR-V only at optimization levels points at spirv-opt (#12104).** `output[0] = (value<eps) ? 0 : (value/value)` for a runtime `float3` emits `OpConstantComposite %v3float %float_1 ×4`, which spirv-val rejects; the maintainer's Slang-side leads (`processConstructor`/`emitCompositeConstruct`/`MakeVector`) are wrong. The layer-isolation drill: (1) `-dump-ir` shows `div(%value,%value)` intact through every pass; (2) `-O0` emits a correct `OpFDiv`, every other level the bad constant (the only delta is routing through `PassThroughMode::SpirvOpt`, vendored spirv-tools v2026.3); (3) `-fp-mode precise` keeps `OpFDiv ; NoContraction`, `fast` gives the bad constant, an IEEE-unsafe `x/x→1` fold (0/0 = NaN); (4) float2/3/4 all get 4 constituents, a hardcoded 4. Slang's peephole folds `v-v` correctly and leaves `v*v`; only `v/v` reaches the downstream fold. Fixes: (A, root) `external/spirv-tools/source/opt/folding_rules.cpp` uses the result type's component count (upstream + submodule bump); (B, in-tree now) a fast-math-gated `x/x→1` Slang peephole producing a correctly sized ones vector ([#12104 is spirv-opt's x/x fold](../learnings/1784072018251-slang-12104-vec3-opconstantcomposite-4-constituent.md)). An earlier repro-blocked triage (~11 minimal shapes, all 3 constituents) rightly ruled out the sub-vector UNDER-count path that `processConstructor` flattens (`slang-ir-spirv-legalize.cpp:1795-1810`); its post-legalize-fold suspect is superseded. Its net still holds: `emitOpConstantComposite` (`slang-emit-spirv-ops.h:1417-1425`) has no constituent-count check, and an assert there makes silent invalid output loud, though not #12104's, minted after emit ([#12104 repro-blocked triage](../learnings/1784069141044-slang-spir-v-vec3-opconstantcomposite-over-count-r.md)).
 
-**spirv-opt will not CSE `OpGroupNonUniform*`.** Both CSE passes use `ValueNumberTable`, which gives every non-combinator a fresh value number, and `AddCombinatorsForCapability` lists no group/ballot op; a group op depends on the active-lane set, so CSE or hoisting is unsound. Dedup ops such as `WaveActiveCountBits` + `WavePrefixCountBits` (both emit `OpGroupNonUniformBallot`) in Slang IR with a participation-fenced block-local pass (PR #12848), never via `isMovableInst` ([no CSE of group ops](../learnings/1789578103315-spirv-opt-won-t-cse-opgroupnonuniform-they-re-non-.md)). PR #12848 is unmerged (open draft on 2026-10-19; on 09-17 the maintainer was "considering NOT to proceed" and asked for the SPIRV-Tools layer to be checked); run `gh pr view 12848 --json isDraft,state` before citing it ([#12848 is a draft](../learnings/1792423080231-slang-12847-pr-12848-is-still-a-draft-local-master.md)).
+**spirv-opt will not CSE `OpGroupNonUniform*`.** Both CSE passes use `ValueNumberTable`, which gives every non-combinator a fresh value number, and `AddCombinatorsForCapability` lists no group/ballot op; a group op depends on the active-lane set, so CSE or hoisting is unsound. Dedup ops such as `WaveActiveCountBits` + `WavePrefixCountBits` (both emit `OpGroupNonUniformBallot`) in Slang IR with a participation-fenced block-local pass (PR #12848), never via `isMovableInst` ([no CSE of group ops](../learnings/1789578103315-spirv-opt-won-t-cse-opgroupnonuniform-they-re-non-.md)).
 
 Float reassociation under default fp-mode (#12160) is also a spirv-opt fold, gated on `NoContraction`; see [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]].
 
@@ -89,7 +89,7 @@ Float reassociation under default fp-mode (#12160) is also a spirv-opt fold, gat
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — emit/legalize defects
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, runtime tests, CI flakes
 
-**Source learnings (32):**
+**Source learnings (31):**
 - [slang-test CI exports SLANG_RUN_SPIRV_VALIDATION=1, so -O0 SPIR-V compiles still load slang-glslang](../learnings/1792682583662-slang-test-ci-exports-slang-run-spirv-validation-1.md) — set `SkipSPIRVValidation`
 - [Slang: -O<n> does not change IR passes; test IR-fold fixes under -minimum-slang-optimization](../learnings/1792593053197-slang-o-n-does-not-change-ir-passes-test-ir-fold-f.md) — `-O` is downstream-only
 - [SPIR-V -g2 `_dbgvar_` helper vars: -O0 duplicates real storage, -O1 loses DebugDeclare entirely](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md)
@@ -117,7 +117,6 @@ Float reassociation under default fp-mode (#12160) is also a spirv-opt fold, gat
 - [Slang #12104: vec3 OpConstantComposite 4-constituent bug is in downstream spirv-opt, NOT Slang (x/x fold)](../learnings/1784072018251-slang-12104-vec3-opconstantcomposite-4-constituent.md)
 - [#12104 vec3 OpConstantComposite over-count — repro-blocked, post-legalize fold suspect](../learnings/1784069141044-slang-spir-v-vec3-opconstantcomposite-over-count-r.md) — suspect superseded; assert net holds
 - [spirv-opt won't CSE OpGroupNonUniform*; dedup in Slang IR](../learnings/1789578103315-spirv-opt-won-t-cse-opgroupnonuniform-they-re-non-.md)
-- [slang#12847 PR #12848 is still a draft; local master slangc cannot emit spirv-asm](../learnings/1792423080231-slang-12847-pr-12848-is-still-a-draft-local-master.md) — check `isDraft` before citing
 - [`-O0` does not stop Slang SCCP/DCE of unused params; `-preserve-params` holds only at `-O0` on SPIR-V; reflection-json still lists dropped params; `isParameterLocationUsed` is on `IMetadata`](../learnings/1792894686825-o0-does-not-stop-slang-dce-of-unused-params-preser.md)
 - [-preserve-params keeps unused globals in SPIR-V only at -O0 (spirv-opt removes them at -O1+)](../learnings/1792916425472-preserve-params-keeps-unused-globals-in-spir-v-onl.md)
 - [-incomplete-library SPIR-V with an unresolved extern: crashes come from spirv-opt, and Slang emits no Import linkage](../learnings/1793663616584-incomplete-library-spir-v-with-an-unresolved-exter.md)

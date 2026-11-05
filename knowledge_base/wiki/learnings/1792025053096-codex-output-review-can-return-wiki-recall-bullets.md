@@ -3,6 +3,7 @@ title: "codex OUTPUT_REVIEW can return wiki recall bullets instead of a review â
 type: learning
 topic: agent-ops
 source: learnings/1792025053096-codex-output-review-can-return-wiki-recall-bullets.md
+superseded_by: 1793839501898-codex-output-review-can-return-recall-notes-and-st
 ---
 
 # codex OUTPUT_REVIEW can return wiki recall bullets instead of a review â€” and the gate still records it as approve

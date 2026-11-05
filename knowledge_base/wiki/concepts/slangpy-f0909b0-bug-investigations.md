@@ -1,51 +1,25 @@
 ---
-title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), and triage of silently-fixed issues
+title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), direct-bound struct calldata (#1263), and triage of silently-fixed issues
 type: concept
 group: slangpy
-tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo]
-source_count: 24
+tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo, marshall, gen-calldata, direct-bind]
+source_count: 26
 ---
 
 ## TL;DR
 
-Root-cause investigations that repeatedly cross the slangpy → slang-rhi → slang
-boundary. Recurring findings:
+Root-cause investigations that repeatedly cross the slangpy → slang-rhi → slang boundary. Recurring findings:
 
-- **#222 (AMD-Windows autodiff grads wrong)** is a slang-rhi bug, not Slang-core or an
-  AMD driver bug: slang-rhi advertises float-atomic-ADD off the BASE atomics device bit,
-  so on RDNA2 iGPUs Slang legally emits `OpAtomicFAddEXT` and the driver mis-executes.
-  `[72,0,0,0]` = all gradients computed then atomic-added into element 0 (a
-  scatter-address bug), NOT zero gradients; the "always 0" title matched only D3D12.
-- **#665 ("Failed to get binding data")** is upstream slang-rhi, D3D12-only, and silently
-  swallowed (bare `return;` skips the dispatch → wrong results, no throw): fixed-pool
-  exhaustion under slangpy's zero-backpressure per-dispatch submit, NOT a leak. Static
-  triage got the mechanism shape right but the resource wrong: the maintainer's A/B pinned
-  the per-command-buffer 4 MiB constant-buffer pool (slang-rhi#844), not the descriptor heap.
-- **CPU-backend dispatch regression (#1136/#1137)**: the slang-rhi CPU device alone never
-  populates `DeviceLimits::maxComputeDispatchThreadGroups` (`{0,0,0}`), so PR #995's clamp
-  computes `min(0, ceiling)=0` → throw. Durable fix: Metal's `0xFFFFFFFF` sentinel in
-  slang-rhi; a slangpy fallback must cover X, Y and the generator. Crossing a physical Y
-  row on CPU (~67M threads) costs ~3–5 s/case, so parametrize large-dispatch tests on cpu.
-- **Current-device stack (slang#13558)**: `Device::publish()` pushes every device but
-  `shutdown()` pops only the top, so closing the older of two live devices first leaves a
-  dangling `Device*` that nanobind dereferences (UBSan invalid vptr / segfault). Serial
-  pytest only (nightly sanitizers), not xdist CI; read that job's log first.
-- **`ComputeKernel.dispatch(**kwargs)` and cursor dict writes ignore non-field keys
-  (slangpy#1231)**: a global passed outside `vars=` or a misspelled key stays unbound (CPU
-  segfaults, CUDA fails at the next readback, Vulkan does nothing). Fix it in the dispatch
-  lambda; other callers rely on the permissive shared writer.
-- **SHADER_PATH**: since #1183 (superseding #1182/#1178 for #886/#1177) the binding
-  lambdas prepend `slangpy.SHADER_PATH` unconditionally, never C++ core; module-level
-  `spy.create_slang_session()` and a no-device `spy.App()` bypass it (slangpy#1238).
-- **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/` is not
-  proof it is integrated (verify call sites); a stale architecture-refactor issue is a
-  prime silently-fixed orphan (verify closing PRs + the cross-reference timeline); DeepWiki
-  confidently gets "does X inherit/propagate Y" wrong — verify against source.
-- **Static struct members (slangpy#126)** are absent from `Type.fields`, and an
-  `InstanceList` silently drops them; detect them through `DeclReflection`.
-- **`GridArg.__slangpy_load<D>` indexes `int[N]` with `D`; safe only because explicit
-  `.map()` on a grid is rejected** (no `reduce_type` override). Adding `reduce_type` to
-  `GridArgMarshall` must come with indexing by `N` or an assert `D == N`.
+- **#222 (AMD-Windows autodiff grads wrong)** is a slang-rhi bug, not Slang-core or an AMD driver bug: slang-rhi advertises float-atomic-ADD off the BASE atomics device bit, so on RDNA2 iGPUs Slang legally emits `OpAtomicFAddEXT` and the driver mis-executes. `[72,0,0,0]` = all gradients computed then atomic-added into element 0 (a scatter-address bug), NOT zero gradients; the "always 0" title matched only D3D12.
+- **#665 ("Failed to get binding data")** is upstream slang-rhi, D3D12-only, and silently swallowed (bare `return;` skips the dispatch → wrong results, no throw): fixed-pool exhaustion under slangpy's zero-backpressure per-dispatch submit, NOT a leak. Static triage got the mechanism shape right but the resource wrong: the maintainer's A/B pinned the per-command-buffer 4 MiB constant-buffer pool (slang-rhi#844), not the descriptor heap.
+- **CPU-backend dispatch regression (#1136/#1137)**: the slang-rhi CPU device alone never populates `DeviceLimits::maxComputeDispatchThreadGroups` (`{0,0,0}`), so PR #995's clamp computes `min(0, ceiling)=0` → throw. Durable fix: Metal's `0xFFFFFFFF` sentinel in slang-rhi; a slangpy fallback must cover X, Y and the generator. Crossing a physical Y row on CPU (~67M threads) costs ~3–5 s/case, so parametrize large-dispatch tests on cpu.
+- **Current-device stack (slang#13558)**: `Device::publish()` pushes every device but `shutdown()` pops only the top, so closing the older of two live devices first leaves a dangling `Device*` that nanobind dereferences (UBSan invalid vptr / segfault). Serial pytest only (nightly sanitizers), not xdist CI; read that job's log first.
+- **`ComputeKernel.dispatch(**kwargs)` and cursor dict writes ignore non-field keys (slangpy#1231)**: a global passed outside `vars=` or a misspelled key stays unbound (CPU segfaults, CUDA fails at the next readback, Vulkan does nothing). Fix it in the dispatch lambda; other callers rely on the permissive shared writer.
+- **SHADER_PATH**: since #1183 (superseding #1182/#1178 for #886/#1177) the binding lambdas prepend `slangpy.SHADER_PATH` unconditionally, never C++ core; module-level `spy.create_slang_session()` and a no-device `spy.App()` bypass it (slangpy#1238).
+- **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/` is not proof it is integrated (verify call sites); a stale architecture-refactor issue is a prime silently-fixed orphan (verify closing PRs + the cross-reference timeline); DeepWiki confidently gets "does X inherit/propagate Y" wrong — verify against source.
+- **Static struct members (slangpy#126)** are absent from `Type.fields`, and an `InstanceList` silently drops them; detect them through `DeclReflection`.
+- **`GridArg.__slangpy_load<D>` indexes `int[N]` with `D`; safe only because explicit `.map()` on a grid is rejected** (no `reduce_type` override). Adding `reduce_type` to `GridArgMarshall` must come with indexing by `N` or an assert `D == N`.
+- **A direct-bound struct/dict argument never runs its fields' marshall `gen_calldata`**, so a per-argument check placed in a leaf marshall (e.g. `tensorcommon.gen_calldata`) silently misses tensors inside parameter structs. Run it over `binding.children` in the `direct_bind` branch, and test every new marshall-level check with a direct-bound struct.
 
 ## #222 — AMD-Windows autodiff gradients: a scatter-address bug, root-caused to slang-rhi
 
@@ -111,7 +85,11 @@ SlangPy's `Struct.struct.fields` (native `StructType::build_fields`, `src/sgl/re
 
 In `slangpy/slang/gridarg.slang`, `GridArg<let N>.__slangpy_load<let D>` indexes the struct-sized `int[N] offset/stride` with the method's `D`. That is safe today because no public path makes `D ≠ N`: `GridArgMarshall.resolve_dimensionality` returns `self.dims` (so the implicit `vector_mapping` has length `dims` and the kernel gets `ContextND<dims>`), `resolve_type` accepts only `VectorizeGridArgTo<..., dims>`, and an explicit `func.map((0,1,2))(grid(...))` fails with `ValueError: Explicit vectorization raised exception: RuntimeError('Not implemented … slangpy.h:267 reduce_type')` because `GridArgMarshall` doesn't override `reduce_type`. Adding `reduce_type` there breaks the invariant: index with `N` or assert `D == N`. To probe the in-tree build ad hoc, run `PYTHONPATH=. .venv/bin/python /tmp/x.py` from `/workspace/agent/slangpy` (without `PYTHONPATH`, `ModuleNotFoundError: slangpy`) [GridArg explicit .map() rejected; D == N in __slangpy_load](../learnings/1793369152075-slangpy-gridarg-explicit-map-is-rejected-and-d-n-a.md).
 
-**Source learnings (24):**
+## Direct-bound struct arguments skip their fields' `gen_calldata` (slangpy#1263)
+
+A struct or dict argument is direct-bound when it has call dimensionality 0, read access, and every child is direct-bound (`StructMarshall.can_direct_bind`, `slangpy/builtin/struct.py`); a tensor child is direct-bound when its target is an explicit `ITensorType`, such as a `DiffTensor<half,1> t;` field. For such a binding, `slangpy/core/generator.py` (`_emit_call_data_code` ~:303, via `_emit_type_and_struct`) emits only `binding.vector_type.full_name` and does not recurse into the children, so their marshalls' `gen_calldata` never runs, while the vectorized (non-direct) struct path does run it. Any validation placed in a leaf marshall's `gen_calldata` is therefore bypassed for tensors inside parameter structs. On PR #1263 the fp16-atomic guard (see [[wiki/concepts/slang-rhi-backend-runtime.md]]) raised `ValueError` for top-level and vectorized-struct half DiffTensors, but `struct S { DiffTensor<half,1> t; float scale; }` passed as `{"t": tensor, "scale": 3.0}` slipped through and Vulkan `bwds` failed with `RuntimeError: basic_string::_M_construct null not valid`. The fix walks `binding.children` in the `direct_bind` branch and runs the check on `ITensorType` leaves, with a local import because `tensorcommon` → `slangpy.bindings` → `boundvariable` → `core.generator` would cycle. The slangpy-reviewer found it; when testing or reviewing a new per-argument check, probe one struct whose other fields are scalars (direct-bound) and one with a vectorized field (non-direct) ([direct-bound struct args skip the leaf marshalls' gen_calldata](../learnings/1793852099467-slangpy-direct-bound-struct-args-skip-the-leaf-mar.md), [fix pattern: walk binding.children](../learnings/1793854474612-slangpy-direct-bound-structs-skip-their-fields-mar.md)).
+
+**Source learnings (26):**
 
 - [#222 title is wrong: AMD-Windows grads collapse into element 0](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md)
 - [#222 root cause: slang-rhi advertises float-atomic-ADD off the BASE atomics bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md)
@@ -137,3 +115,5 @@ In `slangpy/slang/gridarg.slang`, `GridArg<let N>.__slangpy_load<let D>` indexes
 - [#1183 prepend bypassed by free create_slang_session and App()](../learnings/1792464645928-slangpy-1183-shader-path-prepend-is-bypassed-by-fr.md)
 - [Tests without device_type are skipped; App() closes its device](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md)
 - [GridArg: explicit .map() rejected; D == N in __slangpy_load](../learnings/1793369152075-slangpy-gridarg-explicit-map-is-rejected-and-d-n-a.md)
+- [direct-bound struct args skip the leaf marshalls' gen_calldata (#1263)](../learnings/1793852099467-slangpy-direct-bound-struct-args-skip-the-leaf-mar.md) — checks in `tensorcommon.gen_calldata` bypassed; probe direct-bound and vectorized structs
+- [direct-bound structs skip their fields' gen_calldata: fix pattern](../learnings/1793854474612-slangpy-direct-bound-structs-skip-their-fields-mar.md) — walk `binding.children` on `ITensorType` leaves; local import avoids a cycle

@@ -3,14 +3,14 @@ title: "HLSL receiver mutability: default-inout `this`, immutable receivers, and
 type: concept
 group: slang-language-core
 tags: [slang, hlsl, receiver, this, mutating, inout, const, dialect, getSourceLanguage, overload-resolution, witness, dxc]
-source_count: 7
+source_count: 5
 ---
 
 # HLSL receiver mutability: default-inout `this`, immutable receivers, and call-site dialect rules
 
 ## TL;DR
 
-- **Since #13615 (merged 2026-10-16, `pr: breaking change`, no compat flag, first release v2026.20) an HLSL-dialect method with no receiver specifier takes `this` as `inout` (BorrowInOut).** A trailing C++-style `const` or `[nonmutating]` selects `in`. `.slang` files keep the Slang default (`in`; `[mutating]` opts in), and synthesized functions stay `in`.
+- **Since #13615 an HLSL-dialect method with no receiver specifier takes `this` as `inout` (BorrowInOut).** A trailing C++-style `const` or `[nonmutating]` selects `in`.
 - **The side effect is #13964:** an unannotated HLSL method called on a non-l-value receiver (cbuffer, `ConstantBuffer<T>` and `$Globals` members, `StructuredBuffer` elements, `static const`, `const` locals, rvalues) fails with E30050. A call on a legacy `in` parameter warns E30068. An HLSL struct that conforms to an interface with an `in` receiver fails with E38105, because the synthesized witness wrapper calls the method on a read-only `this`.
 - **DXC `-HV 2021` accepts all of these**, and also the #13073 write through a `RWStructuredBuffer` element. Restoring `in` as the HLSL default would bring #13073 back.
 - **The workaround today is a trailing `const` or `[nonmutating]` on the method.**
@@ -19,12 +19,6 @@ source_count: 7
 - **`getSourceLanguage()` is the language of the translation unit being checked.** A witness wrapper is checked in the conforming type's translation unit. Contexts without a translation unit return Unknown.
 - **Resolve a candidate through its witness before you read its receiver mode.** An interface requirement can win overload resolution when the concrete `[mutating]` member fails the direction check.
 - **Record the checker's decision on the call, and do not re-derive it in lowering.** Overloaded calls through implicit `this` never reach the receiver check.
-
-## History: #13073 → #13232 → #13615
-
-#13073 is resolved with no opt-in flag, so notes that assume `-fhlsl-methods-mutable-by-default` are stale. #13232 (merged 2026-10-07) records the effective `this` ParamInfo once, during signature checking (`checkEffectiveThisParamInfo`, slang-check-decl.cpp). #13615 (merged 2026-10-16) then makes HLSL-dialect methods take the receiver as `inout` by default. A trailing C++-style `const` selects `in`, and conflicting receiver specifiers are diagnosed. The bot PRs #13112 and #13213 were not used. So E30047/E30049 on an HLSL-source method first means checking whether the build predates #13615 [slang#13073 resolved: HLSL methods take this as inout by default, no compat flag](../learnings/1792156467633-slang-13073-resolved-hlsl-methods-take-this-as-ino.md).
-
-The first release with #13615 is **v2026.20** (2026-10-19). On v2026.17.1 the #13073 repro (a struct method doing `++value`, called on a `RWStructuredBuffer` element) gives E30047+E30049 for `.slang`, `.hlsl` and `-lang hlsl`. On v2026.20 it compiles only as HLSL (`.hlsl` or `-lang hlsl`); a `.slang` file still gives E30047, because the Slang default is unchanged by design. The switch is `getDefaultReceiverParamMode` (slang-check-decl.cpp), which returns BorrowInOut when `getSourceLanguage() == SourceLanguage::HLSL`; non-`FuncDecl`s and synthesized functions (for example a lambda's `operator()`, which must satisfy core `IFunc`'s `in` requirement) stay `in`. A `const` method that mutates (`void f() const { ++value; }`) gives E30047. A release tarball (`gh release download v<ver> -R shader-slang/slang -p 'slang-<ver>-linux-x86_64.tar.gz'`) reproduces version behavior without a build [v2026.20 HLSL default-inout receivers: .slang still needs `[mutating]`, cbuffer calls need `const`](../learnings/1792403658015-slang-v2026-20-hlsl-default-inout-receivers-slang-.md).
 
 ## What #13615 broke: immutable receivers and `in`-receiver conformances (#13964)
 
@@ -52,10 +46,7 @@ The remedy is to resolve the candidate before reading its receiver mode, so the 
 
 See also: [[wiki/concepts/slang-b-language-semantics.md]] (how the checker learns the dialect), [[wiki/concepts/slang-language-core-f0909b0-default-args-methods-visibility.md]] (accessor mutability decision sites), [[wiki/concepts/slang-language-witness-and-conformance.md]] (witness synthesis).
 
-**Source learnings (7):**
-
-- [slang#13073 resolved: HLSL methods take this as inout by default, no compat flag (PR #13615)](../learnings/1792156467633-slang-13073-resolved-hlsl-methods-take-this-as-ino.md) — #13232 records the effective `this` ParamInfo at signature check; trailing `const` selects `in`; check build date on E30047/E30049
-- [Slang v2026.20 HLSL default-inout receivers: .slang files still need [mutating]; cbuffer calls need const](../learnings/1792403658015-slang-v2026-20-hlsl-default-inout-receivers-slang-.md) — `getDefaultReceiverParamMode` returns BorrowInOut for HLSL source; synthesized funcs stay `in`; a mutating `const` method gives E30047
+**Source learnings (5):**
 - [HLSL default-inout receivers (#13615) vs DXC: immutable-receiver calls and in-receiver interface conformance regress (#13964)](../learnings/1793137797352-hlsl-default-inout-receivers-13615-vs-dxc-immutabl.md) — E30050 on cbuffer/StructuredBuffer/const/rvalue receivers, E38105 on `in`-receiver conformances; DXC -HV 2021 accepts; workaround `const`/`[nonmutating]`
 - [HLSL interface requirement can rescue a call its concrete [mutating] member rejects](../learnings/1793145419526-hlsl-interface-requirement-can-rescue-a-call-its-c.md) — `status` is compared before concrete-over-requirement; resolve through the witness before reading receiver policy
 - [Correction: dialect rules for receiver mutability go at the CALL SITE, not on the callee (slang#13964 / PR #13966)](../learnings/1793147147113-correction-dialect-rules-for-receiver-mutability-g.md) — accept immutable receivers for `inout` methods when the calling code is HLSL; no callee bit

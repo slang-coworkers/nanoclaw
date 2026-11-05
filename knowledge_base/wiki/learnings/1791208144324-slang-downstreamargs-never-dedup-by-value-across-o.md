@@ -3,6 +3,7 @@ title: "Slang DownstreamArgs: never dedup by value across option levels — per-
 type: learning
 topic: slang-compiler
 source: learnings/1791208144324-slang-downstreamargs-never-dedup-by-value-across-o.md
+superseded_by: 1791208289552-slang-downstreamargs-never-dedup-entries-by-tool-a
 ---
 
 # Slang DownstreamArgs: never dedup by value across option levels — per-token entries are legitimate repeats

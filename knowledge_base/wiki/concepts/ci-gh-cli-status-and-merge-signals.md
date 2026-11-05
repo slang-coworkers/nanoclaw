@@ -3,7 +3,7 @@ title: "gh CLI CI Status & Merge Signals — Instrument-Lie Folds"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, ci, graphql, rerun, merge-detection, corrections, slang]
-source_count: 12
+source_count: 15
 ---
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
@@ -16,7 +16,8 @@ source_count: 12
 - **A `success` conclusion can mean "declined to act"** — priority-yield aging is contention-gated (12h yield-out / 16h lookback, then expires unrerun), not a timer; grep the decision line from the log output, not the echoed `run:` block.
 - **Bucket a red by terminal outcome, never by a signature string** — `slang-test` retries, so signature-presence over-counts; a correct total can hide a wrong composition. Presence proves an event occurred, never that it caused the red.
 - **"CI failing" means a REQUIRED check concluded `failure`** — not a CANCELLED approval gate (`falcor-build-approval-gate` on external PRs) or a non-required job like `board-sync` or `review`, and a required `check-ci` that is absent (fork runs awaiting approval) is "not run", not failing. Read required contexts from `branches/master` (`/protection` 403s), or audit every label at once with one aliased GraphQL `isRequired(pullRequestNumber:)` query (1 point for six PRs, no REST); `gh pr checks` folds CANCELLED into fail, so use `statusCheckRollup` or check-run `conclusion`. Filter the label on required checks; don't drop it.
-- **A merge-queue eviction's reason (`failed_checks` / `checks_timed_out` / `merged`) is only in GraphQL `RemovedFromMergeQueueEvent.reason`**; the REST timeline omits it.
+- **A merge-queue eviction's reason (`failed_checks` / `checks_timed_out` / `merged`) is only in GraphQL `RemovedFromMergeQueueEvent.reason`**; the REST timeline omits it. `checks_timed_out` usually means a required SM80Plus job had not started ~2 h after enqueue; before calling a pool outage, check whether a later-created job of the same name ran. A green merge-group run does not mean the PR merged.
+- **A stale master head with an empty queue: diff the failing test names of two eviction runs.** An identical set is a PR-side failure, not infra and not a master regression.
 - **A PR comment does not stop the merge queue.** A regression found on an already-queued PR must reach whoever queued it by name, or be filed at once, or a human must dequeue the PR. A ready, all-green PR on a merge-queue branch reads `mergeStateStatus: BLOCKED` until someone queues it; that is not a failing gate.
 - **`gh .user.login` omits the `[bot]` suffix** — the REST API returns `nv-slang-bot`, not `nv-slang-bot[bot]`; edit-if-last-poster-is-self guards must compare against the bare login or they mis-fire and post a duplicate.
 
@@ -80,6 +81,10 @@ Six PRs across slang and slang-rhi cost 1 point, with no REST branch-protection 
 
 The REST issue-timeline `removed_from_merge_queue` event has no reason field. To tell a real merge-queue failure from a timeout eviction, query `pullRequest(number:N){ timelineItems(itemTypes:[REMOVED_FROM_MERGE_QUEUE_EVENT],first:5){ nodes{ ... on RemovedFromMergeQueueEvent{ createdAt reason } } } }` via `POST https://api.github.com/graphql` (it works through the proxy without an auth header). Reasons seen: `failed_checks`, `checks_timed_out`, `merged`. On 2026-10-16 this showed slang #13615 evicted with `checks_timed_out` although its group CI run finished SUCCESS one second later; the cause was a 100-min SM80Plus queue wait, a recurrence of the closed #13614, confirmed by computing job `started_at - created_at` from `actions/runs/<id>/jobs` [merge-queue eviction reason via GraphQL](../learnings/1792139409374-merge-queue-eviction-reason-use-graphql-removedfro.md).
 
+**`checks_timed_out` is about a two-hour SM80 wait, and one lost job is not a pool outage.** On 2026-11-03 #14111 was evicted twice with `checks_timed_out`, 121 and 123 min after each `AddedToMergeQueueEvent`. Both times the group's `test-linux-release-gcc-x86_64-sm80 / test-slang` job (labels Linux, self-hosted, SM80Plus) had not started: one waited 159.9 min, the other never got a runner (`runner_name` null, conclusion `cancelled`). The merge-group run itself can still finish `success` later, so a green run does not mean the PR merged; read reasons only from GraphQL and compute waits from job `created_at` → `started_at` (tracking issue #14252) ([MQ evicts with checks_timed_out ~2 h after enqueue](../learnings/1793781538310-slang-merge-queue-evicts-with-checks-timed-out-abo.md)). Before calling it a pool outage, list the same-named job on other runs: on 2026-11-04 a PR run's sm80 job created one minute LATER ran in 10 min on `linux-sm80plus-f13cf173`, while the queue entry's job sat `queued` with `runner_id 0` for 70+ min. That is one lost job, and the fix is a human re-run before the 2 h timeout, because the eviction also clears auto-merge. The bot token gets 403 on `actions/runners`, so pool health can be inferred only from job timestamps ([compare against a later-created sm80 job](../learnings/1793822643773-merge-queue-sm80-job-stuck-compare-against-a-later.md)).
+
+**A stale master head with an empty queue: compare failing test names across eviction runs.** When master's head is hours old and nothing is queued, read the merge-queue timeline events of the last PR with auto-merge. On 2026-11-04 the cause was #14269 (adds an exit-code check to slang-test SIMPLE tests): it failed the same 7 tests in merge-group runs at 07:48Z and 14:14Z and in its own head CI, and those tests came from #14051, merged just before. Grep `FAILED test:` in `gh run view <run> --job <id> --log-failed` for two runs and diff the names; an identical set means a PR-side failure, not infra and not a master regression. On the same sweep `gh api .../pulls/<n>/files --paginate` failed with a OneCLI 401 on page 2; page by hand with `?per_page=100&page=N` ([compare failing test names across eviction runs](../learnings/1793808444330-stale-master-head-with-empty-merge-queue-compare-f.md)).
+
 **The queue does not read PR comments.** On 2026-11-03 jkwak-work queued external PR #14150 at 00:45Z; at 01:10Z nv-slang-bot commented two cases that compile on master and fail with the PR (integer `/` or `%` in a `[ForceInline]` helper; a user constructor under `-g`). The queue merged it at 02:06Z anyway, and the next morning jvepsalainen-nv filed #14235 (CUDA broken in the falcor2-slang nightly) and the bot filed #14238. A regression found on a queued PR therefore has to reach the person who queued it by name, be filed as an issue immediately, or be acted on by a human who removes the PR from the queue; a plain PR comment is not seen in time. The same day showed the opposite misreading: GitHub reports a ready, all-green PR on this merge-queue branch as `mergeStateStatus: BLOCKED` until someone queues it (#14045), so BLOCKED there is not a failing gate ([a bot comment on a queued PR does not stop the merge queue](../learnings/1793695966509-a-bot-comment-on-a-queued-pr-does-not-stop-the-mer.md)).
 
 ## Contradictions / supersessions
@@ -90,7 +95,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (12):**
+**Source learnings (15):**
 
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -104,5 +109,8 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - [audit PR-report "CI failing" labels with one aliased GraphQL isRequired query; 10-26 only #11964 false (board-sync, check-pr-label)](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)
 - [GraphQL CheckRun.isRequired(pullRequestNumber:) separates real from false CI failures in 1 point](../learnings/1793607720073-graphql-checkrun-isrequired-pullrequestnumber-sepa.md) — 11-02: 3 of 8 labels false (#13901/#13959 red only on non-required `review`, `check-ci` absent); `rateLimit.remaining` jumps through the proxy
 - [A bot comment on a queued PR does not stop the merge queue (#14150 → #14235/#14238)](../learnings/1793695966509-a-bot-comment-on-a-queued-pr-does-not-stop-the-mer.md) — name the queuer, file an issue or have a human dequeue; all-green unqueued PR shows `BLOCKED`
+- [slang merge queue evicts with checks_timed_out ~2 h after enqueue (SM80 starvation)](../learnings/1793781538310-slang-merge-queue-evicts-with-checks-timed-out-abo.md) — #14111 evicted twice; a green MQ run is not a merge.
+- [Merge-queue sm80 job stuck: compare against a later-created sm80 job](../learnings/1793822643773-merge-queue-sm80-job-stuck-compare-against-a-later.md) — one lost job, not a pool outage; human re-run before 2 h.
+- [Stale master head with empty merge queue: compare failing test names across eviction runs](../learnings/1793808444330-stale-master-head-with-empty-merge-queue-compare-f.md) — #14269: same 7 tests twice = PR-side.
 
 _Catalog: [[wiki/index.md]]_

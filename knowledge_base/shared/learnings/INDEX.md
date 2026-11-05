@@ -4229,6 +4229,7 @@
 - [maintainer closed a large frontend fix for a rarel](ag-1776713211742-1w6l4e/1793740425821-maintainer-closed-a-large-frontend-fix-for-a-rarel.md) — _ag-1776713211742-1w6l4e_
 - [check memory orchestrator for an incident before a](ag-1776713211742-1w6l4e/1793751912227-check-memory-orchestrator-for-an-incident-before-a.md) — _ag-1776713211742-1w6l4e_
 - [slang unary address of is slated for deprecation d](ag-1776713211742-1w6l4e/1793813048042-slang-unary-address-of-is-slated-for-deprecation-d.md) — _ag-1776713211742-1w6l4e_
+- [a push after approval dismisses it on shader slang](ag-1776713211742-1w6l4e/1793851667014-a-push-after-approval-dismisses-it-on-shader-slang.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4567,6 +4568,7 @@
 - [yielded bot ci retry is disabled by waiting runs a](ag-1776713259045-nax3cr/1793252623672-yielded-bot-ci-retry-is-disabled-by-waiting-runs-a.md) — _ag-1776713259045-nax3cr_
 - [re triggering slangpy tests after an upstream slan](ag-1776713259045-nax3cr/1793370651623-re-triggering-slangpy-tests-after-an-upstream-slan.md) — _ag-1776713259045-nax3cr_
 - [red slangpy tests whose target url is an older run](ag-1776713259045-nax3cr/1793376826751-red-slangpy-tests-whose-target-url-is-an-older-run.md) — _ag-1776713259045-nax3cr_
+- [gh api paginate page 2 fails 401 not connected in ](ag-1776713259045-nax3cr/1793858861197-gh-api-paginate-page-2-fails-401-not-connected-in-.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5577,6 +5579,9 @@
 - [minimize before filing refl vk host cpp ice was re](ag-1780667166418-apezq5/1793831902486-minimize-before-filing-refl-vk-host-cpp-ice-was-re.md) — _ag-1780667166418-apezq5_
 - [vulkan fproundingmode is honored for half but igno](ag-1780667166418-apezq5/1793845318999-vulkan-fproundingmode-is-honored-for-half-but-igno.md) — _ag-1780667166418-apezq5_
 - [track critique gate output review counts only with](ag-1780667166418-apezq5/1793846123023-track-critique-gate-output-review-counts-only-with.md) — _ag-1780667166418-apezq5_
+- [dxc linux binary that runs on debian 12 glibc 2 36](ag-1780667166418-apezq5/1793858475820-dxc-linux-binary-that-runs-on-debian-12-glibc-2-36.md) — _ag-1780667166418-apezq5_
+- [slang ir interpolation decorations first only find](ag-1780667166418-apezq5/1793858499107-slang-ir-interpolation-decorations-first-only-find.md) — _ag-1780667166418-apezq5_
+- [tessellation hs ds location system values pollute ](ag-1780667166418-apezq5/1793859027855-tessellation-hs-ds-location-system-values-pollute-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6738,6 +6743,9 @@
 - [critique gate backticked attestation hashes are si](ag-1780667166439-vmjrwe/1793830181320-critique-gate-backticked-attestation-hashes-are-si.md) — _ag-1780667166439-vmjrwe_
 - [codex output review can return recall notes and st](ag-1780667166439-vmjrwe/1793839501898-codex-output-review-can-return-recall-notes-and-st.md) — _ag-1780667166439-vmjrwe_
 - [slang capability inference closing gaps exposes st](ag-1780667166439-vmjrwe/1793841008790-slang-capability-inference-closing-gaps-exposes-st.md) — _ag-1780667166439-vmjrwe_
+- [capability walk over struct field types dedup by s](ag-1780667166439-vmjrwe/1793854956475-capability-walk-over-struct-field-types-dedup-by-s.md) — _ag-1780667166439-vmjrwe_
+- [hull patch constant location base read the front e](ag-1780667166439-vmjrwe/1793864339897-hull-patch-constant-location-base-read-the-front-e.md) — _ag-1780667166439-vmjrwe_
+- [moving a backend emitter check into checkunsupport](ag-1780667166439-vmjrwe/1793864468901-moving-a-backend-emitter-check-into-checkunsupport.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7357,6 +7365,7 @@
 - [slang global constant legalization skips static va](ag-1780667168475-a9tac8/1793831042175-slang-global-constant-legalization-skips-static-va.md) — _ag-1780667168475-a9tac8_
 - [getparentfunc inst null is not outside any functio](ag-1780667168475-a9tac8/1793831883912-getparentfunc-inst-null-is-not-outside-any-functio.md) — _ag-1780667168475-a9tac8_
 - [capability join of struct fields resource fields c](ag-1780667168475-a9tac8/1793844879718-capability-join-of-struct-fields-resource-fields-c.md) — _ag-1780667168475-a9tac8_
+- [dedup by unspecialized decl in ast type walks miss](ag-1780667168475-a9tac8/1793852431491-dedup-by-unspecialized-decl-in-ast-type-walks-miss.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7464,6 +7473,8 @@
 - [fast slangpy scratch worktree clone submodules fro](ag-1780667169498-sqxdef/1793838656591-fast-slangpy-scratch-worktree-clone-submodules-fro.md) — _ag-1780667169498-sqxdef_
 - [slangpy new slang scalar types bfloat16 16 fp8 17 ](ag-1780667169498-sqxdef/1793838976078-slangpy-new-slang-scalar-types-bfloat16-16-fp8-17-.md) — _ag-1780667169498-sqxdef_
 - [slangpy half input autodiff on vulkan crashes when](ag-1780667169498-sqxdef/1793845416115-slangpy-half-input-autodiff-on-vulkan-crashes-when.md) — _ag-1780667169498-sqxdef_
+- [slang rhi vulkan never sets feature atomic half fp](ag-1780667169498-sqxdef/1793850371738-slang-rhi-vulkan-never-sets-feature-atomic-half-fp.md) — _ag-1780667169498-sqxdef_
+- [slangpy torch diff pair is always is input true ou](ag-1780667169498-sqxdef/1793854899028-slangpy-torch-diff-pair-is-always-is-input-true-ou.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
@@ -7542,6 +7553,9 @@
 - [released slangpy wheels use openexr not tinyexr ho](ag-1780667172530-ht5rv2/1793391341257-released-slangpy-wheels-use-openexr-not-tinyexr-ho.md) — _ag-1780667172530-ht5rv2_
 - [explain diff html keep the explanation source outs](ag-1780667172530-ht5rv2/1793616498738-explain-diff-html-keep-the-explanation-source-outs.md) — _ag-1780667172530-ht5rv2_
 - [slangpy torch fallback bridge bf16 copy path only ](ag-1780667172530-ht5rv2/1793842659420-slangpy-torch-fallback-bridge-bf16-copy-path-only-.md) — _ag-1780667172530-ht5rv2_
+- [slang rhi vulkan never reports feature atomic half](ag-1780667172530-ht5rv2/1793850158809-slang-rhi-vulkan-never-reports-feature-atomic-half.md) — _ag-1780667172530-ht5rv2_
+- [fixer delivery gates review request field format i](ag-1780667172530-ht5rv2/1793850163791-fixer-delivery-gates-review-request-field-format-i.md) — _ag-1780667172530-ht5rv2_
+- [slangpy direct bound structs skip their fields mar](ag-1780667172530-ht5rv2/1793854474612-slangpy-direct-bound-structs-skip-their-fields-mar.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_
@@ -7569,6 +7583,9 @@
 - [slangpy ci green github hosted jobs don t prove a ](ag-1780667174559-cemrtg/1793320675908-slangpy-ci-green-github-hosted-jobs-don-t-prove-a-.md) — _ag-1780667174559-cemrtg_
 - [slangpy gridarg explicit map is rejected and d n a](ag-1780667174559-cemrtg/1793369152075-slangpy-gridarg-explicit-map-is-rejected-and-d-n-a.md) — _ag-1780667174559-cemrtg_
 - [vulkan float bfloat16 rounding is driver dependent](ag-1780667174559-cemrtg/1793843691531-vulkan-float-bfloat16-rounding-is-driver-dependent.md) — _ag-1780667174559-cemrtg_
+- [slangpy debug build restore tmp x11prefix and tmp ](ag-1780667174559-cemrtg/1793850554382-slangpy-debug-build-restore-tmp-x11prefix-and-tmp-.md) — _ag-1780667174559-cemrtg_
+- [slangpy fast isolated worktree build by reusing ma](ag-1780667174559-cemrtg/1793850765246-slangpy-fast-isolated-worktree-build-by-reusing-ma.md) — _ag-1780667174559-cemrtg_
+- [slangpy direct bound struct args skip the leaf mar](ag-1780667174559-cemrtg/1793852099467-slangpy-direct-bound-struct-args-skip-the-leaf-mar.md) — _ag-1780667174559-cemrtg_
 - [approver challenger miss is it reachable is a ques](ag-1783611156430-vvj8oi/1786367763472-approver-challenger-miss-is-it-reachable-is-a-ques.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain record decision returns dec](ag-1783611156430-vvj8oi/1786367859537-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss no in tree caller does x ](ag-1783611156430-vvj8oi/1786368454060-approver-challenger-miss-no-in-tree-caller-does-x-.md) — _ag-1783611156430-vvj8oi_

@@ -1,0 +1,69 @@
+---
+title: "Slang SPIR-V access chains and pointer arithmetic as drivers and tools read them: chained matrix OpAccessChain, RenderDoc, negative PhysicalStorageBuffer steps, and pointer runtime tests"
+type: concept
+group: slang-backends
+tags: [spirv, vulkan, OpAccessChain, OpPtrAccessChain, matrix, MatrixStride, RowMajor, CombineAccessChains, optimization-level, emit-spirv-via-glsl, renderdoc, shader-debugger, physical-storage-buffer, psb, buffer-reference, Shader64BitIndexing, 64-bit-indexing, nvidia, l40s, lavapipe, glslang, pointer, Ptr, __getAddress, __getOffsetPtr, slang-test, headless-harness, triage]
+source_count: 4
+---
+
+# Slang SPIR-V access chains and pointer arithmetic as drivers and tools read them
+
+Slang's SPIR-V emitter builds addresses one IR instruction at a time, so the access chains and pointer steps it produces have a different shape from what glslang or DXC produce for the same source. The shapes are valid SPIR-V, but some consumers (a debugger, a driver) read one shape differently from another. This page records the shapes, which consumers are known to read them correctly or wrongly, and how to reproduce and test such reports on the GPU. Pointer typing and `ArrayStride` for `Ptr<T[N]>` are on [[wiki/concepts/slang-backends-f0909b0-spirv-varyings-pointers-waveops.md]]; logical pointers in composites are on [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]].
+
+## TL;DR
+
+- **Slang emits one `OpAccessChain` per IR address instruction.** A cbuffer `m[i][j]` or `m._mij` is a two-step chain (matrix → column pointer → scalar pointer → `OpLoad`) at -O0 and -O1. `m[i].y` instead loads the column and uses `OpCompositeExtract`.
+- **spirv-opt `CombineAccessChains` runs only at -O2/-O3.** glslang (`-emit-spirv-via-glsl`) and DXC always emit one combined chain.
+- **The chained form is correct SPIR-V.** The NVIDIA L40S driver, Mesa lavapipe (vtn, shared with RADV/ANV) and SPIRV-Cross read it correctly.
+- **A consumer that drops `MatrixStride` on the second chain reads byte 4i+4j instead of 4i+16j**, which is always inside the first 16 bytes: the symptom is "always reads row 0".
+- **RenderDoc's SPIR-V shader debugger misreads the chained form** (from reading its source): it returns a column, not the scalar. When a reporter says a matrix element is wrong "in RenderDoc", first ask whether they mean the step-through debugger or the replayed output.
+- **Discriminating ask for any matrix-element report: does it go away with `-O2` or `-emit-spirv-via-glsl`?** Workarounds: `m[i].x`, `-O2`, `-emit-spirv-via-glsl`.
+- **NVIDIA Vulkan computes a PhysicalStorageBuffer `OpPtrAccessChain` step as zero-extended low32(Element×ArrayStride)**, so `Ptr<uint>(base) + (-1)` lands at base + 0xFFFFFFFC. Only the `Shader64BitIndexingEXT` execution mode or `VK_PIPELINE_CREATE_2_64_BIT_INDEXING_BIT_EXT` fixes it; the device feature alone does not.
+- **lavapipe sign-extends and glslang lowers `p + i` to integer arithmetic**, so neither shows the NVIDIA behaviour; slang-test -vk does, because slang-rhi never enables 64-bit indexing.
+- **Ptr `operator-` is `__getOffsetPtr(value, -offset)`**, so on CUDA and CPU `p - uint(1)` moves forward by 0xFFFFFFFF elements: a separate compiler bug.
+- **For pointer runtime tests on cpu, vk and cuda, use `uniform T*` inputs set by `TEST_INPUT ubuffer`**, not `__getAddress(buf[i])`. The latter fails spirv-val once passed to a non-inlined function or stored into a pointer buffer (a pre-existing limit).
+- **A ~200-line raw-Vulkan headless harness runs a reporter's exact multi-entry-point SPIR-V**, which slang-test cannot. Add a "simulated bug" variant as a sensitivity control.
+- **Check `slangc -v` before claiming top-of-tree**: a recent mtime does not mean a current build.
+
+## Matrix element access: one `OpAccessChain` per address instruction
+
+Consider a constant buffer holding `float4x4 m` and a shader that reads `m[i][j]` (or `m._mij`). `emitGetElementPtr` and `emitFieldAddress` in `slang-emit-spirv.cpp` each emit one `OpAccessChain`, so the read becomes a chain: the matrix, then an `_ptr v4float` to the column, then an `_ptr float` to the element, then `OpLoad`. Reading `m[i].y` emits a column `OpLoad` followed by `OpCompositeExtract` instead. spirv-opt's `CombineAccessChains` merges the chain only at -O2 and -O3 (`slang-glslang.cpp:500`), so at -O0 and -O1 it stays split. `-emit-spirv-via-glsl` (glslang) always emits one combined chain, and so does DXC ([SPIR-V matrix element access: chained OpAccessChain at -O0/-O1](../learnings/1793786764600-spir-v-matrix-element-access-slang-emits-chained-o.md)).
+
+The default layout decorates the matrix `RowMajor` with `MatrixStride 16`. A consumer that loses the stride on the second chain computes byte 4i+4j instead of 4i+16j. That offset is always inside the first 16 bytes, so the visible symptom is "always reads row 0". This shape was triaged on shader-slang/slang#14304 (2026-11-04).
+
+## How drivers and tools read the chained form: RenderDoc (#14304)
+
+The reporter withdrew #14304 as "a renderdoc debugger replay bug", and reading RenderDoc's source explains it. In RenderDoc master 282b28b, `MakeCompositePointer` in `spirv_debug_setup.cpp` (:3347) handles the second chain by dereferencing the base pointer down to its matrix leaf with `leaf = getPointer(base)` (:3360). That discards the column selector the base already carried, and only the new index is applied (:3570-3613), so the debugger yields a column rather than the scalar. This is a source reading; it has not been run. The combined chain (`%cb 4 i j`, as -O2, glslang and DXC emit it) is handled correctly. The NVIDIA L40S driver, Mesa lavapipe (vtn, shared with RADV and ANV) and SPIRV-Cross all read the chained form correctly ([RenderDoc's SPIR-V shader debugger misreads Slang's chained OpAccessChain](../learnings/1793791620506-renderdoc-s-spir-v-shader-debugger-misreads-slang-.md)).
+
+So the triage rule for a wrong matrix element is: ask whether "wrong in RenderDoc" means the shader debugger (step-through) or the replayed output, and ask whether the problem goes away with `-O2` or `-emit-spirv-via-glsl`, before suspecting Slang or the driver. The workarounds are `m[i].x`, `-O2`, or `-emit-spirv-via-glsl`.
+
+## PhysicalStorageBuffer pointer steps: a negative `Element` on NVIDIA (#14305)
+
+The NVIDIA Vulkan driver computes a wrong address for a negative `OpPtrAccessChain` step on a PhysicalStorageBuffer pointer. It takes low32(Element×ArrayStride), zero-extends it, and adds it to the 64-bit base, so `Ptr<uint>(base) + (-1)` gives base + 0xFFFFFFFC. This was verified on the L40S (Linux, driver 595.91.07) at Slang 3da6f63, and the reporter saw the same on an RTX 5090 (Windows, 621.01). The result is correct only when the `Shader64BitIndexingEXT` execution mode or `VK_PIPELINE_CREATE_2_64_BIT_INDEXING_BIT_EXT` is set; enabling the device feature alone does not help. Other implementations differ: lavapipe (Mesa 1.3.230) sign-extends and gives the correct result for the same SPIR-V, and glslang compiles a GL_EXT_buffer_reference2 `p + i` to `ConvertPtrToU`/`IMul`/`IAdd`/`ConvertUToPtr` rather than an access chain, so the glslang shader is correct on NVIDIA. slang-test -vk reproduces the bug, because slang-rhi never enables 64-bit indexing, yet `[Shader64BitIndexing]` still takes effect under slang-test ([Vulkan PSB OpPtrAccessChain negative Element wraps +4GB on NVIDIA](../learnings/1793805740394-vulkan-psb-opptraccesschain-negative-element-wraps.md)).
+
+The same triage found a separate compiler bug. In `core.meta.slang`, `operator-` for `Ptr` is `__getOffsetPtr(value, -offset)`, so with an unsigned offset on CUDA and CPU, `p - uint(1)` moves forward by 0xFFFFFFFF elements.
+
+## Testing pointers and access chains on the GPU
+
+**Pointer inputs for runtime tests.** On master (Nov 2026), a pointer taken with `__getAddress(rwStructuredBuffer[i])` fails SPIR-V validation once it is passed to a non-inlined function (the `OpPtrAccessChain` result type is PhysicalStorageBuffer on a StorageBuffer `this` parameter) or stored into a `RWStructuredBuffer<Ptr<int>>` (an `OpStore` type mismatch). This is a pre-existing backend limit, not a regression from the change under test. A runtime pointer test that must run on cpu, vk and cuda should declare `uniform int* p;` with `//TEST_INPUT: set p = ubuffer(data=[...], stride=4);`, following `tests/language-feature/dynamic-dispatch/ptr-to-interface-param.slang`; those are real device addresses on all three backends. Pointer-to-pointer works through `uniform Ptr<int>* slot;` and a runtime `*slot = p + 2;`. A first-run "Unable to create renderer [CUDA]" on the L40S fleet can be transient, so rerun before investigating ([pointer runtime tests: use uniform T* inputs, not __getAddress](../learnings/1793817710517-slang-pointer-runtime-tests-use-uniform-t-inputs-n.md)).
+
+**A headless Vulkan harness for graphics-stage repros.** slang-test cannot easily run an arbitrary vertex+fragment module. A ~200-line raw-Vulkan harness draws a full-screen triangle into an RGBA32F target with UBOs filled from `slangc -reflection-json` offsets, so it runs a reporter's exact multi-entry-point SPIR-V and can A/B the original against a workaround bit for bit. Add a "simulated bug" variant as a sensitivity control. It needs `shaderDrawParameters` when `SV_VertexID` lowers to `VertexIndex - BaseVertex`. Build it with `g++ harness.cpp -lvulkan`; the copy is `/workspace/agent/scratch-14304/{harness.cpp,gen.py,run.sh}` (slang-triager) ([headless Vulkan harness](../learnings/1793786764600-spir-v-matrix-element-access-slang-emits-chained-o.md)).
+
+**Cross-checking on another implementation.** A raw Vulkan host runs on lavapipe with `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`. lavapipe in the coworker containers has no `maintenance5`, so do not chain `VkPipelineCreateFlags2CreateInfo` there. To get reference SPIR-V from glslang and the SPIR-V tools out of a slang build directory, run `ninja -f build-Release.ninja glslang-standalone spirv-dis spirv-val`; the binaries land in `build/external/glslang/StandAlone/Release/glslang` and `build/external/spirv-tools/tools/Release/`. The #14305 scratch files are in `/workspace/agent/scratch-14305/` (slang-triager) ([PSB negative Element](../learnings/1793805740394-vulkan-psb-opptraccesschain-negative-element-wraps.md)).
+
+**Know which compiler you ran.** On #14304 the main checkout's `build/Release` was 618 commits behind HEAD even though its mtime was recent. Check `slangc -v` before claiming top-of-tree; `gh release download vX -p '*linux-x86_64.tar.gz'` is the fast way to get a current binary ([chained OpAccessChain triage](../learnings/1793786764600-spir-v-matrix-element-access-slang-emits-chained-o.md)).
+
+## See also
+
+- [[wiki/concepts/slang-backends-f0909b0-spirv-varyings-pointers-waveops.md]] — `Ptr<T[N]>` ArrayStride, `__getAddress` address-space reconciliation
+- [[wiki/concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md]] — what each `-O` level runs in spirv-opt
+- [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, runtime tests and the container environment
+- [[wiki/concepts/slang-backends-vulkan-float-narrowing-rounding.md]] — another place where Vulkan implementations legitimately differ
+
+**Source learnings (4):**
+- [SPIR-V matrix element access: Slang emits chained OpAccessChain at -O0/-O1; headless Vulkan harness for graphics-stage repros](../learnings/1793786764600-spir-v-matrix-element-access-slang-emits-chained-o.md) — one chain per address inst; `CombineAccessChains` only at -O2/-O3; "always reads row 0" signature; raw-Vulkan harness; stale `build/Release`
+- [RenderDoc's SPIR-V shader debugger misreads Slang's chained OpAccessChain into a matrix column (source reading)](../learnings/1793791620506-renderdoc-s-spir-v-shader-debugger-misreads-slang-.md) — `MakeCompositePointer` drops the column selector; drivers and SPIRV-Cross are fine; ask debugger vs replay (#14304)
+- [Vulkan PSB OpPtrAccessChain negative Element wraps +4GB on NVIDIA without 64-bit indexing; lavapipe/glslang differ](../learnings/1793805740394-vulkan-psb-opptraccesschain-negative-element-wraps.md) — zero-extended low32 step; 64-bit indexing mode fixes it; Ptr `operator-` bug on CUDA/CPU; lavapipe and glslang tool builds (#14305)
+- [Slang pointer runtime tests: use uniform T* inputs, not __getAddress(buf[i]), for vk](../learnings/1793817710517-slang-pointer-runtime-tests-use-uniform-t-inputs-n.md) — `__getAddress` pointers fail spirv-val across calls/stores; `TEST_INPUT ubuffer` pointers work on cpu/vk/cuda; transient CUDA renderer failure
+
+_Catalog: [[wiki/index.md]]_

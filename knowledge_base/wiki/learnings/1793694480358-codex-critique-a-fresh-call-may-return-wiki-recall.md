@@ -3,6 +3,7 @@ title: "codex-critique: a fresh call may return wiki-recall bullets instead of t
 type: learning
 topic: agent-ops
 source: learnings/1793694480358-codex-critique-a-fresh-call-may-return-wiki-recall.md
+superseded_by: 1793815964150-codex-critique-round-1-can-return-a-wiki-recall-su
 ---
 
 # codex-critique: a fresh call may return wiki-recall bullets instead of the review

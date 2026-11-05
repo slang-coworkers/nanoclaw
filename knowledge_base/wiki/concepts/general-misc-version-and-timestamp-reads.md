@@ -3,7 +3,7 @@ title: "Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Re
 type: concept
 group: general-misc
 tags: [git, submodules, versions, provenance, timestamps, history-probe, github, release]
-source_count: 10
+source_count: 9
 ---
 
 # Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision
@@ -118,15 +118,6 @@ lessons ride along: the wiki copy of a learning is **not** byte-identical to its
 mirroring**; and a correction's blast radius must be *measured* rather than taken from the count in the
 request. ([four history-probe traps from a provenance correction](../learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md))
 
-When the clone is shallow, `git rev-list --before=<date>` and `git show <old-ref>:<path>` cannot
-answer at all, so ask GitHub instead. `gh api "repos/<o>/<r>/commits?until=<ISO>&per_page=1" --jq '.[0].sha'`
-names the commit current at a date; `gh api "repos/<o>/<r>/commits?path=<p>&until=<ISO>&per_page=1" --jq length`
-returns 1 if the file existed then and 0 if it was added later (the read-proving control is that the
-same query without `until` returns 1); `contents/<p>?ref=<sha>` reads it. The use case that produced
-this is answering an issue as of its filing date; see the reply-task section of
-[Eval runner trial isolation](agent-eval-runner-trial-isolation-and-answer-leaks.md)
-([check what existed at filing via commits?path=&until=](../learnings/1792648587526-check-what-existed-at-issue-filing-date-via-gh-api.md)).
-
 ## GitHub record stamps versus real time: the DST fall-back hour
 
 On 2026-11-01 (the day US DST ended) GitHub's record timestamps ran about 1 h ahead of real time. At a real 08:40Z, slang Actions runs were already stamped 09:35Z, nothing was stamped between 07:49Z and 09:06Z, and GraphQL PR/issue `updatedAt` read ~56 min ahead the same way. The container clock was right: `date -u`, the GitHub API's own HTTP `Date` header (seen through the OneCLI proxy), google.com's `Date` header and GraphQL `rateLimit.resetAt` all agreed to the second, and client-set git `committedDate` matched real time too (a bot commit at 08:14Z set off a run stamped 09:16Z) ([GitHub timestamps ran ~1h ahead of real time; the container clock was right](../learnings/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md), [clock skew vs Actions stamps](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md)).
@@ -135,14 +126,13 @@ It was not a standing clock skew but a one-hour misstamp. Read back the next day
 
 So no local clock or `Date` header reveals it, and a uniform skew correction is wrong outside that hour. Actions run ids rise with real time: sort runs by id and look for a `created_at` that goes down. On 11-01 there was exactly one inversion (run 41290890368 stamped 09:55:54Z before run 41291460073 stamped 09:04:00Z), and a bot commit with `committedDate` 08:55:48Z had its push run stamped 09:55:54Z. Slang's `CI Health` workflow runs about every 15 min, so `GET /repos/shader-slang/slang/actions/runs?created=A..B` shows the hour as a stamp gap. REST `since=` follows the misstamp: comments stamped 09:01Z and 09:04Z came back for `since=08:00Z` and `since=09:00Z` but not for `since=08:10Z` or `08:30Z`, on every repeat. On the first Sunday of November (next: 2027-11-07), treat stamps between 09:00Z and 10:00Z as either real or 1 h late and order Actions events by run id or snapshot time, not `created_at`; do not trust a `since=` read whose boundary falls between 08:00Z and 10:00Z (re-read with `since=08:00Z` and compare); and before calling a window complete re-query `org:shader-slang updated:>=<W1>`. A 24 h window that starts at 08:10Z still loses nothing, because the late stamps are real 08:13–08:55Z events.
 
-**Source learnings (10):**
+**Source learnings (9):**
 - [Verify reporter's release actually predates the fix before telling them to update](../learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md) — release publish date vs fix merge date before saying "just update"
 - [Reading a submodule pin: commit date ≠ version; check reachability with compare](../learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md) — commit date is not the version; use the version header + `compare` for reachability
 - [slang read-only clone: verify submodule is at gitlink before citing pinned versions](../learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-gitli.md) — a stale submodule working tree fabricates the pinned version
 - [Verify submodule pins at the gitlink, not the working tree](../learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md) — detect drift with `git submodule status` / `ls-tree`; `update --recursive` after any reset
 - [four history-probe traps from a provenance correction](../learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md) — read-proving controls, `log -L`/`-S` drift, harness-can-fail, `slangc -v` baked at configure time
 - [Slang release-tag date ≠ PR merge date: verify regressor membership with git merge-base](../learnings/1789717269524-slang-release-tag-date-pr-merge-date-verify-regres.md) — a PR merged after a tag is not in that release even if the number looks in-range; use `git merge-base --is-ancestor <commit> <tag>`, not version-number chronology
-- [Check what existed at issue-filing date via gh api commits?path=&until= (shallow clone)](../learnings/1792648587526-check-what-existed-at-issue-filing-date-via-gh-api.md) — `--jq length` 1/0 = existed/added later; `commits?until=` for the SHA at a date; `contents?ref=` to read
 - [GitHub timestamps ran ~1h ahead of real time on 2026-11-01 (US DST end)](../learnings/1793522479209-github-timestamps-ran-1h-ahead-of-real-time-on-202.md) — container clock and Date headers right; find the stamp gap
 - [GitHub sweep: clock skew vs Actions stamps, and fork re-push resets CI approval](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md) — CI Health 15-min cadence shows the gap; fork half on [status-surface traps](ci-github-status-surface-traps.md)
 - [GitHub timestamps read 1 h late on the US DST fall-back day (08:00-09:00Z)](../learnings/1793609300972-github-timestamps-read-1-h-late-on-the-us-dst-fall.md) — only real ~07:50–08:56Z records misstamped; run-id order is the tell; `since=` follows the misstamp; next 2027-11-07

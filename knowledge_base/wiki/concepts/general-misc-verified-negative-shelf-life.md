@@ -3,7 +3,7 @@ title: "A Verified Negative Has a Shelf Life"
 type: concept
 group: general-misc
 tags: [verified-negative, shelf-life, re-probe, unknown, workaround, carried-items, discord, gh-outage]
-source_count: 9
+source_count: 10
 ---
 
 # A Verified Negative Has a Shelf Life
@@ -14,7 +14,7 @@ source_count: 9
 - No recurrence on a parked branch is unexercised, not fixed.
 - Re-test a claimed capability gap ("gh is down", "cannot read forums") at the top of every run before carrying it forward.
 - Before repeating "promised X, not delivered", search the other system of record (GitHub for a Discord promise) for X. Batch-read the latest comments of every GitHub tracker linked to a carried Discord item: the owner's reply often lands there, not in the thread.
-- Prove an empty window with a positive control: a read that returns nothing is a finding only after a known-busy read on the same path returns something.
+- Prove an empty window with a positive control: a read that returns nothing is a finding only after a known-busy read on the same path returns something. Anchor that control with `before=<window-start snowflake>`, so a busy day cannot push its known-old messages out.
 - Match the environment when verifying a workaround claim.
 
 ## A verified negative has a shelf life — stamp it, re-probe, distrust a degraded source's empty answers
@@ -46,7 +46,9 @@ Test a claimed capability gap before carrying it into a second run. A monitoring
 
 The same applies to "gh is down": `gh` returned `app_not_connected` (401) on 10-17 and worked again (HTTP 200, 6000/h) on 10-18 with no action from anyone, so run `gh api repos/<o>/<r> -i` on every run instead of inheriting the outage. An empty Discord window can be proved cheaply. `GET /guilds/{id}/channels` returns every channel's `last_message_id` (28 in the Slang guild, unmonitored ones such as #showcase included), and `/guilds/{id}/threads/active` does the same for threads; comparing both against the window-start snowflake `((ms − 1420070400000) << 22)` answers "anything in the window?" in 2 calls. On 2026-10-18 (a weekend) both showed nothing, and a 5-message tail of a known channel and thread confirmed the reads worked, so the empty `after=` result was real and not a read failure ([Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)).
 
-**Source learnings (9):**
+A tail-N control proves the read path only while its result overlaps yesterday's tail. On a busy day (#slang-dev got 44 messages on 2026-11-03) `GET /channels/<id>/messages?limit=10` returns only new messages, so the control silently loses the known-old messages it was meant to find. Anchor it: also read `messages?before=<window-start snowflake>&limit=10` and assert it returns exactly yesterday's tail IDs (it did, 2 of 2). A shell note from the same run: `while pgrep -f "runq.py q2a"; do sleep 3; done` never ends, because `pgrep -f` matches the loop's own command line; start the job with `cmd &` and `wait` for it ([Discord sweep: tail-N control breaks when a channel gets N+ new messages](../learnings/1793781624590-discord-sweep-tail-n-control-breaks-when-a-channel.md)).
+
+**Source learnings (10):**
 - [a verified negative has a shelf life — stamp it and re-probe](../learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md) — a verified negative has a shelf life — stamp it and re-probe
 - [a logged RECOVERED for a flaky gateway is a past observation, not current state](../learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md) — a logged RECOVERED for a flaky gateway is a past observation, not current state
 - [a blocked verification call means UNKNOWN, not unchanged](../learnings/1785781402300-a-blocked-verification-call-means-unknown-not-unch.md) — a blocked verification call means UNKNOWN, not unchanged
@@ -56,3 +58,4 @@ The same applies to "gh is down": `gh` returned `app_not_connected` (401) on 10-
 - [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md) — `last_message_id` vs window snowflake in 2 calls, with a positive control; gh 401 on 10-17 cleared by itself on 10-18
 - [Discord carried items: cross-check against GitHub before repeating "not done"](../learnings/1792225849116-discord-carried-items-cross-check-against-github-b.md) — a 7-day "plan not published" was #13591 on GitHub; a passing create-github-app-token step proves the App is installed
 - [Discord sweep: watch linked GitHub trackers for movement on Discord-carried questions](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md) — the reply to a 7.6-day Discord question was on slang-vscode-extension#78; `comments(last:3)` in the daily batch; `cmp` raw file to carry line cites
+- [Discord sweep: tail-N control breaks when a channel gets N+ new messages; use before=window-start](../learnings/1793781624590-discord-sweep-tail-n-control-breaks-when-a-channel.md) — 44 messages on 11-03 pushed the known tail out; `pgrep -f` matches its own loop
