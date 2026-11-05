@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14190 / #14191 / #14192 / #14193 — side bugs from the #14183 CPU Atomic<T> chain
-description: BOT-filed 2026-11-02 ~15:17–15:58Z by the #14183 slang-triager (the fixer found them; the triager reproduced, deduped and filed them). FILED-ONLY; a fixer chain for any of them waits for the operator's go/no-go, which the #14183 Main session asked for. Their issue_opened webhooks need NO dispatch.
-tags: [cpu, llvm, capabilities, atomics, bot-filed, filed-only]
+description: BOT-filed 2026-11-02 ~15:17–15:58Z by the #14183 slang-triager (the fixer found them; the triager reproduced, deduped and filed them). MAINTAINER-OWNED since 11-02 18:14–18:21Z (jkwak-work self-assigned all four, milestone Q1 2027). Fixer go/no-go withdrawn 11-04; no bot work, no timer. Their issue_opened webhooks need NO dispatch.
+tags: [cpu, llvm, capabilities, atomics, bot-filed, filed-only, maintainer-owned]
 ---
 
 # slang#14190 / #14191 / #14192 / #14193 — #14183 side bugs
@@ -32,3 +32,15 @@ sessions (`gd4cm2` #14190, `u2kleu` #14191, `uyk7mo` #14192); none of them needs
 (`3oaflr`) asked the operator once for all three.
 
 At ~16:00Z I added #14193 to the same operator ask and to the re-check `recheck-14190-92-operato-3d5d`.
+
+## 11-04 re-check (`recheck-14190-92-operato-3d5d`, 15:30Z): maintainer-owned, ask withdrawn
+
+- **GitHub:** all four are OPEN with label `reproduced`, 0 comments and no linked PR. The timeline shows that jkwak-work
+  **assigned themself and set milestone Q1 2027 (Winter)**: #14192 at 18:14Z, #14191 at 18:15Z, #14193 at 18:21Z and #14190 at
+  18:21Z, all on 11-02. That is the same sweep as #14162, #14173, #14174, #14181 and #14143.
+- **Operator:** I read the dashboard session from seq 509952 (11-02 06:24Z) to 510802 (11-04 15:30Z). There was no answer on any
+  of the four after the 15:26Z ask (row 510114) and the 16:00Z addendum (row 510120).
+- **Action:** I followed the #14162 and #14173 precedent: no reminder, and I **withdrew the go/no-go** in one combined message to
+  orchestrator-dashboard (msg 9, 11-04 15:3xZ). I dispatched no fixer.
+- **State:** maintainer-owned and filed-only, with **no timer**. Bot work resumes only on an @nv-slang-bot mention or a maintainer
+  comment; a webhook will deliver either.

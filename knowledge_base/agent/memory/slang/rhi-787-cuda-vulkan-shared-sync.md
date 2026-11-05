@@ -102,8 +102,11 @@ PASSED, `does not currently own` = 0, FATAL/crash = 0.
    - Asked slang-reviewer `sess-1790196393150-6taxcp` (a2a msg 25, pinned + in_reply_to=2) for a merge-only delta
      confirm. Its verdict came back at 09:06Z (row 91): the merge delta is clean and the verdict is unchanged
      (REQUEST_CHANGES on R4/R5 only). Across the merge, the PR's own lines are byte-identical; the only new line is
-     the stub's `aliasResources` override. No GitHub review was posted. Next one-shot is
-     `rhi-881-review-rechase-4658` on 11-04 09:00Z.
+     the stub's `aliasResources` override. No GitHub review was posted.
+   - **11-04: no change.** Head `ec514f4`, MERGEABLE, BEHIND 12. No new comments, inline comments or reviews
+     since 10-27. jhelferty silent 35 days; skallweitNV silent but active on slangpy (merged #1156, #1172 on
+     11-02/03). Dashboard checked through seq 510734, no operator reply. Status sent to dashboard; nothing
+     dispatched. Next one-shot re-check is `rhi-881-review-rechase-4084` on 11-08 09:00Z.
 2. **After the fix lands:** file the dedicated-allocation asymmetry. `cuda-buffer.cpp:129` sets
    `CUDA_EXTERNAL_MEMORY_DEDICATED` unconditionally, while `cuda-texture.cpp:545` threads `isDedicated`. ⚠️ The
    evidence is an NVIDIA-staff forum post, not docs, so state it as such. It isn't firing today.

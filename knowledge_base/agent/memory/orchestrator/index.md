@@ -39,3 +39,4 @@ the one mount detail the spine omits.
 - [Filing verified issues](filing-verified-issues-policy.md) - reproduced+deduped shader-slang bugs are filed without operator approval; external-repo filings, scope requests and fixer fan-out are asked/reported
 - [Un-draft asks → weekly list](undraft-asks-replaced-by-weekly-list.md) - no per-PR 'may #N leave draft?' asks; maintainers flip drafts themselves; one weekly list (P0/P1 excepted)
 - [Infra-alert dedupe](infra-alert-dedupe-across-sessions.md) - parallel Main sessions re-alert the same infra event (8× disk on 11-04); grep the dashboard's last rows first, post only new facts
+- [Optional doc tweaks from Q&A triage](optional-doc-tweaks-from-qa-triage.md) - dispatch only a genuinely missing fact (one sentence, diffed against the whole page); never promise the reporter a doc PR (#12938 closed as redundant 11-04)

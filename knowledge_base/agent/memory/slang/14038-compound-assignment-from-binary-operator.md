@@ -92,5 +92,25 @@ that says "converts" while the code needs an exact match, and literal `x`/`y` in
 #13956 (still a proposal) would rework, so there is no conflict today. The prompt of `i14038-recheck-df24`
 (11-09 17:15Z) now follows the PR: merge or close, maintainer reviews, commits that change the gates.
 
-**Next.** Follow PR #14246 (human-owned; the bot does not review it) and wait for tangent-vector's view on the attribute. A reply comes in through the webhook. The triager's
+**11-04 ~15:27Z.** #14246 fired `pr_ready_for_review` (opened) at head b00c86d35, approved by skiminki-nv. Not forwarded: slang-pr-approver is paused; queued in `data/approver-pause-queue.md`.
+
+**11-04 19:24Z: tangent-vector gives the view** (comment 6639966842, no bot mention). They firmly reject code synthesis;
+it would take a very strong proposal to change that. The intended way: an interface with the core op, module-scope generic
+`+`/`+=` over conforming types, and the user type conforms. The blockers are that the core module has no good interfaces
+for this and that the docs push user-defined operator functions. tangent-vector believes `slang.numerics` `IAdditive`
+already gives `+`/`-` and `+=`/`-=`, but wants to double-check; if it doesn't, numerics should evolve. Interfaces are
+promoted to core only once the design is confident. The `[AddCompoundOp]` attribute (option E) is effectively declined.
+State of #14246 at that time: skiminki-nv APPROVED (and an earlier COMMENTED), coderabbitai COMMENTED, head b00c86d35.
+I relayed the comment to the triager pinned (in_reply_to=92, msg 99): report-only, plus a read-only local check of the
+`IAdditive` claim, not to be posted.
+
+**11-04 19:33Z: `IAdditive` check (the triager's, compile-only, master 3da6f63c0, `-experimental-feature`).**
+Yes: a `struct S3 : IAdditive` with six members (`Scalar`, `Mask`, `fromScalar`, `zero`, `plus`, `minus`) gets `+`, `-`, `+=`, `-=`
+and unary `+`. It works in SPIR-V (validated) and HLSL, and generically. The gaps: `*`/`*=` need `INumeric` and take the same type on
+both sides, and no interface multiplies by a scalar, so the reporter's `c01 * hessMag * tmpHess` is still not covered. The triager
+also noted that the note in #14246 is correct for current Slang, because no non-experimental interface exists to name. By
+19:30Z, #14246 had CI 58 pass, and skiminki-nv had approved with "LGTM if CI passes". The result is held, not posted (default),
+and the operator was offered a post. Scratch tests are in the triager's `scratch-14038/`.
+
+**Next.** Follow PR #14246 (human-owned; the bot does not review it) The bot stays report-only unless the operator says to post the `IAdditive` result. A reply comes in through the webhook. The triager's
 one-shot `i14038-recheck-df24` runs 2026-11-09T17:15Z, and I told it to treat the 11-03 comments as already seen. Owner: slang-triager on thread `gh-issue-shader-slang/slang-14038`.

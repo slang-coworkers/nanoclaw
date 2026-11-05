@@ -32,3 +32,7 @@ Comment issuecomment-6480867757 (nv-slang-bot, 21:15Z):
 One-shot `rechase-slang-8557-r1` at 2026-11-04 21:00Z (slot r1 reserved via task-hygiene.py).
 If #13935 merged and #8557 is still open → triager re-runs the repro and posts a follow-up to
 jkwak-work; never closes. Otherwise no re-arm (the weekly parked-chains digest covers it).
+
+**r1 fired 2026-11-04 21:01Z:** #8557 OPEN (no activity since the 10-28 verdict); #13935 OPEN,
+not draft, unmerged. Per the timer: no GitHub action, no dispatch, no re-arm. Stays parked on the
+maintainer/human PR; the weekly parked-chains digest covers it.

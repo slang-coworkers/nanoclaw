@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#13428 — local multi-declarator `int j = …, k = j < 2;` → E30015 (+ sibling #13430 / PR #13434)
-description: "#13428 TERMINAL (PR #13432 merged 10-07, eaf758404f). Still live: sibling #13430's draft PR #13434 (457ae39a0e), waiting on the operator un-draft decision at a 72h cadence (11th ask 10-29). Side findings #13433/#13435 are owned by their own gates. Decision trail in [[slang/13428-13430-decision-trail.md]]."
-tags: [slang, parser, regression, local-struct, live-chain]
+description: "#13428 TERMINAL (PR #13432 merged 10-07, eaf758404f). Sibling #13430's draft PR #13434 (457ae39a0e) is PARKED with no timer since 11-04 (12 unanswered un-draft asks); it reopens on 'un-draft 13434' / 'unpark 13434' or a human comment/review. Side findings #13433/#13435 are owned by their own gates. Decision trail in [[slang/13428-13430-decision-trail.md]]."
+tags: [slang, parser, regression, local-struct, parked-chain]
 ---
 
 # slang#13428 (external reporter andy-slater, 2026-10-04)
@@ -21,7 +21,7 @@ also fixes a pre-existing master miscompile (`int y = j; int j = 1, k = 2;` read
 `5`). Another separate commit covers the local `S::N < 2` type-spec case. The stale branch `fix/issue-13428` @
 `ae10b8b152` (Claude trailers, same tree `6b3bf010be`) is **kept on purpose**; nobody deletes it unless a maintainer asks.
 
-## #13430 / draft PR #13434: LIVE
+## #13430 / draft PR #13434: PARKED (11-04, no timer)
 
 - **Bug:** in a local struct, a field init like `int b = a < 2;` gave E99997 "decl has no parent": the parser's
   lookup entered L before `L->parentDecl` was set. Same v2025.4→v2025.5 window, but a separate producer, so the
@@ -38,10 +38,10 @@ also fixes a pre-existing master miscompile (`int y = j; int j = 1, k = 2;` read
 - **Routing:** the pr-mapping is on fixer session `sess-1791148592366-vqg8p2`, thread `gh-issue-shader-slang/slang-13428`
   (no fixer session exists on the 13430 thread). The triager for 13430 is `sess-1791173244200-mu85w4`; the canonical
   thread is `gh-issue-shader-slang/slang-13430`.
-- **Waiting on:** the operator un-draft decision. 12 asks so far (10-05, 10-06, 10-07, 10-08, 10-11, 10-14, 10-17 seq 505532, 10-20 seq 506182, 10-23 seq 507564, 10-26 seq 508092, 10-29 seq 508778, 11-01), on a 72h cadence. The 9th–12th offered yes / no / **park** (park = stop re-asks, move to the parked-chain register). **The 12th (11-01) was announced as the last** under the [re-ask cap](../orchestrator/reask-cap-park-after-final-ask.md): `rechase-13434-final-park-7a47` (11-04 03:00Z) parks the chain in `supervisor-state.json` with no timer if there is still no answer; reopen with "un-draft 13434" / "unpark 13434" or a human comment/review. As of 11-01 the branch is 165 behind master; nothing else changed.
+- **Waiting on:** nothing scheduled. **PARKED 2026-11-04 03:01Z with no timer** by `rechase-13434-final-park-7a47`, after 12 unanswered un-draft asks (10-05, 10-06, 10-07, 10-08, 10-11, 10-14, 10-17 seq 505532, 10-20 seq 506182, 10-23 seq 507564, 10-26 seq 508092, 10-29 seq 508778, 11-01 seq 509780; the 12th was announced as the last under the [re-ask cap](../orchestrator/reask-cap-park-after-final-ask.md)). On 11-04 GitHub was unchanged: still a draft, 0 reviews, bot-only comments, no timeline events after the 10-16 cross-reference, and no #13430 activity. No dashboard reply in seq 509780–510678. `supervisor-state.json` has it as awaiting_human with a parked disposition, plus a `_meta.operator_decisions` entry. The park line went to the dashboard on thread `gh-issue-shader-slang/slang-13430`. **Reopen:** the operator says "un-draft 13434" / "unpark 13434", or a human comments or reviews (webhook). Then relay to slang-triager on `gh-issue-shader-slang/slang-13430`. The fixer flips only on an explicit operator yes. The branch needs a master merge first: it was 165 behind on 11-01.
   Nothing changed on GitHub between 10-08 and 10-29 except a 10-16 cross-reference from draft PR #13718 (the #13435 fix), whose body
   says #13434's tests pass on a master+#13434+#13718 build and that the two PRs are independent. The final re-check is
-  `rechase-13434-final-park-7a47` at 2026-11-04 03:00Z. The fixer flips only on an explicit operator yes, and rebases only on maintainer request.
+  `rechase-13434-final-park-7a47` ran at 2026-11-04 03:00Z and parked the chain. The fixer flips only on an explicit operator yes, and rebases only on maintainer request.
   To read the dashboard, `--reverse --limit 300` reaches back only ~6h on a busy day. Use `--since-seq <last ask seq> --limit 400`
   instead, paging forward (the 10-29 ask is seq 508778; 10-26→10-29 was 359 rows, 1 page). An operator reply could also land on Main's own 13430-thread session `sess-1791149243025-udt0ka` (last active 10-04). **Add `--full` when searching:** without it each text is cut at 300 chars, so a #13434 mention deep in a digest is invisible.
 

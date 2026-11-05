@@ -16,7 +16,7 @@ HLSL, so DXC rejected them; WGSL/Metal `Load`/subscript used the sampler as the 
 | | |
 |---|---|
 | Issue | #13737 **closed by Buriola 10-18 15:12Z** (COMPLETED, no comment, before any merge). #10522 open. Triage cmt 6236169441 (`reproduced`, Bug, P2); thread `gh-issue-shader-slang/slang-13737` |
-| PR | **#13741 DRAFT @`fb36938e7`**, +970/−77, 16 files vs base 60a7c8c88, `Fixes #13737` + `Fixes #10522`, `pr: non-breaking`. MERGEABLE, 95 behind master (10-31). Issue artifact: fixer cmt 6243760176 |
+| PR | **#13741 DRAFT @`fb36938e7`**, +970/−77, 16 files vs base 60a7c8c88, `Fixes #13737` + `Fixes #10522` + `Fixes #14298` (11-04), `pr: non-breaking`. MERGEABLE, 95 behind master (10-31). Issue artifact: fixer cmt 6243760176 |
 | Owner | slang-fixer `sess-1792252474641-muhgh6` (the `pr-mappings` row for #13741) |
 | Reviews | R1 REQUEST_CHANGES @45d7d9f · R2 APPROVE_WITH_NITS @68f06ed · R3 REQUEST_CHANGES @c94e1d0 (B1) · **R4 APPROVE @fb36938** — a delta check only (`reviewers_complete:false`); the last full pass is R3 |
 | CI | `workflow_dispatch` **40897173994** @fb36938 `waiting`: priority yield + **`falcor-ci`** gate (`can_approve=false` for the bot). queued 10-29 15:00Z ⇒ 30-day approval clock ≈ **11-28** (an older prompt said 11-17; that was a cancelled run) |

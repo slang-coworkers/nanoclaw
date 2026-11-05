@@ -95,3 +95,12 @@ bot's 10-08 comment, no linked PR, no ask to the bot. #13487 is open at `53035c2
 reviews or comments after 10-22. Dashboard seqs 507312–509048 hold no `PolynomialIntVal` FILE/SKIP
 answer, so it stays unasked and unfiled. Dashboard rows carry their body in `text`, not `content`.
 Next #13534 one-shot: `rechase-13534-1405` (2026-11-05, pages from seq 509048).
+
+**2026-11-04 re-chase (`…-0327`):** no change. #13487 is open, not a draft, head `53035c247` (last push
+10-16), BEHIND; updatedAt is still 10-16. **The head now has no CI run records**: actions/runs?head_sha=
+returns 0, check-runs 0, statusCheckRollup empty, and the Actions API works fine for master. The 10-16
+runs, including the untriaged Falcor failure, have aged out, so CI can only be read again after a new
+push or a re-run. The author has not answered tangent-vector's 5 comments (none of the 10-16 comments
+has a reply), and dshreiner-nv and jkwak-work are still requested. #13419 is open, last updated 10-08.
+The PR has been dormant 19 days; the 3-week flag applies from 11-06. One dashboard line was sent.
+Next one-shot: `rechase-13419-pr13487-1273` (2026-11-11), which carries the >3-week dormant flag.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14260 — GLSL texture functions do not all compile for HLSL (intrinsic-texture.slang HLSL lines disabled)
-description: Human bug (jkwak-work, self-filed + self-assigned) 11-03 21:46Z, from the #14215 work. TRIAGED 22:2xZ (cmt 6616981515; bug/medium/P2, Type=Bug). Idle on the assignee; fixer NO-GO. Split-offs #14271 (4-offset Gather) and #14272 (SM floors) are FILED-ONLY.
+description: Human bug (jkwak-work, self-filed + self-assigned) 11-03 21:46Z, from the #14215 work. 11-04 re-ask answered by a delta reply (cmt 6636414885: test shape + bot-PR question); idle on jkwak-work. TRIAGED 22:2xZ (cmt 6616981515; bug/medium/P2, Type=Bug). Idle on the assignee; fixer NO-GO. Split-offs #14271 (4-offset Gather) and #14272 (SM floors) are FILED-ONLY.
 tags: [glsl-module, texture, shadow-sampler, hlsl, capability-gate, test-infra, self-assigned]
 ---
 
@@ -72,3 +72,16 @@ sm_6_8, on top of jkwak-work's #14269 which adds the TODO). DXC also rejects 46 
 
 **Resume on:** jkwak-work asking for the offered bot PR (-> slang-fixer, canonical thread, base on #14269); a human
 comment on #14271/#14272; fixer capacity for #14271.
+
+**11-04 16:36Z — jkwak-work: "@nv-slang-bot can you triage?"** (cmt 6636197710). Our triage 6616981515 is still
+there and not minimized. They posted the same ask on #14295/#14296/#14297 within 4 min, so it is probably a batch ask.
+Relayed verbatim to the triager owner session sess-1793742766161-gwve3b (msg 23; pinned + in_reply_to=18 = my
+webhook row; it woke and there is no second session). Suggested a short delta reply: link the existing triage,
+re-check any row that moved, ask about the test shape / the offered bot PR. #14271/#14272 stay FILED-ONLY.
+**Resume on:** triager [Report]; a bot-PR go-ahead -> slang-fixer, canonical thread.
+
+**11-04 16:46Z — triager delta reply posted** (cmt 6636414885, codex APPROVE r8; [Report] msg 28). Re-checked
+master 3da6f63c0: no row changed. The reply asks jkwak-work (1) test shape: (a) HLSL lines at sm_6_8 or (b) keep
+sm_5_1 and exclude the SM 6.x clauses, and (2) whether they want the bot draft PR. It also corrects the 11-03
+comment: option (b) must also exclude row 1b and the 4 `bias` forms of row 1a. **Idle on jkwak-work**; no timer
+(replies arrive as webhooks). Bot-PR go-ahead -> slang-fixer on the canonical thread, based on #14269.

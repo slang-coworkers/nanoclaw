@@ -44,3 +44,6 @@ Re-grep before acting on a grep miss: my first `grep 14086` ran before a sibling
 
 Human-filed #14268 (mixed `Ptr` `==`/`!=` compares nullness) has the same root, `bool.__init(Ptr)`. Its
 option 3 (make Ptr→bool contextual-only) would fix #14086 too. See [[14268-mixed-ptr-equality-nullness.md]].
+**11-04 16:51Z:** the #14268 delta (comment 6636551602) proposes one decision covering both issues: option
+3, contextual-only Ptr→bool, fixes #14086's `int(p)`. Nothing new was posted on #14086 itself. If option 3
+is chosen, the #14268 re-check t-d8d291 includes #14086 in the handoff.

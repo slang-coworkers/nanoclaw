@@ -62,3 +62,10 @@ description: External bug (albertrodriguezclo), triaged and reproduced 10-29. Fi
   the only 14013/14023 row is my own 10-31 re-ask; no operator answer. Action: third ask to `orchestrator-dashboard` on thread `gh-issue-shader-slang/slang-14013`
   (msg id 7), saying the 11-04 re-check is the last. Nothing went to the triager or fixer; nothing was posted on GitHub. `task-hygiene.py next` allowed r3 (count 2 of cap 3):
   one-shot `rechase-slang-14013-r3-3c49` at 11-04 16:00Z, told to park with no timer if still unanswered (cap reached).
+- **11-04 16:00Z final re-chase r3 (`rechase-slang-14013-r3-3c49`): PARKED, NO TIMER.** #14023 is still an OPEN draft at `1236549a8`, `pr: non-breaking`, 0 reviews, last updated 10-29 19:04Z.
+  No human comment on #14023, #14013, slang-rhi#959 or rhi#289 since 11-02. **New, maintainer triage only (no comments):** on 11-02, jkwak-work assigned #14013 to themselves and milestoned it
+  `Q4 2026 (Fall)`. rhi#959 is assigned to jkwak-work (event by jhelferty-nv 18:18Z) and milestoned `Q1 2027 (Winter)`. Dashboard session paged bounded (seq 510122→510814, to 11-04 16:01Z):
+  the only 14013 row is my own 11-02 ask (510130); no operator answer to any of the 3 asks. Action: ONE park line to `orchestrator-dashboard` on thread
+  `gh-issue-shader-slang/slang-14013` (msg id 7), with reopen on "un-draft 14023" or GitHub activity. `supervisor-state.json` row now carries disposition `parked:no-timer — ready-flip pending`
+  (weekly list, per [undraft-asks-replaced-by-weekly-list](../orchestrator/undraft-asks-replaced-by-weekly-list.md)). `task-hygiene.py next` → `allowed:false, parked:true` (count 3 of cap 3), so nothing is scheduled.
+  Nothing went to the triager or fixer; nothing was posted on GitHub. **Next:** webhook-driven only. A human comment goes to slang-triager on this thread, quoted verbatim. On ready_for_review, check `paused` before routing to the approver.

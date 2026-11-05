@@ -119,3 +119,14 @@ No change: still draft, head `654c18a756`, now 90 behind / 7 ahead. 0 reviews; n
 fleet items in the dashboard (not mine to act on here): a 10-30 proposal to cancel the bot's ~95 stale `workflow_dispatch` runs
 (row 509493, marked undelivered), and gate runs on other PRs that hit the 30-day expiry (#13328, #13350). Case (f): dashboard told
 (thread `gh-issue-shader-slang/slang-13126`), re-armed `rechase-13126-pr13130-0b68` (11-04 18:00Z). No fixer nudge.
+
+## 11-04 18:0xZ re-chase — PARKED, no timer (final)
+
+No change: still draft, head `654c18a756`, now 110 behind / 7 ahead. 0 reviews; no human comments on #13126 or #13130 since
+11-01 18:00Z; no operator answer on the dashboard (bounded reads covered 11-01 18:04Z → 11-04 16:44Z). Run `39471864134` is still
+`waiting` (2 failed, 44 skipped, 1 success, 1 waiting), the only run on the head; `falcor-ci` reviewer `ci-approvers`,
+`current_user_can_approve=false`. `ACTIVE_STATUSES` (`ci_priority_common.py:29`) still includes `waiting`; `ci.yml` has 185 `waiting`
+runs (159 on 11-01), so the fleet-wide stale-dispatch cancel has not happened. Case (f) with the 11-01 re-ask cap: final dashboard
+line sent, `supervisor-state.json` entry marked `parked` (no timer), **not re-armed**. Reopens on: the gate-run expiry webhook
+(~11-19 18:06Z, check goes red with no test failure → fresh dispatch then needed, after merging master), a human comment/review, a
+`ci-approvers` action, or a new head/run. Operator decisions still pending (not re-asked): falcor-ci gate approval; P2→P1.

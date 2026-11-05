@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked for jhelferty-nv (operator decision A defaulted to (c) on 10-15, never ask again); gate run 36780286138 expired 10-30, status comment posted, no rerun; follow-ups #13355 + #13359 held on jkwak-work. Next re-chase r8 2026-11-07.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107). TERMINAL 2026-11-04 — PR #13356 merged by jkwak-work (f0660607f1, 20:48:10Z), issue closed COMPLETED. Open, not ours to drive: #13355 (62 builtins) + #13359 (filecheck=A,B) held on jkwak-work; #14257 (std140/Metal) own chain.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -67,3 +67,5 @@ update only the state table below in this file.
 
 - A falcor-gated environment wait fails at GitHub's 30-day limit; predict the date from the run's `created_at` and time the re-chase after it.
 - Dashboard reads for re-chases: bounded `--since-seq` pages; jq chokes on control chars, so parse with python `json.loads(strict=False)`.
+- **11-04 20:0xZ:** jkwak-work enqueued #13356 at 18:36:46Z. Its SM80Plus job 126789028206 was queued with no runner from 18:51:44Z, so a `checks_timed_out` eviction was likely at about 20:36Z. Main armed one-shot `check-13356-sm80-evictio-905f` (20:45Z): if it is evicted, the fixer posts a no-mention infra comment (same precedent as #14111).
+- **11-04 20:47Z:** the one-shot found no eviction. #13356 is still OPEN and still in the merge queue: its only queue event is the 18:36:46Z add, with no removal. Job 126789028206 got runner `linux-sm80plus-9046929f` at 20:40:18Z (in_progress, run 41888920166), which was after the 2 h mark. Nothing was sent and the one-shot was not re-armed. **Lesson:** a job that sits queued past 2 h does not by itself make the merge queue evict the PR, so don't predict `checks_timed_out` from queue age alone.

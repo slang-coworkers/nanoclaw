@@ -52,3 +52,29 @@ v2026.20; HEAD not retested by reporter.
   - Tests (fixer-reported): new typed/rov tests 10/10 on cpu/vk/cuda/dxil, 9/10 fail on master. Full suite 11428/11446.
   - dx12 and Windows CI lanes have not run on the draft yet. The issue status is fixer comment 6620315326.
   - **Ready-flip pending** (weekly list, P2). Resume on a maintainer review, CI, or a human comment.
+- 11-04 19:10Z **Maintainer redirect.** skiminki-nv (repo admin) @-mentioned the bot on the issue (cmt 6639627049).
+  - Their ask: "Let's actually try a different approach than the one in PR #14276": add the HLSL `L` suffix to double literals, then "write the PR and see whether it fixes this issue".
+  - 19:15Z: I relayed it verbatim, `<github-post-authorized />`, to the triager owner session sess-1793741880740-mvymkh, which is the fixer's parent; landing verified at its seq 20.
+  - The triager relays it to fixer sess-1793742971321-k0j5bx.
+  - My note to it: my reading is a separate draft PR, with #14276 left untouched until skiminki-nv decides.
+    - Report the half/`h` result and the C++/CUDA scope; do not widen the scope silently.
+    - Avoid colliding with #14161 and PR #13927.
+  - Resume on the triager's report with the new PR number.
+- 11-04 ~20:35Z **Alternative DRAFT PR #14322** (head ee54385, "Part of #14259", 4 files). It adds the `L` suffix to finite HLSL
+  double literals. #14276 is untouched. Result comment: 6641507357.
+  - ✅ Fixed: the reported repro now gives `.Store(0U,42.0L)`, which compiles to f64.
+  - ❌ Not fixed: `half(1.5)` (no `h`, because the maintainer named only `L`), double inf/NaN (`(1.0f / 0.0f)`), and the C++/CUDA widths.
+  - **Parked on skiminki-nv:** pick #14322 vs #14276 (or both), and decide whether `h` and inf/NaN are in scope.
+  - Peer review is requested on #14322. Resume on the triager's [Fix Report] relay or a maintainer comment. Ready-flip pending.
+  - Timer: one-shot `recheck-14259-approach-p-fd8e` (11-11 12:00Z). The supervisor-state entry is set to advisory:maintainer-decision.
+- 11-04 21:40Z **#14322 [Triage Resolution]** (head 83bc983, 5 files, +112/−15). Peer R1 APPROVE_WITH_NITS, 0 bugs; N1–N5 applied plus a dx11 FXC lane.
+  - Status: the repro is fixed. Not covered: `half`, double inf/NaN, and C++/CUDA.
+  - Conflict: #14276's and #14322's CHECK tests conflict, so whichever lands second updates its CHECKs. Fixer status comment: 6642772337.
+  - Still parked on skiminki-nv; timer `recheck-14259-approach-p-fd8e` (11-11).
+  - **Side find S3 = #14323**, from slang-reviewer on #14322. The triager filed it, Bug + `reproduced`, and did not route it.
+    - The bug: on HLSL `cs_5_0` (FXC), every double byte-address form is invalid. A constant becomes `Store(0U,…ULL)`, a runtime value gets a `(uint64_t)` cast, `double2` passes untyped, and `Load<double>` becomes `Load<uint64_t >`.
+    - Cause: `getSameSizeUIntBaseType` maps 8 bytes to UInt64 (slang-ir-byte-address-legalize.cpp:1305-1349).
+    - Evidence is HLSL-only, because FXC needs Windows.
+    - Already triaged and reproduced, so it needs no re-triage. Sibling Main `issue_opened` session sess-1793828426010-kfytek (21:40Z) owns its dispatch decision, so this session dispatches nothing.
+    - It touches the same byte-address emit/legalize code as #14276 and #14282.
+    - Disposition (kfytek, 21:42Z): [#14323](14323-hlsl-sm5-double-byte-address-uint64.md) FILED-ONLY until a #14259 PR lands; one-shot `recheck-14323-after-1425-4d9c` (11-11 13:00Z).

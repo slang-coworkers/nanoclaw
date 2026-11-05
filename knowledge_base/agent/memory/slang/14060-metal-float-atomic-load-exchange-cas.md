@@ -80,3 +80,23 @@ and I did not request a remap. CI run 41536440200 has the usual bot-draft shape:
 So there is no CI evidence, including the Metal legs. `license/cla` is pending (nit-patch commit a70747f88 has the nv-slang-bot identity; not required).
 Possible conflicts: #14170 and #14044. **PARKED** on a human ready-flip or review (assignee jkwak-work). My one-shot re-check
 `recheck-14210-human-6a1f-ddb2` runs 11-06 22:00Z. The operator's R6×PR question no longer matters for this chain, but the policy question is still open.
+
+**11-05 01:13Z: READY + maintainer review; webhooks were stranded in a closed session.** jkwak-work left 6 inline comments
+(11-04 23:12–23:22Z): five say to add a newline before "On WGSL, " in `hlsl.meta.slang` (:12829/12872/12895/12924/12954), and
+r4474605900 at `slang-emit-metal.cpp:349` asks "Should we check this in `slang-ir-check-unsupported-inst.cpp` ?". The review was
+COMMENTED (23:22:33Z), and they flipped the PR ready at 23:22:43Z. The PR-mapped session `5f63gx` is **closed**
+(container stopped). It got the webhooks as seq 20–30 `in` rows with no `out` row, so nothing was read for about 2 h. I relayed
+the comments verbatim, pinned to chain session `ytzi3p` (msg 25, landed as its seq 62, and it is now running). I requested
+`pr-mappings remap` #14210 → `ytzi3p` (approval pending). Until it lands, relay #14210 webhooks to `ytzi3p` by hand.
+CI after the flip: 56 pass, 0 fail, 1 pending (license/cla). The macOS build and test legs pass, which is the first real Metal check. #14170 and #14044 are still open.
+The `ready_for_review` webhook was NOT forwarded to slang-pr-approver (paused); the entry is in `data/approver-pause-queue.md`.
+I repointed re-check `recheck-14210-human-6a1f-ddb2` (11-06 22:00Z) at `ytzi3p`.
+**Lesson:** when a release one-shot task session opens a PR, it holds the first-claim mapping. After the task ends, that session
+closes, and later human webhooks go nowhere. On the first human event, check `ncl sessions get <mapped sid>` for `closed`.
+
+**11-05 01:25Z: jkwak-work's review (11-04 23:22Z, COMMENTED, 6 comments) has been answered** (fixer [Report]; I verified it live).
+#14210 is **out of draft**; jkwak-work did the ready-flip at 11-04 23:22Z (a sibling Main session relayed it to ytzi3p at 01:13Z). Head `3556907fe` (fast-forward push; it splits the "On WGSL" sentences in the 5 `hlsl.meta.slang` remarks), MERGEABLE.
+Comments 1–5 are done. **Comment 6 is parked on jkwak-work** (bot reply r4475471986): option (1) move the float check into
+`checkUnsupportedInst` in this PR, which needs care because the pass is skipped under `-minimum-slang-optimization`; or option (2) move all the Metal atomic checks in one follow-up.
+The fixer recommends 2. The PR mapping now points at the chain session **`sess-1793311990079-ytzi3p`** (a fresh `report_pr_created`).
+CI run 41948210276 on the new head is `waiting`. I updated the prompt of re-check `recheck-14210-human-6a1f-ddb2` (still 11-06 22:00Z) to this state.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13789 — isParameterLocationUsed marks an unused resource used when its constant buffer also holds ordinary data
-description: External (fuchstraumer) 10-20. Triaged (cmt 6298782357, reproduced, P2). Root cause in type legalization (declareVars pair case). Draft PR #13811 @8921fd5 (fixer session 4lrs0a). PARKED on jkwak-work (assignee, Office-Tess) push-constant discussion + maintainer review + operator filing call. 10-24 15:00Z one-shot re-check found no change; no timer armed after it.
+description: External (fuchstraumer) 10-20. Triaged (cmt 6298782357, P2). Root cause in type legalization (declareVars pair case). Draft PR #13811 @8921fd5 (fixer 4lrs0a), BEHIND, 0 reviews, CI at falcor gate. PARKED on assignee jkwak-work (silent since 10-21) + 2 unanswered operator filing calls. 11-04 albertrodriguezclo confirmed on Metal/HLSL/SPIR-V; triager verifying #13811 on that shape (no post).
 tags: [slang, reflection, metadata, type-legalization, triage]
 ---
 
@@ -98,3 +98,18 @@ constants", the pointer to 6298782357 becomes important, so put it to the operat
 - Dashboard `9fon2n`: I read seq 506700–507880 (10-21 13:01Z → 10-24 14:30Z) and found no operator answer on either filing (PB-in-CB, Debug tuple-case assert).
 - Fixer `4lrs0a`: the last row is 43 (10-21 16:46Z). It is holding.
 - **No timer is armed after this one-shot.** The next triggers are webhooks: a maintainer review or comment, a close, a merge, or an operator reply. The c2 rule still applies: if the thread moves to "not supported for push constants", tell the operator and recommend a pointer to 6298782357.
+
+**11-04 22:22Z third-party comment (verified live):** albertrodriguezclo (CONTRIBUTOR), cmt 6643652688, with no bot mention, reports
+the same false "used" on **Metal** (MetalBuffer 2), **HLSL** (`t1`) and SPIR-V (binding 1). The shape is an entry point with 3 resources and then 2 ordinary
+scalars (`count`, `unusedScale`). Checked on 2026.19 and master `139f09f59`. The commenter says layout and reflection-json are consistent
+and only the usage query is wrong. That is independent support that the bug is not push-constant-specific (the c2 risk).
+State: issue OPEN, assignee jkwak-work silent since 10-21; PR #13811 draft `8921fd5`, BEHIND, 0 reviews, CI at falcor gate.
+Dashboard 10-24 → 11-04 (seq 507880–510918): no operator answer on either filing or on the no-post question.
+**Routed:** forwarded verbatim to the triager (`911hoa`, msg 149). Ask: verify that `8921fd5` fixes this shape on Metal/HLSL/SPIR-V,
+via the fixer `4lrs0a` or by itself; no push, no post. Next: on a verified fix, put "bot says so on the issue?" to the operator.
+
+**11-05 00:18Z triager [Report] (its finding; local, logs from 22:43Z):** `8921fd5` fixes albertrodriguezclo's case on Metal (0,1,3),
+HLSL (b0;t0;u0), SPIR-V (0,2) and WGSL (0,1,3). Master reproduces the commenter's table exactly. The control is correct on both. Emitted
+code is byte-identical master↔PR. It posted, pushed and merged nothing (worktree `wt-13811`, master baseline `d6ad99cb3`). Side note: the PR worktree's
+`build/` was deleted ~23:07Z by something outside its session (see the workspace-deletion and concurrent-writers leaves in imported/).
+**Asked the operator once (11-05):** should the bot post that #13811 covers this case? My rec: yes, one short factual comment.

@@ -48,3 +48,40 @@ triager one-shot `t-92b792` at 2026-11-06 10:20Z re-checks, posts the held comme
 decision. It never dispatches the fixer itself. **Resumes on:** reporter PR, human comment, or t-92b792.
 
 **Reporter PR (supervisor tick 321).** albertrodriguezclo opened [#14167](https://github.com/shader-slang/slang/pull/14167) (`Fixes #14157`) at 11-02 10:34Z. It is non-draft and BLOCKED, waiting on a maintainer review. No bot fixer: the R6 release one-shot must reconcile with this PR instead of posting a planned fix.
+
+**11-04 21:41Z — maintainer question** (jkwak-work, cmt 6642827280, `@nv-slang-bot`): *"what is the size of `bool`
+type for each target that slang supports?"* jkwak-work is the auto-assigned shepherd of #14167 (still open, no
+review). I routed it 21:43Z to the triager's owner session `sess-1793614043803-fyxk6j` (landed seq 16, running), with
+`<github-post-authorized />`. Asked for a per-target table: register vs each buffer kind/layout rule, plus the IR's
+natural size, each with `file:line` and a check. **Gate open:** the 11-06 hold was stale (R6 wait retired, see
+[project_13591](../imported/project_13591_ai_contributor_standards_batch.md)). The answer may carry one triage line.
+`t-92b792` must edit the reply in place or be cancelled, never post a second comment. **Next:** triager reports the
+comment URL.
+
+**11-04 22:07Z — answer posted** ([6643360049](https://github.com/shader-slang/slang/issues/14157#issuecomment-6643360049),
+nv-slang-bot, verified live; codex OUTPUT_REVIEW passed in round 2). Summary: buffers use 4 bytes on HLSL/DXIL, SPIR-V/GLSL
+(std140/std430/scalar/dx), WGSL and LLVM std140/430, and 1 byte on Metal, CUDA, CPU, slangvm and C layout. The IR's
+natural size is 4 (`slang-ir-layout.cpp:129`). Slang `sizeof(bool)` is 1 everywhere. Reflection was checked on 14 targets,
+and CPU/CUDA/VK were run on the L40S. The held triage draft is dead. `t-92b792` is now edit-only (it updates the status line).
+**Side findings → told the triager to dedupe, re-confirm on master, and file without asking (filing policy), filed-only, no
+fixer:** (1) generic `sizeof(T)` with T=bool gives 4 (IR peephole, natural rules) where concrete `sizeof(bool)` gives 1;
+(2) `docs/user-guide/02-conventional-features.md:75-84` says 4, plus stale CUDA bool comments
+(`slang-type-layout.cpp:776-783`, `docs/target-compatibility.md:216`); (3) `-target host-cpp` ICE at
+`slang-ir-transform-params-to-constref.cpp:463` and `llvm-host-ir` "Unsupported instruction". **Their `issue_opened`
+webhooks need no dispatch: this chain owns them.**
+
+**11-04 — side finding (3) filed as [#14328](https://github.com/shader-slang/slang/issues/14328)** (nv-slang-bot,
+label `reproduced`): `-target host-cpp` ICE, assert `layoutDecoration` at
+`slang-ir-transform-params-to-constref.cpp:463` for a compute entry point with an `SV_*` parameter; `-target cpp`
+compiles it. Suspected cause: no `HostCPPSource` case in `getDefaultLayoutRulesFamilyForTarget`
+(`slang-type-layout.cpp:3031`); related #12392. Its `issue_opened` webhook reached me: no dispatch (this chain owns
+it, filed-only, no fixer). The `llvm-host-ir` half is #14329.
+
+**11-04 — side finding (3) filed as [#14329](https://github.com/shader-slang/slang/issues/14329)** (nv-slang-bot, label
+`reproduced`): `-target llvm-host-ir` ICE "Unsupported instruction for LLVM target!" on a global `RWStructuredBuffer`
+(suspected leftover `global_param`, no `kIROp_GlobalParam` case in `slang-emit-llvm.cpp`; same `default:` as #14191).
+`issue_opened` webhook received; **no dispatch** (filed-only, this chain owns it). The `host-cpp` ICE is filed separately.
+
+**11-04 22:28Z — side-finds filed** (slang-triager): (1)+(2) → [#14327](14327-generic-sizeof-bool-4-vs-concrete-1.md)
+(generic `sizeof(T)` bool 4 vs 1, plus the stale docs/comments); (3) split into #14328 (`host-cpp` assert `layoutDecoration`)
+and #14329 (`llvm-host-ir` unsupported instruction). All filed-only, Type=Bug + `reproduced`; their webhooks need no dispatch.

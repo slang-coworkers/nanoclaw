@@ -99,3 +99,5 @@ The fixer applied the R1 remedy as given, except for two test-comment rewordings
 tests pass 18/18 (`incomplete-library-spirv-extern.slang`, `precompiled-spirv-chain.slang`); the related dirs pass 1800/1800. CI run 41567611489.
 Explanation comment: issuecomment-6592884670. **Waiting on: a human review + the ready flip** (fixers can't do it; jkwak-work is the silent shepherd)
 **and the operator's SPIRV-Tools filing decision.** The supervise tick walks this chain because its sessions are active, so it needs no separate timer.
+
+**#14225 closed WNF (11-04 17:21Z, jkwak-work, issuecomment-6637248539):** "operator `&` will be deprecated. Closing as WNF" (GitHub stateReason COMPLETED). No bot mention and no ask. I did not post or relay; the triager's work on it was done. #14220's tests do not use `&` (checked at de95590c8), so the PR is unaffected. Lesson for triage: a repro that depends on unary `&` (address-of) can be closed WNF.

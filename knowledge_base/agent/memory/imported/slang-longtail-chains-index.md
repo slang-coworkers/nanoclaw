@@ -34,7 +34,7 @@ same sweep, got 2 hits, and both were genuinely false alarms — historical sect
 | #12239 | [switch-case nested block uniqueness](project_12239_switch_case_nested_block_uniqueness.md) | open |
 | #12261 | [statement labels non-breakable](project_12261_statement_labels_non_breakable.md) | open |
 | #12317 | [slang-web bundler plugins](project_12317_slang_web_bundler_plugins.md) | open |
-| #9085 | [GLSL `SampleCmp` takeover](project_9085_glsl_samplecmp_takeover.md) | open |
+| #9085 | [GLSL `SampleCmp` takeover](project_9085_glsl_samplecmp_takeover.md) | merged; follow-up draft #13333 parked (weekly un-draft list) |
 
 ⚠️**None of these was re-triaged here** — indexing restores reachability only. Open the child before
 acting; several are maintainer-owned or parked by an explicit decision.

@@ -86,3 +86,84 @@ filed-only (9 fixer sessions running); operator told on the dashboard (table, st
 **23:5xZ: ONE direct ask sent to the operator** (dashboard, regression exception): "flip 14267" / "hold 14267". No
 re-ask. If no answer, it stays a draft and goes on the weekly ready-flip list ("ready-flip pending"). Triager told: no
 `gh pr ready` until I relay an answer; fixer watches run 41739559736.
+
+**11-04 19:05:44Z: maintainer direction on #14238** (jhelferty-nv, #14267's board-sync shepherd; comment
+6639517817): "Based on discussion, the bug here is that the code generated doesn't compile. This should be
+implemented as a dynamic calculation. (There was no promise in the language beforehand that this would be resolved
+to a compile-time constant, should be a per-thread dynamic calculation.)" This goes against #14267 commits (1) and
+(3), which fold the array to a constant. The operator never answered the 11-03 23:5xZ ready-flip ask, and it is now
+**moot** until the rework (the operator was told). **Routing (Main `sess-1793690897967-0o6crb`, 19:1xZ):** the
+fixer's parent, the t-700e05 triager session `sess-1793667544858-o8dnsv`, is **closed**. Precedent says to relay
+through the triager and never go direct to the fixer, so I opened a fresh slang-triager session on
+`gh-issue-shader-slang/slang-14238` with the full context. It relays the comment verbatim to fixer
+`sess-1793732830219-r1jbdf` (pin + own-row in_reply_to). The fixer sends a plan before pushing. The PR stays a
+draft, with no force-push. A question for the maintainer comes to me first.
+**11-04 19:26Z, triager interim (triager-reported, not verified by me):** on master `3da6f63c0`, the #14238 repro already
+compiles. jkwak-work's #14204 ("Emit static const struct arrays as global constants (#13107)") moves a module-scope
+array that contains calls into each kernel, which is the per-thread shape. I verified the merge myself: **02:32:33Z**
+11-04, merge `139f09f597`; the triager said 01:16Z. One variant still fails: a helper without `[__readNone]`, with
+the array as a struct static member. #14267 may shrink to that variant plus commit (2).
+**11-04 19:28Z (triager-reported):** commit (2) is still needed on master. The `-g` ICE E99997 still happens there.
+The remaining variant leaves orphaned module-scope operand calls (`__device__ static const int _S2 = ceilDiv_0(7,2);`).
+The triager's hypothesis is the producer: `inlineGlobalValuesAndRemoveIfUnused` deletes only the root, and DCE keeps
+the calls that are not readNone. That is the same producer as #14217, so the plan should check #14217 too. #14267's
+base is `f1cd35ff8`, from before #14204.
+**11-04 19:40Z, fixer interim (via the triager; local only, not verified):** the prototype on master `3da6f63c0` is
+one producer change. `inlineGlobalValuesAndRemoveIfUnused` also deletes the operands that were inlined with the root
+and have no uses left. It fixes the remaining variant, a plain non-inline helper in the same shape, and
+**#14217** (`-g`). The orphans have no uses, so debug values do not keep them alive. The full suite is running.
+I asked the fixer to show that deleting a no-use, non-readNone call is safe.
+**11-04 20:10Z: `[Triage Resolution]`, plan r2** (plan file at inbox `a2a-1793823046040-ifzpd1/slang-14238-r2-plan.md`;
+issue delta **6640934112** posted). The plan:
+- Revert commits (1) `06d680192` and (3) `883bedf6a`, and the matching hunks of `1c20be535`.
+- `git merge origin/master`, with no force-push.
+- A new commit adds a worklist to `inlineGlobalValuesAndRemoveIfUnused` that removes inlined operands once they have
+  no uses. The per-thread form comes from #14204's `IRCall` rule in `inlineGlobalConstantsForLegalization`.
+- `idiv(10,0)` behaves as on master.
+- An orphan-position atomic test shows the effect is not lost. On HLSL it also removes 2 duplicate runs of the initializer.
+- The PR becomes **Fixes #14238 + Fixes #14217** and is retitled.
+- Suite 11728/11731 (`fp8-cuda*`).
+
+**My decisions (20:1xZ):** (a) **GO**. (b) **Commit 2 (`b5ff14441`, the `-g` debug-inst clone skip) is split into its own
+PR.** It fixes an independent master ICE, E99997 "no outer func at use site for global" (uniform-arg, cpp/metal/cpu, `-g`).
+The triager files an issue for it first: dedup against #9078, and check pre-#14150 `6815ed82d` to tell whether it is a
+regression. Then a new fixer chain runs on that issue's thread (it cherry-picks `b5ff14441`), and #14267 reverts the
+commit. The triager's observation that an effectful element call runs once per read is the same as on master, so it
+gets one line in the description and no issue. The operator was told about the new chain, with a stop option.
+**11-04 20:24Z: commit 2 filed as [#14321](14321-g-debug-clone-module-scope-uniform-ice.md)** (triager msg 55). It is not
+a regression and not a dup of #9078. Its `issue_opened` was not dispatched. The triager starts the #14321 fixer chain,
+and #14267 gets a one-line pointer. Triager msg 55 also asks me to OK a #14280 comment for the assignee: #14280 passes
+on master `3da6f63c0`, probably fixed by #14204. That OK belongs to this chain's Main `sess-1793690897967-0o6crb`.
+**11-04 21:25Z: r2 pushed.** Head `d97af15bf` (fast-forward, 13 ahead of master `3da6f63c0`), still a draft,
+retitled, Fixes #14238 + #14217. CI run 41915474315 is waiting (approval-gated). The reviewer round is requested.
+Next: verdict → ready-flip question → operator directly.
+**11-04 21:26Z:** the #14238 delta 6640934112 was edited in place to show r2 pushed, #14217 fixed, the `-g` fix moved to
+#14321, and the ready-flip left to maintainers after review.
+**11-04 22:36Z: R2 = REQUEST_CHANGES** (small, 0 bugs). The fixer is applying it locally:
+- M1 `5276d6fe4`: uses inside an `IRGlobalVar` initializer.
+- G1 `070244b3e`: tests for nested operands and an operand used twice.
+- 37 lanes, 30 of which fail on master.
+
+**Q1** (also the #14321 question): E31226 (#10925) rejects a non-readNone initializer for a module-scope `static const`,
+but a struct `static const` member skips it (`isGlobalDecl`, slang-check-decl.cpp:3833) and is evaluated once per read.
+**My call:** post the question **once, on #14321**, not on #14238, because jhelferty-nv's #14238 direction does not
+decide it. Neither PR blocks on it.
+
+**Q2:** `docs/user-guide/02-conventional-features.md:599` says a global `static const` "defines a compile-time constant",
+which goes against the direction. Hold it until Q1 is answered. For now, one line in the #14267 description.
+
+**S4:** `int2` vector `/` in a global const array gives a CUDA dynamic init on ptx only. The cause may be #14204's
+`isLegalGlobalInstForTarget`. It is related to #13444 (jkwak-work). Decision: check v2026.21 (pre-#14204) for a
+regression, then file it filed-only, with no fixer chain.
+**11-05 00:23Z (triager):** Q1 was posted on #14321 as comment **6646031120**. Both PR bodies will link it. Q2 got one
+line in #14267's description (relayed). **S4 was filed as #14330**, filed-only and not a regression (v2026.18/.21,
+`6815ed82d` and master all fail ptx): CUDA vector arithmetic (`+ * / %`, `int2`/`float2`) in a global const gives a dynamic
+init. Related to #13444; no fixer chain. **Do not dispatch #14330's `issue_opened`**, because it belongs to this chain.
+Infra: both fixer sessions (#14238 and #14321 threads) errored ("Sorry, something went wrong") at 23:05Z. The #14238
+one wrote to me at 00:18Z, and the triager is checking the #14321 one.
+**11-05 00:41Z: R2 pushed**, head `485637d9c` (verified), still a draft. Body has the Q1 link, the docs :599 line, and Fixes #14238 + #14217. CI 41942522276 waits for approval. Next: re-review, then the ready-flip question, then the operator directly.
+**11-05 00:56Z: review converged.** R3 APPROVE, 0 bugs and 0 gaps (fixer-reported). Head `485637d9c` (verified), 9 files
++519/−9, 37/37 new lanes. CI 41942522276 waits on the approval gates. **00:5xZ: ONE direct ready-flip ask to the operator**
+(regression exception; v2026.21 shipped with the regression): "flip 14267" or "hold 14267". I recommended flipping now
+without waiting for Q1. **No re-ask.** If there is no answer, it goes on the weekly list. The fixer holds `gh pr ready`
+until I relay an answer.

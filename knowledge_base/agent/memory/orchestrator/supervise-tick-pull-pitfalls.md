@@ -19,7 +19,7 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   left `pr`/`comments` empty on 50 rhi chains (tick 278: 2 false nudges + 3 false escalations). Grep `pull.err` for
   `HTTP 5`/`fallback` and compare per-repo `with pr`/`with comments` counts against the previous payload3. Fix: confirm
   nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
-  repo (`payload3r.json`), re-scan.
+  repo (`payload3r.json`), re-scan. Compare `pr` counts against the previous **payload1** (prfix/botbind add ~20 PRs in payload3), and find the stripped set as chains whose previous payload1 had comments/pr and this one has none (tick 326: 41 contiguous #12909–#12962; carried pr/comments/our_last_push/issue_open, re-fetched the 1 that moved).
 
 - **`payload3.json` `chains` is a dict keyed by thread** (no `key` field; `sessions` is a list of ids) — build `lo-cache.json` as `{thread:{ts:our_last_outbound,text:last_outbound_text,sess:sessions}}`. Include **every** chain, also those with `ts: null` — `pull.sh:594` reuses an entry only on a key hit, so dropping the null ones turns ~1,300 chains into `ncl` cache misses (tick 324 caught it before launch).
 - **The mid-tick `ncl sessions list` re-list can come back empty** (0-byte stdout, exit 0) — `moved.py` then dies on `json.load`. Retry until the file is non-empty (tick 307).

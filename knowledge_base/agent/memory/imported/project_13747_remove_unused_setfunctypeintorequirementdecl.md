@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13747_remove_unused_setfunctypeintorequirementdecl
-description: "slang#13747 (jhelferty-nv filed 10-19; reassigned to saipraveenb25 10-21, labels Autodiff/Office-Sai): delete dead SemanticsDeclHeaderVisitor::setFuncTypeIntoRequirementDecl (no callers since #9808) + its only-user helper addModifiersForParamPassingMode once #13406 lands. #13406 merged 10-22, so it is unblocked. 10-28 16:37Z the assignee saipraveenb25 asked @nv-slang-bot to open the PR, → draft PR #13976 (R1 APPROVE), PARKED on saipraveenb25 review + cloneModifiers answer; one-shot rechase-13747-review-b9fe 2026-11-04 16:00Z."
+description: "slang#13747 (jhelferty-nv filed 10-19; reassigned to saipraveenb25 10-21, labels Autodiff/Office-Sai): delete dead SemanticsDeclHeaderVisitor::setFuncTypeIntoRequirementDecl (no callers since #9808) + its only-user helper addModifiersForParamPassingMode once #13406 lands. #13406 merged 10-22, so it is unblocked. 10-28 16:37Z the assignee saipraveenb25 asked @nv-slang-bot to open the PR, → draft PR #13976 (R1 APPROVE), PARKED on saipraveenb25 review + cloneModifiers answer; one-shot rechase-13747-review-b9fe fired 2026-11-04 with no change; asked operator whether to ping."
 metadata:
   node_type: memory
   type: project
@@ -63,3 +63,8 @@ dispatch 40732468787 was yielded to human-priority work (retry-yielded-bot-ci re
 `cloneModifiers` patch ready if saipraveenb25 says yes. **Parked on saipraveenb25** (review + mark ready + cloneModifiers answer).
 Timer: one-shot **`rechase-13747-review-b9fe`**, 2026-11-04 16:00Z (read back from `ncl tasks list`). Webhooks on #13976 go to the fixer
 session `grtb8h`.
+
+**2026-11-04 16:00Z, one-shot `rechase-13747-review-b9fe` fired.** Live state had not changed. #13976 is OPEN and still a draft, head `0ab8fab0ec`, 0 reviews,
+and no human comments on the issue or PR since 10-28 17:45Z. Checks: 6 pass, 54 skipped. CI run 40732468787 has been `waiting` on the human approval
+gate since 10-28. The fixer session `grtb8h` is active (container stopped) and was last active 10-28 17:42. Nothing was posted to GitHub. I asked the
+dashboard on the canonical thread whether to ping saipraveenb25. **No new timer armed**; next step depends on the operator's answer or a webhook.

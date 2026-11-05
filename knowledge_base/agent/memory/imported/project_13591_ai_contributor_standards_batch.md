@@ -72,6 +72,10 @@ down we can explicitly request so and ignore the PR it generated."* No reply was
 nothing. Until R6 is revisited, a stand-down happens only on explicit request. Releasing the chains still held under
 the stale wait was put to the operator on 11-02.
 
+**11-05 02:25Z:** the operator never answered. About 12 chains from 11-01/11-02 (#14136–#14177, slang-rhi #961–#965) are still parked
+under triager one-shots `r6-release-*`, which fire 11-05/11-06 and release them anyway. I released only **#14159** early, because it came up through the
+slangpy#1261 side-find, and told the dashboard. The rest are left to their one-shots, since the ask is moot by 11-06.
+
 ## R10 (#13600) prod audit, 2026-10-13 (read-only, #13600 session sess-1791889641831-376bet)
 
 Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belong to **Slang Maintainer
@@ -123,3 +127,14 @@ contracts and reasons, not narration". The body now says the rule covers comment
 or Discord messages (those follow R8/R10). **#13585 is unchanged**: still a draft, last commit `5a44fe7178` (10-13), and its
 diff has no "source code comment". So the `AGENTS.md` line and the skill bullet flagged on 10-15 still say plain "comment".
 The author answering a reviewer is not a request to the bot: no dispatch, no bot post, a `[Resolution]` to the dashboard only.
+
+### 11-04 08:24Z: szihs gym update on #13591 (cmt 6626198871), held
+`github.pr_mention`, but the body @-mentions nobody. Live body = payload. It is szihs's own status note on the tracker; the
+data is in [#13589 cmt 6626188310](https://github.com/shader-slang/slang/pull/13589#issuecomment-6626188310) (11-04 08:23Z).
+szihs's figures, from a 314-task review bank (212 PRs, Sonnet judge vs human threads). They paired 30 PR revisions × 2 repeats:
+slang-reviewer v1 (current prompts) against v2 (the #13589 short format as a prompt prepend). Recall 0.70→0.69 (no detected change),
+precision 0.13→0.13, findings 16.2→13.0, characters 8,377→6,857 (47 of 51 reviews still over 4,000), cost per review
+$3.36→$4.37 (+$1.01, CI [+0.14, +2.09]). The #13591 note omits the cost rise. Pass rule not met. Recommendation: merge the
+format part of #13589, enforce the length as a mechanical cap at posting time (modelled on nanoclaw#1991's description gate),
+then run v3 against the same v1. #13589 is still a draft. #13591 now carries the `Infra` label. Nothing was asked of the bot:
+no dispatch, no bot post, a 5-bullet to the dashboard only.

@@ -64,3 +64,11 @@ and Issue 6 rejects sizing the workgroup through `constant_id`. So it is a desig
 - Noted only, not filed: `-pass-through glslang` aborts with E99997 on these GLSL files (it was not minimized or deduped).
 - **11-04 — #14289 `issue_opened` webhook received, closed with no dispatch** (filed-only, this chain owns it).
 **11-04 — #14288 `issue_opened` webhook received and closed with no dispatch** (filed-only side-find S1, owned here; body matches the record). The fixer-chain decision for #14288/#14289 is still open.
+**11-04 03:40Z** — #14284 after R2, head `0945b18`; the explain-diff HTML is at `/workspace/inbox/a2a-1793763615344-knj87a/`. Waiting for the `[Fix Report]`.
+**11-04 03:40Z fixer `[Fix Report]`. Chain terminal, held for a maintainer.** #14284 draft at head `0945b18` (+344/−3, 5 files).
+- R1 REQUEST_CHANGES → applied; R2 REQUEST_CHANGES (small: B3 use-after-free, G2 spurious E20016 for `atomic_uint`, G3 size error reported twice) → the reviewer's tested patch was applied, with no further round.
+- Tests: PR tests 19/19; full suite 11452/11455 (fp8 only).
+- Left for the maintainer: N4 (an HLSL warning shows the internal `$local_size_id_<id>` name); whether that name is API; comparing `location` instead of re-folding `args[0]`.
+- CI run 41767473258. **Ready-flip pending** (weekly list). Side-finds #14288/#14289 filed-only.
+
+**Resume on:** a maintainer review or comment on #14284 (the webhook routes it to the fixer); CI red; a human comment on #14277/#14288/#14289.
