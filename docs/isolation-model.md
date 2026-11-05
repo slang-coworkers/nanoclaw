@@ -88,3 +88,7 @@ Wiring-creation defaults for engage mode/pattern, thread policy, and unknown-sen
 - **Shared session:** multiple messaging_groups → same agent_group, `session_mode = 'agent-shared'`
 - **Same agent, separate sessions:** multiple messaging_groups → same agent_group, `session_mode = 'shared'`
 - **Separate agents:** each messaging_group → different agent_group
+
+## See also
+
+- [thread-vs-session.md](thread-vs-session.md) — thread vs session, the two orthogonal identifiers that must stay distinct to reason about multi-coworker collaboration and about what the dashboard shows.
