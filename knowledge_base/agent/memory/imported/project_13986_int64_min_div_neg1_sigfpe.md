@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13986_int64_min_div_neg1_sigfpe
-description: "slang#13986 (nv-slang-bot, filed 10-28 18:34:40Z by slang-triager from the #13978/#13984 fixer side finding): slangc SIGFPE (exit 136) constant-folding 64-bit INT64_MIN / -1 and % -1 — IR SCCP evalDiv/evalRem (slang-ir-sccp.cpp:660/:670) and front-end tryConstantFoldExpr CASE(/)/CASE(%) (slang-check-expr.cpp:2744-2755, also folds uint64 signed). Own fix chain; slang-fixer session 6cxhqb on gh-issue-shader-slang/slang-13986 since 18:36Z. Sibling: #13985."
+description: "slang#13986 (nv-slang-bot, filed 10-28 18:34:40Z by slang-triager from the #13978/#13984 fixer side finding): slangc SIGFPE (exit 136) constant-folding 64-bit INT64_MIN / -1 and % -1 — IR SCCP evalDiv/evalRem (slang-ir-sccp.cpp:660/:670) and front-end tryConstantFoldExpr CASE(/)/CASE(%) (slang-check-expr.cpp:2744-2755, also folds uint64 signed). Own fix chain; slang-fixer session 6cxhqb on gh-issue-shader-slang/slang-13986 since 18:36Z; draft PR #13991 @497b797. 11-04 18:58Z assignee jhelferty-nv: \"we shouldn't fold these\" (diagnostic optional, warn-vs-error undecided) — relayed verbatim to 6cxhqb 19:01Z. Sibling: #13985."
 ---
 
 # slang#13986: SIGFPE folding INT64_MIN / -1 and % -1
@@ -17,4 +17,25 @@ Triage comment 6477413934 (nv-slang-bot 18:36:23Z, "handed to the automated fixe
 **Overlap.** Front-end `CASE(/)`/`CASE(%)` sits next to #13975/#13984 edits in `slang-check-expr.cpp`;
 related #13954 (no narrowing), #13545 (preprocessor `#if` same trap, draft fix covers only the preprocessor).
 
-**Resume on:** fixer [Fix Report] via the triager → the #13973 Main's chain.
+**10-28 20:28Z → 21:52Z:** draft PR #13991 (folds `INT64_MIN / -1` → `INT64_MIN`, `% -1` → 0; uint64 `/`/`%` unsigned).
+R1 APPROVE_WITH_NITS, parked to rebase after #13984. Detail: [#13973 history](project_13973_builtin_call_constant_fold_history.md).
+
+**11-04 18:58Z maintainer direction** ([6639348362](https://github.com/shader-slang/slang/issues/13986#issuecomment-6639348362),
+jhelferty-nv, assignee; no @-mention): "Per Tess and Sami, we shouldn't fold these, just like we don't fold divide by zero.
+We could also give a diagnostic … (unsure at first glance whether it's the error or warning)". It reverses #13991's
+wrap-fold. Because our fixer owns the PR, the Main webhook session `tjj767` relayed it verbatim at 19:01Z (fixer row 28,
+pinned `target_session_id` + `in_reply_to=8`; landed, session running). It made no GitHub post and no reaction. The
+Orchestrator notes flagged: the diagnostic severity is the maintainer's choice; **#13994 says a scalar `OpSDiv %long INT64_MIN -1`
+also traps spirv-opt `--ccp`**, so "don't fold" may only move the SPIR-V crash (the fixer checks first); uint64 part not addressed.
+⇒ Rule: a non-summons maintainer comment on an issue whose **draft PR our fixer owns** is still relayed to that fixer
+(internal only). The not-a-summons hold covers making no bot post/reaction, not withholding direction from the owner.
+
+**11-04 19:19Z fixer [Report] (verified live):** note 3 reproduced. With SCCP declining the fold, `sccp.slang -target spirv`
+(-O1) still exits 136, now in spirv-opt `const_folding_rules.cpp:2242`; -O0 and the other targets compile. The fixer posted
+question comment [6639852932](https://github.com/shader-slang/slang/issues/13986#issuecomment-6639852932) to jhelferty-nv:
+(1) diagnostic none/warn/error? An error like E30002 in SCCP stops the crash before spirv-opt runs. (2) Should 32-bit `INT_MIN / -1`
+also stop folding? It keeps the uint64 part. #13991 is unchanged @497b797. The fixer set its own one-shot re-check for 11-05 19:00Z
+(its claim; Main cannot list peer tasks). The plan is in the fixer's `reports/slang-13986.md`.
+Main told the operator on the dashboard.
+
+**Resume on:** fixer report via its parent edge (triager) → the #13973 Main's chain; maintainer reply on #13986/#13991.

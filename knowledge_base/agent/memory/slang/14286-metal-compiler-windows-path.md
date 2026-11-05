@@ -22,3 +22,6 @@ bare `metal` fails with `missing Metal Toolchain`. The result is that `metal` is
 PR fixes it. A triager would only restate the issue body, and a fixer would duplicate #14287. This is unlike
 [#14260](14260-glsl-texture-funcs-hlsl-gap.md), which got triage because it had no PR. No bot comment is posted.
 Re-open routing only if a human asks the bot on #14286/#14287, or #14287 closes unmerged.
+
+**11-04 `pr_ready_for_review` (opened) on #14287** at head `a2f22ba4`: NOT forwarded — `slang-pr-approver` is
+paused; queued in `data/approver-pause-queue.md`. CI 57 pass / 0 fail at the event.

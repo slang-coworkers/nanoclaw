@@ -92,4 +92,28 @@ The triager asked "which of #14237/#14239/#14240 to route to slang-fixer"; that 
 `sess-1793681648046-dnmoma`, which owns the operator ask. **The issue_opened webhooks for #14239/#14240 need no dispatch** (#14239's
 reached Main session `sess-1793692866940-i0kveu`, 08:01Z; no dispatch, no operator row from it to avoid a duplicate). #14240's reached Main session `sess-1793692867311-htt8mq` (08:01Z); same handling, no dispatch.
 
+**Re-check 11-04 09:0xZ (one-shot task `recheck-14231-fanout-ope-cf00`; verified on GitHub):**
+- #14237, #14239, #14240: OPEN, `reproduced`, 0 comments, unassigned. #14231 and #14232 have had no comments since 11-03 08:00Z.
+- #14233 (head 93fc4d197) and #14234 (head aa7fb7dfd): still draft, `pr: non-breaking`, no human reviews or comments.
+  Both are **ready-flip pending** for the weekly list ([policy](../orchestrator/undraft-asks-replaced-by-weekly-list.md)). Not P0/P1 and not
+  regression fixes, so no per-PR ask.
+- Dashboard (rows 510382–510732, 11-03 06:16Z → 11-04 09:00Z): **no operator go/no-go** on any fan-out item.
+- **v2026.21 is tagged and contains #13742** (compare 653bfdeef...v2026.21 = ahead 76/behind 0), so §3 now ships in a release.
+- Action: one combined reminder posted on orchestrator-dashboard (msg id 7), covering #14237/#14239/#14240 and the test-only coverage PR. It
+  states that silence means filed-only and that I won't ask again. **No timer.** All four stay filed-only until the operator says go. If the go
+  comes, dispatch slang-fixer on `gh-issue-shader-slang/slang-<n>` (for the coverage test, `…-14231`; the fixer session `sess-1793683522163-m3bzqw`
+  owns it), after checking `ncl sessions list` for an existing owner.
+
+**11-04 18:05Z: jkwak-work comment 6638197702** cc'd @skiminki-nv: "this reveals some of problems with the transition from legacy
+syntax to the more recent Slang language versions". This is not a bot mention and asks nothing of the bot. The issue now has
+`RTR` and assignee kaizhangNV (set by humans). Routed to the triager (session `sess-1793681782161-37fhas`): post one short delta
+saying §3 now ships in **v2026.21** (released 11-04 00:14Z; contains 653bfdeef, verified), with links to #14234/#14233 and the
+fan-out list, and no @-mentions. No reply to the CC itself.
+
+**11-04 18:10Z delta posted** (verified): https://github.com/shader-slang/slang/issues/14231#issuecomment-6638287939. The v2026.21 lib gives
+31/31 [2,3] for §3 on the L40S (slang-test, not SlangPy).
+**jkwak-work self-assigned #14237, #14239 and #14240 on 11-04 17:24–17:25Z** (verified from the issue events). They are now human-owned:
+**no fixer chain unless the operator or jkwak-work asks for one.** That supersedes the pending operator go/no-go. The test-only coverage PR
+is the only bot-side option still open.
+
 **Note.** A sibling Main session rewrote this file around 05:3xZ and dropped my triage-closed section. Re-read the file before every edit.

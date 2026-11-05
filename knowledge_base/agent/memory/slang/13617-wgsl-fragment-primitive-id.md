@@ -6,6 +6,20 @@ description: "rhendry, human-filed feature request: WGSL rejects SV_PrimitiveID 
 
 # slang#13617
 
+## Current state (2026-11-04 10:3xZ)
+
+| item | state |
+|---|---|
+| #13617 | OPEN, human-filed (rhendry), `WebGPU`+`reproduced`, milestone Q4 2026 (Fall), jkwak-work assigned. |
+| PR [#13619](https://github.com/shader-slang/slang/pull/13619) | DRAFT @ b5340af7ab (Approach A), 0 GitHub reviews; internal R2 APPROVE_WITH_NITS applied. pr-mapping → slang-fixer `sess-1791954025104-jckcwj`. Full CI matrix runs only at ready. |
+| Parked on | maintainer approach confirmation; (1) `gh pr ready` = "ready-flip pending" on the weekly list (never ask per-PR, since 11-03); (2) operator file-or-leave on the SV_WaveLaneIndex/`enable subgroups;` side note — listed as pending, re-asked once (10-15), never re-ask. |
+| Follow-ups | [#13620](https://github.com/shader-slang/slang/issues/13620) (nested-struct `int` SV field E99999) and [#13622](https://github.com/shader-slang/slang/issues/13622) (global `in` SV_SampleIndex in vertex) filed, unrouted; #13622 maintainer-owned (tangent-vector, Q1 2027). |
+| Next | one-shot `rechase-13617-primitive-0dd5` (2026-11-06T10:30Z); the triager sends FINAL on merge. |
+
+Dated re-chase entries (10-15 →) live in [[slang/13617-wgsl-fragment-primitive-id-rechase-log.md]] — append new ones there, not here.
+
+## History (10-14)
+
 **2026-10-14 04:3xZ, webhook `issue_opened`.** Live read before dispatching: OPEN, 0 comments, no
 labels, no assignee, human-filed by rhendry, `updated_at` = `created_at`, live body = payload. The
 only session on `gh-issue-shader-slang/slang-13617` was this Main webhook session. `gh search`
@@ -70,55 +84,3 @@ CI dispatch 38546790314 (ref `fix/issue-13617-ci`, code commit f58c7dae03) is wa
 Whole-module shared-global-`in` var<private> note: noted only, not filed.
 **Parked on:** maintainer approach confirmation + operator `gh pr ready` decision. Re-chase `rechase-13617-primitive-3220`
 (one-shot, 2026-10-15T10:30Z). Chain rests; the triager sends FINAL on merge.
-**2026-10-14 20:43Z, #13622 is maintainer-owned.** jhelferty-nv assigned it to tangent-vector (Q1 2027). tangent-vector's design notes
-(comment 6178020266) say the fix is front-end: check global varyings and entry-point params as one combined list. They also propose
-making it an error to use both forms, warning on global `SV_` varyings, and diagnosing global varyings outside GLSL mode.
-The bot does nothing on #13622. **For #13619:** its legalizer stage check for global `in` (`checkSystemValueUse`) is a backend backstop that
-this front-end direction would likely supersede. I flagged it to the operator only. No action unless a maintainer raises it on #13619.
-**2026-10-15 10:31Z, re-chase (case d).** Checked live: #13619 is still an open draft @ b5340af7ab, 0 reviews, and no human comments on
-#13617 or #13619 since 10-14 10:18Z. One human event: **jkwak-work milestoned #13617 "Q4 2026 (Fall)"** at 10-14 17:08Z (no comment).
-CI dispatch 38546790314 is still `waiting` at the priority gate. Both operator decisions (`gh pr ready`, SV_WaveLaneIndex file-or-leave)
-were unanswered on the dashboard, so I re-asked **once** (dashboard msg 5, canonical thread). Next ask: don't re-ask again, list it as pending.
-Re-armed one-shot `rechase-13617-primitive-3ec6` (2026-10-17T10:30Z). No GitHub posts.
-**2026-10-17 10:33Z, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab with 0 reviews, and there are no human
-comments or timeline events on #13617 or #13619 since 10-14 17:08Z (the milestone). CI dispatch 38546790314 is still `waiting`. Neither operator
-decision has an answer (dashboard read with the bounded --reverse/--since-seq calls; the Main canonical session was last active 10-14 10:26Z).
-I listed both as pending and **didn't re-ask** (dashboard msg 21, canonical thread). Re-armed one-shot `rechase-13617-primitive-316c` (2026-10-19T10:30Z). No GitHub posts.
-**2026-10-19 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab with 0 reviews, and there are no human
-comments, reviews or timeline events on #13617 or #13619 since 10-14 17:08Z. **CI dispatch 38546790314 now returns 404** and `fix/issue-13617-ci`
-has no runs (other repo runs list normally), so it probably expired at the priority gate. That's harmless; the full matrix runs at ready. Neither operator
-decision has an answer (bounded dashboard read; no operator row mentions 13617/13619 after msg 505608). I listed both as pending and didn't re-ask
-(dashboard msg 7, canonical thread). Re-armed one-shot `rechase-13617-primitive-320f` (2026-10-21T10:30Z). No GitHub posts.
-**2026-10-21 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. No human
-comments, reviews or timeline events on #13617 or #13619 since 10-19 10:30Z. There are no runs on `fix/issue-13617` or `-ci`. Neither operator decision has an
-answer (bounded dashboard reads `--reverse --limit 300` plus `--since-seq 505608 --limit 400`: no operator row mentions 13617/13619; the Main canonical
-session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask (dashboard msg 9, canonical thread). Re-armed one-shot `rechase-13617-primitive-73cf`
-(2026-10-23T10:30Z). No GitHub posts.
-**2026-10-23 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. No human
-comments, reviews or timeline events on #13617 or #13619 since 10-21 10:30Z (latest human event is still the 10-14 17:08Z milestone). There are no runs on `fix/issue-13617`.
-Neither operator decision has an answer (bounded dashboard reads `--reverse --limit 300` plus `--since-seq 506600 --limit 400`, which together cover 10-21 10:30Z→10-23 10:30Z:
-no row mentions 13617/13619/WaveLane/subgroups other than my own 10-21 status; the Main canonical session `sess-1791952546270-bc3zew` was last active 10-14 10:26Z).
-I listed both as pending and didn't re-ask (dashboard msg 9, canonical thread). Re-armed one-shot `rechase-13617-primitive-6dc8` (2026-10-25T10:30Z). No GitHub posts.
-**2026-10-25 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617`.
-No human comments, reviews or timeline events on #13617 or #13619 since 10-23 10:30Z. One bot event: at 10-25 08:27Z the triager commented on the new human-filed issue
-[#13932](https://github.com/shader-slang/slang/issues/13932) (albertrodriguezclo, opt-in Chromium experimental WGSL extensions, parked on maintainer direction), and that comment cross-references #13619
-as the legalizer hook that system-value `enable`s need. It is a separate chain, so this one takes no action on it. Neither operator decision has an answer (the bounded dashboard read `--reverse --limit 400`
-covers 10-22 11:35Z→10-25 10:30Z, and no row mentions 13617/13619 except my own 10-23 status; the Main canonical session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask
-(dashboard msg 15, canonical thread). Re-armed one-shot `rechase-13617-primitive-6543` (2026-10-27T10:30Z). No GitHub posts.
-**2026-10-27 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617` or `-ci`.
-No human comments, reviews or timeline events on #13617 or #13619 since 10-25 10:30Z (latest human event is still the 10-14 17:08Z milestone). Neither operator decision has an answer
-(the bounded dashboard read `--reverse --limit 400` covers 10-23 06:09Z→10-27 10:30Z, and no row mentions 13617/13619/WaveLane/subgroups except my own 10-23 and 10-25 statuses; the Main canonical
-session was last active 10-14 10:26Z). I listed both as pending and didn't re-ask (dashboard msg 11, canonical thread). Re-armed one-shot `rechase-13617-primitive-59fe` (2026-10-29T10:30Z). No GitHub posts.
-**2026-10-29 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617` or `-ci`.
-No human comments, reviews or timeline events on #13617 or #13619 since 10-27 10:30Z (latest human event is still the 10-14 17:08Z milestone). Neither operator decision has an answer
-(the bounded dashboard read `--reverse --limit 400` covers 10-26 04:30Z→10-29 10:24Z, and no row mentions 13617/13619 except my own 10-27 status; the Main canonical session was last active 10-14 10:26Z).
-I listed both as pending and didn't re-ask (dashboard msg 7, canonical thread). Re-armed one-shot `rechase-13617-primitive-af77` (2026-10-31T10:30Z). No GitHub posts.
-**2026-10-31 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617` or `-ci`.
-There have been no human comments, reviews or timeline events on #13617 or #13619 since 10-29 10:30Z. The latest human event is still the 10-14 17:08Z milestone. One bot event: at 10-31 09:00Z, the bot-filed docs follow-up
-[#14130](https://github.com/shader-slang/slang/issues/14130) cross-referenced #13619. #14130 reports that the WGSL guide's `SV_ClipDistance` row went stale after #14097. It belongs to the nightly-fixtures #13887 chain and has no fixer. Both issues edit the table in `a2-03-wgsl-target-specific.md`, so one may need a trivial rebase. It is a separate chain, so this chain takes no action.
-Neither operator decision has an answer. I read the dashboard in two bounded passes: `--reverse --limit 400` covers 10-29 11:33Z→10-31 10:30Z, and `--since-seq 508608 --limit 300` covers 10-28 15:30Z→10-29 22:26Z. No row mentions 13617/13619/WaveLane except my own 10-29 status. The Main canonical session was last active 10-14 10:26Z.
-I listed both decisions as pending and did not re-ask (dashboard msg 9, canonical thread). I re-armed the one-shot `rechase-13617-primitive-600a` (2026-11-02T10:30Z). No GitHub posts.
-**2026-11-02 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab, with 0 reviews and 0 inline comments. There are no runs on `fix/issue-13617` or `-ci`.
-There have been no human comments, reviews or timeline events on #13617 or #13619 since 10-31 10:30Z. The latest human event is still the 10-14 17:08Z milestone.
-Neither operator decision has an answer. One bounded dashboard read, `--reverse --limit 400`, covers 10-29 22:10Z→11-02 10:30Z with no gap. No row mentions 13617/13619 except my own 10-31 status. The Main canonical session was last active 10-14 10:26Z.
-I listed both decisions as pending and did not re-ask (dashboard msg 9, canonical thread). I re-armed the one-shot `rechase-13617-primitive-e6ef` (2026-11-04T10:30Z). No GitHub posts.

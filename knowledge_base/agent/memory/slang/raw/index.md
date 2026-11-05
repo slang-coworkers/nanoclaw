@@ -30,3 +30,11 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [slang-14212-triage-memo.md](slang-14212-triage-memo.md) — slang-triager memo for slang#14212 (SPIRV-Tools crash on imported decl; B+C plan; upstream draft), 2026-11-02
 - [comment-14150-regressions.md](comment-14150-regressions.md) — slang-triager draft PR comment for #14150 (two regressions vs master: int-div helper, pure helper under -g), approved by Main 2026-11-03.
 - [slang-14220-r1-combined-review.md](slang-14220-r1-combined-review.md) — slang-reviewer R1 combined review of PR #14220 (#14212), APPROVE_WITH_NITS, 2026-11-03, 62 KB
+- [slang-14304-triage-memo.md](slang-14304-triage-memo.md) — slang-triager memo for slang#14304 (matrix `[i][j]` reads row 0; not reproduced on L40S; driver MatrixStride hypothesis; options A–D), 2026-11-04
+- [triage-14295.md](triage-14295.md) — slang-triager memo for #14295, 11-04 16:43Z.
+- [triage-10232.md](triage-10232.md) — slang-triager memo for slang#10232 (double ICE on WGSL/Metal), 2026-11-04
+- [slang-14317-r1-combined-review.md](slang-14317-r1-combined-review.md) — slang-reviewer R1 combined review of PR #14317 (#14295), REQUEST_CHANGES (B1 double evaluation through an interface pointee), 2026-11-04, 67 KB
+- [slang-14317-r2-combined-review.md](slang-14317-r2-combined-review.md) — slang-reviewer R2 combined review of PR #14317 (#14295), APPROVE_WITH_NITS (tests-only nits patch + N2–N5 comments), 2026-11-04, 65 KB
+- [slangpy-1260-triage-memo.md](slangpy-1260-triage-memo.md) — slangpy-triager memo for slangpy#1260 (torch bfloat16), 2026-11-05
+- [slangpy-1261-r1-review.md](slangpy-1261-r1-review.md) — slangpy-reviewer R1 review of PR #1261 (#1260), 2026-11-05
+- [slangpy-1261-r2-review.md](slangpy-1261-r2-review.md) — slangpy-reviewer R2 review (APPROVE) of PR #1261, 2026-11-05

@@ -25,3 +25,9 @@ Chain record and current state: [[slang/13350-glsl-matrix-mul-wgsl-metal-gate.md
 - **10-31 r7:** handled correctly, nothing else moved; 178 behind; master still has 69 gates. Dashboard seqs 507152–509671: no reply,
   and no Main session had told the dashboard about the expiry, so I sent a 5-bullet (no ask). Re-armed `rechase-13350-13355-r8-6fd2` for 11-07.
 - **11-03 21:29:** jkwak-work filed **#14257** (Metal only, self-assigned), a duplicate of #13350. Triager dispatched on `gh-issue-shader-slang/slang-14257` for one pointer comment; #13356 still parked, no push. Record: [14257](14257-glsl-matrix-mul-metal-dup-13350.md).
+- **11-04 16:57Z (triager msg 58; checked live):** jkwak-work (MEMBER) took #13356 out of draft at 16:40Z, APPROVED it at 39e7f04 with no change requests, and enabled squash auto-merge at 16:48Z.
+  The pull_request CI run 41869955735 was in progress. State BEHIND, which is fine (merge queue). The fixer edited status comment 6534088003, and the triager made the final edit to issue comment 5917443980.
+  **This makes decision A moot.** The fixer asked jkwak whether to add `Part of #14257`. I updated r8, and told the dashboard A is closed (5-bullet, no ask).
+- **11-04 ~18:3xZ:** `pr_ready_for_review` webhook for #13356 reached Main. Not forwarded: slang-pr-approver is paused=1. Queued in `data/approver-pause-queue.md` (skip if merged on unpause).
+- **11-04 20:50Z: TERMINAL (triager msg 72; checked live).** jkwak-work merged #13356 at 20:48:10Z as `f0660607f1`, and #13350 closed COMPLETED at 20:48:12Z. The fixer cleaned up its worktree and sentinel. No issue post was needed.
+  r8 (11-07) is cut down to #13355 and #13359 only. I sent the dashboard a closing 5-bullet.

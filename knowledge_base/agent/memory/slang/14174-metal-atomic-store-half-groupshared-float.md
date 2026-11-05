@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14174 — Metal: `Atomic<T>.store` on `half`, or on `float` in groupshared memory, emits atomics MSL lacks
-description: BOT-filed by slang-fixer 2026-11-02 11:49Z as a side finding of the #14153 fix (filing policy, no go-ahead needed). FILED-ONLY, fan-out held. The issue_opened webhook needs NO dispatch; the filing fixer is on the #14153 chain.
+description: BOT-filed by slang-fixer 2026-11-02 11:49Z as a side finding of the #14153 fix (filing policy, no go-ahead needed). FILED-ONLY, fan-out held; operator go/fold/leave unanswered (reminded once 11-04, no timer). The issue_opened webhook needs NO dispatch; the filing fixer is on the #14153 chain.
 tags: [metal, emit, atomics, float, half, bot-filed, filed-only]
 ---
 
@@ -30,3 +30,11 @@ orchestrator-dashboard 11:52Z (thread `gh-issue-shader-slang/slang-14174`). Time
 (11-04 12:00Z).
 
 **11-02 12:28Z edit (fixer msg 92).** Retitled "Metal: `half` atomics and `groupshared` `float` store emit atomics that MSL does not have". The body adds `Atomic<half>.add`/`.sub` and `InterlockedAdd` on half buffer and groupshared targets, reproduced on 6815ed82d (exit 0, `atomic_half`). This half residual is not covered by human PR #14170. I verified it live; it is still R6-clean.
+
+**11-04 12:00Z re-check (`recheck-14174-operator-4575`): no operator answer. Reminder sent once, no new timer.** The
+dashboard session (seq 509967–510768, 11-02 08:30Z → 11-04 11:30Z) mentions 14174 only in my 11:52Z ask. Live: OPEN,
+no labels, no comments, no PR. On 11-02 18:32Z jkwak-work self-assigned it and set milestone "Q1 2027 (Winter)". That is
+routine triage: jkwak-work also holds #14153 (Q4 2026) and #14162 (Q1 2027), so it is no claim to fix. Its dependency
+#14060 is now bot draft PR #14210. I sent one reminder to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-14174`,
+msg id 9) with the options `go` / `fold` / `leave 14174`. **Parked with no timer.** An operator answer arrives as an
+inbound; a `go` needs a slang-fixer session check on the thread first.

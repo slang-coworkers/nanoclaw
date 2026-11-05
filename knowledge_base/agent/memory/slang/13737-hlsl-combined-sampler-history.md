@@ -83,3 +83,7 @@ Numbers are the fixer's or reviewer's own unless marked "I checked".
   #14126.** Not filed: 2 (`Texture2DMS[uint2]`), 4 (bindless DXIL nonUniformIndex), 5 (CPU float-array GetDimensions); the reviewer
   did not recommend them. 7 = #14041.
 - 10-31 the `issue_opened` webhook for **#14126** reached Main; owned by this chain (bot-filed by the triager), nothing dispatched.
+- 11-04 04:52Z — new external dup report **#14298** (kovidgoyal, Metal combined `Load`/`operator[]` use the sampler as the coordinate; reproduced on master 139f09f59). Triager checking whether #13741's head fixes it. Record: [14298](14298-metal-combined-sampler-load-subscript-arg-index.md).
+- 11-04 05:04Z — #14298 confirmed fixed at fb36938e7 by slang-triager (Metal/WGSL/HLSL). Main pinned-woke owner `muhgh6` (seq 66): add `Fixes #14298` to the #13741 body, body edit only, no push.
+- 11-04 05:06Z — fixer [Report] (msg 282): `Fixes #14298` added to the #13741 body. I checked: Fixes = #13737/#10522/#14298; head `fb36938e7`,
+  draft, no push. The #14298 chain record is updated.

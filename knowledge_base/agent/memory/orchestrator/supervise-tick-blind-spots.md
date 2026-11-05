@@ -40,7 +40,7 @@ old-PR thread — `ncl pr-mappings list` names it), died 06:48Z mid-prototype af
 `awaiting_human` and blind.py only saw the chain's own sessions. For every 🔼 row with a fresh human instruction, look up
 the PR's `pr-mappings` session and check its `.claude-trace` last `request.timestamp`. Pinned nudge → working in <1 min.
 
-Shape 3 is now routine for R6-release work (tick 322): a release one-shot opens the PR from its own `system:tasks:<series>` session, so the PR owner is on no `gh-issue-` thread (#14209 → `fejlik` on `system:tasks:slang-14058-resume-0060`, #14210 → `5f63gx`, #14194 → `j9up0v`). For every fresh bot PR, read `ncl pr-mappings list` and check that session's `lastreq.py` before calling the chain idle.
+Shape 3 is now routine for R6-release work (tick 322): a release one-shot opens the PR from its own `system:tasks:<series>` session, so the PR owner is on no `gh-issue-` thread (#14209 → `fejlik` on `system:tasks:slang-14058-resume-0060`, #14210 → `5f63gx`, #14194 → `j9up0v`). For every fresh bot PR, read `ncl pr-mappings list` and check that session's `lastreq.py` before calling the chain idle. **These task sessions close when the task ends, and a closed mapped session swallows human webhooks: they land as `in` rows and are never read.** #14210 lost jkwak-work's 6-comment review for about 2 h (11-04 23:22Z → relayed 11-05 01:13Z). On 11-05, #14209 (`fejlik`) and #14194 (`j9up0v`) were also open PRs mapped to closed task sessions, with nothing stranded yet. Check: `ncl sessions get <mapped sid>` → `closed` means relay pinned to the chain session and request a remap.
 
 Shape 1 recurred at tick 280 (#11803 R2 request, reviewer `bokz3c` stopped 6.7 h); blind.py caught it and the
 pinned nudge acked in under a minute.
@@ -138,3 +138,14 @@ finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last 
 nudge got the verdict sent in 4 min.
 
 Typical outcome: every pinned nudge above acked within 1–3 min.
+
+18. **Gateway 5xx wave killed in-flight turns** (tick 326, 11-04 22:39–23:16Z). HTTP 503 "upstream connect error … connection
+    timeout", then HTTP 500 on every SDK retry for ~3 min per session. 13 sessions had no later 200, and none recovered by
+    itself; containers stayed `running`, several posted the runtime's "Sorry, something went wrong" row. Shape 14's
+    `rl429.py` misses it (codes 500/503). Detector: `tickNNN/rl5xx.py` (429/500/502/503/504/529 with no later 200, reading
+    each trace's last 6 MB). Triage each DEAD row by its newest `in`: ack-only ("Learning saved") or moot → no nudge; owed
+    work → pinned resume naming the unfinished step. 6 of 13 owed work; all 6 resumed in ≤10 min. **A dead Main chain
+    session can be resumed the same way:** `send_message(to="orchestrator", target_session_id=<Main sid>, thread_id=<its
+    gh-issue thread>)` landed in that exact session in 1 min (slangpy#1260, `z557lh`), with no self-loop to the legacy
+    null-thread session — the pin wins when the cron session's auto in_reply_to has no source session.
+

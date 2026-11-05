@@ -2,50 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-10-28T00:01:39Z",
-   "backlog": 1473886,
-   "defects": 1118,
-   "offenders": 1183,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
-   "at": "2026-10-28T06:01:54Z",
-   "backlog": 1473886,
-   "defects": 1118,
-   "offenders": 1183,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
-   "at": "2026-10-28T12:01:25Z",
-   "backlog": 1473886,
-   "defects": 1118,
-   "offenders": 1183,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
-   "at": "2026-10-28T18:01:46Z",
-   "backlog": 1473886,
-   "defects": 1118,
-   "offenders": 1183,
-   "top": {
-    "path": "imported/MEMORY-full-archive-2026-08-05.md",
-    "class": "DOSSIER",
-    "size": 215463
-   }
-  },
-  {
    "at": "2026-10-29T00:03:26Z",
    "backlog": 1473886,
    "defects": 1118,
@@ -325,6 +281,50 @@
    "backlog": 1554331,
    "defects": 1118,
    "offenders": 1188,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-11-04T06:02:21Z",
+   "backlog": 1554331,
+   "defects": 1118,
+   "offenders": 1188,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-11-04T12:02:07Z",
+   "backlog": 1554331,
+   "defects": 1118,
+   "offenders": 1188,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-11-04T18:03:03Z",
+   "backlog": 1554331,
+   "defects": 1118,
+   "offenders": 1188,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-11-05T00:01:05Z",
+   "backlog": 1586331,
+   "defects": 1118,
+   "offenders": 1190,
    "top": {
     "path": "imported/MEMORY-full-archive-2026-08-05.md",
     "class": "DOSSIER",

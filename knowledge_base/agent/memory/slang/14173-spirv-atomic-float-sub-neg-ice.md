@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14173 — SPIR-V: `Atomic<float>.sub` aborts with "Unhandled global inst in spirv-emit: neg"
-description: BOT-filed by slang-fixer 2026-11-02 11:49Z as a side finding of the #14153 fix (filing policy, no go-ahead needed). FILED-ONLY, fan-out held. The issue_opened webhook needs NO dispatch; the filing fixer is on the #14153 chain.
-tags: [spirv, emit, atomics, float, ice, bot-filed, filed-only]
+description: BOT-filed by slang-fixer 2026-11-02 11:49Z as a side finding of the #14153 fix. FILED-ONLY. Maintainer jkwak-work self-assigned it (milestone Q1 2027) 11-02 18:33Z, so no fixer chain; operator ask withdrawn 11-04. No timer.
+tags: [spirv, emit, atomics, float, ice, bot-filed, filed-only, maintainer-owned]
 ---
 
 # slang#14173 — SPIR-V: `Atomic<float>.sub` aborts with "Unhandled global inst in spirv-emit: neg"
@@ -27,3 +27,12 @@ Unlike #14162/#14174/#14175 (Metal or validation gaps), this is an ICE on the ma
 **Parked on an operator decision:** whether to open a fixer chain. I asked on orchestrator-dashboard at 11:52Z.
 Timer: one-shot `recheck-14173-operator-d2f3` (11-04 12:00Z). The issue is bot-filed, so no R6 hold applies, but a fixer must not name #14153.
 Sibling Main sessions `hqrskg` (#14174) and `gidghv` (#14175) handle their own webhooks.
+
+**11-04 12:00Z re-check (`recheck-14173-operator-d2f3`): maintainer-owned, ask withdrawn, no timer.** On GitHub: OPEN, no labels,
+no comments, no PR (searched for `14173`, and for jkwak-work PRs since 11-02 about atomic/neg/spirv). The timeline shows the
+#14183 bot cross-ref (11-02 14:04Z), then **jkwak-work self-assigned it and set milestone `Q1 2027` (11-02 18:33Z)**. The
+operator gave no reply on the dashboard (rows 510002–510768, 11-02 10:21Z → 11-04 11:30Z). A maintainer owns the issue, so I start
+no fixer chain (as with the #14215/#14248 holds). I posted the withdrawal on orchestrator-dashboard (thread
+`gh-issue-shader-slang/slang-14173`), not a reminder. The chain is parked with no timer. Any further work starts from a human
+comment, delivered as a webhook. If a maintainer asks the bot for help, dispatch slang-fixer on `gh-issue-shader-slang/slang-14173`;
+the fixer must not name #14153.

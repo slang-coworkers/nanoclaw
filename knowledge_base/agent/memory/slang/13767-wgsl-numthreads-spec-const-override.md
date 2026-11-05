@@ -36,3 +36,10 @@ tags: [slang, wgsl, spec-constant, numthreads, workgroup-size, triage]
 **PARKED** on jkwak-work review + ready flip, and on upstream CI (falcor-ci approval).
 
 - **10-24 16:00Z** Main one-shot re-check `recheck-13767-pr13826-b433`: **unchanged**. Still a draft @ a7070462d4, 0 reviews, 0 inline comments; the newest issue comment is still 6324249050 (10-21 19:07Z). CI 39688261676 is still `waiting`. I sent one line to the dashboard (thread `gh-issue-shader-slang/slang-13767`) naming the blockers and the 3 pending filing GOs. I did not ping jkwak-work. No further one-shot was scheduled, because the chain is in the supervise-issues register (`awaiting_human`), which serves as its timer. Fixer `kclwp6` owns the PR, so route every PR event to that session.
+
+- **11-04 04:30Z, cross-PR note (from the #14279 chain, PR #14293):** #13826 skips the SPIR-V construct hoist when an operand
+  is a spec constant, and its comment says constructors "are not emitted as OpSpecConstantComposite". #14293 makes them
+  OpSpecConstantComposite, so the comment goes stale once #14293 lands. There is no textual conflict and no behavior change
+  (fixer-reported). **Whichever PR lands second updates or drops that comment.** #14293's description says so. I did not
+  wake this chain for it; tell its owner when it next wakes (e.g. on a merge-master).
+  The stale comment is at `slang-ir-spirv-legalize.cpp:1758-1759` (#13826 head a7070462d). #14293 cites it (11-04 04:37Z).

@@ -28,8 +28,12 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
 - **10-30 15:19Z: jhelferty-nv filed and self-assigned #14094**, a design question about `__getAddress` of a
   field: `getValidTypeForAddressOf` takes the `DeclRefExpr` branch for `MemberExpr`/`DerefMemberExpr`, so the
   field gets `Device`/`ReadWrite`/`DefaultDataLayout` regardless of its base. She found it while working on #11709
-  and asks four intended-behavior questions. Same treatment as #13747–#13749: no dispatch, no post. The R6 hold
-  also applies until 11-03 15:19Z (no bot-ok label, no crash). Act only if a maintainer asks the bot.
+  and asks four intended-behavior questions. Same treatment as #13747–#13749: no dispatch, no post. Act only if
+  a maintainer asks the bot. (My 10-30 note added an R6 4-day hold; that rule is retired, see Core Memory.)
+  - 11-04 18:59Z, comment 6639387851 (jhelferty-nv, no bot mention; it arrived as a `pr_mention` webhook anyway):
+    "Per Tess, this should be solved by making QualType go away (switch to ExprInfo)". So the direction is
+    tangent-vector's QualType→ExprInfo refactor, not a local `getValidTypeForAddressOf` fix. Still held: no
+    dispatch, no post.
 - 10-30: tangent-vector reviewed jhelferty-nv's rework. In r4428270534 he asked why the `groupshared` check matches modifiers spelled in the source instead of validating the effective passing mode. In r4428479846 he asked `@nv-slang-bot` directly to open a cleanup issue. slang-fixer opened **#14105**, "Consolidate parameter-passing-mode modifier validation with the effective-mode computation" (bot-filed 21:12Z, no labels or assignee), and replied with the link (r4428523055). I verified all three live. **#14105 needs no dispatch:** it is a follow-up for whoever picks it up, and no bot chain owns it. If its `issue_opened` webhook arrives, this is the record.
 - **The rule from here:** the bot makes no push, rerun or post on #11709 unless a maintainer asks it directly.
   The unpushed P1 autodiff fix and the open items below are hers to take or leave. The pr-mapping still points at

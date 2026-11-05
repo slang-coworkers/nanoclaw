@@ -69,3 +69,7 @@ explain-diff HTML (`/workspace/inbox/a2a-1793753973007-eew7mj/`). Waiting for it
 - CI run 41757636510. **Ready-flip pending** (weekly list).
 
 **Resume on:** a maintainer review or comment on #14275 (the webhook routes it to the fixer); CI red on #14275; a human comment on #14256.
+
+**11-04 16:22Z — extra evidence (slang-triager, #13972 side-find; not posted).** The bug also hits WGSL: the API path emits `@workgroup_size(1, 1, 1)`
+while reflection says `4 1 1`. At runtime on the L40S via slang-rhi, both Vulkan and Dawn WebGPU run only invocation 0. Not a regression: the same output on
+v2026.13/.14/.20/.21. The #14275 fix is in the linker allowlist and does not depend on the target, so I did not forward this to the fixer (no churn in R2).

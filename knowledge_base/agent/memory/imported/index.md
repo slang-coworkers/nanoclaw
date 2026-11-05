@@ -1064,6 +1064,7 @@ Migrated 2026-08-30; /okf-synthesis distills over time.
 - [project_13550_intrinsic_annotation_application_policy](project_13550_intrinsic_annotation_application_policy.md)
 - [project_13578_slang_relation_to_hlsl_cpp_policy](project_13578_slang_relation_to_hlsl_cpp_policy.md)
 - [project_13579_generic_struct_capability_outside_entrypoint](project_13579_generic_struct_capability_outside_entrypoint.md)
+- [project_13579_generic_struct_capability_outside_entrypoint_history](project_13579_generic_struct_capability_outside_entrypoint_history.md)
 - [project_13591_ai_contributor_standards_batch](project_13591_ai_contributor_standards_batch.md)
 - [project_13603_spirv_glsl_bab_float3_stride_index](project_13603_spirv_glsl_bab_float3_stride_index.md)
 - [project_13604_bot_token_rotation_docs](project_13604_bot_token_rotation_docs.md)

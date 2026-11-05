@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13420 — false-positive E41035 when the store and the read sit under the same condition
-description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open, conflicting with master and idle since 10-16 (as of 10-28)
+description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open, conflicting with master and idle since 10-16 (as of 11-04)
 tags: [slang, ir, diagnostics, uninitialized-values, regression, parked]
 resource: /workspace/inbox/a2a-1790993086700-996pfk/triage-13420.md
 ---
@@ -73,3 +73,12 @@ and the PR has no human comments. The issue is open and assigned to pdeayton-nv,
 comments after the bot triage. NO-GO holds. The PR has been idle for 12 days. If it is still
 unchanged on 11-04, mention the stall on the dashboard (a fact, not a nudge on the PR). Next one-shot:
 `rechase-13420-pr13543-1cc5` (2026-11-04).
+
+**2026-11-04 re-chase: still stalled (19 days idle).** #13543 is open and not a draft. Head is
+`91955cc99`, the last update was 2026-10-16T22:02Z, and the PR is still `DIRTY`/`CONFLICTING`. The
+head commit has 0 check-runs, and the head_sha runs query is now empty (the 10-21 `pull_request_target`
+runs no longer show against it). Review is still requested from dshreiner-nv. The only review and the
+only inline comment are coderabbit's (10-09). The issue is open and assigned to pdeayton-nv, with no
+comments after the bot triage and no timeline events since 10-28. No other PR references #13420. I
+reported the stall on the dashboard as a fact (msg 3); I did not nudge the PR. NO-GO holds. Next
+one-shot: `rechase-13420-pr13543-693b` (2026-11-11).

@@ -25,3 +25,5 @@ nothing. The stand-down comes from the self-assignment, not from an R6 hold.
 
 **Resume** only on a comment that @-mentions @nv-slang-bot, or an operator ask. Mentions arrive as webhooks,
 so no re-check timer.
+
+**11-04.** Umbrella [#14292](14292-slang-test-exit-code-all-test-types.md) (same author, self-assigned) now lists this issue as its `diag=` step. Still held.

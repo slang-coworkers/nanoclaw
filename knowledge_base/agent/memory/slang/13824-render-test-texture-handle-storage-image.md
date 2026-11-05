@@ -74,3 +74,13 @@ cases → `desc-handle-texture-test-input-nested-gh-13824.slang`, no globals); t
 The fixer reports, but I did not check: L40S vk+cuda 0 VUIDs, master fails both files, related suites pass 920/920, and a dx12 root-sig probe predicts both files are valid.
 **Second unfiled side bug:** the slang-rhi D3D12 root-signature off-by-one. I added it to the open operator filing question 10-22,
 the same way #13789 bundled its second side bug. Both are pending; do not re-ask.
+
+**11-04 21:50Z, jkwak-work APPROVED #13829 at `2a6ef6abd` and enabled auto-merge** (21:50:17Z). Head unchanged since 10-22;
+CI 53 pass / 1 pending / 3 skipping / 0 fail, mergeState BEHIND (merge queue). The `pr_ready_for_review` (synchronize) webhook
+that followed was NOT forwarded: slang-pr-approver is paused; queued in `data/approver-pause-queue.md`. Expect a merge webhook
+next; on merge, the fixer closes the chain and the `active-work` sentinel on #13824 comes off.
+**11-04 21:58Z, fixer [Report]** (review 5776345860). The fixer says pull_request run 39829167658 passed both Windows GPU `test-slang` jobs and
+`check-ci`, and both new tests passed on vk, dx12 and cuda. That is the first dx12 verification. I checked: auto-merge SQUASH is on, head `2a6ef6abd`,
+and the only non-pass check is `falcor-build-approval-gate` (pending, environment `falcor-ci`; the bot can't approve it). **The merge waits only
+on a human approving that gate.** A sibling Main session already sent the approval to the dashboard (row 510904). This session added only
+the gate fact. After the merge, the fixer cleans up its worktree and the sentinel comes off.

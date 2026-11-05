@@ -37,3 +37,15 @@ held". Fixer-reported, not reproduced: with A, all variants compile in under 0.4
 became an assertion, which fires in 0.3 s without A and has not fired in a full Debug suite. 2 cascades are fixed in the
 same PR: `{k, 3}` emitted a WGSL `const` over an `override` (this shape also hangs on v2026.7), and `(N << 1) + 3` gained
 `var` temporaries. Next: peer review → [Fix Report] → ready-flip via the triager → one operator ask.
+**11-04 03:17Z: ready-flip question** (triager row 56; fixer [Fix Report] msg 78). #14285 head `9158ec2b0`, 13 commits,
+8 files +233/−12. R1 REQUEST_CHANGES (a swizzled store gave a `const` over an `override`; fixed), R2 APPROVE_WITH_NITS
+(nits applied). Scope widened, and the reviewer agreed: rule A is in the shared base `isLegalGlobalInst` for all targets,
+and SPIR-V's copy is removed. B is `SLANG_RELEASE_ASSERT(result != inst)`. Tint/WebGPU rows have not run anywhere,
+because CI keeps yielding to human-priority runs.
+**03:2xZ: ONE direct operator ask** (dashboard): "flip 14285" / "hold 14285", and I recommended (a) flip now. No re-ask;
+unanswered → weekly list. Triager told: no `gh pr ready` until I relay an answer. 3 out-of-scope finds go under the
+side-finding rule, filed-only (E31226 for `{N, 3}`; `replaceOperand` does not re-key rate-hoisted insts;
+`shouldInlineInstImpl` ancestor loop looks up `inst`).
+
+**11-04 04:3xZ:** asked the #14285 fixer to check overlap with parked bot draft #13816 (`isStaticConst` const-over-override in slang-emit-wgsl.cpp) and to add a plain note to the description if they overlap.
+**11-04 04:37Z:** overlap with #13816 confirmed: the same `isStaticConst` early return, in adjacent hunks, so the PR that lands second gets a merge conflict. #14285's description cites it (still a draft at `9158ec2b0`).

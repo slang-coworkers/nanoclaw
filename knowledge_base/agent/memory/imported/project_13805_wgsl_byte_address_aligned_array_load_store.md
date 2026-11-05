@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13805_wgsl_byte_address_aligned_array_load_store
-description: "WAITING ON MAINTAINER 10-21 12:27Z. Triage resolved; draft PR #13815 (fix/issue-13805@19498e2, pr: non-breaking, reviewer APPROVE_WITH_NITS) waits for a maintainer to review it and mark it ready; webhooks + /supervise-issues cover it (PR mapped to fixer sess-1792570043087-1l9zgy). slang#13805 (albertrodriguezclo, external): WGSL (+ Metal) aligned ByteAddressBuffer Load/Store of T[N] emits one u32 / u64 access for the whole array. Triaged regression (partial) / medium / P1. Fix A = add scalarizeVectorLoadStore to the array conditions in emitLegalLoad/Store. Handed to slang-fixer on gh-issue-shader-slang/slang-13805."
+description: "AWAITING RE-APPROVAL 11-05 02:4xZ. jkwak-work's 00:05Z APPROVED (at 19498e2) was DISMISSED 00:52Z by the merge-master push; reviewDecision empty, BLOCKED, MERGEABLE at 034cb79 after merge-commit 28cec0a7e (master 662e552ee, no force-push); CI 54 pass / 0 fail. A maintainer re-approves and merges; Fixes #13805 closes the issue. slang#13805 (albertrodriguezclo, external): WGSL (+ Metal) aligned ByteAddressBuffer Load/Store of T[N] emits one u32 / u64 access for the whole array. Triaged regression (partial) / medium / P1. Fix A = add scalarizeVectorLoadStore to the array conditions in emitLegalLoad/Store. Handed to slang-fixer on gh-issue-shader-slang/slang-13805."
 ---
 
 # slang#13805: WGSL aligned ByteAddressBuffer array loads/stores
@@ -48,3 +48,27 @@ The newest issue comment is the fixer's cmt 6315851915 (12:25:51Z). `pr-mappings
 - **Parked on:** a maintainer reviewing #13815 and marking it ready. Expect a textual conflict with bot draft #13205.
 - **Out of scope, possible follow-ups (unchanged from master):** an aligned `uint3[2]` under SPIR-V std430 reads the wrong words; FXC `sm_5_0`
   gets a templated `Load<T[N]>`; Metal emits `as_type<bool>(uint)`. None has been filed.
+
+**11-05 00:30Z [Report] (triager msg 24):** a maintainer flipped #13815 out of draft. jkwak-work commented at 00:03:54Z,
+"@nv-slang-bot resolve the merge conflict with the master branch", and then APPROVED at 00:05:56Z ("Looks good to me", noting
+the old wide-load path assumed SPIR-V-style emulation). I checked live: OPEN, non-draft, `CONFLICTING`, head still 19498e2.
+The fixer acked at 00:05:27Z with "merge commit, no force-push", which matches the maintainer preference (#12194).
+Triager's account: the fixer merged master locally. The only conflict was a comment-only hunk, resolved to master's version. The test's CHECK
+order was updated for #13764's load folding. 9/9 pass, both revert drills fail. Tint: 23 failures on master, 32/34 OK at the merge.
+Next: the fixer finishes the GPU A/B run, pushes, updates the explanation and replies to jkwak-work, and then the PR can merge.
+The triager posts nothing more on the issue because `Fixes #13805` is in the PR.
+
+**11-05 00:54Z [Report] (triager msg 26):** I checked live: MERGEABLE at head 034cb79. Merge commit 28cec0a7e has parents 19498e273 and master 662e552ee.
+034cb79 is a test-only follow-up ("check per-element stores, not load order"). 19498e2 is an ancestor of 034cb79 (ahead 100, behind 0), so there was no force-push.
+The reply to jkwak-work is cmt 6646525348. CI run 41944482409 is `waiting` on 034cb79.
+Triager: the test passes 9/9 and the revert drill still fails it. The L40S A/B passed 181 vk and 124 cuda tests with no new failures; the 4 that fail do so with and without the fix
+(3 fp8 CUDA PTX tests, llvm float-not-equal-nan). Tint: 32/34 OK. The 2 remaining are out of scope: scalar u64, and `Store<half[2]>` E56112, which matches the scalar half store gap (#13661).
+#13647 has landed, so aligned `half[N]` loads now work.
+Next: a maintainer merges once CI is green. The triager removes its sentinel after the merge. Resume only on a merge/close event, a CI failure, or a human comment.
+
+**11-05 ~02:4xZ (Main, `pr_ready_for_review` synchronize webhook):** not forwarded, because slang-pr-approver is `paused=1`; queued in
+`/workspace/agent/data/approver-pause-queue.md`. Checked live: the 00:54Z report's "APPROVED" is stale. jkwak-work's review (commit 19498e27) shows
+`DISMISSED`; the timeline has `review_dismissed` at 00:52:00Z, actor nv-slang-bot[bot], empty message. That is the stale-review dismissal from the
+merge-master push, not a maintainer action. reviewDecision empty, mergeState BLOCKED, MERGEABLE; CI 54 pass, 1 pending, 3 skipping, 0 fail.
+Next: jkwak-work re-approves at 034cb79, then merges. Bot fixers cannot request review, so nothing was dispatched; the operator was told.
+

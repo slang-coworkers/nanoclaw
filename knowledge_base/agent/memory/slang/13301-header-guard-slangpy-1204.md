@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13301 — header-guard PR #13742 (fixes slangpy#1204); slangpy#1206 parked on operator A/B/C"
-description: "#13742 MERGED 10-22 (653bfdeef), #13301 closed. slangpy#1204/#1206 open: waiting on the operator's A/B/C pick and on a Slang release after v2026.20 plus a slangpy pin bump. Re-chase rechase-slangpy-1204-pr1-d657 (11-04 10:30Z)."
+description: "#13742 MERGED 10-22 (653bfdeef), #13301 closed. slangpy#1204/#1206 open: waiting on the operator's A/B/C pick and on a Slang release after v2026.20 plus a slangpy pin bump. v2026.21 (11-04) ships 653bfdeef; pin bump pending. One silent re-check 11-11 10:30Z."
 ---
 
 # slang#13301: header guard (#13742) and the slangpy#1204 / #1206 tail
@@ -9,7 +9,7 @@ description: "#13742 MERGED 10-22 (653bfdeef), #13301 closed. slangpy#1204/#1206
 Split out 2026-10-30 from the [#13169 index row](index.md) and
 [[13169-bwd-diff-runtime-loop-hang.md]], which bundled this chain until then.
 
-## Current state (2026-10-29 re-chase)
+## Current state (2026-11-04 re-chase)
 
 | item | state |
 |---|---|
@@ -17,15 +17,15 @@ Split out 2026-10-30 from the [#13169 index row](index.md) and
 | slang#13301 | closed as completed |
 | slangpy#1204 | open, assigned saipraveenb25 |
 | slangpy#1206 (draft workaround, head `27ddfd3b`) | open, CI green, no reviews, assigned jkwak-work; no human comments since 2026-10-09T22:37Z |
-| Slang release containing `653bfdeef` | none: latest is v2026.20 (10-17), slangpy pin still `e7bb22421` |
-| Re-chase | `rechase-slangpy-1204-pr1-d657` (11-04 10:30Z), thread `gh-issue-shader-slang/slangpy-1204` |
+| Slang release containing `653bfdeef` | **v2026.21** (11-04 00:14Z; compare 76 ahead / 0 behind). slangpy main still pins `SGL_SLANG_VERSION "2026.20"` (`external/CMakeLists.txt:123`); no bump PR open |
+| Re-chase | one silent one-shot `rechase-slangpy-1204-pin-aaa4` 11-11 10:30Z (reports only on pin bump / answer / human comment; else park, no timer), thread `gh-issue-shader-slang/slangpy-1204` |
 
 ## Open decisions (operator, asked 10-19; re-reported 10-20/22/23/26/29)
 
 - **#1206:** A = mark ready as the interim fix; B = hold until #13742 ships and the pin is bumped, then cut #1206
   down to the regression test; C = close. B's gate is the next Slang release after `653bfdeef` plus the pin bump.
 - **Follow-up issue** for 3 spellings + 4 segfaults: still open, and nothing tracks it.
-- **Docs example** at `docs/src/tensors/differentiable.rst:143`: fix or not.
+- **Docs example** at `docs/src/tensors/differentiable.rst:143`: fix or not. Likely moot once 2026.21 is pinned (the pattern it shows then works). #1102 (merged 11-02) fixed a different line, :72.
 - Moot: un-draft #13742 (a human did it), and the slangpy#1204 mention.
 
 ## History (condensed)
@@ -43,5 +43,10 @@ Split out 2026-10-30 from the [#13169 index row](index.md) and
 - 10-23, 10-26, 10-29, 11-01 re-chases: no movement (no release after v2026.20; new slangpy main commits
   #1248 slang-rhi bump, #1244, #1252, #1253 are none of them Slang bumps; no human comments; no operator answer).
   11-01: 7th report sent to the dashboard; next one-shot re-chase is 11-04 10:30Z.
+
+- 11-04 10:30Z re-chase: **Slang v2026.21 released 11-04 00:14Z and contains `653bfdeef`** → B's release gate met; slangpy
+  pin still 2026.20, no bump PR. #1206 unchanged (draft, `27ddfd3b`, 0 reviews); no human comments; no operator answer
+  (dashboard read 11-01 08:31Z→11-04 10:31Z). 8th report sent (dashboard msg 7) as a "gate half met" fact, not a re-ask.
+  Scheduled one silent one-shot for 11-11 10:30Z (pin-bump check); it parks with no timer if nothing moved.
 
 New re-chase results append to the History section here, not to the index row.

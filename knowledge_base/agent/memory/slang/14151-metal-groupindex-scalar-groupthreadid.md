@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14151 — Metal SV_GroupIndex subscripts a scalar SV_GroupThreadID (`gtid[2]`)
-description: Human-filed (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) Metal bug 2026-11-02 10:04:22Z. Invalid MSL from emitCalcGroupIndex reusing a narrowed SV_GroupThreadID param. Triaged bug/medium/P2, reproduced, order-dependent. PARKED: R6 to 2026-11-06 10:04:22Z; fixer go/A-vs-B2 with the operator; triager one-shot i14151-r6-recheck-e401 11-06 10:10Z.
+description: Human-filed (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) Metal bug 2026-11-02 10:04:22Z. Invalid MSL from emitCalcGroupIndex reusing a narrowed SV_GroupThreadID param. Triaged P2, reproduced. MAINTAINER-OWNED FIX: jkwak-work PR #14326 (replaces reporter PR #14169). No bot fixer. Triager one-shot i14151-r6-recheck-e401 11-06 10:10Z verifies #14326 without posting.
 tags: [metal, system-values, r6]
 ---
 
@@ -45,3 +45,20 @@ are set and there are 0 comments (verified 10:2xZ). Not a regression; the synthe
 - Memo: `/workspace/inbox/a2a-1793614835371-ftd1ki/triage-14151.md`. The held draft is in the triager's group at `memory/issues/comment-14151.md`.
 
 **Reporter PR (supervisor tick 321).** albertrodriguezclo opened [#14169](https://github.com/shader-slang/slang/pull/14169) (`Fixes #14151`) at 11-02 10:44Z. It is non-draft and BLOCKED, waiting on a maintainer review. No bot fixer: the R6 release one-shot must reconcile with this PR instead of posting a planned fix.
+
+**11-04 (approver webhook).** #14169 is now CLOSED unmerged. jkwak-work (MEMBER) opened [#14326](https://github.com/shader-slang/slang/pull/14326) at 22:05Z as its replacement. It keeps #14169's first two commits and replaces the approach with two-pass ordering in `legalizeSystemValueParameters` (SV_GroupIndex goes last), which is the triager's option B2 in spirit. It has no `Fixes #14151` keyword, and #14151 is still OPEN. CLA pending; CI otherwise green. Its `pr_ready_for_review` was not forwarded because the approver is paused; it is queued in `data/approver-pause-queue.md`. A maintainer is driving the fix, so no bot fixer. The 11-06 recheck i14151-r6-recheck-e401 should reconcile with #14326, not post the held draft.
+
+**11-04: a maintainer owns the fix (verified on GitHub 11-04 23:5xZ).**
+- The reporter opened **#14169** ("Metal: compute SV_GroupIndex from the full uint3 SV_GroupThreadID", `Fixes #14151`) on 11-02 10:44:37Z.
+  It was closed unmerged 11-04 22:08:18Z.
+- **#14326** by jkwak-work (MEMBER, assigned to #14151) was opened 11-04 22:05:48Z, non-draft, head branch `review-pr-14169`:
+  "Metal: legalize SV_GroupIndex after the other system values". It keeps #14169's tests (`tests/metal/group-index-narrow-group-thread-id.slang`
+  and the Metal lane of `system-value-extraction.slang`), and its body calls itself "an alternative to #14169". **The body does not say
+  `Fixes #14151`.**
+- Triager's correction: #14326 is option **B1** (a second pass for `SV_GroupIndex` after every other SV), not B2 (only the reused gtid first).
+  B1 also moves clip/cull distance, inner coverage and instance ID. `SV_InstanceID` was tested in both orders and is correct.
+- **The fixer question is moot.** The operator never answered my 11-02 ask (dashboard seq 510002). I withdrew it on 11-04.
+  A sibling Main session posted #14326 to the dashboard at 23:50Z (seq 510930).
+- The triager re-scoped `i14151-r6-recheck-e401` (11-06 10:10Z): build #14326's head, run the 12-case order matrix, the clang check, and the
+  metal, compute and mesh `SV_GroupIndex` suites; check against the memo's acceptance criteria; **post nothing**, including about the missing
+  closing keyword. It sends a per-criterion `[Report]`. Whether to mention the missing `Fixes #14151` is open; decide when that report arrives.

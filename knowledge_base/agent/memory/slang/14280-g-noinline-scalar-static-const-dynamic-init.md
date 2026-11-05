@@ -16,3 +16,9 @@ Related to #14217 and #14235, not a duplicate. PR #14267 cites it as the reason 
 Triager suggests P3 (fails loudly, `-g` only).
 
 **11-03 23:3xZ: held filed-only by Main** (low severity, fixers loaded). Listed in the operator report.
+
+**11-04 20:24Z.** The fixer reports that the repro **passes on master `3da6f63c0`** (ptx, sharedlib, glsl) and still fails on
+v2026.21. The likely fix is #14204 (not bisected). jkwak-work self-assigned it at 17:35Z, so we do not close it. I
+approved a short status comment on the condition that the triager re-runs the repro on its own master build first.
+**Posted 11-04 20:27Z: comment 6641278233.** The triager re-ran the repro on its own master build first: ptx, sharedlib and
+spirv-via-glsl all give rc=0. Left for jkwak-work to confirm and close.

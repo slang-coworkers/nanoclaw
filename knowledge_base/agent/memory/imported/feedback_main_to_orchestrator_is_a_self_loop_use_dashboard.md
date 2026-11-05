@@ -50,3 +50,11 @@ ag-1776713211742-1w6l4e  orchestrator-dashboard  channel  mg-1776713211742-om8sy
 - Cf. spine "Never use your own group name as a `<message>` destination"; [[feedback_bare_text_is_delivered]]
   (a delivered-but-wrong-surface message is still a real send); ANCHOR H (phantom sessions from
   mis-resolved routing).
+
+## Exception: a pinned resume of a specific Main session works (2026-11-05, tick 326)
+
+`send_message(to="orchestrator", target_session_id="sess-1793831710987-z557lh", thread_id="gh-issue-shader-slang/slangpy-1260")`
+from the supervise-issues cron session landed in exactly that Main session within a minute (its row seq after the
+webhook), and that session then dispatched slangpy-triager. The pin wins because the cron session's auto in_reply_to
+(the task row) has no source session. Use it only to wake a named, live Main chain session; reporting "up" still goes
+to `orchestrator-dashboard`.

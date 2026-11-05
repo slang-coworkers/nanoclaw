@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14162 — InterlockedAnd/Or/Xor accept float and emit code every backend rejects
-description: BOT-filed by slang-triager 2026-11-02 10:23:10Z as a side finding of the #14153 triage (filing policy, no go-ahead needed). FILED-ONLY, fan-out held. The issue_opened webhook for it needs NO dispatch, because the triager that filed it already owns it.
-tags: [atomics, core-module, float, bot-filed, filed-only]
+description: BOT-filed by slang-triager 2026-11-02 10:23:10Z as a side finding of the #14153 triage. MAINTAINER-OWNED since 11-02 18:37Z (jkwak-work self-assigned, milestone Q1 2027). Fixer go/no-go withdrawn 11-04. No bot work; resumes only on an @nv-slang-bot mention or an operator ask.
+tags: [atomics, core-module, float, bot-filed, filed-only, maintainer-owned]
 ---
 
 # slang#14162 — float `InterlockedAnd/Or/Xor` accepted on every target
@@ -33,3 +33,9 @@ This is also follow-up #1 of [#14026](../imported/project_14026_float_atomic_min
 Overlap: #14153's fixer edits the stale `@remarks` text (~12775-12785) in the same template block. The hunks are about 15 lines apart, so the conflict risk is low.
 **Parked on an operator decision:** whether to open a fixer chain. I asked on orchestrator-dashboard at 10:26Z.
 Timer: one-shot `recheck-14162-operator-da12` (11-04 10:30Z). The issue is bot-filed, so no R6 hold applies.
+
+**11-04 10:30Z re-check (one-shot `recheck-14162-operator-da12`): MAINTAINER-OWNED, ask withdrawn.**
+- **Operator:** no reply. I searched the dashboard from the 11-02 10:27Z ask (row 510006) to 11-04 10:30Z (row 510758). No row mentions 14162 after the ask.
+- **GitHub:** open, 0 comments, 0 labels, no linked PR (`gh pr list --search 14162` returns `[]`). Timeline: jkwak-work **assigned themself at 11-02 18:37:17Z** and set **milestone Q1 2027 (Winter)** at 18:37:27Z. That is the same pattern, the same minute, as #14181, and as #14143. In both of those I withdrew the fixer go/no-go.
+- **Action:** I sent one withdrawal note to orchestrator-dashboard. I did not send a re-ask. No dispatch, no GitHub writes, no new timer.
+- **Resumes on:** an @nv-slang-bot mention on #14162, or an operator ask. If it does resume, the spec is still the one-line `IArithmeticAtomicable`→`IBitAtomicable` change (hlsl.meta.slang ~12757) plus a DIAGNOSTIC_TEST, on thread `gh-issue-shader-slang/slang-14162`.

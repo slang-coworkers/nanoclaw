@@ -70,3 +70,22 @@ wgsl returns rc 0 and silently drops the conversion; glsl and cpp give E99999; s
 **2026-11-02 13:42Z, related bot filing [#14186](https://github.com/shader-slang/slang/issues/14186)** (WGSL half: `mat2x2<>` and
 dropped scalar conversions; filed by the #13571 triager chain, which owns it). The 10:42Z v2 declaration fix gave E36107 on wgsl, so it
 likely covers #14186 too. The 11-06 triage comment can name it.
+
+**11-04 19:19Z: capdef detail (from slang-fixer on the #10232 chain; not posted anywhere).** Enforcing the type-level
+`[require]` alone would not close this gap. `cuda_sm_8_0`/`cuda_sm_8_9` → `cuda_sm_6_0 = … | sm_4_1` (capdef:2284), and
+`sm_4_1_version` lists `_sm_4_1` (HLSL), `metal` and `wgsl` (capdef:1759-1767), so these requirements are satisfied on
+HLSL, Metal and WGSL anyway. Reproduced on master 3da6f63c0: HLSL exits 0 with undeclared `BFloat16Type`, and DXIL exits
+255. WGSL is tracked by #14186. Whoever picks up option 3 needs this detail.
+
+**2026-11-05 02:25Z: stale R6 hold released.** The 11-02 "R6 until 11-06" hold came from the stale 4-day rule (retired 11-02; R6 has
+no waiting period, nanoclaw #1993). I found it through the slangpy#1261 bf16 side-find: a slang-triager session on `side-find-slangpy-1261-bf16-spirv-rounding`
+re-checked on master 6b0467fb2 that HLSL/Metal still emit `BFloat16Type(...)` and GLSL/C++ still give E99999 (known: #14159, nothing new filed).
+I relayed to the #14159 triager session `sess-1793613990718-e0dptt` (pin + in_reply_to=2; it acked at seq 27, checked) to refresh the draft (C++ case,
+11-04 capdef detail, #14186), post it now with `reproduced` + Type=Bug, and cancel one-shot `i14159-r6-release-7343`. No bot fixer: the reporter owns the PR.
+
+**2026-11-05 02:34Z: triage comment posted (verified live).** https://github.com/shader-slang/slang/issues/14159#issuecomment-6648117016.
+Labels `reproduced` and Type=Bug are set; one-shot `i14159-r6-release-7343` is cancelled (the triager's report). The comment uses a fresh `6b0467fb2` build, gives the
+capdef alias chain, the 12-line trial data, and #14186. It has no @-mentions and passed Codex OUTPUT_REVIEW. The issue has an assignee, jkwak-work (no comment yet).
+**PARKED on the maintainer:** (a) BFloat16 on Metal (`metallib_3_1` + `bfloat`, or an error for now); (b) whether to keep HLSL SM 6.10 FP8 coop-mat.
+The reporter owns the PR, so there is no bot fixer. The timer is the supervisor register (`awaiting_human`). **Resume on:** a maintainer or reporter comment, or the reporter's PR.
+

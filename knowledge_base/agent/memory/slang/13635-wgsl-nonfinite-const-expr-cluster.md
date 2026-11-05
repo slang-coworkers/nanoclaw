@@ -65,3 +65,12 @@ Triager memo `memory/issues/gpu-reverify-2026-10-16-wgsl-nonfinite.md`; fixer re
 3. Fixer `instructions.prepend.md` rule: edit an existing bot status comment instead of posting a new one.
    (On #13657 R2 the fixer DID edit in place — the pattern may be self-correcting.)
 4. #13636 duplicate: bot draft #13650 vs reporter PR #13644 (another chain).
+
+**11-04 04:3xZ, possible overlap:** bot draft #14285 (fix for #14278, P1 regression) also changes `isStaticConst` in
+`slang-emit-wgsl.cpp`, so it never emits a `const` over an `override`. My #13767 record says #13816 carries the same
+const-over-override fix. I asked the #14285 fixer (via the triager) to compare them and add a plain overlap note to
+#14285's description if they overlap. I did not wake #13816's chain.
+**11-04 04:37Z: overlap confirmed** (fixer diff read). #14285 and #13816 both add the same `isSpecConstRateType` early return
+in `isStaticConst` (`slang-emit-wgsl.cpp:849`), each with a contract comment. The hunks are adjacent, so **whichever PR
+lands second gets a merge conflict** and drops its duplicate. #13816's other changes (asfloat NaN/Inf, peephole, prelude
+helpers) do not touch #14285. #14285's description cites it. Tell #13816's owner when it next wakes.

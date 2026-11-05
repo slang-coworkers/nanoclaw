@@ -36,3 +36,30 @@ addresses (1a/1b), or it is an error (2/3). A further choice is whether to decid
 No fixer handoff, the same policy as #14086/#14089. The triager offered to hand 1b to slang-fixer if
 asked. Timer: the triager's one-shot `t-d8d291` at 2026-11-07 16:00Z (reported by the triager; I cannot see
 it from Main). The operator was told on orchestrator-dashboard at 22:25Z 11-03 (row 15).
+
+## 11-04 16:37Z — reporter follow-up (comment 6636216092)
+
+- The reporter, tdavidovicNV, found the same implicit-bool fallback in two more cases, on master
+  3da6f63c0:
+  - Ptr vs a number. It gives warning E30081 but still compiles, and compares nullness.
+  - Ptr vs a user type that converts to bool, and two unrelated user types (`marker == other`). Neither
+    gives a diagnostic.
+- They lean toward C++-style contextual bool. They also show that making the conversion explicit-only
+  currently rejects `if (marker)`.
+- They ask that the semantics decision also cover these cases. They propose no patch.
+- I relayed the comment verbatim to the owning triager session `sess-1793743819364-qu7r2w`. It landed as
+  inbound seq 22 at 16:41Z, so I verified it. I asked the triager to re-check on master, re-assess the
+  options (1a/1b cover only Ptr/Ptr), post a fresh delta, and re-aim t-d8d291 if it no longer fits.
+- The chain is still PARKED on a maintainer. No fixer.
+- **16:53Z triager report.** Both new cases reproduce on 3da6f63c0:
+  - Case 1 gives `1 0 1 0 0 0` on L40S vk and cuda (4× E30081; the uint64→bool cost is 900).
+  - Case 2 gives no diagnostic (checked on cuda codegen).
+  - The reporter's explicit-only control is confirmed: E30019 on `if (m)`, `!m`, `&&`, `||` and `?:`.
+  - Delta comment 6636551602 was posted at 16:51:28Z; I verified it.
+- **New recommendation:** option 3 (contextual-only Ptr→bool) plus option 2 (a diagnostic when `bool ==`/`!=`
+  is reached through an implicit conversion of a non-bool operand). Option 1 is now optional.
+- **Cost of option 3:** a new coercion site for conditions and a "condition-only" marker on the conversion,
+  and the `canCoerce` caches must be keyed by site (slang-check-conversion.cpp:3228). It is a breaking
+  change for `bool b = p`.
+- One joint decision with #14086 is proposed. t-d8d291 keeps 11-07 16:00Z; its prompt now looks only at
+  comments after 16:51Z. The operator got the delta on orchestrator-dashboard.
