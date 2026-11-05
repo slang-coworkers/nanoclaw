@@ -20,13 +20,23 @@ import {
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
-  ISSUE_BOT_OK_LABEL,
   ROUTE_ISSUES_TO,
 } from './config.js';
 import { getDb } from './db/connection.js';
 import { issueSessionExists } from './db/sessions.js';
 import { acceptWebhookDelivery, completeWebhookDelivery, failWebhookDelivery } from './db/webhook-inbox.js';
 import { readEnvFile } from './env.js';
+import {
+  STOP_MENTION_LABEL,
+  addIssueLabel,
+  isIssueOptedOut,
+  isNewcomerLabel,
+  isStopMention,
+  mayStopIssue,
+  newcomerLabelsOf,
+  optOutIssue,
+  releaseIssueOptOut,
+} from './issue-opt-out.js';
 import { log } from './log.js';
 import {
   TRUST_SIGNATURE_HEADER,
@@ -277,19 +287,18 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
     return { status: 202, body: { ok: true, dropped: true, reason: `owner ${ownerVerdict}` } };
   }
 
-  // Issues: action must be 'opened'; no mention check (a fresh issue
-  // can't tag the bot — the bot is the audience here, not the actor).
+  // Issues (contributor standard R6: the bot leaves room for people). Four
+  // actions matter; no mention check, because a fresh issue cannot tag the bot
+  // (the bot is the audience here, not the actor):
+  //   • opened     — delivered to the orchestrator at once, unless the issue
+  //                  already carries a newcomer label (then the opt-out is
+  //                  recorded and the issue is left for people);
+  //   • labeled    — a newcomer label opts the issue out: its sessions stop and
+  //                  every coworker's GitHub writes to it are refused;
+  //   • unlabeled  — the last newcomer label going releases the opt-out and the
+  //                  issue is delivered again, as if freshly opened.
+  // Any other label or action is ignored.
   if (eventType === 'issues') {
-    // `labeled` is accepted only for the bot-ok label: a maintainer handing a
-    // newcomer-labeled issue to the bot (contributor standard R6).
-    const labeledName =
-      payload.action === 'labeled' && typeof (payload.label as Record<string, unknown> | undefined)?.name === 'string'
-        ? String((payload.label as Record<string, unknown>).name).toLowerCase()
-        : '';
-    const botOkLabeled = payload.action === 'labeled' && labeledName === ISSUE_BOT_OK_LABEL;
-    if (payload.action !== 'opened' && !botOkLabeled) {
-      return { status: 200, body: { ok: true, skipped: true, reason: 'issues action not opened' } };
-    }
     const issue = payload.issue as Record<string, unknown> | undefined;
     const issueNumber = typeof issue?.number === 'number' ? issue.number : 0;
     const title = typeof issue?.title === 'string' ? issue.title : '';
@@ -301,12 +310,68 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
     const issueUrl = typeof issue?.html_url === 'string' ? issue.html_url : '';
     const labelsRaw = Array.isArray(issue?.labels) ? (issue!.labels as Record<string, unknown>[]) : [];
     const labels = labelsRaw.map((l) => (typeof l.name === 'string' ? l.name : '')).filter((s) => s.length > 0);
+    const sender =
+      typeof (payload.sender as Record<string, unknown> | undefined)?.login === 'string'
+        ? String((payload.sender as Record<string, unknown>).login)
+        : '';
+    const labelName =
+      typeof (payload.label as Record<string, unknown> | undefined)?.name === 'string'
+        ? String((payload.label as Record<string, unknown>).name)
+        : '';
 
+    if (payload.action !== 'opened' && payload.action !== 'labeled' && payload.action !== 'unlabeled') {
+      return { status: 200, body: { ok: true, skipped: true, reason: 'issues action not opened' } };
+    }
     if (!repoFullName || !issueNumber) {
       log.warn('github-webhook: malformed issues payload', { repo: repoFullName, issueNumber });
       return { status: 400, body: { error: 'malformed payload' } };
     }
 
+    if (payload.action === 'labeled') {
+      if (!isNewcomerLabel(labelName)) {
+        return { status: 200, body: { ok: true, skipped: true, reason: 'label is not an opt-out' } };
+      }
+      const res = await optOutIssue({
+        repo: repoFullName,
+        issueNumber,
+        label: labelName,
+        actor: sender,
+        source: 'labeled',
+      });
+      return { status: 200, body: { ok: true, outcome: res.fresh ? 'opted-out' : 'already-opted-out', ...res } };
+    }
+
+    if (payload.action === 'unlabeled') {
+      if (!isNewcomerLabel(labelName)) {
+        return { status: 200, body: { ok: true, skipped: true, reason: 'label is not an opt-out' } };
+      }
+      if (newcomerLabelsOf(labels).length > 0) {
+        return { status: 200, body: { ok: true, skipped: true, reason: 'another opt-out label remains' } };
+      }
+      const released = await releaseIssueOptOut(repoFullName, issueNumber, sender);
+      if (!released) {
+        return { status: 200, body: { ok: true, skipped: true, reason: 'issue was not opted out' } };
+      }
+      const outcome = await deliverGitHubIssueOpened({
+        repo: repoFullName,
+        issueNumber,
+        issueUrl,
+        title,
+        body,
+        author,
+        labels,
+        rawBody,
+        eventType: String(eventType),
+        deliveryId: deliveryId,
+        redelivery: true,
+      });
+      return { status: 200, body: { ok: true, outcome, released: true } };
+    }
+
+    const newcomer = newcomerLabelsOf(labels);
+    if (newcomer.length > 0) {
+      await optOutIssue({ repo: repoFullName, issueNumber, label: newcomer[0], actor: sender, source: 'opened' });
+    }
     const outcome = await deliverGitHubIssueOpened({
       repo: repoFullName,
       issueNumber,
@@ -318,7 +383,6 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
       rawBody,
       eventType: String(eventType),
       deliveryId: deliveryId,
-      botOkLabeled,
     });
     return { status: 200, body: { ok: true, outcome } };
   }
@@ -641,6 +705,42 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
   // Does this comment address the bot directly? Computed once and reused
   // by both the mention gate and the 👀-reaction decision below.
   const mentionsBot = commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase());
+
+  // R6 on plain issues (never PRs): a comment that mentions the bot and tells
+  // it to stop, from the issue's author or a repository collaborator, opts the
+  // issue out — the host adds the no-bot label so the switch stays visible —
+  // and nothing on an opted-out issue is delivered: the chain is stopped and
+  // stays stopped until the label is removed.
+  if (!isPr && repoFullName && issueNumber) {
+    const issue = payload.issue as Record<string, unknown> | undefined;
+    const issueAuthor =
+      typeof (issue?.user as Record<string, unknown> | undefined)?.login === 'string'
+        ? String((issue!.user as Record<string, unknown>).login)
+        : '';
+    const association = typeof comment?.author_association === 'string' ? String(comment.author_association) : '';
+    const commenter = loginOf(comment);
+    if (isStopMention(commentBody) && mayStopIssue({ commenter, issueAuthor, authorAssociation: association })) {
+      const labeled = await addIssueLabel(repoFullName, issueNumber, STOP_MENTION_LABEL);
+      const res = await optOutIssue({
+        repo: repoFullName,
+        issueNumber,
+        label: STOP_MENTION_LABEL,
+        actor: commenter,
+        source: 'stop-mention',
+      });
+      log.info('github-webhook: stop mention — issue opted out', {
+        repo: repoFullName,
+        issue: issueNumber,
+        by: commenter,
+        labeled,
+        sessionsStopped: res.sessionsStopped,
+      });
+      return { status: 200, body: { ok: true, skipped: true, reason: 'stop mention', labeled, ...res } };
+    }
+    if (await isIssueOptedOut(repoFullName, issueNumber)) {
+      return { status: 200, body: { ok: true, skipped: true, reason: 'issue opted out' } };
+    }
+  }
 
   // Mention gate, with three ownership-based exemptions. The default is to
   // drop a comment that doesn't @-mention the bot (otherwise we'd react to

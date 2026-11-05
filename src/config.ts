@@ -29,7 +29,9 @@ const envConfig = readEnvFile([
   'INSTANCE_FORWARD_TARGETS',
   'ROUTE_ISSUES_TO',
   'ISSUE_NEWCOMER_LABELS',
-  'ISSUE_BOT_OK_LABEL',
+  'ISSUE_STOP_PHRASES',
+  'ISSUE_STAND_DOWN_HOURS',
+  'ISSUE_STAND_DOWN_ENABLED',
   'ROUTE_READY_PRS_TO',
   'APPROVER_CI_GATE',
   'APPROVAL_LEDGER_WRITERS',
@@ -337,10 +339,11 @@ export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
 export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_ISSUES_TO || '').trim();
 
 // The bot leaves room for people on new issues (contributor standard R6).
-// An issue carrying one of ISSUE_NEWCOMER_LABELS belongs to people and is never
-// delivered to the orchestrator, unless a maintainer adds ISSUE_BOT_OK_LABEL,
-// which hands it to the bot. Every other issue is delivered at once. The label
-// lists are comma-separated and case-insensitive.
+// Every issue is delivered to the orchestrator at once. People opt an issue out
+// with one of ISSUE_NEWCOMER_LABELS (at creation or added later): the host then
+// stops the issue's sessions, every coworker's GitHub writes to that issue are
+// refused (gate-issue-optout.sh) and the issue is delivered again only when the
+// last such label is removed. The list is comma-separated and case-insensitive.
 export const ISSUE_NEWCOMER_LABELS = (
   process.env.ISSUE_NEWCOMER_LABELS ||
   envConfig.ISSUE_NEWCOMER_LABELS ||
@@ -349,9 +352,29 @@ export const ISSUE_NEWCOMER_LABELS = (
   .split(',')
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
-export const ISSUE_BOT_OK_LABEL = (process.env.ISSUE_BOT_OK_LABEL || envConfig.ISSUE_BOT_OK_LABEL || 'bot-ok')
-  .trim()
-  .toLowerCase();
+
+// A comment on an issue that mentions the bot and carries one of these phrases,
+// written by the issue's author or a repository collaborator, opts the issue out
+// as well: the host adds the `no-bot` label itself. `|`-separated, case-insensitive;
+// whitespace inside a phrase matches any whitespace.
+export const ISSUE_STOP_PHRASES = (
+  process.env.ISSUE_STOP_PHRASES ||
+  envConfig.ISSUE_STOP_PHRASES ||
+  "stop|stand down|back off|hands off|leave this alone|leave it alone|don't work on this|do not work on this|don't touch this|do not touch this|not for the bot|no bot"
+)
+  .split('|')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+// A new issue the bot holds without a word for this many hours gets a visible
+// stand-down note from the host (issue-stand-down.ts), so a silent hold never
+// happens. 0 disables the backstop; ISSUE_STAND_DOWN_ENABLED=0 as well.
+export const ISSUE_STAND_DOWN_HOURS = Math.max(
+  0,
+  Number(process.env.ISSUE_STAND_DOWN_HOURS || envConfig.ISSUE_STAND_DOWN_HOURS || '24') || 0,
+);
+export const ISSUE_STAND_DOWN_ENABLED =
+  (process.env.ISSUE_STAND_DOWN_ENABLED || envConfig.ISSUE_STAND_DOWN_ENABLED || '1').trim() !== '0';
 
 // Dev-route PR `ready_for_review` (draft→ready) events to a peer instance,
 // which hands them to a PR-approver coworker. Same trust-channel mechanism as

@@ -34,6 +34,7 @@ import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messa
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostInstanceLease, stopHostInstanceLease } from './host-instance.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
+import { startIssueStandDownSweep, stopIssueStandDownSweep } from './issue-stand-down.js';
 import { startWebhookInboxDrain, stopWebhookInboxDrain } from './webhook-inbox-drain.js';
 import { startHostModules, stopHostModules } from './host-lifecycle.js';
 import { startGatewayApprovalCoordinator, stopGatewayApprovalCoordinator } from './gateway-approval-coordinator.js';
@@ -410,6 +411,10 @@ async function main(): Promise<void> {
   // path did not finish (host died mid-processing, handler threw). First pass
   // 20 s after start, then every minute. See src/webhook-inbox-drain.ts.
   startWebhookInboxDrain(processGitHubDelivery);
+  // 3e. Issue stand-down backstop (R6) — an issue nobody worked for a day gets a
+  // visible note from the host. First pass 2 min after start, then hourly. See
+  // src/issue-stand-down.ts.
+  startIssueStandDownSweep();
 
   // 4. Delivery adapter bridge — dispatches to channel adapters. The registry
   // factory owns exact-instance resolution (a named instance never sends
@@ -538,6 +543,7 @@ async function shutdown(signal: string): Promise<void> {
         { name: 'delivery-polls', run: () => stopDeliveryPolls() },
         { name: 'host-sweep', run: () => stopHostSweep() },
         { name: 'webhook-inbox-drain', run: () => stopWebhookInboxDrain() },
+        { name: 'issue-stand-down', run: () => stopIssueStandDownSweep() },
         { name: 'mcp-proxy', run: () => mcpProxyHandle?.stop() },
         { name: 'mcp-stack', run: () => mcpStackHandle?.stop() },
         { name: 'dashboard-ingress', run: () => dashboardIngressHandle?.stop() },

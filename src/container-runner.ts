@@ -2374,6 +2374,38 @@ export function ensureReviewLengthGate(settingsFile: string): void {
   }
 }
 
+export const ISSUE_OPT_OUT_GATE_CMD = 'bash /app/hooks/gate-issue-optout.sh';
+// Every tool that can write to GitHub: Bash (gh, git push, curl to the API) and the
+// GitHub MCP tools; the hook itself steps aside for the read-only MCP tools.
+export const ISSUE_OPT_OUT_GATE_MATCHER = 'Bash|mcp__github__.*|mcp__slang-mcp__github_.*';
+
+/**
+ * Register gate-issue-optout.sh as a PreToolUse hook in a group's settings.json.
+ *
+ * Scoped by data rather than by overlay: the hook exits at once unless the host
+ * has written a non-empty `.issue-opt-outs.json` into the group folder
+ * (src/issue-opt-out.ts does that for every group when an issue is opted out),
+ * so every Claude-surface group carries the registration and only a group that
+ * could touch an opted-out issue ever runs the classifier. Idempotent; registered
+ * outside the dashboard hook block.
+ */
+export function ensureIssueOptOutGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-issue-optout.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    ISSUE_OPT_OUT_GATE_MATCHER,
+    'gate-issue-optout.sh',
+    ISSUE_OPT_OUT_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
 export async function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -2841,6 +2873,10 @@ export async function buildMounts(
   // reviews under the character cap (summary plus inline comments). Marker-scoped
   // like the eval-sandbox gate, so the registration is universal and inert elsewhere.
   if (defaultSurfaces) ensureReviewLengthGate(settingsFile);
+  // gate-issue-optout.sh: no coworker writes to a GitHub issue people opted out of
+  // (R6). Scoped by the opt-out list the host writes into the group folder, so the
+  // registration is universal and costs nothing while the list is empty.
+  if (defaultSurfaces) ensureIssueOptOutGate(settingsFile);
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.
