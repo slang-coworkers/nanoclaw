@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Delivery-critique gate keys on decision enum li
 type: learning
 topic: review-approval
 source: learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md
+superseded_by: 1788385047068-approver-infra-abstain-critique-gate-abstain-fast-
 ---
 
 # [approver/infra-abstain] Delivery-critique gate keys on decision enum literals in ABSTAIN prose

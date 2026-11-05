@@ -3,7 +3,7 @@ title: GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer lay
 type: concept
 group: slang-backends
 tags: [glsl, wgsl, tint, wgsl-spirv, bindless, descriptor-heap, nonuniform, buffer-layout, std430, overload, dxc, reflection, cross-module, ScalarDataLayout, uniform_buffer_standard_layout, requires]
-source_count: 30
+source_count: 28
 ---
 
 ## TL;DR
@@ -17,7 +17,7 @@ source_count: 30
 - **A bindless storage-buffer heap with a dynamic index emits GLSL without `GL_EXT_nonuniform_qualifier`**; the "block operand" error after it is a glslang cascade. Test buffer-only: a texture heap masks the gap.
 - **`-vk` bindless tests that dynamically index a heap need `-emit-spirv-directly`**, or they fail the shared "Test Slang via glsl" step in every GPU job (dx+vk+cuda). That looks backend-agnostic but is not.
 - **Shader-visible `DescriptorHandle` `uint2`: ordinary handle = `.x` index, `.y` = 0, not a 64-bit split.** Only an acceleration structure is 64-bit (some targets); `.x`/`.y` = texture/sampler only in the split combined-sampler lowering.
-- **`early_fragment_tests` needed only front-end recognition** (backend exists via `[earlydepthstencil]`). PR #13033 first ships in v2026.18.2; before that, put `[earlydepthstencil]` on GLSL `main()`. Check every patch tag for a first fixed release.
+- **`early_fragment_tests` needed only front-end recognition**: the backend already exists on all targets via `[earlydepthstencil]`.
 - **`globallycoherent` on a parameter is rejected in default mode** (`isModifierAllowedOnDecl` omits `ParamDecl`; a second gate hides behind it). "GLSL permitted" (`-allow-glsl`) ≠ "source is GLSL".
 - **DXC duplicate semantics are backend-split** (DXIL errors on `TEXCOORD`+`TEXCOORD0`, DXC SPIR-V does not); Slang's silent re-index is Metal/WGSL-only.
 - **A 202c GLSL-operator ambiguity comes from redundant equal-rank glsl spellings, not unreachable `OverloadRank`.** Capture the surviving candidates and ranks before theorizing.
@@ -61,12 +61,6 @@ Scalar, C and DX layouts come only from `-fvk-use-scalar-layout` / `-fvk-use-c-l
 scalar/natural ⊂ C ⊂ std430 ⊂ std140. Scalar packs a trailing field into a prior struct field's tail
 padding, so it is not C-compatible for nested structs. The Vulkan tutorial's "auto-scalar at 1.4" claim is wrong
 ([default layout is std430/std140; scalar≠C](../learnings/1787601323178-slang-default-vulkan-spir-v-buffer-layout-is-std43.md)).
-The tutorial's own `struct MyData { float3 a; float b; }` cannot show a difference (#12714,
-v2026.20): `b`@12, stride 16 under std430, scalar and C alike. A discriminating type is
-`struct S{double x; int y;}; struct U{S z; float w;}` — std430 and C give `w`@16, stride 24; scalar
-gives `w`@12, stride 16. Check without the reflection API by grepping `slangc -target spirv-asm` for
-`OpMemberDecorate ... Offset` and `ArrayStride`
-([MyData cannot tell std430 from scalar](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md)).
 
 A `GLSLShaderStorageBuffer<T>` reflects as a plain `SimpleLayoutInfo` (the standalone
 `GetObjectLayout` branch), not a `ParameterGroupTypeLayout`. So
@@ -178,6 +172,9 @@ texture heap with a buffer heap compiles anyway (the texture path requests the e
 file-wide), so the regression test must be buffer-only. Do not add `nonuniformEXT(...)` wrapping;
 decoration propagation is the separate #12161
 ([buffer heap misses the extension; texture heap masks it](../learnings/1788445078995-slang-glsl-bindless-buffer-heap-misses-gl-ext-nonu.md)).
+#12051, sometimes cited alongside it, is the closed "re-use loaded descriptors" issue and unrelated
+to NonUniform; check an issue's title at the source before citing it as related
+([correction: #12051 is descriptor-load reuse](../learnings/1793829368223-correction-slang-12051-is-descriptor-load-reuse-no.md)).
 
 CI consequence (PR #12800, gap #12897): a `-vk` bindless test that dynamically indexes a heap must
 add `-emit-spirv-directly` to its `COMPARE_COMPUTE` directive. Otherwise it fails the shared "Test
@@ -217,14 +214,6 @@ recognizes bare GLSL layout qualifiers from a hardcoded list that lacked it. `[e
 already emits it on all targets (SPIR-V, GLSL, HLSL, Metal), so the fix is front-end recognition
 only, mirroring how `local_size_*` synthesizes a `NumThreadsAttribute` from an `EmptyDecl`
 ([early_fragment_tests: backend already exists](../learnings/1787245492858-glsl-early-fragment-tests-input-qualifier-rejected.md)).
-It landed as PR #13033 (#12655, merge 161b0812f, 2026-09-17); the first release is **v2026.18.2**,
-not v2026.19 (`git merge-base --is-ancestor 161b0812f <tag>` is false for v2026.18.1, true for
-v2026.18.2, whose tarball emits `OpExecutionMode %main EarlyFragmentTests`). Check every patch tag
-this way
-([#12655 first ships in v2026.18.2](../learnings/1792422160153-12655-early-fragment-tests-fix-first-ships-in-v202.md)).
-On older releases, delete the layout line and put `[earlydepthstencil]` on the GLSL `void main()`;
-verified on v2026.14.1
-([workaround on old Slang](../learnings/1792400641518-glsl-early-fragment-tests-workaround-on-old-slang-.md)).
 
 `globallycoherent RWByteAddressBuffer buffer` as a function parameter is rejected in default
 `-lang slang` mode (E31201) but accepted with `-allow-glsl`: `isModifierAllowedOnDecl` has an
@@ -309,7 +298,8 @@ branch, then `cmake -E touch` the meta file and rebuild `generate_core_module_he
 only the new per-form tests failed
 ([combined-sampler parens; profile caps don't emit `#extension`](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md)).
 
-**Source learnings (30):**
+**Source learnings (28):**
+- [Correction: slang#12051 is descriptor-load reuse, not NonUniform/nonuniformEXT](../learnings/1793829368223-correction-slang-12051-is-descriptor-load-reuse-no.md) — corrects the buffer-heap atom's "#12161/#12051"; NonUniform on DescriptorHandle is #12161 alone
 
 - [WGSL emit has TWO type paths](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md) — `_emitType` routes, `emitSimpleTypeImpl` names the type.
 - [internal breaks cross-builtin-module calls](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md) — GLSL is a separate builtin module; measure with a core-module rebuild.
@@ -320,9 +310,6 @@ only the new per-form tests failed
 - [GLSL bindless phantom "second bug"](../learnings/1788442267382-glsl-bindless-variable-descriptor-array-index-reje.md) — block-operand error is a glslang cascade; a constant index compiles clean.
 - [buffer heap misses GL_EXT_nonuniform_qualifier](../learnings/1788445078995-slang-glsl-bindless-buffer-heap-misses-gl-ext-nonu.md) — hoist the request above the early-returns.
 - [early_fragment_tests: backend already exists](../learnings/1787245492858-glsl-early-fragment-tests-input-qualifier-rejected.md) — fix is front-end recognition only.
-- [early_fragment_tests workaround on old Slang](../learnings/1792400641518-glsl-early-fragment-tests-workaround-on-old-slang-.md) — `[earlydepthstencil]` on GLSL `main()`; verified v2026.14.1.
-- [MyData{float3; float} cannot tell std430 from scalar](../learnings/1792400969481-vulkan-tutorial-mydata-float3-float-cannot-tell-st.md) — use `U{S{double;int} z; float w;}`; grep `Offset`/`ArrayStride` (#12714).
-- [#12655 fix first ships in v2026.18.2](../learnings/1792422160153-12655-early-fragment-tests-fix-first-ships-in-v202.md) — check each patch tag with `git merge-base --is-ancestor`.
 - [globallycoherent on params rejected in default mode](../learnings/1787705000586-globallycoherent-on-function-params-rejected-in-de.md) — `isModifierAllowedOnDecl` omits `ParamDecl`; a second gate hides behind.
 - [prefer-TU-first drops -allow-glsl](../learnings/1787774464819-converting-option-derived-glsl-bool-to-sourcelangu.md) — "GLSL permitted" ≠ "source is GLSL"; `GLSLModuleModifier` fallback needed.
 - [CORRECTION: DXC duplicate semantics backend-split](../learnings/1788388950993-correction-dxc-duplicate-semantic-behavior-is-back.md) — DXIL errors, DXC SPIR-V index-0 gap; Slang re-index Metal/WGSL-only.

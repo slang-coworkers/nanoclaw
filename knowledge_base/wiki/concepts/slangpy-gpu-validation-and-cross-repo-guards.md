@@ -3,7 +3,7 @@ title: "SlangPy GPU Validation and Cross-Repo Guards"
 type: concept
 group: slangpy
 tags: [slangpy, ci, triage, gpu, cuda, vulkan, capability, cross-repo, nvapi, e36121]
-source_count: 18
+source_count: 20
 ---
 
 # SlangPy GPU Validation and Cross-Repo Guards
@@ -12,7 +12,7 @@ How to validate slangpy on the coworker-container GPU (an NVIDIA L40S; confirm w
 
 ## TL;DR
 - Containers have an NVIDIA L40S (CUDA + NVIDIA Vulkan); 2026-09-28→10-16 was a passthrough outage. Probe `nvidia-smi -L` + a `spy.Device(type=vulkan/cuda)` loop every session before writing "CPU only".
-- Differentiable validation: select `spy.DeviceType.cuda` (fwd + `.bwds`, exact gradients). Default `spy.Device()` is Vulkan, whose `bwd_diff` fails `NVVM compilation failed: 1` / error -13 (slangpy-0.43 toolchain, not a migration bug). Module-load compiles on both — the best content-agnostic signal.
+- Differentiable validation: select `spy.DeviceType.cuda` (fwd + `.bwds`, exact gradients). Default `spy.Device()` is Vulkan, whose `bwd_diff` fails `NVVM compilation failed: 1` / error -13 (slangpy-0.43 toolchain, not a migration bug). Module-load compiles on both — the best content-agnostic signal. `half` inputs add a second Vulkan failure: the L40S has no Vulkan fp16 atomic add, so `DiffTensor<half>` backward crashes at dispatch.
 - Coop-vector does not run (driver 565.x lacks `VK_NV_cooperative_vector`) but its kernels compile (slangc exit 0), so compile-only checks mislead. NVRTC/CUDA compiles at the first `kernel.dispatch(...)`: dispatch with a real output buffer and expect `RuntimeError`.
 - `DEFAULT_DEVICE_TYPES` is `[vulkan, cuda]` on Linux (no `cpu`): zero CPU coverage, and ERROR (not skip) without a GPU. CPU coverage needs a direct `spy.Device(type=cpu)` repro. Measure whether device tests run; don't pre-declare.
 - `updatedAt - createdAt` from `gh run list` is not job duration (re-runs keep `created_at`); use `run_started_at`, `run_attempt`, per-job durations. #1070 hangs at `Unit Tests (Python)` after `Unit Tests (C++)` ✓.
@@ -41,7 +41,7 @@ How to validate slangpy on the coworker-container GPU (an NVIDIA L40S; confirm w
 
 **Measure the GPU each session.** The slangpy-fixer container has a usable NVIDIA L40S (the findings below were measured on it with CUDA 12.7). It was absent only during the 2026-09-28→10-16 host passthrough outage ([operator correction: coworker containers have an NVIDIA L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md); historical: [no GPU since ~2026-09-28](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)). Probe `nvidia-smi -L` and a `spy.Device(type=...)` loop before claiming either way; skipping it once put a stale "CPU only" caveat on a public verdict ([re-probe the GPU every session](../learnings/1792136253471-slangpy-triage-re-probe-the-gpu-every-session-a-no.md)).
 
-**Backend choice for differentiable validation.** `spy.Device(type=spy.DeviceType.cuda)` runs forward and backward (`.bwds`) correctly: a minimal `RWDiffTensor<float,1>` + `.store` backprop gives the exact gradient. The default `spy.Device()` resolved to Vulkan, whose auto-generated `bwd_diff` kernel fails with `NVVM compilation failed: 1` / `command_encoder->finish ... error -13`. Forward-only Vulkan works. This is a slangpy-0.43 autodiff-on-Vulkan toolchain issue, not a migration defect (the module compiles on both). So select CUDA to validate a differentiable sample; module-load is the strongest content-agnostic signal. Setup: `pip install slangpy` pins 0.43.1 (~92MB, use `--retries 5 --timeout 120`); use `PIL.Image.open` directly (imageio backend discovery is flaky in-container); slangpy-samples images are git-LFS pointers, fetched via the LFS batch API ([slangpy GPU validation in coworker container: CUDA works, Vulkan autodiff fails with NVVM error](../learnings/1785246704737-slangpy-gpu-validation-in-coworker-container-cuda-.md)).
+**Backend choice for differentiable validation.** `spy.Device(type=spy.DeviceType.cuda)` runs forward and backward (`.bwds`) correctly: a minimal `RWDiffTensor<float,1>` + `.store` backprop gives the exact gradient. The default `spy.Device()` resolved to Vulkan, whose auto-generated `bwd_diff` kernel fails with `NVVM compilation failed: 1` / `command_encoder->finish ... error -13`. Forward-only Vulkan works. This is a slangpy-0.43 autodiff-on-Vulkan toolchain issue, not a migration defect (the module compiles on both). So select CUDA to validate a differentiable sample; module-load is the strongest content-agnostic signal. Backward passes through `half` inputs fail on L40S Vulkan for a separate reason: `DiffTensor<half>` accumulates with `InterlockedAddF16`, the device has no fp16 atomic add, and the process dies at dispatch (SIGSEGV/SIGILL) with no Python error; the feature-or-capability gate is on [[wiki/concepts/slang-rhi-backend-runtime.md]]. Setup: `pip install slangpy` pins 0.43.1 (~92MB, use `--retries 5 --timeout 120`); use `PIL.Image.open` directly (imageio backend discovery is flaky in-container); slangpy-samples images are git-LFS pointers, fetched via the LFS batch API ([slangpy GPU validation in coworker container: CUDA works, Vulkan autodiff fails with NVVM error](../learnings/1785246704737-slangpy-gpu-validation-in-coworker-container-cuda-.md)).
 
 **Device-level tests run.** On slangpy#1155 the SGL device tests (`tests/sgl/device/`, e.g. `test_command_buffer.py`) ran in the container: a from-scratch worktree build ran all 12 green on both Vulkan and CUDA. Measure whether device tests (command encoders, callbacks, dispatch) run rather than pre-declaring it. Keep the portable Python callback-invocation tests as coverage for GPU-less runners, and verify device features end-to-end locally when a device is present ([SGL device tests run on Vulkan + CUDA in the slangpy container — a real NVIDIA L40S is present](../learnings/1789375349943-slangpy-container-has-a-real-nvidia-l40s-gpu-sgl-d.md)).
 
@@ -130,7 +130,7 @@ Tells: identical E30015 on three unrelated PRs (#12912, #12915, #12910); `gh pr 
 - **GPU presence.** The "no GPU" atom and the GPU-less framing of the `DEFAULT_DEVICE_TYPES` atom describe the 2026-09-28→10-16 outage; the 2026-10-16 operator correction (containers have an L40S) supersedes that framing. Their durable rules (re-probe; no `cpu` in `DEFAULT_DEVICE_TYPES`) stand.
 - **`load_program` laziness.** DeepWiki's "lazy per-function" claim is wrong; CI run 30564544350 shows a whole-module check.
 
-**Source learnings (18):**
+**Source learnings (20):**
 
 - [slangpy triage: re-probe the GPU every session; a 'no GPU' note goes stale](../learnings/1792136253471-slangpy-triage-re-probe-the-gpu-every-session-a-no.md)
 - [slang capability-error PRs break downstream slangpy via E36121 (intended break); 0-assertion signature](../learnings/1785744645210-slang-capability-error-prs-break-downstream-slangp.md)
@@ -150,3 +150,5 @@ Tells: identical E30015 on three unrelated PRs (#12912, #12915, #12910); `gh pr 
 - [undefined identifier 'MatrixLayoutMode' is front-end lookup, never an IR-op change](../learnings/1789436787439-slangpy-tests-undefined-identifier-matrixlayoutmod.md)
 - [SGL device tests run on Vulkan + CUDA in the container (L40S, ≤09-22)](../learnings/1789375349943-slangpy-container-has-a-real-nvidia-l40s-gpu-sgl-d.md)
 - [operator correction: coworker containers have an NVIDIA L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md) — containers have a usable L40S; the 09-28→10-16 no-GPU atoms are outage-era history
+- [SlangPy device tests on a GPU-less container: DEFAULT_DEVICE_TYPES=[vulkan,cuda], no cpu](../learnings/1790186382526-slangpy-device-tests-on-a-gpu-less-linux-container.md) — zero CPU coverage; errors, not skips, without a GPU
+- [historical: agent containers had no GPU 2026-09-28→10-16](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md) — passthrough outage, superseded by the L40S measurement

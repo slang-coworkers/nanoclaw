@@ -3,7 +3,7 @@ title: Harvesting bot reviews — collect-reviews.sh, CodeRabbit surfaces, exit 
 type: concept
 group: review-process
 tags: [approver, collect-reviews, harvest, coderabbit, exit-20, exit-21, exit-10, exit-22, pagination, race, tier]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -42,7 +42,7 @@ selected.
 **A red `review` check is not a verdict until you read its log.** The annotation `Claude execution
 failed: result is_error:true` is the same for every harness failure; the cause is in the job log's
 `"result"` JSON. A `422 Budget has been exceeded` there is the shared inference key's cap: every
-run fails until a human raises the cap or it resets, and a rerun cannot help. A GREEN check is not
+run fails until a human raises the cap or it resets, and a rerun cannot help. Over 300 changed files the red is GitHub's diff limit, not infra (check `changed_files`). A GREEN check is not
 proof a review was posted either (10-27/28: 5 reviews from 40 green runs; background reviewer
 subagents outlive the session): confirm a `github-actions` review exists after the run, or read the
 log's last `result` line, and judge a delivery fix by posted reviews per green run.
@@ -155,7 +155,14 @@ burst of about 30 fork-PR reviews. slang's `claude-pr-review.yml`, `claude.yml` 
 `claude-ci-analysis.yml` all use the `nv-inference` provider and likely share the capped key;
 slangpy's and slang-rhi's `claude.yml` use Bedrock. Grep the log for `Budget has been exceeded`
 before calling it a workflow bug: a rerun cannot help, and a human must raise the cap or wait for
-the reset ([Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)).
+the reset ([Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)). A third kind of red has no `is_error` at all, because a PR with more than 300 changed files never
+reaches the model. The
+"Pre-stage PR diff and context" step runs `gh pr diff "$PR_NUMBER" > tmp/pr-diff.patch`, GitHub's diff API
+refuses with `could not find pull request diff: HTTP 406: Sorry, the diff exceeded the maximum number of
+files (300)`, and the step exits with `::error::Pre-staged diff is empty` in under a minute at $0. Seen
+2026-11-03/04 on #14269 (354 files) and #14299 (364 files), 5 failed runs. Read `changed_files` on the PR
+before calling such a red infra; the fix direction is to build the diff locally (`git diff base...head`) or
+page the "List pull request files" API ([Claude PR Review fails on PRs with more than 300 files](../learnings/1793781537308-claude-pr-review-fails-on-prs-with-more-than-300-f.md)).
 Nothing re-runs these checks after the reset: 8 open PRs kept a red `review` on their head, and
 `pr_report.py`'s `summarize_ci()` counts any non-success check, so they show as false "CI failing"
 in the weekly report until someone re-runs them.
@@ -175,7 +182,7 @@ reasoning — `eval-clauses.py` reads the combined commit status and does not co
 review-harness check with the build/test matrix
 ([a red slang `review` check can be an NV-inference infra error, not a code verdict](../learnings/1786959551599-approver-challenger-calibration-a-red-slang-review.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [CodeRabbit's formal review OBJECTS and its recent-review SUMMARY are DIFFERENT collections with different currency](../learnings/1786694530901-approver-clause-gap-coderabbit-s-formal-review-obj.md) — slang-rhi#797; harvest exit 10 keyed on the review objects and missed a head-current clean summary comment.
 - [collect-reviews.sh dropped a head-current CodeRabbit review posted as an ISSUE COMMENT → false exit-20; fix keys on `not match`](../learnings/1786829284875-approver-infra-collect-reviews-sh-dropped-a-head-c.md) — slang; resolve the head-matching pull review FIRST; require CodeRabbit's explicit base…head range, never a bare SHA; comments-fetch failure ⇒ exit 21.
@@ -192,3 +199,4 @@ review-harness check with the build/test matrix
 - [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md) — 422 window 10-25T16:49Z→10-26T20:35Z; 8 PRs left red (no auto re-run); `summarize_ci()` false "CI failing"
 - [Claude PR Review green check does not mean a review was posted (background subagents)](../learnings/1793176878442-claude-pr-review-green-check-does-not-mean-a-revie.md) — 10-27/28: 40 green runs, 5 reviews; `run_in_background` reviewers outlive the session; check the last `"result":` line + a GraphQL reviews search
 - [Watch-list sweep: judge a CI-delivery fix by the ratio, and read thread replies](../learnings/1793177249369-watch-list-sweep-judge-a-ci-delivery-fix-by-the-ra.md) — count posted reviews against green runs before retiring a delivery item
+- [Claude PR Review fails on PRs with more than 300 files (gh pr diff HTTP 406)](../learnings/1793781537308-claude-pr-review-fails-on-prs-with-more-than-300-f.md) — #14269/#14299: `Pre-staged diff is empty` in <1 min, $0; check `changed_files` before calling it infra

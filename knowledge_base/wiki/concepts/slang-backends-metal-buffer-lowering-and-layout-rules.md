@@ -1,12 +1,12 @@
 ---
-title: "Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and ParameterBlock matrices"
+title: "Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and pointer address spaces"
 type: concept
 group: slang-backends
-tags: [metal, msl, buffer-layout, packed-vector, makeVector, layout-rule, scalar-layout, parameterblock, matrix-layout, column-major, slang-ir-lower-buffer-element-type, user-pointer, address-space, constant-address-space, ImmutablePtr, Access.Read, CDataLayout, E36107, E30027]
-source_count: 11
+tags: [metal, msl, buffer-layout, packed-vector, makeVector, layout-rule, scalar-layout, slang-ir-lower-buffer-element-type, user-pointer, address-space, constant-address-space, ImmutablePtr, Access.Read, CDataLayout, E36107, E30027]
+source_count: 8
 ---
 
-# Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and ParameterBlock matrices
+# Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and pointer address spaces
 
 ## TL;DR
 
@@ -18,8 +18,6 @@ source_count: 11
 - **`CDataLayout` is gated off Metal** (`[require(...)]` without metal, E36107).
 - **`emitVectorTypeNameImpl` silently drops the count for an unlisted element type** (no `default:`), which also turns a packed buffer field such as `packed_ulong3` into `packed_ulong` (#14156).
 - **`const` on a read-only buffer type does not reach compiler-made element-pointer temps** (`rwstructuredBufferGetElementPtr` is a plain ReadWrite `Ptr`), so the fix also needs Read access on those pointers (#14154).
-- **`ParameterBlock` matrices ignore the matrix layout on Metal from v2025.18.2** (v2025.18.1 is good; still bad at v2026.20 and master 653bfde, 2026-10-22). They read back transposed against SPIR-V and against the cbuffer path: a real Metal-only transpose cause.
-- **Workarounds:** `ConstantBuffer<S>` instead of `ParameterBlock<S>`, or `-matrix-layout-row-major`. Check the MSL for a native `matrix<float,4,4>` vs `_MatrixStorage`.
 
 `slang-ir-lower-buffer-element-type.cpp` rewrites every buffer element type for Metal: it packs vectors, clones structs, lowers matrices to `_MatrixStorage` wrappers, and names the lowered types after the layout rule. This page covers the shapes that pass produces and the bugs that come from them. It was split out of [Metal backend](slang-backends-f0909b0-metal.md), which keeps the emitter-side Metal bugs; the by-design `mul(M,v)` operand swap is on [[wiki/concepts/slang-backends-metal.md]].
 
@@ -116,22 +114,13 @@ Read-only *buffers* have the matching `const` gap (#14154). `StructuredBuffer`/`
 
 `CDataLayout` is declared with `[require(spirv)] [require(llvm)] [require(cpp)] [require(cuda)]` (`hlsl.meta.slang:66-71`), so it gives E36107 on Metal. Draft PR #13425 adds natural-layout plumbing for `ConstantBuffer<T, ScalarDataLayout>` only and leaves that gate in place. Extending it to `CDataLayout` takes `[require(metal)]` on `CDataLayout`, two layout-type cases, and a `shouldUseCLayout` guard for Metal. Two tooling notes from the same triage: a codex session started through `mcp__codex__codex` sometimes answers its first prompt with an unrelated wiki-recall digest, so reply on the same thread and ask for the structured output; and an over-claim such as "nothing in the core module uses X" needs a grep for `AddressSpace.X` itself, not only for `X` ([Metal pointers: address space never reaches `constant`; Access.Read vs Immutable soundness; CDataLayout gate](../learnings/1793557667102-metal-pointers-address-space-never-reaches-constan.md)).
 
-## `ParameterBlock` matrices ignore the matrix layout on Metal (v2025.18.2 onward, #13141)
-
-Consider `struct C { float4x4 m; }; ParameterBlock<C> c;` compiled with `slangc -target metal`. The matrix is emitted as a native `matrix<float,4,4>` inside an `S_default` struct, whatever the layout: the slangc default column-major and an explicit `column_major` qualifier are both ignored. The same `C` through `ConstantBuffer<C>`, a `cbuffer` or an entry-point `uniform` still emits `_MatrixStorage_..._ColMajor` plus an unpack, and SPIR-V marks the same member `RowMajor` (Slang column-major) at identical reflection offsets, so one host upload reads back transposed on Metal only. The cause is that `MetalParameterBlockElementTypeLoweringPolicy::shouldLowerMatrixType` returns false (slang-ir-lower-buffer-element-type.cpp ~3241). That early pass still stamps `[PhysicalType]`, and the later Metal pass skips `[PhysicalType]` types (~1825), so the matrix is never lowered (suspect PR #8591, 6a2cf239a8) [Metal ParameterBlock matrices ignore column_major since v2025.18.2](../learnings/1792157770273-metal-parameterblock-matrices-ignore-column-major-.md).
-
-The exact boundary is v2025.18.1 good, v2025.18.2 bad; a 2026-10-19 re-check with release v2026.13.1 and v2026.20 still showed the bug. It is still present at master 653bfde (2026-10-22): `ParameterBlock<C>` with `mul(pb.mvp, v)` emits a native `matrix<float,4,4>` member and `v * pb_0->mvp_0` even with `-matrix-layout-column-major`, while `cbuffer` and `StructuredBuffer<float4x4>` get `_MatrixStorage_float4x4_ColMajor` plus an explicit transpose on construction, and SPIR-V gets `RowMajor` with `OpVectorTimesMatrix`. The cause is unchanged (`shouldLowerMatrixType`, now at slang-ir-lower-buffer-element-type.cpp:3392). When replying to a reporter, say that the `V * M` swap is by design, ask for the matrix declaration kind and the exact command line, and give the workarounds below (`-matrix-layout-row-major` needs a host-side transpose) [Metal ParameterBlock matrix layout bug still present at master 653bfde](../learnings/1792658067338-metal-parameterblock-matrix-layout-bug-still-prese.md). It is a real Metal-only transpose cause beside the by-design `mul(M,v)`→`v*M` swap on [[wiki/concepts/slang-backends-metal.md]]. Check for a native matrix vs `_MatrixStorage` in the MSL. User-side workarounds: declare the block as `ConstantBuffer<S>` instead of `ParameterBlock<S>`, or pass `-matrix-layout-row-major` (Metal and SPIR-V then agree). An unverified side note: a `float4x4` vertex input (`: WORLD`) is native on Metal but is decomposed as `_MatrixStorage_..._ColMajor` on SPIR-V, which may be a second mismatch [ParameterBlock matrix layout: ConstantBuffer<S> works around it; bad range starts at v2025.18.2](../learnings/1792404181097-metal-parameterblock-matrix-layout-bug-constantbuf.md).
-
-**Source learnings (11):**
+**Source learnings (8):**
 - [Metal pointers: address space never reaches `constant`; `Access.Read` vs `Immutable` soundness; `CDataLayout` gate (#14141)](../learnings/1793557667102-metal-pointers-address-space-never-reaches-constan.md) — `MetalAddressSpaceAssigner` keeps UserPointer; emitter ignores the access operand; Uniform retype unpacks `packed_float3`; VaryingInput pointer crash #14142
 - [Metal lowering uses a one-operand makeVector(float4, packed_float4) as a conversion — don't count non-IRVectorType operands as scalars](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md) — master's `c[i][0]` already miscompiles
 - [Slang IR: a one-operand makeVector can be a Metal packed-vector conversion, not a lane list](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md) — match element types; test tests/metal/swizzle-of-packed-vector-load.slang
 - [IR type-pointer equality misses IRAttributedType (unorm/snorm/no_diff); use unwrapAttributedType in peephole type checks](../learnings/1790769162592-ir-type-pointer-equality-misses-irattributedtype-u.md) — `getDataType()` strips only rate qualifiers; differential corpus compile caught a lost fold; `__vectorReshape<1>` trigger.
 - [Metal ConstantBuffer ignores the L data-layout parameter (ScalarDataLayout) in both IR and reflection](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md) — dropped silently, IR and reflection agree; fix both in lock step; verify offsets with -reflection-json.
 - [Slang IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md) — gates packing/struct clone/matrix lowering; `_natural`→`_default` identifiers; add a layout IR op; hand-edit stable names.
-- [Metal ParameterBlock matrices ignore column_major since v2025.18.2 (transposed vs SPIR-V)](../learnings/1792157770273-metal-parameterblock-matrices-ignore-column-major-.md) — `MetalParameterBlockElementTypeLoweringPolicy::shouldLowerMatrixType` false + `[PhysicalType]` skip; WAR `-matrix-layout-row-major` (#13141)
-- [Metal ParameterBlock matrix layout bug: ConstantBuffer<S> works around it, and the bad range starts at v2025.18.2](../learnings/1792404181097-metal-parameterblock-matrix-layout-bug-constantbuf.md) — v2025.18.1 good / v2025.18.2 bad, still bad at v2026.20; `ConstantBuffer<S>` or `-matrix-layout-row-major`; unverified `float4x4` vertex-input mismatch (#13141)
-- [Metal ParameterBlock matrix layout bug still present at master 653bfde (2026-10-22)](../learnings/1792658067338-metal-parameterblock-matrix-layout-bug-still-prese.md) — `-matrix-layout-column-major` also ignored; cbuffer/StructuredBuffer transpose on construction; reporter-reply script (#13141)
 - [Metal emitVectorTypeNameImpl: an element-op whitelist with silent fallthrough also drives packed_ vectors](../learnings/1793614567741-metal-emitvectortypenameimpl-an-element-op-whiteli.md) — IntPtr vectors print as scalars; `packed_ulong3` → `packed_ulong`; cross-target audit (#14156)
 - [Metal: const on a buffer TYPE does not reach compiler-made element-pointer temps](../learnings/1793615606198-metal-const-on-a-buffer-type-does-not-reach-compil.md) — `T device*` read-only buffers; element-ptr temps are ReadWrite; matrix-storage test is the probe (#14154)
 

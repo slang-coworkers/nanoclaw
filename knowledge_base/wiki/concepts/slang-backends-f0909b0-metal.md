@@ -3,7 +3,7 @@ title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, 
 type: concept
 group: slang-backends
 tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register, groupshared, threadgroup, buffer-layout, texture-fence, read-write-texture, image-subscript]
-source_count: 24
+source_count: 22
 ---
 
 # Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, read_write texture fences, and GPU-free repro
@@ -19,7 +19,6 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **The Metal argument-buffer tier is a runtime device capability**, not a compile-time choice: one portable struct compiles once and runs on both tiers. Don't bake a tier into the program.
 - **DispatchMesh/amplification legalization is Metal-only via virtual dispatch** (a per-target override), not a call-site `if`. Intrinsic-asm threads values only via `$`-operands; bare identifiers emit verbatim and need the name in lexical scope.
 - **A Metal binding test must use an index the fallback cannot hit.** An unbound MSL kernel argument takes the first available index, so check an explicit `register(tN)` past every earlier slot, with distinct t/s numbers to avoid E39001.
-- **A mesh-shader repro must assign whole output structs**; per-field stores fire E56104 first and hide the real bug. #12883's four bugs landed as #12884, #12885, #12886, #12887.
 - **Metal/CPU `groupshared` becomes an entry-point-local var**, so `canInstHaveSideEffectAtAddress` let barriers and callees forward/DSE across it; treat `AddressSpace::GroupShared` roots as globals but keep param roots exempt. Threadgroup declarations take no initializer; cite SPIRV-Cross, not the MSL spec.
 - **Metal `access::read_write` textures need `fence()` before AND after every write** (Tint's design). The after-fence is MSL §6.13.17's read-after-write rule; the before-fence fixes Dawn crbug 417296309, which is write-after-read. Read the fixing commit before citing a bug for one hazard direction.
 - **The fence pass runs after `legalizeImageSubscript`**, which turns partial texel stores into write→read→write. `fence()` is non-const, so wrap it by value for `ParameterBlock` textures. A texture atomic's leading fence goes before `getRootAddr` of its `ImageSubscript` address.
@@ -32,7 +31,6 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 
 Most Metal-backend bugs are visible in `slangc … -target metal` source emission with no GPU or macOS, crashes included: a null-deref during Metal source emission (a `[outputtopology("point")]` mesh passing a scalar `OutputIndices<uint,N>`) makes `slangc` SIGSEGV (exit 139) on the spot, and `SLANG_ASSERT=release-assert-only` with a prebuilt Debug `slangc` demos it in seconds. A wrong-emission bug that bites only for non-trivial operands is masked when a compile-time-constant index is folded or a multi-use sub-expression is hoisted to a temp, so drive the operand from a runtime value used once (an index from `SV_GroupIndex`). Emit the same shader with `-target spirv-asm` as the correct reference ([reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md)). To check that the emitted MSL *compiles* without Apple's `metal`, strip the `[[...]]` attributes, `#define device`, typedef `uint`/`uint2`/`uint3` as clang `ext_vector_type`, and run `clang++ -std=c++17 -fsyntax-only -include shim.h`; on #14151 it reproduced Apple's exact "subscripted value is not an array, pointer, or vector" errors, but it does not flag constant out-of-range vector subscripts ([Metal SV legalization is parameter-order dependent](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md)).
 
-A release slangc is enough (`-target metal -stage mesh -entry main`). A mesh repro must assign whole output structs (`V v; v.pos = ...; verts[0] = v;`): a per-field store (`verts[0].pos = ...`) fires E56104 ("mesh output must be assigned as whole struct") first, and the #12883 point-topology segfault appears only with whole-struct assignment. On #12883 maintainers applied only `Metal`, `reproduced` and `Needs reporter feedback`, not `bug` or `mesh shader` ([Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md)). The four bugs landed as four PRs, each "Contributes to #12883": #12886 (b92d8bcf3: mesh index precedence plus the point-topology null deref, `slang-emit-metal.cpp`), #12885 (mesh user semantics, `fixFieldSemanticsOfFlatStruct` in `slang-ir-legalize-varying-params.cpp`), #12884 (`SV_InstanceID` = `instance_id - base_instance`) and #12887 (DispatchMesh-in-helper inlining, below). Linux repro of the last: put `DispatchMesh(1,1,1,p)` in a helper called from an `[shader("amplification")]` entry point and compile with `-stage amplification`; on v2026.16.1 the helper references `_slang_mesh_payload`, which only the entry point declares ([#12883 Metal mesh index fix was PR #12886](../learnings/1792402411704-12883-metal-mesh-index-fix-was-pr-12886-not-only-1.md)).
 
 ## Texture-intrinsic emit bugs: run the contrast controls, fix in the core module
 
@@ -90,7 +88,7 @@ Three Slang-specific facts shape the pass:
 
 Packed-vector `makeVector` conversions, the layout-rule name as a lowering selector, the ignored CB data-layout parameter (#13423) and the `ParameterBlock` matrix-layout bug (#13141) are on [Metal buffer element lowering](slang-backends-metal-buffer-lowering-and-layout-rules.md).
 
-**Source learnings (24):**
+**Source learnings (22):**
 - [Metal binding tests: zero-based indices can pass on a buggy emitter (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md) — unbound arg takes the first available index; pick an index past all earlier slots; avoid t/s overlap (E39001)
 
 - [reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md) — source emission (incl. crashes) is GPU-free; runtime single-use operand defeats fold/hoist.
@@ -106,8 +104,6 @@ Packed-vector `makeVector` conversions, the layout-rule name as a lowering selec
 - [Metal/CPU groupshared is a function-local var after introduceExplicitGlobalContext (#13409)](../learnings/1790967869022-metal-cpu-groupshared-is-a-function-local-var-afte.md) — barriers/callees treated as not touching it; GroupShared-address-space fix; param roots exempt.
 - [The MSL spec doesn't state the 'no initializer on threadgroup vars' rule; cite SPIRV-Cross instead](../learnings/1790984185438-the-msl-spec-doesn-t-state-the-no-initializer-on-t.md) — spirv_msl.cpp:3868; the fold repro needs a later read (atomic); `-g` hides it.
 - [Metal __intrinsic_asm can emit a narrower MSL type than the declared Slang return type (f16tof32/f32tof16)](../learnings/1792075407123-metal-intrinsic-asm-can-emit-a-narrower-msl-type-t.md) — no cast is inserted; grep hard-coded `as_type<half`/`as_type<ushort` (#13653)
-- [Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md) — per-field stores fire E56104 and hide the point-topology segfault (#12883)
-- [#12883 Metal mesh index fix was PR #12886, not only #12884/#12885/#12887](../learnings/1792402411704-12883-metal-mesh-index-fix-was-pr-12886-not-only-1.md) — four "Contributes to" PRs; DispatchMesh-in-helper Linux repro
 - [Metal read_write textures: same-thread write→read needs tex.fence() (MSL 6.13.17); Tint/SPIRV-Cross prior art](../learnings/1792504235695-metal-read-write-textures-same-thread-write-read-n.md) — no fence on master; pass-order fact; crbug direction corrected by 1792540687406
 - [Metal texture fence(): non-const member; wrap it by value for ParameterBlock textures](../learnings/1792529444711-metal-texture-fence-non-const-member-wrap-it-by-va.md) — `_slang_textureFence` prelude helper; pass after `legalizeImageSubscript` (PR #13792)
 - [A new IR op that takes a texture-array element as an operand can force a whole-array copy in Metal/C-like emit](../learnings/1792534127005-a-new-ir-op-that-takes-a-texture-array-element-as-.md) — `processLoadUse` + `canInstHaveSideEffectAtAddress` default; texel-only-write fix 2604cf7

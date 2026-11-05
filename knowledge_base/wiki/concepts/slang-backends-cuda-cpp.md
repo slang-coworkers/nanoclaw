@@ -3,7 +3,7 @@ title: "Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen"
 type: concept
 group: slang-backends
 tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073, ldg, immutable-load, vectorized-load, static-const, nan, bit-cast, restrict, ImmutablePtr, ldg-pointer]
-source_count: 37
+source_count: 35
 ---
 
 # Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen
@@ -84,8 +84,6 @@ So honoring `IRAlignedAttr` in `emitImmutableLoad` (`slang-ir-cuda-immutable-loa
 
 Atoms exist only for 1_0…9_0 (`cuda_sm_7_5`/`8_6`/`10_0` → E00014), NVRTC arch is `max(floor, requested)` (`cuda_sm_1_0` emits `sm_50` on 12.6), and `linkWithOptions()` is inert for arch; new atoms are deferred in #12839 for serialized-ID compat ([not an arch selector](../learnings/1790003555136-slang-cuda-capability-cuda-sm-nn-is-not-a-usable-a.md)). The floor (`slang-nvrtc-compiler.cpp` ~1331-1339) is `compute_75` on 12.8+, `compute_50` on 12.0-12.7, `compute_35` on 11.x. `requireSMVersion` only raises, and GPU CI is CUDA 13.0.1 (`docker/linux-gpu-ci.Dockerfile:29`), so CI cannot observe a raise below 7.5 (16-bit `atomicCAS`'s `requireSMVersion(SemanticVersion(7,0))` passes either way); local NVRTC 12.6 does. A test claiming to pin such a raise should say it only works on older NVRTC [NVRTC ≥12.8 floor](../learnings/1793305652591-nvrtc-12-8-defaults-to-compute-75-so-cuda-sm-raise.md).
 
-Before PR #13286 Slang always appended `-arch`, so a user `-Xnvrtc --gpu-architecture=` was "defined more than once". Now an explicit `-Xnvrtc -arch=` skips the derived-arch block (`slang-nvrtc-compiler.cpp:1324-1377`), the only reader of `requiredCapabilityVersions`, so no minimum is checked (`__cuda_sm_version(9.0)` with `compute_75` → rc 0, even with `-restrictive-capability-check`); a too-low target fails only on an undefined intrinsic (`__match_all_sync` on compute_60). Whether an override should diagnose is open on #13198; SlangPy #1199 depends on it ([-Xnvrtc -arch bypass](../learnings/1791190691660-slang-nvrtc-explicit-xnvrtc-arch-post-13286-bypass.md)). To repro DownstreamArgs forwarding (#12861) don't use `--gpu-architecture`; use `-DFOO=1` plus a `--this-option-must-fail` sentinel (v2026.16.1 compiles = bug; v2026.19/PR #12900 fails "unrecognized option"); `findEntryPointByName` needs `[shader("compute")]` ([DownstreamArgs repro](../learnings/1792155142006-nvrtc-downstreamargs-repro-don-t-use-gpu-architect.md)).
-
 ## groupshared-by-ref Regresses CUDA Emit While a vk-Only Inline Pass Masks It
 
 With `groupshared` params by reference (#10641 / PR #11709), `getSharedBaseAddr`'s `__cvta_generic_to_shared(($0).m_data)` emits `((&data)).m_data`, which nvrtc rejects. SPIR-V stays green because the by-ref inlining is only in `GLSLResourceReturnFunctionInliningPass` and the unwrap only in `slang-emit-hlsl.cpp`. `test-linux-release-gcc-x86_64-sm80`'s `tests/neural/` + `tests/cooperative-matrix/` are the canary; grep neural/coopmat `__intrinsic_asm` bodies for `$0` `.member` derefs first ([groupshared by-ref](../learnings/1784741954379-groupshared-param-by-ref-regresses-cuda-emit-vk-on.md)).
@@ -100,9 +98,7 @@ With `groupshared` params by reference (#10641 / PR #11709), `getSharedBaseAddr`
 
 **`precise` on a local (#12279)** comes from shared `CLikeSourceEmitter::emitTempModifiers`: valid on HLSL/GLSL, invalid on CUDA/C++/Metal/WGSL; guard at emit ([precise leaks](../learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md)). The cluster reproduces GPU-free (Debug slangc + NVRTC 12.6).
 
-## `static const` Array Initializers: Nested Arrays (#12635) and Bit-Exact NaN/Inf (#13909)
-
-Before PR #12688, nested `static const int v[2][2]` fails NVRTC ("dynamic initialization is not supported for a `__device__` variable") because `shouldFoldInstIntoUseSites` returns Never for `MakeArray`; flat `static const int v[4]` compiles on v2026.14.1 (the workaround). The struct-element variant (#13107) is on [CUDA codegen triage](misc-f0909b5-cuda-codegen-triage.md) ([flat arrays workaround](../learnings/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md)).
+## `static const` Array Initializers: Bit-Exact NaN/Inf (#13909)
 
 **Bit-exact NaN/Inf (#13909, PR #13927)**, per target (master 52e29ab43, L40S):
 
@@ -129,8 +125,7 @@ Slang capability-checks ALL `[shader]` entry points at load, so one EP with type
 
 **Fast-math (slang#12619).** `-fp-mode fast` redirects nine F32 wrappers (`__sinf, __cosf, __tanf, __sincosf, __logf, __log2f, __log10f, __expf, __powf`) plus `__exp10f`; nvcc 12.6 rejects `__exp2f`, so exp2 stays `::exp2f` with atan2/asin/acos/atan/sqrt. Verify with a `__device__` harness: `nvcc -std=c++17 -c` with/without `-DSLANG_CUDA_ENABLE_FAST_MATH=1`, then `-ptx` and `grep -cE '\.approx\.'` (`/usr/local/cuda-12.6/bin/nvcc`) ([__exp2f does not exist](../learnings/1787147170237-cuda-fast-math-redirectable-transcendentals-exp2f-.md)).
 
-**Source learnings (37):**
-- [#12635 workaround: flat static const arrays compile to PTX](../learnings/1792653924634-cuda-12635-workaround-flat-static-const-arrays-com.md)
+**Source learnings (35):**
 - [`-capability cuda_sm_NN` is not an arch selector (#13198)](../learnings/1790003555136-slang-cuda-capability-cuda-sm-nn-is-not-a-usable-a.md)
 - [post-#13286 explicit `-Xnvrtc -arch` skips SM minimums](../learnings/1791190691660-slang-nvrtc-explicit-xnvrtc-arch-post-13286-bypass.md)
 - [`-target hpp/cpp` export without entrypoint via `-whole-program`](../learnings/1784381336769-slang-target-hpp-cpp-export-without-entrypoint-wor.md)
@@ -156,7 +151,6 @@ Slang capability-checks ALL `[shader]` entry points at load, so one EP with type
 - [fast-math: `__exp2f` does not exist (slang#12619)](../learnings/1787147170237-cuda-fast-math-redirectable-transcendentals-exp2f-.md)
 - [coworker containers have an NVIDIA L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md)
 - [unused resource types break host-callable (#13705)](../learnings/1792162041270-cpu-c-prelude-unused-resource-types-with-no-prelud.md)
-- [DownstreamArgs repro: sentinel, not `--gpu-architecture` (#12861)](../learnings/1792155142006-nvrtc-downstreamargs-repro-don-t-use-gpu-architect.md)
 - [mixed-type vector shifts: prelude operators (#13684)](../learnings/1792165281967-mixed-type-vector-shifts-maintainer-preferred-prel.md)
 - [nvcc won't merge scalar `__ldg`](../learnings/1792700658146-cuda-nvcc-won-t-merge-scalar-ldg-into-wide-loads-e.md)
 - [`ImmutablePtr<T>` gives `__restrict__`-equivalent SASS (#14138)](../learnings/1793544112009-cuda-restrict-gap-immutableptr-t-already-gives-res.md) — 2.08 → 1.54 ms; E31206/E31002.

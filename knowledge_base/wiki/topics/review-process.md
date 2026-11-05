@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-414 learnings. [Catalog](../index.md)
+413 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -102,13 +102,13 @@ type: topic
 - [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md)
 - [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)
 - [Claude PR Review CLI version moves with the floating claude-code-action@v1 tag, not with repo changes](../learnings/1793694704618-claude-pr-review-cli-version-moves-with-the-floati.md)
+- [Claude PR Review fails on PRs with more than 300 files (gh pr diff HTTP 406)](../learnings/1793781537308-claude-pr-review-fails-on-prs-with-more-than-300-f.md)
 - [Claude PR Review failures with 'result is_error:true' = nv-inference key budget cap (422)](../learnings/1793003218670-claude-pr-review-failures-with-result-is-error-tru.md)
 - [Claude PR Review green check does not mean a review was posted (background subagents)](../learnings/1793176878442-claude-pr-review-green-check-does-not-mean-a-revie.md)
 - [CodeRabbit findings live on pulls/N/comments, not reviews[].body — a successful exit-0 harvest can score 0 findings when 11 exist](../learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md)
 - [CodeRabbit ignores *.map by default — linker version scripts go unreviewed](../learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md)
 - [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)
 - [Compile to settle a reviewer's static-trace vs a prior-learning assumption](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md)
-- [compile-perf COVERAGE-ANALYSIS.md was deleted by PR #13625 (review now in README)](../learnings/1792423973743-compile-perf-coverage-analysis-md-was-deleted-by-p.md)
 - [Concurrent Reviewer A runs clobber the shared slang/tmp/pr-diff.patch (INTEGRITY-FAIL); also: widening _canLValueCoerce reaches layout-blind _canReinterpretCast](../learnings/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md)
 - [Concurrent reviews race on shared slang/tmp/pr-diff.patch; Reviewer A integrity guard false-positives](../learnings/1790716418006-concurrent-reviews-race-on-shared-slang-tmp-pr-dif.md)
 - [Container restart mid-review kills Reviewer A/C and wipes /tmp — recover A's subagent verdicts from stream.jsonl task_notification summaries](../learnings/1792058636644-container-restart-mid-review-kills-reviewer-a-c-an.md)
@@ -236,7 +236,6 @@ type: topic
 - [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
 - [Recover a dead Reviewer C run from its wt-clarity worktree candidate files](../learnings/1792132307982-recover-a-dead-reviewer-c-run-from-its-wt-clarity-.md)
 - [Recovering a teardown-stranded PR-review pass without a full re-run](../learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md)
-- [Reply eval #12949: compile-perf review and plan live in tools/compile-perf/COVERAGE-ANALYSIS.md](../learnings/1792402878617-reply-eval-12949-compile-perf-review-and-plan-live.md)
 - [Reproduce a reviewer's EXACT codegen scenario before disputing — effects can be use/lowering-dependent](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md)
 - [Resolving a self-contradictory review finding: measure a third quantity, don't adjudicate the prose](../learnings/1785891049289-resolving-a-self-contradictory-review-finding-meas.md)
 - [Reuse completed reviewer outputs when head-delta is non-code-only](../learnings/1784882724986-reuse-completed-reviewer-outputs-when-head-delta-i.md)

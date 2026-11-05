@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8612 agent learnings**, synthesized into **515 concept pages**.
+Standalone wiki built from **8517 agent learnings**, synthesized into **518 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -34,7 +34,7 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [Codex & Provider Parity](concepts/agent-fixer-codex-provider.md)
 - [Eval Runner: Fixer Trials on the slang-eval Fork](concepts/agent-eval-runner-fixer-fork-mechanics.md)
 - [Eval Runner: Review-Kind Scoring, Judge Failures, and Bank Freshness](concepts/agent-eval-runner-review-kind-scoring-and-judge.md)
-- [Eval Runner: Trial Isolation, Answer Contract, and Answer-Key Leaks](concepts/agent-eval-runner-trial-isolation-and-answer-leaks.md)
+- [Eval Runner: Trial Isolation, Scoring Hazards, and Answer-Key Leaks](concepts/agent-eval-runner-trial-isolation-and-answer-leaks.md)
 - [Fixer Dispatch & Coordination Failure Modes](concepts/agent-fixer-dispatch-coordination.md)
 - [Fixer engineering craft: toolchain, CI infra, NVRTC PCH, OKF synthesis, and codex judgment](concepts/agent-fixer-codex-skills-f0909b0-fixer-engineering-and-empirical-craft.md)
 - [Fixer PR Creation, Fork & CI Mechanics](concepts/agent-fixer-pr-and-ci-mechanics.md)
@@ -402,7 +402,7 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [lowerCombinedTextureSamplers: which combined types get lowered, the nested layout rebuild, and deduplicated IR layouts](concepts/slang-backends-combined-sampler-type-lowering-and-layouts.md)
 - [Metal atomics, fences, and coherence: what MSL 4.1 allows (64-bit, float, compare-exchange), device-scope fences, and coherent(device)](concepts/slang-backends-metal-atomics-fences-and-coherence.md)
 - [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, read_write texture fences, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
-- [Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and ParameterBlock matrices](concepts/slang-backends-metal-buffer-lowering-and-layout-rules.md)
+- [Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and pointer address spaces](concepts/slang-backends-metal-buffer-lowering-and-layout-rules.md)
 - [Metal ray query: RAY_FLAG → intersection_params mapping, header-only getters, curve and multi-level tags, and CI test lanes](concepts/slang-backends-metal-ray-query.md)
 - [Running Slang's WGSL on the real GPU: node webgpu (Dawn) backend=vulkan on the L40S, shader-f16, and driver traps](concepts/slang-backends-wgsl-on-gpu-execution.md)
 - [Slang `__extern_cpp` naming: struct fields, linkage names, and verbatim emission](concepts/slang-backends-extern-cpp-naming-and-linkage.md)
@@ -416,6 +416,7 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang specialization constants across targets: spec-constant array sizes, glslang spellings, dangling [numthreads] operands, and spec-const-rate module-scope initializers](concepts/slang-compiler-specialization-constants-across-targets.md)
+- [Slang SPIR-V access chains and pointer arithmetic as drivers and tools read them: chained matrix OpAccessChain, RenderDoc, negative PhysicalStorageBuffer steps, and pointer runtime tests](concepts/slang-backends-spirv-access-chains-and-pointer-arithmetic.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang SPIR-V capabilities, extensions, and version gating](concepts/slang-backends-spirv-capabilities-and-version-gating.md)
 - [Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName](concepts/slang-backends-spirv-debug-info-emission.md)
@@ -439,6 +440,7 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [SPIR-V legalization crashes — empty/opaque types, the error-count gate, and default-construct producers](concepts/slang-backends-f0909b0-spirv-legalization-crashes.md)
 - [SPIR-V validation gating and backend PR-review/CI-scope methodology](concepts/slang-backends-f0909b0-spirv-validation-and-review.md)
 - [SPIR-V varyings, tessellation patch decorations, pointer ArrayStride, and wave-op CSE](concepts/slang-backends-f0909b0-spirv-varyings-pointers-waveops.md)
+- [Vulkan narrowing float conversions (float to half, float to BFloat16): implementation-defined rounding, no rounding mode from Slang, and how to write tests that survive it](concepts/slang-backends-vulkan-float-narrowing-rounding.md)
 - [WGSL uniformity analysis and global-varying shadow forwarding (#8774)](concepts/slang-backends-wgsl-uniformity-and-shadow-globals.md)
 
 ### slang-compiler
@@ -488,6 +490,7 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [Interface default arguments, default methods, lambda capture, and synthesized-witness visibility](concepts/slang-language-core-f0909b0-default-args-methods-visibility.md)
 - [Interfaces, witness tables, and conformance resolution in Slang](concepts/slang-language-core-f0909b0-interfaces-witness-conformance.md)
 - [Slang Attributes: Parsing, Name Resolution, and Target Whitelist](concepts/slang-language-fold20260909-attributes.md)
+- [Slang capability gating of a type and of struct fields (fp64 double, #10232 / PR #14332)](concepts/slang-language-core-struct-field-and-type-capability-gating.md)
 - [Slang capability inference: how [require] propagates through referenced declarations](concepts/slang-language-core-capability-inference.md)
 - [Slang Coercion & Overload Resolution](concepts/slang-language-coercion-and-overload.md)
 - [Slang conformance checking: requirement enumeration and method-requirement witness synthesis](concepts/slang-language-core-requirement-witness-synthesis.md)
@@ -508,6 +511,7 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [Slang Scope Lookup, Function-Local Types, and Declaration Checking](concepts/slang-language-scope-lookup-and-declaration-checking.md)
 - [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
+- [Slang variadic packs: expand, each, pack queries and where they fold (AST vs IR)](concepts/slang-language-variadic-packs-expand-and-each.md)
 - [Slang Visibility, Layout & Codegen Surfaces](concepts/slang-language-visibility-and-layout.md)
 - [Slang Witness Tables, Conformance & Extensions](concepts/slang-language-witness-and-conformance.md)
 - [The Slang floating-point interface tower, transcendentals, and conditional conformance](concepts/slang-language-core-f0909b0-fp-interface-tower-conformance.md)
@@ -535,11 +539,10 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 - [slangc Wave Intrinsics, VM Emitter & Inliner](concepts/slangc-wave-vm-and-inliner.md)
 - [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
 - [Triaging slangd (language-server) crashes: version-triage, direct-LSP repro, and completion-mode modifier retention](concepts/slang-tooling-slangd-lsp.md)
-- [Worked Slang release version matrices: per-issue status across releases](concepts/slang-tooling-release-worked-version-matrices.md)
 
 ### SlangPy
 - [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
-- [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
+- [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), direct-bound struct calldata (#1263), and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
 - [SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review](concepts/slangpy-build-and-infra-operations.md)
 - [SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-repo breaking-change coordination](concepts/slangpy-f0909b0-build-ci-toolchain.md)
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)
@@ -573,10 +576,10 @@ Standalone wiki built from **8612 agent learnings**, synthesized into **515 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2892)
-- [NanoClaw / agent operations](topics/agent-ops.md) (992)
-- [CI, build & tooling](topics/ci-tooling.md) (628)
-- [Review & process](topics/review-process.md) (414)
+- [Slang compiler & language](topics/slang-compiler.md) (2836)
+- [NanoClaw / agent operations](topics/agent-ops.md) (988)
+- [CI, build & tooling](topics/ci-tooling.md) (627)
+- [Review & process](topics/review-process.md) (413)
 - [PR review, approval & calibration](topics/review-approval.md) (1420)
-- [Verification & evidence discipline](topics/verification.md) (594)
-- [Uncategorized](topics/misc.md) (1672)
+- [Verification & evidence discipline](topics/verification.md) (585)
+- [Uncategorized](topics/misc.md) (1648)
