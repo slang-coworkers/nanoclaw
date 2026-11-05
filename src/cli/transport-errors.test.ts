@@ -42,6 +42,11 @@ describe('formatTransportError', () => {
     expect(lines.slice(0, macIdx).join('\n')).not.toMatch(/systemctl|launchctl/);
   });
 
+  it('names the nohup launcher for Linux without systemd (WSL), with the folder to run it from', () => {
+    const out = formatTransportError(new Error('connect ENOENT /tmp/nanoclaw.sock'));
+    expect(out).toContain(`bash start-nanoclaw.sh (from ${process.cwd()})`);
+  });
+
   it('renders the same on ECONNREFUSED', () => {
     const out = formatTransportError(new Error('connect ECONNREFUSED'));
     expect(out).toContain(getLaunchdLabel());
