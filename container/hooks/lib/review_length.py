@@ -34,6 +34,7 @@ guesses.
 
 from __future__ import annotations
 
+import glob
 import json
 import os
 import re
@@ -52,6 +53,10 @@ REVIEW_ENDPOINT_RE = re.compile(
     r"(^|/)repos/[^/]+/[^/]+/(pulls/\d+/(reviews(/\d+(/events)?)?|comments)|issues/\d+/comments)/?$"
 )
 ANSWER_FILE = "answer.json"
+# Post-write check: where the evaluation answer files live inside the container and how
+# recent a file must be to count as "written by the call that just ran".
+ANSWER_ROOT_DEFAULT = "/workspace/agent/eval"
+POST_WINDOW_DEFAULT_SEC = 600
 
 PENDING_CREATE = "mcp__github__create_pending_pull_request_review"
 PENDING_ADD = "mcp__github__add_comment_to_pending_review"
@@ -114,6 +119,60 @@ def answer_json_chars(text: str) -> tuple[int, str] | None:
 
 def is_answer_path(path: str) -> bool:
     return os.path.basename(path.strip().strip("'\"")) == ANSWER_FILE
+
+
+def recent_answer_files(root: str, window_sec: float, now: float | None = None) -> list[str]:
+    """Answer files under `root` (eval/<task>/r<k>/answer.json, or one level up) written
+    inside the last `window_sec` seconds, oldest first."""
+    now = time.time() if now is None else now
+    found = []
+    for pattern in (os.path.join(root, "*", "*", ANSWER_FILE), os.path.join(root, "*", ANSWER_FILE)):
+        for path in glob.glob(pattern):
+            try:
+                mtime = os.path.getmtime(path)
+            except OSError:
+                continue
+            if now - mtime <= window_sec:
+                found.append((mtime, path))
+    return [p for _, p in sorted(found)]
+
+
+def post_decide(hook: dict, root: str | None = None, window_sec: float | None = None,
+                now: float | None = None) -> str | None:
+    """The post-write check: after a Bash, Write, Edit or MultiEdit call, measure every
+    answer file written in the last few minutes, whatever wrote it. The pre-write check
+    sees the text a tool call carries; a script the agent writes and runs carries none,
+    so its output is measured here instead. An answer over the cap is moved aside
+    (`answer.json.too-long-<epoch>`) so the runner cannot score it, and the agent is told
+    to write a shorter one."""
+    tool = str(hook.get("tool_name") or "")
+    if tool not in ("Bash", "Write", "Edit", "MultiEdit"):
+        return None
+    root = root or os.environ.get("REVIEW_LENGTH_ANSWER_ROOT") or ANSWER_ROOT_DEFAULT
+    window = window_sec if window_sec is not None else pd.env_int("REVIEW_LENGTH_POST_WINDOW_SEC", POST_WINDOW_DEFAULT_SEC)
+    now = time.time() if now is None else now
+    limit = cap()
+    candidates = recent_answer_files(root, window, now)
+    tool_input = hook.get("tool_input") if isinstance(hook.get("tool_input"), dict) else {}
+    named = str(tool_input.get("file_path") or "")
+    if is_answer_path(named) and os.path.isfile(named) and named not in candidates:
+        candidates.append(named)
+    for path in candidates:
+        try:
+            with open(path, encoding="utf-8", errors="replace") as fh:
+                r = answer_json_chars(fh.read())
+        except OSError:
+            continue
+        if r is None or r[0] <= limit:
+            continue
+        aside = f"{path}.too-long-{int(now)}"
+        try:
+            os.replace(path, aside)
+            moved = f" The file was moved to {os.path.basename(aside)}; write a shorter {ANSWER_FILE} in its place."
+        except OSError:
+            moved = ""
+        return (over(f"the answer file {ANSWER_FILE}", r[0], r[1], limit) or "") + moved
+    return None
 
 
 def bash_measurements(reader: pd.Reader) -> list[Measured]:
@@ -351,14 +410,16 @@ def decide(hook: dict) -> str | None:
     return None
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
     if os.environ.get("REVIEW_LENGTH_GATE", "1") == "0":
         return 0
     try:
         hook = json.load(sys.stdin)
     except ValueError:
         return 0
-    reason = decide(hook if isinstance(hook, dict) else {})
+    hook = hook if isinstance(hook, dict) else {}
+    reason = post_decide(hook) if "--post" in argv else decide(hook)
     if reason:
         print(reason, file=sys.stderr)
         return 2

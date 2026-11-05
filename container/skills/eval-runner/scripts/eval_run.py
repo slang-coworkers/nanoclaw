@@ -590,6 +590,17 @@ def judge_env(environ: dict | None = None) -> dict[str, str]:
     return out
 
 
+def review_text_chars(answer: dict) -> int:
+    """Characters of review text in a review answer: the summary plus every finding's
+    comment. The same measure the review-length gate applies before a review is posted,
+    so an eval cap and the production cap count the same thing."""
+    total = len(answer.get("summary")) if isinstance(answer.get("summary"), str) else 0
+    for finding in answer.get("findings") or []:
+        if isinstance(finding, dict) and isinstance(finding.get("comment"), str):
+            total += len(finding["comment"])
+    return total
+
+
 def score_triage(task: Task, answer_file: str, verifier_dir: str, run: Runner = default_run) -> tuple[float | None, str]:
     """Run the task's verifier on the answer. The bank's contract: AGENT_OUTPUT is the
     answer, REWARD_DIR receives reward.txt (and summary.json), the script exits 0. The
@@ -773,6 +784,7 @@ class JobConfig:
     compare: str | None = None
     retry_from: str | None = None
     ci_check: str | None = None
+    answer_cap_chars: int = 0
 
 
 class EvalJob:
@@ -900,6 +912,15 @@ class EvalJob:
                     return True
                 answer_file = os.path.join(answer_dir(self.cfg.group_dir, task.id, trial.repeat), "answer.json")
                 reward, why = score_triage(task, answer_file, verifier_dir, self.run)
+                if reward is not None and self.cfg.answer_cap_chars and task.kind == "review":
+                    # The cap is a gate failure, not a quality judgement: in production the
+                    # review-length gate refuses the post, so the review never reaches anyone.
+                    chars = review_text_chars(answer)
+                    if chars > self.cfg.answer_cap_chars:
+                        reward = 0.0
+                        self._write_reward(verifier_dir, 0.0)
+                        why = (f"{why}; over the {self.cfg.answer_cap_chars:,}-character cap "
+                               f"({chars:,} characters of review text): scored 0 as a gate failure")
                 self._finish(trial, SCORED if reward is not None else UNKNOWN, reward, why)
                 return True
         else:
@@ -1088,6 +1109,7 @@ def summarize(cfg: JobConfig, trials: list[Trial], budget: Budget, started_at: f
         "cost_committed_usd": round(budget.committed_usd(), 4),
         "budget_usd": cfg.budget_usd, "stopped_for_budget": stopped_for_budget,
         "concurrency": cfg.concurrency, "compare": cfg.compare, "retry_from": cfg.retry_from,
+        "answer_cap_chars": cfg.answer_cap_chars,
         "frozen": frozen,
         "status": "complete" if trials and all(t.status == SCORED for t in trials) else
                   ("stopped" if stopped_for_budget or not dispatched else "partial"),
@@ -1249,6 +1271,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--reports", default=DEFAULT_REPORTS)
     p.add_argument("--compare", help="baseline job id to compare against (paired, bootstrap CI)")
     p.add_argument("--retry-from", help="job id whose timed-out / errored trials to re-run (one retry only)")
+    p.add_argument("--answer-cap-chars", type=int, default=0,
+                   help="review kind: an answer whose review text (summary plus every finding comment) exceeds this "
+                        "many characters scores 0 as a gate failure, the way the review-length gate refuses it in "
+                        "production; 0 = no cap (baselines)")
     p.add_argument("--job-id")
     p.add_argument("--dry-run", action="store_true", help="list the trials and the ncl command; dispatch nothing")
     p.add_argument("--quiet", action="store_true")
@@ -1295,6 +1321,7 @@ def main(argv: list[str] | None = None) -> int:
         variant=args.variant, fork=args.fork, budget_usd=args.budget_usd, concurrency=max(1, args.concurrency),
         limit=args.limit, repeats=repeats, poll_interval_sec=args.poll_interval, ci_grace_sec=args.ci_grace_sec, ci_check=args.ci_check or None,
         reports_dir=args.reports, compare=args.compare, retry_from=args.retry_from,
+        answer_cap_chars=max(0, args.answer_cap_chars or 0),
     )
     tasks = load_bank(cfg.bank, cfg.kind, log)
     if args.limit > 0:
@@ -1322,6 +1349,8 @@ def main(argv: list[str] | None = None) -> int:
                 f"{os.path.join(group_dir, 'eval')} aside on the host before starting this job")
             return 2
     if args.dry_run:
+        if cfg.answer_cap_chars:
+            log(f"answer cap: a review answer over {cfg.answer_cap_chars:,} characters of review text scores 0")
         for t, k in plan:
             cmd = dispatcher.command(t, k, build_prompt(t, k, cfg.fork))
             log(f"{trial_id(t.id, k)}: ncl {' '.join(cmd[:8])} --prompt <{len(cmd[-1])} chars> --json  "
