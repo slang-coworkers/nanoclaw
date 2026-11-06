@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Classification for gate-issue-optout.sh: does this tool call write to GitHub about an
 issue that people have opted out of?
 
@@ -24,7 +23,7 @@ import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import eval_sandbox as es  # noqa: E402
+import eval_sandbox as es  # the GitHub-write shapes are shared with the eval sandbox gate
 
 DEFAULT_LIST = "/workspace/agent/.issue-opt-outs.json"
 
