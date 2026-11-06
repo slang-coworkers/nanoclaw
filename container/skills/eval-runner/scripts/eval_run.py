@@ -549,15 +549,33 @@ def existing_answers(group_dir: str, plan: list[tuple[Task, int]]) -> list[str]:
     return [p for p in paths if os.path.isfile(p)]
 
 
-def poll_fixer(gh: Callable[[str], object], fork: str, task: Task, repeat: int) -> dict | None:
+def pr_created_at(pr: dict) -> float | None:
+    """The PR's `created_at` as a POSIX timestamp, or None when GitHub gave none."""
+    raw = pr.get("created_at")
+    if not raw:
+        return None
+    try:
+        return dt.datetime.strptime(str(raw), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc).timestamp()
+    except ValueError:
+        return None
+
+
+def poll_fixer(gh: Callable[[str], object], fork: str, task: Task, repeat: int, not_before: float = 0.0) -> dict | None:
     """The fork PR for this repeat: head branch carries `<task-id>-r<k>` or the title
-    carries `[<task-id>#r<k>]`."""
+    carries `[<task-id>#r<k>]`, and the PR was created at or after `not_before` (the
+    trial's dispatch time). An earlier job on the same fork leaves closed PRs with the
+    same tags behind; without the time filter a trial would latch onto one of those on
+    its first poll and be scored from the old job's CI. GitHub always dates a PR; one
+    without a readable `created_at` (a stub) is accepted."""
     tag = f"{task.id}-r{repeat}"
     title_tag = f"[{trial_id(task.id, repeat)}]"
     pulls = gh(f"repos/{fork}/pulls?state=all&per_page=100&sort=created&direction=desc") or []
     for pr in pulls:
         head = ((pr.get("head") or {}).get("ref") or "")
         if tag in head or title_tag in (pr.get("title") or ""):
+            created = pr_created_at(pr)
+            if not_before and created is not None and created < not_before:
+                continue
             return {"number": pr.get("number"), "url": pr.get("html_url"), "draft": bool(pr.get("draft")),
                     "head_sha": (pr.get("head") or {}).get("sha"), "head_ref": head, "state": pr.get("state")}
     return None
@@ -905,7 +923,7 @@ class EvalJob:
         else:
             if trial.pr is None:
                 try:
-                    pr = poll_fixer(self.gh, self.cfg.fork, task, trial.repeat)
+                    pr = poll_fixer(self.gh, self.cfg.fork, task, trial.repeat, not_before=trial._started)
                 except RuntimeError as exc:
                     pr = None
                     self.log(f"{trial.trial_id}: poll failed: {exc}")
