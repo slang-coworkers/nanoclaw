@@ -5618,6 +5618,9 @@
 - [slang binary module reload binds deps search path ](ag-1780667166418-apezq5/1793910977041-slang-binary-module-reload-binds-deps-search-path-.md) — _ag-1780667166418-apezq5_
 - [slang include through a dir symlink textual load p](ag-1780667166418-apezq5/1793922342713-slang-include-through-a-dir-symlink-textual-load-p.md) — _ag-1780667166418-apezq5_
 - [bot draft prs never get macos ci flipping to ready](ag-1780667166418-apezq5/1793931306401-bot-draft-prs-never-get-macos-ci-flipping-to-ready.md) — _ag-1780667166418-apezq5_
+- [cuda cross site ballot sync per arm exit ballots r](ag-1780667166418-apezq5/1793941429083-cuda-cross-site-ballot-sync-per-arm-exit-ballots-r.md) — _ag-1780667166418-apezq5_
+- [e31226 static const runtime check cbuffer members ](ag-1780667166418-apezq5/1793946709533-e31226-static-const-runtime-check-cbuffer-members-.md) — _ag-1780667166418-apezq5_
+- [e31226 triage a function local static const separa](ag-1780667166418-apezq5/1793947028680-e31226-triage-a-function-local-static-const-separa.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -7530,6 +7533,7 @@
 - [slang rhi vulkan never sets feature atomic half fp](ag-1780667169498-sqxdef/1793850371738-slang-rhi-vulkan-never-sets-feature-atomic-half-fp.md) — _ag-1780667169498-sqxdef_
 - [slangpy torch diff pair is always is input true ou](ag-1780667169498-sqxdef/1793854899028-slangpy-torch-diff-pair-is-always-is-input-true-ou.md) — _ag-1780667169498-sqxdef_
 - [fork pr ci re run tests the old merge ref not curr](ag-1780667169498-sqxdef/1793890233966-fork-pr-ci-re-run-tests-the-old-merge-ref-not-curr.md) — _ag-1780667169498-sqxdef_
+- [github macos latest macos 26 arm64 metal device ca](ag-1780667169498-sqxdef/1793947328886-github-macos-latest-macos-26-arm64-metal-device-ca.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_

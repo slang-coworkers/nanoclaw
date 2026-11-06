@@ -3,7 +3,7 @@ title: CI Health, Monitoring, Staleness Signals, and Operational Hygiene
 type: concept
 group: misc
 tags: [ci-health, monitoring, stale-data, nightly, sanitizer, github-app-token, slang-pr-report, doc-comments, review-comments]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -19,6 +19,9 @@ distinguishing a stale/cached signal from a real one, and probing the right thin
   MOVING SHAs is real.
 - **A "frozen field" heuristic ("stop re-checking, it doesn't change") is valid only while the number
   stays constant** — the instant it changes, treat it as a fresh signal and re-investigate.
+- **A gate's `recentMasterFailures: N` counts workflow runs, not code breaks** — list workflow names
+  first (CI Health push, board-sync, Issue Onboard are plumbing); judge master from the head's
+  `status` + `check-runs` + merge_group `CI` runs.
 - **Loose grep against dense stream-json JSONL false-positives in both directions** — a single long
   line carries `is_error:false` PLUS unrelated `true`/`529`/UUID matches. Read the terminal state
   (artifact exists; last-line `"type":"result"` event) and cross-check liveness (a growing stream =
@@ -54,6 +57,15 @@ frozen), then changed to 2; re-investigating anyway surfaced a genuine `test-fal
 artifact-download defect. The instant a believed-frozen numeric field changes, re-run full
 investigation ([a frozen-field heuristic must re-arm when the number
 changes](../learnings/1787606627212-a-frozen-field-heuristic-must-re-arm-when-the-numb.md)). A
+master-failure count is a count of workflow runs, not of code breaks: when the tot-regression gate
+reports `recentMasterFailures: N`, list the workflow names first. `CI Health` ("Push health page"
+rejected by slang-ci-analytics with `remote: fatal error in commit_refs`), the board-sync jobs
+(`PR Maintenance`, `PR Commit Status Sync`, `PR Checks Complete Sync`, GraphQL `502 Bad Gateway`) and
+`Issue Onboard` (`$iteration` ID!/String, PR #12982) are plumbing or GitHub-side. On 2026-11-05
+23:19-23:24Z six failures sat on one head, none from the `CI` workflow, and the next CI Health run was
+green. Confirm master health from the head commit's `status` (SlangPy Tests, license/cla), its
+`check-runs` (0 failures) and the merge_group `CI` runs ([recentMasterFailures can be GitHub-side
+502s](../learnings/1793923434923-gate-recentmasterfailures-n-can-be-github-side-502.md)). A
 companion coverage fact: before "fixing" a CI coverage gap by editing one workflow, grep ALL callers
 of the reusable workflow and check each caller's defaults — the multi-server test-server transport
 already runs under ASan on every PR because `ci.yml`'s call to `ci-slang-sanitizer.yml` uses the
@@ -119,11 +131,12 @@ prose, since a mention can be relayed onward into a prohibited GitHub ping ([ded
 endorse a bot-flagged finding, don't re-post
 it](../learnings/1787738047335-dedup-residual-comment-endorse-a-bot-flagged-findi.md)).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Slang sanitizer multi-server transport already runs under ASan on PR CI](../learnings/1787568663413-slang-sanitizer-multi-server-transport-already-run.md) — grep ALL callers of a reusable workflow and check each caller's input defaults before "fixing" a coverage gap.
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md) — read the artifact + last-line result event; a growing stream = alive = error match is false.
 - [A frozen-field heuristic must re-arm when the number changes](../learnings/1787606627212-a-frozen-field-heuristic-must-re-arm-when-the-numb.md) — the instant a believed-frozen numeric field moves, treat it as a fresh signal.
 - [Precheck workflow_failures feed can be stale even when ci_health frame is fresh](../learnings/1787643303858-precheck-workflow-failures-feed-can-be-stale-even-.md) — compare top-entry created_at against date -u; direct API query with cache-buster on staleness.
+- [Gate "recentMasterFailures: N" can be GitHub-side 502s/push rejections, not code](../learnings/1793923434923-gate-recentmasterfailures-n-can-be-github-side-502.md) — list workflow names; judge master from head status + check-runs + merge_group CI
 - [Nightly red streak can be a stale-build artifact, not a persistent failure](../learnings/1787646011162-nightly-red-streak-can-be-a-stale-build-artifact-n.md) — pull head_sha per run; moving-SHA streak is real, shared-pre-fix-SHA streak is stale-build.
 - [slang-test teardown heap corruption = unjoined slang-rhi global worker pool](../learnings/1787565663141-slang-test-teardown-heap-corruption-unjoined-slang.md) — teardown race; clean-under-ASan + many-threads + varying glibc message; mimalloc is a Linux red herring.
 - [GitHub App token 403 on /user is normal — not a broken write path](../learnings/1787633494370-github-app-token-403-on-user-is-normal-not-a-broke.md) — test the write path with the actual write; a blocker escalation is a claim to verify.

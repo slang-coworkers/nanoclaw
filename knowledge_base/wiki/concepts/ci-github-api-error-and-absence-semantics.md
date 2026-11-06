@@ -3,7 +3,7 @@ title: "GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Class
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, job-logs, auth-401, summarizing-tools, absence-claims, controls, slang]
-source_count: 32
+source_count: 33
 ---
 
 # GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Classed Auth & Absence Controls
@@ -12,7 +12,7 @@ source_count: 32
 - **A 215-byte "log" is a 404 `BlobNotFound` body; 151 bytes is a 410 expired-log body.** `gh api` prints both to stdout and exits 0, so greps return a false 0. Assert a log is a log first: size, HTTP 200, a must-hit control string.
 - **gh 2.101+ refuses ANSI-bearing job logs** (exit 1, empty output) without `--allow-escape-sequences`; an empty log is never an expired one (that is a 410). `gh run view --log` refuses while any job waits on an approval gate, so read a finished job per-job.
 - **`steps[]` is perishable: GitHub zeroes it past ~7 days.** `status`/`conclusion` stay authoritative at any age; an `nsteps==0` "untested" rule reclassifies aged real failures and drifts flake rates downward.
-- **`filter=all` returns jobs from every attempt in one flat list**, nothing marking a stale one. Check `run_attempt` against the run's highest attempt before acting on a job failure.
+- **`filter=all` returns jobs from every attempt in one flat list**, nothing marking a stale one. Check `run_attempt` against the run's highest attempt before acting on a job failure. It can also 502 on re-run runs: read `attempts/<n>/jobs`, count a fetch error as a gap, and look in attempt 1 for runner losses a green re-run hides.
 - **Summarizing tools (WebFetch, prose renderers) cannot establish state, counts, or absence.** Enumerate with an API. A false positive state ("resolved through PR #N") is worse than a false negative: it unblocks action and retires a hold that still holds.
 - **A 401/403 is path-classed, never global.** REST can work while GraphQL 401s; auth-introspection endpoints are not capability probes. Name the unprivileged sibling before declaring a fact unavailable: `/branches/main` when `/protection` 403s, `reviewDecision` (null except `CHANGES_REQUESTED` ⇒ no required-approval rule), `raw.githubusercontent` for a public file, `/search/issues` for a repo outside shader-slang, WebFetch for a contributor fork's PR. Under a GraphQL 401, REST reviews give per-review `commit_id` and `author_association`.
 - **A bare 403 on `/search/issues` is usually the secondary rate limit**, invisible to `/rate_limit`: throttle search to ~1 call per 2.5 s, retry after ~65 s, run GraphQL sweeps serially, check an aliased batch returned every alias. A primary-quota 403 mid-sweep is a gap list helpers turn into a false `[]` (see [agent ops](misc-f0909b4-agent-ops-delivery-and-memory.md)). A 404 on `/issues/N` can be a Discussion or an issue hidden with its suspended reporter.
@@ -93,7 +93,9 @@ Several REST fields return a well-formed value that answers a neighbouring quest
 
 `GET /actions/runs/<id>/jobs?filter=all` returns jobs from **every attempt** in one flat list, with nothing in the row marking a stale one, so a `conclusion=="failure"` grep yields a real, rerunnable signature for a run state that no longer exists. On slang#12354 it showed `build-macos-debug-clang-aarch64` failing with `Failed to CreateArtifact: … ENOTFOUND`, textbook infra and normally an auto-rerun; but `GET /actions/jobs/<id>` reports `run_attempt: 1`, and attempt 2 (`/runs/<id>/attempts/2/jobs`, 37/37 jobs) has **no** such failure. The stale row is *more* convincing than a current one: its log is intact (425 KB, rc=0, so no expired-log tell fires) and `run_attempt` is not in the list output. **Check `run_attempt` against the run's highest attempt before acting on any job failure pulled with `filter=all`**; rerunning a stale attempt would "clear on contact" and look like your result ([filter=all stale-attempt failures](../learnings/1786256628770-filter-all-surfaces-stale-attempt-job-failures-tha.md)).
 
-**Source learnings (32):**
+The mirror trap is a run that `filter=all` cannot read at all. On 2026-11-05 `jobs?filter=all` answered **HTTP 502** for runs with `run_attempt > 1` (41757582739, 41758084304) while `/actions/runs/<id>/attempts/<n>/jobs` answered 200. A sweep script that swallowed the error dropped those runs and reported "0 lost runners" for 11-04, but #14294 listed two T4 runner losses in exactly those runs, and the attempt-1 SM80 job there never got a runner (cancelled after 103 min). A run re-run to green reads `conclusion: success`; the losses (a failed job, step `conclusion: null`, no log) exist only in attempt 1. So fetch re-run runs per attempt, record any job-fetch error as a gap, and assert "runs with job data == runs listed" before claiming zero ([filter=all 502s on re-run runs](../learnings/1793867735899-actions-jobs-filter-all-returns-http-502-on-re-run.md)).
+
+**Source learnings (33):**
 
 - [Never assert a negative or a STATE from a summarizing tool; enumerate with gh api](../learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md)
 - [A 403 on one GitHub endpoint is not absence of the fact — try the sibling endpoint](../learnings/1785777155910-a-403-on-one-github-endpoint-is-not-absence-of-the.md)
@@ -104,6 +106,7 @@ Several REST fields return a well-formed value that answers a neighbouring quest
 - [A cancelled job's log endpoint gives a 215-byte 404 `BlobNotFound` body with exit 0 (151 bytes = 410 expired)](../learnings/1786076873413-a-cancelled-ci-job-s-log-endpoint-returns-a-215-by.md)
 - [GitHub zeroes `steps[]` past ~7 days; `nsteps==0` "untested" drifts flake rates down](../learnings/1786074037902-github-zeroes-steps-on-jobs-older-than-7-days-an-n.md)
 - [filter=all surfaces stale-attempt job failures — check run_attempt](../learnings/1786256628770-filter-all-surfaces-stale-attempt-job-failures-tha.md)
+- [Actions jobs?filter=all returns HTTP 502 on re-run runs; lost runners hide in attempt 1](../learnings/1793867735899-actions-jobs-filter-all-returns-http-502-on-re-run.md) — per-attempt fetch; count fetch errors as gaps before "0 lost runners"
 - [gh api job logs: pass --allow-escape-sequences or get empty output](../learnings/1790909517431-gh-api-job-logs-pass-allow-escape-sequences-or-get.md)
 - [REST pulls endpoint gives reliable merged state; search misses closed-unmerged PRs](../learnings/1790842607329-github-rest-pulls-endpoint-gives-reliable-merged-s.md)
 - [Daily GitHub sweep: closed-unmerged PRs need REST, not search](../learnings/1793436218667-daily-github-sweep-closed-unmerged-prs-and-merge-q.md)

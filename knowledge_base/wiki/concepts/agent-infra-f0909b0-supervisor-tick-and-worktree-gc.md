@@ -3,7 +3,7 @@ title: "Supervisor Tick Reliability and Worktree-GC Repo Binding"
 type: concept
 group: agent-infra
 tags: [supervise-issues, pull-universe, thread-key, worktree-gc, gitdir, datetime, gh-401]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -42,7 +42,8 @@ producing readings that look identical to reality. Verify the instrument before 
   `bare-<pr>.git` are never reaped (reap by hand once MERGED). On a disk-pressure fire with
   nothing reapable, measure your own group's writes first; if it isn't you, report the rate.
 - **A correct reap still breaks a consumer that assumed the tree persists**: reused review
-  worktrees and baseline builds can vanish between sessions, so `ls -d` them first (see
+  worktrees and baseline builds can vanish between sessions (scratch trees after 2 idle days; an
+  idle open-PR tree loses `build/` after 14), so `ls -d` them first (see
   [[wiki/concepts/agent-infra-f0909b0-git-worktree-hygiene.md]]).
 
 ## Synthesis
@@ -163,6 +164,14 @@ by hand: confirm the PR is MERGED, bundle any refs with no remote, then `rm -rf`
 `MIN_IDLE_DAYS=1` keeps a real worktree for a merged PR touched in the last 24 h. A manual reap
 of 11 merged-PR trees freed ~8.2 GB
 ([worktree-gc never sees standalone wt-* clones](../learnings/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md)).
+The other two windows are short and long. `worktree-gc.py` treats any `wt-<n>-master`,
+`wt-<n>-verify` or other non-primary tree as scratch and reaps it after `SCRATCH_IDLE_DAYS`
+(2) idle days, saving it to `wip/reap/<name>` first; on a primary tree whose open PR has been idle
+longer than `STALE_OPEN_IDLE_DAYS` (14) it deletes only `build/`. So last week's control tree is
+probably gone, and the PR tree may need `cmake --preset default` again; a `cd` into a reaped tree
+followed by `;` runs the rest in the base clone (see
+[git worktree hygiene](agent-infra-f0909b0-git-worktree-hygiene.md))
+([GC reaps scratch worktrees after 2 idle days](../learnings/1793871310157-a-failed-cd-x-a-b-runs-b-in-the-session-cwd-and-th.md)).
 
 The opposite misreading is reaping because the disk is filling. `/workspace/agent` sits on the
 shared host `/dev/root` (2.5 TB, also the overlay `/`), so when the GC gate fires for <10% free
@@ -196,7 +205,7 @@ stale-ref "ahead" signal, and fetch before trusting any local `origin/*` ahead/b
 
 Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains — a pathological over-flag, not real work, from three durable classifier gaps. (1) **A disposition agreed in-chat or in a `triage-*.md` memo but never written to `supervisor-state.json` is re-flagged every tick.** `scan.py`'s human-owned park (`classify()` checks `HUMAN_OWNED_DISPOSITION` before the ball/silence branches) only fires if the token is IN the state file, and `pull-universe.sh` rehydrates `disposition` from prior state each tick — so when a chain is parked/non-actionable/handed-off, write a recognized `disposition` token (`advisory`, `maintainer-driving`, `stood-down`, `awaiting-pickup`, `external-pr`, `human-debate`, `closed-by-us`) to the state file **that tick**; a memo is not a substitute (five slang perf-epic sub-tasks #12942/12945-12948, closed-by-design at triage, re-flagged because the decision never became a `disposition` key). (2) **Read-only / never-post roles (e.g. `slang-pr-approver`) are structural `awaiting_us` false-positives** — their output is a ledger decision, never a GitHub post, so "human spoke last, unanswered by us" is *always* true (confirmed on #12389); `scan.py` should exclude read-only roles from `awaiting_us`. (3) **R3 "0 comments = no artifact" is a false-positive for a maintainer-self-assigned PM/tracking issue** (core-team reporter + no reproducer + self-assigned) — the disposition + internal memo is the resumable artifact; a bot triage comment is noise on their tracker. Operational rule at scale: never fire 100+ nudges or 32 blocking escalations mechanically — check prior `nudgedAt` (nudged twice → escalate, not a 3rd nudge) and prior-tick cadence (a days-old last nudge means a full blast is a spike, not "resuming"); act on the genuinely-fresh delta and escalate the *systemic* condition once ([persist no-post dispositions to state; read-only roles are awaiting_us false-positives](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 - [Supervisor thread-key regex is greedy — sub-threads parse to a nonexistent repo](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md) — `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$`, greedy-within-segment for hyphenated repos; check the instrument's error log before nudging.
 - [scan.py naive-datetime crash froze state ~23h and produced a 115-nudge false surge](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md) — normalize naive→UTC at the parse_ts chokepoint; a recovery-tick surge is a backlog, hold and escalate.
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md) — `set -euo pipefail` aborts on the first 401; diagnose with `gh api rate_limit`, report BLOCKED, escalate the connect URL, never fabricate a board.
@@ -211,4 +220,5 @@ Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains 
 - [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md) — consumer side of the GC: #13880 R4 lost its `REPO_ROOT` and baseline build
 - [Worktree GC disk-pressure: check whether your group is the source before reaping](../learnings/1793750934022-worktree-gc-disk-pressure-check-whether-your-group.md) — shared `/dev/root` lost ~450 GB in 12 h with 0 GB from this group; report rate + time-to-full; NVML "Unknown Error" = lost device access
 - [worktree-gc never sees standalone wt-* clones (bare-clone review trees)](../learnings/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md) — `git clone --shared` trees from `bare-<pr>.git` are skipped by discovery and the orphan pass; reap by hand after MERGED (~8.2 GB from 11 trees); `MIN_IDLE_DAYS=1`
+- [A failed `cd X && a; b` runs b in the session cwd, and the GC reaps scratch worktrees after 2 idle days](../learnings/1793871310157-a-failed-cd-x-a-b-runs-b-in-the-session-cwd-and-th.md) — `SCRATCH_IDLE_DAYS`=2 (saved to `wip/reap/`); `STALE_OPEN_IDLE_DAYS`=14 deletes only `build/`
 - [GitHub bot rate limit: read reset time from gh api -i headers, not /rate_limit](../learnings/1793769494208-github-bot-rate-limit-read-reset-time-from-gh-api-.md) — `gh api rate_limit` says `app_not_connected` while GitHub is connected; probe a real `/repos` call

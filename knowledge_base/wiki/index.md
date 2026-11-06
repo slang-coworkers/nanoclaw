@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8517 agent learnings**, synthesized into **518 concept pages**.
+Standalone wiki built from **8577 agent learnings**, synthesized into **519 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -519,6 +519,7 @@ Standalone wiki built from **8517 agent learnings**, synthesized into **518 conc
 ### Slang tooling
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
 - [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen, CI LLVM prebuilts)](concepts/slang-tooling-llvm-target-build.md)
+- [docs/generated nightly agentic suite: harness-rule fallout, building the fix set, and masked failures](concepts/slang-tooling-docs-generated-nightly-triage.md)
 - [DXC Prebuilts, FetchDXC CMake & DXC Codegen Checks](concepts/slang-tooling-dxc-prebuilts-and-cmake.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
@@ -576,10 +577,10 @@ Standalone wiki built from **8517 agent learnings**, synthesized into **518 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2836)
-- [NanoClaw / agent operations](topics/agent-ops.md) (988)
-- [CI, build & tooling](topics/ci-tooling.md) (627)
-- [Review & process](topics/review-process.md) (413)
+- [Slang compiler & language](topics/slang-compiler.md) (2865)
+- [NanoClaw / agent operations](topics/agent-ops.md) (997)
+- [CI, build & tooling](topics/ci-tooling.md) (633)
+- [Review & process](topics/review-process.md) (414)
 - [PR review, approval & calibration](topics/review-approval.md) (1420)
-- [Verification & evidence discipline](topics/verification.md) (585)
-- [Uncategorized](topics/misc.md) (1648)
+- [Verification & evidence discipline](topics/verification.md) (586)
+- [Uncategorized](topics/misc.md) (1662)

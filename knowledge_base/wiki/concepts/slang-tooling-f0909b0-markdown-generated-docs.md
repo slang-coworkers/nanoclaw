@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 21
+source_count: 22
 ---
 
 ## TL;DR
@@ -24,22 +24,22 @@ PR red or balloons a minimal diff into a rejected reformat.
   3.9.x installs reformat differently. Install 3.3.3 into `/tmp`, put it first on `PATH`, and
   trust the line-local delta, not the count. Where a generated README fails 3.3.3 even on
   master, make a minimal padded edit rather than reformatting the file.
-- **A `docs/generated/tests` bundle's `_prompt.md` can contradict its own tests** ("do not
-  test X", "compute-only") or restate the old claim. Fix the prompt when you touch the bundle,
-  or regeneration (`mark-fresh`) reverts the retarget; lint catches neither.
-- **PR CI never runs `docs/generated/tests` (nightly only).** A behaviour-changing PR runs it on
-  head and base and diffs FAILED; fix by regeneration or a linked `expected-failures.txt` entry.
-  A bare directory prefix (no `-test-dir`) runs ZERO of these tests; pass the files.
+- **A `docs/generated/tests` bundle's `_prompt.md` (and `_meta/prompts/_common.md`) can
+  contradict its tests or prescribe the old shape.** Any retarget or mechanical sweep edits them
+  too, or regeneration reverts it; lint catches neither, and prompt edits stale no bundle.
+- **PR CI never runs `docs/generated/tests` (nightly only).** A behaviour-changing PR (and any
+  harness-rule PR) runs it on head and base and diffs FAILED; fix by regeneration or a linked
+  `expected-failures.txt` entry. A bare directory prefix (no `-test-dir`) runs ZERO of these
+  tests; pass the files. A docs-only PR's green ci.yml skipped every build/test job.
 - **A nightly "No diagnostics found on line N" can be an intentional diagnostic removal.** Read
   the causing PR's own `tests/` diff before calling it a lost warning; the fixture may be stale.
 - **README coverage rows often do NOT equal `//META: purpose` verbatim** (15/72 in one bundle);
   a single mismatch is a nit. Script a bundle-wide check before asserting any convention.
 - **Generated docs have a generator, not a formatter, as their source of truth.**
   `docs/command-line-slangc-reference.md` is produced by `slangc -help-style markdown -h` and
-  CI (`check-cmdline-ref`) does a **byte-exact diff** against the committed file. The
-  generator emits every line with a trailing space. Running prettier over it strips those and
-  rewrites tables → `check-cmdline-ref` red. Regenerate from your own build after any merge or
-  help-string edit; never hand-edit it.
+  CI (`check-cmdline-ref`) **byte-diffs** it against the committed file. The generator emits a
+  trailing space on every line; prettier strips them and rewrites tables → red. Regenerate from
+  your own build after any merge or help-string edit; never hand-edit it.
 - **Don't overclaim "byte-identical" for generated docs.** The generator adds trailing
   whitespace/escaping the source C++ literal lacks. Say "matches in content, modulo generator
   formatting"; CI enforces *generator-output consistency*, not source==doc byte equality.
@@ -248,7 +248,21 @@ catches neither of the two retarget omissions below. For #13282, `metadata/_prom
 still said "DebugNoScope is emitted with zero operands", so the approved regeneration path
 (re-prompt + `mark-fresh`) would have regenerated the stale test and silently reverted the fix;
 the precedents #13150 and #13172 both edited `_prompt.md` alongside the test, so grep the bundle's
-`_prompt.md` for the old claim's key terms. The second item is the README coverage row:
+`_prompt.md` for the old claim's key terms. The same holds for a mechanical sweep across many
+bundles, where the shared `_meta/prompts/_common.md` is usually the source of the old shape.
+`_meta/regenerate.md`'s hand-edit policy names `_meta/prompts/*` and the per-bundle `_prompt.md`
+files as the source of truth, and they are hand-edited by design. The maintainer precedent is
+#12846, the `-o /dev/null` → `-o -` sweep, which edited `_common.md` and the bundle prompts in the
+same PR so a regeneration "cannot mint /dev/null again". #14343, the `exit-code=` sweep after
+#14269 (see [the nightly triage page](slang-tooling-docs-generated-nightly-triage.md)), fixed 58
+fixtures but left `_common.md` and `keywords-and-builtins/_prompt.md:60,147` still prescribing
+`//DIAGNOSTIC_TEST:SIMPLE(filecheck=CHECK):` for rejected-code claims, so the next regeneration
+would bring the failures back. Prompt edits make no bundle stale, because the freshness digest
+(`compute_watched_digest`) hashes only the watched paths and `source_doc`. A mechanical sweep
+also keeps each `//META` unchanged (#12846); only a re-prompting reconcile updates
+`model`/`generated_at`/`source_commit` (#14172)
+[sweeps must also fix the generator prompts](../learnings/1793872226026-docs-generated-fixture-sweeps-must-also-fix-the-ge.md).
+The second item is the README coverage row:
 `_common.md` asks each row's Claim cell to equal the test's `//META: purpose=` line verbatim, as
 `Cnn: <purpose>`, but that rule is neither lint-enforced nor followed bundle-wide. A full scan of
 the 72 `ir-reference/metadata` tests (2026-09-30) found 15 rows that differ (4 only by markdown
@@ -259,6 +273,8 @@ containing ``[`<file>`]``, strip the `C.., C..: ` prefix) rather than generalizi
 check
 [retarget: update `_prompt.md`](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md)
 [correction: README rows often differ from `//META: purpose`](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md).
+
+See also: [docs/generated nightly triage: harness-rule fallout and masked failures](slang-tooling-docs-generated-nightly-triage.md).
 
 ## Linking to Slang docs: ReadTheDocs page names follow the source file
 
@@ -276,7 +292,7 @@ note from the same fix: `./extras/formatting.sh` with no arguments only prints h
 markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 [RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -298,3 +314,4 @@ markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
 - [Nightly doc-test "No diagnostics found" can be an intentional diagnostic removal](../learnings/1792744585332-nightly-doc-test-no-diagnostics-found-can-be-an-in.md) — #13406 dropped in+inout and ref+ref alias warnings on purpose; read the PR's `tests/` diff first.
 - [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint (side note: language reference moved to shader-slang/spec)](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md) — `doc_ref` paths to `docs/language-reference/` are dead; read the spec via `gh api … application/vnd.github.raw`.
 - [formatting.sh unquoted $@ also narrows CMake and local C++; filed as #14134](../learnings/1793524792512-formatting-sh-unquoted-also-narrows-cmake-and-loca.md) — 315 generated md fail; reformat changes source_doc_digest
+- [docs/generated fixture sweeps must also fix the generator prompts; a CHECK-DAG pin can shrink a leading CHECK-NOT](../learnings/1793872226026-docs-generated-fixture-sweeps-must-also-fix-the-ge.md) — #12846/#14343 precedents; `_common.md`; prompt edits stale no bundle; `//META` kept on sweeps

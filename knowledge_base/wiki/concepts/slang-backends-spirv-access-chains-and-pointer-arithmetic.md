@@ -3,7 +3,7 @@ title: "Slang SPIR-V access chains and pointer arithmetic as drivers and tools r
 type: concept
 group: slang-backends
 tags: [spirv, vulkan, OpAccessChain, OpPtrAccessChain, matrix, MatrixStride, RowMajor, CombineAccessChains, optimization-level, emit-spirv-via-glsl, renderdoc, shader-debugger, physical-storage-buffer, psb, buffer-reference, Shader64BitIndexing, 64-bit-indexing, nvidia, l40s, lavapipe, glslang, pointer, Ptr, __getAddress, __getOffsetPtr, slang-test, headless-harness, triage]
-source_count: 4
+source_count: 5
 ---
 
 # Slang SPIR-V access chains and pointer arithmetic as drivers and tools read them
@@ -21,6 +21,7 @@ Slang's SPIR-V emitter builds addresses one IR instruction at a time, so the acc
 - **NVIDIA Vulkan computes a PhysicalStorageBuffer `OpPtrAccessChain` step as zero-extended low32(Element×ArrayStride)**, so `Ptr<uint>(base) + (-1)` lands at base + 0xFFFFFFFC. Only the `Shader64BitIndexingEXT` execution mode or `VK_PIPELINE_CREATE_2_64_BIT_INDEXING_BIT_EXT` fixes it; the device feature alone does not.
 - **lavapipe sign-extends and glslang lowers `p + i` to integer arithmetic**, so neither shows the NVIDIA behaviour; slang-test -vk does, because slang-rhi never enables 64-bit indexing.
 - **Ptr `operator-` is `__getOffsetPtr(value, -offset)`**, so on CUDA and CPU `p - uint(1)` moves forward by 0xFFFFFFFF elements: a separate compiler bug.
+- **The L40S driver (595.91.07) SIGSEGVs at pipeline creation on an `OpBitcast` of an access-chain PSB pointer to a pointee that differs only in signedness** (`*(int*)(p + 1)`), though spirv-val accepts it; narrow such crashes one pointee type at a time with a raw-Vulkan harness.
 - **For pointer runtime tests on cpu, vk and cuda, use `uniform T*` inputs set by `TEST_INPUT ubuffer`**, not `__getAddress(buf[i])`. The latter fails spirv-val once passed to a non-inlined function or stored into a pointer buffer (a pre-existing limit).
 - **A ~200-line raw-Vulkan headless harness runs a reporter's exact multi-entry-point SPIR-V**, which slang-test cannot. Add a "simulated bug" variant as a sensitivity control.
 - **Check `slangc -v` before claiming top-of-tree**: a recent mtime does not mean a current build.
@@ -43,6 +44,10 @@ The NVIDIA Vulkan driver computes a wrong address for a negative `OpPtrAccessCha
 
 The same triage found a separate compiler bug. In `core.meta.slang`, `operator-` for `Ptr` is `__getOffsetPtr(value, -offset)`, so with an unsigned offset on CUDA and CPU, `p - uint(1)` moves forward by 0xFFFFFFFF elements.
 
+## A signedness-only PSB pointer bitcast crashes the NVIDIA compiler (#14208)
+
+On the same L40S driver (Linux 595.91.07), `vkCreateComputePipelines` SIGSEGVs inside `libnvidia-glvkspirv` for spirv-val-clean SPIR-V when an `OpBitcast` converts a PhysicalStorageBuffer pointer to a pointer whose pointee differs ONLY in signedness (uint↔int, ulong↔long, v2uint↔v2int) and the bitcast operand is an `OpPtrAccessChain` or `OpAccessChain` result. Slang emits that shape 1:1 from source for `*(int*)(p + 1)` (GetOffsetPtr, then BitCast) and `*(int*)&sp->uintField`. It does not crash for float pointees, different-size pointees, bitcast-first (`(int*)p + 1`), or a bitcast of an `OpLoad`/`OpConvertUToPtr` pointer; -O levels and `Shader64BitIndexingEXT` do not help, and lavapipe and glslang output run correctly. A `PtrToU`/`UToPtr` round trip avoids it but adds the Int64 capability. Measure with a raw-Vulkan push-constant harness with no slang-rhi (`/workspace/agent/scratch-14208/harness.cpp`, slang-triager); it needs the slang-bundled Vulkan headers (`-I external/vulkan/include`) for `VK_EXT_shader_64bit_indexing`, because the system headers are too old. Narrow by changing one pointee type per variant: signedness was the variable, which the issue title did not suggest ([signedness-only PSB pointer OpBitcast crashes the L40S driver](../learnings/1793880152031-nvidia-l40s-595-91-07-crashes-on-a-signedness-only.md)).
+
 ## Testing pointers and access chains on the GPU
 
 **Pointer inputs for runtime tests.** On master (Nov 2026), a pointer taken with `__getAddress(rwStructuredBuffer[i])` fails SPIR-V validation once it is passed to a non-inlined function (the `OpPtrAccessChain` result type is PhysicalStorageBuffer on a StorageBuffer `this` parameter) or stored into a `RWStructuredBuffer<Ptr<int>>` (an `OpStore` type mismatch). This is a pre-existing backend limit, not a regression from the change under test. A runtime pointer test that must run on cpu, vk and cuda should declare `uniform int* p;` with `//TEST_INPUT: set p = ubuffer(data=[...], stride=4);`, following `tests/language-feature/dynamic-dispatch/ptr-to-interface-param.slang`; those are real device addresses on all three backends. Pointer-to-pointer works through `uniform Ptr<int>* slot;` and a runtime `*slot = p + 2;`. A first-run "Unable to create renderer [CUDA]" on the L40S fleet can be transient, so rerun before investigating ([pointer runtime tests: use uniform T* inputs, not __getAddress](../learnings/1793817710517-slang-pointer-runtime-tests-use-uniform-t-inputs-n.md)).
@@ -60,10 +65,11 @@ The same triage found a separate compiler bug. In `core.meta.slang`, `operator-`
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, runtime tests and the container environment
 - [[wiki/concepts/slang-backends-vulkan-float-narrowing-rounding.md]] — another place where Vulkan implementations legitimately differ
 
-**Source learnings (4):**
+**Source learnings (5):**
 - [SPIR-V matrix element access: Slang emits chained OpAccessChain at -O0/-O1; headless Vulkan harness for graphics-stage repros](../learnings/1793786764600-spir-v-matrix-element-access-slang-emits-chained-o.md) — one chain per address inst; `CombineAccessChains` only at -O2/-O3; "always reads row 0" signature; raw-Vulkan harness; stale `build/Release`
 - [RenderDoc's SPIR-V shader debugger misreads Slang's chained OpAccessChain into a matrix column (source reading)](../learnings/1793791620506-renderdoc-s-spir-v-shader-debugger-misreads-slang-.md) — `MakeCompositePointer` drops the column selector; drivers and SPIRV-Cross are fine; ask debugger vs replay (#14304)
 - [Vulkan PSB OpPtrAccessChain negative Element wraps +4GB on NVIDIA without 64-bit indexing; lavapipe/glslang differ](../learnings/1793805740394-vulkan-psb-opptraccesschain-negative-element-wraps.md) — zero-extended low32 step; 64-bit indexing mode fixes it; Ptr `operator-` bug on CUDA/CPU; lavapipe and glslang tool builds (#14305)
 - [Slang pointer runtime tests: use uniform T* inputs, not __getAddress(buf[i]), for vk](../learnings/1793817710517-slang-pointer-runtime-tests-use-uniform-t-inputs-n.md) — `__getAddress` pointers fail spirv-val across calls/stores; `TEST_INPUT ubuffer` pointers work on cpu/vk/cuda; transient CUDA renderer failure
+- [NVIDIA L40S 595.91.07 crashes on a signedness-only PSB pointer OpBitcast of an access-chain result (#14208)](../learnings/1793880152031-nvidia-l40s-595-91-07-crashes-on-a-signedness-only.md) — uint↔int pointee bitcast of OpPtrAccessChain/OpAccessChain SIGSEGVs libnvidia-glvkspirv; raw-Vulkan harness; one-variable narrowing
 
 _Catalog: [[wiki/index.md]]_

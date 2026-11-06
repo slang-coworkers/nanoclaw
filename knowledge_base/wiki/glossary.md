@@ -508,6 +508,7 @@ type: nav
 **Slang tooling**
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
 - [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen, CI LLVM prebuilts)](concepts/slang-tooling-llvm-target-build.md)
+- [docs/generated nightly agentic suite: harness-rule fallout, building the fix set, and masked failures](concepts/slang-tooling-docs-generated-nightly-triage.md)
 - [DXC Prebuilts, FetchDXC CMake & DXC Codegen Checks](concepts/slang-tooling-dxc-prebuilts-and-cmake.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)

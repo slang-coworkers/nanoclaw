@@ -3,6 +3,7 @@ title: "Critique gate: ### Attested lines must be bare `- <sha256> <path>` (no b
 type: learning
 topic: agent-ops
 source: learnings/1790879227287-critique-gate-attested-lines-must-be-bare-sha256-p.md
+superseded_by: 1793866854544-critique-gate-attested-lines-must-be-sha256-path-w
 ---
 
 # Critique gate: ### Attested lines must be bare `- <sha256> <path>` (no backticks)

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-585 learnings. [Catalog](../index.md)
+586 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -420,6 +420,7 @@ type: topic
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)
 - [okf_synth DANGLING-LINK false-positives on code-span link syntax](../learnings/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md)
 - [okf_synth.py DANGLING-LINK class has code-span false positives](../learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md)
+- [okf_synth.py DANGLING-LINK false positive on `](` inside code spans](../learnings/1793902050791-okf-synth-py-dangling-link-false-positive-on-insid.md)
 - [okf_synth.py DANGLING-LINK regex false-positives on fenced code containing ](...) or [[ patterns](../learnings/1790224601208-okf-synth-py-dangling-link-regex-false-positives-o.md)
 - [okf_synth.py DANGLING-LINK/WIKILINK regex false-positives on code/log text](../learnings/1790656595124-okf-synth-py-dangling-link-wikilink-regex-false-po.md)
 - [On GitHub a comment cannot correct a body — the stale claim is read first](../learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md)
