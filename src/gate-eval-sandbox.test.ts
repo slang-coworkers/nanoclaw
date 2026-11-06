@@ -113,6 +113,16 @@ describe.skipIf(!hasJq)('MCP tools that reach humans or write files', () => {
     expect(r.stderr).toContain('git push to the fork');
   });
 
+  it('refuses append_learning outright: a trial must not write the shared learnings', () => {
+    activate();
+    const r = run({
+      tool_name: 'mcp__nanoclaw__append_learning',
+      tool_input: { title: 'PR #11595 reviewers want runtime tests', content: 'seen while reviewing' },
+    });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('shared learnings');
+  });
+
   it('lets the two tools through when the gate is inactive', () => {
     expect(run({ tool_name: 'mcp__slang-mcp__discord_send_message', tool_input: { content: 'hi' } }).status).toBe(0);
   });
@@ -303,5 +313,16 @@ describe.skipIf(!hasJq || !hasPython)('Bash: command shapes', () => {
   it('passes commands that only mention gh in text', () => {
     expect(bash('echo "run gh pr create later" && ls -la').status).toBe(0);
     expect(bash('npm test && make build').status).toBe(0);
+  });
+  it('refuses any command that names the task bank, reads included, and honours EVAL_DENIED_REPOS', () => {
+    expect(bash('gh api repos/slang-coworkers/slang-eval-tasks/contents/tasks/review').status).toBe(2);
+    expect(bash('gh api repos/slang-coworkers/slang-eval-tasks/contents/tasks/review').stderr).toContain('task bank');
+    expect(bash('git clone https://github.com/slang-coworkers/slang-eval-tasks.git /tmp/bank').status).toBe(2);
+    expect(bash('curl -s https://api.github.com/repos/slang-coworkers/slang-eval-tasks/pulls').status).toBe(2);
+    expect(bash('gh api repos/slang-coworkers/slang-eval/pulls?state=open').status).toBe(0);
+    expect(bash('gh api repos/other/secret-bank/contents', { EVAL_DENIED_REPOS: 'other/secret-bank' }).status).toBe(2);
+    expect(
+      bash('gh api repos/slang-coworkers/slang-eval-tasks/contents', { EVAL_DENIED_REPOS: 'other/secret-bank' }).status,
+    ).toBe(0);
   });
 });
