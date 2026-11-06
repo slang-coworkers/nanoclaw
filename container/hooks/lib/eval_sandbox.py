@@ -43,6 +43,9 @@ import sys
 from typing import Callable
 
 DEFAULT_ALLOWED = "slang-coworkers/slang-eval"
+# Repositories an evaluation copy may not touch at all, reads included: the task bank
+# holds every answer key. EVAL_DENIED_REPOS overrides (comma- or space-separated).
+DEFAULT_DENIED = "slang-coworkers/slang-eval-tasks"
 
 # Verbs per gh resource that create, change or remove something on GitHub. Verbs not
 # listed (view, list, diff, checks, status, checkout, clone, download, ...) read, or
@@ -93,6 +96,23 @@ def parse_allowed(value: str | None) -> set:
         m = GITHUB_URL_RE.match(item)
         out.add(f"{m.group(1)}/{m.group(2)}".lower() if m else item.strip("/").lower())
     return out
+
+
+def parse_denied(value: str | None) -> set:
+    """Lower-cased `owner/repo` set of repositories that may not be read or written."""
+    return parse_allowed(value) if value and value.strip() else parse_allowed(DEFAULT_DENIED)
+
+
+def check_denied(segment: str, denied) -> str | None:
+    """Reason the segment names a denied repository in any spelling (`owner/repo`,
+    `owner/repo.git`, a github.com or api.github.com URL), or None."""
+    low = segment.lower()
+    for repo in denied:
+        owner, name = repo.split("/", 1)
+        if re.search(rf"(?<![\w.-]){re.escape(owner)}/{re.escape(name)}(?:\.git)?(?![\w.-])", low):
+            return (f"refused: the command names {repo}, the evaluation task bank; an evaluation copy may not read "
+                    f"or write it. Work only from the task text you were given.")
+    return None
 
 
 def repo_from_url(url: str) -> str | None:
@@ -291,10 +311,13 @@ def check_http(segment: str, tokens, allowed) -> str | None:
     return None
 
 
-def classify(command: str, allowed, resolve_remote: Callable[[str], str | None]) -> str | None:
-    """Reason the command would write outside `allowed`, or None when it only reads or
-    writes to an allowed repository."""
+def classify(command: str, allowed, resolve_remote: Callable[[str], str | None], denied=frozenset()) -> str | None:
+    """Reason the command would write outside `allowed` or touch a `denied` repository,
+    or None when it only reads or writes to an allowed repository."""
     for segment in split_segments(command):
+        reason = check_denied(segment, denied)
+        if reason:
+            return reason
         tokens = strip_env_prefix(tokens_of(segment))
         if not tokens:
             continue
@@ -342,7 +365,8 @@ def main() -> int:
     cd = leading_cd(command)
     cwd = cd if cd and os.path.isabs(cd) else (os.path.join(hook_cwd, cd) if cd else hook_cwd)
     allowed = parse_allowed(os.environ.get("EVAL_ALLOWED_REPOS"))
-    reason = classify(command, allowed, git_remote_resolver(cwd))
+    denied = parse_denied(os.environ.get("EVAL_DENIED_REPOS"))
+    reason = classify(command, allowed, git_remote_resolver(cwd), denied)
     if reason:
         print(reason, file=sys.stderr)
         return 2
