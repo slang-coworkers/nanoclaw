@@ -116,6 +116,8 @@ async function startServer(
     ROUTE_ISSUES_TO: '',
     APPROVER_CI_GATE: false,
     CI_GATE_REQUIRED_SUITE: '',
+    ISSUE_NEWCOMER_LABELS: ['good first issue', 'goodfirstissue', 'help wanted', 'helpwanted', 'no-bot'],
+    ISSUE_STOP_PHRASES: ['stop', 'stand down', 'leave this', 'leave it', 'back off', 'no bot'],
     ...config,
   }));
   const deliverGitHubMention = vi.fn(() => 'forwarded');

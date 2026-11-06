@@ -16,6 +16,9 @@ vi.mock('./config.js', () => ({
   DATA_DIR: '/tmp/nanoclaw-startup-order',
   MCP_PROXY_PORT: 0,
   PROXY_BIND_HOST: '127.0.0.1',
+  GITHUB_WEBHOOK_BOT_MENTION: '@nv-slang-bot',
+  ISSUE_STAND_DOWN_ENABLED: false,
+  ISSUE_STAND_DOWN_HOURS: 24,
   validateContainerTimeouts: () => ({ ok: true }),
 }));
 // Fork-only startup work, stubbed so the assertions below are about ORDER and
