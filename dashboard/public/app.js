@@ -2882,7 +2882,10 @@ function sessionSlugOnly(nanoSess) {
 }
 
 function sessionKindPrefix(nanoSess) {
-  return nanoSess?.thread_id ? 'Thread' : 'Session';
+  const tid = nanoSess?.thread_id;
+  if (!tid) return 'Session';
+  // One-shot `ncl tasks create` sessions live on the `system:tasks:<series>` thread.
+  return String(tid).startsWith('system:tasks') ? 'Task' : 'Thread';
 }
 
 function sessionDisplayTitle(nanoSess) {
@@ -3207,24 +3210,107 @@ function renderDetailHooks(cw) {
   return html;
 }
 
-function currentViewedNanoSession(folder) {
-  const threadId = cwState.thread?.parentId || null;
-  const sessions = (cachedSessions || []).filter((s) => s.group_folder === folder && s.nanoclaw_session_id);
-  if (threadId) return sessions.find((s) => s.thread_id === threadId) || null;
-  return sessions.find((s) => s.thread_id == null) || null;
+// Pick the NanoClaw session whose events the coworker panel shows, out of one
+// folder's sessions. Precedence: a session-direct view (its parentId is the
+// session id; the originating thread is the fallback) → the open thread's
+// session → the session picked in the panel → the main session (thread_id
+// null) → the most recently active running session, task sessions included →
+// the most recently active session. Hidden sessions win only when addressed
+// explicitly. Null only when the folder has no session at all. Eval copies and
+// other task-only coworkers never have a main session, so the fallback chain
+// is what makes their `ncl tasks create` sessions show up here.
+function resolvePanelSession(
+  sessions,
+  { threadId = null, sessionDirectId = null, threadFallbackId = null, pickedId = null } = {},
+) {
+  const list = (sessions || []).filter((s) => s && s.nanoclaw_session_id);
+  if (sessionDirectId) {
+    return (
+      list.find((s) => s.nanoclaw_session_id === sessionDirectId) ||
+      (threadFallbackId ? list.find((s) => s.thread_id === threadFallbackId) : null) ||
+      null
+    );
+  }
+  if (threadId) return list.find((s) => s.thread_id === threadId) || null;
+  if (pickedId) {
+    const picked = list.find((s) => s.nanoclaw_session_id === pickedId);
+    if (picked) return picked;
+  }
+  const visible = list.filter((s) => !s.hidden_at);
+  const main = visible.find((s) => s.thread_id == null);
+  if (main) return main;
+  const lastMs = (s) => (s.last_active ? new Date(s.last_active).getTime() : 0);
+  const byRecent = visible.slice().sort((a, b) => lastMs(b) - lastMs(a));
+  return byRecent.find((s) => s.container_status === 'running') || byRecent[0] || null;
 }
+
+function currentViewedNanoSession(folder) {
+  const sessions = (cachedSessions || []).filter((s) => s.group_folder === folder && s.nanoclaw_session_id);
+  const t = cwState.thread;
+  return resolvePanelSession(sessions, {
+    threadId: t && !t.sessionDirect ? t.parentId || null : null,
+    sessionDirectId: t?.sessionDirect ? t.parentId || null : null,
+    threadFallbackId: t?.sessionDirect ? t.threadId || null : null,
+    pickedId: (cwState.panelSessionByFolder || {})[folder] || null,
+  });
+}
+
+// One line naming the session the events below belong to. With several visible
+// sessions and no thread open it is a <select>, so a task session can be
+// followed without opening its chat view. A coworker with only its main
+// session renders nothing here.
+function renderPanelSessionHeader(folder, nanoSess, label) {
+  if (cwState.thread) return '';
+  const visible = (cachedSessions || []).filter(
+    (s) => s.group_folder === folder && s.nanoclaw_session_id && !s.hidden_at,
+  );
+  if (visible.length <= 1 && nanoSess.thread_id == null) return '';
+  const lastMs = (s) => (s.last_active ? new Date(s.last_active).getTime() : 0);
+  const running = (s) => Number(s.container_status === 'running');
+  const options = visible
+    .slice()
+    .sort((a, b) => running(b) - running(a) || lastMs(b) - lastMs(a))
+    .map((s) => {
+      const name = sessionDisplayTitle(s) || String(s.nanoclaw_session_id || '').slice(0, 16);
+      const sel = s.nanoclaw_session_id === nanoSess.nanoclaw_session_id ? ' selected' : '';
+      const text = `${running(s) ? '●' : '○'} ${sessionKindPrefix(s)}- ${name}`;
+      return `<option value="${escAttr(s.nanoclaw_session_id)}"${sel}>${esc(text)}</option>`;
+    })
+    .join('');
+  const picker =
+    visible.length > 1
+      ? `<select class="cw-panel-session-select" data-folder="${escAttr(folder)}" title="Session whose events are shown below" style="font-size:9px;max-width:100%;padding:1px 2px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px">${options}</select>`
+      : `<span style="font-size:9px;color:var(--text-dim)">${esc(label)}</span>`;
+  return `<div style="margin-top:6px;font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em">Events of</div>${picker}`;
+}
+
+// The picker above stores the choice per folder and redraws the panel.
+document.addEventListener('change', (e) => {
+  const sel = e.target && e.target.closest ? e.target.closest('.cw-panel-session-select') : null;
+  if (!sel) return;
+  cwState.panelSessionByFolder = cwState.panelSessionByFolder || {};
+  cwState.panelSessionByFolder[sel.dataset.folder] = sel.value || null;
+  const tools = document.getElementById('cw-detail-tools');
+  if (tools) tools._lastHtml = null;
+  if (typeof updateCwDetail === 'function') updateCwDetail();
+});
 
 function renderCurrentSessionEvents(folder) {
   const nanoSess = currentViewedNanoSession(folder);
-  if (!nanoSess) return '<span style="color:var(--text-dim)">No active session resolved for this view.</span>';
-  // One-line format: `Session- tender-fell-rests: Fix PR#124` (or
-  // `Thread- …: …` for a thread session). Falls back to just the slug
-  // when no display_title has landed yet.
+  if (!nanoSess) {
+    const any = (cachedSessions || []).some((s) => s.group_folder === folder && s.nanoclaw_session_id);
+    const msg = any ? 'No session matches this view.' : 'No active session for this coworker.';
+    return `<span style="color:var(--text-dim)">${msg}</span>`;
+  }
+  // One-line format: `Session- tender-fell-rests: Fix PR#124` (`Thread- …` for a
+  // thread session, `Task- …` for a one-shot task). Falls back to the slug when
+  // no display_title has landed yet.
   const kind = sessionKindPrefix(nanoSess);
   const title = sessionDisplayTitle(nanoSess);
   const label = `${kind}- ${title || String(nanoSess?.nanoclaw_session_id || '').slice(0, 16)}`;
+  const header = renderPanelSessionHeader(folder, nanoSess, label);
   const events = nanoSess.recent_events || [];
-  if (events.length === 0) return '';
+  if (events.length === 0) return header;
   const eventHtml = events
     .slice(0, 5)
     .map(
@@ -3235,7 +3321,7 @@ function renderCurrentSessionEvents(folder) {
       </button>`,
     )
     .join('');
-  return `<div style="margin-top:6px">${eventHtml}</div>`;
+  return `${header}<div style="margin-top:6px">${eventHtml}</div>`;
 }
 
 function hasMultipleActiveSessions(cw) {
@@ -7680,6 +7766,7 @@ const cwState = {
   polling: null, // main-view polling interval
   loadingOlder: false, // re-entrancy guard for the "Load older" click — pagination requests can race with the 3s poll
   thread: null, // { parentId, parentSnapshot, messages: [], polling, hasMore, loadingOlder } when a thread panel is open; null otherwise
+  panelSessionByFolder: {}, // { folder: nanoclaw_session_id } — session the detail panel's events block follows when no thread is open
   a2aInspector: null, // { recipientAgGroupId, senderThreadId, recipientName, session, messages } — Option C read-only peek
   types: null, // coworker-types.json cache
   approvalCountByFolder: {}, // { folder: count } for sidebar dot
