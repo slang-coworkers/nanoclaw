@@ -1,7 +1,7 @@
 ---
 type: project
 title: slang#14294 — win-test-* (GCP-T4) runners lost at ~03:25Z / ~03:42Z UTC
-description: "Bot-filed CI-infra issue 11-04 04:28Z. 12 Windows GPU runner losses on 7 days, all ending 03:25–03:44Z; mid-test, no log. Infra, no triager/fixer, no bot post. Owner: GCP-T4 pool owner (jkiviluoto-nv did the #13298 pagefile fix). One-shot recheck 11-05 04:05Z."
+description: "Bot-filed CI-infra issue 11-04 04:28Z. 12 Windows GPU runner losses on 7 days, all ending 03:25–03:44Z; mid-test, no log. Infra, no triager/fixer, no bot post. Owner: GCP-T4 pool owner (jkiviluoto-nv did the #13298 pagefile fix). Recheck 11-05 04:05Z: no recurrence; assigned jkwak-work + jkiviluoto-nv, milestone Q1 2027."
 tags: [ci-infra, gcp-t4, windows-gpu, merge-queue]
 ---
 
@@ -25,3 +25,16 @@ tags: [ci-infra, gcp-t4, windows-gpu, merge-queue]
   can see what runs at 03:25Z (runner-list API is 403 for the bot).
 - **Resume:** one-shot `recheck-14294-win-test-l-d37f` at 2026-11-05T04:05Z counts win-test jobs in that
   morning's window. A human comment or close arrives as a webhook.
+- **Recheck 2026-11-05 04:05Z (`recheck-14294-win-test-l-d37f`): no recurrence.** Issue OPEN, 0 comments.
+  On 11-04 17:33Z `jkwak-work` assigned `jkwak-work` + `jkiviluoto-nv` and set milestone "Q1 2027 (Winter)".
+  This is human triage, not a reply, so no dashboard post (the task allowed one only for a recurrence, a reply, or a close).
+  Actions API, CI runs created 11-04 22:00Z–11-05 03:55Z (12 merge_group + 22 pull_request): 48 win-test jobs,
+  **all success**. 4 overlapped 03:15–03:55Z, all in run 41957880821: 127021203339 (`win-test-324c01ce`
+  03:08:47→03:22:19), 127021203382 (`win-test-dd487ca1` 03:08:27→03:16:08), **127023097757 (`win-test-376e78d4`
+  03:13:49→04:03:54, ran through both the 03:25 and 03:42 windows)**, 127023097806 (`win-test-ddb54708`
+  03:13:42→03:41:31). No lost-communication annotation. So the loss does not happen every day (one clean
+  day, consistent with the issue's 7-of-~21-day pattern). No further timer; a human comment or close arrives as a webhook.
+- **11-05 11:36Z dashboard asked for a triage verdict.** I answered directly on this thread and did not dispatch
+  slang-triager: it is CI infra, and humans already own it (assigned 11-04 17:33Z, rung 4). Verdict: CI infra,
+  GCP-T4 Windows GPU pool, P2 (intermittent merge-queue evictions, workaround is re-enqueue). Next step is with
+  jkiviluoto-nv: what runs on the hosts or the scale set at ~03:25Z and ~03:42Z.

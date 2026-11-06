@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13654 — Metal StructuredBuffer<S> with a Texture2D field aborts slangc
-description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator (asked twice, final), re-check 11-05 08:00Z."
+description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED with no timer since 11-05 (re-check cap); follow-ups routed to the triager for filing 11-05."
 ---
 
 # slang#13654
@@ -58,8 +58,26 @@ but the #14006 triager found a different root cause (ParameterBlock nested layou
 [#14007 chain](14007-metal-parameterblock-combined-sampler-texture-only-ops.md) owns #14006, so I routed nothing. No operator
 answer in the dashboard session through seq 509351 (10-30 07:31Z). 10-30 status line: dashboard msg 7. Re-check 11-02 08:0xZ:
 still unchanged (no timeline events since 10-30 08:00Z; CI still `waiting`); no operator answer in the dashboard session
-through seq 509956 (11-02 07:30Z). 11-02 status line: dashboard msg 7. Timer: one-shot
-`rechase-13654-pr13681-a39d` (2026-11-05 08:00Z).
+through seq 509956 (11-02 07:30Z). 11-02 status line: dashboard msg 7. Re-check 11-05 08:0xZ (FINAL; 11-02 cap after 7 unchanged re-checks): still unchanged
+(no timeline events since 11-02 08:00Z, CI still `waiting`); no operator answer in the dashboard session through seq 510994
+(11-05 07:30Z). Per the 11-02 decision, filing needs no approval, so decision 3 is closed: I sent both follow-ups to triager session
+`sess-1792074955085-5ivol4` (msg 21, thread `gh-issue-shader-slang/slang-13654`) to re-verify on master, dedup and file, with no
+fixer chain. **Timer: none (not re-armed).** Final dashboard line: sent 11-05 after the filing (#14336, #14337).
+Still pending: operator decision 1 (ready + CI). Do not re-ask it.
 
-**Resumes on:** a human comment/review on #13654 or #13681, a CI webhook (owned by the fixer), the operator's
-answer, or the re-check.
+**11-05 08:05Z, triager progress (msg 120, Main session `sess-1792074637049-flailg`):** follow-up 1 still reproduces on master
+b3d4e7ad4 (Debug). The assert has moved to `slang-ir-legalize-types.cpp:3508` and fires on spirv/metal/hlsl/glsl/wgsl; CUDA compiles.
+Next: minimize, dedup, then re-check follow-up 2. Not a completion report; the dashboard line is still owed when issue numbers land.
+
+**11-05 08:10Z, triager [Report] (msg 122): both follow-ups FILED.** Verified live: both OPEN, bot-filed 08:09:46/47Z, Type=Bug,
+`reproduced`, no assignee, no @-mentions in the body.
+- **#14336**: `uniform Material*` / `ConstBufferPointer<Material>` → `fieldLayout || !typeLayout` assert at
+  `slang-ir-legalize-types.cpp:3508` (`declareVars` tuple case); spirv/metal/hlsl/glsl/wgsl, CUDA/cpp compile. Possibly
+  related: #13206 / draft #13305.
+- **#14337**: E38204 for an SB struct field points at the struct, not the field. The triager suspects `createStructField`
+  (`slang-lower-to-ir.cpp:12704`) gives the field no location of its own (not traced further).
+**Their `issue_opened` webhooks are self-echoes of this chain: they need no dispatch.** No fixer chain was opened; routing either one is
+the operator's call. Decision 3 is closed. Final dashboard line sent (11-05).
+
+**Resumes on:** `un-draft 13681`, a human comment/review on #13654 or #13681, a CI webhook (owned by the fixer), or the
+operator's answer. There is no re-check timer.

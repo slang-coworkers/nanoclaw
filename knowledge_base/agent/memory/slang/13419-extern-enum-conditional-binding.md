@@ -104,3 +104,9 @@ push or a re-run. The author has not answered tangent-vector's 5 comments (none 
 has a reply), and dshreiner-nv and jkwak-work are still requested. #13419 is open, last updated 10-08.
 The PR has been dormant 19 days; the 3-week flag applies from 11-06. One dashboard line was sent.
 Next one-shot: `rechase-13419-pr13487-1273` (2026-11-11), which carries the >3-week dormant flag.
+
+**2026-11-05 #13534 re-chase (`rechase-13534-1405`):** no change (case c). #13534 still has only the
+bot 10-08 comment, no linked PR, no bot ask, assignee pdeayton-nv. #13487 still OPEN at `53035c247`,
+BEHIND, last updated 10-16. No operator reply on the PolynomialIntVal filing question (dashboard
+seq 509050–511352 scanned). No open issue covers the gap (#14095 is the unrelated WaveSize ordering bug).
+No GitHub post, no dashboard message. Next #13534 one-shot: `rechase-13534-1473` (2026-11-12, pages from seq 511352).

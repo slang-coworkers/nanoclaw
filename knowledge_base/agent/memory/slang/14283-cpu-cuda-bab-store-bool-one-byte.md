@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14283 — CPU/CUDA `RWByteAddressBuffer.Store<bool>` writes 1 byte instead of 4
-description: Bot-filed 2026-11-04 00:39Z by slang-triager, side-find S2 from slang-reviewer's R1 on PR #14276 (#14259 chain). Bug + `reproduced`. FILED-ONLY, no fixer (fixer at 8 running sessions); issue_opened webhook needed no dispatch.
-tags: [cpu, cuda, byte-address-buffer, bool, prelude, side-find, filed-only]
+description: Bot-filed 2026-11-04 00:39Z by slang-triager, side-find S2 from slang-reviewer's R1 on PR #14276 (#14259 chain). Bug + `reproduced`. HELD on maintainer: jkwak-work self-assigned 11-04 17:29Z, milestone Q4 2026 (Fall), label Office-Yong. Operator triage ask 11-05 answered from live state, no dispatch, no GitHub post.
+tags: [cpu, cuda, byte-address-buffer, bool, prelude, side-find, maintainer-held, office-hours]
 ---
 
 # slang#14283 — CPU/CUDA `Store<bool>` writes `sizeof(bool)` = 1 byte
@@ -26,3 +26,16 @@ is held, filed-only (policy: hold lower-severity filings when the fixer is loade
 Open design point for whoever picks it up: Slang's CPU/CUDA layout size for `bool` in buffers, and whether
 `Store<bool>` should widen to 4 bytes or that is a layout decision. **Resumes on:** a human comment, a maintainer
 `bot-ok`/assignment, or an operator go-ahead for a fixer.
+
+**11-04 17:29–17:30Z: maintainer took it.** jkwak-work self-assigned it (timeline `actor`), milestoned it Q4 2026 (Fall), and
+labelled it `Office-Yong` ("to be discussed during Yong's office hours"). It is parked on a human design discussion, not
+stalled. Held under rung 4 of [issue_opened ≠ new](../imported/feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new.md).
+
+**11-05 11:36Z: operator (dashboard msg 34) asked for a triage.** I answered from live state and did not dispatch the
+triager, because it filed and reproduced the bug itself. Verdict: subsystem target preludes (CPU/CUDA) plus layout
+rules; medium, P2/P3; not a regression. Key fact from the source (master `04d2726db0`): scalar `bool` is 1 byte **by
+design** in `CPULayoutRulesImpl` (`slang-type-layout.cpp:630`) and `CUDALayoutRulesImpl` (`:776`; its comment says
+bool vectors/matrices are `int32_t`). So the 1-byte store matches these targets' own bool layout. The issue's
+"Expected: 4 bytes" is a design choice for office hours, not a settled bug. Unverified: CUDA `Store<bool2>` may write
+8 bytes while `Store<bool>` writes 1, which would be inconsistent within a single target. **Next:** none from the bot.
+Resumes on an @nv-slang-bot mention or a maintainer comment.

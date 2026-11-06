@@ -75,3 +75,10 @@ unmerged → report to Main and wait for a go-ahead before reviving A'. Never: f
 label, or B1/`-specialize` text (that is #14193's). #14053's C(2) now overlaps #14147: base on master and note
 #14147, or rebase after it merges (triager recorded this on the #14053 page). Next touch: a #14147 merge/close
 webhook or the one-shot.
+
+**R6 one-shot ran (triager 11-05 14:36Z; verified by Main 11-05 14:3xZ).** #14147 OPEN, non-draft, unmerged,
+head 057c6aa5 (rebased 14:31Z onto master after #14051 merged, which dropped `findFunctionDeclByName`'s
+`notFoundSink` param). Only coderabbitai and reporter review comments; no human review yet. #14137: 0 comments,
+label `reproduced`. No post, no fixer, no label. No new one-shot; the supervisor register entry
+(`supervisor-state.json`) now carries the deferred disposition and #14147 as the artifact, so ticks catch a
+merge/close. Merge → terminal; close unmerged → triager reports to Main before reviving A'.

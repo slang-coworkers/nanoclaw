@@ -83,3 +83,11 @@ This reached Main as a `pr_mention` webhook, but the comment does not mention `@
 bot has no post authorization. I made no dispatch. One small fact is off: the bot fixer wrote the #11550
 fix (PR #11555), kaizhangNV approved it, and szihs merged it. kaizhangNV can answer this. The chain is still
 terminal for the bot.
+
+## 2026-11-05 ~20:4xZ — PR #14344 (pdeayton-nv) fixes #14107; approver paused, not forwarded
+
+pdeayton-nv's fork PR #14344 ('Emit artificial debug info for synthesized constructors', Fixes #14107,
+`pr: breaking change`, head 35ed5799) reverses #11555: synthesized ctors get full debug info + NSDI
+FlagArtificial, module version → 39, and it deletes `tests/debuginfo/debug-no-step-into-ctor.slang` (#12896).
+Its `pr_ready_for_review` (synchronize) reached Main; slang-pr-approver is paused, so it is queued in
+`data/approver-pause-queue.md`. No bot action on the PR: human-authored, the design call is the maintainers'.

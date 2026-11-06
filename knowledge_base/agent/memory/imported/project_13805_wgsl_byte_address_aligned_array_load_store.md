@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13805_wgsl_byte_address_aligned_array_load_store
-description: "AWAITING RE-APPROVAL 11-05 02:4xZ. jkwak-work's 00:05Z APPROVED (at 19498e2) was DISMISSED 00:52Z by the merge-master push; reviewDecision empty, BLOCKED, MERGEABLE at 034cb79 after merge-commit 28cec0a7e (master 662e552ee, no force-push); CI 54 pass / 0 fail. A maintainer re-approves and merges; Fixes #13805 closes the issue. slang#13805 (albertrodriguezclo, external): WGSL (+ Metal) aligned ByteAddressBuffer Load/Store of T[N] emits one u32 / u64 access for the whole array. Triaged regression (partial) / medium / P1. Fix A = add scalarizeVectorLoadStore to the array conditions in emitLegalLoad/Store. Handed to slang-fixer on gh-issue-shader-slang/slang-13805."
+description: "TERMINAL 11-05 04:04Z. MERGED: #13815 merged by jkwak-work (b3d4e7ad41) without a fresh approval (the 00:05Z one was dismissed by the 00:52Z merge-master push); #13805 closed COMPLETED. Worktree + triage sentinel removed. Resume only on a human comment on the closed issue/PR. slang#13805 (albertrodriguezclo, external): WGSL (+ Metal) aligned ByteAddressBuffer Load/Store of T[N] emits one u32 / u64 access for the whole array. Triaged regression (partial) / medium / P1. Fix A = add scalarizeVectorLoadStore to the array conditions in emitLegalLoad/Store. Handed to slang-fixer on gh-issue-shader-slang/slang-13805."
 ---
 
 # slang#13805: WGSL aligned ByteAddressBuffer array loads/stores
@@ -72,3 +72,10 @@ Next: a maintainer merges once CI is green. The triager removes its sentinel aft
 merge-master push, not a maintainer action. reviewDecision empty, mergeState BLOCKED, MERGEABLE; CI 54 pass, 1 pending, 3 skipping, 0 fail.
 Next: jkwak-work re-approves at 034cb79, then merges. Bot fixers cannot request review, so nothing was dispatched; the operator was told.
 
+
+**11-05 04:04Z MERGED (triager msg 28).** I checked live: #13815 was MERGED at 04:04:27Z by jkwak-work, merge commit b3d4e7ad41. #13805 was CLOSED as COMPLETED at 04:04:29Z.
+The fixer removed worktree `wt-slang-13805`, and the triager removed its sentinel. The chain is closed. The 3 out-of-scope follow-ups from 10-21
+(SPIR-V std430 `uint3[2]`, FXC templated `Load<T[N]>`, Metal `as_type<bool>(uint)`) and the scalar u64 load gap were never filed. They are the operator's call.
+Note: jkwak-work merged without re-approving. The only jkwak-work review is still the DISMISSED one at 19498e2, so they used a maintainer override.
+My 00:54Z dashboard post said "approved, MERGEABLE". That was stale: my own check that turn showed `reviewDecision` empty, and I did not act on it.
+The sibling Main's ~02:4xZ entry corrected it. Lesson: [feedback_merge_push_dismisses_approval_check_review_decision](feedback_merge_push_dismisses_approval_check_review_decision.md).

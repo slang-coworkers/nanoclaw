@@ -7,6 +7,7 @@ title: Raw chain source material
 
 Verbatim coworker memos kept as `resource:` targets for chain records. The distilled state lives in the chain record; a memo here is never edited. A memo of 12 KB or more opens with `type: source` + `okf_synth: exempt` frontmatter, because splitting a verbatim source destroys it.
 
+- [triage-14359.md](triage-14359.md) — slang-triager memo for slang#14359 (binary-module dependency resolves from wrong include root), 2026-11-05
 - [slangpy-1250-triage-memo.md](slangpy-1250-triage-memo.md) — slangpy-triager memo for slangpy#1250, 2026-10-30
 - [slang-14189-r1-combined-review.md](slang-14189-r1-combined-review.md) — slang-reviewer R1 combined review of PR #14189 (#14183), 2026-11-02, 52 KB
 - [slang-14183-triage-memo.md](slang-14183-triage-memo.md) — slang-triager memo for slang#14183 (CPU Atomic<T> emit gap), 2026-11-02
@@ -38,3 +39,10 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [slangpy-1260-triage-memo.md](slangpy-1260-triage-memo.md) — slangpy-triager memo for slangpy#1260 (torch bfloat16), 2026-11-05
 - [slangpy-1261-r1-review.md](slangpy-1261-r1-review.md) — slangpy-reviewer R1 review of PR #1261 (#1260), 2026-11-05
 - [slangpy-1261-r2-review.md](slangpy-1261-r2-review.md) — slangpy-reviewer R2 review (APPROVE) of PR #1261, 2026-11-05
+- [slangpy-1264-r1-review.md](slangpy-1264-r1-review.md) — slangpy-reviewer R1 (APPROVE_WITH_NITS) of PR #1264 (#1260 cursor side PR), 2026-11-05
+- [slangpy-1263-r1-review.md](slangpy-1263-r1-review.md) — slangpy-reviewer R1 (REQUEST_CHANGES) of PR #1263 (#1262), 2026-11-05
+- [triage-14333.md](triage-14333.md) — slang-triager memo for slang#14333 (SV_Barycentrics first-only interpolation decoration read at two sites), 2026-11-05
+- [triage-14334.md](triage-14334.md) — slang-triager memo for slang#14334 (SPIR-V hull/domain patch Location mismatch, regressor #13078), 2026-11-05
+- [triage-14345.md](triage-14345.md) — slang-triager memo for slang#14345 (Metal groupshared load sunk past barrier; dup root cause of #13409), 2026-11-05
+- [triage-14348.md](triage-14348.md) — slang-triager memo for slang#14348 (CoopMat spec-constant dims), 2026-11-05
+- [triage-14357.md](triage-14357.md) — slang-triager memo for slang#14357 (bare `Foo(...)` on a defaulted generic struct, E39999; language-design park), 2026-11-05

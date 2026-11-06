@@ -95,3 +95,28 @@ the SHA being cited.
 - ⚠ **Three-way collision.** Draft #13425 @ `4b7541ad55` (`Type.MetalConstantBufferLayout`) and draft #13872 @ `5c5909334a` (`Decoration.DebugVarStorage`) also claim 910 with max 38, and both are MERGEABLE. The first to merge keeps 910/38; the others move to 911/39 and then 912/40.
 - Sent the 5-bullet with Q1–Q3 to orchestrator-dashboard on thread `gh-issue-shader-slang/slang-13555` (msg id 3). Nothing went to the triager or fixer.
 - Next: one-shot `rechase-13564-decisions-5727` at 11-05 09:00Z. If it is the third unchanged check in a row, it asks the dashboard whether to keep re-checking.
+
+**11-05 09:0xZ re-chase (`rechase-13564-decisions-5727`): case (c).** Checked live:
+- #13564 is still a draft at head `100e058605` with `pr: non-breaking`, and is now **CONFLICTING/DIRTY** (ahead 15, behind 90, merge base `0bd71cd709`).
+- Master `04d2726db0`: #14051 (merged 11-04 06:39Z, `c8bd944484`) added `Type.TraceProgramDescriptor` = **911** and `metalTraceRay` = **912**, and set min=max=**38**. 910 is unused on master. The PR diff still has `noTargetCase` = 910 with min 37 / max 38.
+- No non-bot comments or reviews on #13564 or #13555 since 10-15. #13555 has been self-assigned to **jkwak-work** since 10-12 (saipraveenb25 assigned themselves 10-10 and unassigned 10-12). This is not new, and earlier records missed it.
+- #13425 @ `4b7541ad55` and #13872 @ `70cb286878` are both drafts, CONFLICTING, and still claim 910.
+- Action: sent slang-triager (pinned `33kqnm`, thread `gh-issue-shader-slang/slang-13555`, `in_reply_to=2`, msg id 9) a merge-origin/master ask for fixer `w74ros`: `noTargetCase` = **913**, min **38**, max **39**, no rebase or force-push. After that: rebuild, PR tests plus full suite, push, edit cmt 6095450396 in place, refresh only the Tests line, keep the draft and the label. Delivery verified: triager inbound seq 32 at 09:01:48Z.
+- This was not an unchanged check (10-22 had an action, and so did 11-05), so I did not send the "keep re-checking?" ask to the dashboard. Q1–Q3 are still parked.
+- Next: one-shot `rechase-13564-merge-913-9c85` on 11-12 09:00Z, which verifies the merge. Before then, expect the triager's report on the thread.
+
+**11-05 09:59Z: the merge landed (triager report). I checked it live at 10:1xZ.**
+- Head `a4e7e33342`, built from three bot commits:
+  - `fd65a95e81`: merge of `100e058605` and master `04d2726db0`.
+  - `6f4a6ad223`: test-only; adds `exit-code=-1` on 16 lanes, needed because #14269 now enforces SIMPLE exit codes.
+  - `a4e7e33342`: test-only; changes `capabilitySimplification1`, `var-capability-wgsl` and `var-implicit-capability-wgsl` from E41009 to E41037 under `-ignore-capabilities`. jkwak-work had just pinned those lanes to E41009 in #14269 (merged 11-04 21:37Z). This is the PR's intended effect, and jkwak-work is the #13555 assignee.
+- At the head: `noTargetCase` = **913**, min **38** / max **39**. Master has 911/912 and 38/38. Still a draft, MERGEABLE, `pr: non-breaking`, 0 reviews.
+- Fixer's numbers at the head on the L40S: 48/48 new tests; full suite 11796/11799, where the only failures are the 3 fp8-cuda tests that also fail on master. CI 42005875266 is waiting on its gate.
+- Collisions, checked at both heads:
+  - #13425 `e855bd5db0` is at 910/v39 and MERGEABLE. It shares **v39** with us, so whichever merges second moves to v40.
+  - #13872 `70cb286878` is at 910/v38 and CONFLICTING. It collides with #13425 on 910.
+- I authorized a refresh of the PR body's stale `**Merge order:**` line (it still said 910/v38). That one line only.
+- **Ready-flip pending, on the weekly list.** Under [the policy](../orchestrator/undraft-asks-replaced-by-weekly-list.md), no per-PR un-draft ask.
+- Incident, which the fixer reports it already fixed: in the fixer's container, a command detached its base clone `/workspace/agent/slang` to `04d2726db0` for a master build, after worktree GC had removed its master control tree. The fixer re-attached the clone to `master`.
+- Next: `rechase-13564-merge-913-9c85` on 11-12; its prompt is updated.
+- 11-05 10:05Z: refreshed the PR body's Merge-order line (913/v39; #13425 shares v39; #13425/#13872 share 910). Checked live: draft @a4e7e33342, label unchanged, `Fixes #13555` still present. Parked until `rechase-13564-merge-913-9c85` (11-12).

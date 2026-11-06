@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang-rhi#956 — WebGPU readBuffer allocates a staging buffer per call
-description: PARKED on the author since 10-29 07:51Z. Triaged (bot cmt 6491098268 welcomes j8asic's PR, no bot fix); triager one-shot re-check t-9540e9 11-05 09:00Z. Couples to author's open PR #953 (same readBuffer, opened 51 s earlier) and the Vulkan sibling #862 / our draft #869.
+description: HELD on maintainer jkwak-work (self-assigned + Q4 2026 milestone 11-04). Bot stands down; no timer. #953 merged 10-29. Resume only on a webhook (author PR naming #956, or a maintainer ask). Couples to Vulkan sibling #862 / our draft #869.
 resource: https://github.com/shader-slang/slang-rhi/issues/956
 ---
 
@@ -37,3 +37,13 @@ dedicated buffer may suit WebGPU better. Memo: `/workspace/inbox/a2a-17932603363
 
 **Resume on:** an author PR naming #956; a maintainer comment (dedicated buffer vs shared heap,
 tied to the #869 decision); triager re-check t-9540e9 (11-05 09:00Z, one-shot, the triager's task).
+
+**11-05 re-check t-9540e9 (triager [Report]; verified live by me 11-05):** still open, 1 comment
+(ours, unedited since 10-29). Human triage: 11-02 jhelferty-nv set Type=Performance + `enhancement`
+and assigned jvepsalainen-nv. 11-04 17:05Z jkwak-work unassigned jvepsalainen-nv, self-assigned,
+milestoned "Q4 2026 (Fall)". #953 MERGED 10-29 09:16Z, so our "land #953 first" ordering is moot.
+No reuse PR from j8asic yet. #869/#862 slot-vs-heap decision still open.
+**Decision:** maintainer-owned (rung 4 hold). Bot stands down, no fixer, no new re-check (webhooks
+deliver an author PR or a maintainer mention). Authorized the triager's one silent in-place edit of
+cmt 6491098268: #953 merged, so a reuse PR builds on `main` (rhi default branch; not master); the issue now sits with the assignee. Edit live 11-05 09:06:07Z, verified. Chain CLOSED for the bot.
+

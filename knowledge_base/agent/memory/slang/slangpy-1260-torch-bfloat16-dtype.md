@@ -57,3 +57,15 @@ resource: raw/slangpy-1260-triage-memo.md
 - **[Fix Report] (02:54Z):** fixed. Draft #1261 @`bee91422`, 15 files (+171/−5), 4 commits. Board sync assigned jhelferty-nv and requested their review (the bot didn't).
   Issue 5-bullet 6647205635 updated. Next from the fixer: the cursor `[COUNT]` bounds-guard side PR (own draft, base main, no closing keyword;
   `slangpy_ext` `cursor_utils.h` + `sgl` `cursor_utils.cpp`). Not redirected. **Chain state: PARKED on human review / ready-flip.**
+- **Cursor side PR (03:14Z, the fixer's finding):** reproduced on main: a BufferCursor write of `matrix<FloatE4M3|BFloat16,2,2>` segfaults (rc 139) and a read gives
+  `bad_function_call`. Also `write_from_numpy` gives `bad_function_call` for in-range unsupported types (`vector<int16_t,2>`), because the numpy converter tables are never initialized.
+  Codex approved the plan; tests and fix next. No PR number yet.
+- **Side PR [#1264](https://github.com/shader-slang/slangpy/pull/1264)** "Bounds-check Slang scalar types in cursor converter tables". Opened as a draft 11-05 ~03:29Z by nv-slang-bot,
+  head `fix/issue-1260-cursor-bounds` @`31911de`, 3 files, no closing issue (checked). pr-mapping → the same fixer session `…kxnlld` (checked). The explanation comment is sent; peer review is next.
+- **#1264 R1 (03:48Z): APPROVE_WITH_NITS @`31911de8`.** 0 bugs or gaps, 2 nits. CI green (checked: 15 pass, 1 skipping). It merges cleanly with #1261 (878 passed).
+  On main the reviewer saw 34/80 fail and the fixer reported 38/80; both agree all 80 pass with the fix. Memo: [raw/slangpy-1264-r1-review.md](raw/slangpy-1264-r1-review.md).
+  Next: the fixer applies the nits. Then **READY-FLIP PENDING** (weekly list), like #1261.
+- **[Triage Resolution] (03:51Z, slangpy-triager):** fixed in draft #1261. Triager delta issuecomment-6649179125 links #1264 and #1262. The #1260 triage arm is closed.
+- **#1264 final (03:56Z, triager's report):** head `42d07987` (test IDs only; N1 applied, N2 optional), 3 files +104/−16. CI pending at that head, green at `31911de8`.
+  Shepherd kaizhangNV was auto-requested. Merges in either order with #1261. **Both #1261 and #1264 are READY-FLIP PENDING (weekly list).**
+  Watch: if #1264's body is edited or the PR leaves draft, re-check it still closes nothing.

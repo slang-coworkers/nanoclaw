@@ -54,3 +54,11 @@ No earlier chain (grep of memory/ for 14305: no hits).
   comment has no @nv-slang-bot mention and no ask. By then the issue was **assigned to kaizhangNV** with
   label `RTR`, so maintainers now own the decision. No bot reply. I told the triager to stand down from
   posting; the 11-09 re-check posts only if a maintainer asks the bot something.
+- 11-04 17:31Z: **jkwak-work self-assigned #14306** (assigner = assignee) and milestoned it Q1 2027.
+  Rung-4 hold: no fixer, no bot post. My 11-04 "start a fixer?" ask to the operator is moot and is
+  closed on the dashboard (11-05). Same minute: jkwak-work assigned **#14305 to kaizhangNV**, labeled
+  `RTR`, milestoned Q1 2027, and commented 18:20Z "This could be a driver bug" (no bot mention, so
+  no summons). Both issues are maintainer-owned now; the triager re-check on 11-09 will see this.
+- 11-05 11:36Z: the dashboard asked for a #14306 triage verdict. Answered from the filed evidence:
+  core module `Ptr` `operator-`, medium/P2, held under jkwak-work. Nothing was dispatched.
+

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14179 — WGSL vector negation `vecN<T>(0) - x` turns -0.0 into +0.0
-description: "albertrodriguezclo, human-filed WGSL emit bug (signed-zero parity). Same kIROp_Neg case as parked draft #13572. Dispatched to slang-triager 2026-11-02 under R6 hold."
+description: "albertrodriguezclo, human-filed WGSL emit bug (signed-zero parity). Triaged 11-02 (P2). HELD 11-05: jkwak-work self-assigned 11-02 18:13Z. Fold-in commit for #13572 kept local; nothing posted on #14179."
 ---
 
 # slang#14179
@@ -22,8 +22,8 @@ the subtraction yields +0, not -0" but leaves it. Master's comment claims the su
 '-x' for the signed cases too", which this issue refutes. Fold-in vs separate PR is the triager's
 call to recommend.
 
-**R6 hold:** no labels, no crash word → no bot comment, PR, or commit naming the issue before
-**2026-11-06T12:21:02Z**.
+**R6 hold (RETIRED RULE, my error):** the 11-02 dispatch carried the stale 4-day wait (until 11-06 12:21Z).
+nanoclaw #1993 merged with no waiting period; see Core Memory. The real hold is the maintainer assignee below.
 
 Dispatched to `slang-triager` on `gh-issue-shader-slang/slang-14179` 2026-11-02.
 
@@ -41,3 +41,22 @@ lost; jkwak-work's own #7936 suggestion (`op0 * type(-1)`) preserved -0 for vect
 `sess-1791749819525-d9mn82` (pin + in_reply_to=2, landed seq 30/32): Part 1 = merge master now (no
 rebase); Part 2 = fold in approach A, kept local until the hold ends, then push + `Fixes #14179` with the
 fixer's own one-shot at 11-06 12:25Z. #13571 was unparked from the register.
+
+**2026-11-02 13:23Z / 13:33Z, fixer:** Part 1 pushed to #13572 (`46ac7f64a..5be2d78f1`, master merge, MERGEABLE;
+CI run 41452561641 still `waiting` on 11-05). Part 2 built, tested and committed **locally only**.
+
+**2026-11-02 18:13:36Z, jkwak-work self-assigned #14179** (`/timeline` actor = jkwak-work) and milestoned it Q4 2026
+(Fall), with no comment. For #13571 the assignment came from github-actions on PR open, so this one is a genuine
+self-assign. Rung 4 of [[feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new]] → **hold**.
+
+**2026-11-05 11:35Z, dashboard-admin re-sent "New issue to triage #14179".** I answered from live state and did not
+re-triage. I asked the operator with ask_user_question (Hold / Proceed / Ask jkwak-work on #13572). It **timed
+out after 600 s**, so I applied the stated fallback, **Hold**: I told the triager (session `cs7zit`, landed seq 30)
+to cancel t-c47654 and the fixer (pin + in_reply_to=2) to cancel its 11-06 12:25Z one-shot and keep Part 2 local.
+**Resume only** on an @nv-slang-bot mention by jkwak-work or an operator ask. Proceeding means: triager posts
+the drafted comment, and the fixer pushes Part 2 to #13572 and adds `Fixes #14179`.
+
+**2026-11-05 11:50Z, fixer confirmed the Hold.** One-shot `pr13572-r6-push-14179-2403` is cancelled. Part 2 is commit
+`2b32e5ca1e` on the local-only branch `local/issue-14179-vector-negation` (no upstream), on top of repro commit `68d87074b`, in
+worktree `/workspace/agent/wt-slang-13571`. `fix/issue-13571` is reset to the pushed head `5be2d78f1b`, so a later #13572 push can't
+carry Part 2. To resume, wake the fixer `sess-1791749819525-d9mn82` (pinned) to cherry-pick that commit, push, and add `Fixes #14179`.

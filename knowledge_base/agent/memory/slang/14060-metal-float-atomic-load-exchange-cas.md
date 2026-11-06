@@ -100,3 +100,38 @@ Comments 1–5 are done. **Comment 6 is parked on jkwak-work** (bot reply r44754
 `checkUnsupportedInst` in this PR, which needs care because the pass is skipped under `-minimum-slang-optimization`; or option (2) move all the Metal atomic checks in one follow-up.
 The fixer recommends 2. The PR mapping now points at the chain session **`sess-1793311990079-ytzi3p`** (a fresh `report_pr_created`).
 CI run 41948210276 on the new head is `waiting`. I updated the prompt of re-check `recheck-14210-human-6a1f-ddb2` (still 11-06 22:00Z) to this state.
+
+**11-05 ~01:2xZ:** the remap landed, so #14210 now maps to `ytzi3p` (01:23:38Z) and webhooks route to it directly; manual relays are no longer needed. The fixer pushed head `3556907fe7`, which fired a synchronize `ready_for_review` event. That event was not forwarded because the approver is still paused, and the queue entry's on-unpause note already says to read the live head.
+
+**11-05 05:16Z: jkwak-work chose to move the check (verified, r4476809966):** "I still want to move to checkUnsupportedInst. The other
+checks in metal emit should also move to an earlier stage unless there is a strong reason not to." The fixer (r4476865732)
+committed to moving the float check and 2 other atomic checks into `checkUnsupportedInst`; the Metal checks still run under `-minimum-slang-optimization`.
+It asked whether the 3 non-atomic checks (precise, 2 coop-matrix) belong here or in a separate PR. Now implementing; no force-push.
+Watch for scope overlap with #14044 and #14170 (both add atomic checks to the emitter). I rewrote the re-check prompt to this state.
+
+**11-05 07:41Z: the move to `checkUnsupportedInst` is pushed.** Head `040306d`; the fixer sent an explain-diff HTML:
+`/workspace/inbox/a2a-1793864469915-3wbs3e/2026-11-05-shader-slang-slang-pr14210-metal-float-atomics-checks.html`. Next: jkwak-work re-reviews.
+Fixer [Report] 07:41Z: `3556907fe..040306dd5`, fast-forward. The Metal float-atomic, both texture-atomic and the coop-matrix checks now live in
+`checkUnsupportedInst`, which is always called with a check set, so the Metal checks also run under `-minimum-slang-optimization`. The `precise`
+warning stays in the emitter, because the C++, WGSL and Metal emitters share it; jkwak-work was asked about a follow-up (r4477792073). Full suite 11415/11418, the 6 directories after the coop
+commit 2841/2844 (only the 3 fp8-cuda), unit tests 664/664. The 300-file/698-run metal diagnostic diff is identical. ⚠️ I found **`CONFLICTING`** at
+040306dd5 (#14170 and #14044 are still open). At 07:4xZ I told the fixer (msg 63) to merge master, without rebasing or force-pushing, then re-test and report.
+**11-05 07:51Z: master merged** → head `dbf1f7d00` (a merge commit, no force-push). There was one conflict, in `tests/compute/atomics-invalid-dest-type.slang`
+(master #14269 needs `exit-code=-1` on SIMPLE tests that expect errors). metal+hlsl-intrinsic 915/915; the PR's 8 files 31/31; diagnostics+compute+coop
+1834/1837 (only the fp8-cuda failures). The fixer reports MERGEABLE and BLOCKED only on review; I checked it live. Next: jkwak-work re-reviews and answers the `precise` question.
+
+**11-05 18:14Z: jkwak-work reversed the always-run part** (r4484016682: `checkUnsupportedInst` is validation that may be skipped for
+input known to compile; r4484055762: "keep the previous implementation"). New head `7e7e4c3dc` (fast-forward). `slang-emit.cpp` is identical to master again,
+and `UnsupportedInstCheckSet` is gone. The Metal checks stay in `checkUnsupportedInst`, so they **do not run** under `-minimum-slang-optimization`. The fixer
+disclosed the side effect: a saturating coop-matrix MAD then silently compiles as plain `simdgroup_multiply_accumulate`. The 5 error runs under that flag were removed,
+and one valid compile run was added. Tests: 27/27, 2745/2748 (only fp8-cuda), unit 679/679. jkwak-work resolved the 5 WGSL threads.
+The `precise` question is still open. **Lesson:** this maintainer treats `checkUnsupportedInst` as skippable validation, so don't propose forcing it to run.
+Verified live 18:1xZ: head 7e7e4c3dc, MERGEABLE, mergeStateStatus **BEHIND** (master moved again). Review is still the blocker; the fixer can merge master when re-review lands.
+**11-05 19:21Z:** jkwak-work resolved all 7 threads (5 WGSL, the checkUnsupportedInst thread, the slang-emit.cpp guard thread). The `precise` thread was resolved without an answer, and the fixer reads that as leave it (no follow-up unless asked). Head `7e7e4c3dc`, no approval yet. **PARKED on jkwak-work's approval + CI.** Re-check `recheck-14210-human-6a1f-ddb2` 11-06 22:00Z.
+**11-05 19:22Z: APPROVED by jkwak-work** (pullrequestreview-5790721079, verified) at 7e7e4c3dc. CI 51 pass / 0 fail / 4 pending (Win debug GPU test-slang, Linux sm80 test-slang, Falcor build, license/cla). BEHIND. master **has a merge queue** (verified live; branch rules are only deletion/non_fast_forward/copilot_code_review), so I told the fixer not to merge master; merge only if the queue evicts the PR for a conflict. Waiting on a maintainer to enqueue.
+
+**✅ TERMINAL 11-05 21:53:54Z: #14210 MERGED** by jkwak-work as `37fc7aa7d`. Issue #14060 is CLOSED/COMPLETED (verified live). The fixer
+cleaned up the worktree and sentinel. I cancelled re-check `recheck-14210-human-6a1f-ddb2`.
+Follow-ups: #14170 is the reporter's own PR (albertrodriguezclo), and the bot does not comment there (see #14153's record). #14044 is the bot's draft
+(Fixes #14031), owned by fixer session `sess-1793291446093-uqb9b4`. At 21:56Z I sent that session a pinned heads-up (msg 85; it landed as seq 24, verified):
+merge master, then move the 64-bit check into `checkUnsupportedInst` following jkwak-work's direction, quoted verbatim. Not filed: SPIR-V float CAS fails spirv-val, half/double Metal atomics.

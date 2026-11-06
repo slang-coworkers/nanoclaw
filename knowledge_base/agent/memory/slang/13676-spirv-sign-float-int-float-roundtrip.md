@@ -67,3 +67,16 @@ one-shot re-check `t-aea473` for 2026-11-05 18:00Z (triager-owned). Main keeps i
 default (keep) stands.
 
 **Resumes on:** a human comment or PR cross-reference on #13676 (webhook), the operator's answer on (2), or `t-aea473`.
+
+**11-05 18:01Z, triager final re-check `t-aea473` [Report] (msg 2).** Still parked, nothing posted. Main-verified at
+18:0xZ: OPEN, 2 comments, assignee tangent-vector, labels `GoodFirstBug` + `reproduced`, milestone Q4 2026 (Fall),
+no timeline events since 10-22. No timers remain on the issue itself.
+- **Decision (2) retired, since the 10-31 [filing rule](../orchestrator/filing-verified-issues-policy.md) needs no operator go.**
+  Main re-reproduced the GLSL-mode bug on the 11-02 Release build (checkout 4a67586019).
+  `sign(x)/2` → FSign → ConvertFToS → `OpSDiv %int` → ConvertSToF. Dedupe search found nothing (#602 and #7738 are older
+  output-side issues). Dispatched `slang-triager` (msg 9, `in_reply_to=2`, which landed in its `system:tasks:t-aea473`
+  session `sess-1792692142976-anp9ks` at seq 4) to re-repro, file one plain-text issue (no @-mentions, no closing link
+  to #13676) and report the number. No fixer chain until Main decides.
+
+**Resumes on:** the triager's filing report (new issue number → open its own chain record), or a human comment or PR on #13676.
+- **18:07Z: filed as [#14356](14356-glsl-sign-returns-int.md)** (triager msg 16, Main-verified). It is filed-only, and starting a fixer is the operator's call.

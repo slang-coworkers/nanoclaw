@@ -78,6 +78,8 @@ is waiting on env `falcor-ci` (`current_user_can_approve:false`). This is the in
 **11-02 18:44Z side find filed as #14196** by slang-triager: "NVRTC: cuda_bf16.h directory is cached as an fp8 directory". Type=Bug, labels `reproduced` and `cuda`.
 The triager confirmed it at run time with a stat shim; there is no fixer chain. **The #14196 `issue_opened` webhook is bot-filed and owned by this chain: dispatch nothing.**
 It arrived in Main on 11-02 and was not dispatched (checked against this record).
+**11-05 the operator asked (dashboard msg 26) for a #14196 triage verdict.** I answered from the triager's filing plus a live check, with no new dispatch: subsystem compiler-core NVRTC downstream (`slang-nvrtc-compiler.cpp`), Bug, low/P3, and line 1132 is still wrong on master.
+It is **held under rung 4**: jkwak-work self-assigned it at 11-02 18:45:24Z (97 s after filing) and set milestone Q1 2027. No PR, no comments. A bot fix needs the operator's go and jkwak-work's hand-back.
 
 **11-02 19:12Z R1 applied** (Main verified head 5646c2ab9, still a draft; 5 files incl. the new `tests/cuda/cuda-prelude-single-type.cu`). B1, G1 and N1–N4 are pushed.
 For N1 the fixer dropped the `#ifndef` guard: plain `#define X 1`, like FAST_MATH. Its L40S figures: 319/322 and nvcc `-c`/`-cubin` 8/8.
@@ -95,6 +97,8 @@ although `-h target` lists cubin. It was sent to the triager to verify, dedup an
 → **Filed as #14199** at 11-02 20:09Z (Type=Bug, labels `reproduced` and `cuda`). Per the triager, the target was never implemented: #2708 added only the enum and the help entry.
 The issue offers the maintainers implement-or-remove. **The #14199 `issue_opened` webhook is bot-filed and owned by this chain: dispatch nothing.**
 It arrived in Main on 11-02 and was not dispatched (checked against this record).
+**11-04 17:09Z jkwak-work self-assigned #14199 and milestoned it Q1 2027 (Winter)** (Main verified 11-05; 0 comments). It is now maintainer-held (rung 4): the bot posts nothing
+and dispatches nothing unless jkwak-work asks. On 11-05 the dashboard asked for triage; Main answered from the filed body plus the live state, with no new dispatch.
 
 **11-02 20:04Z `[Triage Resolution]`**: issue comment 6583466378 was edited in place to "Fix in draft PR #14194, held for review and approval"; it names the workflows-permission blocker.
 

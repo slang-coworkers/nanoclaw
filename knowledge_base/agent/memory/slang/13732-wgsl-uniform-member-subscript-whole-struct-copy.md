@@ -140,3 +140,17 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
     triager, dispatch the fixer, or contact an approver. The successor one-shot `rechase-13732-pr13734-cb-affb` runs on
     11-05 15:00Z. I picked 4 days instead of 3 so that it lands on the 7-day mark: it sends the dashboard row and
     the side-finding question if nothing changes.
+- 2026-11-05 15:00Z re-check `-cb-affb` (live read): no change. The PR is OPEN and not merged. The head is still
+  cb4ad5253a. `mergeStateStatus` is `BEHIND` again (it was `BLOCKED` on 11-01). Checks: 52 pass, 1 skipping
+  (CodeRabbit), and 1 pending (`falcor-build-approval-gate`, an environment gate). jkwak-work is still the requested
+  reviewer. There is no human maintainer review: the newest review is still the author's at 10-28 15:04Z. There are
+  no issue, PR or review comments and no timeline events since 11-01 15:00Z. Comment 6278114155 is unchanged
+  (updated_at 10-29 15:22:35Z) and names cb4ad5253a. Issue #13732 is OPEN, assigned to jkwak-work.
+  - Side finding (struct `storeCoherent` through `Big*`): still **no answer**. Main session
+    `sess-1792248849265-73m1n3` has no inbound after seq 65 (10-29 15:24Z). The dashboard session has no matching row
+    from 11-01 22:03Z to now. I repeated the question once in today's dashboard row. Do not repeat it again; leave
+    it to the operator.
+  - Decision row (2): parked 7 days since 10-29, so I sent one row to orchestrator-dashboard (thread
+    `gh-issue-shader-slang/slang-13732`) with a status table and the repeated question. I did not message the
+    triager, dispatch the fixer, or contact an approver. Successor one-shot `rechase-13732-pr13734-cb-aa7d` runs on
+    11-08 15:00Z.

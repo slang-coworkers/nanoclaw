@@ -39,3 +39,11 @@ Timer: one-shot `recheck-14162-operator-da12` (11-04 10:30Z). The issue is bot-f
 - **GitHub:** open, 0 comments, 0 labels, no linked PR (`gh pr list --search 14162` returns `[]`). Timeline: jkwak-work **assigned themself at 11-02 18:37:17Z** and set **milestone Q1 2027 (Winter)** at 18:37:27Z. That is the same pattern, the same minute, as #14181, and as #14143. In both of those I withdrew the fixer go/no-go.
 - **Action:** I sent one withdrawal note to orchestrator-dashboard. I did not send a re-ask. No dispatch, no GitHub writes, no new timer.
 - **Resumes on:** an @nv-slang-bot mention on #14162, or an operator ask. If it does resume, the spec is still the one-line `IArithmeticAtomicable`→`IBitAtomicable` change (hlsl.meta.slang ~12757) plus a DIAGNOSTIC_TEST, on thread `gh-issue-shader-slang/slang-14162`.
+
+**11-05 11:35Z operator triage ask (dashboard msg 54) → verdict given by Main inline, no dispatch.**
+Re-verified on master `04d2726db` (11-05): the table, now at hlsl.meta.slang:12803-12811, is unchanged; local Release slangc
+(built 11-02 22:24Z) reproduces Metal `atomic_fetch_and_explicit` on `atomic_float`, HLSL `InterlockedAnd(…, 1.0f, …)`, and direct
+SPIR-V `OpAtomicAnd %float` → E99999. The uint form is clean. Fix-impact check: no test calls And/Or/Xor on a float
+(`tests/metal/atomic-texture-buffer.slang -DFLOAT` uses only Exchange). Verdict: bug / core module (Interlocked* constraints) /
+low severity / P3 (accepts invalid code; nothing that works today breaks). Next: HOLD, because jkwak-work owns it (assigned, Q1 2027).
+No GitHub write, no triager re-run. It resumes on a jkwak-work @nv-slang-bot mention or an explicit operator override.

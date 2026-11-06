@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13771_metal_rwtexture_fence
-description: "slang#13771 (albertrodriguezclo, external): Metal never fences an access::read_write texture between same-thread write and read. Bot DRAFT PR #13792 (fixer i4wuxx on triager edge epsn3s) fences before AND after each write; R2 APPROVE_WITH_NITS, nits applied @accfd0d97f. PARKED ON OPERATOR (live 10-22 00:0xZ: still draft/OPEN @accfd0d97f): run 39530615997 waiting — bot CI livelocked at the priority gate + falcor-ci; needs a human ci.yml dispatch or an approved ready-flip. No timer; /supervise-issues walks it via _meta.operator_decisions."
+description: "TERMINAL 11-06. slang#13771 (albertrodriguezclo, external): Metal never emitted texture.fence() on access::read_write textures. FIXED by PR #13792 (fence before+after every texel write; WAR fence added on reviewer RC1), MERGED by jkwak-work 11-06 02:12:49Z (merge 286cdeee49); issue auto-closed COMPLETED. Hardware-confirmed on M4 by reporter; project macOS CI 8/8 green. Follow-up #13796 (ROB buffer write-only) owns its own chain."
 metadata:
   node_type: memory
   type: project
@@ -87,3 +87,32 @@ Next: the reporter re-runs the 2 metallib lanes on 18cc8ac, or a human dispatche
 
 The fixer made no code change and only updated the Tests line and explanation (cmt 6495788612). The reporter's own pre-ready condition is met.
 Project macOS CI (run 40862424323) still yielded. At 11:5xZ I told the dashboard that the condition from my 11:2x ask is now met: approve the ready-flip.
+
+**11-05 19:12Z: the maintainer took the decision.** jkwak-work marked #13792 **ready for review** (event 19:12:39Z) and left a COMMENTED review
+(19:12:27Z) with 8 inline comments and a request to resolve conflicts. I checked: `CONFLICTING`, review requests to kaizhangNV + `dev` team, head still
+18cc8ac929. The fixer merged master locally (stable name 910, writer version 39), applied all 8 comments and is rebuilding, ~25 min, not pushed yet.
+**Operator decision resolved and moot.** I removed it from supervisor-state `_meta.operator_decisions` and the weekly ready-flip list, added a `_operatorDecisionsPending.resolved` row, and set the chain to `in_review`.
+I told the triager that the fixer must not "re-request review" ([[feedback_fixers_cannot_request_reviewers]] is in the root store): it should @-mention jkwak-work in a PR comment after the push.
+The PR is now non-draft, so check approver `paused` before any approver routing.
+
+**11-05 20:10Z: head 1c506c7adf**, checked by me. Non-draft, MERGEABLE, mergeStateStatus BLOCKED. The fixer's reply cmt 6668082639 (20:08:13Z) @-mentions jkwak-work
+and answers all 8 comments. R4 (the pass is a `static` in slang-emit.cpp) and R7 (non-resource addresses keep `mightHaveSideEffects()`) differ from the literal ask, with explanations.
+Review was not re-requested. **CI:** `pull_request` run 42098539613 started on its own. At my check it had 16 success / 21 pending, and the macOS build release and static-unit-test
+jobs had succeeded. `test-macos-release-clang-aarch64` (the metallib lanes) was pending. This is the first project macOS run on any head.
+The triager will grep `Metal: not supported` and report the result, or the merge.
+
+**11-05 23:32Z: APPROVED.** jkwak-work APPROVED at 23:20:06Z (review 5793537950). The head is **446b21c719**: merge `cd03cd381` brings in #14210, and `446b21c` uses
+`getAtomicImageSubscript`. The fixer reports the MSL is byte-identical. I checked run 42098539613 @1c506c7: it shows `cancelled` because a newer head superseded it, but **all 8 macOS jobs
+succeeded**, including test-macos-release/debug test-slang. Triager's finding from the log: "Check mtl,metal: Supported", all 8 fence lanes pass, 8099/8099.
+Now MERGEABLE/BLOCKED, with CI 42128079212 @446b21c running (21 success / 18 pending). Remaining human steps: the `falcor-ci` gate and the maintainer's merge.
+The triager closes out on merge. **Lesson:** a draft parked 2 weeks on an unanswered operator CI ask moved within hours once a maintainer flipped it ready.
+The `pull_request` CI then ran macOS on its own, because the throttle only applies to bot workflow_dispatch runs.
+
+**11-06 00:5xZ: `pr_ready_for_review` (synchronize) webhook for #13792 reached Main.** slang-pr-approver is `paused=1`, so it was NOT forwarded; queued in
+[`data/approver-pause-queue.md`](../../data/approver-pause-queue.md) and noted once on the dashboard. Live @446b21c719: MERGEABLE/BLOCKED, check-runs 56 success / 4 skipped / 1 in_progress.
+Later events for #13792 get the `paused` check only — no new queue edit, no new dashboard line.
+
+**11-06 02:15Z: TERMINAL.** #13792 was MERGED by jkwak-work at 02:12:49Z (merge `286cdeee49`, head 446b21c), and #13771 was CLOSED COMPLETED at 02:12:50Z. I checked both.
+The triager edited status cmt 6301290345 to final, removed sentinel `active-work/shader-slang-slang-13771`, and filed a learning on the draft-PR macOS CI trap.
+Final CI 42128079212 @446b21c had no conclusion when it merged (falcor gate). Follow-ups elsewhere: #13796 (ROB buffers stay unfenced until it lands); optional redundant-fence
+removal, an HLSL/GLSL alias-query test, a shared texel-atomic helper. Supervisor-state is set to `closed_merged`. Closure note sent to the dashboard.

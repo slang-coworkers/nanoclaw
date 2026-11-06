@@ -78,3 +78,26 @@ v2026.20; HEAD not retested by reporter.
     - Already triaged and reproduced, so it needs no re-triage. Sibling Main `issue_opened` session sess-1793828426010-kfytek (21:40Z) owns its dispatch decision, so this session dispatches nothing.
     - It touches the same byte-address emit/legalize code as #14276 and #14282.
     - Disposition (kfytek, 21:42Z): [#14323](14323-hlsl-sm5-double-byte-address-uint64.md) FILED-ONLY until a #14259 PR lands; one-shot `recheck-14323-after-1425-4d9c` (11-11 13:00Z).
+- 11-05 09:52Z **Maintainer decision** (skiminki-nv, cmt 6654933375, no @mention): "Let's start with #14322". skiminki-nv marked #14322
+  ready for review at 09:37:29Z, so no ready-flip is pending.
+  - **Still open:** they are "not entirely sure" whether HLSL emit should use strongly-typed literals (`int(4)`), because of compile-time
+    concern; they say that "should also eliminate the need for #14276".
+  - #14276 stays a draft and untouched. Its C++/CUDA width fix is not covered by HLSL typing.
+  - 09:54Z: I relayed this verbatim to the triager owner session (in_reply_to=80). My instructions:
+    - no prototype or new PR;
+    - one fresh delta comment through OUTPUT_REVIEW, with factual input and an offer to measure.
+  - **Now parked on:** #14322 human review and CI (fixer-owned); skiminki-nv's typed-literal / #14276 decision.
+  - Knock-on: #14282's hold on "#14276 merges" may never resolve. See the note in its chain file.
+- 11-05 09:58Z The fixer posted its delta (cmt 6655069001). It ack'd #14322 going first and offered to measure the compile-time cost of typed literals (an offer only).
+  - What is already typed at #14322: int literals; `float` gets `f`, `double` gets `L`.
+  - What is still untyped: `half` and the inf/NaN arms.
+  - **Width correction:** on C++/CUDA, the `float` NaN store that #14276 fixes wrote **8** bytes. The `double` inf store wrote 4. Earlier notes here and my 11-05 relay said "4 bytes" for both, which was wrong for NaN.
+- 11-05 11:18Z `pr_ready_for_review` for #14322 (head 83bc983a, CI 56 pass / 0 fail) **not forwarded**: slang-pr-approver is paused=1. Queued in `data/approver-pause-queue.md`; operator told in one line. Later events for #14322 get only the `paused` check.
+- 11-05 ~15:50Z skiminki-nv **APPROVED #14322** (review 5787809163, no comments) at head 83bc983. CI is green per the fixer.
+  - Merge state is BLOCKED and reviewDecision is empty, so it needs a second required review, a code-owner review, or the merge queue. That is a maintainer action; the bot has nothing to do.
+  - Resume on `[Fix] PR merged` from the triager, or on skiminki-nv's typed-literal / #14276 decision.
+- 11-05 17:16Z **#14322 MERGED** by skiminki-nv as 4a6758601. Master now emits finite HLSL doubles with `L`, so the reported repro is fixed.
+  #14259 stays OPEN ("Part of"). Still open: `half`, HLSL double inf/NaN, and the C++/CUDA widths. Fixer note: 6664423322.
+  - #14276 is still a draft at 860cc7501, and its HLSL CHECKs now conflict with master's `42.0L`.
+  - Parked on skiminki-nv's typed-literal / #14276 decision; the timer is `recheck-14259-approach-p-fd8e` (11-11), case (b).
+  - The triager keeps the sentinel until #14276 resolves.

@@ -88,6 +88,12 @@ Bug / medium / P2 / IDevice shader objects; not a dup (#811 related); no regress
 (bot-filed, Type=Bug + `reproduced`; does not name #14177/#14152/#14176/#14178). Static `-specialize MyImpl` on an
 interface-ARRAY field with a second conformer passes the AnyValue payload to `MyImpl::run`; spirv-val/dxc/nvrtc/gcc
 reject, slangc exits 0. Filed-only; **its issue_opened needs no dispatch**; no fixer chain without the operator.
+**#14180 update 11-05 (Main):** jkwak-work self-assigned it on 11-02 at 18:30Z with milestone Q1 2027 (Winter); it has 0 comments and no linked PR,
+so it is maintainer-owned: no bot post, no fixer, and the operator fixer go/no-go is withdrawn. At 11:35Z the operator asked for triage. I re-ran the
+repro on the local Release build: it still fails spirv-val, and the one-conformer control passes. Nothing in typeflow-specialize, typeflow-set,
+bind-existentials or specialize changed after 6815ed82d. Verdict: Bug / medium / P2, IR existential specialization
+(`slang-ir-typeflow-specialize.cpp` resolves the static callee but keeps the all-conformer tagged-union argument).
+Not checked for regression.
 Side find (b) is reproduced on vk (CB existential with `anyValueSize` < 16: reflection gives the
 `{rtti,witness,AnyValue8}` tuple size 24, emitted std140 puts the next field at 32 — slang side); triager is deduping
 before it files. Release one-shot prompt updated 11-02 ~12:32Z for #14178 (no fixer; acknowledgment post with gaps).
@@ -113,3 +119,19 @@ bytes. Then in layout computation we should do just that."* The comment does not
 the issue and set milestone Q1 2027 (11-02 18:29Z), so it is **maintainer-driving**: no bot post, no fixer. Main withdrew
 the #14181 fixer go/no-go from the operator list (supervisor-state updated). Re-engage only if jkwak-work, tangent-vector
 or the operator asks the bot.
+**#14181 operator triage request 11-05 11:35Z (dashboard msg 24). Main answered on that thread, with no dispatch and no GitHub post.**
+I re-ran Repro 1 on the local Release slangc, built 11-02 22:24Z. The layout files have no commits since 11-02. Offset of `after`: reflection gives 20/24/28/32 and SPIR-V gives 32/32/32/32 for N = 4/8/12/16, so the bug reproduces.
+Verdict: Bug / medium / P2. Subsystem: existential layout, reflection (`slang-type-layout.cpp` ~:6076,
+`fixedExistentialValueSize = anyValueAttr->size`) against IR layout and emit (`getInterfaceAnyValueSize`: `slang-ir-layout.cpp:349`,
+any-value marshalling). This is an instance of #12316.
+Next: the issue is owned by jkwak-work (Q1 2027). The bot would offer a PR only if jkwak-work, tangent-vector or the operator asks for one.
+A PR has to coordinate with tangent-vector's open PR #13885, which adds `[anyValueSize]` interface checks in `slang-type-layout.cpp`.
+**slang-rhi#965 operator triage ask 11-05 11:35Z (dashboard msg 48, "New issue to triage").** Live check: OPEN, 0 comments,
+no labels. **jkwak-work self-assigned it** (timeline actor = assignee) and milestoned it Q4 2026 (Fall) on 11-02 18:31Z.
+No reporter PR on slang-rhi. #14178 MERGED 11-02 20:03Z and #14177 is CLOSED. ⇒ The issue is maintainer-owned, the same as
+#14181 (rung 4): no bot post and no fixer. I answered the operator with the 11-02 verdict from the memo and did not
+message the triager. **I cancelled `r6-release-rhi-965-f9f6`**, because its prompt would have posted the draft on a
+maintainer-assigned issue. Resume only on an @nv-slang-bot mention or an explicit operator "post it". The held draft
+is `comment-slang-rhi-965.md` in slang-triager's group; its "ask skallweitNV" line needs re-aiming at jkwak-work.
+`r6-release-14177-c2f9` stays: its prompt already posts nothing when #14177 is closed or #14178 has merged.
+**#14178 follow-on regression filed 11-05: [slang#14347](https://github.com/shader-slang/slang/issues/14347)** (bot, from the #13423 chain). #14178's untyped path `createShaderObject(session, type)` drops a non-default data layout (`ConstantBuffer<T, ScalarDataLayout>` → vk `m_data.size() <= destSize`). Owned by the #13423 chain record ([13423-metal-cb-scalar-layout.md](13423-metal-cb-scalar-layout.md)); no dispatch, no fixer without the operator.

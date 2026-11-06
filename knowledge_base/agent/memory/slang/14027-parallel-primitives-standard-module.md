@@ -62,7 +62,7 @@ reproduced on master, without naming #14027 before the window ends.
   evidence: a CUDA acquire spin hangs, and vk via GLSL loses the device. I chose **not** to post it on #10683, because the thread is
   human-owned, the bot has already reproduced there, and skiminki answered jhelferty's question on 04-02. The evidence stays in the triager's memo.
 - `globallycoherent` Metal → covered by **#14010**.
-- `globallycoherent` CUDA → **filed #14140** (Type=Bug, `reproduced`, no @-mentions, no #14027). Filed only; no fixer without asking me.
+- `globallycoherent` CUDA → **filed #14140** (Type=Bug, `reproduced`, no @-mentions, no #14027). Filed only; no fixer without asking me. **11-05:** jkwak-work self-assigned #14140 on 11-02 18:56Z (milestone Q1 2027), so the fixer ask is withdrawn (rung 4). On the operator's request I gave a triage verdict without dispatching: target-emit (CUDA), bug / medium / P2. Source check on master `04d2726db0`: `slang-emit-cuda.cpp` and `slang-emit-c-like.cpp` contain no `MemoryQualifierSet`/`coherent`. A fix needs a codegen FileCheck test, because the runtime repro is not a guaranteed race.
 - WGSL `globallycoherent` silent drop → a feature gap, reported and not filed.
 - Stand-down post: the triager's one-shot **t-cc056c**, 11-02 16:30Z. It skips if 6502945982 is gone or a ruling is recorded.
   Pass any operator ruling to the triager on the thread.

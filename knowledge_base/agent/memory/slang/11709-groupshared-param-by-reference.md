@@ -34,6 +34,14 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
     "Per Tess, this should be solved by making QualType go away (switch to ExprInfo)". So the direction is
     tangent-vector's QualType→ExprInfo refactor, not a local `getValidTypeForAddressOf` fix. Still held: no
     dispatch, no post.
+- **11-05 15:07:51Z: jhelferty-nv filed #14350** and self-assigned it at 15:08:05Z (actor = assignee, 14 s).
+  "Canonical IR set order depends on the C++ compiler that built slangc": `IRBuilder::getSet` sorts on
+  `getUniqueID`, which assigns IDs lazily inside the `std::sort` comparator, so the order depends on operand
+  evaluation order and the standard library's sort. The repro is `createDispatchFunc` switch-case order (Clang:
+  `Add` first; MSVC: `Mul` first). `groupshared-param/dynamic-dispatch.slang` in #11709 hit it and now uses
+  `CHECK-DAG`. Her fix direction: assign IDs in iteration order before the sort. Same treatment as #14094:
+  rung 4 (maintainer-owned), no dispatch, no post. Live read 11-05: open, 0 comments, no labels. Resume only
+  on an @nv-slang-bot mention, an operator ask, or the issue being unassigned. No timer.
 - 10-30: tangent-vector reviewed jhelferty-nv's rework. In r4428270534 he asked why the `groupshared` check matches modifiers spelled in the source instead of validating the effective passing mode. In r4428479846 he asked `@nv-slang-bot` directly to open a cleanup issue. slang-fixer opened **#14105**, "Consolidate parameter-passing-mode modifier validation with the effective-mode computation" (bot-filed 21:12Z, no labels or assignee), and replied with the link (r4428523055). I verified all three live. **#14105 needs no dispatch:** it is a follow-up for whoever picks it up, and no bot chain owns it. If its `issue_opened` webhook arrives, this is the record.
 - **The rule from here:** the bot makes no push, rerun or post on #11709 unless a maintainer asks it directly.
   The unpushed P1 autodiff fix and the open items below are hers to take or leave. The pr-mapping still points at

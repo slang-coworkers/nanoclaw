@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14174 — Metal: `Atomic<T>.store` on `half`, or on `float` in groupshared memory, emits atomics MSL lacks
-description: BOT-filed by slang-fixer 2026-11-02 11:49Z as a side finding of the #14153 fix (filing policy, no go-ahead needed). FILED-ONLY, fan-out held; operator go/fold/leave unanswered (reminded once 11-04, no timer). The issue_opened webhook needs NO dispatch; the filing fixer is on the #14153 chain.
+description: BOT-filed by slang-fixer 2026-11-02 11:49Z (#14153 side finding), widened 12:28Z to half add/sub. Maintainer-held (jkwak-work, Q1 2027). Triaged from live state 11-05 - bug/low/P3 Metal emit; not covered by #14210 or #14170. Operator go/leave still open; no timer.
 tags: [metal, emit, atomics, float, half, bot-filed, filed-only]
 ---
 
@@ -38,3 +38,14 @@ routine triage: jkwak-work also holds #14153 (Q4 2026) and #14162 (Q1 2027), so 
 #14060 is now bot draft PR #14210. I sent one reminder to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-14174`,
 msg id 9) with the options `go` / `fold` / `leave 14174`. **Parked with no timer.** An operator answer arrives as an
 inbound; a `go` needs a slang-fixer session check on the thread first.
+
+**11-05 11:35Z dashboard "New issue to triage" (msg 62, templated).** I answered with a verdict from live state and sent nothing
+to the triager, the fixer or GitHub. This follows the #13729/#13757 precedent: a maintainer owns the issue, and the bot-filed body already is the triage.
+Live: OPEN, assignee jkwak-work, milestone Q1 2027, 0 comments, no labels, Type unset. I re-ran the widened 7-op repro at 6815ed82d:
+exit 0, 7 `atomic_*_explicit`, `atomic<half>`/`atomic_half`. `slang-emit-metal.cpp` was last changed 10-29, so this holds on master
+04d2726db. **Coverage of open PRs:** #14210 (the #14060 fix, now ready) moves the float gate into `getUnsupportedMetalFloatAtomicReason`
+in `slang-ir-check-unsupported-inst.cpp`, but only for Load/Exchange/CAS/Min/Max. #14170 (the reporter's PR) gates texture float atomics only.
+Neither covers Store or half Add/Sub. **Verdict:** bug / low / P3 / Metal target-emit (a missing diagnostic: Apple's compiler fails loudly, and
+nothing miscompiles silently). The fix is to add `kIROp_AtomicStore` and half `AtomicAdd`/`AtomicSub` to #14210's helper, after #14210 merges.
+The "fold into #14153" option is moot, because the #14153 bot branch was deferred to #14170 and is never pushed. The operator decision is still open, now **go
+(stacked on #14210, ask jkwak-work first, since they are the assignee) / leave to jkwak-work**. Parked with no timer.

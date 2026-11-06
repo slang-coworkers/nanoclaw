@@ -47,3 +47,14 @@ description: Regression from #13615; triage resolved, bot draft PR #13966 (call-
   several 16:00Z re-chases fired at once. I checked the dashboard, found nothing, retried once, and it was delivered once.
 - **Timer:** one-shot `rechase-slang-13964-r3`, 2026-11-05 16:00Z. task-hygiene allowed r3 of 3, so this is the **final** re-chase.
   Its no-answer branch is a one-line "re-chases exhausted, still parked" note plus a parked-chain register entry, not a 4th full ask.
+- **11-05 16:01Z, re-chase r3 (final), no answer, so PARKED with no timer.** I read dashboard session `9fon2n` in two bounded reads
+  (`--since-seq 510134`, then `--reverse --limit 400`), covering 11-02 16:07Z to 11-05 15:30Z, and Main `81yz2f`. Neither
+  mentions 13964 or 13966 after my 3rd ask. GitHub, checked live: still a draft at `e785e0710`, 0 reviews, last PR comment
+  10-28 06:40Z (the fixer's), issue assigned to tangent-vector, nothing new from a maintainer. I sent the one-line park note
+  to `orchestrator-dashboard` on the chain thread (msg 11): re-chases are used up, reopen with "un-draft 13966". The chain is
+  in `memory/supervisor-state.json` as `parked:no-timer` and is on the weekly un-draft list (`weekly-undraft-list-4573`, next
+  11-09 09:00Z), as the 11-03 policy in [../orchestrator/undraft-asks-replaced-by-weekly-list.md](../orchestrator/undraft-asks-replaced-by-weekly-list.md)
+  requires. **No re-chase is scheduled.** Reopen on "un-draft 13966", a human comment, or a maintainer marking it ready. On a yes:
+  `ncl groups list` first (approvers are paused), then route through slang-triager (never message the fixer directly) to
+  **merge** master (no rebase; 41+ behind) and then `gh pr ready`.
+- **2026-11-06:** tangent-vector opened follow-up #14361 (11-05 21:31Z, `-fhlsl-methods-mutating-by-default`, opt-in option replacing #14352's dormant `if (0)`); in the merge queue 11-06 00:02Z. Approver event not forwarded (approver paused); queued in `data/approver-pause-queue.md`. Maintainer-owned; nothing dispatched.

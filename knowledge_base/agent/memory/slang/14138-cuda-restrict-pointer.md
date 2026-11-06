@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14138 — CUDA no-alias (`__restrict__`) pointer spelling
-description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:31:37Z, cloth-sim batch. Dispatched to slang-triager under the R6 hold (no bot comment, label, PR or commit naming the issue before 2026-11-05 14:31:37Z). Main one-shot r6-release-14138-c527 at 11-05 14:35Z. Triaged 11-01 14:41Z feature/medium/P2, rec A (`restrict` on `in` pointer params); ImmutablePtr<Rec> already closes the reporter's copy kernel. PARKED on operator go-ahead + maintainer (csyonghe) surface pick.
+description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:31:37Z, cloth-sim batch. Dispatched to slang-triager under the R6 hold (no bot comment, label, PR or commit naming the issue before 2026-11-05 14:31:37Z). Main one-shot r6-release-14138-c527 at 11-05 14:35Z. Triaged 11-01 14:41Z feature/medium/P2, rec A (`restrict` on `in` pointer params); ImmutablePtr<Rec> already closes the reporter's copy kernel. **HELD since 11-02 under rung 4 (jkwak-work self-assigned + milestoned Q4 2026)**, so no bot post, no fixer. The 11-01 R6 4-day hold is the RETIRED rule (retired 11-02). Re-check `r6-release-14138-c527`, moved to 11-12 14:00Z.
 tags: [cuda, emit, pointers, aliasing, feature-request, r6]
 ---
 
@@ -47,3 +47,14 @@ with the ImmutablePtr workaround on 11-05 and wait for csyonghe's surface pick. 
 ⇒ My call 11-01: **no bot fixer chain**, because a bot fixer would compete with an external contributor's offer. I withdrew operator option (b) on the dashboard. The R6 hold stays. Relayed verbatim to the triager, and its 11-05 draft is to be cut down to what the reporter does not already have: the L40S data showing `ImmutablePtr<Rec>` already matches `__restrict__` SASS/timing on the copy kernel, which bears on their proposed ImmutablePtr PR, plus a plain-text #14139 mention. The draft must not answer the maintainer question and must not offer a bot PR. If a maintainer answers before 11-05, the post may be dropped (the task checks for this).
 
 **Revised draft 11-01 23:42Z** at `/workspace/extra/ephemeral/prod-groups/slang-triager/memory/issues/comment-14138.md` (the triager's own `memory/issues/`). I read it: measurements only, explicitly no position on the spelling. It adds a row showing that `ImmutablePtr<Rec>` + `__restrict__` gives SASS identical to ImmutablePtr alone, which is relevant to the reporter's proposed ImmutablePtr PR. It names #14139 and the S2 TODO as related, and leaves `{{SHA}}` to fill on post day. No changes needed; it waits for the 11-05 release.
+
+**#14139 triage verdict (11-05 ~11:40Z, dashboard msg 30 asked).** Not dispatched to the triager: jkwak-work
+self-assigned #14139 on 11-02 18:56Z and set milestone Q1 2027 (Winter), so it is held under rung 4. #14138 is also assigned
+to jkwak-work. My verdict: Bug, front end (attribute-target check) + SPIR-V emit, low severity / P3. It is not a regression,
+there is no crash or miscompile, and the `Access.Immutable`/`ImmutablePtr` default already gives `RestrictPointer`.
+Next step: the maintainer picks implement or remove/diagnose. No bot work. Re-verified at master 04d2726db: the declarations
+are now at hlsl.meta.slang:28871-28872, still with no `__attributeTarget`. No open PR names it.
+
+
+**11-05 11:35Z: the dashboard asked for a triage again** (same issue-body template). There was no re-dispatch: the triage exists, and the triager session `sess-1793543668732-u3lxpb` owns it. Live state: still OPEN; **jkwak-work self-assigned it 2026-11-02T18:56:49Z** (`assigner`=jkwak-work) and set the milestone to Q4 2026; #14139 is also assigned to jkwak-work. No PRs. One cross-reference, from #14141. The only comment is the reporter's. I re-verified at master 04d2726db (11-05 06:53Z): no `__restrict__` emission; E31206 is unchanged; the 3 commits since 6815ed82d to the touched files are unrelated (#14227, #14051, #14168).
+⇒ The 14:35Z release would have posted under the retired R6 rule while a rung-4 hold applies, so I **rewrote the one-shot** into an 11-12 14:00Z re-check that does not post. I reported the verdict to the dashboard and asked one question: post the L40S measurements anyway (an operator ask lifts the rung-4 hold), or keep holding (the default).

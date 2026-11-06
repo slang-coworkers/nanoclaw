@@ -24,7 +24,7 @@ HLSL, so DXC rejected them; WGSL/Metal `Load`/subscript used the sampler as the 
 | Timer | one-shot `rechase-13737-pr13741-564d`, 11-07 08:00Z |
 
 **Parked only on humans:** `falcor-ci` approval and the ready flip (operator; restated 10-31 dashboard msg 21), maintainer review. The filing question was **withdrawn 10-31**: filing is not operator-gated ([policy](../imported/feedback_github_writes_operator_authorized.md)).
-**Resumes on:** an operator answer, a #13741 webhook, or the 11-07 one-shot. (The triager's filing report for 1/3/6 arrived 10-31 08:11Z, its seq 29.) Follow-up filing is done (10-31): #14123, #14124, #14125, #14126.
+**Resumes on:** an operator answer, a #13741 webhook, or the 11-07 one-shot. (The triager's filing report for 1/3/6 arrived 10-31 08:11Z, its seq 29.) Follow-up filing is done (10-31): #14123, #14124, #14125, #14126. #14126 is maintainer-owned (jkwak-work self-assigned 11-02, Q1 2027): held, no dispatch or post. **#14123 and #14125 are self-assigned by jkwak-work (11-02, Q1 2027): held, no bot work** unless jkwak-work @mentions the bot or the operator says "do (a)" (operator triage reply 11-05, msg 33).
 
 ## The fix (what fb36938 does)
 

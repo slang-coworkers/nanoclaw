@@ -151,3 +151,11 @@ re-verifying at that day's master. t-35ef08 (11-10 00:10Z) becomes the parked ch
   author, both edits present, SHA 96a728c85, no @-mention). **PARKED for jkwak-work (A/B/C).** The re-check is
   triager one-shot `t-35ef08` at 11-10 00:10Z: it reports a maintainer reply to me, posts nothing otherwise, and
   dispatches no fixer.
+
+**11-05 11:35Z: the operator asked (dashboard msg 34) for a triage verdict on #14083. I gave the verdict myself and
+dispatched no triager.** Live state: OPEN, 0 comments, assignee jkwak-work (self-assigned 11-02 18:48Z), Type=Bug
+(set by jhelferty-nv), milestone "Q4 2026 (Fall)". The only `referenced` event is #14079's merge commit 9b46bca6 in
+the undefdev fork. ✅ Main re-ran the repro with the local Release slangc (built 11-02 22:24Z): `-target cuda` gives
+rc=0 and empty bodies for both `k` and `f`; a `[shader("compute")]` entry point making the same `SampleCmp` call gives
+E36107. Verdict: front-end capability checking (slang-check-shader.cpp), Bug, P2 (silent miscompile, CUDA-only
+roots). Next step: held for jkwak-work (rung 4), no bot work.

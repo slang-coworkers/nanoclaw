@@ -87,3 +87,13 @@ One issue covers both: `__trimFirst`/`__trimLast`/`__first`/`__last` and `__pack
 element with other elements (`getTrimFirstPack`/`getFirstElement` in slang-ast-builder.cpp, `getPackCardinalityFromStructure` in slang-syntax.h).
 No file overlap with #14314 (that PR touches slang-check-expr.cpp only). **#14318 `issue_opened` webhook received**; matched this record on the first
 grep; not dispatched, no post. FILED-ONLY; a fixer is an operator decision, default none. Resume only on a human comment/@-mention or an operator ask.
+**11-05 11:36Z — operator asked (dashboard) to triage #14309.** Live: jkwak-work self-assigned 11-04 17:31:33Z and milestoned it
+Q1 2027 (Winter); 0 comments, no PR. Our bot-filed body is already the triage verdict, and the issue is maintainer-assigned, so it is held
+under rung 4. I answered the operator from live state with subsystem, severity and next step: IR lowering/hoisting (variadic generics), P2,
+held for jkwak-work. Nothing went to the triager or GitHub. Resume on an @nv-slang-bot mention or if the operator says to dispatch a fixer.
+**11-05 11:36Z — dashboard templated "New issue to triage" for #14316.** Live: OPEN, 0 comments, assigned to jkwak-work by
+jhelferty-nv 11-04 18:26Z, milestone Q1 2027 (Winter) set by jkwak-work. Maintainer-owned, and the body is already the triage, so
+(precedent #13729/#13757/#13411) I answered the operator with a verdict from live state and sent nothing to the triager, fixer or GitHub.
+Code read on master 04d2726db0 confirms the non-fold mechanics: `emitPackLike` (slang-ir-util.cpp:3917) reuses the old inst's
+`ValuePackType`; `maybeSpecializeCountOf` (slang-ir-specialize.cpp:1114) folds only `TypePack`/`TupleType`/array. The crash site was not
+verified. Verdict: IR specialization (variadic shape packs), P2. Resume on a jkwak-work @-mention or an operator go-ahead for a fixer.

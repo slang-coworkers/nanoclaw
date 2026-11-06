@@ -85,3 +85,21 @@ master 3da6f63c0: no row changed. The reply asks jkwak-work (1) test shape: (a) 
 sm_5_1 and exclude the SM 6.x clauses, and (2) whether they want the bot draft PR. It also corrects the 11-03
 comment: option (b) must also exclude row 1b and the 4 `bias` forms of row 1a. **Idle on jkwak-work**; no timer
 (replies arrive as webhooks). Bot-PR go-ahead -> slang-fixer on the canonical thread, based on #14269.
+
+## 11-05 11:36Z — dashboard "New issue to triage" for #14271 (answered from live state, no dispatch)
+
+Live: OPEN, 0 comments, `reproduced`, **self-assigned by jkwak-work 11-04 17:35Z, milestone Q1 2027 (Winter)**, no PR.
+Cause re-verified on master `04d2726db0`: `componentFuncString[0] == ""` (`hlsl.meta.slang:4990`), so the four-offset
+overloads' `case hlsl: ".Gather$(compareFunc)$(componentFunc)"` (:5125, :5152) emit `Gather`/`GatherCmp` for component 0.
+Verdict to operator: Bug, core-module HLSL intrinsic mapping, low severity (DXC hard error, not a miscompile;
+`GatherRed` workaround), P3. Sent nothing to triager/fixer/GitHub (#13757 / #13729 rule: maintainer owns it, body is the
+triage). **Resume on:** an @nv-slang-bot ask on #14271 or an operator GO for a bot PR (-> slang-fixer, thread
+`gh-issue-shader-slang/slang-14271`).
+
+**11-05 ~11:40Z — dashboard asked Main to triage #14272 (msg 20).** Live: jkwak-work **self-assigned 11-04 17:30Z**
+and set milestone **Q1 2027**. No comments, labels `reproduced`, Type Bug, no PR. I re-ran the repro myself: a local Release
+slangc (11-02 build) gives exit 0 at `-profile sm_5_0` and emits `SampleCmpLevel` plus comparison `CalculateLevelOfDetail`.
+DXC 1.9 rejects it at sm_6_7 and accepts it at sm_6_8. The atoms on master 04d2726db are unchanged (`texture_shadowlod = texture_sm_4_1`, capdef:2463;
+`texture_querylod`, capdef:2451). **Verdict:** capability system / core-module HLSL gates; severity low (DXC fails loudly; this
+is not silent wrong code and not a regression). **Held: maintainer-owned (rung 4).** No triager, no fixer, no GitHub post, because
+the body is already the triage. Bot fix only if jkwak-work asks (it raises public floors).

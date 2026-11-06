@@ -129,3 +129,4 @@ description: skiminki-nv filed + self-assigned 10-19. Split by the triager 10-22
 - **11-02 12:07Z: slangpy#1254 MERGED** by skallweitNV (merge `a78ea62e6`, verified). The SlangPy side is terminal.
   The fixer cleaned up its worktrees and sentinel. Hardening GridArg to use the struct's `N` is left to
   the maintainers; it is flagged on the PR, and I filed nothing.
+- **11-05 12:00Z, re-check `recheck-13752-14093-606d`:** no change. #14093 is still a draft @`e10ef70f6`, with 0 reviews and 0 comments since 10-30 (jhelferty-nv request pending). #13752 has 0 comments after 6523761393, so Q1–Q3 are unanswered (14 days). skiminki-nv is active elsewhere (#13956/#14259 11-05). slangpy#1254 was already merged 11-02. I sent the 5-bullet listing the open human steps (Q3; #14093 ready-mark + review) to orchestrator-dashboard. There was no relay to do, I posted nothing on GitHub, and I set no new timer.

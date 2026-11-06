@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang-rhi#961 — Metal/CUDA dispatch with a host-chosen thread-group size, or a partial last group (dispatchThreads)
-description: Human-filed (albertrodriguezclo) feature request 2026-11-01 19:28:28Z, cloth-sim porting batch. Host-side companion of slang#14136. Triaged 11-01 feature/medium/P2, both claims confirmed (rec A: one appended args-struct dispatch method). PARKED on slang-rhi maintainer API direction (assignee jkwak-work); triager one-shot t-b6e981 11-05 19:30Z posts the held draft. Side bug slang#14143 is maintainer-owned (jkwak-work, Q1 2027) since 11-02; fixer ask withdrawn 11-03.
+description: Human-filed (albertrodriguezclo) feature request 2026-11-01 19:28:28Z, cloth-sim porting batch. Host-side companion of slang#14136. Triaged 11-01 feature/medium/P2, both claims confirmed (rec A: one appended args-struct dispatch method). PARKED on slang-rhi maintainer API direction (assignee jkwak-work); HELD as maintainer-owned (jkwak-work self-assigned 11-02, Q4 2026): no bot post; t-b6e981 fired 11-05 19:31Z: held, nothing posted, no timer remains. Side bug slang#14143 is maintainer-owned (jkwak-work, Q1 2027) since 11-02; fixer ask withdrawn 11-03.
 resource: https://github.com/shader-slang/slang-rhi/issues/961
 tags: [slang-rhi, metal, cuda, dispatch, feature-request, r6]
 ---
@@ -72,6 +72,15 @@ Sent to orchestrator-dashboard (thread `gh-issue-shader-slang/slang-14143`): **f
 #14181 precedent). The **rhi-hardening filing stays an open file/skip question**; with no reply it stays unfiled. **No further timer.**
 The R6 hold is retired (Core Memory, 11-02), so a hardening filing may name #961.
 
-**Next.** At t-b6e981 (11-05 19:30Z): post the draft, or reply to a human comment. A slang-rhi maintainer picks A/B/C
+**11-05 11:35Z, operator re-ask ("triage #961") from the dashboard.** Live: 0 comments; jkwak-work self-assigned 11-02 18:15:33Z
+and set the milestone Q4 2026 (Fall) (also on #14136). Rung 4 applies (a human report with a maintainer assignee): no bot post.
+I sent the triager (pinned `jymbs0`, `in_reply_to=24`) a stand-down for the 19:30Z post. At 11:38Z the triager confirmed that
+t-b6e981 is rewritten: it posts only on an @nv-slang-bot mention or a question, otherwise it reports `held: maintainer-owned`.
+I answered the operator with the 11-01 verdict. Posting the draft for jkwak-work is the operator's call ("post the #961 triage").
+
+**11-05 19:31Z, t-b6e981 fired.** The triager reported `held: maintainer-owned` and posted nothing. I verified this on GitHub: the issue is open with 0 comments,
+no labels, assignee jkwak-work and milestone Q4 2026 (Fall). The timeline has only issue_type_added, assigned and milestoned, and no PR or cross-reference. **No timer remains.**
+
+**Next.** Nothing is scheduled. The chain resumes on an @nv-slang-bot mention, a human comment, or an operator "post the #961 triage". A slang-rhi maintainer picks A/B/C
 and the names. No fixer chain and no SlangPy issue without the operator's go-ahead. The SlangPy recommendation
 (`thread_group_size=`/`exact_threads=` on the raw path, `sgl command.cpp:227`) is in the memo.

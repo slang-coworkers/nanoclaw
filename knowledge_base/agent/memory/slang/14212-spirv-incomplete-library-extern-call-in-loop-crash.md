@@ -101,3 +101,18 @@ Explanation comment: issuecomment-6592884670. **Waiting on: a human review + the
 **and the operator's SPIRV-Tools filing decision.** The supervise tick walks this chain because its sessions are active, so it needs no separate timer.
 
 **#14225 closed WNF (11-04 17:21Z, jkwak-work, issuecomment-6637248539):** "operator `&` will be deprecated. Closing as WNF" (GitHub stateReason COMPLETED). No bot mention and no ask. I did not post or relay; the triager's work on it was done. #14220's tests do not use `&` (checked at de95590c8), so the PR is unaffected. Lesson for triage: a repro that depends on unary `&` (address-of) can be closed WNF.
+- **#14226, 11-04 17:21:58Z: maintainer-owned.** jkwak-work self-assigned it and set milestone Q1 2027 (Winter). Rung-4 hold: no
+  dispatch, no bot post.
+- **#14226, 11-05 11:36Z: the operator asked for a triage verdict on the dashboard (msg 36).** I re-ran both repros myself with
+  `slang/build/Release/bin/slangc`: each prints "Conflicting addressing models", exits 0 and writes no .spv, so #14224 is visible
+  too. I confirmed `m_addressingMode = SpvAddressingModelLogical` and `requirePhysicalStorageAddressing()` in slang-emit-spirv.cpp.
+  Verdict sent: Bug, SPIR-V backend (emit's per-module addressing model plus the precompiled spirv-link step), medium, P2.
+  Workaround: import from source. Next: hold for jkwak-work. Dispatch only on an @nv-slang-bot mention, an unassignment, or an
+  explicit operator go-ahead.
+
+
+**#14223 is maintainer-owned (11-04 17:20Z):** jkwak-work self-assigned it (`assigner`=jkwak-work) and set the milestone to Q1 2027 (Winter). That is the rung 4 hold: no dispatch and no bot post. Resume only on an @nv-slang-bot mention or an operator ask that names a fix.
+**11-05 11:36Z: the dashboard sent a triage request for #14223 (the same template as #14211). I did not dispatch it.** I gave the verdict from the filing:
+- Subsystem: forward-mode autodiff (`slang-ir-autodiff-fwd.cpp`), reached from typeflow specialization.
+- Bug, high severity (segfault with no diagnostic), P3 (narrow trigger; workaround: a user `[ForwardDerivative]`).
+On master 04d2726db, `insertTempVarForMutableParams` still dereferences `getFirstBlock()` with no check (:2333-2334). No PR links the issue. Next: jkwak-work's call.

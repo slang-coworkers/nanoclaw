@@ -13,6 +13,7 @@ the one mount detail the spine omits.
 
 ## Map
 
+- [Wiki fold: per-author learnings dir emptied on purpose](wiki-fold-deleted-author-dirs.md) — when live_atoms drop and lineage exits 3: prune moot edges, strip dead cites + remnants (diff vs yesterday's KB), never restore (eval isolation 11-04)
 - [Fleet disk: review-eval worktrees](fleet-disk-eval-worktrees.md) — 11-03 eval-slang-reviewer runs left ~330 GB of worktrees on the 2.5 TB shared volume. Covers how to find the writer, the GC blind spot for standalone review clones, and how one fleet-wide alert reaches several Main sessions at once (check siblings first).
 - [Container mounts](mounts.md) — the mount map, incl. the `/workspace/project`
   read-only mount the spine's table omits.
@@ -34,6 +35,7 @@ the one mount detail the spine omits.
   re-check whose PR merged is cancelled within the hour, even if its job is post-merge.
 - [Placeholder one-shot tasks fire immediately](task-one-shot-placeholder.md) — create
   with the real prompt + future time in one call; read it back before quoting the id. Also: `ncl tasks update` is a write and never a probe; read a prompt back with `ncl tasks get` (`list` truncates it).
+- [Coworker timer sessions are blind to the owner](coworker-timer-session-blind-to-owner.md) - a peer's `system:tasks:*` one-shot re-reports an old answer as new; check the chain record + GitHub, reply not-actionable, never re-dispatch (#10232 11-05)
 - [Fixer reports drift to Main](fixer-fix-reports-drift-to-main.md) - slang-fixer `[Fix Report]`s often land on Main, not the handing-off triager; forward to the triager (cases 10-22→10-29)
 - [Re-ask cap](reask-cap-park-after-final-ask.md) - operator re-ask series get one announced final ask, then park in supervisor-state.json; never re-ask indefinitely
 - [Filing verified issues](filing-verified-issues-policy.md) - reproduced+deduped shader-slang bugs are filed without operator approval; external-repo filings, scope requests and fixer fan-out are asked/reported

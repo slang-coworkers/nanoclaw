@@ -77,3 +77,16 @@ runs 2026-11-05 18:00Z.
 
 **Caveat (11-02, triager on #14053):** build/Release `slangc -v` reports `2026.13.1-50-g3649fb982` even though the build contains #14065 (10-30).
 The version string is fixed at configure time, so "re-repro on master 3649fb982" is probably a stale label, not proof of an old build. Check the actual HEAD instead.
+
+**11-05 18:00Z — re-check `recheck-14197-ready-revi-40e1`: no change, nothing sent.** #14197 is a draft at head `50c63a7`.
+`mergeStateStatus` is BEHIND, there are no reviews and no inline comments, and nothing on the PR has been updated since 11-02 20:50Z.
+Every CI job shows SKIPPED (draft gating), so run 41521888535 never produced real results. The issue
+has had no human comments since 18:03Z; the only comments are the bot's 5-bullets (6584476895 and 6586945527). jkwak-work is still the
+assignee and the shepherd. B–D have no maintainer direction. Decision table case (1) matched, but the **11-03 policy
+([undraft-asks-replaced-by-weekly-list](../orchestrator/undraft-asks-replaced-by-weekly-list.md)) supersedes the per-PR re-send**.
+#14197 is a P2 feature, not a regression, and it is already on the weekly list (`weekly-undraft-list-4573`, Mon 11-09 09:00Z). So
+nothing went to the dashboard, and the fixer did not need a nudge.
+**Ready-flip pending.** The old ask "gh pr ready once CI is green" can never be met: real CI runs only after the PR leaves
+draft. The correct human step is: `gh pr ready` → real CI → jkwak-work review. The PR is BEHIND but mergeable, and it has had no human review,
+so a `merge master` dispatch would be fine once it is non-draft. No timer remains on this chain. Webhooks (ready_for_review,
+review, CI) and the weekly list will drive it.

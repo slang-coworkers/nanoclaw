@@ -26,3 +26,7 @@ chain held filed-only (8 slang-fixer sessions running; lower severity). It touch
 as #14276, so a fixer starts after #14276 merges to avoid a conflicting parallel edit. One-shot
 `recheck-14282-pr14276-51f9` (11-09 12:00Z) dispatches slang-fixer if #14276 has merged.
 **Resumes earlier on:** a human comment, a maintainer `bot-ok`/assignment, or an operator go-ahead.
+
+**11-05 09:52Z (from the #14259 session).** skiminki-nv chose #14322 (HLSL `L` suffix) first. #14276 stays a draft, and its fate depends on an
+open typed-literal question ("should also eliminate the need for #14276"). So "#14276 merges" may never happen. The 11-09 recheck should treat
+"#14276 still draft, superseded/undecided" like case (d) and ask the operator whether #14282 gets its own fixer, rather than re-arm forever.

@@ -27,3 +27,6 @@ conflict; #14276 changes this very SM 5.0 output to `Store<uint64_t >`. A third 
 right shape depends on which #14259 approach skiminki-nv picks. Same pattern as [#14282](14282-hlsl-rov-bab-templated-load-dxc-reject.md).
 One-shot `recheck-14323-after-1425-4d9c` (11-11 13:00Z) dispatches slang-fixer once a #14259 PR has merged.
 **Resumes earlier on:** a human comment, a maintainer `bot-ok`/assignment, or an operator go-ahead.
+
+**11-05 17:16Z (from the #14259 session).** skiminki-nv merged the #14259 approach PR #14322 (HLSL `L` suffix, 4a6758601). #14276 is still a
+draft, waiting on their typed-literal decision. For this issue's 11-11 recheck, "the approach landed" = #14322 merged.

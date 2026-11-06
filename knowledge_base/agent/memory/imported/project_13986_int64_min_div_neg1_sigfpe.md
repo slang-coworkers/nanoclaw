@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13986_int64_min_div_neg1_sigfpe
-description: "slang#13986 (nv-slang-bot, filed 10-28 18:34:40Z by slang-triager from the #13978/#13984 fixer side finding): slangc SIGFPE (exit 136) constant-folding 64-bit INT64_MIN / -1 and % -1 — IR SCCP evalDiv/evalRem (slang-ir-sccp.cpp:660/:670) and front-end tryConstantFoldExpr CASE(/)/CASE(%) (slang-check-expr.cpp:2744-2755, also folds uint64 signed). Own fix chain; slang-fixer session 6cxhqb on gh-issue-shader-slang/slang-13986 since 18:36Z; draft PR #13991 @497b797. 11-04 18:58Z assignee jhelferty-nv: \"we shouldn't fold these\" (diagnostic optional, warn-vs-error undecided) — relayed verbatim to 6cxhqb 19:01Z. Sibling: #13985."
+description: "slang#13986 (nv-slang-bot, filed 10-28 18:34:40Z by slang-triager from the #13978/#13984 fixer side finding): slangc SIGFPE (exit 136) constant-folding 64-bit INT64_MIN / -1 and % -1 — IR SCCP evalDiv/evalRem (slang-ir-sccp.cpp:660/:670) and front-end tryConstantFoldExpr CASE(/)/CASE(%) (slang-check-expr.cpp:2744-2755, also folds uint64 signed). Own fix chain; slang-fixer session 6cxhqb on gh-issue-shader-slang/slang-13986 since 18:36Z; draft PR #13991 @497b797. 11-04 18:58Z assignee jhelferty-nv: \"we shouldn't fold these\" (diagnostic optional, warn-vs-error undecided) — relayed verbatim to 6cxhqb 19:01Z; 11-05 still parked on her two questions (re-check 11-07 19:00Z). Sibling: #13985."
 ---
 
 # slang#13986: SIGFPE folding INT64_MIN / -1 and % -1
@@ -37,5 +37,8 @@ question comment [6639852932](https://github.com/shader-slang/slang/issues/13986
 also stop folding? It keeps the uint64 part. #13991 is unchanged @497b797. The fixer set its own one-shot re-check for 11-05 19:00Z
 (its claim; Main cannot list peer tasks). The plan is in the fixer's `reports/slang-13986.md`.
 Main told the operator on the dashboard.
+
+**11-05 19:02Z fixer [Report] (verified live 11-05):** still parked; no comment after 6639852932, #13991 draft @497b797,
+#13984 still OPEN draft. Fixer re-armed its one-shot re-check to 11-07 19:00Z. Nothing new for the operator.
 
 **Resume on:** fixer report via its parent edge (triager) → the #13973 Main's chain; maintainer reply on #13986/#13991.

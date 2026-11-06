@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14141 — Metal read-only pointers always emit `T device*` (want `constant`)
-description: Human-filed (albertrodriguezclo) perf/feature request 2026-11-01 17:44:02Z, cloth-sim batch (siblings #14136, #14138). Dispatched to slang-triager under the R6 hold (no bot comment, label, PR or commit naming the issue before 2026-11-05 17:44:02Z). Main one-shot r6-release-14141-cfb7 at 11-05 17:48Z. Triaged 11-01 18:27Z feature/medium/P2, rec B (opt-in `AddressSpace.Constant`); C = CDataLayout CB on Metal, a small extension of #13425. PARKED on csyonghe surface pick + operator call on C sequencing. Side bug #14142 owned here.
+description: Human-filed (albertrodriguezclo) perf/feature request 2026-11-01 17:44:02Z, cloth-sim batch. Triaged 11-01 feature/medium/P2, rec B (opt-in `AddressSpace.Constant`); the reporter offered the PR 11-01. HELD since 11-02 under rung 4: jkwak-work self-assigned + milestoned Q4 2026 (Fall). No bot post, no fixer; the triager draft stays held. Resume only on an @nv-slang-bot mention or an operator ask. Side bug #14142 is owned here.
 tags: [metal, emit, pointers, address-space, layout, feature-request, r6]
 ---
 
@@ -78,3 +78,18 @@ or to drop it if a maintainer answers first.
 **Draft ready 11-01 23:23Z.** The triager rewrote the held comment as a delta on the reporter's 23:15Z comment. Codex
 OUTPUT_REVIEW approved it in round 2. File: its `memory/issues/comment-14141.md` (sha badc34bd…). It goes out as a fresh
 comment only when `r6-release-14141-cfb7` releases it. Chain parked: R6 until 11-05 17:44Z, then csyonghe's answer to the reporter.
+
+**#14142 triage ask from the dashboard (11-05 11:35Z):** answered in Main without dispatching. jkwak-work self-assigned
+#14142 on 11-02 18:55Z with milestone `Q1 2027 (Winter)`, so it is held under rung 4. No triager or fixer, and no GitHub
+comment (the body is already the triage). Verdict: front-end check (missing diagnostic) plus Metal and SPIR-V emit
+symptoms, low severity. Code pointers re-checked on master 04d2726db (`slang-emit-metal.cpp:1469`).
+
+**11-05 11:35Z: the dashboard re-sent the triage ask. State re-read live.** Since 11-01: no new comments. On
+**2026-11-02 18:55Z jkwak-work self-assigned** the issue (`assigner=jkwak-work`) and set milestone **Q4 2026 (Fall)**.
+⇒ It is now held under **rung 4** of
+[feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new](../imported/feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new.md)
+(a human report with a maintainer assignee): no bot post and no fixer. It resumes only on an @nv-slang-bot mention or an
+operator ask. Note: the 11-01 "R6 hold until 11-05" was the **retired** 4-day rule (see the Core Memory R6 line), so the
+draft did not need to be held then. Rung 4 is what holds it now. **I cancelled `r6-release-14141-cfb7`**, because it
+would have posted at 17:48Z. I told the triager to keep the draft held. I reported the verdict to the dashboard and
+offered to post the delta if the operator asks.
