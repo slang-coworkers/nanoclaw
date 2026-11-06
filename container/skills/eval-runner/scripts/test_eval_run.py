@@ -855,6 +855,7 @@ class JobTest(unittest.TestCase):
         job.run_all()
         summary = er.write_job(cfg, job)
         cr = summary["compare_result"]
+        self.assertEqual(summary["compare_job"], "base-1")
         self.assertEqual((cr["tasks_compared"], cr["paired_delta_mean"], cr["smoke_signal"]), (1, 0.6667, True))
         self.assertEqual(cr["low_signal_tasks"], ["slang-1"])
         self.assertIsNone(cr["paired_delta_ci95"])  # one task: no interval
@@ -915,6 +916,105 @@ class CliTest(unittest.TestCase):
         self.assertIn(os.path.join("slang-1", "r2", "answer.json"), r.stderr)
         r = subprocess.run(argv + ["--dry-run"], capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+
+class ReportTest(unittest.TestCase):
+    """`eval_run.py report <job>`: a finished job whose unknown trials were re-scored after
+    it closed (verifier/reward.txt written into the trial directories) gets its derived
+    files rebuilt; nothing is dispatched and the previous page is kept."""
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="eval-report.")
+        self.job_dir = os.path.join(self.root, "evals", "job-1")
+        os.makedirs(os.path.join(self.root, "evals", "base-1"))
+        with open(os.path.join(self.root, "evals", "base-1", "trials.jsonl"), "w") as fh:
+            fh.writelines(json.dumps(t) + "\n" for t in [
+                self.trial("slang-1", 1, 0.0), self.trial("slang-1", 2, 1.0),
+                self.trial("slang-2", 1, 0.5), self.trial("slang-3", 1, 1.0)])
+        os.makedirs(self.job_dir)
+        self.trials = [
+            self.trial("slang-1", 1, 1.0),
+            self.trial("slang-1", 2, None, "unknown", "judge unavailable: Connection refused"),
+            self.trial("slang-2", 1, None, "unknown", "judge unavailable: Connection refused"),
+            self.trial("slang-2", 2, None, "skipped", "budget"),
+            self.trial("slang-3", 1, None, "unknown", "judge unavailable: Connection refused"),
+        ]
+        with open(os.path.join(self.job_dir, "trials.jsonl"), "w") as fh:
+            fh.writelines(json.dumps(t) + "\n" for t in self.trials)
+        # job.json as a run before `compare_job` existed wrote it: the summary keys plus the
+        # compare dict under "compare" (which hides the baseline id).
+        with open(os.path.join(self.job_dir, "job.json"), "w") as fh:
+            json.dump({"schema": 2, "job_id": "job-1", "kind": "review", "variant": "v2", "group": "g",
+                       "repeats": 2, "tasks": 3, "trials": 5, "dispatched": 4, "scored": 1, "unknown": 3,
+                       "timeouts": 0, "errors": 0, "skipped": 1, "mean_reward": 1.0, "pass_at_k": 1.0,
+                       "low_signal_tasks": 0, "cost_usd": 12.5, "cost_signal": "ncl cost-cap status",
+                       "budget_usd": 10.0, "stopped_for_budget": True, "duration_sec": 99.0,
+                       "started_at": "2026-01-01T00:00:00Z", "finished_at": "2026-01-01T00:01:39Z",
+                       "frozen": {}, "compare": {"tasks_compared": 1}, "task_results": {}, "trial_results": []}, fh)
+        with open(os.path.join(self.job_dir, "scorecard.html"), "w") as fh:
+            fh.write("<h1>OLD PAGE</h1>\n<h2>Baseline base-1 vs variant v2</h2>\n")
+        self.write_reward("slang-1#r2", "0.75\n")
+        self.write_reward("slang-2#r1", "# judge note\n1.7\n")      # clamped to 1.0
+        os.makedirs(os.path.join(self.job_dir, "trials", "slang-3#r1__cafe", "verifier"))  # no reward.txt
+
+    def tearDown(self):
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    @staticmethod
+    def trial(task, repeat, reward, status="scored", reason="verifier exited 0"):
+        return {"task_id": task, "repeat": repeat, "trial_id": f"{task}#r{repeat}", "attempt": 1, "kind": "review",
+                "status": status, "reward": reward, "reason": reason, "cost_usd": 2.5, "duration_sec": 100.0}
+
+    def write_reward(self, trial_id, text):
+        d = os.path.join(self.job_dir, "trials", f"{trial_id}__1-ab12", "verifier")
+        os.makedirs(d)
+        with open(os.path.join(d, "reward.txt"), "w") as fh:
+            fh.write(text)
+
+    def test_report_counts_rescored_trials_and_recomputes_the_comparison(self):
+        out = er.rebuild_job(self.root, "job-1", now=lambda: 1_800_000_000.0)
+        self.assertEqual(out["rescored"], 2)
+        rows = {t["trial_id"]: t for t in er.load_trials(self.root, "job-1")}
+        self.assertEqual((rows["slang-1#r2"]["status"], rows["slang-1#r2"]["reward"]), ("scored", 0.75))
+        self.assertEqual((rows["slang-2#r1"]["status"], rows["slang-2#r1"]["reward"]), ("scored", 1.0))
+        self.assertEqual(rows["slang-1#r2"]["reason"], er.RESCORED_REASON)
+        self.assertEqual((rows["slang-3#r1"]["status"], rows["slang-3#r1"]["reward"]), ("unknown", None))
+        self.assertEqual(rows["slang-2#r2"]["status"], "skipped")
+        job = read_json(self.job_dir, "job.json")
+        self.assertEqual((job["scored"], job["unknown"], job["skipped"], job["status"]), (3, 1, 1, "stopped"))
+        self.assertEqual(job["mean_reward"], 0.9375)       # task means 0.875 and 1.0
+        self.assertEqual(job["compare_job"], "base-1")      # recovered from the old page's heading
+        cr = job["compare_result"]
+        self.assertEqual((cr["tasks_compared"], cr["paired_delta_mean"], cr["wins"]), (2, 0.4375, 2))
+        self.assertEqual(job["regenerated"], {"at": "2027-01-15T08:00:00Z", "rescored_trials": 2})
+        self.assertEqual(read_json(self.job_dir, "result.json")["stats"]["evals"]["review"]["n_trials"], 3)
+        self.assertIn("OLD PAGE", read_text(self.job_dir, "scorecard.prev.html"))
+        page = read_text(self.job_dir, "scorecard.html")
+        self.assertNotIn("OLD PAGE", page)
+        self.assertIn("Regenerated 2027-01-15T08:00:00Z from the trial directories: 2 trial(s) re-scored", page)
+        self.assertIn("Baseline base-1 vs variant v2", page)
+        self.assertIn(er.RESCORED_REASON, page)
+
+    def test_second_report_changes_nothing(self):
+        er.rebuild_job(self.root, "job-1", now=lambda: 1_800_000_000.0)
+        before = {f: read_text(self.job_dir, f) for f in ("trials.jsonl", "job.json", "result.json", "scorecard.html")}
+        out = er.rebuild_job(self.root, "job-1", now=lambda: 1_800_000_000.0)
+        self.assertEqual(out["rescored"], 0)
+        after = {f: read_text(self.job_dir, f) for f in before}
+        self.assertEqual(after, before)
+
+    def test_report_cli_prints_one_line_and_a_missing_job_is_exit_2(self):
+        r = subprocess.run([sys.executable, os.path.join(HERE, "eval_run.py"), "report", "job-1", "--reports", self.root],
+                           capture_output=True, text=True, check=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout.count("\n"), 1)
+        self.assertIn("job job-1: report rebuilt — 2 trial(s) re-scored, scored 3/5, mean reward 0.9375", r.stdout)
+        self.assertIn("paired Δ 0.4375", r.stdout)
+        self.assertTrue(r.stdout.rstrip().endswith(os.path.join(self.job_dir, "scorecard.html")))
+        r = subprocess.run([sys.executable, os.path.join(HERE, "eval_run.py"), "report", "job-9", "--reports", self.root],
+                           capture_output=True, text=True, check=False)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("no job job-9", r.stderr)
 
 
 class MetricsTest(unittest.TestCase):
