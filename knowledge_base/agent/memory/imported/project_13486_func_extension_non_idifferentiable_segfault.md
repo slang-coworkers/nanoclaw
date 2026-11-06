@@ -34,3 +34,9 @@ on 10-15 19:20Z ("Stop function-extension synthesis after target resolution fail
 closes #13486). It adds an `IsErrorExpr` check in `visitFuncExtensionDecl` (`slang-check-decl.cpp`) and 5 tests. CI: 60 pass / 1 skip.
 Review requested from dshreiner-nv; only coderabbit has reviewed. The PR belongs to the assignee, and the bot neither reviews nor routes it.
 #13486 counts as resolved when #13677 merges. Next one-shot: `rechase-12249-13411-c334` (10-21 09:00Z).
+
+**Status as of 11-05 09:00Z: #13486 and #13677 unchanged since 10-15** (head ace0a99616; the 11-04 license/cla re-stamp is a repo-wide refresh,
+not news). **Sibling watch #13411 is half addressed:** PR #14241 (jvepsalainen-nv, design-doc refresh, opened 11-03; APPROVED by
+skiminki-nv 11-04; open) rewrites `docs/generated/design/ir-reference/misc.md` so its IsVector text is correct. It leaves the vacuous
+`docs/generated/tests/design/ir-reference/misc/is-vector-folds-false.slang` untouched and does not close #13411. Both are held, with no
+bot post. This was reported to the dashboard (msg 9). Next one-shot: `rechase-12249-13411-8dd3` (11-08 09:00Z).

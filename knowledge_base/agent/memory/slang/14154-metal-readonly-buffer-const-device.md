@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14154 — Metal read-only StructuredBuffer / ByteAddressBuffer emitted as writable `T device*`
-description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:27Z. Read-only buffers emit `T device*`, so a non-void vertex function gets "writable resources in non-void vertex function". Want `const device T*`. Dispatched to slang-triager under the R6 hold (to 2026-11-06 10:04:27Z). Main one-shot r6-release-14154-33ea at 11-06 10:08Z.
+description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:27Z. Read-only buffers emit `T device*`, so a non-void vertex function warns "writable resources in non-void vertex function"; want `const device T*`. Triaged bug/low/P2. HELD (rung 4) since jkwak-work self-assigned it 11-02 18:38Z; the reporter offered the PR. The triager delta draft is unposted; check-only re-check r6-release-14154-33ea 11-12.
 resource: raw/triage-14154.md
 tags: [metal, emit, structured-buffer, byte-address-buffer, vertex, warning, r6]
 ---
@@ -51,3 +51,12 @@ On release it re-verifies and posts, or drops the draft if a maintainer already 
 `reproduced` if still blank.
 ⇒ **PARKED:** R6 until 2026-11-06T10:04:27Z (release `r6-release-14154-33ea`), then csyonghe's scope ruling for the
 reporter's PR.
+
+**Correction 11-05 11:40Z (Orchestrator): the R6 4-day hold above is the retired rule** (nanoclaw #1993, "no waiting
+period"; see Core Memory). The chain is **held for a different reason**. Maintainer **jkwak-work self-assigned** the issue
+on 11-02 18:38Z (`assigner`=jkwak-work, checked on /events) and milestoned it Q4 2026 (Fall). With the reporter's
+PR offer, that is owner-lookup rung 4: no bot post, no fixer; resume only on an @nv-slang-bot mention or an operator ask.
+The decision owner is jkwak-work, not csyonghe (the triager's pick). The triager's held delta draft stays unposted.
+`r6-release-14154-33ea` is now a **check-only re-check at 11-12 10:08Z**: no post, and it reports only if the state changes.
+**11-05 11:35Z dashboard "New issue to triage" re-ask:** answered from live state; nothing was sent to the triager or
+GitHub (rung 3). Live state: OPEN, 1 comment (the reporter's), no labels, no cross-referenced PR.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13423 — Metal ConstantBuffer ignores ScalarDataLayout / -fvk-use-scalar-layout
-description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (4 so far, all resolved)
+description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (5 so far; #5 merged e855bd5db0 11-05); vk lane hit by master #14178 render-test regression, filed as #14347
 ---
 
 # slang#13423 (external reporter mellinoe, 2026-10-03)
@@ -49,6 +49,7 @@ OUTPUT approve. The fixer merges master (never force-pushes — not authorized);
 | 2 | 10-15 | #13116 `c538debef6` | id 908, max 35 | 909 / max 36 → head `c994d094e1` |
 | 3 | 10-21 | #13078 `9e17a9e850` | id 909 (`glslPatch`), max 36 | 910 / max 37 → head `3a41ab51a0` (verified 10-21 13:00Z) |
 | 4 | 10-24 | #13406 `0bd71cd709` (+ #13706 code conflict in entry-point-uniforms.cpp) | min=max 37 | 910 / min 37 / max 38 → head `4b7541ad55` (verified 10-24 13:00Z) |
+| 5 | 11-05 | #14051 `c8bd944484` (kaizhangNV, portable RT API) | ids 911/912 (skipped 910), min=max 38 | 910 (kept, unused on master) / min 38 / max 39 → head `e855bd5db0` (verified 11-05 13:00Z) |
 
 Rival claimants on the same numbers: #13564, #13872, #13953, #13992, #14115 (drafts; see Current state) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
 [[slang/13555-ignore-capabilities-caseless-target-switch.md]]. Whoever merges second renumbers; never renumber early.
@@ -61,12 +62,12 @@ Rival claimants on the same numbers: #13564, #13872, #13953, #13992, #14115 (dra
    PR's "Version 36 adds MetalConstantBufferLayout" comment rode along — silently reusing master's version. Always compare the PR's
    version and ids against master's directly; `merge-tree` conflict output alone is not enough.
 
-## Current state (11-02 09:00Z)
-Head `4b7541ad55` (merge of master `52e29ab43b`), draft, **MERGEABLE**, BEHIND 42 (master `6815ed82d5`). None of the new commits touch the 14 PR files or the
-stable-names/version files. Id 910 / min 37 / max 38 vs master 909 / 37 / 37. The gate is kept (#13386 unmerged). Five drafts also claim 910 and/or v38: #13564 and #13872 (both 910 + v38),
-#13953 and #14115 (min=max 38) and #13992 (max 38). Whichever merges second moves. Comment 6078307404 is current. Dispatch run 40081357382 has been `waiting` for approval since 10-24.
-0 human reviews or comments; the assignee and review request are still kaizhangNV. Next: `rechase-13425-maintainer-a507` 11-05 09:00Z.
+## Current state (11-05 13:00Z)
+Head **`e855bd5db0`** (a merge of master `04d2726db0`, no force-push), draft, MERGEABLE, 9 ahead / 0 behind. Verified directly: 910 / min 38 / max 39, `MetalConstantBuffer`=8, the gate is kept and so is the WGPU→Metal order. Comment 6078307404 names the head.
+**One vk failure comes from master:** `constant-buffer-scalar-layout-compute.slang` `.1 (vk)` hits slang-rhi's `m_data.size() <= destSize` because #14178 (`48802eb480`) made render-test create untyped object inputs with `createShaderObject(session, type)`, which drops `ScalarDataLayout`.
+The triager's 09:39Z GO request reached no Main session, so I answered it at 13:07Z (triager seq 64): **GO (a)**. The triager reproduces on pure master, files a shader-slang/slang issue (no @-mentions, no fix chain, no expected-failure entry), keeps the test unchanged, links the issue in 6078307404 and reports the number. **Filed 11-05 13:11:57Z as [slang#14347](https://github.com/shader-slang/slang/issues/14347)** (triager seq 67/69; bot-filed, `regression` + `reproduced`, no assignee, no @-mentions; repro'd on pure master 04d2726db0, Std140 control passes; fix options A = slang-rhi session+layout entry point, B = render-test-only fallback). **Its issue_opened needs no dispatch** (Main, 11-05): GO (a) said no fix chain, and option A overlaps maintainer-owned slang-rhi#965 (jkwak-work). A fixer chain needs the operator.
+CI run 42002753764 is `waiting`. 0 human reviews; the assignee and review request are still kaizhangNV. #13386 and #13300 are unmerged. Next: `rechase-13425-maintainer-37f9` 11-08 09:00Z, which also checks that the issue was filed.
 
 ## Resumes on
-A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human
+A maintainer comment or assignment on #14347 (filed); a human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human
 comment on #13423; any maintainer objection on the #11578 design.

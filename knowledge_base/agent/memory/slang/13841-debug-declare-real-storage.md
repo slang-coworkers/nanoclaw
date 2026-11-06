@@ -60,3 +60,10 @@ void main(uint3 tid : SV_DispatchThreadID) {
 - Gap A (-O1), same spot: it emits `DebugValue %x_0 %OpUndef` right before `outBuf[1]=x`. For `i` it emits `DebugValue %i_0 %OpUndef` after `OpLoopMerge`.
 - The triager's unverified hypothesis is that gap A comes from gap B. Phase 1 emits a DebugValue at a surviving phi, which at -O0 is a re-load. ADCE then deletes that load, because its only users are debug ones, and the operand becomes OpUndef.
 **11-02 18:55Z — jhelferty-nv assigned #14106 to pdeayton-nv** and asked them (cmt 6585610084): "@pdeayton-nv It looks like this was raised by the bot off of some of the work you did?" It came in as a `pr_mention` webhook, but it does not mention @nv-slang-bot. The question is addressed to pdeayton-nv, so **no bot reply and no dispatch**. The issue body already links the #13872 comments that requested it. Checked live at 18:56Z: #14106 has 3 comments (the bot plan 6534546653, the bot phase-1 note 6536769653, and jhelferty's). #14114 is still a draft at `f2779c645` with 0 reviews. efb8e6 is still `escalated` at $267.20/$300, so the ceiling ask (10-31 02:29Z) is still open.
+
+**11-05 ~09:10Z, the collision set changed under the drafts:** master #14051 (merged 11-04) took stable ids **911/912** and set module version
+**min=max=38**. Master's ids are now 909, 911, 912; **910 is still free**, but four drafts claim it: #13564, #13872, #14114 and #13425.
+A plain master merge **auto-merges `k_maxSupportedModuleVersion` to 38, silently reusing v38** for a different format change. So every one of
+these drafts needs **v39** (and the next free id) at its next rebase. The PR Risk lines already say "next free id + the version that follows
+master's"; the #13425 re-chase caught it as collision 5. #13953 claims v38 only, no id, and it needs v39 too.
+**11-05 10:02Z:** #13564 merged master again (head `a4e7e33342`) and now takes **913 / v39**, so it's out of the 910 set. Still claiming 910/v38: #13872, #14114, #13425, plus #13953 on v38 only.

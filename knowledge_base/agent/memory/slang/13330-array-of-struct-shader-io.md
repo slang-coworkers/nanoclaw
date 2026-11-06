@@ -105,3 +105,7 @@ request (see [R6 record](../imported/project_13591_ai_contributor_standards_batc
 request, so the 10-28 stand-down rests on the older competing-PR judgement. A one-word operator release is enough to restart it. Otherwise it waits for
 case (b)/(c)/(d) via webhook. **To release:** send slang-fixer the A+B1 go-ahead on thread `gh-issue-shader-slang/slang-13330`, quoting the authorizing human.
 
+
+**Cross-link (11-05 17:05Z, from #13427 re-chase 5):** #13427 is also PARKED indefinitely, with no operator answer and no change on GitHub. Bot-filed
+tracking issue #13892 (jkwak-work, an inventory of varying-location band-aids, filed 10-23) lists #13427 and the related #11944. It does not list #13330.
+Check it if a fix PR comes out of that inventory.

@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14135 — CUDA `__launch_bounds__` / per-kernel register cap attribute
-description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:29:21Z, cloth-sim batch. Triaged feature/medium/P2 by slang-triager 11-01 14:39Z; parked for maintainer direction under the R6 hold (to 2026-11-05 14:29:21Z); re-check t-422839 11-05 14:35Z. No fixer chain without operator go-ahead.
-tags: [cuda, emit, attributes, feature-request, r6, parked]
+description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:29:21Z, cloth-sim batch. Triaged feature/medium/P2 by slang-triager 11-01 14:39Z. The work is owned by the reporter's PR #14149 (`Fixes #14135`), so our chain is CLOSED 11-05. The bot does not comment on the human PR. The triager is filing the pre-existing master assert on surplus attribute args, if it is not a duplicate.
+tags: [cuda, emit, attributes, feature-request, r6, closed, reporter-pr]
 resource: raw/triage-14135.md
 ---
 
@@ -48,3 +48,24 @@ Owner: slang-triager, thread `gh-issue-shader-slang/slang-14135`.
 **11-02 (reported by the #14029 triager).** The reporter opened **#14149** "CUDA: add [CudaLaunchBounds] and
 [CudaMaxRegisters] kernel attributes" (`Fixes #14135`; open, not a draft, head d8501858d; I verified it). `t-422839`
 already defers to a `Fixes #14135` PR, so it should validate #14149 and must not post a competing plan. No dispatch.
+
+⚠️ **The 11-01 "R6 hold" was the retired rule.** nanoclaw#1993 removed the wait on 10-24. See Core Memory: no waiting period.
+I dispatched with the stale 4-day hold, so the triage comment was held back. Do not copy the pattern.
+
+**11-05 14:51Z: t-422839 re-check (triager task session `sess-1793543883324-j7v38x`). These are the triager's findings.**
+The parked brief was NOT posted and there were no GitHub writes, because #14149 is open and is not a draft.
+- I verified: head f5b074350d, opened 11-01 23:24Z by albertrodriguezclo, no labels; issue assignee jkwak-work, 0 comments, Type=Feature.
+- Triager validation on a Debug build on the L40S:
+  - PR tests 8/8; cuda 148/148; diagnostics 1021/1021; compute 635/635.
+  - Registers go from 80 to 64 with either attribute, and CUDA dispatches give correct output.
+- Defects:
+  - (1) Surplus args (`[CudaLaunchBounds(64,2,3)]`) assert in Debug at slang-check-modifier.cpp:451/487. This is **pre-existing on master** (`[numthreads(64,1,1,1)]`, `[WaveSize(32,64)]`), because `checkAttribute` never rejects too many args. CodeRabbit already flagged it on the PR.
+  - (2) `[CudaLaunchBounds(32)]` with `[numthreads(64)]` gives no compile-time error, and the launch fails with CUDA_ERROR_INVALID_VALUE.
+  - (3) Minor: no docs, no warning on non-CUDA targets, no <12.4 guard.
+- The PR's CI, format and label checks are `action_required` (fork workflow approval). The PR also needs the `pr: non-breaking` label and the CLA. Shepherd jhelferty-nv.
+
+**My ruling (11-05).** No bot comment on #14149, per the human-PR precedent (#13419/#13420/#13640/#13733); defects (2) and (3) are maintainer review items.
+Defect (1) is a reproduced bug on master, so the triager dedups and files it without asking the operator (filing policy). No re-check timer: the PR's own webhooks and its merge close #14135.
+
+**11-05 14:58Z: closed on the triager's side.** No posts on #14149 or #14135. The worktree, branch and sentinel are removed.
+Spin-off filed: **#14349** ([record](slang-14349-surplus-attribute-args-unchecked.md)).

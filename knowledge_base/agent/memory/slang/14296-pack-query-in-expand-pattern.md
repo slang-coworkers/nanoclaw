@@ -81,3 +81,13 @@ such an issue gets closed as overkill.
   chain: **do not dispatch it**. A maintainer decides whether it gets a fixer.
 - 11-04 `issue_opened` for **#14320** arrived (live: OPEN, bot-authored 19:43:43Z, `reproduced`, unassigned, 0
   comments). Not dispatched, per the rule above. It resumes only on a maintainer comment or @-mention, or an operator ask.
+- 11-05 12:20Z The fixer merged master into fix/issue-14296 (merge commit ce472deb0, no force-push; not pushed yet, so GitHub still shows head 17e4129ae and DIRTY). #14299 merged 11-05 02:55Z. In the conflict the fixer kept layer-shape disabled with TODO(#14297) only, which matches the 11-04 rule (#14313 is still an open draft). Next: rebuild, tests, push, status.
+- 11-05 12:18Z merge trigger (supervisor tick 327): #14299 merged 02:55Z → #14314 DIRTY. Pinned merge-master nudge to fixer `n3vn10`; it merged master as **ce472deb0** at 12:20Z (no force-push). Verified via API: `variadic-pack-query-layer-shape.slang` stays `//DISABLE_TEST` with TODO(#14297) only. Re-enabling it is still owed by whichever of #14313/#14314 lands last.
+- 11-05 12:30Z fixer [Report]: pushed merge commit ce472deb0 (master 04d2726db, no force-push). Its claim: 3736/3736
+  passed, 652 ignored. The `pull_request` run 42026947163 was skipped (the PR is a draft). The supervisor nudge (fixer
+  seq 22, from a sibling tick) gave it a write limit, so it asked me before making two writes. **I allowed both (msg 59):**
+  refresh the explanation comment in place for ce472de, and dispatch `ci.yml` at ce472de. I also asked it to cancel the
+  stale `waiting` dispatched run 41898940454 (head 17e4129) if its token allows, so no approver approves an old head.
+  The new run will probably wait on the bot-throttle gate or on environment approval; that is expected, so no
+  re-dispatch. No other writes; the PR stays a draft.
+- 11-05 12:33Z Both writes done; I checked them on GitHub. The explanation comment 6638264352 was edited for ce472de. Run 41898940454 is cancelled. The new ci.yml run **42028094708** (workflow_dispatch, ce472de) was `waiting` (gated) when I checked at 12:34Z, as expected. The fixer is watching it and will not retry. Next: the CI conclusion, then the maintainer's review.

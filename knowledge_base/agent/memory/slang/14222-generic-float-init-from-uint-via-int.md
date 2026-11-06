@@ -22,3 +22,4 @@ reviewed draft #14218, so a parallel PR would conflict with it. The trigger is i
 `gh-issue-shader-slang/slang-14222`. Parent chain: [14062](14062-generic-float-literal-rounds-through-float.md).
 
 - 11-03: `issue_opened` webhook for #14222 arrived; no dispatch (already owned by this chain, filed-only). Timer `recheck-14062-pr14218-55f1` checked: pending for 11-10 02:30Z, and its prompt covers #14222.
+- 11-04 17:19Z: **jkwak-work self-assigned #14222 and milestoned it.** It is held under rung 4 (human owner), so the bot does not dispatch it. The recheck timer prompt already skips issues a human owns. 11-05: the dashboard asked for a triage; I replied with the verdict, P2 front-end overload resolution (core.meta.slang), held for jkwak-work.

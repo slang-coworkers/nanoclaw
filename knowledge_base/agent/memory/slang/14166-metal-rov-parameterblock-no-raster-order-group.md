@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14166 — Metal ROV inside a ParameterBlock gets no `[[raster_order_group]]` (also in fragment)
-description: Bot-filed 2026-11-02 10:31Z by slang-triager as a side bug of the #14160 triage. Issue Type=Bug + `reproduced`, 0 comments. Not dispatched; a fixer chain needs the operator's OK.
+description: Bot-filed 2026-11-02 10:31Z by slang-triager as a side bug of the #14160 triage. Issue Type=Bug + `reproduced`, 0 comments. jkwak-work self-assigned it 11-02 18:37Z (milestone Q1 2027), so it is held for the maintainer.
 tags: [metal, emit, rov, rasterizer-ordered, parameter-block, descriptor-handle, bug, side-bug]
 ---
 
@@ -25,4 +25,12 @@ members for non-fragment users of the struct (open question in the issue). The f
 **Dispatch (11-02, Orchestrator).** `issue_opened` webhook: memory grep found no record. The live sessions show that the
 #14160 triager chain owns it, so I sent no triager dispatch. Bot-filed, so R6 does not apply.
 
-**Open.** Fixer chain: wait for the operator's OK. The #14160 Main session asked the operator on 11-02, so this session sent no second ask. Bundle with #14160 after its R6 release if the reporter does not take it.
+**Maintainer-owned (11-02 18:37Z).** jkwak-work self-assigned it and set milestone "Q1 2027 (Winter)", about 7 h after
+filing. Rung 4 hold: no bot triage, fixer or comment. The operator's fixer-go question for #14166 no longer applies.
+Reporter PR #14171 (fixes #14160) does not cover this bug: it gates only entry-point params by stage, and struct fields are
+unchanged, with no DescriptorHandle unwrap.
+
+**11-05 dashboard triage ask (msg 42).** I answered from the 11-02 triage plus live state: Metal emit / medium / P2, held for
+the maintainer. No triager dispatch.
+
+**Open.** Nothing for the bot. Re-engage only if jkwak-work unassigns or asks.

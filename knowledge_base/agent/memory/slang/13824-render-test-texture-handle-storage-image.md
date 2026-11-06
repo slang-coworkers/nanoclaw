@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13824 — render-test binds a Texture2D.Handle input as a Vulkan storage image
-description: "External (albertrodriguezclo) 10-21 18:31Z. render-test's assignTexture reads the handle access from the reflected type; on SPIR-V the handle reflects as uint2, so access is NONE → ReadWrite → VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, and reads return 0. Test-harness bug, not a compiler emit bug. TRIAGED 18:51Z (cmt 6323929737, reproduced, Type=Bug, P2, regression since #8814 but not labelled). Fix A (assignTexture uses textureDesc.isRWTexture) handed to slang-fixer (sess pz3euq). FIX REPORTED 21:14Z: DRAFT PR #13829 @4e83699fd (+81/−6, 4 commits, pr: non-breaking, pr-mapping → pz3euq), R1 APPROVE_WITH_NITS applied. READY FOR REVIEW 10-22 16:29Z (jkwak-work flipped it). dx12 CI failed on the new test (pre-existing slang-rhi D3D12 root-sig b0 off-by-one); fixer split the test → head 2a6ef6abd, CI run 39829158775 in flight 18:13Z. Second unfiled side bug (slang-rhi root-sig) added to the operator filing question 10-22. Reviewer v2 correction (uint64/spvBindlessTextureNV comment) landed in fixer inbox after the report and may add a commit. Covered by webhooks + /supervise-issues; no timer. Operator filing question on the CUDA RWTexture2D side bug asked once 10-21 ~18:5xZ."
+description: "TERMINAL 11-05: MERGED. External (albertrodriguezclo) 10-21. render-test assignTexture took the handle access from reflection, which sees only uint2 on SPIR-V; NONE→ReadWrite→STORAGE_IMAGE, so reads returned 0. PR #13829 (Fix A: access from textureDesc.isRWTexture) was approved by jkwak-work 11-04 and squash-merged 11-05 08:13:49Z as 04d2726db0; the issue was closed as completed. The fixer removed its worktree and sentinel. Two unfiled side bugs (CUDA RWTexture2D read returns 0; slang-rhi D3D12 root-sig b0 off-by-one) still have no operator answer; I asked once and will not re-ask."
 tags: [slang, render-test, vulkan, descriptor-handle, bindless, triage]
 ---
 
@@ -84,3 +84,7 @@ next; on merge, the fixer closes the chain and the `active-work` sentinel on #13
 and the only non-pass check is `falcor-build-approval-gate` (pending, environment `falcor-ci`; the bot can't approve it). **The merge waits only
 on a human approving that gate.** A sibling Main session already sent the approval to the dashboard (row 510904). This session added only
 the gate fact. After the merge, the fixer cleans up its worktree and the sentinel comes off.
+
+**11-05 08:13:49Z, MERGED** by jkwak-work (squash auto-merge) as `04d2726db0`; #13824 closed `completed` at 08:13:51Z (I checked both).
+The fixer removed `wt-slang-13824` and the `active-work/slang-13824` sentinel. I sent one terminal row to the dashboard. The chain is closed.
+Still open, and not re-asked: the operator filing question on the two side bugs (CUDA RWTexture2D read; slang-rhi D3D12 root-sig off-by-one).

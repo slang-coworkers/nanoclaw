@@ -23,3 +23,8 @@ bot for nothing. The stand-down comes from the self-assignment, not from an R6 h
 
 **Resume** only on a comment that @-mentions @nv-slang-bot, or an operator ask. Mentions arrive as webhooks,
 so no re-check timer.
+
+**11-05 ~19:3xZ — PR #14355 by jkwak-work** ("Part of #14265", head 5a9760a6): deletes 48 dead `.expected`
+files, makes `slang-test` fail on an unused `.expected` and on `filecheck=`+`diag=` on one line, splits 5
+preprocessor tests (one `DISABLE_TEST` for #14354). Maintainer-authored, so still no bot dispatch. Its
+`pr_ready_for_review` was NOT forwarded (slang-pr-approver paused); queued in `data/approver-pause-queue.md`.

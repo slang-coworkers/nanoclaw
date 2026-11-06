@@ -1,3 +1,8 @@
+---
+type: source
+title: "slangpy#1261 R1 review — REQUEST_CHANGES"
+description: "slangpy-reviewer R1 of PR #1261 (#1260 torch.bfloat16 in the torch bridge) at 4d0592d0, 2026-11-05: REQUEST_CHANGES"
+---
 # Review: shader-slang/slangpy#1261 — Support torch.bfloat16 tensors in the torch bridge
 
 - **Head:** `4d0592d0` (base main `68d1e782`, Slang 2026.20)

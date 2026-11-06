@@ -121,3 +121,20 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   10-29 18:57Z: the author commented "The change is #14001" with no @-mention. It arrived as
   `pr_mention`. Their own non-draft PR #14001 (`nvbug-5792784-embed-standard-modules`) was opened
   00:15Z. Still held, no dispatch, no post.
+- **2026-11-05, #14333** (pdeayton-nv, write; SV_Barycentrics `centroid noperspective` picks perspective
+  barycentrics). **Miss:** self-assigned 7 s after filing, but I dispatched slang-triager straight off the
+  payload without reading live `assignees`. An `issue_opened` payload carries no assignee, so rung 4 needs a
+  live read even when the payload looks like a plain report. The triager posted a correct triage (cmt 6650987414)
+  before I noticed. Fixer held; the comment was left up and the operator was told.
+  11-05 11:35Z: an operator (dashboard) triage ask lifted the hold. I checked live state first: #14001
+  had merged 11-03 00:23Z as `SLANG_BUILD_MONOLITHIC_STANDARD_MODULE_LIBRARY`. Its body says
+  "issue: 13997", not a closing keyword, so the issue stays open; jkwak-work milestoned it Q1 2027
+  on 11-04. I gave the verdict myself (enhancement, already implemented, the maintainer closes it)
+  and did not dispatch the triager. Lesson: on a lifted hold, check the author's own PR first.
+- **2026-11-05, #14354** (jkwak-work; preprocessor: `__LINE__`/`__FILE__` not restored after
+  `#define` + `#undef`, fix = the `superGlobalEnv` TODO next to `globalEnv` in
+  `slang-preprocessor.cpp`). Self-assigned 11 s after filing (17:42:44Z → 17:42:55Z, `/events` actor =
+  author), 0 comments, open, no PR yet. The body names cause, fix direction and the two tests that
+  change with it (`special-macro-redefine-function.slang`, and `special-macro-redefine-object.slang`,
+  already on master with its `filecheck=` line disabled). Live `assignees` read **before** routing
+  (the #14333 lesson). Held, no dispatch, no post. Resume on an @nv-slang-bot mention or an operator ask.

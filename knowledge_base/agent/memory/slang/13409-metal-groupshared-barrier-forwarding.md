@@ -72,6 +72,10 @@ miscompile the code. Broken since at least 2025.6.1. Sibling #13412: pointer roo
   its 10-05 reports landed in a closed re-chase session of mine and went unseen for ~28 h.
 - Once both PRs merge, ask the operator before routing any fix for #13465/#13466.
 
+## 2026-11-05: #14345 folded in
+Human-filed #14345 (a Metal helper `sh[0]` load moved past a barrier, hit by a real Apple M4 CG solver) has the same root cause. The triager showed #13421 fixes it
+(revert drill). The #13421 body now has `Fixes #14345` (verified 12:33Z). #13421: draft `c42049e18f`, **ready-flip pending (weekly list)**, CLA pending.
+
 ## Sessions / tasks
 
 #13409 chain (thread `gh-issue-shader-slang/slang-13409`): fixer `sess-1790967825882-vnvecr`, triager
@@ -79,3 +83,6 @@ miscompile the code. Broken since at least 2025.6.1. Sibling #13412: pointer roo
 `sess-1791142972332-o68o4g`, fixer `sess-1791143956141-rpnjyi`, reviewer `sess-1791161961007-ef8i4w`.
 **No re-chase timer since 2026-10-29 08:31:54Z:** supervise-issues `task-hygiene.py` hit the re-chase cap (4), cancelled `rechase-13421-13431-1346-2fb5` (was due 10-30 19:00Z), and listed the chain in `reports/parked-chains.md`. A human decides close / hand off / `task-hygiene.py unpark gh-issue-shader-slang/slang-13409`. Do not re-arm it by hand. 10-29 11:35Z: the dashboard asked to triage #13466. I answered on thread `-13466` (owned and parked) and dispatched nothing. Its prompt (head `56c820f`, CI 40228308976 still `waiting`, 141 behind on 10-29) was (prompt carries head `56c820f`, CI 40228308976 and the 10-25 comment as already routed). Done: `…-a4c1` (10-28, no change; CI 40228308976 still `waiting`; 133 behind), `…-a494` (10-26, no change since 10-25), `…-480d` (10-24, no change), `…-547f` (10-22, no change), `…-4ec6` (10-20, no change), `…-0f19` (10-18, no change), `…-b02d` (10-16), `rechase-13421-g1g2-13412-4e79`,
 `rechase-13409-sibling-7aad`, `…-c551`, `…-cc6a`, `…-19cf`, `…-5086`.
+
+## 2026-11-05: competing human PR #14346
+The #14345 reporter opened fork PR **#14346** (12:41Z, head aa9a4ef676, `Fixes #14345`). It fixes the same `kIROp_Call` arm of `canInstHaveSideEffectAtAddress` with a broader rule: only a local `IRVar` root is exempt. Shepherd jhelferty-nv calls it "the right fix" and says it is needed whichever of it and #11709 lands first (cmt 6661049450). #13421 and #14346 both list `Fixes #14345`. Whether #13421 drops that line is the operator's call (flagged 11-05). #13421's own #13409 scope (the entry-point path and a pure callee reading groupshared memory) is not covered by #14346's test.

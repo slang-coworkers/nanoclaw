@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_14031_metal_64bit_atomics_atomic_ulong
-description: "slang#14031 (albertrodriguezclo, external, 10-29): Metal 64-bit Interlocked*/Atomic<uint64_t> emitted atomic_fetch_*_explicit on atomic_ulong (invalid MSL). FIXED in draft PR #14044 @f800a8e21 (R1 APPROVE_WITH_NITS; shepherd jhelferty-nv); chain closed 20:07Z, draft-vs-ready asked of the operator; capability atom open for maintainers. Same child-tier misroute to Main as #14016."
+description: "slang#14031 (albertrodriguezclo, external, 10-29): Metal 64-bit Interlocked*/Atomic<uint64_t> emitted atomic_fetch_*_explicit on atomic_ulong (invalid MSL). FIXED in draft PR #14044 @b360ff2a7 (11-05 master merge, check moved to checkUnsupportedInst) (R1 APPROVE_WITH_NITS; shepherd jhelferty-nv); chain closed 20:07Z, draft-vs-ready asked of the operator; ready-flip pending (weekly list); capability atom open for maintainers. Same child-tier misroute to Main as #14016."
 ---
 
 # slang#14031: Metal 64-bit atomics emit fetching calls on `atomic_ulong`
@@ -43,3 +43,26 @@ Main-verified the issue status comment 6505575040 (nv-slang-bot, edited 20:07Z).
 I sent the operator the chain report (dashboard, 20:08Z) with a non-blocking draft-vs-ready question; no flip until
 the operator answers. Resume on: the operator's answer, a jhelferty-nv review (webhook → fixer uqb9b4), or the
 maintainers' capability-atom call.
+
+**11-05 21:56Z: #14210 (Fixes #14060, bot PR) merged as 37fc7aa7d and conflicts with #14044 in `slang-emit-metal.cpp`.**
+It moved the Metal float-atomic, texture-atomic and coop-matrix checks into `checkUnsupportedInst`. A heads-up reached
+fixer uqb9b4 (seq 24, 21:56:43Z), probably from a sibling Main session on the #14060 chain; the sender is not shown in
+the transcript. Fixer ack (msg 48 → Main, 21:57Z): merging master into `fix/issue-14031` (a merge, not a rebase, which
+is correct) and moving the 64-bit check into `checkUnsupportedInst`. #14044 was still a draft at f800a8e21, with no human
+review yet. Next: the fixer's report with the new head and test counts.
+The heads-up came from sibling Main session `sess-1793310716666-6kskm3` (the #14060 chain, out seq 85, 21:56:43Z). Its R1 asked
+for the check to move into `checkUnsupportedInst`; its R2 asked to keep the min-opt guard. The fixer's ack and report came to
+this session (the #14031 owner). That chain is done, so nothing needed relaying back.
+
+**22:38Z fixer report (msg 54; Main-verified).** #14044 head **b360ff2a7**: still a draft, MERGEABLE, 11 files, +333/−6, no reviews yet.
+- Master merged as 197eafa04. `getUnsupportedMetal64BitAtomicReason` moved to `slang-ir-check-unsupported-inst.cpp`, and
+  `is64BitIntegerAtomic` moved to `slang-ir-util`.
+- **Behavior change (from R2):** under `-minimum-slang-optimization` the 64-bit diagnostics no longer run, the same as master's float
+  atomics. The old `-g -minimum-slang-optimization` E55204 pin was replaced by `atomic-64bit-minimum-optimization.slang`.
+- Fixer's figures: tests/metal 236/236. The 7 `functional/codegen.slang` failures are environmental.
+- CI 42121529704: only the draft gate ran (2 passed, 44 skipped), so the full CI has not run.
+- The R2 Explanation HTML is at `/workspace/inbox/a2a-1793918302132-t0bb9w/`.
+- #14170 (reporter's PR, float atomics on textures) is open, and the fixer did not comment on it.
+
+**Ready-flip pending** (per [weekly undraft list](../orchestrator/undraft-asks-replaced-by-weekly-list.md): no per-PR ask; goes on the weekly list). Resume on a jhelferty-nv
+review (webhook → uqb9b4) or the maintainers' capability-atom call.

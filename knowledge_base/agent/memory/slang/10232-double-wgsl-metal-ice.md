@@ -75,5 +75,42 @@ reviewer is slang-reviewer `sess-1793840963750-j98e8b`.
   fixer's one-shot is probably t-11314a (created 11-04 19:08Z, due 11-05 18:30Z); its content is not visible from Main.
   The operator was told once on the dashboard.
 
-**Next.** jkwak-work answers on the PR (the webhook routes to fixer vr0qdh through pr-mappings) and slang-reviewer
-reports. Ready-flip is pending.
+**11-05 03:04Z: review round 1 applied.** The slang-reviewer R1 verdict was REQUEST_CHANGES with 2 verified bugs:
+- B1: the struct-field rule flagged resource fields, which legalization moves out of the struct.
+- B2: generic structs used only as qualifiers were flagged.
+
+Both are fixed, along with default-argument casts, WGSL `copysign(half)`, test gaps and clarity items. The fixes were
+pushed incrementally (no force-push), so the head is now c77bd34. Full suite 11774/11777 (the 3 fp8-cuda failures also
+fail on master); the sweep has 0 new rejections. The link changed to `Part of #10232` because the two E99997 paths are
+still open; it switches back to `Fixes` if those paths get tracked separately. R2 has been requested.
+
+**11-05 04:47Z: review round 2 applied.** R2 was REQUEST_CHANGES (small): a second specialization of the same generic
+struct was missed, and the result depended on field order. The fix and the comment corrections were pushed
+incrementally; head is now a42a562. Full suite 11777/11780 (fp8-cuda baseline). The open question now lists **3** E99997
+paths. The new one is an unused resource field with a `double` element in a Metal `ParameterBlock`, and it also fails on
+master. The PR is still `Part of #10232`. The final review round (R3) has been requested.
+
+**11-05 05:11Z: [Fix Report], status partial.** Head a42a562 (verified), 11 files, 8 commits (+702/−10). The fixer
+reports slang-reviewer R3 = APPROVE with 0 findings. That is the fixer's claim: the review went over a2a, GitHub shows no
+reviews, and the reviewer session content is not visible from Main. Codex PLAN/OUTPUT_REVIEW approved. Tests:
+double-requires-fp64-wgsl-metal 39/39; double-struct-member on cpu/vk/cuda (L40S) and hlsl/spirv;
+wgsl/copysign-half-float; full suite 11777/11780 (fp8-cuda baseline); the 889-config sweep re-ran at the final HEAD with 0
+new rejections. jkwak-work's two open items:
+- (1) Fix the 3 remaining E99997 paths in this PR or track them separately? The paths are a used `static` initializer,
+  `-conformance`-only types, and a Metal `ParameterBlock` resource with a `double` element. All three also crash on
+  master. If they are tracked separately, the link switches to `Fixes`.
+- (2) Plan item 4: capability-gated field types now apply through structs. Nobody has objected, but nobody has
+  explicitly agreed either.
+
+The chain is in its terminal parked state: no bot action until jkwak-work comments. The operator was already told
+(dashboard 11-05 01:10Z), and nothing new is owed.
+
+**11-05 18:31Z: stale timer fire (not actionable).** The fixer's one-shot t-11314a ran in its own session
+`sess-1793819281102-iow9kv` (thread `system:tasks:t-11314a`), so this confirms the timer guess above. It reported the
+11-04 21:05Z answer as new and asked for a build re-dispatch. That work was already done (PR #14332, head a42a562).
+Live check: no comment or review on #14332 or #10232 since 05:11Z, and the PR is still a draft. I sent one
+not-actionable reply (in_reply_to=2, landed iow9kv seq 4). The owner vr0qdh was not woken. Nothing was posted on GitHub,
+and nothing was sent to the dashboard (no new fact). Pattern: [timer sessions are blind](../orchestrator/coworker-timer-session-blind-to-owner.md).
+
+**Next.** jkwak-work answers on the PR; the webhook routes to fixer vr0qdh through pr-mappings. Ready-flip is pending
+(weekly list). If the answer is a follow-up, the 3 paths get filed as a separate issue and the link switches to `Fixes`.

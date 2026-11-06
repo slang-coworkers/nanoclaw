@@ -55,3 +55,12 @@ PR #963 exists and that the one-shot task session `system:tasks:t-46390d` exists
 **Next.** At t-46390d (11-05 21:50Z), the triager posts the draft, or replies to a human, or reviews a PR for #964.
 Then a slang-rhi maintainer picks an approach. A fixer needs the operator AND a test machine that can run Metal.
 - 11-01 22:08Z the triager updated t-46390d's prompt (schedule unchanged): the drift check uses `gh issue view`/`gh pr list` only, and if a hook blocks any call, the task stops and reports the exact message.
+
+**11-05 11:35Z: the operator's dashboard batch "triage" ask (msg 52), answered from live state.** The 11-01 R6 hold
+was the retired stale rule (see Core Memory). New since 11-01: **jkwak-work self-assigned #964 on 11-02
+18:40:01Z** (events `assigner=jkwak-work`) and milestoned it Q4 2026 (Fall). The same happened to #961, #962 and
+#965, so rung 4 applies (maintainer-owned): no bot post. #964 is still open, with 0 comments and no labels. PR #963
+is open, REVIEW_REQUIRED. At 11:38Z I asked the triager (msg 61, landed in `sess-1793569740534-xikjp1`) to cancel
+t-46390d and keep the draft. It posts only on an @nv-slang-bot mention or an operator go-ahead. Sibling Main
+sessions own the #961/#962/#965 asks from the same batch.
+- 11-05 11:39Z the triager confirmed: t-46390d is `cancelled`, nothing was posted, and the memo and draft are kept. Its state page now says post only on an @nv-slang-bot mention or an operator go-ahead.

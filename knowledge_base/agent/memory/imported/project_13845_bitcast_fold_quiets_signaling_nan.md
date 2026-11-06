@@ -30,5 +30,9 @@ fixer owns the follow-up.
 **Resume on:** a maintainer asking the bot to act on #13845/#13846, or #13846 merging, which makes the #13816
 follow-up line applicable. The fixer chain owns that.
 
+**11-05 first approver event.** `pr_ready_for_review` (synchronize; head `c39cbc7309` unchanged since 10-25), CI
+green. Not forwarded, because slang-pr-approver is paused. Queued in `data/approver-pause-queue.md`. Still no human
+reviewer (asked the operator 11-03 18:01Z).
+
 **10-22 follow-up.** The author filed #13857 (LLVM targets quiet the NaN too) and offered to implement it:
 [project_13857_llvm_constant_float_quiets_signaling_nan](project_13857_llvm_constant_float_quiets_signaling_nan.md).

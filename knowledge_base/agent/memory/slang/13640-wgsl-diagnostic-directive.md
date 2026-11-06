@@ -117,3 +117,9 @@ gives rc=255. `glslang_CompileRequest_1_3` has no options field; it is built in-
 closed #2552, cmt 1341622063, where a contributor says slang-glslang "doesn't honor any GLSLANG specific command line options";
 my earlier note calling #2552 "unrelated" was wrong. **Disposition:** low severity, filed-only, no fixer.
 Its `issue_opened` webhook reached Main on 11-03; no dispatch (owned here, filed-only).
+**11-04 17:26Z: jkwak-work self-assigned #14245 and set milestone Q1 2027 (Winter)** → held under rung 4. On 11-05 the dashboard asked for a triage verdict: I answered directly (compiler-core downstream/glslang, low severity, no bot dispatch). Prior art for a fix: merged PR #12206 (forwards `-Xspirv-opt`).
+**11-04 17:26Z: jkwak-work self-assigned #14244 as well, milestone Q1 2027 (Winter)**, so it is held under rung 4 like #14245. On 11-05 the
+dashboard asked for a triage verdict. I answered directly: compiler-core downstream (Tint), low severity, no bot dispatch, no GitHub post.
+I checked the claim myself on master 04d2726db0: `tint_CompileRequest` is still {wgslCode, wgslCodeLength}, and
+`TintDownstreamCompiler::compile` reads only `sourceArtifacts[0]`. The full fix depends on a new interface plus a rebuild of the
+shader-slang/dawn prebuilt, which is an external repo and the operator's call. The Slang-only step is a warning that `-Xtint` args are ignored.

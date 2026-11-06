@@ -87,3 +87,19 @@ Numbers are the fixer's or reviewer's own unless marked "I checked".
 - 11-04 05:04Z — #14298 confirmed fixed at fb36938e7 by slang-triager (Metal/WGSL/HLSL). Main pinned-woke owner `muhgh6` (seq 66): add `Fixes #14298` to the #13741 body, body edit only, no push.
 - 11-04 05:06Z — fixer [Report] (msg 282): `Fixes #14298` added to the #13741 body. I checked: Fixes = #13737/#10522/#14298; head `fb36938e7`,
   draft, no push. The #14298 chain record is updated.
+- 11-05 11:35Z operator (dashboard msg 32) asked for a triage verdict on **#14125**. Live: jkwak-work assigned 11-02 19:00Z,
+  milestone Q1 2027 → rung-4 hold (maintainer assignee): no triager dispatch, no bot post; verdict given to the operator only.
+  Main re-checked at master `04d2726db0`: declaration unchanged (`hlsl.meta.slang:4501`); GLSL still emits `.GetSamplePosition(0)`,
+  SPIR-V E29000; CUDA gives a clean E55215 (no MS textures); CPU `-target cpp` emits the member call but the prelude has no
+  `Texture2DMS` at all (broader, out of scope). Verdict: core-module capability/intrinsic, Low/P3, maintainer design call.
+- 11-05 11:3xZ operator (dashboard msg 32) asked for a triage of **#14123**. Live state: jkwak-work **self-assigned** it 11-02 19:01Z (timeline actor = events
+  `assigner`), milestone Q1 2027; the sibling #14125 is the same. No comments. I reproduced it on master `04d2726db` (Release): HLSL emits the sampler arg, and DXC 1.9
+  rejects it on `-target dxil`. SPIR-V E29000 and GLSL are #14125. Verdict sent (msg 33, in_reply_to 32): bug, P2, not a regression, **held (maintainer-owned, rung 4)**, so no
+  dispatch and no bot post. Options offered: (a) a follow-up after #13741 merges, (b) fold it into #13741 (not recommended: moves fb36938, cancels CI 40897173994). Resumes on a jkwak-work @mention or the operator saying "do (a)".
+- 11-05 11:35Z operator (dashboard msg 26) asked for a #14126 triage verdict. Live read: **jkwak-work self-assigned #14126 11-02 18:59Z
+  (assigner = assignee) and milestoned it Q1 2027**; labels `reproduced`, type Bug, 0 comments. ⇒ maintainer-owned, held (rung 4): no
+  triager dispatch, no bot post. My code read on master 04d2726db0 (not compiled): `WGSLLayoutRulesFamilyImpl::getParameterBlockRules`
+  (slang-type-layout.cpp ~2901) returns GLSL `kStd140LayoutRulesImpl_` (GLSL object rules: 1 slot per combined sampler), while
+  `getConstantBufferRules` returns `kWGSLConstantBufferLayoutRulesImpl_`, whose `WGSLObjectLayoutRulesImpl` adds the 2nd
+  `DescriptorTableSlot` (~1271). That is the 1-vs-2. Verdict sent: layout/reflection, P2, maintainer-owned.
+- 11-05 11:3xZ: operator asked for a triage of follow-up 3 = #14124 (dashboard msg 40). jkwak-work self-assigned it on 11-02 (Q1 2027). Answered directly, no dispatch: P3, maintainer-owned. Record: [[slang/14124-extension-self-application-shared-param-e30027.md]].

@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13956_name_lookup_overload_resolution_overhaul_202c
-description: "slang#13956 (skiminki-nv, 10-26 16:06Z, self-assigned, label 'slang 202c'): maintainer design proposal for a decomposable LOOKUP/RESOLVE name-lookup + overload-resolution model in 202c (no silent semantic change from non-local decls, no lookup filter, accessibility detached, wildcard imports lowest priority). Asks nothing of the bot -> held: NO dispatch, NO bot post. 10-28 renamed 'language proposal', SPF:Proposal, Q4 2026; 10-29 author edit-note comment (no @nv-slang-bot mention) -> still held; char 6 now allows C++ semantics. 10-29 21:53Z external design data point (albertrodriguezclo: imported-vs-own decl ranking; const ambiguous, func silently local), no mention -> still held."
+description: "slang#13956 (skiminki-nv, 10-26 16:06Z, self-assigned, label 'slang 202c'): maintainer design proposal for a decomposable LOOKUP/RESOLVE name-lookup + overload-resolution model in 202c (no silent semantic change from non-local decls, no lookup filter, accessibility detached, wildcard imports lowest priority). Asks nothing of the bot -> held: NO dispatch, NO bot post. 10-28 renamed 'language proposal', SPF:Proposal, Q4 2026; 10-29 author edit-note comment (no @nv-slang-bot mention) -> still held; char 6 now allows C++ semantics. 10-29 21:53Z external design data point (albertrodriguezclo: imported-vs-own decl ranking; const ambiguous, func silently local), no mention -> still held. 11-05 09:34Z assignee reply (imported == local for lookup, so own K/F colliding with an import are errors; `import Lib as L` under consideration; real proposal via spec process), no mention -> still held. A bot stand-down note (6650508018, 11-05 05:27Z) of untraced origin is on the issue."
 ---
 
 # slang#13956 — name lookup and overload resolution overhaul for Slang 202c
@@ -47,3 +47,17 @@ not a bug filing, so there was no dispatch and no bot post. Still held.
 **10-30 overlap note.** Parked chain #13721 (`extension N::T` body can't see `N`'s members; same
 assignee) waits on a lookup-semantics choice that this proposal may settle. #13956 does not mention
 extensions yet. The triager's #13721 re-check (11-06) watches this issue; no bot post here.
+
+**11-05 05:27Z, a bot stand-down note is on the issue** (comment 6650508018). It says the bot is "standing down…
+assigned to @skiminki-nv…mention @nv-slang-bot". It was not posted from my session on this thread (the only session
+on `gh-issue-shader-slang/slang-13956`), and identical notes are absent from the sibling holds #13979/#13719/#13819/#13621.
+The origin is not traced. Its content matches the hold and acts as the resumable artifact, so nothing was corrected.
+
+**11-05 09:34Z, assignee reply to the 10-29 data point** (comment 6654589208, no @nv-slang-bot mention, not routed).
+skiminki-nv says the issue is still only a proposal sketch. The real proposal goes through the language-change process
+(a document in shader-slang/spec `proposals/`). Direction, in brief:
+(1) name lookup treats imported and local symbols the same, so `K` and `F` in main.slang should be **errors**
+because they overload the Lib declarations; they rejected shadowing imports as if they were in the global namespace's
+parent scope, because it complicates namespace scoping;
+(2) they are considering qualified imports (`import Lib as L` → `L.K`, `L.F`), with operator overloads and namespace
+interaction still open. Still held.

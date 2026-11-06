@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14136 — Metal [[threads_per_threadgroup]] / CUDA blockDim: no way to read the dispatched group size
-description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:29:22Z, cloth-sim porting batch, sibling of #14034. Triaged feature/P2 and reproduced 11-01; PARKED on maintainer API direction (A/B/C) under R6 (hold to 2026-11-05 14:29:22Z); re-check t-c5502a 11-05 14:30Z.
+description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:29:22Z, cloth-sim porting batch, sibling of #14034. Triaged feature/P2 11-01. The reporter's own PR #14148 (approach A, `DispatchedWorkgroupSize()`) was verified by the triager 11-05; it waits on maintainer jkwak-work (fork CI approval, `pr:` label, review). No bot work.
 tags: [cuda, metal, system-values, feature-request, r6]
 ---
 
@@ -43,3 +43,15 @@ The triager's `t-c5502a` (11-05 14:30Z) should verify #14148 rather than post th
 11-02 10:22Z: the triager rewrote the `t-c5502a` prompt (same due time). The run builds the #14148 head and checks each Accept-when
 item: MSL `[[threads_per_threadgroup]]`, CUDA `blockDim`, the fold to `[numthreads]` on hlsl/spirv/glsl/wgsl, `WorkgroupSize()` unchanged,
 and an L40S CUDA run with a mismatched launch size. It posts nothing on #14136 or #14148 unless asked, then sends a per-item `[Report]`. No fixer.
+
+**11-05 re-check (t-c5502a, slang-triager 14:45Z). These are the triager's findings.** The reporter opened **PR #14148**
+(`Add DispatchedWorkgroupSize()…`, head `46ace4ea6`; closes #14136). It implements approach A: an internal
+`SV_WorkgroupSize` → Metal `[[threads_per_threadgroup]]`, CUDA `cudaBlockDim()`, `uint3(WorkgroupSize())` elsewhere,
+and `WorkgroupSize()` does not change. Triager built it in `wt-14148` on the L40S. CUDA runtime is correct at launch size ≠
+numthreads; `blockSum` = 4096 at blocks 64–1024; `WorkgroupSize()` emit is byte-identical to base; 2813/2813 suite lanes pass.
+Gap: no `-mtl` runtime lane (compile only). Inherited multi-entry Metal context bug = #13687 (our draft #13726), not caused by #14148.
+The draft comment-14136.md was NOT posted because #14148 supersedes it. **#14034 is still parked with no PR**; the #14148 body names it as a follow-up.
+**Verified by me 11-05:** #14148 OPEN, not draft, MERGEABLE, no labels, `closingIssuesReferences`=#14136; on the issue, assignee
+jkwak-work, label `reproduced`, 0 comments.
+**Next.** Maintainer: approve the fork CI (`action_required`), add the label, review, and settle the name/type. No fixer unless the operator
+authorizes one for a gap (e.g. a `-mtl` lane). No re-check scheduled; webhooks on #14148 / #14136 will bring the next event.

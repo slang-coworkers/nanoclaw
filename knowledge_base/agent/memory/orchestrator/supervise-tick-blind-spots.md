@@ -112,7 +112,7 @@ pinned nudge acked in under a minute.
     The #13902 record said "Resume on: … merging (→ tell the #13669 owner …)". scan saw nothing: #13902 closed and dropped
     out, and #13669's chain had no GitHub activity. Detector: for every merged PR and closed issue in `closed-since.txt`,
     run `grep -rl '<num>' memory/slang/` and read each hit's **Resume on:** line. Then nudge the `pr-mappings` owner,
-    pinned. Here the fixer acked in 45 s.
+    pinned. Here the fixer acked in 45 s. Tick 327 caught it again: jkwak-work's #14299 (02:55Z) turned off tests that drafts #14317/#14314 also edit, so both went DIRTY unseen; both pinned merge-master nudges were pushed within 7 min.
 16. **The reporter's own fix PR lands after dispatch, and the chain never learns of it** (tick 321, batch #14151–#14160).
     Within ~1 h of filing 10 R6-held issues, the reporter opened 8 `Fixes #N` PRs (#14164–#14176). A cross-reference
     triggers no issue webhook, and scan sees only the issue. Only #14152's chain noticed. #14153 had a fixer and a

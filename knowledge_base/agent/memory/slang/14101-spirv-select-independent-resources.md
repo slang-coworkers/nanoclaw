@@ -85,3 +85,7 @@ The repro uses SampleLevel. Still PARKED on the policy choice (tangent-vector / 
 bot-PR go-ahead; t-5434f7 covers it.
 **10-30 23:30Z, change:** when pdeayton-nv's bot-PR go-ahead lands, t-5434f7 now routes it to Main for a go before any
 slang-fixer handoff. The policy choice is recorded and reported up, with no handoff. #14102 is unchanged.
+**11-05 ~11:40Z, #14102 assignee + dashboard ask.** Live: open, 0 comments, `reproduced`, Type=Bug. **jkwak-work
+self-assigned it on 11-02 18:53:04Z** (events API; actor = assignee), so it is held under rung 4: no fixer, no bot PR
+unless jkwak-work asks. The dashboard (msg 26) asked for a triage of #14102. I answered from the existing triage (the
+bot-filed body is the triage) and did not re-dispatch the triager. t-5434f7 (11-06 16:00Z) still covers both issues.

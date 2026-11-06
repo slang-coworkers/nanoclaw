@@ -54,3 +54,10 @@ SHAs, comment ids, review inboxes): [[slang/14103-history-triage-to-ready.md]] â
 - A triage "no behavior change" table can miss masked breaks; the fixer's full suite found three.
 - **11-03:** pdeayton-nv queued #14111 at 02:22Z. It was evicted at 03:43Z with `failed_checks` because a Windows GPU runner lost its connection (job 125692432093). That is infra, not the PR. The fixer posted a no-mention explanation (cmt 6598550596). Next: a human re-queues it.
 - **TERMINAL 11-03 21:05Z:** pdeayton-nv merged #14111 (`f1cd35ff8`) after three infra evictions, and #14103 closed as completed. The fixer cleaned up its worktrees. Follow-up #14195 (slangc E00045) is still open.
+
+**Correction (11-05).** The "no assignee" above was true only when I checked: jkwak-work self-assigned #14195 at 18:47:49Z, 6 min after filing (the `/timeline` actor), and set milestone Q1 2027 at 18:47:59Z. #14111 merged 11-03 21:05Z as f1cd35ff85.
+
+**Operator triage ask (11-05 11:35Z, dashboard msg 34) â†’ read-only verdict from Main; no dispatch, no GitHub post.** A maintainer assignee is a rung-4 hold. An operator ask lifts the hold for the triage answer only, not for bot posts.
+- Code read at master 04d2726db0, `slang-options.cpp` ~4985-4996: `reportsAnyTargetOption = !parsesForCompilation(m_purpose)`. So `CompleteCommandLine` (slangc) and `CompileRequest` report only the fp mode (E00045). `hasTargetOptionOtherThanProfile` (:1941) treats any non-`Profile` key as a target option. That is likely why `+` atoms would add E00045 next to E00043 (the FG006 case).
+- Verdict: command-line options / diagnostics; enhancement (silent option drop); not a regression; P3; likely `pr: breaking change`.
+- Next: held on jkwak-work. A bot draft PR goes out only on their `@nv-slang-bot` mention or an operator go-ahead.

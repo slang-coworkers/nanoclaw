@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_14030_runtime_sized_groupshared_spec_constant
-description: "slang#14030 (albertrodriguezclo, human, filed 10-29 16:18Z): spec-constant-sized groupshared arrays work only on SPIR-V; CUDA E99997, Metal/WGSL/GLSL E99999, HLSL emits a VLA DXC rejects. Proposal: fix GLSL/WGSL ICEs (overlaps open #10214), lower to CUDA extern __shared__ / Metal [[threadgroup(N)]] with entry-point reflection, diagnostic on HLSL. TRIAGED 16:38Z (bug/medium/target-emit+IR/P2, not regression, superset-sibling of #10214); bug slice (Approach A) with slang-fixer; ask 2 (CUDA/Metal dynamic lowering) PARKED on maintainers, triager timer t-3605ec 11-05T16:30Z. Draft PR #14049 @ d73c1ea6d, Fix Report 10-30 00:44Z after R2. PARKED on maintainer review (kaizhangNV) + un-draft + CI; Main timer recheck-14049-maintainer-a085 11-03 14:00Z."
+description: "slang#14030 (albertrodriguezclo, human, filed 10-29 16:18Z): spec-constant-sized groupshared arrays work only on SPIR-V; CUDA E99997, Metal/WGSL/GLSL E99999, HLSL emits a VLA DXC rejects. Proposal: fix GLSL/WGSL ICEs (overlaps open #10214), lower to CUDA extern __shared__ / Metal [[threadgroup(N)]] with entry-point reflection, diagnostic on HLSL. TRIAGED 16:38Z (bug/medium/target-emit+IR/P2, not regression, superset-sibling of #10214); bug slice (Approach A) with slang-fixer; ask 2 (CUDA/Metal dynamic lowering) PARKED on assignee jkwak-work (assigned by jhelferty-nv 11-02, milestone Q4 2026); triager final one-shot t-9ed81f 11-19T16:30Z. Draft PR #14049 @ d73c1ea6d, Fix Report 10-30 00:44Z after R2. PARKED on maintainer review (kaizhangNV) + un-draft + CI; Main timer recheck-14049-maintainer-a085 11-03 14:00Z."
 ---
 
 # slang#14030: runtime-sized `groupshared` via specialization constants
@@ -100,3 +100,13 @@ head d73c1ea6d, 0 reviews, kaizhangNV still assigned and review-requested, check
 do not collide. **Ready-flip pending** (weekly list; no per-PR un-draft ask). On orchestrator-dashboard (msg 7) I asked the operator
 whether to ping kaizhangNV. **Final** one-shot `recheck-14049-maintainer-2` runs 11-10 14:00Z; after that, no more timers, and the chain goes
 on the /supervise-issues parked register.
+
+**11-05 16:32Z triager re-check (t-3605ec), verified live by Main 16:4xZ:** #14030 still has only our 2 comments (6502609277, 6506657387);
+no maintainer answer to ask 2 (options A/B/C/not-planned). **New owner:** timeline shows jhelferty-nv assigned **jkwak-work** at 11-02
+18:25Z (the events API shows `actor=jkwak-work`, `assigner=jhelferty-nv`; read the timeline API or the `assigner` field, not `actor`),
+and jkwak-work set milestone **Q4 2026 (Fall)** at 19:13Z. So jkwak-work owns the ask-2 decision. Under rung 4 the bot does not post on #14030
+any more; the triager posted nothing. #14049 is unchanged: draft at d73c1ea6d, 0 reviews, kaizhangNV assigned and review-requested, BEHIND
+but MERGEABLE. The issue owner (jkwak-work) and the PR reviewer (kaizhangNV) are different people. The operator gave no answer to the 11-03 "ping kaizhangNV?" ask.
+Timers: triager **t-9ed81f** 11-19T16:30Z (final, no recurrence); Main `recheck-14049-maintainer-8601` 11-10 14:00Z (final). After both,
+the chain stays parked on jkwak-work / kaizhangNV via the /supervise-issues register. Operator told on orchestrator-dashboard 11-05.
+

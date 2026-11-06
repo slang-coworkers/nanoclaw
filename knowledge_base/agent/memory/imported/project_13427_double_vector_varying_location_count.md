@@ -1,6 +1,6 @@
 ---
 name: project_13427_double_vector_varying_location_count
-description: "slang#13427 (georgeouzou, 10-04; fixer HELD; operator never answered 1/2/3, so the default hold was applied 10-22; last recheck rechase-13427-fifth-5d28 11-05, then parked): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
+description: "slang#13427 (georgeouzou, 10-04; fixer HELD; PARKED INDEFINITELY 11-05 after 5 silent re-chases, no further re-check; operator never answered 1/2/3): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
 metadata:
   node_type: memory
   type: project
@@ -127,3 +127,22 @@ TODO is still there, and the patch-constant leaf is still `fromRaw(1)` (slang-ir
 overlaps a fix. Rules A–C did not apply. I sent no reminder. I sent one line to `orchestrator-dashboard` (id 15, thread
 `gh-issue-shader-slang/slang-13427`). The fixer stays HELD. **One-shot `rechase-13427-fifth-5d28` fires 2026-11-05T17:00Z.** If it is silent too, it
 parks the chain indefinitely with no more re-checks, the same as #13330's fifth. It also treats a newly added `bot-ok` label as rule A.
+
+**11-05 17:00Z — fifth re-chase (`rechase-13427-fifth-5d28`): nothing new, so the chain is PARKED indefinitely.** No re-check is scheduled,
+and webhooks deliver any new comment. Dashboard rows 507394–511360 (10-22 17:03Z to 11-05 16:35Z) mention 13427/13330 only in my own
+reports (507394, 508644, 510582); there is no operator 1/2/3 answer. GitHub: still 4 comments, the last being 6045519879 (10-07);
+`updated_at` is 10-07; labels are GLSL/reproduced/SPIR-V with no `bot-ok`; tangent-vector is the only assignee. The only timeline event is
+a 10-23 cross-reference from **#13892**. That issue was filed by the bot from jkwak-work's #13736 review ask ("investigate the band-aids
+for varying-parameter locations"). It is assigned to jkwak-work, has no comments, and is scoped as an inventory only, with no fix proposed.
+It names #13427 as a possible symptom, by title only. It also quotes tangent-vector's principle from that review: fix the layout/binding logic,
+not the IR. That principle supports the front-end `GLSLVaryingLayoutRulesImpl` fix, but it does not decide who opens the PR, so this is not rule A, B or C.
+Master `04d2726db0` (11-05 06:53Z): `GLSLVaryingLayoutRulesImpl` (slang-type-layout.cpp :1048) still has no `GetVectorLayout` override, the TODO
+at :1042 is still there, and the patch-constant leaf is still `fromRaw(1)`, now at slang-ir-glsl-legalize.cpp :1303. No commit since 10-22
+touches type-layout. The only legalize commit is #13923 (interpolation modes), which is unrelated. No PR references 13427 except the merged #13078.
+I sent ONE line to `orchestrator-dashboard` (id 17, seq 511362, thread `gh-issue-shader-slang/slang-13427`). It notes that a one-word
+operator release, or `bot-ok`, restarts the chain. The fixer stays HELD and was not messaged. I sent no reminder. This matches #13330's 11-03 park.
+**Open point (same as #13330):** under szihs's 11-02 R6 rule, the bot stands down only when someone explicitly asks it to. This hold instead rests on the unanswered
+"who opens the PR?" question to tangent-vector. **To release:** dispatch slang-triager on `gh-issue-shader-slang/slang-13427` with the GO
+(a draft PR with the front-end `GLSLVaryingLayoutRulesImpl` fix, plus GPU-free spirv-asm/reflection tests that name the hull/domain
+patch-constant disagreement), quoting the authorizing human. If jkwak-work's #13892 inventory turns into a fix PR that covers 64-bit vectors, that is rule B.
+

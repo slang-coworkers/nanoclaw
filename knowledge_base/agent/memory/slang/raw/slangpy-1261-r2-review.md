@@ -1,3 +1,8 @@
+---
+type: source
+title: "slangpy#1261 R2 review — APPROVE"
+---
+
 # Review: shader-slang/slangpy#1261 — Support torch.bfloat16 tensors in the torch bridge (round 2)
 
 - **Head:** `bee91422` (one test-only commit on top of `4d0592d0`; base main `68d1e782`, Slang 2026.20)

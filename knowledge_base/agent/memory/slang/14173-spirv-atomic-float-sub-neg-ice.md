@@ -36,3 +36,12 @@ no fixer chain (as with the #14215/#14248 holds). I posted the withdrawal on orc
 `gh-issue-shader-slang/slang-14173`), not a reminder. The chain is parked with no timer. Any further work starts from a human
 comment, delivered as a webhook. If a maintainer asks the bot for help, dispatch slang-fixer on `gh-issue-shader-slang/slang-14173`;
 the fixer must not name #14153.
+
+**11-05 11:35Z: operator triage request (dashboard msg 56). I triaged it myself; no triager dispatched, no GitHub write.**
+Live state at 11:3xZ: OPEN, assignee jkwak-work (self-assigned 11-02 18:33Z), milestone Q1 2027, no labels, no comments, no PR.
+Under the rung-4 hold a maintainer-assigned issue gets no bot comment or label, so a triager (which posts) was not dispatched.
+Master moved to `04d2726db`. The only emitter change since 6815ed82d is #14090 (pointer casts); the `negateOperand`/`emitNeg`
+block is unchanged at :5810-5816. Re-verified on the local 6815ed82d build: float repro E99997 (exit 255); **`Atomic<half>.sub` also
+E99997**; workaround `.add(-v)` compiles and passes spirv-val (exit 0).
+Verdict sent to the operator: bug, SPIR-V emit (`slang-emit-spirv.cpp`), ICE, medium/P2, not a dup. Related: #14183 (CPU float add ICE), but a different emitter.
+Next step: held for the maintainer. A bot fix needs either the operator's OK to ask jkwak-work on the issue, or a maintainer ask.

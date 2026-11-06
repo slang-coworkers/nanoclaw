@@ -1,7 +1,7 @@
 ---
 type: project
 title: slang#14252 — SM80Plus self-hosted runners stalled since 17:43Z 11-03
-description: "Bot-filed CI-infra issue 11-03 20:06Z. SM80Plus pool stalled 17:43→20:11Z, briefly recovered (3 jobs 20:11–20:18Z), re-stalled from ~20:19Z; #14111 merged 21:05Z, #14204 dequeued by jkwak-work 21:42Z. Infra, no fixer, no bot post. Pool owner jkiviluoto-nv (#13614). Operator ping recommended 21:5xZ."
+description: "Bot-filed CI-infra issue 11-03 20:06Z. SM80Plus pool stalled 17:43Z→23:12Z 11-03 (brief recovery 20:11–20:18Z). TRIAGED 11-05: infra, medium/intermittent; HELD on jkwak-work + jkiviluoto-nv (assigned 11-04, Q1 2027). No fixer, no bot post."
 tags: [ci-infra, sm80plus, merge-queue]
 ---
 
@@ -31,3 +31,8 @@ tags: [ci-infra, sm80plus, merge-queue]
   Reported to `orchestrator-dashboard` (thread `gh-issue-shader-slang/slang-14252`), with a recommendation
   that the operator ping jkiviluoto-nv. No GitHub post. No further timer: a human comment/close on #14252
   arrives as a webhook, and the babysitter sweep sees re-enqueues.
+- **Triage 2026-11-05 11:40Z (dashboard ask, msg 50):** CI infra (SM80Plus self-hosted Linux GPU pool), not compiler code.
+  Severity now medium/intermittent: the 11-03 stall ended 23:12:02Z (merge-group run 41711939225, sm80 job waited 2h24m).
+  Since then the queue wait is 1–28 min, with one outlier: run 41888920166 (11-04 18:51:44Z→20:40:18Z, 1h49m, close to the
+  ~2h merge-queue timeout). 11-05 waits are 5–20 min. **jkwak-work assigned themselves and jkiviluoto-nv 11-04 17:27Z**,
+  milestone Q1 2027, no comment, so the issue is held under rung 4. No triager/fixer, no bot post, no timer. Resume on a human comment or close (webhook).

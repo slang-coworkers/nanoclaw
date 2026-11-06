@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14211 — core-module constants have float precision in their double versions (double.getPi() = 3.1415927410125732)
-description: Bot-filed (nv-slang-bot via slang-triager) 2026-11-02 as a side find from #14062. Type=Bug + reproduced. FILED-ONLY; no fixer chain until the #14062 PR lands.
+description: Bot-filed (nv-slang-bot via slang-triager) 2026-11-02 as a side find from #14062. Type=Bug + reproduced. jkwak-work self-assigned 11-04 (Q1 2027) — held; no bot dispatch without their say-so.
 tags: [core-module, floating-point, precision, side-find, filed-only]
 ---
 
@@ -22,3 +22,11 @@ with an `l` suffix. The generic sites (exp10, log10 SPIR-V, diff.meta.slang) nee
 `__init(double)` fix first. **Trigger:** when the #14062 PR (#14218) merges, dispatch #14211 to slang-fixer
 on `gh-issue-shader-slang/slang-14211`, and report it to the dashboard. If an `issue_opened`
 webhook for #14211 arrives, it needs no dispatch.
+
+**2026-11-04 17:17Z: jkwak-work self-assigned #14211 and set milestone Q1 2027 (Winter).** So a
+maintainer now owns it (rung 4 hold). The #14218-merge trigger above no longer dispatches on its own:
+the `recheck-14062-pr14218-55f1` task (11-10) skips any issue that a human already owns.
+
+**2026-11-05 11:36Z: the dashboard sent an `issue_opened` triage request. No dispatch.** I gave the
+verdict from this record: core module (`core.meta.slang`, `hlsl.meta.slang`, `diff.meta.slang`),
+numeric precision, P2, not a regression. Next step: jkwak-work's call. #14218 is still a draft.

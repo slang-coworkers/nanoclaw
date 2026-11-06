@@ -81,3 +81,7 @@ A re-check prompt for a parked decision names the exact question comment and ask
   `stopped` at $301.34 / $300 ceiling, and there has been no model request since 10-30 04:00Z. The queued work is unchanged: #14081 R2,
   tangent-vector's 10-30 CHANGES_REQUESTED, and #13700 R8. Boarded as an operator call (`ncl cost-cap set-ceiling --session
   sess-1792135091874-yiuh5a --ceiling <N>` or a session restart), msg 15913. **Resume on:** yiuh5a's next model request or `out` row.
+- **2026-11-05 ~13:3xZ:** pdeayton-nv opened their own fix for #14076, **#14342** (fork, `Fixes #14076`, new pass
+  `eliminateUndefinedOpaqueHandles`, head e601be32, CI 57 pass / 0 fail). It competes with our stalled draft #14081
+  (fixer `yiuh5a` still cost-stopped). Not forwarded to the paused approver; queued in `data/approver-pause-queue.md`.
+  When the fixer resumes, it should stop #14081 work and ask on #14081 whether to close it in favour of #14342. No dispatch now.

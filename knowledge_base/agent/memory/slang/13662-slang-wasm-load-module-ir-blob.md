@@ -59,3 +59,12 @@ the wasm build, skipped because emsdk is absent, which is unrelated to the GPU.
 Live at 07:5xZ: the reporter pushed **470d245c** (10-15 21:16Z, "reject a non-Uint8Array in loadModuleFromIRBlob"),
 which addresses CodeRabbit's null-`bytes` nit. The PR is still OPEN with no maintainer review, no labels, and `CI`
 `action_required`. #13662 has 0 comments. The operator's GO-issue answer is still pending.
+
+**TERMINAL, 2026-10-31.** jkwak-work merged reporter PR #13663 at 00:51:04Z (merge commit c959b561), with
+`reviewDecision` empty (the 10-23 kaizhangNV LGTM had been dismissed and was not renewed). #13662 auto-closed
+COMPLETED at 00:51:05Z through the `Fixes` link, with 0 comments. Supervisor archived the chain 11-01 12:01Z.
+The held triager draft (comment-13662) was never posted; it is moot now, so the operator GO-issue question is
+moot too. Triager final report 11-05 15:02Z (msg 2): sentinel removed, no further re-checks. Verified live by
+me 11-05.
+**Left open:** older duplicate #8744 (OPEN, 0 comments, unassigned) is now fixed by #13663. Closing it is a
+maintainer action; nobody has posted on it. No bot chain is open on #8744.

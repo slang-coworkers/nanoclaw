@@ -91,3 +91,8 @@ The DXC `releases.atom` and `tags.atom` feeds match the baseline: newest `v1.9.2
 The 3 comments on #13527 since 6069079805 (6471406139, 6476956743, 6480214472) are all jkwak-work's, already handled above, and none mentions
 the bot. `update` refused the firing one-shot again (`no live task matched`), so I re-armed it as `rechase-13527-dxc8644-c4c3` for 11-05 18:00Z
 (comment baseline moved to 6480214472; prompt notes the expected early-December Agility 1.621 / SM 6.10 retail).
+
+**11-05 18:00Z re-chase: still held.** #13532 is OPEN (head `c91704bc`, non-draft, last updated 10-09; only bot reviews/comments; no timeline
+events since 10-09). The DXC `releases.atom` and `tags.atom` feeds match the baseline: newest `v1.9.2609` (09-29), newest SM 6.10 preview
+`v1.10.2605.37` (08-12, old order). No comment on #13527 since 6480214472; issue `updatedAt` 10-28 20:42Z, still assigned to jkwak-work. `update`
+refused the firing one-shot again (`no live task matched`), so I re-armed it as `rechase-13527-dxc8644-81fa` for 11-12 18:00Z.

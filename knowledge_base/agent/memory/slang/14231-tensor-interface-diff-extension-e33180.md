@@ -116,4 +116,21 @@ fan-out list, and no @-mentions. No reply to the CC itself.
 **no fixer chain unless the operator or jkwak-work asks for one.** That supersedes the pending operator go/no-go. The test-only coverage PR
 is the only bot-side option still open.
 
+**11-05 11:36Z: operator asked Main to triage #14237** (dashboard msg 60, "subsystem + severity + next step"). Answered directly on `gh-issue-shader-slang/slang-14237`, with no new triager run, because the bot-filed body is already a verdict (repro on 3 builds plus the variant matrix). Verdict: IR type-flow specialization × custom `[ForwardDerivative]` on generics; P2 false error, 2025+ only, workaround available; held for the assignee jkwak-work (milestone Q1 2027). The open piece is the untraced root-cause hypothesis. A read-only trace by slang-triager or a fixer chain is offered on the operator's go; it was not dispatched.
+
+**11-05 11:36Z: the dashboard asked for triage of #14239 (msg 46).** No triager dispatch. #14239 is still OPEN, 0 comments, self-assigned by jkwak-work and
+milestoned Q1 2027 (11-04 17:25Z), with no linked PR. Main re-ran the repro on the local Release build (11-02): exit 139 in both legacy and
+`-std 2026`. Verdict sent to the dashboard: IR specialization at the autodiff boundary, P2, maintainer-owned, no bot action, no GitHub post.
+
+**11-05 11:36Z: the operator asked for triage of #14240** (dashboard msg 44: "Triage subsystem + severity + next step"). That counts as the
+operator ask that lifts the rung-4 hold. Dispatched slang-triager on `gh-issue-shader-slang/slang-14240` (session `sess-1793878706483-564dfd`,
+sent with `in_reply_to=2`) for **advisory triage only**: root cause, severity, next step for jkwak-work, at most one GitHub comment, and no fixer or PR.
+jkwak-work still owns it (assigned 11-04, milestone Q1 2027). Its verdict goes back to the dashboard on the 14240 thread.
+
+**#14240 triage verdict (11-05 12:14Z, triager msg 54; comment verified at https://github.com/shader-slang/slang/issues/14240#issuecomment-6657684278):**
+Bug, P2, IR (where typeflow, autodiff and variadic packs meet). The issue's hypothesis is refuted, the inverse is true. Typeflow `analyzeCall` (:4826)
+differentiates `bwd_diff(scaled)` on demand. `_getCalleeActualFuncType` (fwd.cpp:979-986) flattens the TypePack, giving 3 params, but the args are never flattened,
+because specialize.cpp:2169 flattens only for `IRFunc` callees. Fix options for jkwak-work: A, flatten args when the callee type has a concrete pack; B, pack-expand
+before differentiating. Likely blocks SlangPy `IDiffTensor.load(i,j)` through an interface (inferred). No fixer, no PR. Reported to the dashboard.
+
 **Note.** A sibling Main session rewrote this file around 05:3xZ and dropped my triage-closed section. Re-read the file before every edit.

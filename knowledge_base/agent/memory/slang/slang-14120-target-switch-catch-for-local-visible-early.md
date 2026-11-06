@@ -28,3 +28,6 @@ Follow-up #2 of [[slang-14099-hlsl-sibling-for-loop-redecl.md]], left uncovered 
 - Approaches: **A** (rec) a scoped `BlockStmt` per construct, reusing #14119's hiding; **B** hide by
   DeclStmt (one uniform rule, replaces #14119's helper); **C** per-construct calls.
 - The triager kept worktrees `wt-triage-master` and `wt-triage-14119`.
+
+- **11-05 re-check #2:** jkwak-work (maintainer) self-assigned #14120 and set a milestone 2026-11-02 19:01Z. No approach comment yet. Because a maintainer holds it,
+  there is no fixer hand-off unless someone asks. The final re-check timer is spent, so the issue now runs on webhooks.

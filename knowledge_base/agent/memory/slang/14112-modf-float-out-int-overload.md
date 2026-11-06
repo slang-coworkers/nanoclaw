@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14112 — modf (float, out int) overload
-description: tangent-vector feature request for an HLSL-compatible modf(float, out int) overload; triage under R6 hold
+description: tangent-vector feature request for an HLSL-compatible modf(float, out int) overload; reporter fixing it in their own PR #14353
 resource: raw/triage-14112.md
 ---
 
@@ -32,3 +32,9 @@ resource: raw/triage-14112.md
   in `.slang` and `-lang hlsl`. **Still PARKED on tangent-vector.** If they want a bot PR for A, the triager hands
   off to slang-fixer; if they fix it themselves, the triager sends a [Resolution]. No timer is set: the
   supervise-issues register (`awaiting_human`) walks it. (The R6 hold above is retired; see Core Memory.)
+- 11-05 17:38Z: **tangent-vector opened their own PR [#14353](https://github.com/shader-slang/slang/pull/14353)**
+  (same-repo branch `codex/modf-integer-output`, "Fixes #14112"). It uses Approach A (core `modf(T, out int)`
+  overloads that wrap the float one) and adds an opt-in numerics capability `IFloatingPointWithIntegerPart`.
+  The reporter owns the fix, so **no bot PR, no fixer dispatch**. The triager's [Resolution] waits for the
+  issue-close webhook. 11-05 ~19:4xZ approver webhook (head 9dc98d85, CI 59/59 pass): not forwarded because
+  slang-pr-approver is paused; queued in `data/approver-pause-queue.md`.

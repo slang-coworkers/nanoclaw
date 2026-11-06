@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14058 — Metal discarded atomic results → -Wunused-variable temporaries
-description: "Human bug (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) 10-29 21:51Z. Metal emit binds a discarded atomic_fetch_* result to an unread temp. Triaged P2 10-29 (emit-side root cause, approach A); fixed locally by fixer uy6784 (unpushed); conflicts with draft PR #14044 in a few lines. Draft PR #14209 @315e95a52 opened 11-02 22:14Z (atomics + discarded calls); R1 APPROVE_WITH_NITS applied (head 8d9dd07cc); PARKED on operator un-draft; re-chase 11-05 16:00Z."
+description: "Human bug (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) 10-29 21:51Z. Metal emit binds a discarded atomic_fetch_* result to an unread temp. Triaged P2 10-29 (emit-side root cause, approach A); fixed locally by fixer uy6784 (unpushed); conflicts with draft PR #14044 in a few lines. Draft PR #14209 @315e95a52 opened 11-02 22:14Z (atomics + discarded calls); R1 APPROVE_WITH_NITS applied (head 8d9dd07cc); PARKED, ready-flip pending (weekly list); r1 re-chase 11-05 no change; r2 11-10 16:00Z."
 ---
 
 # slang#14058: discarded atomic results produce `-Wunused-variable` in Metal output
@@ -147,6 +147,21 @@ with no fixer chain, and the number reported up.
   Master-only repro (7f506f4c9): `uint t = tid.x * 7u; uint unread = t + t;` with `-g` emits an unread `t_0` on all
   six C-like targets. ⚠️ **#14216's `issue_opened` webhook belongs to this chain, so do not dispatch it.** A human
   comment on it goes to the triager as a live inbound.
+- **11-05 #14216 maintainer-held.** jkwak-work labeled it `DebugInfo`, milestoned it Q1 2027 (Winter) (11-04 17:18–17:19Z), and self-assigned it at 17:35Z. It has 0 comments. The operator asked for triage on 11-05 (dashboard msg 38). I answered directly with no dispatch: the subsystem is the IR→emit debug-info pipeline, severity low/P3, held for the assignee. Main-verified the `stripDebugInfo` gate at slang-emit.cpp:1096-1101 (7f506f4c9). Next: nothing unless jkwak-work comments or picks direction 1 or 2.
 
-**Open / resume on:** the operator's un-draft answer; jkwak-work's review;
-the re-chase on 11-05 16:00Z. #14044/#14170 overlap: the second to merge resolves it.
+**11-05 16:00Z re-chase r1 (`rechase-slang-14058-r1-1d3f`): no change.** Main-verified:
+- **#14209:** OPEN draft at 8d9dd07cc, 0 reviews. The only comments are bots (coderabbit skip, PR-board sync, the
+  explain-diff comment), and nothing has been added since 11-03 00:39Z. MERGEABLE but BEHIND master (23 behind, 8 ahead).
+  CI run 41552378383 is still `waiting` at the priority-yield gate. Review is still requested from jkwak-work.
+- **Overlaps:** #14044 is an open draft and #14170 is open and non-draft; neither has merged.
+- **Operator:** the dashboard rows from 11-02 18:57Z to 11-05 15:30Z mention 14058/14209 only in my own 1st ask (seq 510324)
+  and the #14216 note (510326). There is no answer.
+- **No 2nd un-draft ask.** The [weekly-list policy](../orchestrator/undraft-asks-replaced-by-weekly-list.md) (11-03) came
+  after this chain's 1st ask, and #14209 is P2 and not a regression. supervisor-state already lists #14209 on the weekly
+  list (task 11-09 09:00Z). The r1 task prompt predates the policy and asked for a 2nd ask anyway; the policy wins.
+  Nothing was posted on the dashboard or GitHub.
+- **Timer:** r2 one-shot `rechase-slang-14058-r2-b5ea` at 11-10 16:00Z (2 of 3), after the weekly list. It also tells
+  the fixer to merge master if #14044 or #14170 lands and #14209 conflicts.
+
+**Open / resume on:** the operator's weekly-list answer, or a maintainer flip; jkwak-work's review; r2 at
+11-10 16:00Z. #14044/#14170 overlap: the second to merge resolves it.

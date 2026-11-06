@@ -1,9 +1,9 @@
 ---
 type: chain
 title: slang-rhi#962 — Metal timestamp queries not implemented (writeTimestamp no-op, getResult SLANG_E_NOT_AVAILABLE)
-description: Human-filed (albertrodriguezclo) 2026-11-01 20:07:45Z, cloth-sim porting batch (sibling of slang-rhi#961 / slang#14136). Triaged 11-01 feature/medium/P2 (rec A: stage-boundary sampleBufferAttachments, as in Dawn). PARKED on maintainer approach pick under R6 (to 2026-11-05 20:07:45Z); triager one-shot t-bf3f6d 11-05 20:10Z posts the held draft.
+description: Human-filed (albertrodriguezclo) 2026-11-01, cloth-sim porting batch (sibling of slang-rhi#961 / #964 / slang#14136). Triaged 11-01 feature/medium/P2. Reporter PR #963 (draft) implements it; maintainer skallweitNV found 2 correctness bugs and proposes a Metal 4-only design. HELD maintainer-owned since 11-02 (jkwak-work self-assigned, Q4 2026): no bot post, no fixer, no timer.
 resource: https://github.com/shader-slang/slang-rhi/issues/962
-tags: [slang-rhi, metal, query-pool, timestamps, r6]
+tags: [slang-rhi, metal, query-pool, timestamps, maintainer-owned]
 ---
 
 # slang-rhi#962 — Metal timestamp queries
@@ -58,3 +58,22 @@ natural first fixer item once a maintainer agrees.
 `metal-query.cpp`, `docs/api.md`, `tests/test-cmd-query.cpp`). It ends the encoder at `writeTimestamp`. At t-bf3f6d, the
 one-shot's "a PR exists" branch applies, so the held options A–D are mostly moot. It conflicts with #964's option A, so
 #964 should land after it. No reviewer is dispatched (both approvers are paused, and no webhook routed it here).
+
+**11-05 20:15Z (triager [Report] from one-shot t-bf3f6d, msg 2; I verified the live state and the review text).**
+The held brief was NOT posted, because PR #963 supersedes it. Live: #962 is open with 0 comments and no labels.
+**jkwak-work self-assigned it on 11-02 at 18:03:36Z** (after kaizhangNV, the auto-assigned PR shepherd, was unassigned) and milestoned it
+Q4 2026 (Fall), so rung 4 applies (maintainer-owned). **PR #963 is a DRAFT** (not ready, as the #964 record says), head `9488202`,
+last activity 11-03 19:36Z. skallweitNV's review (comment 6572700741, 11-02, read verbatim) raised three points:
+(1) native command buffers allocated during recording deadlock `finish()` after 64 write/resolve cycles (queue capacity 64);
+(2) a dropped render-pass write still becomes `Resolved` with stale data;
+(3) A→X→B→Y→C does not measure B.
+skallweitNV proposes timestamps **only via Metal 4** (MTL4 writeTimestamp + counter heaps). On the old path, TimestampQuery stays off
+and pool creation is rejected (= our option D). The reporter agreed (comment 6611688615) and prototyped Metal 4 on an M4 (6613620396).
+They offered two PRs: the Metal 4 command path first, then timestamps.
+- **Decision (msg 15, 20:20Z, landed in the triager's `sess-1793564983977-2w2063`):** no fixer handoff, the D-gate included,
+  because the reporter's work owns it. I asked the triager to cancel its new one-shot t-497cc3 (set for 11-12), as for #961 and #964.
+  The memo and draft are kept. The chain resumes only on an @nv-slang-bot mention, a human comment addressed to the bot,
+  or an operator go-ahead.
+- The triager's memo gap: options A–D missed the Metal 4 counter-heap route. The acceptance criteria also lacked
+  "unsupported writes never become Resolved" and "no unbounded native command-buffer allocation".
+- 11-05 20:21Z the triager confirmed (msg 18): t-497cc3 is `cancelled`, and its slang-rhi-962.md records the maintainer-owned hold with no R6 mention.
