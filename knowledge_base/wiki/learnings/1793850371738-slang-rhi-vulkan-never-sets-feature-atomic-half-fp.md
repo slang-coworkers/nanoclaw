@@ -3,6 +3,7 @@ title: "slang-rhi Vulkan never sets Feature.atomic_half — fp16 atomic add is t
 type: learning
 topic: slang-compiler
 source: learnings/1793850371738-slang-rhi-vulkan-never-sets-feature-atomic-half-fp.md
+superseded_by: 1793850158809-slang-rhi-vulkan-never-reports-feature-atomic-half
 ---
 
 # slang-rhi Vulkan never sets Feature.atomic_half — fp16 atomic add is the capability SPV_EXT_shader_atomic_float16_add

@@ -3,7 +3,7 @@ title: "Compute thread-group size: where the launch size comes from (reflection)
 type: concept
 group: slang-backends
 tags: [slang, slang-rhi, numthreads, thread-group-size, block-size, blockDim, WorkgroupSize, SV_GroupIndex, SV_DispatchThreadID, getComputeThreadGroupSize, reflection, dispatch-override, cuda, metal, cpu, launch_bounds, generic-entry-point, cuLaunchKernel, driver-api, slang-rhi-961, slang-14136]
-source_count: 6
+source_count: 7
 ---
 
 # Compute thread-group size: reflection, dispatch-time override, and what the shader sees
@@ -16,7 +16,8 @@ A Slang compute entry point declares its group size with `[numthreads(x,y,z)]`. 
 - **A generic value-param entry point is the working per-size workaround today:** `[numthreads(N,1,1)] void k<let N:int>(...)`, specialized as `k<777>`, reflects (777,1,1), launches 777 threads per block, and `WorkgroupSize()` returns 777. It costs one pipeline per size.
 - **The still-generic entry point reflects (0,1,1).** A launch from an unspecialized layout would use `blockDim.x = 0`.
 - **CPU cannot honour a host override.** Slang's CPU codegen bakes the group loop into `<entry>_Group`, so treat CPU like D3D12/Vulkan (size fixed in the shader).
-- **CUDA launches any block up to the FUNCTION limit, which can be below the device's 1024.** Validate against `cuFuncGetAttribute(CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK)`, not `DeviceLimits`. A future `__launch_bounds__(N)` would cap it at N.
+- **CUDA launches any block up to the FUNCTION limit, which can be below the device's 1024.** Validate against `cuFuncGetAttribute(CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK)`, not `DeviceLimits`. `__launch_bounds__(N)` (PR #14149) caps it at N; a larger launch fails with `CUDA_ERROR_INVALID_VALUE`, which slang-rhi Debug turns into a SIGABRT of the whole slang-test run (use `-use-test-server`).
+- **Surplus attribute arguments are not diagnosed** (only too few, E31001), so a per-attribute arg-count `SLANG_ASSERT` fires as E99997 in Debug, e.g. `[numthreads(64,1,1,1)]`. Fix generically at the matching site.
 - **Under a different launch size, `WorkgroupSize()` keeps the `[numthreads]` constant on CUDA and Metal**, because it is folded at compile time (slang#14136). `WaveGetNumWaves` uses the folded size too.
 - **CUDA `SV_GroupIndex`/`SV_DispatchThreadID` come from `blockDim` and stay correct; Metal `SV_GroupIndex` is built from the `[numthreads]` literals**, so it is correct only for x-only overrides.
 - **`-capability metallib_4_0` emits `[[required_threads_per_threadgroup(N)]]`,** which any other host size violates. Metal non-uniform threadgroups (`dispatchThreads:`) need Apple4+ or a Mac GPU, so they need a feature query.
@@ -40,7 +41,7 @@ Verified 2026-11-01 for slang-rhi#961 ([what each backend can honour](../learnin
 | CUDA | Yes, up to the function limit | Slang PTX has no `.maxntid`/`.reqntid`. The function limit can be below 1024: an 80-register kernel reports `CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK = 768`, and launching 1024 fails with `LAUNCH_OUT_OF_RESOURCES`. |
 | Metal | Uniform sizes yes; non-uniform needs a feature query | `dispatchThreads:` needs Apple4+ (A11) or a Mac GPU. `-capability metallib_4_0` emits `[[required_threads_per_threadgroup(N)]]`, which a different host size violates. |
 
-Slang does not emit `__launch_bounds__` today. If it did (slang#14135), `.maxntid N` would cap the CUDA block size at N, and the override validation would have to read it. Register and occupancy limits on CUDA are on [[wiki/concepts/slang-backends-cuda-nvrtc-vs-offline-nvcc.md]] ([`__launch_bounds__`/`__maxnreg__`](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md)).
+Slang master does not emit `__launch_bounds__`. PR #14149 (for slang#14135) adds `[CudaLaunchBounds(...)]` and `[CudaMaxRegisters(...)]`; with them `.maxntid N` caps the CUDA block size at N, and the override validation would have to read it. Register and occupancy limits on CUDA are on [[wiki/concepts/slang-backends-cuda-nvrtc-vs-offline-nvcc.md]] ([`__launch_bounds__`/`__maxnreg__`](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md)). Measured validating #14149 on the L40S (sm_89, ptxas 12.6): a 96-accumulator kernel uses 80 registers by default and 64 with `__maxnreg__(64)` or `__launch_bounds__(128,8)`, at the cost of 880 bytes of spill stores. Dispatching a block larger than the `__launch_bounds__` maximum makes `cuLaunchKernel` return `CUDA_ERROR_INVALID_VALUE`; slang-rhi Debug then asserts at `cuda-command.cpp:680` and SIGABRTs the whole in-process slang-test run (exit 134) without recording a single failed test, so isolate such a test with `-use-test-server`. Extra attribute arguments are a separate front-end gap: the generic arg/param matching in `slang-check-modifier.cpp` (~:1545, before `validateAttribute`) reports only too FEW arguments (E31001), so any per-attribute `SLANG_ASSERT(attr->args.getCount() == N)` fires in Debug as E99997 (exit 254). Master already does this for `[numthreads(64,1,1,1)]` (~:399) and `[WaveSize(32,64)]` (~:451); the fix is one generic too-many-args diagnostic at the matching site, not one per attribute ([attribute surplus args assert in Debug; CUDA launch-bounds overflow aborts slang-test](../learnings/1793890157384-slang-attribute-surplus-args-assert-in-debug-cuda-.md)).
 
 ## What the shader sees when the launch size differs from `[numthreads]`
 
@@ -62,12 +63,13 @@ slang-test and render-test always launch CUDA kernels with the reflected `[numth
 
 A GLSL-source COMPARE_COMPUTE (`-source-language glsl`) on Vulkan without `[shader("compute")]` currently runs a 1x1x1 group, because the post-lowering entry lookup drops `layout(local_size_*) in;` (#14256); add the attribute and a fixed-size `gl_WorkGroupSize` control before trusting a launch-size result ([GLSL-source GPU tests need `[shader("compute")]`](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md); details on [[wiki/concepts/slang-backends-glsl-entry-point-and-varying-legalization.md]]).
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [slang-rhi CUDA block size comes from reflection of the linked program; generic numthreads works on L40S](../learnings/1793562777761-slang-rhi-cuda-block-size-comes-from-reflection-of.md) — `getComputeThreadGroupSize` → `cuLaunchKernel`; `k<777>` launches 777; unspecialized reflects (0,1,1); Vulkan `findAndCheckEntryPoint("name<777>")` SIGSEGV
 - [Dispatch-time thread-group size override: what each backend can honour (slang-rhi#961)](../learnings/1793562885466-dispatch-time-thread-group-size-override-what-each.md) — CPU bakes the loop; CUDA function limit < 1024; Metal `SV_GroupIndex` from literals; `metallib_4_0` `required_threads_per_threadgroup`
 - [Testing CUDA kernels launched with a block size != `[numthreads]`; WorkgroupSize vs blockDim inconsistency (#14136)](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md) — PTX + driver-API harness; `WorkgroupSize()` folded, `blockDim` live; SIGBUS means a sibling rebuild
 - [`-Xnvrtc --maxrregcount` is a no-op on PTX output; `__launch_bounds__`/`__maxnreg__`](../learnings/1793543915235-slang-cuda-xnvrtc-maxrregcount-is-a-no-op-on-ptx-o.md) — a `__launch_bounds__(N)` would cap the CUDA block size
 - [Metal SV legalization is parameter-order dependent; derived SVs built on a reused user param get hijacked](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md) — `SV_GroupIndex` before `SV_GroupThreadID` breaks (#14151); native `thread_index_in_threadgroup`; clang `-fsyntax-only` MSL shim
 - [GLSL-source GPU tests: add `[shader("compute")]` and a fixed-size control](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md) — without it the GLSL `local_size` is lost and the group is 1x1x1 (#14256)
+- [Slang attribute surplus args assert in Debug; CUDA launch-bounds overflow aborts slang-test](../learnings/1793890157384-slang-attribute-surplus-args-assert-in-debug-cuda-.md) — only too-few args diagnosed (E31001); oversize launch → CUDA_ERROR_INVALID_VALUE → slang-rhi Debug SIGABRT; register counts (#14149)
 
 _Catalog: [[wiki/index.md]]_

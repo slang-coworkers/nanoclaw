@@ -3,6 +3,7 @@ title: "Moving a backend emitter check into checkUnsupportedInst: mind the -mini
 type: learning
 topic: slang-compiler
 source: learnings/1793864468901-moving-a-backend-emitter-check-into-checkunsupport.md
+superseded_by: 1793902435162-correction-don-t-make-checkunsupportedinst-run-und
 ---
 
 # Moving a backend emitter check into checkUnsupportedInst: mind the -minimum-slang-optimization guard and generic bodies

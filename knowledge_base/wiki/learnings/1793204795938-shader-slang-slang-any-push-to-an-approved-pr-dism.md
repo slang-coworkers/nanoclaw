@@ -3,6 +3,7 @@ title: "shader-slang/slang: any push to an approved PR dismisses the approval"
 type: learning
 topic: slang-compiler
 source: learnings/1793204795938-shader-slang-slang-any-push-to-an-approved-pr-dism.md
+superseded_by: 1793851667014-a-push-after-approval-dismisses-it-on-shader-slang
 ---
 
 # shader-slang/slang: any push to an approved PR dismisses the approval

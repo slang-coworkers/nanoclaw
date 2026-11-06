@@ -3,7 +3,7 @@ title: "Slang CUDA: active-mask synthesis — exit-ballot groups, deadlocks, pru
 type: concept
 group: slang-backends
 tags: [cuda, wave-ops, active-mask, synthesize-active-mask, ballot, __ballot_sync, deadlock, barrier, unroll, decorations, nvcc, sass, redux, benchmark, filecheck, revert-drill, slang-14016, slang-14025]
-source_count: 6
+source_count: 7
 ---
 
 # Slang CUDA: active-mask synthesis and its exit ballots
@@ -24,6 +24,7 @@ CUDA has no implicit "active lanes" for wave operations, so `slang-ir-synthesize
 - **`CUDA-LABEL: __global__ void computeMain(` skips helper functions emitted before the kernel**, such as `static __device__ ... WaveActiveBallot_0(...)`, so ballots inside them do not count toward the kernel's. Compile the test and grep the emitted `.cu`, whole-file and from `__global__` onward, before disputing a FileCheck count.
 - **Before reporting an ICE on internal syntax, check master's output for the same shape.** A divergent arm that ends in an `__intrinsic_asm` statement ICEs after #14025, but master already miscompiled it silently.
 - **Hardware reconverges at the merge.** Intrinsics that read `__activemask()` directly (matrix `WaveReadLaneAt`, `WaveGetConvergedMask`) gave results identical to Vulkan on the L40S after pruning removed ballots.
+- **Per-arm exit ballots at different program points return the union on the L40S only because ptxas routes every diverged `__ballot_sync` through one shared `WARPSYNC`+`VOTE` routine;** the CUDA C++ guide calls the pattern undefined, so guard it with FileCheck on the emitted CUDA, not a runtime test.
 - **Benchmark with `cudaEvent` timing plus static SASS.** `ncu` performance counters are blocked in coworker containers (`ERR_NVGPUCTRPERM`), and the GPU is shared, so medians move 10-20%; report the minimum as well as the median.
 
 ## How the pass builds ballot groups
@@ -55,6 +56,8 @@ nvcc 12.6 on sm_89 keeps every `__ballot_sync`, used or not. Each one appears in
 
 Removing ballots did not change results that depend on reconvergence. CUDA intrinsics that read `__activemask()` directly, such as matrix `WaveReadLaneAt` and `WaveGetConvergedMask`, still matched Vulkan on the L40S after pruning took one test from 13 to 5 ballots, because the hardware reconverges at the merge without them [CUDA active-mask review: corpus ballot diff, hang timeouts under load, and __intrinsic_asm arms](../learnings/1793295534316-cuda-active-mask-review-corpus-ballot-diff-hang-ti.md).
 
+**Cross-site exit ballots return the union, but only by ptxas implementation.** `synthesizeActiveMask` computes the post-merge mask with `__ballot_sync(entryMask, true)` in EACH arm, at different program points. On the L40S (sm_89, driver 595.91.07, nvcc 12.6 / NVRTC) both arms get the full union (e.g. 0xFFFFFFFF); the #14377 report that "lanes 0-19 get a 20-lane mask" did not reproduce even under 4M-lane x 20 random stress. The SASS shows why: every diverged `__ballot_sync` is `BRA.DIV` → `CALL.REL.NOINC` into ONE shared `WARPSYNC R; VOTE.ANY` subroutine, so all sites vote at the same PC (converged: inline `VOTEU.ANY`; `-G`: one `CALL.ABS` routine; same at -O3 and `-Xptxas -O0/-O1`). The documents disagree by level: PTX `vote.sync` (sm_70+) requires only the same qualifiers and member mask, while the CUDA C++ Programming Guide §5.4.6.6 calls it undefined unless threads call the intrinsic "at the same program point with the same mask value". A runtime pass on one GPU therefore does not prove the pattern; guard it with FileCheck on the generated CUDA. Draft PR #14050 (`reuseEntryMaskForRegionsWithOnlyNormalExits`) removes the cross-site ballots for regions with no abnormal exit; regions with break/continue/return keep them. Quick variant build for a one-`.cpp` PR: recompile it with the Release line from `ninja -f build-Release.ninja -t commands <lib>` and relink `libslang-compiler.so` into a copied bin/lib dir, repointing the `libslang.so`/`libslang-compiler.so` symlinks (~2 min instead of a worktree build) ([cross-site __ballot_sync returns the union on L40S](../learnings/1793941429083-cuda-cross-site-ballot-sync-per-arm-exit-ballots-r.md)).
+
 ## Reviewing and testing an active-mask change
 
 **Regression tests must survive the pruning.** Once pruning exists, a deadlock test whose region group is entirely dead (an if/else with nothing after it that needs the mask) no longer guards the marking fix, because pruning removes the whole group and hides the bug. Only shapes with a LIVE group plus a wave-op-free abnormal exit, such as a `break` out of a loop or a `return` from a helper, still deadlock without the fix. Revert-drill each test against the final state of the PR, not only against master [CUDA active-mask pass: rebuilt branches dropped [unroll]; prune ballots by region group; drill tests against the final state](../learnings/1793290583175-cuda-active-mask-pass-rebuilt-branches-dropped-unr.md).
@@ -75,12 +78,13 @@ A native nvcc harness runs `slangc -target cuda` output directly; the `extern "C
 
 Wave-op element-type gaps (bool on CUDA, SPIR-V, DXC and WGSL), the CUDA `WaveMatch` prelude bug (`__match_all_sync` where `__match_any_sync` is needed, hidden by uniform test values and the `uint4` splat) and self-checking lane probes are on [[wiki/concepts/slang-backends-wave-ops-element-types-and-cross-target-probes.md]] ([CUDA WaveMatch: test non-uniform values and `.yzw`](../learnings/1793745788116-cuda-wavematch-test-with-non-uniform-values-and-ch.md)).
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [exit ballots are one collective per region; an early-returning arm leaves it incomplete and deadlocks with a following barrier (#14016); harness OOM trap](../learnings/1793280013857-slang-cuda-synthesizeactivemask-exit-ballots-are-o.md)
 - [rebuilt branches dropped `[unroll]`; prune ballots by region group; tests need a live group; unreachable-block assert exemption; 16 → 5 ballots (PR #14025)](../learnings/1793290583175-cuda-active-mask-pass-rebuilt-branches-dropped-unr.md)
 - [nvcc keeps unused ballots as REDUX.OR; ~10x slowdown in #14016; ncu blocked; wrapper-TU harness; report min and median](../learnings/1793278728292-benchmarking-slang-generated-cuda-kernels-with-a-n.md)
 - [corpus ballot diff found missing `break` exit ballots; ≥200 s before calling a hang; `__intrinsic_asm` arm ICE replaces a master miscompile; hardware reconverges](../learnings/1793295534316-cuda-active-mask-review-corpus-ballot-diff-hang-ti.md)
 - [`CUDA-LABEL: __global__` excludes ballots in helpers emitted before the kernel; compile and grep before disputing a count (#14050)](../learnings/1793305986589-filecheck-cuda-label-on-global-excludes-ballots-in.md)
 - [CUDA WaveMatch: `__match_all_sync` → `__match_any_sync`; uniform input and the `uint4` splat hide both bugs (#14273)](../learnings/1793745788116-cuda-wavematch-test-with-non-uniform-values-and-ch.md) — details on the wave-ops page
+- [CUDA cross-site __ballot_sync (per-arm exit ballots) returns the union on L40S — ptxas shares one WARPSYNC+VOTE routine](../learnings/1793941429083-cuda-cross-site-ballot-sync-per-arm-exit-ballots-r.md) — #14377 no-repro; PTX vs CUDA C++ contract; FileCheck guard; quick relink build
 
 _Catalog: [[wiki/index.md]]_

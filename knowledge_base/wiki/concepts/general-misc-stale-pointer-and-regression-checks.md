@@ -11,7 +11,7 @@ source_count: 23
 ## TL;DR
 
 - For any issue or PR more than a few weeks old, re-verify its claims against current HEAD before scoping — the body describes the state when written; fixes may have landed, or work described as done may not exist yet.
-- Treat every relayed pointer — `file:line`, a cited doc/spec path, a static-analysis-bot site — as stale: grep the actual current source for every symbol/line and confirm the cited branch/function still exists before repeating the claim. Reporters' pointers drift, even from a MEMBER.
+- Treat every relayed pointer — `file:line`, a cited doc/spec path, a static-analysis-bot site — as stale: grep the current source for every symbol/line and confirm the cited branch/function still exists before repeating the claim. Reporters' pointers drift, even from a MEMBER.
 - Re-derive the mechanism **and** the site count from source. A relayed finding can be right in direction and wrong in every specific (moved file, one site not two, a branch that no longer exists).
 - Staleness runs both directions in time: a follow-up issue can describe work as "already removed" when the trim commit is not pushed yet. Verify the PR's live diff (`gh pr diff`); preserve about-to-be-stripped code/fixtures before the trim.
 - A coordinate audit certifies WHERE, never the VERB. A line can pass a symbol grep yet not perform the action the claim attaches to it. Ask of each cite: *what verb did I attach, and does that line do that thing?*
@@ -20,94 +20,225 @@ source_count: 23
 - A file-changed / line-added count answers "what did the diff touch," never "what behavior changed." Verify against patch **bodies**; a recount that swaps a coarse-but-right behavioral read for a precise-but-irrelevant structural one lowers accuracy.
 - A PR's changed-file list does not prove "not a regression": adjacent lowering/transform changes can alter whether execution reaches an unchanged downstream assert. Trace the data/control path for causal claims; else say "not determinable from the file list — maintainer's call."
 - Bisect each sub-shape separately before saying "not a regression": one shape can be old while a sibling regressed, and a correct fix can be what exposed a latent gap. When your own correct consumer fix exposes a producer's wrong bits, keep the consumer correct, disclose the cost precisely, and gate the merge on the producer fix instead of adding a guard.
-- Byte-compare / branch-reachability can localize a perf/behaviour regression — but only proves a mechanism when run in the environment where the changed branch can *fire* (cross-drive, Windows-only, GPU-only, endianness, locale, filesystem-type). A green byte-compare in the wrong env is a false negative.
+- Byte-compare / branch-reachability can localize a perf/behaviour regression — but only proves a mechanism when run where the changed branch can *fire* (cross-drive, Windows-only, GPU-only, endianness, locale, filesystem-type). A green byte-compare in the wrong env is a false negative.
 - When phase-resolved human data contradicts your single-env repro, trust the measurement and find the reconciling condition.
 - Byte-verify a hand-applied patch by post-image blob hash: confirm your base blob == the patch pre-image, apply the exact diff bytes, `git hash-object` the result, compare to the stated post-image. Always re-hash the CURRENT sha — an amend moves the blob, and that movement is the tell.
 - Verify control-flow invariants against code at HEAD, not from a triage memo or a reviewer assertion. When two reviewers assert contradictory invariants, read the source and settle it yourself — never encode a claim as a comment on faith.
 - A single-point triage "recommended fix" is a hypothesis; prove it with a local RED→GREEN + ablation. If you can't name a test that goes RED without a hunk, you don't understand the fix.
 - Don't reflexively concede to a maintainer — re-verify against primary source (spec text, actual code, computed truth table) at claim precision before conceding or defending.
 - Verify an accessor→behavior direction against source AND the emitted artifact; a reversed label survives casual review because the surrounding mechanism reads correctly.
-- An open PR that mentions an issue is not automatically its fix (accept-now/fix-later splits); a follow-up/tracking issue premise ("the prerequisite was already made") can outrun reality — verify the prerequisite PR is actually MERGED.
+- An open PR that mentions an issue is not automatically its fix (accept-now/fix-later splits); a tracking issue's premise ("the prerequisite was already made") can outrun reality — verify the prerequisite PR is actually MERGED, and that a squash merge is on main via its `merge_commit_sha`.
 - Don't trust an agentic test-generation reporter's framing: strip the repro to minimum line-by-line, verify "other targets work" independently, and if the IR op in the error is more generic than the title's construct, the IR op is the real story.
-- Check shallow-clone traps before citing `git blame` (`test -f .git/shallow`, `git log --oneline | wc -l`); a shallow clone attributes lines to the oldest commit in its history. Get real file-touch history from `/repos/{o}/{r}/pulls/{n}/files`.
+- Check shallow-clone traps before citing `git blame` or `git log -S` (`test -f .git/shallow`, `git log --oneline | wc -l`); a shallow clone attributes lines to the oldest commit in its window. Get real file-touch history from `/repos/{o}/{r}/pulls/{n}/files`, or `git fetch --unshallow`.
 
 ## Re-verify stale claims against current HEAD before scoping
 
-An issue or PR body describes the world as it was when written; for anything more than a few months (or even weeks) old, that description drifts from HEAD in either direction, and scoping work off it wastes effort or diverges from a validated prototype.
+An issue or PR body describes the world when it was written; after weeks or months it drifts from
+HEAD in either direction, and scoping off it wastes effort or diverges from a validated prototype.
 
-For an aging **feature request**, never scope the remaining work from the issue body or maintainer comments alone. Fan out code subagents to map what has already landed versus what is still missing at current HEAD. In one case a maintainer's design comment described the work as unstarted, yet verification showed most of the backend had already landed and the genuine remaining gap was far narrower than the issue implied ([Stale feature requests can be half-implemented at HEAD — verify before scoping](../learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md)).
+For an aging **feature request**, never scope remaining work from the body or maintainer comments
+alone: fan out code subagents to map what has landed versus what is missing at HEAD. In one case a
+maintainer's design comment described the work as unstarted, yet most of the backend had already
+landed and the real gap was far narrower ([Stale feature requests can be half-implemented at HEAD — verify before scoping](../learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md)).
 
-Before implementing a maintainer-requested fix on an **aging PR**, run two cheap checks: (1) verify the PR's base against current `origin/main` to see if the patched code was refactored away — a one-month-old base may have the patched code replaced on main, making the implementation moot; and (2) confirm whether any referenced `#N` is an Issue or a PR (`gh api repos/O/R/issues/N --jq '.pull_request'` — non-null means it is a PR) ([Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md)).
+Before implementing a maintainer-requested fix on an **aging PR**, run two cheap checks: (1) compare
+the PR's base against current `origin/main` — the patched code may have been refactored away,
+making the work moot; (2) confirm whether a referenced `#N` is an Issue or a PR
+(`gh api repos/O/R/issues/N --jq '.pull_request'`, non-null = PR) ([Stale PR fix-requests: verify base vs current main, and issue-vs-PR, before implementing](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md)).
 
-For any issue whose claims are `file:line`-specific — **especially bot-authored migration/cleanup tracking issues** — grep the actual current-`main` source for every claim before accepting it, and compare the issue's `createdAt` to `main` HEAD, since a fix may have landed independently after filing. On slangpy-samples#45 (filed 2026-06-16, triaged 07-08), 2 of 3 tracked breakage classes were already fixed on main by an independent commit `ba1d3106`; only one class remained live, and trusting the issue body would have generated ~10 files of redundant fix work. Apply: `git clone --depth 1` fresh and grep each claimed symbol/line; for each "still broken" claim that greps clean, run `gh api .../commits?path=FILE` to find the superseding commit; post the delta verdict rather than forwarding the stale claim ([Bot-filed migration issues go stale — re-verify every file:line against current main before triaging](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md)).
+For an issue with `file:line` claims — **especially bot-authored migration/cleanup trackers** — grep
+current `main` for every claim and compare the issue's `createdAt` to HEAD. On slangpy-samples#45,
+2 of 3 tracked breakage classes were already fixed by an independent commit `ba1d3106`; trusting the
+body would have produced ~10 files of redundant fixes. Method: fresh `git clone --depth 1`, grep each
+claimed symbol; for each "still broken" claim that greps clean, `gh api .../commits?path=FILE` finds
+the superseding commit; post the delta verdict, not the stale claim ([Bot-filed migration issues go stale — re-verify every file:line against current main before triaging](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md)).
 
-⚠️ **The staleness can also run the opposite direction in time:** a bot-filed follow-up issue can describe not-yet-stripped work as *already removed* — it captures the plan, not the state. On slang#12150 (a maintainer-requested follow-up split out of draft PR #12148) the acceptance said the include-defined + multi-compilation-unit regression tests were "removed" from #12148, but the issue was filed 4 minutes after the maintainer merely *agreed to* the split — the trim commit was not yet pushed, so at the PR head `findIncludingNonIncludedSourceFile()` (+103 lines) and all 5 `tests/spirv/debug-function-scope-*` fixtures were still present. A fixer reading "restore the removed tests" literally would rewrite them from scratch and diverge from the validated prototype. The correct move is to PRESERVE the about-to-be-stripped code/fixtures (branch/stash/cherry-pick from the pre-trim commit) before the PR is trimmed, then re-add and extend. General rule: when a follow-up issue (especially bot-authored, filed alongside a live PR) says work was "removed/deferred," verify the PR's actual current diff with `gh pr diff` before believing it — don't trust the tense ([Bot-filed follow-up issue may describe not-yet-stripped work as already removed (preserve before trim)](../learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md)).
+⚠️ **Staleness also runs the other way in time:** a bot-filed follow-up can describe not-yet-stripped
+work as *already removed* — it captures the plan, not the state. slang#12150 (split out of draft PR
+#12148) said the include-defined + multi-compilation-unit tests were "removed", but it was filed 4
+minutes after the maintainer merely *agreed to* the split; at the PR head
+`findIncludingNonIncludedSourceFile()` (+103 lines) and all 5 `tests/spirv/debug-function-scope-*`
+fixtures were still present. A fixer reading "restore the removed tests" literally would rewrite them
+from scratch. PRESERVE the about-to-be-stripped code (branch/stash/cherry-pick from the pre-trim
+commit), then re-add and extend; check `gh pr diff` before trusting the tense ([Bot-filed follow-up issue may describe not-yet-stripped work as already removed (preserve before trim)](../learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md)).
 
-The `file:line`-verification discipline extends to **doc/spec paths a reporter cites**. Triaging slang#12261, a high-signal MEMBER reporter wrote that the behavior "disagrees with the language reference (`docs/language-reference/statements-break-and-continue.md`)" — but that path does not exist at HEAD, and the actual `statements.md` is *silent* on the rule, not contradictory. Echoing "the impl contradicts the reference" would have been a false public claim; the honest framing ("the reference is silent/underspecified") also reframes the fix as a spec-gap opportunity. Treat a cited doc/spec path exactly like a code pointer: `[ -f <path> ]` and grep the actual reference for the rule before repeating "disagrees with the spec" — reporters' pointers drift, even from a MEMBER ([verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](../learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md)).
+The same applies to **doc/spec paths a reporter cites**. On slang#12261 a MEMBER reporter said the
+behavior "disagrees with the language reference
+(`docs/language-reference/statements-break-and-continue.md`)" — that path does not exist at HEAD,
+and the actual `statements.md` is *silent* on the rule. Echoing "the impl contradicts the reference"
+would have been a false public claim; "the reference is underspecified" also reframes the fix as a
+spec-gap opportunity. Run `[ -f <path> ]` and grep the reference for the rule before repeating it ([verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](../learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md)).
 
-The relay-decay pattern applies to **static-analysis-bot pointers**, where direction can be right and every specific wrong. Triaging slangpy#823, an issue relayed two code sites from a CodeRabbit finding — an early return "at ~line 491" and a second `else if (...is_tensorview)` branch "at ~line 417" — and at HEAD the file had *moved* (`src/slangpy_torch/` → `src/slangpy_ext/utils/`), the first site was at **428**, and **the second branch did not exist at all**, the function having been refactored to a single site between report and HEAD. Confirming "file exists, `is_tensorview` appears, claim confirmed" would have handed the fixer a two-site fix for a one-site bug; the cheap catch is `grep -n '<symbol>' <file>` for *every* occurrence counted against the report, then reading the cited function's line range to confirm the branch is inside it (`sed -n '255,410p' | grep tensorview` → zero hits). Two traps travelled with it: the clone was **34 commits deep**, so `git blame` attributed lines to the oldest commit in the shallow history (a June refactor, #1018) instead of the true origin (#775, Feb); and a subagent reported both "introduced in #1018" and "#775/#781 do not exist in this checkout's history" as *findings* — check `test -f .git/shallow` and `git log --oneline | wc -l` before citing blame, and get real file-touch history from `/repos/{o}/{r}/pulls/{n}/files`. A summary verb can also be mechanically wrong in a way that changes severity: #823 said the TensorView path "bypasses the interop buffer copy path," but the buffer *is* allocated and the data *is* copied — an early return then ignores the parameter, so the copy cost is paid and discarded, and a second defect the report missed (a writable TensorView silently loses copy-back ⇒ **wrong results**) surfaces only once you trace the parameter instead of trusting the summary. **For any relayed static-analysis finding, re-derive the mechanism AND the site count from source** ([issue line-number pointers relayed from a static-analysis bot go stale — verify the branch still exists, not just the file](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md)).
+**Static-analysis-bot pointers** decay the same way, right in direction and wrong in every
+specific. slangpy#823 relayed two CodeRabbit sites — an early return "~line 491" and an
+`else if (...is_tensorview)` branch "~line 417". At HEAD the file had *moved*
+(`src/slangpy_torch/` → `src/slangpy_ext/utils/`), the first site was at **428**, and **the second
+branch did not exist** (refactored to one site). "File exists, `is_tensorview` appears, confirmed"
+would have handed the fixer a two-site fix for a one-site bug; the cheap catch is
+`grep -n '<symbol>' <file>` for *every* occurrence counted against the report, then reading the
+cited range (`sed -n '255,410p' | grep tensorview` → zero hits). The clone was **34 commits deep**,
+so `git blame` attributed lines to the oldest commit in the window (#1018) instead of the true origin
+(#775), and a subagent reported "#775/#781 do not exist in this history" as a *finding* — check
+`test -f .git/shallow` and `git log --oneline | wc -l` before citing blame, and get file-touch
+history from `/repos/{o}/{r}/pulls/{n}/files`. The summary verb was also wrong in a
+severity-changing way: the TensorView path did not "bypass the interop buffer copy" — the buffer is
+allocated and copied, then an early return ignores the parameter, and tracing it surfaced a missed
+second defect (a writable TensorView silently loses copy-back ⇒ **wrong results**). **Re-derive the
+mechanism AND the site count from source** ([issue line-number pointers relayed from a static-analysis bot go stale — verify the branch still exists, not just the file](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md)).
 
 ## Citation and coordinate audits: right coordinate, wrong claim
 
-Auditing that citations *resolve* is necessary but not sufficient — a resolved coordinate can carry a false predicate.
+Auditing that citations *resolve* is necessary but not sufficient.
 
-⛔ **A coordinate audit certifies WHERE, never the VERB attached to it.** On slang#12443 a public triage comment had all 12 `file:line` citations verified with `sed -n 'Np'` + expected-symbol grep + a must-fail control — every one resolved, and **three were still wrong**, because the audit checked the coordinates and never the *predicates* attached to them: "X is flushed at :N" and "X is declared at :N" both pass a symbol grep at :N (the real flush was 350 lines later; a `:3465` `AddOverloadCandidates` *call* was cited as the diagnose site, real raise at `:3808`). A citation audit must ask of each cite: *what verb did I attach, and does that line do that thing?* Compounding it, a symbol grep scoped to one file (`slang-check-expr.cpp`) reported "7 sites" when there are 10 — the 3 in `slang-check-overload.cpp` were the load-bearing ones, and the undercount is exactly what let a nearby plausible line stand in for the real site ([a right coordinate with a wrong verb survives a coordinate audit](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md)).
+⛔ **A coordinate audit certifies WHERE, never the VERB.** On slang#12443 a public triage comment had
+all 12 `file:line` cites verified (`sed -n 'Np'` + expected-symbol grep + a must-fail control) and
+**three were still wrong**, because the audit never checked the *predicates*: "X is flushed at :N"
+and "X is declared at :N" both pass a symbol grep at :N (the real flush was 350 lines later; a
+`:3465` `AddOverloadCandidates` *call* was cited as the diagnose site, the real raise is at
+`:3808`). Ask of each cite: *what verb did I attach, and does that line do that thing?* A grep
+scoped to `slang-check-expr.cpp` also found "7 sites" of 10 — the 3 in `slang-check-overload.cpp`
+were the load-bearing ones, and the undercount let a nearby plausible line stand in ([a right coordinate with a wrong verb survives a coordinate audit](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md)).
 
-**Fixing a coordinate inside a clause implicitly certifies the clause.** A three-round correction chain moved the numbers to lines that all resolved and re-verified, but the clauses now "named the right code for the wrong story" — `:3465` is never reached for the repro (the failing branch sets `typeOverloadChecked=true`, disabling overload resolution), so making the prose more precise made it more precisely wrong. Re-run the *claim*, not just the citation, against the repro ([fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md)).
+**Fixing a coordinate inside a clause implicitly certifies the clause.** A three-round correction
+chain moved the numbers to lines that all resolved, but the clauses "named the right code for the
+wrong story": `:3465` is never reached for the repro (the failing branch sets
+`typeOverloadChecked=true`, disabling overload resolution), so more precise prose was more precisely
+wrong. Re-run the *claim* against the repro ([fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md)).
 
-⚠️ **A file/line count is not a behavior claim — the one shape where a careful recount makes a report WORSE.** A subagent reported PR #12116 as "comments only, no code"; a reviewer checked `/pulls/12116/files`, saw `+16`/`+6` in two `.cpp` files, and "corrected" it to "real code" — which was *less* accurate than the thing corrected, because filtering the `.cpp` patches to non-comment lines showed the added lines were themselves comments. A file-changed or line-added count answers "what did the diff touch," never "what behavior changed"; a careful recount that swaps a coarse-but-right behavioral read for a precise-but-irrelevant structural one is the one case where more rigor lowers accuracy — verify against the patch **bodies** before overturning a behavior claim with a count ([a file/line count is not a behavior claim — the one shape where a careful recount makes a report WORSE](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md)).
+⚠️ **A file/line count is not a behavior claim.** A subagent reported PR #12116 as "comments only,
+no code"; a reviewer saw `+16`/`+6` in two `.cpp` files on `/pulls/12116/files` and "corrected" it to
+"real code" — less accurate, because the added lines were themselves comments. A careful recount
+that swaps a coarse-but-right behavioral read for a precise-but-irrelevant structural one is the
+case where more rigor lowers accuracy; check the patch **bodies** before overturning a behavior claim
+with a count ([a file/line count is not a behavior claim — the one shape where a careful recount makes a report WORSE](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md)).
 
 ## Byte-verifying a hand-applied patch
 
-The "review the actual source, not a reconstruction" invariant survives even when the branch is UN-fetchable (e.g. a `.github/workflows/*` App-`workflows`-permission wall, or a worktree on another coworker's filesystem). Prove byte-identity to the committed HEAD without reading the fixer's disk: (1) confirm your clone's base file blob equals the patch's pre-image hash (`git rev-parse HEAD:<path>` vs the `index <pre>..<post>` line) — if equal, your working copy IS the fixer's pre-edit file; (2) apply the exact committed diff bytes; (3) `git hash-object <path>` on the result and compare to the stated post-image blob. A match is proof, not an eyeball. ✅ Load-bearing subtlety: always re-hash the **CURRENT** sha — when a fixer amends (e.g. to drop a redundant comment per review), the SHA and blob move, and that movement is exactly the tell that content changed. Concrete: #12062 `removeRequestedReviewers` hardening (base `dd6e011e56`, pre-image `a3bfb08f31`, committed `4147d58fb2`, post-image `f46f95ac14`) — applied diff → `git hash-object` returned `f46f95ac14…` == stated → clean APPROVE ([byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)).
+"Review the actual source, not a reconstruction" survives an UN-fetchable branch (a
+`.github/workflows/*` App-permission wall, a worktree on another coworker's disk): (1) confirm your
+base blob equals the patch pre-image (`git rev-parse HEAD:<path>` vs the `index <pre>..<post>`
+line) — then your copy IS the fixer's pre-edit file; (2) apply the exact committed diff bytes;
+(3) `git hash-object <path>` and compare to the stated post-image. A match is proof. ✅ Always re-hash
+the **CURRENT** sha: an amend moves the SHA and blob, and that movement is the tell content changed.
+#12062 (`removeRequestedReviewers`; pre-image `a3bfb08f31`, post-image `f46f95ac14`) matched → clean
+APPROVE ([byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)).
 
 ## Regression attribution: the file list is not causal
 
-When attributing whether an ICE/assert is a regression of a past PR, do not conclude "not a regression" merely because the PR's changed-file list excludes the assert site. Adjacent lowering/transform changes can alter whether execution reaches a downstream unchanged assert. The only file-list-verifiable claim is "the assert site was/wasn't modified." For causal regression claims, trace the data/control path — not the file list. When that tracing cannot be done, say "not determinable from the file list — maintainer's call." ([A PR's changed-file list does not prove 'not a regression'](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md)).
+Do not conclude "not a regression" because a past PR's changed-file list excludes the assert site:
+adjacent lowering/transform changes can alter whether execution reaches an unchanged downstream
+assert. The file list only proves "the assert site was/wasn't modified"; for causal claims trace the
+data/control path, or say "not determinable from the file list — maintainer's call" ([A PR's changed-file list does not prove 'not a regression'](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md)).
 
-**"Not a regression" has to hold for every sub-shape, and a correct fix can be the trigger.** On #13805 (WGSL/Metal `ByteAddressBuffer` array loads), top-level arrays had never worked, but an array field at a non-zero struct offset worked in v2026.10.2 and broke in v2026.11. The trigger was a correct constant fold (#11430) that removed an accidental fallback and exposed a latent gap. So when a reporter or a code read says "not a regression", bisect each sub-shape separately (top-level vs nested, zero vs non-zero offset); release zips from `gh release download vX -p 'slang-X-linux-x86_64.zip'` plus GPU-free Tint (`webgpu@0.6.2`, `backend=null`) settle it in minutes. The mechanism is on [WGSL f16 and const-expressions](slang-backends-wgsl-f16-and-const-expressions.md) ([a correct constant-fold fix can expose a latent bug as a regression](../learnings/1792570145283-a-correct-constant-fold-fix-can-expose-a-latent-bu.md)). The same happens to your own PR. On slang#13985 / PR #13993, trip-count inference started reading `uint64_t` bounds correctly as unsigned, and constants the front-end folder had mis-folded (#13954) then gave worse answers than master's signed misreading, which had been right by luck: a false zero-trip that undersizes the autodiff tape, so `bwd_diff` returns garbage. The PR kept the consumer correct for canonical values, declined an expression-shape guard (the reviewer showed it misses `~0ull >> 61`), named the real cost in its Risk line (wrong derivatives, not just a warning), cited #13954 as a merge prerequisite, and stayed draft until it lands. The details are on [integer constant folding](slang-language-core-integer-constant-folding.md) ([a correct consumer exposes a producer's wrong bits; disclose, don't guard](../learnings/1793227253947-a-correct-consumer-exposes-a-producer-s-wrong-bits.md)).
+**"Not a regression" must hold for every sub-shape, and a correct fix can be the trigger.** On
+#13805 (WGSL/Metal `ByteAddressBuffer` array loads), top-level arrays never worked, but an array field
+at a non-zero struct offset worked in v2026.10.2 and broke in v2026.11 — a correct constant fold
+(#11430) removed an accidental fallback and exposed a latent gap. Bisect each sub-shape separately
+(top-level vs nested, zero vs non-zero offset); release zips (`gh release download vX -p
+'slang-X-linux-x86_64.zip'`) plus GPU-free Tint (`webgpu@0.6.2`, `backend=null`) settle it in
+minutes. Mechanism: [WGSL f16 and const-expressions](slang-backends-wgsl-f16-and-const-expressions.md)
+([a correct constant-fold fix can expose a latent bug as a regression](../learnings/1792570145283-a-correct-constant-fold-fix-can-expose-a-latent-bu.md)).
+It happens to your own PR too: on slang#13985 / PR #13993, trip-count inference started reading
+`uint64_t` bounds correctly as unsigned, and constants the front-end had mis-folded (#13954) then gave
+worse answers than master's signed misreading, which was right by luck — a false zero-trip that
+undersizes the autodiff tape, so `bwd_diff` returns garbage. The PR kept the consumer correct,
+declined an expression-shape guard (it misses `~0ull >> 61`), named the real cost in its Risk line
+(wrong derivatives, not just a warning), cited #13954 as a merge prerequisite, and stayed draft.
+Details: [integer constant folding](slang-language-core-integer-constant-folding.md) ([a correct consumer exposes a producer's wrong bits; disclose, don't guard](../learnings/1793227253947-a-correct-consumer-exposes-a-producer-s-wrong-bits.md)).
 
-When a perf/behaviour regression is bisected to a small diff on an LTO build, a clean bisect proves WHICH commit, not the MECHANISM. STEP-0 is to prove cheaply whether the diff even changes emitted/serialized output: build the culprit with a stderr marker inside the exact changed branch and run the real fixture (if the branch never fires, the two versions return identical values by construction — flag-independent), and byte-compare the artifact by reverting only the diff and doing an incremental relink (so build-metadata is shared and `cmp`/sha256 is confound-free). If the output is byte-identical, a regression bisected to that diff under LTO is almost always a code-LAYOUT artifact (function reorder/inlining shift) — the honest outcome is re-baseline, not chasing a phantom "optimize the hot path" fix on a path the diff doesn't touch ([Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)).
+A clean bisect of a perf/behaviour regression to a small diff on an LTO build proves WHICH commit,
+not the MECHANISM. Step 0: prove cheaply whether the diff changes emitted output — build the culprit
+with a stderr marker inside the changed branch and run the real fixture (if it never fires, both
+versions return identical values by construction), and byte-compare the artifact by reverting only
+the diff with an incremental relink (shared build metadata, confound-free `cmp`/sha256). If the
+output is byte-identical, an LTO-bisected regression is almost always a code-LAYOUT artifact
+(reorder/inlining shift): re-baseline rather than "optimize" a path the diff doesn't touch ([Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)).
 
-⛔ **Critical correction:** the technique only proves a mechanism when run in the environment where the changed branch can *fire*. On slang#11952 the reverted branch (`getRelativePath` empty-path case) is unreachable on Linux single-filesystem but DOES fire on the perf runner's cross-drive checkout (`W:` source, `C:` temp) — a green byte-compare in the wrong environment is a false negative, not evidence. Before concluding "this changed branch has no effect," ask whether it is even reachable in the env you're testing (cross-drive, Windows-only, GPU-only, big-endian, locale, filesystem-type), and when a human gives phase-resolved data (their timers put the cost in SemanticChecking) that contradicts your single-env repro, trust their measurement and find the reconciling condition ([CORRECTION: a byte-compare / branch-reachability test only proves a mechanism when run in the environment where the changed branch can fire](../learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md)).
+⛔ **Correction:** that proves a mechanism only where the changed branch can *fire*. On slang#11952
+the reverted `getRelativePath` empty-path branch is unreachable on Linux single-filesystem but fires
+on the perf runner's cross-drive checkout (`W:` source, `C:` temp) — a green byte-compare in the
+wrong env is a false negative. Ask whether the branch is reachable in your env (cross-drive,
+Windows-only, GPU-only, big-endian, locale, filesystem-type); when a human's phase-resolved data
+(timers putting the cost in SemanticChecking) contradicts your single-env repro, trust it and find
+the reconciling condition ([CORRECTION: a byte-compare / branch-reachability test only proves a mechanism when run in the environment where the changed branch can fire](../learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md)).
+
+On a **shallow clone** (the base slang clone is `--depth 50`), `git log -S'<string>' -- <file>` /
+`-L` gives FALSE attribution: it names the earliest commit *in the window* that touched the string.
+On #13126 it blamed #10990 (which only modified a nearby line) for the `ByteAddressBufferLoad`
+alignment operand; `git show` gave the true history — #4066 added the operand, #8547 added it to
+`isElementAccessInst` (creating the two-operand-rebuild drop), #11595's unconditional
+`validateExplicitAlignment` deref turned the drop into a SIGSEGV. Find the feature commit by title
+(`git log --oneline | grep`, or the PR) and confirm with `git show <sha> -- <file>`, or
+`git fetch --unshallow` first ([Shallow-clone git-log -S gives false regression attribution](../learnings/1789577475326-shallow-clone-git-log-s-gives-false-regression-att.md)).
 
 ## Verify against primary source, not memos, reviewers, or maintainers
 
-Two reinforcing lessons from slang#11860 (PR #11871, MERGED). (1) A triage "recommended fix" naming ONE code point is a hypothesis, not a diagnosis — prove it with a local RED→GREEN + ablation before shipping. The single-point fix (skip `markSpaceUsed` at one site) left the bug live because a SECOND independent space-occupancy consumer also reserved set 0; only an instrumented build plus an ablation matrix (hunk1-only → still broken; hunk2-only → still broken; both → fixed) proved both hunks load-bearing. If you can't name a test that goes RED without a given hunk, you don't yet understand the fix. (2) When two reviewers assert CONTRADICTORY invariants, read the source and settle it yourself — never encode a reviewer's claim as a code comment on faith. Reviewer A said VaryingInput/Output/SpecializationConstant DO reach a guarded branch with placeholder space==0; reviewer C said the opposite; reading `addExplicitParameterBindings_GLSL` showed A was right, and committing C's framing would have shipped a confidently-false invariant comment (worse than none). General rule: comments and PR-body claims about control-flow invariants must be verified against code at HEAD, not lifted from a memo or reviewer assertion — cheap to verify, expensive to ship wrong ([Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)).
+slang#11860 (PR #11871, merged) taught two things. (1) A triage "recommended fix" naming ONE code
+point is a hypothesis — prove it with RED→GREEN + ablation. Skipping `markSpaceUsed` at one site left
+the bug live because a SECOND space-occupancy consumer also reserved set 0; only an instrumented build
+plus an ablation matrix (hunk1-only broken, hunk2-only broken, both fixed) proved both hunks
+load-bearing. (2) When reviewers assert CONTRADICTORY invariants, read the source yourself: reviewer A
+said VaryingInput/Output/SpecializationConstant DO reach a guarded branch with placeholder space==0,
+reviewer C the opposite; `addExplicitParameterBindings_GLSL` showed A right, and committing C's
+framing would have shipped a confidently-false invariant comment. Comments and PR-body claims about
+control-flow invariants are verified against HEAD, never lifted from a memo or reviewer ([Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)).
 
-And do not reflexively concede to a maintainer, either: when a maintainer disputes a coworker's finding — even confidently ("this is WRONG", "the emit is incorrect!!!") — the coworker must re-verify against the *primary source* (spec text, actual code, computed truth table) at claim precision before conceding or defending ([Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md)).
+Nor concede reflexively to a maintainer: when one disputes a finding, even confidently ("this is
+WRONG", "the emit is incorrect!!!"), re-verify against the *primary source* (spec text, code, a
+computed truth table) at claim precision before conceding or defending ([Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md)).
 
-When a triage verdict asserts "accessor X yields spelling/behavior Y," verify it against the accessor's *source* AND the *emitted artifact* before publishing — do not infer the direction from which producer "looked like" the canonical one. A reversed label survives casual review because the surrounding mechanism reads correctly. On slang#11982, an earlier learning labeled the two `PathInfo` accessors backwards; the correct mapping (verified in `source/compiler-core/slang-source-loc.cpp` and confirmed by `-g2` asm) is `getMostUniqueIdentity()` → `uniqueIdentity` = ABSOLUTE path, `getName()` → `foundPath` = the as-found (RELATIVE, in the repro) spelling. The root-cause *mechanism* (two hoistable `IRDebugSource` insts for one physical file differ only in the filename operand → dedup misses → orphaned third record; per-module `SharedIRGenContext` means they merge only at link time and only if the operand matches byte-for-byte) was correct — only the accessor→spelling direction was wrong, and it mattered because the final fix (PR #12034) had to canonicalize BOTH producers onto `getMostUniqueIdentity()` (absolute, per the author's request), the *opposite* of the reversed note's "loop → getName()" recommendation. The author caught it only because the requested spelling contradicted the stated mapping ([CORRECTION: slang getMostUniqueIdentity()=absolute, getName()=relative](../learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md)).
+Verify "accessor X yields spelling/behavior Y" against the accessor's *source* AND the *emitted
+artifact*, not by which producer "looked canonical". On slang#11982 an earlier learning had the two
+`PathInfo` accessors backwards; the verified mapping (`source/compiler-core/slang-source-loc.cpp`,
+confirmed by `-g2` asm) is `getMostUniqueIdentity()` → `uniqueIdentity` = ABSOLUTE path, `getName()`
+→ `foundPath` = the as-found (RELATIVE in the repro) spelling. The mechanism — two hoistable
+`IRDebugSource` insts for one file differ only in the filename operand, so dedup misses and leaves an
+orphaned record; per-module `SharedIRGenContext` merges them only at link time and only on a
+byte-identical operand — was right; only the direction was wrong, and it mattered because the fix
+(PR #12034) canonicalized BOTH producers onto `getMostUniqueIdentity()`, the *opposite* of the
+reversed note's advice. The author caught it only because the requested spelling contradicted the
+mapping ([CORRECTION: slang getMostUniqueIdentity()=absolute, getName()=relative](../learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md)).
 
 ## PR↔issue relationships and agent-filed reports
 
-An open PR that mentions an issue number is NOT automatically its fix — sanitizer-burndown work is often split into accept-now/fix-later PRs (#11938 vs #11937), so verify the actual relationship before calling a duplicate ([Verify PR-issue relationship before assuming duplicate](../learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md)). Likewise, a follow-up/tracking issue whose premise is "the prerequisite was already made" can outrun reality — verify the prerequisite PR is actually MERGED ([Follow-up/tracking issue premise can outrun its prerequisite PR](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)). And **"merged" is not "on main":** a squash merge creates a brand-new commit on the base branch, so the branch or squash-preview head a fixer reports as "merged head `abc123`" is not itself on main — a `git compare <reported-head>...main` reads "diverged," which looks alarming but is expected. Get the true merge commit with `gh pr view N --json mergeCommit` (or `gh api .../pulls/N --jq .merge_commit_sha`), then `gh api compare/<merge_sha>...main --jq .status` should be `identical`/`ahead`; stronger and SHA-agnostic, read the changed symbols directly on `ref=main` via the contents API (confirm the new constant/enum value/guard is present). Don't take "merged" as "on main," and don't take a reported head SHA as the merge commit — slangpy#1162's fixer reported head `2b960f12` (diverged from main), while the real squash commit `97f0f21a` was `identical` to main HEAD ([verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md)).
+An open PR that mentions an issue is NOT automatically its fix — sanitizer-burndown work is often
+split into accept-now/fix-later PRs (#11938 vs #11937) ([Verify PR-issue relationship before assuming duplicate](../learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md)).
+A tracking issue whose premise is "the prerequisite was already made" can outrun reality — verify the
+prerequisite PR is MERGED ([Follow-up/tracking issue premise can outrun its prerequisite PR](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)).
+And **"merged" is not "on main":** a squash merge makes a new base-branch commit, so a fixer's
+reported "merged head" reads "diverged" in `compare <head>...main` — expected, not alarming. Get the
+real commit with `gh pr view N --json mergeCommit` (or `.merge_commit_sha`), then
+`gh api compare/<merge_sha>...main --jq .status` should be `identical`/`ahead`; stronger, read the
+changed symbols on `ref=main` via the contents API. slangpy#1162's fixer reported head `2b960f12`
+(diverged), while squash commit `97f0f21a` was `identical` to main ([verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md)).
 
-When triaging issues filed by an **agentic test-generation pipeline**, do not trust the reporter's framing of the trigger. Always strip the repro to its minimum by commenting out lines one at a time to find the exact line that, when removed, makes compilation succeed. Also verify the "other targets work" claim independently — agentic reporters cite sibling tests they did not actually re-run. If the IR op in the error message is more generic than the narrow construct in the title (e.g. `castToVoid` vs. "enum-to-int cast"), the IR op is the real story ([Test-Agent-Filed Issues Need Trigger Verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md)).
-
-**On a `--depth N` shallow clone (the base slang clone is `--depth 50`), `git log -S'<string>' -- <file>` / `-L` gives FALSE regression attribution** — it reports the earliest commit *within the fetched window* that touched the string as if it introduced it, when the real introducing commit is usually outside the window. On #13126, `git log -S'"alignment"' -- slang-ir-insts.lua` wrongly attributed the `ByteAddressBufferLoad` alignment operand to #10990 (which only modified a nearby line); the true history, verified with `git show`, was #4066 (added the operand), #8547 (added it to `isElementAccessInst`, creating the two-operand-rebuild drop), #11595 (the unconditional `validateExplicitAlignment` deref that turned the latent drop into a SIGSEGV). Rule: to attribute a regression on a shallow clone, find the feature commit by title (`git log --oneline | grep`, or the PR) and confirm with `git show <sha> -- <file>` that it introduced the line — or `git fetch --unshallow` first. The last change to a nearby line looks like "the change" under `-S`. ([Shallow-clone git-log -S gives false regression attribution](../learnings/1789577475326-shallow-clone-git-log-s-gives-false-regression-att.md))
+For issues from an **agentic test-generation pipeline**, don't trust the reporter's framing of the
+trigger: strip the repro by commenting out lines one at a time to find the one whose removal makes
+compilation succeed; re-check "other targets work" (agentic reporters cite sibling tests they did not
+re-run); and if the error's IR op is more generic than the title's construct (`castToVoid` vs
+"enum-to-int cast"), the IR op is the real story ([Test-Agent-Filed Issues Need Trigger Verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md)).
 
 **Source learnings (23):**
-- [A correct constant-fold fix can expose a latent bug as a regression — bisect sub-cases separately](../learnings/1792570145283-a-correct-constant-fold-fix-can-expose-a-latent-bu.md) — #13805: top-level never worked, offset field regressed in v2026.11 via a correct fold
-- [Shallow-clone git-log -S/-L gives false regression attribution — confirm the feature commit with git show, or fetch --unshallow first](../learnings/1789577475326-shallow-clone-git-log-s-gives-false-regression-att.md)
-- [Test-agent-filed issues need trigger verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md) — strip the repro to minimum; the generic IR op in the error is the real story
-- [A PR's changed-file list does not prove 'not a regression'](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md) — file list proves what was modified, not causation; trace the control path
-- [Stale PR fix-requests: verify base vs current main, and issue-vs-PR](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md) — an aging PR's patched code may be refactored away on main
-- [Stale feature requests can be half-implemented at HEAD](../learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md) — map landed-vs-missing at HEAD before scoping remaining work
-- [Verify against source before trusting single-point triage or contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md) — prove a recommended fix with RED→GREEN + ablation; read source to settle reviewer contradictions
+- [A correct constant-fold fix can expose a latent bug as a regression — bisect sub-cases separately](../learnings/1792570145283-a-correct-constant-fold-fix-can-expose-a-latent-bu.md) — #13805: offset field regressed in v2026.11 via a correct fold
+- [Shallow-clone git-log -S/-L gives false regression attribution — confirm the feature commit with git show, or fetch --unshallow first](../learnings/1789577475326-shallow-clone-git-log-s-gives-false-regression-att.md) — earliest in-window commit is not the origin
+- [Test-agent-filed issues need trigger verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md) — strip the repro; the generic IR op is the real story
+- [A PR's changed-file list does not prove 'not a regression'](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md) — file list proves what changed, not causation
+- [Stale PR fix-requests: verify base vs current main, and issue-vs-PR](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md) — patched code may be refactored away on main
+- [Stale feature requests can be half-implemented at HEAD](../learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md) — map landed-vs-missing at HEAD before scoping
+- [Verify against source before trusting single-point triage or contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md) — RED→GREEN + ablation; read source to settle reviewers
 - [Follow-up/tracking issue premise can outrun its prerequisite PR](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md) — verify the prerequisite PR is actually MERGED
-- [Verify PR-issue relationship before assuming duplicate](../learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md) — accept-now/fix-later splits mean a PR mentioning an issue is not its fix
-- [Perf regression bisected to a fix ≠ the fix's logic is the cost](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md) — byte-compare serialized artifacts; a byte-identical LTO diff is a code-layout artifact
-- [CORRECTION: byte-compare/branch-reachability only proves a mechanism where the branch can fire](../learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md) — a green byte-compare in the wrong environment is a false negative
-- [Bot-filed migration issues go stale — re-verify every file:line against current main](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md) — grep each claimed symbol; find the superseding commit; post the delta
-- [CORRECTION: slang getMostUniqueIdentity()=absolute, getName()=relative](../learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md) — verify an accessor→behavior direction against source AND the emitted artifact
-- [Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md) — re-verify against primary source before conceding or defending
-- [Bot-filed follow-up issue may describe not-yet-stripped work as already removed](../learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md) — verify the PR's live diff; preserve about-to-be-stripped code before the trim
-- [Byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md) — base==pre-image, apply exact bytes, hash-object == post-image; re-hash the current sha
-- [Verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](../learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md) — a cited doc path can be missing or silent, even from a MEMBER
-- [Issue line-number pointers relayed from a static-analysis bot go stale](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md) — re-derive mechanism AND site count from source; watch shallow-clone blame traps
-- [A right coordinate with a wrong verb survives a coordinate audit](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md) — audit the predicate attached to each cite, not just that the line resolves; grep all files
-- [Fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md) — re-run the claim against the repro, not just the citation
-- [A file/line count is not a behavior claim](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md) — verify against patch bodies before overturning a behavior claim with a count
-- [Verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md) — a squash merge makes a new base-branch commit, so the reported head "diverges" from main; compare `merge_sha...main` (== identical/ahead) or read the changed symbols at `ref=main`
-- [A correct consumer exposes a producer's wrong bits; disclose the regression, don't guard it](../learnings/1793227253947-a-correct-consumer-exposes-a-producer-s-wrong-bits.md) — #13985/PR #13993: correct unsigned trip counts expose #13954 mis-folds; Risk line, producer as merge prerequisite, draft until it lands
+- [Verify PR-issue relationship before assuming duplicate](../learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md) — accept-now/fix-later splits; mention ≠ fix
+- [Perf regression bisected to a fix ≠ the fix's logic is the cost](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md) — byte-identical LTO diff = code-layout artifact
+- [CORRECTION: byte-compare/branch-reachability only proves a mechanism where the branch can fire](../learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md) — green in the wrong env is a false negative
+- [Bot-filed migration issues go stale — re-verify every file:line against current main](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md) — grep each claim; find the superseding commit
+- [CORRECTION: slang getMostUniqueIdentity()=absolute, getName()=relative](../learnings/1783659293513-correction-slang-getmostuniqueidentity-absolute-ge.md) — verify accessor direction in source AND artifact
+- [Don't reflexively concede to a maintainer assertion — verify at claim precision](../learnings/1784149362998-don-t-reflexively-concede-to-a-maintainer-assertio.md) — primary source before conceding or defending
+- [Bot-filed follow-up issue may describe not-yet-stripped work as already removed](../learnings/1784330297555-bot-filed-follow-up-issue-may-describe-not-yet-str.md) — check the live diff; preserve code before the trim
+- [Byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md) — base==pre-image, hash-object == post-image; re-hash current sha
+- [Verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](../learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md) — a cited doc path can be missing or silent
+- [Issue line-number pointers relayed from a static-analysis bot go stale](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md) — re-derive mechanism AND site count; shallow-blame trap
+- [A right coordinate with a wrong verb survives a coordinate audit](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md) — audit each cite's predicate; grep all files
+- [Fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md) — re-run the claim against the repro
+- [A file/line count is not a behavior claim](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md) — check patch bodies before overturning with a count
+- [Verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md) — reported head "diverges"; compare merge_sha...main
+- [A correct consumer exposes a producer's wrong bits; disclose the regression, don't guard it](../learnings/1793227253947-a-correct-consumer-exposes-a-producer-s-wrong-bits.md) — #13993: Risk line, producer fix as merge prerequisite

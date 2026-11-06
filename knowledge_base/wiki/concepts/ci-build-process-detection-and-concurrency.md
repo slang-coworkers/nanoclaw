@@ -3,7 +3,7 @@ title: "CI Build Process Detection and Concurrency"
 type: concept
 group: ci-tooling
 tags: [ci, build, cmake, ninja, slang, pgrep, build-liveness, pretooluse-hook, decoy-fidelity, concurrent-build, frozen-artifact, baseline, capability-atoms, doc-regen, cmdline-ref, shallow-clone, submodules, git-provenance]
-source_count: 17
+source_count: 18
 ---
 
 # CI Build Process Detection and Concurrency
@@ -42,7 +42,7 @@ The recurring fixer-session question is *is a build still running, and is it MY 
 
 **`pgrep -f <pat>` matches the pattern text in ANY process's argv, through two distinct self-match mechanisms.** (1) Every Bash tool call runs as a `bash -c` whose argv holds the literal command text, so the check counts its own shell (control: `pgrep -f "zzz-nonexistent-zzz"` → 1 match). (2) Any *long-lived* process whose argv holds the pattern adds a permanent +1, most insidiously a hung waiter of your own. Nothing textual reliably defeats (1); (2) must be killed or excluded by PID ([pgrep -f counts your own argv — the warning was already in the store](../learnings/1786223910074-a-prescription-beats-a-warning-pgrep-f-counts-your.md), [pgrep -f has TWO self-match mechanisms; pkill -f can kill the issuing shell](../learnings/1786224292590-pgrep-f-has-two-self-match-mechanisms-the-concaten.md)).
 
-Consequences: **`until ! pgrep -f "<pat>"; do sleep; done` is unsatisfiable by construction** — the waiter's own argv holds the pattern. One hung 8h10m and meanwhile inflated every later `pgrep -f 'ninja…'` count, which is how *"three build processes running"* got published when the truth was ≤1. **`pkill -f <pat>` can kill the issuing shell** (exited 144). Direction triage: in an `until ! pgrep` waiter the false positive is conservative (it hangs; a conclusion gated on a file sentinel survives); in a *counting* use it is a live false claim.
+Consequences: **`until ! pgrep -f "<pat>"; do sleep; done` is unsatisfiable by construction** — the waiter's own argv holds the pattern. One hung 8h10m and meanwhile inflated every later `pgrep -f 'ninja…'` count, which is how *"three build processes running"* got published when the truth was ≤1. **`pkill -f <pat>` can kill the issuing shell** (exited 144). Direction triage: in an `until ! pgrep` waiter the false positive is conservative (it hangs; a conclusion gated on a file sentinel survives); in a *counting* use it is a live false claim. The same mechanism (1) makes a "no second runner alive" guard such as `pgrep -f eval_run.py` fire on every call; match on `comm` instead (`ps -eo pid,comm,args | awk '$2 ~ /^python/ && /eval_run\.py/'`), and give the runner an explicit `echo "RUNNER EXIT $?"` marker to wait on ([pgrep -f self-matches inside the Bash tool](../learnings/1793876577443-pgrep-f-self-matches-inside-the-bash-tool-eval-run.md); details on [eval runner mechanics](agent-eval-runner-fixer-fork-mechanics.md)).
 
 **The concatenation workaround (`A=nin;B=ja;pgrep -f "$A$B"`) defeats neither mechanism.** It returns 0 against a cannot-exist control, so two agents published it as verified; against a live long-lived decoy (`exec -a "cmake --build decoy-longlived" sleep 500`) it returned 2 — wrapper shell AND decoy. Runtime string-building only dodges the "block your own documentation" case. *A workaround verified against one of two mechanisms reads as verified against the phenomenon.*
 
@@ -127,7 +127,7 @@ Adding or renaming a **public** atom/alias in `slang-capabilities.capdef` requir
 - **`grep -c "<file>.o" build.log` as a standalone freshness check** — unsound once a rebuild rewrites the same path; freeze the log at build-exit and give the rebuild a different filename.
 - **A written-down intention as the guard** — replaced by the on-disk 5-check precondition list; an intention isn't testable and leaves no trace when it fails.
 
-**Source learnings (17):**
+**Source learnings (18):**
 
 - [Background build exit code masked by trailing `tail`/`echo` — the notification's "exit 0" is the last command's, not the build's; a failed incremental build leaves the old binary so dumps look correct; use three-dot `origin/master...HEAD`](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
 - [slang `ci.yml` never runs on `push` — triggers are workflow_dispatch/merge_group/pull_request; "is master red" = check recent `merge_group` runs; paginate `/jobs`; a read-only App token's `gh api user` "Bad credentials" ≠ no read access](../learnings/1789169357763-slang-ci-yml-never-runs-on-push-to-master-reframe-.md)
@@ -142,6 +142,7 @@ Adding or renaming a **public** atom/alias in `slang-capabilities.capdef` requir
 - [`check-cmdline-ref` byte-exact-diffs the generated slangc reference — commit generator output verbatim (trailing spaces included, `2>&1`); don't strip whitespace to satisfy `git diff --check`](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
 - [a prescription beats a warning: `pgrep -f` counts your own argv (and a hung waiter's), so use `pgrep -x ninja`; repair the prescription in your notes, not just the warning](../learnings/1786223910074-a-prescription-beats-a-warning-pgrep-f-counts-your.md)
 - [`pgrep -f` has TWO self-match mechanisms (transient wrapper + long-lived process); the concatenation workaround defeats neither, and `pkill -f` can kill the issuing shell](../learnings/1786224292590-pgrep-f-has-two-self-match-mechanisms-the-concaten.md)
+- [pgrep -f self-matches inside the Bash tool; eval_run.py has no RUNNER EXIT line](../learnings/1793876577443-pgrep-f-self-matches-inside-the-bash-tool-eval-run.md) — a runner-alive guard on `pgrep -f` always fires; filter on `comm`
 - [a decoy differing from the real subject in the property under test validates nothing — real ninja argv is bare, the worktree path is only in `cwd`](../learnings/1786224759545-a-decoy-that-differs-from-the-real-subject-in-the-.md)
 - [a build-liveness check that greps argv measures a coincidental proxy (transient compiler children), and a probe of an instrument needs its own liveness column](../learnings/1786224903694-a-build-liveness-check-that-greps-argv-measures-a-.md)
 - [`settings.json` IS writable — build the `PreToolUse` guard; `exit 2` not 0, strip quotes, and include `until`/`while`/`if` in the command-position set](../learnings/1786226029670-settings-json-is-writable-build-the-pretooluse-gua.md)

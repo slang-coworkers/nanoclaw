@@ -3,7 +3,7 @@ type: concept
 title: "Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content"
 group: slang-language-core
 tags: [slang, preprocessor, lexer, if-directive, integer-literal, strtoll, stringToInt, digit-separator, SIGFPE, ScrubbingNeeded, line-continuation, valgrind, asan]
-source_count: 6
+source_count: 7
 ---
 
 # Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content
@@ -46,6 +46,9 @@ validation in the lexer is a separate topic, on
   (`valgrind -q slangi repro.slang`), ASan, or a log of every read at `cursor >= content.end()`.
 - Changing `#if` semantics breaks the nightly-only `docs/generated/tests` pipeline bundle that
   pins the old 32-bit wraparound; run that suite before merging.
+- `#include` textually simplifies the found path (`..` collapses) before reading it, while the
+  existence check and identity use the realpath, so `#include ".."` through a directory symlink
+  reads a different file than `-depfile` names (#14371). `import` does not simplify.
 
 ## `#if` integer evaluation: `strtoll`, not the lexer decoder
 
@@ -127,12 +130,17 @@ instrumentation
 [scrubbed tokens have no NUL terminator; getIntegerLiteralValue reads past end](../learnings/1791591002823-slang-lexer-scrubbed-newline-tokens-have-no-nul-te.md)
 [decoders must bound by end; valgrind 12 vs 0](../learnings/1791597474632-slang-token-content-is-not-nul-terminated-after-an.md).
 
-**Source learnings (6):**
+## `#include ".."` through a directory symlink: textual load, physical identity (#14371)
+
+Consider a layout where `link -> real/shaders`, and `link/pkg/f.slang` says `#include "../../build/x"`. On POSIX the preprocessor calls `includeSystem->simplifyPath(foundPath)` (`slang-preprocessor.cpp:3686`), a textual `Path::simplify`, before `readFile` (:3698), while the existence check (`slang-include-system.cpp:55`) and the unique identity (:63, a `realpath`) both use the unsimplified path. So the include loads the bytes of `./build/x` (or fails with E15300 when that file does not exist), while `-depfile` and the module dependency lists name `real/build/x`; a `.slang-module` records the textual file, because `encodeModuleDependencyPaths` canonicalizes the simplified path. The simplification came from 9b80537bc (#824, 2019) for readable diagnostics, and it breaks the `slang.h` `PathKind::Simplified` contract that "a simplified path must point to the same object", so it is filed as a bug. A quick check is `slangc link/pkg/base.slang -depfile d` with different copies at `build/` and `real/build/`, then a grep of the emitted constant. `import` and `Linkage::loadSourceFile` do not simplify, so only `#include` is affected. The separate #14370 symlink bug, where a source recompile reuses the binary-module reader's `SourceFile`, is on [[wiki/concepts/slang-tooling-serialized-module-obfuscation.md]] ([`#include ..` through a dir symlink: textual load, physical identity](../learnings/1793922342713-slang-include-through-a-dir-symlink-textual-load-p.md)).
+
+**Source learnings (7):**
 - [Slang preprocessor #if decodes integer literals with strtoll, not the lexer decoder](../learnings/1791562033643-slang-preprocessor-if-decodes-integer-literals-wit.md) — `_`, `0b`, `0X`, octal and >32-bit values disagree with code; `#line`/`#version`/`#pragma warning` share it; separators fail for floats.
 - [Slang `#if` `INT_MIN / -1` crashed slangc (SIGFPE), and prebuilt base-clone binaries are not valid unfixed controls](../learnings/1791572299591-slang-if-int-min-1-crashed-slangc-sigfpe-and-prebu.md) — `EvaluateInfixOp` guarded only zero; wrapping negation via uint64; build the control from the base SHA.
 - [Slang lexer: scrubbed (\-newline) tokens have no NUL terminator; getIntegerLiteralValue reads past end](../learnings/1791591002823-slang-lexer-scrubbed-newline-tokens-have-no-nul-te.md) — `ScrubbingNeeded` arena copy; four over-reading shapes; pass `end`; parser affected too.
 - [Slang token content is not NUL-terminated after an escaped newline — decoders must bound by end](../learnings/1791597474632-slang-token-content-is-not-nul-terminated-after-an.md) — valgrind 12 vs 0 reports; FileCheck cannot catch it.
 - [Slang master already accepts loose `_` in integer literals (123_, 1__0, 0x_FF)](../learnings/1791798884194-slang-master-already-accepts-loose-in-integer-lite.md) — `_maybeLexNumberSuffix` + `_maybeReadDigit`; a between-digits rule breaks integers; `123'` is E10005; design open on #13544
 - [A non-normative spec page is not grounds for 'already allowed' in a triage](../learnings/1791798120399-a-non-normative-spec-page-is-not-grounds-for-alrea.md) — check the WIP banner and source TODO; #13547 held as premature; GO only design-independent fixes
+- [slang #include '..' through a dir symlink: textual load, physical identity (#14371)](../learnings/1793922342713-slang-include-through-a-dir-symlink-textual-load-p.md) — `simplifyPath` before `readFile` vs realpath identity; depfile names the other file; also #14370 reader SourceFile reuse
 
 _Catalog: [[wiki/index.md]]_

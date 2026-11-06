@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 28
+source_count: 29
 ---
 
 # Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
@@ -26,6 +26,8 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles: readin
   master; don't push a "fix" onto the innocent PR.
 - **`shader-slang/slang`'s default branch is `master`, not `main`** — a `main` query
   silently 404s; prefer `gh pr view --json mergeStateStatus` (`BEHIND` = needs rebase).
+  `shader-slang/slang-rhi` is the opposite (`main`): read `default_branch` before a
+  comment names a base branch.
 - **Heartbeat precheck's slang `workflow_failures` field is repeat-prone stale** —
   spot-check it against a live API call every wake. Re-derive a carried "since <anchor>,
   now ~Nh" duration from the anchor, never last figure + delta.
@@ -62,7 +64,7 @@ The 403 and the artifact expiry are two failure modes on two code paths. A fresh
 
 When `test-slang` fails **deterministically on every platform (incl. CPU-only/aarch64) right after a rebase** on tests unrelated to the diff, suspect a master semantic merge conflict. Case: #12830 added warning E40021 while #12828 (last to touch the affected autodiff tests) merged ~2 min earlier without it; neither CI saw the other, so every rebasing PR inherited the red. Find the failure on a CPU/aarch64 job, attribute the diagnostic with `git log origin/master -S "<text>"` and `git log -- <testfile>`, prove master is broken independent of the PR, fix master, and tell the innocent author to rebase. Contrast: a `test-falcor` 403/download/VCS-root failure in ~18s, before any shader compiled, is infra ([post-rebase failure is a master merge break](../learnings/1788457867847-post-rebase-cross-platform-test-slang-failure-on-a.md)).
 
-The default branch is `master`: a `--branch main` / `sha=main` query silently 404s and reads as "no base-branch CI run found," making a BEHIND PR look like a live regression. `gh pr view --json mergeStateStatus` (`BEHIND` plus a failing test a recent master commit touched) separates "needs rebase" from "regression on master" ([default branch is master](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md)).
+The default branch is `master`: a `--branch main` / `sha=main` query silently 404s and reads as "no base-branch CI run found," making a BEHIND PR look like a live regression. `gh pr view --json mergeStateStatus` (`BEHIND` plus a failing test a recent master commit touched) separates "needs rebase" from "regression on master" ([default branch is master](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md)). The sibling repo differs: `shader-slang/slang-rhi`'s default branch is `main`, and parent instructions and drafts say "master" for it out of habit (slang-rhi#956, 2026-11-05: the parent wrote "build on master", the comment correctly said `main`), so check `gh api repos/<owner>/<repo> --jq .default_branch` before a GitHub comment names a base branch ([slang-rhi default branch is main](../learnings/1793869591386-slang-rhi-default-branch-is-main-not-master.md)).
 
 A recurring nightly red is not always new: the "Nightly Slang Test" `agentic-tests` job failed two nights with the same 6 tests, explained by open PR #12881 (adds them to expected-failures); check `expected-failures.txt` / #12881 before re-flagging. Diffing `FAILED test:` lines across nights' job logs (`.../jobs/{job_id}/logs`) gives a stable fingerprint ([agentic-tests is a tracked cluster](../learnings/1788428378771-slang-nightly-slang-test-agentic-tests-2-night-fai.md)).
 
@@ -111,7 +113,7 @@ When `trend.py` lights many workloads/metrics at once, split it. (1) **Check for
 
 **Size a step with per-timer geomeans, not the `analyze` flags.** `analyze` lists only counters over ratio ≥1.1 / abs ≥2 ms against the trailing median, and chronic noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p 'perf-confirmation-*'` gives `results.json` (per workload: `size`, `timers.<name>.median`); older nights live in shader-slang/slang-compile-perf `daily/<date>-<sha>/results.json` (`gh api … -H 'Accept: application/vnd.github.raw'`). Keep workloads whose `size` matches between nights (with a ≥1 ms baseline, which reproduced the checker exactly), then take the per-timer geomean ratio against the fixed green night. A real front-end regression moves one phase broadly while `linkAndOptimizeIR`, `loadBuiltinModule` and other backend timers stay ~1.00; runner noise moves every phase together and rotates nightly. Measured: SemanticChecking up in 48/54 workloads (~1.075×) after 10-07 ([per-timer geomean vs green night](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)); 10-16 SemanticChecking 1.052 vs 10-12, 39/54 above the prior four nights' max, with only #13537/#13615/#13626 in the window. The per-push store (slang-material-modules-benchmark) is DXIL-only, 7 metrics, bimodal across runners, so it cannot localize a front-end shift. Artifacts expire after ~a week (10-07/10-08 returned 404 on 10-16), so record geomeans durably ([size a step with per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md)).
 
-**Source learnings (28):**
+**Source learnings (29):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check timeline actor; don't re-dispatch ci.yml
 - [Heartbeat: verify the base, not just the deltas](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive carried durations from the anchor
@@ -127,6 +129,7 @@ When `trend.py` lights many workloads/metrics at once, split it. (1) **Check for
 - [CORRECTION: test-falcor 403 and artifact-expiry are distinct](../learnings/1788546545702-correction-test-falcor-403-and-artifact-expiry-are.md) — read a second class member before unifying
 - [Bridge-403 confirmation must also check artifact age](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md) — bridge health and artifact freshness are independent
 - [Default branch is master, not main](../learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md) — `main` query 404s; use mergeStateStatus
+- [slang-rhi default branch is main, not master](../learnings/1793869591386-slang-rhi-default-branch-is-main-not-master.md) — read `default_branch` before a comment names a base branch
 - [benchview results land in a PRIVATE repo (#12961)](../learnings/1788881853471-slang-benchview-results-land-in-a-private-repo-the.md) — public instance is an ops/security decision
 - [compile-perf is the fork template; runtime perf greenfield](../learnings/1788881870741-slang-perf-alerting-compile-perf-is-the-fork-templ.md) — Slack egress needs a GitHub-hosted runner
 - [compile-perf emit_* workloads share one shader](../learnings/1788881942527-compile-perf-emit-workloads-all-share-one-shader-g.md) — lacks backend-distinctive shapes; check-python-core.yml module list

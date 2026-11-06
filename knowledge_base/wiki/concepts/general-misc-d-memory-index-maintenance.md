@@ -3,7 +3,7 @@ title: "Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and 
 type: concept
 group: general
 tags: [memory, index, reachability, truncation, checker, corrections, append-only, suppression]
-source_count: 23
+source_count: 24
 ---
 
 # Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and Corrections
@@ -29,7 +29,7 @@ functionally absent.*
 - **okf-synthesis: run `finalize` exactly once per run and fold the current top offender first.** Every call appends a history row, and ESCALATE fires on three non-shrinking rows *or* an unchanged top offender, so a double run or an unfolded #1 escalates falsely.
 - **A first-run `SCANNER_FAILED` just means `okf_synth.py` isn't written yet**; write it and re-scan. **Before folding a memo, re-check the issue's live GitHub state** — including whether a "draft upstream issue, do not file" was since filed by another tier (search the upstream repo; record the filed number, drop the draft), and archive stale raw logs outside `memory/` instead of typing them.
 - **A path-form `[[dir/name]]` resolves in okf_synth only with `.md`**; and with `autoMemoryEnabled: false` nothing loads `memory/MEMORY.md`, so check the setting before assuming a second loader.
-- **okf_synth never checks bare-stem `[[name]]` links**, so before deleting a merged page, grep for its stem and repoint every hit and folder-index row. Its DANGLING-LINK hits on code or pasted logs are scanner artifacts until the upstream regex fix lands.
+- **okf_synth never checks bare-stem `[[name]]` links**, so before deleting a merged page, grep for its stem and repoint every hit and folder-index row. Its DANGLING-LINK hits on code or pasted logs are scanner artifacts until the upstream regex fix lands; when they wake the gate, reword so `]` and `(` are not adjacent, and never create a stub file to satisfy the link.
 - **Before moving or deleting memory file X, run `find memory -name X`.** The checkers fall back to unique-basename resolution, which hides same-name twins; merge the stale copy's facts (often a newer status) into the canonical one before deleting it.
 - **When you fix a script, fix every copy of it.** A stale `imported/reindex.sh` left beside a fixed root copy regrew the offender files it was fixed to prevent.
 - **Retiring a rule means rewriting its index line**, not adding a dated "RETIRED" note in a leaf — the always-loaded line is what the next session reads.
@@ -158,6 +158,13 @@ patched its own copy — both regexes bounded to `{1,200}` with no `\n`, plus `_
 fenced blocks and inline code before the INDEX-STALE and DANGLING-LINK checks. Not yet in master
 SKILL.md, so other groups still see the false positives; treat them as artifacts until upstream
 carries the fix ([okf_synth.py WIKILINK/MDLINK regex false positives on code/log text](../learnings/1790656595124-okf-synth-py-dangling-link-wikilink-regex-false-po.md)).
+By 2026-11-05 the unfixed `MDLINK` was enough to wake the gate on its own: code spans such as GLSL
+`int[]` followed directly by `(64/N_0, 32/N_0)`, or a Python `startswith(...)` snippet quoting a
+`[#N]` link to `N.md`, read as path-form links (they contain `/` or end in `.md`), and at 500 each
+the backlog reached 2000, all of it false positives. Once artifacts wake the gate, the fix is to
+reword the memory text so `]` and `(` are not adjacent ("an `int[]` array constructor over
+`64/N_0, 32/N_0`"), never to create a stub file that satisfies the link; leave a span alone only
+when it documents link syntax itself ([okf_synth.py DANGLING-LINK false positive on `](` inside code spans](../learnings/1793902050791-okf-synth-py-dangling-link-false-positive-on-insid.md)).
 
 **Real DANGLING-LINK shapes.** A path-form `[[dir/name]]` resolves only with `.md`
 (`[[imported/hold-12192]]` is flagged though the file exists; bare `[[name]]` is ignored), so write
@@ -240,7 +247,7 @@ with explicit resume triggers, the recipe (repeated across 4 memos) moved to
 Windows DLL search) moved to `upstream/`. Rewrite `State` on each change; move anything reusable
 into its own concept ([per-event state logs turn a triage memo into a dossier](../learnings/1792606834637-per-event-state-logs-turn-a-triage-memo-into-a-dos.md)).
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md) — split held/NO-GO rows into their own index
 - [a rule past the index's readable bound is functionally absent.](../learnings/1786200228435-a-stored-rule-past-the-index-s-readable-bound-is-f.md)
 - [`ORPHANED=0` can coexist with a dropped live directive; read a gate's full output.](../learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md)
@@ -264,3 +271,4 @@ into its own concept ([per-event state logs turn a triage memo into a dossier](.
 - [Retired gate wording kept resurfacing from Core Memory — fix the index line, not just the dated note](../learnings/1791742351041-retired-gate-wording-kept-resurfacing-from-core-me.md) — rewrite the index line; probe live state
 - [Per-event state logs turn a triage memo into a dossier — rewrite state, extract recipes](../learnings/1792606834637-per-event-state-logs-turn-a-triage-memo-into-a-dos.md) — triage/1238 12.7k → 5.1k; one `## State`
 - [okf_synth flags directory links (isfile only); use inline code or a file link; a memo a sibling is still writing can cause a false ESCALATE](../learnings/1793318922216-okf-synth-py-flags-markdown-links-to-directories-a.md)
+- [okf_synth.py DANGLING-LINK false positive on `](` inside code spans](../learnings/1793902050791-okf-synth-py-dangling-link-false-positive-on-insid.md) — 2026-11-05 backlog 2000 all artifacts; reword, never stub

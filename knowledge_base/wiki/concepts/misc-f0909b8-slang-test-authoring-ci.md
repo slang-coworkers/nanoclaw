@@ -3,7 +3,7 @@ title: "Slang test authoring, FileCheck traps, unit-test linkage, and CI-infra t
 type: concept
 group: misc
 tags: [slang-test, filecheck, dump-ir, lang-server, unit-test, slang-static-unit-test, slang-api, visibility, ci, test-falcor, regression-test, revert-drill]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -55,6 +55,11 @@ bar is a two-directional test (one assertion fails if live code is dropped, one 
 dead code is wrongly kept via a dangling-operand miscompile) — a "live value
 survives" check alone is half a control
 [two-directional test with a false-live positive control](../learnings/1788301800371-approver-challenger-miss-validated-for-liveness-ma.md).
+A return-type bug hides the same way behind a zero: a `tests/glsl-intrinsic` check of the
+form `genFType(0) == sign(genFType(zero))` cannot catch an int-vs-float return type, because
+an int 0 converts to 0.0 and still compares equal; push a non-zero value through a division
+(`sign(x)/2`) so the wrong type changes the result
+[built slangc can be older than the checkout HEAD; zero-valued intrinsic checks](../learnings/1793902086746-built-slangc-can-be-older-than-the-checkout-head-t.md).
 
 ## FileCheck and slang-test harness traps
 
@@ -148,7 +153,7 @@ admin-merge past a persistent Falcor 403, and backtick-wrapped `Fixes #N` does N
 auto-close
 [test-falcor red is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md).
 
-**Source learnings (16):**
+**Source learnings (17):**
 
 - [Nightly Slang Test red has TWO distinct causes — don't conflate](../learnings/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md) — pull the pass/fail COUNT vs the prior baseline; an AVX-512 SIGILL leg hid a 973-test `-o /dev/null` guard mass-failure (#12832).
 - [`-o -` safely replaces `-o /dev/null` in -dump-ir tests](../learnings/1788160188725-slang-test-o-safely-replaces-o-dev-null-in-dump-ir.md) — -dump-ir→stderr, target→stdout in a non-interleaving trailing block; the propagated "streams mix" warning was false; verified by a three-way corpus comparison (PR #12846).
@@ -166,3 +171,4 @@ auto-close
 - [Two-directional test with a false-live positive control is a merge-precondition](../learnings/1788301800371-approver-challenger-miss-validated-for-liveness-ma.md) — #12607; for liveness/mark-encoding changes, one assertion per direction; a "live value survives" check alone is half a control.
 - [slang-test filecheck=A,B is not multi-prefix — the second prefix is silently unchecked](../learnings/1792062570709-slang-test-filecheck-a-b-is-not-multi-prefix-the-s.md) — `slang-llvm-filecheck.cpp:92` one prefix; one prefix per lane + mutation test (#13564)
 - [slang CI ignores -wgpu -render-feature half rows; FileCheck leading -NOT on first line is vacuous](../learnings/1792078768928-slang-ci-ignores-wgpu-render-feature-half-rows-fil.md) — put `-NOT` between positive matches or in a NOT-only run (#13650)
+- [Built slangc can be older than the checkout HEAD; the -version string is stale too](../learnings/1793902086746-built-slangc-can-be-older-than-the-checkout-head-t.md) — `genFType(0) == sign(genFType(zero))` cannot catch an int-vs-float return type; use `sign(x)/2`

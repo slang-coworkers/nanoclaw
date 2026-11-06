@@ -3,7 +3,7 @@ title: "Slang GLSL legalization: entry-point parameters, varyings, and precise o
 type: concept
 group: slang-backends
 tags: [glsl, glsl-legalize, entry-point, varying, system-values, precise, NoContraction, IRPreciseDecoration, geometry-shader, layout-qualifier, emit-spirv-via-glsl, buildEntryPointReferenceGraph, export, translateGlobalVaryingVar, multi-entry-point, whole-program]
-source_count: 12
+source_count: 13
 ---
 
 # Slang GLSL legalization: entry-point parameters, varyings, and precise outputs
@@ -22,6 +22,7 @@ source_count: 12
 - **`gl_*` builtin outputs never get `emitVarModifiers`**, so `precise` needs a global `precise gl_Position;` redeclaration before first use. `-pass-through glslang` aborts with E99997 today; test hand-edited GLSL by calling `glslang_compile_1_2` in `libslang-glslang` directly.
 - **Entry-point reachability is not liveness.** `buildEntryPointReferenceGraph` starts only from entry points and CUDA kernels, but `export` functions are still emitted. An emitter that skips a global because no entry point reaches it produces an undeclared identifier when an `export` function reads that global (#13724 R1). Key such skips on `!inst->hasUses()`.
 - **Before writing "target X is unaffected" for a multi-entry-point varying bug, test a global `in` and a global `out`, and a linked build** (HLSL needs `-whole-program -profile lib_6_6`). On #13687 a global `in` looked fine on SPIR-V while a global `out` dropped out of the second `OpEntryPoint` interface, and HLSL whole-program dropped both.
+- **Getters backed by an internal `__builtinX : SV_X` global (WGSL `WorkgroupCount()`, Metal `DispatchedWorkgroupSize()`) inherit #13687:** only the first entry point in a multi-entry module gets the builtin; blame the shared root cause, not the new getter.
 
 ## System-Value Legalization (Per-Entry-Point Decorations)
 
@@ -63,7 +64,9 @@ Testing both SPIR-V emit paths for such an entry-point attribute: the `-target s
 
 Multi-entry-point bugs need a matching test matrix. #13687 reports that `translateGlobalVaryingVar` (`slang-ir-translate-global-varying-var.cpp`, run when a module has `GlobalInput`/`GlobalOutput` decorations) gives only the first entry point the built-in inputs its callees read, when several entry points are linked into one WGSL module. The triage said SPIR-V and HLSL were unaffected, and both statements were wrong. SPIR-V had been checked only with a global `in`, which glsl-legalize rewrites into a real Input global, but a global `out` drops out of the second `OpEntryPoint` interface. HLSL had been checked only with one `-entry` per output, but `-whole-program -profile lib_6_6` drops the global from the second entry point for both `in` and `out`. A plain `-target hlsl` with two entry points fails with E00070, so it is not a substitute. Before writing "target X is unaffected" for such a bug, test each target with both `in` and `out` globals and in a linked or whole-program build. A freshly built PR worktree can fail `-target spirv-asm` with "failed to load downstream compiler spirv-dis/spirv-opt"; compile with `-target spirv -O0` instead and decode `OpEntryPoint` (opcode 15) from the binary with a short Python `struct` loop ([verify "target X unaffected" for `in` and `out` and HLSL -whole-program](../learnings/1792220060940-slang-global-varyings-verify-target-x-unaffected-c.md)).
 
-**Source learnings (12):**
+New getters backed by an internal `in uint3 __builtinX : SV_X` global inherit the same gap. WGSL `WorkgroupCount()` (#13920) and Metal `DispatchedWorkgroupSize()` (PR #14148) work only for the FIRST entry point in emit order when one module has two or more entry points that reach the global (`slangc -entry a -entry b`, or no `-entry`): later entry points get no `@builtin(num_workgroups)` / `[[threads_per_threadgroup]]` parameter and read a `var<private>` / KernelContext field that is never set, so they silently get garbage, and swapping the `-entry` order changes which kernel works. That is #13687's root cause (fix in draft #13726), not the new getter; single-entry compiles (the slang-rhi/SlangPy path) are fine and SPIR-V is unaffected. Worktree note: `cp -a external` from the main checkout breaks `git status` (submodule `.git` files point at `../../.git/modules`); run `git -c protocol.file.allow=always submodule update --init --recursive` instead ([internal __builtin SV globals inherit the #13687 multi-entry gap](../learnings/1793889912164-internal-builtin-sv-globals-workgroupcount-dispatc.md)).
+
+**Source learnings (13):**
 - [GLSL legalize: per-entry-point system-value decorations (correction — depth is unreachable)](../learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md)
 - [#13287: IRPreciseDecoration on params/struct keys is lost in glsl-legalize, computePreciseInsts seeding and C-like param/field emit; non-inlined callee out params work; grep dxil-asm for `fmul fast`.](../learnings/1790611075004-precise-on-entry-point-out-params-struct-fields-is.md)
 - [#13292: -pass-through glslang aborts E99997; libslang-glslang `glslang_compile_1_2` harness; `precise gl_Position;` redeclaration gives NoContraction; tryEmitGlobalParamImpl skips emitVarModifiers for gl_*.](../learnings/1790614490406-testing-glsl-spir-v-qualifier-fixes-without-slangc.md)
@@ -76,5 +79,6 @@ Multi-entry-point bugs need a matching test matrix. #13687 reports that `transla
 - [GLSL emit: skipping a global by entry-point reachability breaks `export` functions](../learnings/1792198984354-glsl-emit-skipping-a-global-by-entry-point-reachab.md) — `buildEntryPointReferenceGraph` roots only entry points and CUDA kernels; key emit skips on `!inst->hasUses()` (#13724 R1)
 - [Slang global varyings: verify 'target X unaffected' claims for both `in` and `out`, and HLSL -whole-program](../learnings/1792220060940-slang-global-varyings-verify-target-x-unaffected-c.md) — #13687: SPIR-V drops a global `out` from the second `OpEntryPoint`; HLSL `-whole-program -profile lib_6_6` drops both; decode opcode 15 when spirv-dis is missing
 - [GLSL-source GPU tests: add `[shader("compute")]` and a fixed-size control](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md) — post-lowering entry lookup drops `local_size` (#14256, PR #14275); name the entry `computeMain`
+- [Internal __builtin SV globals (WorkgroupCount/DispatchedWorkgroupSize) inherit the #13687 multi-entry gap on Metal and WGSL](../learnings/1793889912164-internal-builtin-sv-globals-workgroupcount-dispatc.md) — only the first entry point gets the builtin; SPIR-V and single-entry fine
 
 _Catalog: [[wiki/index.md]]_
