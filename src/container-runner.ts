@@ -2317,7 +2317,7 @@ export const EVAL_SANDBOX_GATE_CMD = 'bash /app/hooks/gate-eval-sandbox.sh';
 // The hook refuses the two MCP tools by name and classifies Bash commands; the
 // matcher lists exactly those so unrelated tool calls never spawn it.
 export const EVAL_SANDBOX_GATE_MATCHER =
-  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file';
+  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning';
 
 /**
  * Register gate-eval-sandbox.sh as a PreToolUse hook in a group's settings.json.
@@ -2376,6 +2376,39 @@ export function ensureSteWritingGate(settingsFile: string): void {
       STE_WRITING_GATE_CMD,
     );
   }
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
+export const REVIEW_LENGTH_GATE_CMD = 'bash /app/hooks/gate-review-length.sh';
+// Every tool call that can post or write a review: Bash (`gh pr review|comment`,
+// `gh api …/reviews`, a heredoc into answer.json), the file tools for the evaluation
+// answer file, and the GitHub MCP review tools. The hook steps aside for anything else.
+export const REVIEW_LENGTH_GATE_MATCHER =
+  'Bash|Write|Edit|MultiEdit|mcp__github__create_pending_pull_request_review|mcp__github__add_comment_to_pending_review|mcp__github__submit_pending_pull_request_review|mcp__github__delete_pending_pull_request_review|mcp__github__create_and_submit_pull_request_review|mcp__github__add_issue_comment';
+
+/**
+ * Register gate-review-length.sh as a PreToolUse hook in a group's settings.json.
+ *
+ * Self-scoped like the eval-sandbox gate: the hook exits 0 unless the composer
+ * materialized `.overlay-review-length` for the group (or the host passed
+ * REVIEW_LENGTH_GATE_ACTIVE=1), so every Claude-surface group carries the
+ * registration and only a group with the `review-length` overlay has its review
+ * text capped. Idempotent; registered outside the dashboard hook block.
+ */
+export function ensureReviewLengthGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-review-length.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    REVIEW_LENGTH_GATE_MATCHER,
+    'gate-review-length.sh',
+    REVIEW_LENGTH_GATE_CMD,
+  );
   if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
@@ -2845,6 +2878,10 @@ export async function buildMounts(
   // every Claude-surface group carries the registration and only eval groups feel it.
   if (defaultSurfaces) ensureEvalSandboxGate(settingsFile);
   if (defaultSurfaces) ensureSteWritingGate(settingsFile);
+  // gate-review-length.sh: a group with the `review-length` overlay posts or delivers
+  // reviews under the character cap (summary plus inline comments). Marker-scoped
+  // like the eval-sandbox gate, so the registration is universal and inert elsewhere.
+  if (defaultSurfaces) ensureReviewLengthGate(settingsFile);
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.

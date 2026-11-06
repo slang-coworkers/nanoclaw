@@ -166,6 +166,8 @@ The `on_wake` column on `messages_in` ensures wake messages are only picked up b
 
 Key files: `src/container-restart.ts`, `src/container-runner.ts` (`killContainer`), `container/agent-runner/src/db/messages-in.ts` (`getPendingMessages`).
 
+After a base image rebuild, groups with their own derived image (apt/npm packages) stay on the old base until `pnpm run rebuild:derived-images` re-derives them; it rebuilds only stale pins and restarts nothing. `--rebuild` on a single group does the same for that group plus a restart.
+
 ## Secrets / Credentials / Gateways
 
 API keys, OAuth tokens, and auth credentials are managed by a **credential gateway** — never by NanoClaw and never by an agent. Secrets are injected at the network boundary at request time; none are passed in env vars or through chat context.
@@ -266,17 +268,21 @@ cd container/agent-runner && bun install   # After editing agent-runner deps
 cd container/agent-runner && bun test      # Container tests (bun:test)
 ```
 
-Service management:
+Service management (`<slug>` is per checkout; from the project root, `source setup/lib/install-slug.sh && systemd_unit` prints the unit name):
 ```bash
+# Any platform: restart this checkout's host and wait until it answers
+bash setup/lib/restart.sh
+
 # macOS (launchd)
-launchctl load ~/Library/LaunchAgents/com.nanoclaw.plist
-launchctl unload ~/Library/LaunchAgents/com.nanoclaw.plist
-launchctl kickstart -k gui/$(id -u)/com.nanoclaw  # restart
+launchctl load   ~/Library/LaunchAgents/com.nanoclaw-v2-<slug>.plist
+launchctl unload ~/Library/LaunchAgents/com.nanoclaw-v2-<slug>.plist
+launchctl kickstart -k gui/$(id -u)/com.nanoclaw-v2-<slug>  # restart
 
 # Linux (systemd)
-systemctl --user start nanoclaw
-systemctl --user stop nanoclaw
-systemctl --user restart nanoclaw
+systemctl --user start|stop|restart nanoclaw-v2-<slug>
+
+# Linux without systemd (e.g. WSL): nohup launcher in the project root
+bash start-nanoclaw.sh  # start or restart
 ```
 
 ## Troubleshooting
@@ -393,8 +399,7 @@ grep -q '^INSTALL_CJK_FONTS=' .env && sed -i.bak 's/^INSTALL_CJK_FONTS=.*/INSTAL
 
 # Rebuild and restart so new sessions pick up the new image
 ./container/build.sh
-launchctl kickstart -k gui/$(id -u)/com.nanoclaw   # macOS
-# systemctl --user restart nanoclaw                # Linux
+bash setup/lib/restart.sh
 ```
 
 `container/build.sh` reads `INSTALL_CJK_FONTS` from `.env` and passes it through as a Docker build-arg. Without CJK fonts, Chromium-rendered screenshots and PDFs containing CJK text show tofu (empty rectangles) instead of characters.

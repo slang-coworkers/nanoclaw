@@ -28,8 +28,20 @@ are under `/workspace/agent/reports/evals/`. The eval copies do the work; the ru
    start (exit 2, naming the files) when one is present; the mount is read-only here, so ask
    the operator to move the previous job's `eval/` aside on the host (for example to
    `eval.<previous job id>/`), then start again.
-4. **Preview.** Run the command below with `--dry-run` and read the trial list and the
+4. **Clear the eval copy's workspace of the last job.** Besides `eval/`, a job leaves
+   `wt-*` worktrees (a trial may reuse another trial's build and its stray test files) and,
+   on a host without the learnings gate, shared learnings under
+   `/workspace/shared/learnings/<eval group id>/` that name the tasks. Ask the operator to
+   move `eval/` aside, remove `wt-*`, and quarantine those learnings before the first trial.
+5. **Preview.** Run the command below with `--dry-run` and read the trial list and the
    `ncl tasks create` invocation it prints. The trial count is tasks × repeats.
+6. **Keep the judge reachable.** The verifiers call the judge through the container's gateway
+   route (`EVAL_JUDGE_BASE_URL`, default `https://inference-api.nvidia.com`), not through the
+   agent's per-turn relay on 127.0.0.1, so a runner left in the background between turns still
+   scores. A trial that ends `unknown` with "judge unavailable" is re-scored by running its
+   `tests/test.sh` on the saved `answer.json` with the same `REWARD_DIR`. After re-scoring,
+   run `eval_run.py report <job id>` to rebuild the job's files and its scorecard from the
+   trial directories (see "Rebuild a report" below); the job files do not update on their own.
 
 ## Start a job
 
@@ -39,15 +51,20 @@ python3 /home/node/.claude/skills/eval-runner/scripts/eval_run.py \
     --variant baseline --limit 60 --budget-usd 300 --concurrency 2
 ```
 
-- `--kind triage` and `--kind reply` score with the bank's `tests/test.sh` (`AGENT_OUTPUT`,
-  `REWARD_DIR`); a reply task's verifier also needs the judge endpoint variables the
-  container already carries (`ANTHROPIC_BASE_URL` and its credential).
+- `--group` takes the eval group's workspace folder or its `ag-…` id; the runner resolves one
+  to the other through `ncl groups list`, because `ncl tasks create` accepts only the id and the
+  answers live under the folder.
+- `--kind triage`, `--kind reply` and `--kind review` score with the bank's `tests/test.sh`
+  (`AGENT_OUTPUT`, `REWARD_DIR`); a reply or review task's verifier also needs the judge
+  endpoint variables the container already carries (`ANTHROPIC_BASE_URL` and its
+  credential). A review task's answer is `{"summary", "findings": [{file, line, comment}]}`
+  and runs in the `eval-slang-reviewer` group.
   `--kind fixer` scores each draft PR from one check run on the fork, the one named by
   `--ci-check` (default `eval-ci`, the fork's own Linux build-and-test workflow, which runs
   on drafts); the upstream workflows the fork also carries are ignored because they skip
   drafts, want labels, or need runners the fork does not have. The bank's fixer verifier
   needs a Slang Release build that this container does not have.
-- `--repeats` defaults to 3 for triage and reply and 2 for fixer. Every repeat is an independent
+- `--repeats` defaults to 3 for triage and reply and 2 for fixer and review. Every repeat is an independent
   one-shot task with its own session and answer directory; never set it to 1 for a job
   whose numbers you intend to compare.
 - `--variant <label>` names what is under test (a prompt, a skill version). Use `baseline`
@@ -66,7 +83,9 @@ Run the variant job with `--compare <baseline job id>`. The report pairs each ta
 repeats on both sides), gives the mean paired difference with a bootstrap 95% interval, and
 marks the comparison `smoke-signal` when fewer than 30 tasks were paired. Report the interval,
 not just the sign: a difference whose interval contains zero is "no measurable change". Tasks
-flagged `low-signal` (their repeats disagree) are listed; do not cite one of them as evidence.
+flagged `low-signal` are listed; do not cite one of them as evidence. For triage and fixer any
+disagreement between repeats flags the task; for reply and review, whose judge scores always
+move a little, the flag needs a reward gap above 0.2 (`LOW_SIGNAL_GAP`).
 
 ## Retry
 
@@ -74,6 +93,20 @@ A trial that timed out, errored or stayed unknown is retried at most once:
 `--retry-from <job id>` re-dispatches exactly those trials as attempt 2 and refuses any trial
 already on attempt 2. Never re-run a trial that was scored, whatever its reward, and never
 retry a job a second time.
+
+## Rebuild a report
+
+```bash
+python3 /home/node/.claude/skills/eval-runner/scripts/eval_run.py report <job id>
+```
+
+Rebuilds `trials.jsonl`, `job.json`, `result.json` and `scorecard.html` of a finished job from
+its trial directories. Every trial that ended without a reward and whose
+`trials/<trial>/verifier/reward.txt` now exists counts as scored; the task aggregates, the
+baseline comparison and the headline numbers are recomputed; the previous page is kept as
+`scorecard.prev.html` and the new page says when it was regenerated and how many trials were
+re-scored. Run it after re-scoring trials by hand and before delivering the page. It dispatches
+nothing and leaves `latest.json` and `history.log` alone. Exit 2 means the job has no `job.json`.
 
 ## Deliver
 
@@ -93,6 +126,7 @@ trials are unknown because the fork's CI reported nothing.
 | `/workspace/agent/reports/evals/<job id>/job.json`                                  | summary + per-task results + per-trial results + comparison + frozen settings      |
 | `/workspace/agent/reports/evals/<job id>/trials.jsonl`                              | one line per trial; the input `--compare` and `--retry-from` read                  |
 | `/workspace/agent/reports/evals/<job id>/scorecard.html`                            | the page to deliver                                                                |
+| `/workspace/agent/reports/evals/<job id>/scorecard.prev.html`                       | the page before the last `report` run                                              |
 | `/workspace/agent/reports/evals/<job id>/trials/<trial>/`                           | Harbor-style trial directory (`config.json`, `result.json`, `verifier/reward.txt`) |
 | `/workspace/extra/ephemeral/prod-groups/<eval folder>/eval/<task>/r<k>/answer.json` | a triage answer, written by the eval copy, read by the runner                      |
 
