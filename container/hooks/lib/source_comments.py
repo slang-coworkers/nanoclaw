@@ -120,7 +120,7 @@ def added_lines(repo: str, all_tree: bool, paths: list[str]) -> list[tuple[str, 
     if paths:
         cmd += ["--"] + paths
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
     except (OSError, subprocess.SubprocessError):
         return None
     if out.returncode != 0:
@@ -131,7 +131,7 @@ def added_lines(repo: str, all_tree: bool, paths: list[str]) -> list[tuple[str, 
     for raw in out.stdout.splitlines():
         if raw.startswith("+++ "):
             target = raw[4:].strip()
-            path = None if target == "/dev/null" else (target[2:] if target.startswith("b/") else target)
+            path = None if target == "/dev/null" else target.removeprefix("b/")
         elif raw.startswith("@@"):
             m = re.search(r"\+(\d+)(?:,(\d+))?", raw)
             line = int(m.group(1)) if m else 0
@@ -139,7 +139,7 @@ def added_lines(repo: str, all_tree: bool, paths: list[str]) -> list[tuple[str, 
             if path is not None:
                 rows.append((path, line, raw[1:]))
             line += 1
-        elif raw.startswith("-") or raw.startswith("\\"):
+        elif raw.startswith(("-", "\\")):
             continue
         else:
             line += 1
