@@ -6,15 +6,36 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 747 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 302 |
-| `nv-slang` | slang project spine, skills, workflows | 209 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 127 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 103 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 751 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 304 |
+| `nv-slang` | slang project spine, skills, workflows | 210 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 128 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 104 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-06
+
+### nv-main (4 PRs)
+- **#2238** `Sync nv-main with upstream/main`
+- **#2230** `eval-runner: a fixer trial only takes a PR created after its dispatch`
+- **#2231** `gate-eval-sandbox: refuse any command that names the task bank`
+- **#2218** `eval-runner: report mode rebuilds a job's files from its trial directories`
+
+### nv-dashboard (2 PRs)
+- **#2240** `Sync nv-dashboard with upstream/main`
+- **#2219** `dashboard: resolve task sessions in the coworker panel`
+
+### nv-slang (1 PRs)
+- **#2241** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2242** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2243** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-05
 
