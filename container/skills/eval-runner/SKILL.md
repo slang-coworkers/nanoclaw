@@ -39,7 +39,9 @@ are under `/workspace/agent/reports/evals/`. The eval copies do the work; the ru
    route (`EVAL_JUDGE_BASE_URL`, default `https://inference-api.nvidia.com`), not through the
    agent's per-turn relay on 127.0.0.1, so a runner left in the background between turns still
    scores. A trial that ends `unknown` with "judge unavailable" is re-scored by running its
-   `tests/test.sh` on the saved `answer.json` with the same `REWARD_DIR`.
+   `tests/test.sh` on the saved `answer.json` with the same `REWARD_DIR`. After re-scoring,
+   run `eval_run.py report <job id>` to rebuild the job's files and its scorecard from the
+   trial directories (see "Rebuild a report" below); the job files do not update on their own.
 
 ## Start a job
 
@@ -92,6 +94,20 @@ A trial that timed out, errored or stayed unknown is retried at most once:
 already on attempt 2. Never re-run a trial that was scored, whatever its reward, and never
 retry a job a second time.
 
+## Rebuild a report
+
+```bash
+python3 /home/node/.claude/skills/eval-runner/scripts/eval_run.py report <job id>
+```
+
+Rebuilds `trials.jsonl`, `job.json`, `result.json` and `scorecard.html` of a finished job from
+its trial directories. Every trial that ended without a reward and whose
+`trials/<trial>/verifier/reward.txt` now exists counts as scored; the task aggregates, the
+baseline comparison and the headline numbers are recomputed; the previous page is kept as
+`scorecard.prev.html` and the new page says when it was regenerated and how many trials were
+re-scored. Run it after re-scoring trials by hand and before delivering the page. It dispatches
+nothing and leaves `latest.json` and `history.log` alone. Exit 2 means the job has no `job.json`.
+
 ## Deliver
 
 Send `/workspace/agent/reports/evals/<job id>/scorecard.html` with `mcp__nanoclaw__send_file`
@@ -110,6 +126,7 @@ trials are unknown because the fork's CI reported nothing.
 | `/workspace/agent/reports/evals/<job id>/job.json`                                  | summary + per-task results + per-trial results + comparison + frozen settings      |
 | `/workspace/agent/reports/evals/<job id>/trials.jsonl`                              | one line per trial; the input `--compare` and `--retry-from` read                  |
 | `/workspace/agent/reports/evals/<job id>/scorecard.html`                            | the page to deliver                                                                |
+| `/workspace/agent/reports/evals/<job id>/scorecard.prev.html`                       | the page before the last `report` run                                              |
 | `/workspace/agent/reports/evals/<job id>/trials/<trial>/`                           | Harbor-style trial directory (`config.json`, `result.json`, `verifier/reward.txt`) |
 | `/workspace/extra/ephemeral/prod-groups/<eval folder>/eval/<task>/r<k>/answer.json` | a triage answer, written by the eval copy, read by the runner                      |
 

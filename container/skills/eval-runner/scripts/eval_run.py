@@ -65,6 +65,13 @@ Outputs under `<reports>/evals/` (default /workspace/agent/reports/evals/):
   <job-id>/trials/<task>#r<k>__<hex>/{config.json,result.json,verifier/reward.txt}  (Harbor-style)
   latest.json  — the summary nanoclaw-metrics.py reads.
 
+`eval_run.py report <job-id> [--reports DIR]` rebuilds a finished job's trials.jsonl,
+job.json, result.json and scorecard.html from its trial directories: every trial that
+ended without a reward and whose directory now holds verifier/reward.txt (re-scored after
+the job closed) is counted as scored, the task aggregates and the baseline comparison are
+recomputed, and the previous page is kept as scorecard.prev.html. latest.json and
+history.log are left alone.
+
 Exit codes: 0 every trial scored, 1 some trial timed out / errored / is unknown, 2 the
 job stopped early (budget) or no task could be dispatched.
 
@@ -549,15 +556,33 @@ def existing_answers(group_dir: str, plan: list[tuple[Task, int]]) -> list[str]:
     return [p for p in paths if os.path.isfile(p)]
 
 
-def poll_fixer(gh: Callable[[str], object], fork: str, task: Task, repeat: int) -> dict | None:
+def pr_created_at(pr: dict) -> float | None:
+    """The PR's `created_at` as a POSIX timestamp, or None when GitHub gave none."""
+    raw = pr.get("created_at")
+    if not raw:
+        return None
+    try:
+        return dt.datetime.strptime(str(raw), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc).timestamp()
+    except ValueError:
+        return None
+
+
+def poll_fixer(gh: Callable[[str], object], fork: str, task: Task, repeat: int, not_before: float = 0.0) -> dict | None:
     """The fork PR for this repeat: head branch carries `<task-id>-r<k>` or the title
-    carries `[<task-id>#r<k>]`."""
+    carries `[<task-id>#r<k>]`, and the PR was created at or after `not_before` (the
+    trial's dispatch time). An earlier job on the same fork leaves closed PRs with the
+    same tags behind; without the time filter a trial would latch onto one of those on
+    its first poll and be scored from the old job's CI. GitHub always dates a PR; one
+    without a readable `created_at` (a stub) is accepted."""
     tag = f"{task.id}-r{repeat}"
     title_tag = f"[{trial_id(task.id, repeat)}]"
     pulls = gh(f"repos/{fork}/pulls?state=all&per_page=100&sort=created&direction=desc") or []
     for pr in pulls:
         head = ((pr.get("head") or {}).get("ref") or "")
         if tag in head or title_tag in (pr.get("title") or ""):
+            created = pr_created_at(pr)
+            if not_before and created is not None and created < not_before:
+                continue
             return {"number": pr.get("number"), "url": pr.get("html_url"), "draft": bool(pr.get("draft")),
                     "head_sha": (pr.get("head") or {}).get("sha"), "head_ref": head, "state": pr.get("state")}
     return None
@@ -926,7 +951,7 @@ class EvalJob:
         else:
             if trial.pr is None:
                 try:
-                    pr = poll_fixer(self.gh, self.cfg.fork, task, trial.repeat)
+                    pr = poll_fixer(self.gh, self.cfg.fork, task, trial.repeat, not_before=trial._started)
                 except RuntimeError as exc:
                     pr = None
                     self.log(f"{trial.trial_id}: poll failed: {exc}")
@@ -1082,36 +1107,46 @@ def summarize(cfg: JobConfig, trials: list[Trial], budget: Budget, started_at: f
               stopped_for_budget: bool, frozen: dict) -> dict:
     public = [t.public() for t in trials]
     tasks = aggregate_tasks(public, LOW_SIGNAL_GAP.get(cfg.kind, 1e-9))
-    scored = [t for t in trials if t.status == SCORED]
-    with_reward = [t for t in trials if t.reward is not None]
-    dispatched = [t for t in trials if t.status != SKIPPED]
     costs = [t.cost_usd for t in trials if t.cost_usd is not None]
-    task_means = [a["mean"] for a in tasks.values() if a["mean"] is not None]
-    pass_k = [a["pass_at_k"] for a in tasks.values() if a["pass_at_k"] is not None]
     return {
         "schema": SCHEMA, "job_id": cfg.job_id, "kind": cfg.kind, "variant": cfg.variant, "group": cfg.group,
         "fork": cfg.fork, "bank": cfg.bank, "repeats": cfg.repeats,
         "started_at": iso(started_at), "finished_at": iso(finished_at),
         "duration_sec": round(finished_at - started_at, 1),
-        "tasks": len(tasks), "trials": len(trials), "dispatched": len(dispatched), "scored": len(scored),
-        "unknown": sum(1 for t in trials if t.status == UNKNOWN),
-        "timeouts": sum(1 for t in trials if t.status == TIMEOUT),
-        "errors": sum(1 for t in trials if t.status == ERROR),
-        "skipped": sum(1 for t in trials if t.status == SKIPPED),
-        "mean_reward": _mean(task_means),
-        "trial_mean_reward": _mean([t.reward for t in with_reward]),
-        "pass_at_k": _mean(pass_k),
-        "pass_rate": _mean([1.0 if t.reward >= 1.0 else 0.0 for t in with_reward]),
-        "low_signal_tasks": sum(1 for a in tasks.values() if a["low_signal"]),
+        **headline(public, tasks, stopped_for_budget),
         "cost_usd": round(sum(costs), 4) if costs else None,
         "cost_known_sessions": len(costs),
         "cost_signal": "ncl cost-cap status" if budget.cost_signal_seen else "none (fallback per-trial estimate)",
         "cost_committed_usd": round(budget.committed_usd(), 4),
         "budget_usd": cfg.budget_usd, "stopped_for_budget": stopped_for_budget,
-        "concurrency": cfg.concurrency, "compare": cfg.compare, "retry_from": cfg.retry_from,
-        "answer_cap_chars": cfg.answer_cap_chars,
+        "concurrency": cfg.concurrency, "compare": cfg.compare, "compare_job": cfg.compare,
+        "retry_from": cfg.retry_from, "answer_cap_chars": cfg.answer_cap_chars,
         "frozen": frozen,
-        "status": "complete" if trials and all(t.status == SCORED for t in trials) else
+    }
+
+
+def headline(trials: list[dict], tasks: dict[str, dict], stopped_for_budget: bool) -> dict:
+    """The counts and means a job report leads with, from the public trial dicts and
+    their task aggregates. `summarize` uses it when a job ends and `rebuild_job` when the
+    files are regenerated from the trial directories, so both paths agree on what
+    "scored", "mean reward" and "status" mean."""
+    scored = [t for t in trials if t["status"] == SCORED]
+    with_reward = [t for t in trials if t.get("reward") is not None]
+    dispatched = [t for t in trials if t["status"] != SKIPPED]
+    task_means = [a["mean"] for a in tasks.values() if a["mean"] is not None]
+    pass_k = [a["pass_at_k"] for a in tasks.values() if a["pass_at_k"] is not None]
+    return {
+        "tasks": len(tasks), "trials": len(trials), "dispatched": len(dispatched), "scored": len(scored),
+        "unknown": sum(1 for t in trials if t["status"] == UNKNOWN),
+        "timeouts": sum(1 for t in trials if t["status"] == TIMEOUT),
+        "errors": sum(1 for t in trials if t["status"] == ERROR),
+        "skipped": sum(1 for t in trials if t["status"] == SKIPPED),
+        "mean_reward": _mean(task_means),
+        "trial_mean_reward": _mean([t["reward"] for t in with_reward]),
+        "pass_at_k": _mean(pass_k),
+        "pass_rate": _mean([1.0 if t["reward"] >= 1.0 else 0.0 for t in with_reward]),
+        "low_signal_tasks": sum(1 for a in tasks.values() if a["low_signal"]),
+        "status": "complete" if trials and all(t["status"] == SCORED for t in trials) else
                   ("stopped" if stopped_for_budget or not dispatched else "partial"),
     }
 
@@ -1130,7 +1165,7 @@ def load_trials(reports_dir: str, job_id: str) -> list[dict]:
 
 
 def render_html(summary: dict, trials: list[dict], tasks: dict[str, dict], compare: dict | None,
-                baseline_id: str | None) -> str:
+                baseline_id: str | None, note: str | None = None) -> str:
     e = html.escape
 
     def fmt(v):
@@ -1157,8 +1192,10 @@ def render_html(summary: dict, trials: list[dict], tasks: dict[str, dict], compa
         "td,th{border:1px solid #ccc;padding:.3rem .6rem;text-align:left}th{background:#f3f3f3}"
         ".ok{color:#1a7f37}.bad{color:#b42318}.na{color:#777}.flag{color:#9a6700;font-weight:600}</style>"),
         f"<h1>Eval scorecard — {e(summary['job_id'])}</h1>",
-        "<table>" + "".join(f"<tr><th>{e(str(k))}</th><td>{e(str(v))}</td></tr>" for k, v in head) + "</table>",
     ]
+    if note:
+        out.append(f"<p class='flag'>{e(note)}</p>")
+    out.append("<table>" + "".join(f"<tr><th>{e(str(k))}</th><td>{e(str(v))}</td></tr>" for k, v in head) + "</table>")
     if compare is not None:
         out.append(f"<h2>Baseline {e(baseline_id or '')} vs variant {e(summary['variant'])}</h2>")
         if compare["smoke_signal"]:
@@ -1199,44 +1236,166 @@ def render_html(summary: dict, trials: list[dict], tasks: dict[str, dict], compa
     return "\n".join(out) + "\n"
 
 
+def compare_with_baseline(reports_dir: str, baseline_id: str | None, trials: list[dict], gap: float,
+                          summary: dict) -> dict | None:
+    """The paired comparison against `baseline_id`'s trials.jsonl, also stored on the
+    summary without its per-task rows; None when the job has no baseline."""
+    if not baseline_id:
+        return None
+    compare = compare_jobs(load_trials(reports_dir, baseline_id), trials, gap)
+    summary["compare_result"] = {k: v for k, v in compare.items() if k != "rows"}
+    return compare
+
+
+def write_job_files(job_dir: str, summary: dict, trials: list[dict], tasks: dict[str, dict],
+                    compare: dict | None, baseline_id: str | None, note: str | None = None) -> None:
+    """The files derived from the trials: trials.jsonl, job.json, result.json and
+    scorecard.html. Written when a job ends and again by `rebuild_job`; config.json,
+    latest.json and history.log belong to the job run alone."""
+    os.makedirs(job_dir, exist_ok=True)
+    with open(os.path.join(job_dir, "trials.jsonl"), "w", encoding="utf-8") as fh:
+        fh.writelines(json.dumps(t, sort_keys=True) + "\n" for t in trials)
+    _write_json(os.path.join(job_dir, "job.json"), {**summary, "task_results": tasks, "trial_results": trials,
+                                                     "compare": compare})
+    _write_json(os.path.join(job_dir, "result.json"), {
+        "id": summary["job_id"], "started_at": summary["started_at"], "finished_at": summary["finished_at"],
+        "n_total_trials": summary["trials"], "stats": {
+            "n_trials": summary["trials"], "n_errors": summary["errors"] + summary["timeouts"],
+            "evals": {summary["kind"]: {"metrics": [{"mean": summary["mean_reward"],
+                                                     "pass_at_k": summary["pass_at_k"]}],
+                                        "n_trials": summary["scored"]}},
+        },
+    })
+    with open(os.path.join(job_dir, "scorecard.html"), "w", encoding="utf-8") as fh:
+        fh.write(render_html(summary, trials, tasks, compare, baseline_id, note))
+
+
 def write_job(cfg: JobConfig, job: EvalJob) -> dict:
     trials = [t.public() for t in job.trials]
     summary = summarize(cfg, job.trials, job.budget, job.started_at, job.finished_at, job.stopped_for_budget,
                         job.frozen)
     gap = LOW_SIGNAL_GAP.get(cfg.kind, 1e-9)
     tasks = aggregate_tasks(trials, gap)
-    compare = None
-    if cfg.compare:
-        compare = compare_jobs(load_trials(cfg.reports_dir, cfg.compare), trials, gap)
-        summary["compare_result"] = {k: v for k, v in compare.items() if k != "rows"}
+    compare = compare_with_baseline(cfg.reports_dir, cfg.compare, trials, gap, summary)
     job_dir = job.job_dir
     os.makedirs(job_dir, exist_ok=True)
-    with open(os.path.join(job_dir, "trials.jsonl"), "w", encoding="utf-8") as fh:
-        fh.writelines(json.dumps(t, sort_keys=True) + "\n" for t in trials)
-    _write_json(os.path.join(job_dir, "job.json"), {**summary, "task_results": tasks, "trial_results": trials,
-                                                     "compare": compare})
     # Harbor-style job files next to the trial directories.
     _write_json(os.path.join(job_dir, "config.json"), {
         "job_name": cfg.job_id, "agents": [{"name": cfg.group, "variant": cfg.variant, **job.frozen}],
         "datasets": [{"path": cfg.bank, "kind": cfg.kind}], "n_concurrent_trials": cfg.concurrency,
         "n_attempts": cfg.repeats, "budget_usd": cfg.budget_usd,
     })
-    _write_json(os.path.join(job_dir, "result.json"), {
-        "id": cfg.job_id, "started_at": summary["started_at"], "finished_at": summary["finished_at"],
-        "n_total_trials": summary["trials"], "stats": {
-            "n_trials": summary["trials"], "n_errors": summary["errors"] + summary["timeouts"],
-            "evals": {cfg.kind: {"metrics": [{"mean": summary["mean_reward"], "pass_at_k": summary["pass_at_k"]}],
-                                 "n_trials": summary["scored"]}},
-        },
-    })
-    with open(os.path.join(job_dir, "scorecard.html"), "w", encoding="utf-8") as fh:
-        fh.write(render_html(summary, trials, tasks, compare, cfg.compare))
+    write_job_files(job_dir, summary, trials, tasks, compare, cfg.compare)
     _write_json(os.path.join(cfg.reports_dir, "evals", "latest.json"), summary)
     with open(os.path.join(cfg.reports_dir, "evals", "history.log"), "a", encoding="utf-8") as fh:
         fh.write(f"{summary['finished_at']} {cfg.job_id} kind={cfg.kind} variant={cfg.variant} tasks={summary['tasks']} "
                  f"trials={summary['trials']} scored={summary['scored']} mean={summary['mean_reward']} "
                  f"pass@k={summary['pass_at_k']} cost={summary['cost_usd']} status={summary['status']}\n")
     return summary
+
+
+RESCORED_REASON = "re-scored from verifier/reward.txt after the job closed"
+
+
+def patch_rescored_trials(job_dir: str, trials: list[dict]) -> int:
+    """Give every trial that ended without a reward (and was dispatched) the reward its
+    trial directory now holds in verifier/reward.txt, the way a re-score after the job
+    writes it; returns how many trials changed. A trial whose directory has no reward
+    file keeps its state."""
+    patched = 0
+    for t in trials:
+        if t.get("reward") is not None or t.get("status") == SKIPPED:
+            continue
+        pattern = os.path.join(job_dir, "trials", glob.escape(t["trial_id"]) + "__*", "verifier", "reward.txt")
+        hits = sorted(glob.glob(pattern))
+        if not hits:
+            continue
+        with open(hits[-1], encoding="utf-8") as fh:
+            lines = [ln.strip() for ln in fh if ln.strip()]
+        try:
+            reward = float(lines[-1])
+        except (ValueError, IndexError):
+            continue
+        t["reward"] = max(0.0, min(1.0, reward))
+        t["status"] = SCORED
+        t["reason"] = RESCORED_REASON
+        patched += 1
+    return patched
+
+
+def baseline_from_scorecard(job_dir: str) -> str | None:
+    """The baseline job id a page written before `compare_job` existed names in its
+    comparison heading, or None."""
+    try:
+        with open(os.path.join(job_dir, "scorecard.html"), encoding="utf-8") as fh:
+            m = re.search(r"<h2>Baseline (\S+) vs variant", fh.read())
+    except OSError:
+        return None
+    return html.unescape(m.group(1)) if m else None
+
+
+def rebuild_job(reports_dir: str, job_id: str, now: Callable[[], float] = time.time) -> dict | None:
+    """Regenerate a finished job's derived files from its trial directories (the
+    `report` mode). Trials re-scored after the job closed are counted, the task
+    aggregates, the baseline comparison and the headline fields are recomputed with the
+    same functions a job end uses, the previous page is kept as scorecard.prev.html, and
+    the new page says when it was regenerated and how many trials were re-scored in all.
+    Returns the new summary plus `rescored` (the trials this call changed), or None when
+    the job has no job.json."""
+    job_dir = os.path.join(reports_dir, "evals", job_id)
+    job_path = os.path.join(job_dir, "job.json")
+    if not os.path.isfile(job_path):
+        return None
+    with open(job_path, encoding="utf-8") as fh:
+        job = json.load(fh)
+    trials = load_trials(reports_dir, job_id)
+    rescored = patch_rescored_trials(job_dir, trials)
+    summary = {k: v for k, v in job.items() if k not in ("task_results", "trial_results", "compare")}
+    baseline = summary.get("compare_job") or baseline_from_scorecard(job_dir)
+    summary["compare_job"] = baseline
+    gap = LOW_SIGNAL_GAP.get(summary.get("kind"), 1e-9)
+    tasks = aggregate_tasks(trials, gap)
+    summary.update(headline(trials, tasks, bool(summary.get("stopped_for_budget"))))
+    compare = compare_with_baseline(reports_dir, baseline, trials, gap, summary)
+    stamp = iso(now())
+    # The page and job.json carry the total of trials re-scored since the job closed, so a
+    # second report over the same directories writes the same files again.
+    rescored_total = sum(1 for t in trials if t.get("reason") == RESCORED_REASON)
+    summary["regenerated"] = {"at": stamp, "rescored_trials": rescored_total}
+    page = os.path.join(job_dir, "scorecard.html")
+    if os.path.isfile(page):
+        with open(page, encoding="utf-8") as src, open(os.path.join(job_dir, "scorecard.prev.html"), "w",
+                                                       encoding="utf-8") as dst:
+            dst.write(src.read())
+    note = (f"Regenerated {stamp} from the trial directories: {rescored_total} trial(s) re-scored after the job "
+            f"closed. The previous page is kept as scorecard.prev.html.")
+    write_job_files(job_dir, summary, trials, tasks, compare, baseline, note)
+    return {**summary, "rescored": rescored}
+
+
+def parse_report_args(argv: list[str]) -> argparse.Namespace:
+    p = argparse.ArgumentParser(prog="eval_run.py report",
+                                description="rebuild a finished job's files and scorecard from its trial directories")
+    p.add_argument("job_id")
+    p.add_argument("--reports", default=DEFAULT_REPORTS)
+    p.add_argument("--quiet", action="store_true")
+    return p.parse_args(argv)
+
+
+def report_main(argv: list[str]) -> int:
+    args = parse_report_args(argv)
+    log = (lambda s: None) if args.quiet else (lambda s: print(s, file=sys.stderr, flush=True))
+    summary = rebuild_job(args.reports, args.job_id)
+    if summary is None:
+        log(f"no job {args.job_id} under {os.path.join(args.reports, 'evals')} (job.json missing)")
+        return 2
+    cr = summary.get("compare_result") or {}
+    paired = (f", paired Δ {cr['paired_delta_mean']} CI {cr['paired_delta_ci95']} over {cr['tasks_compared']} task(s)"
+              if cr else "")
+    print(f"job {args.job_id}: report rebuilt — {summary['rescored']} trial(s) re-scored, scored "
+          f"{summary['scored']}/{summary['trials']}, mean reward {summary['mean_reward']}, pass@k "
+          f"{summary['pass_at_k']}{paired}; {os.path.join(args.reports, 'evals', args.job_id, 'scorecard.html')}")
+    return 0
 
 
 # --------------------------------------------------------------------------- main
@@ -1303,7 +1462,10 @@ def select_retry(tasks: list[Task], previous: list[dict],
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = parse_args(sys.argv[1:] if argv is None else argv)
+    raw = sys.argv[1:] if argv is None else argv
+    if raw and raw[0] == "report":
+        return report_main(raw[1:])
+    args = parse_args(raw)
     log = (lambda s: None) if args.quiet else (lambda s: print(s, file=sys.stderr, flush=True))
     now = dt.datetime.now(dt.timezone.utc)
     job_id = args.job_id or make_job_id(args.kind, args.variant, now)
