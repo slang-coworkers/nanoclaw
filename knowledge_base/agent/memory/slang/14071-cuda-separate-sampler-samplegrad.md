@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14071: CUDA/PTX separate-sampler SampleGrad rejected while separate-sampler SampleLevel drops the sampler"
-description: "Human request (minco3) 10-29: CUDA separate-sampler SampleGrad is E36107 while SampleLevel drops s. Preferred fix reverses jkwak-work's #13559 ruling. PARKED for jkwak-work (assignee) on A/B/C since triage comment 6591886780 (11-03); re-check t-35ef08 11-10 00:10Z. Owns spin-outs #14073 (items 1-3 merged in #14079, F4 open) and #14083 (parked)."
+description: "Human request (minco3) 10-29: CUDA separate-sampler SampleGrad is E36107 while SampleLevel drops s. Preferred fix reverses jkwak-work's #13559 ruling. PARKED for jkwak-work (assignee) on A/B/C since triage comment 6591886780 (11-03); re-check t-35ef08 11-10 00:10Z. Owns spin-outs #14073 (items 1-3 merged in #14079; closed 11-06 via #14079 + #14388) and #14083 (parked)."
 tags: [cuda, texture, samplegrad, r6, maintainer-decision]
 ---
 
@@ -24,14 +24,14 @@ follow-up; this issue files the inverse. Options for the maintainer: (A) extend 
 #13559 ruling), (B) document the asymmetry (the issue's alternative), (C) make `Sample`/`SampleLevel` consistent
 with the ruling (likely breaking for existing CUDA users).
 
-## Current state (11-03 00:15Z)
+## Current state (11-06 21:20Z)
 
 | item | state |
 |---|---|
 | #14071 | OPEN, assignee jkwak-work, human-triaged 11-02 (label `optix`, Type=Bug). Bot triage comment [6591886780](https://github.com/shader-slang/slang/issues/14071#issuecomment-6591886780) posted 11-03 00:15Z at master 96a728c85. **PARKED** on the A/B/C call. |
 | re-check | triager one-shot `t-35ef08`, 11-10 00:10Z: reports a maintainer reply to Main, posts nothing otherwise, dispatches no fixer. |
-| #14073 (F1–F4 spin-out, bot-filed) | items 1–3 MERGED in [#14079](https://github.com/shader-slang/slang/pull/14079) as `9b46bca644` (11-02 21:21Z, jkwak-work). OPEN for F4 (Gather offset dropped on purpose at :5055) — maintainer call. Status 5-bullet [6588878093](https://github.com/shader-slang/slang/issues/14073#issuecomment-6588878093). |
-| #14083 (G2 spin-out, bot-filed) | `[CudaKernel]`/`[CudaDeviceExport]` skip `validateEntryPointCapabilities`, so unavailable intrinsics compile to an empty body. Parked with jkwak-work; no bot fixer. |
+| #14073 (F1–F4 spin-out, bot-filed) | **CLOSED 11-06 21:18Z.** Items 1–3 in [#14079](https://github.com/shader-slang/slang/pull/14079) (`9b46bca644`); item 4 (option (a), jkwak-work [6691067713](https://github.com/shader-slang/slang/issues/14073#issuecomment-6691067713)) in [#14388](https://github.com/shader-slang/slang/pull/14388) (`b85caf9285`). Deferred nits kept in `remedy-14388-r1.patch`. |
+| #14083 (G2 spin-out, bot-filed) | `[CudaKernel]`/`[CudaDeviceExport]` skip `validateEntryPointCapabilities`, so unavailable intrinsics compile to an empty body. Parked with jkwak-work; no bot fixer. Addendum [6692697361](https://github.com/shader-slang/slang/issues/14083#issuecomment-6692697361) (11-06): statements after the unsupported call are deleted too. |
 
 **All three issues belong to this chain:** an `issue_opened` / comment webhook on #14073 or #14083 needs no new
 dispatch; route it to chain session `sess-1793318187530-57d4wk`.
@@ -51,8 +51,9 @@ Separate `Sample` (hlsl.meta.slang ~:2979), `SampleLevel` (~:4221) and `Gather*`
 - **No master-merge push on an approved BEHIND PR:** it can dismiss the approval and restart CI; pull_request CI builds
   the merge ref and the merge queue handles BEHIND.
 - **Never cancel a yielded bot CI run:** `retry-yielded-bot-ci.py` rejects runs with a cancelled non-marker job, so they
-  can't be retried (shared learning filed 10-30). The 10-30 fleet-wide `falcor-ci` deadlock is in the history.
+  can't be retried (shared learning filed 10-30). The 10-30 fleet-wide `falcor-ci` deadlock is in the #14073 log.
 - Bundle verified side findings into **one** bot issue; filing a verified issue isn't gated.
 
-Dated history (routing, triage, F1–F4 verification, #14079 rounds, merge, comment post): [[slang/14071-cuda-separate-sampler-history.md]].
-New dated entries go to the history file, not here.
+Dated history (routing, triage, comment post, #14083): [[slang/14071-cuda-separate-sampler-history.md]]. The closed #14073 spin-out
+(F1–F4 verification, #14079 and #14388 rounds, the 10-30 `falcor-ci` deadlock): [[slang/14073-cuda-gather-spinout-history.md]].
+New dated entries go to the #14071 history file, not here.

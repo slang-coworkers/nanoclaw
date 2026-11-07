@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14054 — Metal compareExchange emits one weak CAS, so a spurious failure reads as success
-description: "Human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z. Metal kIROp_AtomicCompareExchange (and the texture-atomic branch) emits a single atomic_compare_exchange_weak_explicit; HLSL semantics are strong. Metal twin of #13917/#13918 (WGSL). Triaged 22:08Z: emit reproduced, premise CONTESTED (MSL 4.1 spec text is strong). Park 5-bullet POSTED 11-02 21:56Z (issuecomment-6589472862), Type=Bug, assignee jkwak-work (set by jhelferty-nv 18:40Z). Awaiting jkwak-work harden/no-harden; one-shot re-check t-c62394 11-09 22:00Z."
+description: "Human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z. Metal kIROp_AtomicCompareExchange (and the texture-atomic branch) emits a single atomic_compare_exchange_weak_explicit; HLSL semantics are strong. Metal twin of #13917/#13918 (WGSL). Triaged 22:08Z: emit reproduced, premise CONTESTED (MSL 4.1 spec text is strong). Park 5-bullet POSTED 11-02 21:56Z (issuecomment-6589472862), Type=Bug, assignee jkwak-work (set by jhelferty-nv 18:40Z). Awaiting jkwak-work harden/no-harden. 11-06 22:58Z the reporter offered to send the #13918-style PR themselves if jkwak-work agrees, so no bot fix. Relayed to the triager; re-check t-c62394 11-09 22:00Z."
 tags: [metal, atomics, target-emit, r6]
 ---
 
@@ -47,6 +47,21 @@ unchanged on master 9b46bca64. Next: jkwak-work decides whether to harden; if ye
 on this thread. The triager's one-shot re-check **t-c62394** is verified (session `sess-1793656623666-ai7h11` on
 `system:tasks:t-c62394`). It fires 2026-11-09 22:00Z. The R6 hold was stale (retired 11-02, see Core Memory), so the 4-day delay
 on this post was an artifact of that rule.
+
+**11-06 22:58Z: reporter comment** (issuecomment-6697884120, not an @nv-slang-bot mention). albertrodriguezclo argues for hardening:
+the MSL name and AIR `cmpxchg weak` allow spurious failure in LLVM terms, a hardware stress test can't disprove it, and the
+#13918 loop is free when the CAS is strong. They note that #14210 (merged 11-05 as 37fc7aa7d, closes #14060) sends
+`Atomic<float>.compareExchange` through the same emit site, so the loop must compare bits (`as_type<uint>`). **They offer to send
+the PR themselves "if @jkwak-work agrees".** Live state at 23:0xZ: assignee jkwak-work, no labels, no author PR yet. I relayed
+the comment verbatim to the triager owner session `sess-1793310920091-1zt46g` on the canonical thread, with this rule: no bot fix
+while the author's offer stands, and the bot posts only a short delta if one is warranted.
+
+**11-06 23:13Z: the triager posted a delta** (issuecomment-6698143860; I verified it live). The bot stands down in favor of the reporter's PR and
+confirms that the loop needs a bitwise compare (`as_type<uint>`). The decision stays with jkwak-work. The emit site is now `slang-emit-metal.cpp:509-553` @ 442487688.
+⚠️ **Triager correction to its 10-29 triage:** −0.0 vs +0.0 does NOT spin. The in/out `expected` becomes −0.0, so the retry
+**stores**: a success against bits the caller never passed. A NaN comparand exits early and can lose the store. Both are fixed by
+comparing bits. I had relayed the wrong "spins forever" claim to the dashboard on 10-29, and corrected it 11-06.
+Re-check `t-c62394` (11-09 22:00Z) now looks for a reporter PR that compares bits, or a jkwak-work reply. It goes to the fixer only if jkwak-work asks the bot or the reporter withdraws.
 
 **Open / resume on:** a maintainer reply after the 11-02 post; an author fix PR; or an operator go-ahead to harden it now
 (dispatch the memo's fixer brief to slang-fixer on this thread).

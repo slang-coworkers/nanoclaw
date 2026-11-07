@@ -123,6 +123,9 @@ pinned nudge acked in under a minute.
     PR is and what it touches, never what it fails to cover: I read #14170's diff and wrote "no `RWBuffer<float>`/half",
     but its `isTextureAccess` check includes `RWBuffer`. The fixer's 14-probe matrix corrected me in 3 min, and the
     parent deferred to #14170 at 12:21Z.
+    Tick 329 hit it on a fresh chain: minco3 opened #14379 (`Fixes #14378`) 20 min after our triage offered them the PR, inside
+    the triager's 24 h window, and the record never learned of it. Its `assigned` event at the same second has
+    `assigner=github-actions[bot]` (auto-assign of the requested reviewer), which is not a maintainer self-assign (rung 4).
 
 17. **The operator's Continue is recorded but never takes** (tick 324, #13685 fixer `yiuh5a`). The dashboard Continue at
     11-03 11:24Z (and a second `cost_override` row at 18:11Z) set the ledger episode `cst-ioav1ri` to `continued`, but
@@ -149,3 +152,14 @@ Typical outcome: every pinned nudge above acked within 1–3 min.
     gh-issue thread>)` landed in that exact session in 1 min (slangpy#1260, `z557lh`), with no self-loop to the legacy
     null-thread session — the pin wins when the cron session's auto in_reply_to has no source session.
 
+19. **A relay or webhook that never lands** (tick 330, 11-06 22:48–23:01Z). scan reads Main's `out` relay as "us acted", but
+    the target never received it. Two Main sessions whose only inbound was a webhook relayed maintainer/reporter input to a
+    **stopped** triager session on the canonical thread (#14036 `acyb6s`, #14057 `axf4gg`): no `in` row ever appeared there
+    and no new session was minted. Separately, a reporter comment on #14048 arrived 4 s after the mapped fixer's [Report] and
+    never reached it (end-of-turn race), and #14194's pr-mapping pointed at a **closed** one-shot task session, so its webhook
+    was dropped. Detectors: `tickNNN/relaycheck.py` (each Main `out` relay since the last tick that carries a comment id →
+    is that id in an `in` row of a triager/fixer/reviewer on the same thread?) and `tickNNN/deliv.py comments-since.txt
+    <since>` (each human comment from the repo-wide `issues/comments?since=` feed → is its id in the mapped/thread session?).
+    Ignore hits whose only carrier is your own re-delivery. Fix: re-send the original relay text verbatim, pinned
+    (`target_session_id` + `in_reply_to=<the cron session's task row>`); all 3 landed in ≤1 min and were acted on in ≤3 min.
+    A closed-session pr-mapping needs an operator `ncl pr-mappings remap`.

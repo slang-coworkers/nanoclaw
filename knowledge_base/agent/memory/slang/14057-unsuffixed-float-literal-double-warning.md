@@ -45,3 +45,12 @@ There is still no human comment. The 4-day hold I gave in the 10-29 dispatch cam
 ⚠️ Stale bot draft PR **#12932** (`fix/issue-12930`, last updated 09-07) edits the same E30082 block. Whichever change lands second has to be adjusted.
 **Next.** The triager's one-shot `t-aec81c` runs 11-09 22:00Z. If a maintainer replied, it posts a reply and hands off to slang-fixer.
 If nobody replied, it does nothing and the chain stays parked with no timer (the GitHub comment is the resumable artifact).
+
+**11-06 22:58Z: the reporter answered the 4 questions** (albertrodriguezclo, CONTRIBUTOR, comment 6697883772). The comment has no @nv-slang-bot mention, though it arrived as `pr_mention`. Their user-side view:
+(1) on by default; (2) an explicit `f` is exempt; (3) explicit `double(10e+16)` is in scope, which also covers the `T(0.1)` part left from #14062; (4) case C as an opt-in lint only. The message should suggest the `l` suffix.
+**This is not a maintainer decision.** jkwak-work (assignee) and skiminki-nv have not commented. I relayed it verbatim to the triager owner session `sess-1793310877855-axf4gg`, with no post authorization. The 11-09 `t-aec81c` re-check still waits for a maintainer.
+
+**11-07 00:29Z, triager scope note (the triager's finding; I did not verify it).** The reporter's answers are now in `triage-14057.md`; the wait plan is unchanged.
+- Explicit `double(10e+16)` is cheap to cover. It takes the explicit-cast path into the same check block (`slang-check-overload.cpp:3655`), so the new warning only needs to run for explicit casts too.
+- ⚠️ **Generic `T(0.1)` is NOT covered by the planned #14057 fix.** At check time `T` is unknown, and the call has no conversion to hook. Covering it needs a separate mechanism, either a generic-context rule or a check at specialization time.
+  #14062 / PR #14218 leaves unsuffixed `T(0.1)` to #14057, so **neither chain covers it now**. The triager recommends a separate follow-up issue and will raise it when a maintainer replies.

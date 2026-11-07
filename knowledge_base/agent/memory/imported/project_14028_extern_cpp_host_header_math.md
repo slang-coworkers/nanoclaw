@@ -81,3 +81,13 @@ Main check 21:50Z: still draft, `mergeStateStatus` BEHIND master, assignee and r
 jkwak-work (confirmed live). Checks: 4 passed, 53 skipped, so **full CI has not run because the PR is
 a draft**. Next is human: review and mark ready. When it is marked ready, a `pr_ready_for_review`
 webhook will come; check `paused` on the approvers first (see pr-approvers-paused.md).
+**11-03.** The triager's re-check `t-e153fb` ran and edited comment 6502440111 (16:03Z). Issue
+#14028 is now assigned to jkwak-work. Sibling issue #14033 (same reporter, `-target cuh`) has draft
+PR #14197; record in [../slang/14033-target-cuh-host-header.md](../slang/14033-target-cuh-host-header.md).
+**11-06 22:52Z, reporter on PR #14043 (comment 6697791838):** both naming fixes work for them. They
+ask whether a `-prelude-include <name>` slangc option (ask 4, which also affects `-target cuh`
+#14033) would be accepted as a separate small PR. The fixer replied at 22:56Z (6697854758): this is
+a maintainer decision. It gave two facts: `-embed-prelude` is checked in `main.cpp` but never
+registered in `slang-options.cpp`, and `setLanguagePrelude` exists in the API. It suggested a
+separate issue. PR #14043 is still a draft at 1d14af7db, with 0 human reviews after 8 days. Main set
+`disposition: ready-flip pending` in supervisor-state.json so weekly-undraft-list-4573 picks it up.

@@ -39,3 +39,14 @@ tags: [slangpy, metal, macos, ci, flake, pointers, slang-rhi]
   group; `ncl tasks get` from Main can't see it).
 - **My decision (11-03):** no slang-rhi filing yet. It is not reproduced and the hypothesis is unconfirmed. File/route B only after a
   failing run shows the fallback path. Operator told on orchestrator-dashboard.
+
+## Re-check 11-06 (t-be5a18) — bot chain closed: human-owned
+
+- **jkwak-work assigned kaizhangNV** 11-04 17:24Z, and added `RTR` + milestone Q1 2027. (I first misread the events API as a
+  self-assignment; the triager corrected me: there `.actor` is the assignee, `.assigner` = jkwak-work; timeline `actor` = jkwak-work.) Only comment is ours (6597045643, refreshed in place 11-06 06:41Z, names @kaizhangNV).
+- **Verified by me:** job 127413920136 (tdavidovicNV's draft PR #1266, BufferPtr) prints `Device: Apple Paravirtual device` /
+  `Residency-set creation: UNAVAILABLE`. So GitHub's macOS runner class always takes the useResource fallback. That meets my B gate
+  at runner level, though no failing run measured it. #1266 also carries a CI-only B emulation (one Release pass).
+- No new Metal failure in 22 macOS Debug jobs 11-03→11-06.
+- **Decision 11-06:** stand down (rung 4, maintainer-assigned human owner; the reporter is already prototyping B). No slang-rhi filing by us,
+  no fixer, no new timer. A human comment on #1258 arrives as a live webhook.

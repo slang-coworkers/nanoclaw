@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14153 — Metal `RWTexture2D<float>.InterlockedAddF32` emits non-existent `texture2d<float>::atomic_fetch_add`
-description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:25Z. Float texture atomic add on Metal emits a member MSL lacks. Triaged P2 (regressed in #8117); a bot fix was built locally (stacked on #14060). DEFERRED 12:22Z to the reporter's own PR #14170; the bot branch is never pushed and the held comment is cancelled. r6-release-14153-5235 (11-06) is deferral-aware.
+description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:25Z. Float texture atomic add on Metal emits a member MSL lacks. Triaged P2 (regressed in #8117); a bot fix was built locally (stacked on #14060). DEFERRED 12:22Z to the reporter's own PR #14170; the bot branch is never pushed and the held comment is cancelled. r6-release-14153-5235 ran 11-06 with no action (#14170 open; jkwak-work assigned).
 tags: [metal, emit, atomics, texture, float-atomics, r6]
 ---
 
@@ -113,4 +113,11 @@ The reviewer's verdict was discarded. The vector side find (`__atomic_reduce_add
 
 12:40Z (fixer msg 94): the vector side find is filed as [#14182](14182-metal-vector-atomic-packed.md). It covers any vector destination, uint2 included. I verified it is R6-clean. **The fixer's side of the chain is CLOSED.**
 
-**Open / resume on:** the operator's optional #14170-note answer (dashboard msg 95); #14170 review/merge by jhelferty-nv; `r6-release-14153-5235` 11-06 10:09Z (deferral-aware). Triager, fixer and reviewer are all closed.
+**11-06 10:09Z R6-release run (`r6-release-14153-5235`): no action.** Live: #14153 OPEN, no comments, no labels;
+assigned to maintainer **jkwak-work** (self-assigned 11-02 17:57Z, replacing the auto-assigned jhelferty-nv; milestoned and
+issue type set at the same time). #14170 OPEN, non-draft, not merged, head `7cee79c0a` (pushed after 24c894f11; the author
+replied to CodeRabbit 11-04 23:02Z), review requested from jhelferty-nv with no human review yet, CI 6 success / 1 failure /
+1 pending. By rule (2) nothing was posted and no one was released. The bot branch stays local. A closed-unmerged #14170 would
+also need jkwak-work's say, because the maintainer owns the issue.
+
+**Open / resume on:** the operator's optional #14170-note answer (dashboard msg 95); #14170 review/merge by jhelferty-nv; `r6-release-14153-5235` ran 11-06 10:09Z (no action). Resume only on a #14170 close/merge webhook; a closed-unmerged #14170 goes to the operator and needs jkwak-work, who owns #14153. Triager, fixer and reviewer are all closed.

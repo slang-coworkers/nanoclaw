@@ -4406,6 +4406,11 @@
 - [actions jobs filter all returns http 502 on re run](ag-1776713258088-r8pp2t/1793867735899-actions-jobs-filter-all-returns-http-502-on-re-run.md) — _ag-1776713258088-r8pp2t_
 - [maintainer github sweep bound rest merge lists at ](ag-1776713258088-r8pp2t/1793868624068-maintainer-github-sweep-bound-rest-merge-lists-at-.md) — _ag-1776713258088-r8pp2t_
 - [watch list sweep quote behind past counts at the w](ag-1776713258088-r8pp2t/1793868916939-watch-list-sweep-quote-behind-past-counts-at-the-w.md) — _ag-1776713258088-r8pp2t_
+- [slang link error undefined reference to slang crea](ag-1776713258088-r8pp2t/1793954192931-slang-link-error-undefined-reference-to-slang-crea.md) — _ag-1776713258088-r8pp2t_
+- [preserve params keeps unused spir v bindings only ](ag-1776713258088-r8pp2t/1793954197928-preserve-params-keeps-unused-spir-v-bindings-only-.md) — _ag-1776713258088-r8pp2t_
+- [ci sweep read actions artifacts via proxy find los](ag-1776713258088-r8pp2t/1793954343982-ci-sweep-read-actions-artifacts-via-proxy-find-los.md) — _ag-1776713258088-r8pp2t_
+- [github sweep merge queue commit dates mq bypass va](ag-1776713258088-r8pp2t/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md) — _ag-1776713258088-r8pp2t_
+- [master history since undercounts merges when the m](ag-1776713258088-r8pp2t/1793955732333-master-history-since-undercounts-merges-when-the-m.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4603,6 +4608,7 @@
 - [slang test exit code rule 14269 staled 80 nightly ](ag-1776919222241-zghq0h/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md) — _ag-1776919222241-zghq0h_
 - [merge queue slangpy tests can stick pending when t](ag-1776919222241-zghq0h/1793909119749-merge-queue-slangpy-tests-can-stick-pending-when-t.md) — _ag-1776919222241-zghq0h_
 - [gate recentmasterfailures n can be github side 502](ag-1776919222241-zghq0h/1793923434923-gate-recentmasterfailures-n-can-be-github-side-502.md) — _ag-1776919222241-zghq0h_
+- [mdl perf nightly read the auto bisect artifact bef](ag-1776919222241-zghq0h/1793952713959-mdl-perf-nightly-read-the-auto-bisect-artifact-bef.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4672,6 +4678,7 @@
 - [entry point push constants all start at offset 0 w](ag-1777389337838-f54d9l/1793349219262-entry-point-push-constants-all-start-at-offset-0-w.md) — _ag-1777389337838-f54d9l_
 - [raw constant data in a vk ext descriptor heap heap](ag-1777389337838-f54d9l/1793362893935-raw-constant-data-in-a-vk-ext-descriptor-heap-heap.md) — _ag-1777389337838-f54d9l_
 - [heap constants via untyped route store a ubo descr](ag-1777389337838-f54d9l/1793363112852-heap-constants-via-untyped-route-store-a-ubo-descr.md) — _ag-1777389337838-f54d9l_
+- [discord summon research deepwiki ask wiki question](ag-1777389337838-f54d9l/1793988435258-discord-summon-research-deepwiki-ask-wiki-question.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -5621,6 +5628,28 @@
 - [cuda cross site ballot sync per arm exit ballots r](ag-1780667166418-apezq5/1793941429083-cuda-cross-site-ballot-sync-per-arm-exit-ballots-r.md) — _ag-1780667166418-apezq5_
 - [e31226 static const runtime check cbuffer members ](ag-1780667166418-apezq5/1793946709533-e31226-static-const-runtime-check-cbuffer-members-.md) — _ag-1780667166418-apezq5_
 - [e31226 triage a function local static const separa](ag-1780667166418-apezq5/1793947028680-e31226-triage-a-function-local-static-const-separa.md) — _ag-1780667166418-apezq5_
+- [slang test filecheck buffer check 2 passes falsely](ag-1780667166418-apezq5/1793951018748-slang-test-filecheck-buffer-check-2-passes-falsely.md) — _ag-1780667166418-apezq5_
+- [slang default arguments that use this silently rea](ag-1780667166418-apezq5/1793951024729-slang-default-arguments-that-use-this-silently-rea.md) — _ag-1780667166418-apezq5_
+- [slang coverage reports pages budget only reports l](ag-1780667166418-apezq5/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md) — _ag-1780667166418-apezq5_
+- [local compile perf bisect without perf valgrind in](ag-1780667166418-apezq5/1793956764481-local-compile-perf-bisect-without-perf-valgrind-in.md) — _ag-1780667166418-apezq5_
+- [parked issue re checks must read issue events assi](ag-1780667166418-apezq5/1793959518362-parked-issue-re-checks-must-read-issue-events-assi.md) — _ag-1780667166418-apezq5_
+- [find a reporter s fix pr via closedbypullrequestsr](ag-1780667166418-apezq5/1793960105088-find-a-reporter-s-fix-pr-via-closedbypullrequestsr.md) — _ag-1780667166418-apezq5_
+- [reporter owned fix pr verify and report up only do](ag-1780667166418-apezq5/1793960241760-reporter-owned-fix-pr-verify-and-report-up-only-do.md) — _ag-1780667166418-apezq5_
+- [verify a merged slang metal fix with real metal ev](ag-1780667166418-apezq5/1793960493621-verify-a-merged-slang-metal-fix-with-real-metal-ev.md) — _ag-1780667166418-apezq5_
+- [fresh slang worktree submodule init needs protocol](ag-1780667166418-apezq5/1793960596905-fresh-slang-worktree-submodule-init-needs-protocol.md) — _ag-1780667166418-apezq5_
+- [wgsl enable extension checks use tint dawn node no](ag-1780667166418-apezq5/1793961570931-wgsl-enable-extension-checks-use-tint-dawn-node-no.md) — _ag-1780667166418-apezq5_
+- [parked issue re checks read the timeline not just ](ag-1780667166418-apezq5/1793981006662-parked-issue-re-checks-read-the-timeline-not-just-.md) — _ag-1780667166418-apezq5_
+- [check overlapping in flight prs by building them a](ag-1780667166418-apezq5/1793982195717-check-overlapping-in-flight-prs-by-building-them-a.md) — _ag-1780667166418-apezq5_
+- [vk location on a struct field is struct relative i](ag-1780667166418-apezq5/1793987956975-vk-location-on-a-struct-field-is-struct-relative-i.md) — _ag-1780667166418-apezq5_
+- [slang cuda why scalar static const arithmetic fold](ag-1780667166418-apezq5/1793991007472-slang-cuda-why-scalar-static-const-arithmetic-fold.md) — _ag-1780667166418-apezq5_
+- [find where a parked design issue s decision will b](ag-1780667166418-apezq5/1793991783678-find-where-a-parked-design-issue-s-decision-will-b.md) — _ag-1780667166418-apezq5_
+- [codex output review can return recall bullets that](ag-1780667166418-apezq5/1793999712599-codex-output-review-can-return-recall-bullets-that.md) — _ag-1780667166418-apezq5_
+- [wgsl groupshared reads controlling a barrier must ](ag-1780667166418-apezq5/1794005199947-wgsl-groupshared-reads-controlling-a-barrier-must-.md) — _ag-1780667166418-apezq5_
+- [bot draft prs no per pr undraft asks since the 11 ](ag-1780667166418-apezq5/1794006410026-bot-draft-prs-no-per-pr-undraft-asks-since-the-11-.md) — _ag-1780667166418-apezq5_
+- [before naming a decision owner in a parked chain n](ag-1780667166418-apezq5/1794006591876-before-naming-a-decision-owner-in-a-parked-chain-n.md) — _ag-1780667166418-apezq5_
+- [correction an msl weak cas retry loop with a value](ag-1780667166418-apezq5/1794006824951-correction-an-msl-weak-cas-retry-loop-with-a-value.md) — _ag-1780667166418-apezq5_
+- [metal getting flat texture sampler tables sdl3 fro](ag-1780667166418-apezq5/1794015012510-metal-getting-flat-texture-sampler-tables-sdl3-fro.md) — _ag-1780667166418-apezq5_
+- [building a pr head next to master in a worktree su](ag-1780667166418-apezq5/1794017216504-building-a-pr-head-next-to-master-in-a-worktree-su.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6798,6 +6827,20 @@
 - [slang binary module reload accidental cwd retry cl](ag-1780667166439-vmjrwe/1793916273877-slang-binary-module-reload-accidental-cwd-retry-cl.md) — _ag-1780667166439-vmjrwe_
 - [slang sv barycentrics pre existing gaps beyond 143](ag-1780667166439-vmjrwe/1793919322362-slang-sv-barycentrics-pre-existing-gaps-beyond-143.md) — _ag-1780667166439-vmjrwe_
 - [explain diff html owes a new dated html file every](ag-1780667166439-vmjrwe/1793931234165-explain-diff-html-owes-a-new-dated-html-file-every.md) — _ag-1780667166439-vmjrwe_
+- [slang fixer cannot close issues closing is hook bl](ag-1780667166439-vmjrwe/1793985994981-slang-fixer-cannot-close-issues-closing-is-hook-bl.md) — _ag-1780667166439-vmjrwe_
+- [slang ci every job dying at generating fiddle fidd](ag-1780667166439-vmjrwe/1793986143356-slang-ci-every-job-dying-at-generating-fiddle-fidd.md) — _ag-1780667166439-vmjrwe_
+- [slang test simple diagnostic test rows that are ex](ag-1780667166439-vmjrwe/1793988645605-slang-test-simple-diagnostic-test-rows-that-are-ex.md) — _ag-1780667166439-vmjrwe_
+- [slang varying layout make explicit field vk locati](ag-1780667166439-vmjrwe/1793999288631-slang-varying-layout-make-explicit-field-vk-locati.md) — _ag-1780667166439-vmjrwe_
+- [before building a language rule change from an iss](ag-1780667166439-vmjrwe/1793999570748-before-building-a-language-rule-change-from-an-iss.md) — _ag-1780667166439-vmjrwe_
+- [when another pr lands your fix first merge master ](ag-1780667166439-vmjrwe/1794000096615-when-another-pr-lands-your-fix-first-merge-master-.md) — _ag-1780667166439-vmjrwe_
+- [slang ci yml workflow dispatch skips all builds wh](ag-1780667166439-vmjrwe/1794006658553-slang-ci-yml-workflow-dispatch-skips-all-builds-wh.md) — _ag-1780667166439-vmjrwe_
+- [before ceding a bug to an overlapping pr run your ](ag-1780667166439-vmjrwe/1794007177309-before-ceding-a-bug-to-an-overlapping-pr-run-your-.md) — _ag-1780667166439-vmjrwe_
+- [codex output review attestation must be sha256 abs](ag-1780667166439-vmjrwe/1794008715794-codex-output-review-attestation-must-be-sha256-abs.md) — _ag-1780667166439-vmjrwe_
+- [after a container restart pip installed clang form](ag-1780667166439-vmjrwe/1794012449331-after-a-container-restart-pip-installed-clang-form.md) — _ag-1780667166439-vmjrwe_
+- [slang a legacy slang file silently becomes languag](ag-1780667166439-vmjrwe/1794014892301-slang-a-legacy-slang-file-silently-becomes-languag.md) — _ag-1780667166439-vmjrwe_
+- [wgsl barrier uniformity tint flags more than cfg c](ag-1780667166439-vmjrwe/1794016307968-wgsl-barrier-uniformity-tint-flags-more-than-cfg-c.md) — _ag-1780667166439-vmjrwe_
+- [worktree hazards origin master is shared and moves](ag-1780667166439-vmjrwe/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md) — _ag-1780667166439-vmjrwe_
+- [testing cuda prelude contraction nvrtc pass throug](ag-1780667166439-vmjrwe/1794017223810-testing-cuda-prelude-contraction-nvrtc-pass-throug.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7423,6 +7466,9 @@
 - [binary module reader cwd is an implicit source roo](ag-1780667168475-a9tac8/1793920552509-binary-module-reader-cwd-is-an-implicit-source-roo.md) — _ag-1780667168475-a9tac8_
 - [pervertex first only decoration readers are safe f](ag-1780667168475-a9tac8/1793921273376-pervertex-first-only-decoration-readers-are-safe-f.md) — _ag-1780667168475-a9tac8_
 - [when a change reads an entry point s result layout](ag-1780667168475-a9tac8/1793922992103-when-a-change-reads-an-entry-point-s-result-layout.md) — _ag-1780667168475-a9tac8_
+- [a no cuda intrinsic in a cudakernel deletes every ](ag-1780667168475-a9tac8/1793990067393-a-no-cuda-intrinsic-in-a-cudakernel-deletes-every-.md) — _ag-1780667168475-a9tac8_
+- [ownership semantics redesign prs compile the issue](ag-1780667168475-a9tac8/1794019004705-ownership-semantics-redesign-prs-compile-the-issue.md) — _ag-1780667168475-a9tac8_
+- [side find routing the 2026 10 30 hold do not file ](ag-1780667168475-a9tac8/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

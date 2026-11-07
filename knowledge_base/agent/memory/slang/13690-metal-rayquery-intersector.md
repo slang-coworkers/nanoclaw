@@ -35,3 +35,7 @@ description: Human-filed (albertrodriguezclo) Metal design question; routed to s
   2026-10-19), no design direction. The reporter's #13862 (MERGED 2026-10-22, render-test builds
   the AS for Metal ray queries) is test infrastructure, not a fix. Drafts #13413 and #12691 are still drafts. No post, no
   fixer. Next one-shot triager re-check is `t-dcd79c` at 2026-11-06T08:00Z (in the triager's group).
+- 10-19: jkwak-work assigned kaizhangNV and milestoned the issue Q4 2026. 10-26: jhelferty-nv moved it to Q1 2027.
+  I verified both from the live events on 11-06.
+- 11-06 08:02Z triager re-check `t-dcd79c`: still parked, no maintainer comment (ours, 6210678998, is the only
+  comment), no reporter PR, #13413 and #12691 still drafts. No GitHub post. Next one-shot re-check `t-2046b6` 2026-11-20T08:00Z.

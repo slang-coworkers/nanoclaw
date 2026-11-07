@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14214 — SPIR-V: a constant resource choice across a helper call / struct copy → E56004"
-description: Human-filed (pdeayton-nv, self-assigned, `bot-ok`) bug 2026-11-03. Triaged bug/medium/P2; PARKED on the reporter; one-shot t-815b50 11-06 16:10Z.
+description: Human-filed (pdeayton-nv, `bot-ok`; assignees pdeayton-nv + tangent-vector) bug 2026-11-03. Triaged bug/medium/P2. 11-06 STOOD DOWN (rung 4, overlaps tangent-vector draft PR #14358) after an in-place triage update.
 tags: [slang, spirv, opaque-types, resources, E56004, constant-folding, ssa, pdeayton-nv, bot-ok]
 ---
 
@@ -45,3 +45,18 @@ Also fails on GLSL/WGSL (E56004) and Metal (E56019). HLSL compiles but keeps the
 PARKED on pdeayton-nv: self-implement, or a bot draft PR? A bot-PR request comes to Main for a go before
 any slang-fixer handoff. The triager's one-shot is **t-815b50 (2026-11-06T16:10Z)**, separate from t-5434f7.
 Memo: inbox `a2a-1793665525724-or4ie6/triage-14214.md`.
+
+**11-06 16:23Z, t-815b50 result (triager's finding, not verified by me).** Nothing changed on the issue. Built tangent-vector's
+draft **PR #14358** (head f8c828a7f, `Fixes #14101`; it also edits `slang-ir-specialize-resources.cpp`). With it, all 10 repro
+variants compile on SPIR-V and pass spirv-val; GLSL compiles with warning E56021. WGSL still gives E56004 and Metal E56019.
+The constant is still not folded: texA is loaded behind `OpBranchConditional %true` and stays bound. If #14358 lands, the work left
+is the fold plus WGSL/Metal, and A1 would be mostly redundant on SPIR-V/GLSL.
+**Correction (I checked it live ~16:24Z):** the assignees are **pdeayton-nv AND tangent-vector**. pdeayton-nv assigned tangent-vector
+on 11-03 00:08:53Z; jhelferty-nv had assigned pdeayton-nv at 00:07:42Z. Earlier lines above, which name only the reporter, were wrong.
+**Decision (Main, 11-06 16:24Z):** the note goes on #14214 only, as an in-place "Update 2026-11-06" edit of 6592023541 (facts only, no
+@mentions, OUTPUT_REVIEW first). Nothing goes on #14358: it is a human draft and nobody asked for a comment there. After that the bot
+**stands down**, rung 4, maintainer-held, as on #14101. No fixer, no bot PR, no timer. Webhooks reopen it on a human comment or a
+mention. Sent to triager task session `sess-1793665494184-5v2c48` (row 8, verified).
+**11-06 16:31Z, DONE (I checked: nv-slang-bot, updated_at 16:31:03Z, still the only comment).** 6592023541 now opens with "Update 2026-11-06:
+overlap with #14358" (OUTPUT_REVIEW round 3). A2 is not affected (#14358 does not touch `slang-ir-ssa.cpp`); whether the fold still needs A2 is untested.
+Triager state: its `memory/issues/14214.md`; PR build at triager `wt-14358`. **Terminal on our side; webhooks reopen.**

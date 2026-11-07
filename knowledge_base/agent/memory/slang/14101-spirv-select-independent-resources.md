@@ -85,7 +85,18 @@ The repro uses SampleLevel. Still PARKED on the policy choice (tangent-vector / 
 bot-PR go-ahead; t-5434f7 covers it.
 **10-30 23:30Z, change:** when pdeayton-nv's bot-PR go-ahead lands, t-5434f7 now routes it to Main for a go before any
 slang-fixer handoff. The policy choice is recorded and reported up, with no handoff. #14102 is unchanged.
-**11-05 ~11:40Z, #14102 assignee + dashboard ask.** Live: open, 0 comments, `reproduced`, Type=Bug. **jkwak-work
-self-assigned it on 11-02 18:53:04Z** (events API; actor = assignee), so it is held under rung 4: no fixer, no bot PR
+**11-05 ~11:40Z, #14102 assignee + dashboard ask.** Live: open, 0 comments, `reproduced`, Type=Bug. **jhelferty-nv
+assigned jkwak-work on 11-02 18:53:04Z** (events API `.assigner`; corrected 11-06, I first misread it as a self-assign), so it is held under rung 4: no fixer, no bot PR
 unless jkwak-work asks. The dashboard (msg 26) asked for a triage of #14102. I answered from the existing triage (the
 bot-filed body is the triage) and did not re-dispatch the triager. t-5434f7 (11-06 16:00Z) still covers both issues.
+
+**11-06 16:03Z, t-5434f7 result — CLOSED on our side (I verified it live at ~16:05Z).** pdeayton-nv assigned
+tangent-vector to #14101 on 11-02 19:43:50Z. tangent-vector opened **draft PR #14358** "Legalize resource selections
+across independent bindings" (11-05 19:22Z, branch `codex/resource-selection-globals`, +2691/−499, body has `Fixes #14101`).
+Triager's reading of the PR (not verified by me): it expands each operand over distinct reconstruction recipes, with
+no depth limit or expansion cap; implicit-derivative ops get warnings 56020/56021. So the maintainer settled the policy
+question by implementing it. No bot PR, no slang-fixer handoff, no bot comment. #14102: 0 comments, jkwak-work owns it,
+not covered by #14358 (no ConstantBuffer). Bot stands down on both. **PR #14358 is a human PR: its webhooks need no
+dispatch unless they carry an @nv-slang-bot mention; the approvers are paused.** Re-open only on a human comment or a mention.
+
+**11-06 23:22Z: #14358 left draft.** tangent-vector flipped it ready at head `72a8a387` and requested review from dshreiner-nv and team dev. The `pr_ready_for_review` webhook was not forwarded, because slang-pr-approver is paused. It is queued in `data/approver-pause-queue.md`. Nothing for the bot to do.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13549 — bump pinned LLVM to drop the ARM COFF patch
-description: OPEN, blocked upstream. llvm/llvm-project#229712 MERGED to main 10-26 (811ba37d61f4), but no LLVM release tag has it yet (not 23.1.4) and no 23.x backport has been requested. Maintainer jkwak-work owns it (Q4 2026). One-shot re-chase rechase-slang-13549-r1-a169 at 11-06 09:00Z, retargeted to look for a release tag.
+description: OPEN, blocked upstream. llvm/llvm-project#229712 MERGED to main 10-26 (811ba37d61f4), but no LLVM release tag has it yet (not 23.1.5, checked 11-06) and no 23.x backport has been requested. Maintainer jkwak-work owns it (Q4 2026). Next one-shot re-chase rechase-slang-13549-r2-8b4e at 11-20 09:00Z (ordinal 2 of 3).
 tags: [slang, dependencies, llvm, parked-upstream]
 ---
 
@@ -33,3 +33,9 @@ backport of llvm/llvm-project#229712, and the issue asks us to bump the pin and 
 - **Tooling:** `gh api` REST to llvm/llvm-project returns 401 in this fleet (the token is scoped to
   shader-slang). GraphQL (`gh pr view`), `git ls-remote`, and treeless clones work.
 - **Operator decision about pinging LLVM reviewers (asked 10-09):** moot now that it has merged.
+- **r1 re-chase (11-06):** still no release has the fix. `llvmorg-23.1.5` is new (23.1.0–23.1.5 all
+  lack `read32AArch64LdrAddend`), the `release/23.x` head `2875c607` lacks it, and no `llvmorg-24.*`
+  tags exist. #229712 still has no milestone or labels. #13549 has had no human comment since 10-28,
+  so nothing was posted. Next: one-shot `rechase-slang-13549-r2-8b4e` (11-20 09:00Z, ordinal 2 of 3),
+  which also routes any new human comment. `/workspace/extra/ephemeral` is read-only, so the
+  blobless probe clone goes under `/tmp`.

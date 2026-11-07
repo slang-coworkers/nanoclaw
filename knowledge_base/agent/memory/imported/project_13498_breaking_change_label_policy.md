@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13498_breaking_change_label_policy
-description: "slang#13498 (jkwak-work, 10-07, self-assigned): write a policy for what counts as a 'breaking change' for PR labels, prompted by the SHA1->SHA256 module-hash PR dispute. Maintainer governance decision with open questions; reassigned to swoods-nv 10-07 20:54Z -> held: NO dispatch, NO bot post. The issue misses that CONTRIBUTING.md already has a definition."
+description: "slang#13498 (jkwak-work, 10-07, self-assigned): write a policy for what counts as a 'breaking change' for PR labels, prompted by the SHA1->SHA256 module-hash PR dispute. Maintainer governance decision with open questions; reassigned to swoods-nv 10-07, tangent-vector self-assigned 10-14; jkwak posted the CONTRIBUTING.md pointer 11-06 -> held: NO dispatch, NO bot post. The CONTRIBUTING.md-definition offer is retired (jkwak posted it)."
 ---
 
 # slang#13498: breaking-change label policy
@@ -29,6 +29,15 @@ jkwak-work: *"Assigning to @swoods-nv to discuss the topic when she is back."* L
 (no edit). Assignee is now swoods-nv only. The comment @-mentions a human, not @nv-slang-bot. Same handoff as #13457.
 Held again, nothing dispatched or posted. The CONTRIBUTING.md pointer stays an operator-only offer.
 
+**Later state (read 11-06):** `Dev Opened` label removed by jkwak 10-08 01:17Z. tangent-vector self-assigned 10-14
+17:28Z, so assignees are tangent-vector + swoods-nv (a maintainer self-assign is a hold under rung 4).
+
+**11-06 18:00Z, `pr_mention` ([6691760809](https://github.com/shader-slang/slang/issues/13498#issuecomment-6691760809)).**
+jkwak-work quoted the CONTRIBUTING.md "Labeling Breaking Changes" definition and its link: *"If needed, we should edit
+this while the discussion is still going. But I think it looks fine as it is."* Live re-read matched the payload. No
+@nv-slang-bot mention, no ask of the bot. The maintainer posted the fact I had held as an operator-only offer, so **that
+offer is retired; never post it.** Held, nothing dispatched or posted.
+
 **Resume** on a comment that mentions @nv-slang-bot (for example, asking for the doc PR once the policy is
-agreed), or if the operator says to post the CONTRIBUTING.md pointer. A mention arrives as a webhook, so no
+agreed). A mention arrives as a webhook, so no
 re-chase timer is needed.

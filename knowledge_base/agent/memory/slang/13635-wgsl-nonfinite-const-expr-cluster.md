@@ -73,4 +73,6 @@ const-over-override fix. I asked the #14285 fixer (via the triager) to compare t
 **11-04 04:37Z: overlap confirmed** (fixer diff read). #14285 and #13816 both add the same `isSpecConstRateType` early return
 in `isStaticConst` (`slang-emit-wgsl.cpp:849`), each with a contract comment. The hunks are adjacent, so **whichever PR
 lands second gets a merge conflict** and drops its duplicate. #13816's other changes (asfloat NaN/Inf, peephole, prelude
-helpers) do not touch #14285. #14285's description cites it. Tell #13816's owner when it next wakes.
+helpers) do not touch #14285. #14285's description cites it. ~~Tell #13816's owner when it next wakes.~~ **Done 11-06 23:05Z:** heads-up pinned to owner `gj2lyx` (thread `gh-issue-shader-slang/slang-13635`, landed as its seq 112): on the next master merge, if #14285 has landed, keep master's early return and drop the duplicate.
+
+**11-06 23:04Z, fixer `[Report]` (I checked live):** the reporter asked for a maintainer review of #13846. The fixer posted a status reply (6697971092) that names the shepherd jkwak-work as plain text, with no @-ping. #13846 @c39cbc7 is OPEN, has no maintainer review, and hasn't changed since 10-25. #13816 is a draft @aaff456, and #13669 is a draft @c83888e. Both wait on maintainer review. The fixer's one-shot `pr13816-adopt-13846-2cb3` is 11-07 16:00Z. The park is unchanged and maintainer-owned.

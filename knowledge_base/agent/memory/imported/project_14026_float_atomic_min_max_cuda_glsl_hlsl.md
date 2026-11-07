@@ -68,3 +68,17 @@ fails in NVRTC (there is no `atomicExch(double*)`), on master as well; added to 
 **11-02 14:00Z re-check (timer 6eb1), checked live:** there has been no human activity since 10-30. All three PRs are OPEN drafts with 0 reviews: #14046 c416ff9 (kaizhangNV requested), #14047 0a3a415, and #14048 eded196 (jkwak-work requested).
 CI is skipped (53 runs) and merge state is BEHIND with no conflicts. The issue has no new comments after the bot's 10-30 01:20Z reply. The fixer `vskx9v` has been idle since 10-30 01:50 and has nothing pending.
 I sent the operator one line on orchestrator-dashboard (msg 11) asking whether the fixer should ping the reviewers. The **final** one-shot timer `recheck-14026-maintainer-d880` is set for 11-09 14:00Z. It schedules nothing further, and the chain then rests on the /supervise-issues parked-chain register.
+
+**11-06/07, checked live:** the reporter wrote on #14048 (comment 6697863141, 11-06 22:56Z): the branch conflicts with master, they will benchmark
+on an RTX 4060 Ti once it is updated, and on the open question they would take the `red` form for `reduceMin/Max`. The reporter is NOT a maintainer.
+The bot replied at 11-07 00:18Z (6699447618) that it would merge master (no rebase) and add `red` for reductions as a separate commit. That reply
+said "float/double compile to red". The fixer's 00:22Z progress note says **float only**: double stays exact because 64-bit min/max remains `atom`.
+Reductions measured 2.2–3.4× faster. The fixer resolved one hlsl.meta doc conflict in the merge; a Debug build is running, then GPU tests, push and [Report].
+I asked the fixer to keep the reduce relaxation marked as an open maintainer decision and to correct the "float/double" claim on GitHub.
+No reviews yet from kaizhangNV/jkwak-work. Final timer `recheck-14026-maintainer-d880` (11-09 14:00Z) is still pending.
+
+**11-07 00:47Z fixer [Report], checked live:** #14048 is at head **ff67e14** (master merged as 6239caebf, no rebase, plus the revertible commit ff67e14). It is MERGEABLE, state BLOCKED, still a draft.
+The commit makes float-only `reduceMin/Max` skip the NaN post-check (SASS `RED`+`REDUX`, 2.0–3.4×). Double, returning min/max and half are unchanged. It is framed as a reviewer choice for jkwak-work/kaizhangNV.
+The 00:18Z comment was edited in place at 00:45:45Z and no longer claims float/double. CUDA suites 964/965 (known fp8-cuda-half-acc). There was no peer R3, only codex CODE_REVIEW.
+**Correction to the fixer's claim that "CI was dispatched":** CI run 42319329139 on ff67e14 is `skipped` (draft), so GitHub CI has still not tested any of the three PRs.
+The reporter will post RTX 4060 Ti numbers on this head. Final timer d880 (11-09 14:00Z) is still pending.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang-rhi#876 — in-flight command buffers retain the device
-description: External report (EvanLuo42). Fixed on main by maintainer PR #884 (10-01); #880 closed as superseded (10-27). FINAL posted 10-28; watch-only, parked on a maintainer close.
+description: External report (EvanLuo42). Fixed by maintainer PR #884; closed by skallweitNV 11-06. TERMINAL.
 tags: [slang-rhi, lifetime, refcount, handed-off, fixed-upstream]
 ---
 
@@ -20,3 +20,4 @@ tags: [slang-rhi, lifetime, refcount, handed-off, fixed-upstream]
   - Gap (a), no pending workload: still open. Gap (b), release orders: covered (device-first and device-last). Gap (c), concurrent release: partly covered. The CPU mock-object race tests in `tests/test-ref-object.cpp` were already in #884; the earlier comments missed them, and the FINAL corrects that.
   - The comment says #876 is ready to close as fixed by #884; the remaining gaps are optional follow-up tests.
   - Chain is watch-only and parked on a maintainer close. The last timer is `rechase-slang-rhi-876-fi-0ff5` (2026-11-11 09:00Z). In case (d) it does not re-arm, and webhooks deliver the close.
+- **11-06 (TERMINAL):** skallweitNV closed #876 as fixed by #884 ([cmt 6682795360](https://github.com/shader-slang/slang-rhi/issues/876#issuecomment-6682795360)). They verified it on main 30250fa: the 11 in-flight command-buffer lifetime tests pass on CPU, CUDA, D3D11, D3D12, Vulkan and WebGPU. They also said these tests do not force work to be pending at release, which is the same gap (a) the bot named. Re-chase `rechase-slang-rhi-876-fi-0ff5` is cancelled. The triager closes with a send_message only, no GitHub post. Chain done.

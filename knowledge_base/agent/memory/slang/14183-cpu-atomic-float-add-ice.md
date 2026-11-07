@@ -89,3 +89,16 @@ N1–N6 are applied; the reviewer asked for no further round. Full slang-test 11
 evidence yet. **Next: a human must click "Ready for review"** (a fixer can't, see
 [../feedback_fixers_cannot_request_reviewers.md](../feedback_fixers_cannot_request_reviewers.md)). I asked the operator on the
 dashboard ~16:08Z. The triager's [Triage Resolution] is still to come.
+
+**11-06 reporter scope ask (slang-fixer [Report], msg 92, 23:08Z; I verified both comments live at ~23:10Z).** albertrodriguezclo
+on #14189 (cmt 6697868014, 22:57Z): the E55204 is better, but #14183 needs float `add` to *work* on CPU so the kernel compiles for
+SlangPy's CPU device. They ask whether a prelude helper (CAS loop over `uint32_t`, or `std::atomic_ref` where C++20 exists) is OK in
+this PR. The fixer replied (cmt 6698054452, 23:08Z) with no code change: it's feasible (slang-rhi CPU = `host-callable` → this
+emitter; CAS loop with the existing per-compiler builtins; downstream builds use C++17, so `atomic_ref` needs a build change). It
+listed the scope questions (`double`; `sub`/`min`/`max`) and said the decision is a maintainer's. The PR stays diagnostic-only.
+- **Ownership:** #14183 is assigned to jkwak-work, milestone Q4 2026 (Fall). jkwak-work is the shepherd of #14189 and its requested
+  reviewer. No maintainer has commented on #14183, #14189 or #13705.
+- **State: PARKED on jkwak-work's scope call** (a = float add in #14189, b = follow-up PR, c = neither). On (a)/(b) the fixer
+  (`nurj2k`, PR-mapped) implements it. #14189 is still a draft at 555cf1f: **ready-flip pending**, on the weekly list
+  ([../orchestrator/undraft-asks-replaced-by-weekly-list.md](../orchestrator/undraft-asks-replaced-by-weekly-list.md)), no per-PR ask.
+- **Timer:** one-shot `recheck-14189-scope-d160`, 11-13 15:00Z. I named the decision on the dashboard at ~23:12Z.

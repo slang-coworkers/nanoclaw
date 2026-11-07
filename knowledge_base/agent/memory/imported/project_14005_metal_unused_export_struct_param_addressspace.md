@@ -89,3 +89,24 @@ After the merge: tell the triager so #14004 rebases.
 **Re-check 2026-11-02 15:00Z (`rechase-14005-draft-pr-1-203f`): no change.** #12014 is still a draft at `1b7300925` with 0 reviews
 and no comments since 10-29 14:40Z. #14005 and #11981 are open with no new comments. Operator asks (a) and (b) are still
 unanswered on the dashboard, so nothing was routed or posted. Next one-shot re-check is set for 2026-11-06 15:00Z.
+
+**Re-check 2026-11-06 15:00Z (`rechase-14005-draft-pr-2-8f3b`).** GitHub: no change. #12014 is still a draft at `1b7300925` with 0 reviews
+and no comments since 10-29. #14005 and #11981 are open with no new comments; the only event is jkwak-work adding #14005 to a milestone
+(11-02 17:52Z). The 11-04 #14004 re-check reported #12014 as BEHIND master. No operator answer on the dashboard (rows 509852–511574,
+11-01 → 11-06 14:30Z). **Both 10-29 operator asks are retired by later policy, not answered:** (a) the atomics follow-up falls under
+the 10-31 filing rule ([filing-verified-issues-policy](../orchestrator/filing-verified-issues-policy.md)), so at 15:02Z I cleared slang-triager
+(session r2506n, thread gh-issue-shader-slang/slang-14005, with `<github-post-authorized />`) to re-check it at master HEAD, dedupe, file it
+filed-only, and edit 6494735991. My title dedupe found no open issue. The triager reports back to task session 1sby2f. (b) The un-draft
+ask moved to the weekly list ([undraft-asks-replaced-by-weekly-list](../orchestrator/undraft-asks-replaced-by-weekly-list.md)); #12014 is
+**ready-flip pending** and should go on that list. Next one-shot: 2026-11-13 15:00Z.
+
+**Follow-up filed as #14384 (15:04:24Z, slang-triager r2506n; reported at 15:05Z, triager seq 41).** "Metal: atomic op through an
+`inout` parameter bound to thread-local memory emits invalid MSL instead of E41403". Re-checked at master `fef74e3c6`. Bot-filed,
+labelled `reproduced`, no assignee, no @-mentions; cites only #14005/#12014 (same repo). **#14384 is owned by this chain, so its
+`issue_opened` webhook needs no dispatch** (Main webhook session, 11-06: memory grep + live events checked, nothing routed). No fixer chain.
+
+**11-06 15:07Z, Main session 8j7q17 (the session that made the 10-29 asks).** I checked #14384 live: OPEN, Bug, `reproduced`, no links or
+mentions. I reported it to orchestrator-dashboard on thread gh-issue-shader-slang/slang-14005, closing ask (a); (b) is on the weekly
+ready-flip list. So step (1) of `rechase-14005-draft-pr-3-8140` should find the number already reported.
+Lesson: on 10-29 I escalated "file it?" to the operator from an older leaf ("the operator decides follow-up filings"), when Core Memory
+had the opposite (no go-ahead needed for a reproduced, deduped bug). Core Memory beats a leaf.

@@ -70,3 +70,7 @@ Tests go in tests/obfuscate/. Bug 2 (A vs B) will be parked on the issue for a m
 **10-30 14:31Z: [Triage Resolution].** The triager's part is closed, and the final 5-bullet was edited into bot comment 6523575616 in place. The triager re-check t-e356e3 (11-06) stays armed for bug 2, and H6 stays held.
 
 **Next.** The operator's ready flip for #14092, then maintainer review; the t-e356e3 re-check (11-06) for bug 2. Earlier plan, now done: the fixer applies the remedy, then the [Fix Report], then the operator's ready flip (fixers cannot mark a PR ready); the t-e356e3 re-check for bug 2.
+
+**11-06 10:01Z, the t-e356e3 re-check (the triager's report, which I checked live).** No comments since 10-30 and no answer to A/B/C. **The triager missed a new fact:** jhelferty-nv assigned the issue to **jkwak-work** on 11-02 18:52Z, so a maintainer owns the bug-2 decision. PR #14092 is still a draft @b5016ec80. It has 0 reviews, kaizhangNV was auto-requested for review, and it is 53 commits behind master.
+- I ruled: no bot ping (an assigned maintainer is driving it), and no new re-check task. The supervisor-state entry now carries `disposition: parked:maintainer-decision`, so `/supervise-issues` walks it.
+- #14092 is **ready-flip pending**, so it goes on the weekly list and gets no per-PR ask. When it leaves draft, dispatch the fixer to merge master (not rebase).

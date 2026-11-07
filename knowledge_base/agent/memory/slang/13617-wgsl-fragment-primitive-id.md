@@ -13,7 +13,7 @@ description: "rhendry, human-filed feature request: WGSL rejects SV_PrimitiveID 
 | #13617 | OPEN, human-filed (rhendry), `WebGPU`+`reproduced`, milestone Q4 2026 (Fall), jkwak-work assigned. |
 | PR [#13619](https://github.com/shader-slang/slang/pull/13619) | DRAFT @ b5340af7ab (Approach A), 0 GitHub reviews; internal R2 APPROVE_WITH_NITS applied. pr-mapping → slang-fixer `sess-1791954025104-jckcwj`. Full CI matrix runs only at ready. |
 | Parked on | maintainer approach confirmation; (1) `gh pr ready` = "ready-flip pending" on the weekly list (never ask per-PR, since 11-03); (2) operator file-or-leave on the SV_WaveLaneIndex/`enable subgroups;` side note — listed as pending, re-asked once (10-15), never re-ask. |
-| Follow-ups | [#13620](https://github.com/shader-slang/slang/issues/13620) (nested-struct `int` SV field E99999) and [#13622](https://github.com/shader-slang/slang/issues/13622) (global `in` SV_SampleIndex in vertex) filed, unrouted; #13622 maintainer-owned (tangent-vector, Q1 2027). |
+| Follow-ups | [#13620](https://github.com/shader-slang/slang/issues/13620) (nested-struct `int` SV field E99999) and [#13622](https://github.com/shader-slang/slang/issues/13622) (global `in` SV_SampleIndex in vertex) filed, unrouted; #13622 maintainer-owned (tangent-vector, Q1 2027). Subgroups side note filed 11-06 as [#14383](https://github.com/shader-slang/slang/issues/14383) (unrouted). |
 | Next | one-shot `rechase-13617-primitive-0dd5` (2026-11-06T10:30Z); the triager sends FINAL on merge. |
 
 Dated re-chase entries (10-15 →) live in [[slang/13617-wgsl-fragment-primitive-id-rechase-log.md]] — append new ones there, not here.

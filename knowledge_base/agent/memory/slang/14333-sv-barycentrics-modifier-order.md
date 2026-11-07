@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14333 — modifier order changes SV_Barycentrics interpolation (SPIR-V + GLSL)"
-description: Human-filed (pdeayton-nv, MEMBER/write) 2026-11-05 05:52:10Z, self-assigned 7 s later. I dispatched triage BEFORE the rung-4 assignee check (miss). Triaged P2 ready-for-fix 06:01Z; fixer held until 21:49Z, when the owner asked for a draft PR, then DISPATCHED (fixer sess-1793915411988-1yq16l).
+description: MERGED 2026-11-06 18:42Z (PR #14365 → df8b1d354, by pdeayton-nv); issue CLOSED completed. Human-filed (pdeayton-nv, MEMBER/write) 2026-11-05 05:52:10Z, self-assigned 7 s later. I dispatched triage BEFORE the rung-4 assignee check (miss). Triaged P2 ready-for-fix 06:01Z; fixer held until 21:49Z, when the owner asked for a draft PR, then DISPATCHED (fixer sess-1793915411988-1yq16l).
 tags: [slang, spirv, glsl, sv-barycentrics, interpolation, pdeayton-nv, maintainer-owned, dispatched, pr-ready]
 resource: raw/triage-14333.md
 ---
@@ -88,3 +88,8 @@ barycentric builtin from `noperspective` at any level). FILED-ONLY, and their is
 cmt 6672511124 and 6672919976. Chain state: #14365 approved + ready, merge goes to a human. Nothing pending from the bot.
 **11-06 00:09Z — #14374 issue_opened webhook** reached Main session `xz2zpd`. I checked it live: OPEN, unassigned, 0 comments, and no
 coworker session on its thread. NOT dispatched (FILED-ONLY). Fixing option B needs pdeayton-nv's or the operator's go-ahead.
+**11-06 03:22Z** — #14365 CI GREEN on 3369e5a75 (pull_request run 42130740627). The ci_failed webhook was the fixer's workflow_dispatch run 42130727318, a priority yield (wait-for-human-priority + check-ci only). Approved + green; merge goes to a human. Nothing pending from the bot.
+
+**11-06 18:42:32Z — MERGED (TERMINAL).** pdeayton-nv merged #14365 → **df8b1d354**; #14333 closed `completed` 18:42:33Z (I checked
+both live). The fixer cleaned up the worktree and sentinel. Follow-ups #14367/#14368/#14369/#14373/#14374 stay open and FILED-ONLY.
+Their webhooks are not this chain's to dispatch unless someone asks.

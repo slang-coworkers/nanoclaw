@@ -37,6 +37,7 @@ the one mount detail the spine omits.
   with the real prompt + future time in one call; read it back before quoting the id. Also: `ncl tasks update` is a write and never a probe; read a prompt back with `ncl tasks get` (`list` truncates it).
 - [Coworker timer sessions are blind to the owner](coworker-timer-session-blind-to-owner.md) - a peer's `system:tasks:*` one-shot re-reports an old answer as new; check the chain record + GitHub, reply not-actionable, never re-dispatch (#10232 11-05)
 - [Fixer reports drift to Main](fixer-fix-reports-drift-to-main.md) - slang-fixer `[Fix Report]`s often land on Main, not the handing-off triager; forward to the triager (cases 10-22→10-29)
+- [Bot cannot close issues](bot-issue-close-hook-blocked.md) - a hook blocks the bot's issue close, even as text in a grep. The coworker replies "ready to close" and the maintainer closes it. Never put a close step in a dispatch (#12897 11-06).
 - [Re-ask cap](reask-cap-park-after-final-ask.md) - operator re-ask series get one announced final ask, then park in supervisor-state.json; never re-ask indefinitely
 - [Filing verified issues](filing-verified-issues-policy.md) - reproduced+deduped shader-slang bugs are filed without operator approval; external-repo filings, scope requests and fixer fan-out are asked/reported
 - [Un-draft asks → weekly list](undraft-asks-replaced-by-weekly-list.md) - no per-PR 'may #N leave draft?' asks; maintainers flip drafts themselves; one weekly list (P0/P1 excepted)

@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_14031_metal_64bit_atomics_atomic_ulong
-description: "slang#14031 (albertrodriguezclo, external, 10-29): Metal 64-bit Interlocked*/Atomic<uint64_t> emitted atomic_fetch_*_explicit on atomic_ulong (invalid MSL). FIXED in draft PR #14044 @b360ff2a7 (11-05 master merge, check moved to checkUnsupportedInst) (R1 APPROVE_WITH_NITS; shepherd jhelferty-nv); chain closed 20:07Z, draft-vs-ready asked of the operator; ready-flip pending (weekly list); capability atom open for maintainers. Same child-tier misroute to Main as #14016."
+description: "slang#14031 (albertrodriguezclo, external, 10-29): Metal 64-bit Interlocked*/Atomic<uint64_t> emitted atomic_fetch_*_explicit on atomic_ulong (invalid MSL). FIXED in draft PR #14044 @b360ff2a7 (11-05 master merge, check moved to checkUnsupportedInst) (R1 APPROVE_WITH_NITS; shepherd jhelferty-nv); chain closed 20:07Z, draft-vs-ready asked of the operator; ready-flip pending (weekly list), waiting on the reporter's xcrun texture check (recheck da20); no real CI run yet; capability atom open for maintainers. Same child-tier misroute to Main as #14016."
 ---
 
 # slang#14031: Metal 64-bit atomics emit fetching calls on `atomic_ulong`
@@ -66,3 +66,15 @@ this session (the #14031 owner). That chain is done, so nothing needed relaying 
 
 **Ready-flip pending** (per [weekly undraft list](../orchestrator/undraft-asks-replaced-by-weekly-list.md): no per-PR ask; goes on the weekly list). Resume on a jhelferty-nv
 review (webhook → uqb9b4) or the maintainers' capability-atom call.
+
+**11-06 22:56Z: reporter comment 6697863718 on #14044.** It confirms the M4 split. The reporter offered to compile the `ulong`
+*texture* `atomic_min/max` MSL with `xcrun metal` before the PR leaves draft; that path has never been through Apple's compiler.
+The fixer replied on the PR (nv-slang-bot, 23:10:15Z) and sent a [Report] to Main that corrects its CI claim. Runs 40945200884 and 42121529704
+**built and tested nothing**. Each was a `workflow_dispatch` run whose head commit was docs-only; ci.yml diffs `HEAD^1` for
+non-PR events, so only `filter` and `check-ci` ran and 44 jobs were skipped. Earlier lines here call these runs "the draft
+gate". That was wrong: no CI evidence exists for #14044 yet.
+- A sibling Main session (23:12Z, fixer seq 30) chose **(a): no temp branch; wait for the reporter's result.** It armed the one-shot
+  `recheck-14044-reporter-m-da20` (due ~11-10).
+- The fixer acked to this session (msg 646, 23:13Z). It will push only on a code change, and it now counts CI as evidence
+  only when the build/test jobs show `success`.
+- Resume on the reporter's `xcrun metal` result (webhook → fixer uqb9b4), on da20, or on a jhelferty-nv review. Still ready-flip pending.
