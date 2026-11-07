@@ -105,15 +105,17 @@ THRESHOLDS = {
     "discord_thread_window_min": ("COMPLIANCE_DISCORD_THREAD_WINDOW_MIN", 10),
     "judge_max_items": ("COMPLIANCE_JUDGE_MAX_ITEMS", 40),
     "max_pages": ("COMPLIANCE_MAX_PAGES", 100),
+    "silent_hold_hours": ("COMPLIANCE_SILENT_HOLD_HOURS", 24),
 }
 
 BOT_LABEL = "bot"
-# R6 is a label rule. A newcomer label reserves an issue for people and the bot must not
-# touch it; `bot-ok` is a maintainer handing such an issue to the bot after all, so it
-# wins over a newcomer label, exactly as the host's webhook gate decides. Compared
-# case-insensitively because GitHub labels are.
-BOT_OK_LABELS = {"bot-ok"}
+# R6 is an opt-out rule. The bot sees every issue; a newcomer label (at creation or added
+# later) or a comment telling the bot to stop opts the issue out, and from that moment the
+# bot must not comment on it, push for it or open a PR for it. The label set mirrors the
+# host's ISSUE_NEWCOMER_LABELS default and is compared case-insensitively because GitHub
+# labels are. The sentence every stand-down note opens with marks the note on an issue.
 NEWCOMER_LABELS = {"goodfirstbug", "helpwanted", "no-bot"}
+STAND_DOWN_MARKER = "Standing down on this one"
 
 # The disclaimer every coworker appends to what it posts. It is not scored as prose and
 # it is stripped before the STE checker runs.
@@ -127,7 +129,8 @@ RULES = [
     {"rule": "R1", "check": "pr-description", "title": "PR description: four sections, three lines each, under 1,500 characters", "kind": "mechanical"},
     {"rule": "R2/R3", "check": "comment-rationale", "title": "Code comments state contracts and reasons, not narration or history", "kind": "judge"},
     {"rule": "R5", "check": "ai-disclosure", "title": "One-line AI assistance disclosure in the PR", "kind": "mechanical"},
-    {"rule": "R6", "check": "issue-newcomer", "title": "Bot leaves newcomer-labelled issues to people", "kind": "mechanical"},
+    {"rule": "R6", "check": "issue-opt-out", "title": "Bot stands down once an issue is opted out (newcomer label or stop comment)", "kind": "mechanical"},
+    {"rule": "R6", "check": "issue-silent-hold", "title": "Bot never holds a new issue silently: a comment or a stand-down note within a day", "kind": "mechanical"},
     {"rule": "R7", "check": "docs-updated", "title": "Documentation updated when behaviour changed", "kind": "judge"},
     {"rule": "R8", "check": "simple-english", "title": "Simple Technical English in posted text", "kind": "mechanical"},
     {"rule": "R9", "check": "bot-label", "title": "Bot-opened items carry the `bot` label", "kind": "mechanical"},
@@ -587,14 +590,11 @@ def check_bot_label(rep, items):
     rep.conclude("bot-label", results)
 
 
-def check_issue_newcomer(rep, items, since, bot_login=BOT_LOGIN):
-    """R6 over human-filed issues created in the window that the bot commented on.
-    One item per issue. The bot may comment on any issue except one a newcomer label
-    reserves for people, unless a maintainer also labelled it `bot-ok`, which hands the
-    issue to the bot and wins. Labels are read at run time, so an issue labelled after the
-    bot commented still fails; that is the intended reading, because the bot would have
-    had to leave once the label appeared. Issues opened before the window are skipped
-    because their first bot comment may predate the feed this run read."""
+def human_issue_comments(items, since, bot_login=BOT_LOGIN):
+    """The bot's comments on human-filed issues created in the window, grouped by issue:
+    {(repo, number): [comment items sorted by time]}. PR comments, the bot's own issues
+    and issues opened before the window (their first bot comment may predate the feed this
+    run read) are left out."""
     by_issue = {}
     for it in items:
         if it["kind"] != "issue_comment" or not it.get("parent"):
@@ -607,24 +607,113 @@ def check_issue_newcomer(rep, items, since, bot_login=BOT_LOGIN):
         created = parse_ts(parent.get("created_at"))
         if created is None or created < since:
             continue
-        key = (it["repo"], it["number"])
-        if key not in by_issue or parse_ts(it["created_at"]) < parse_ts(by_issue[key]["created_at"]):
-            by_issue[key] = it
+        by_issue.setdefault((it["repo"], it["number"]), []).append(it)
+    for comments in by_issue.values():
+        comments.sort(key=lambda c: parse_ts(c["created_at"]))
+    return by_issue
+
+
+def issue_item_for(it):
+    parent = it["parent"]
+    issue_item = dict(it, kind="issue", url=parent.get("html_url") or it["url"], title=parent.get("title") or it["title"])
+    issue_item["id"] = f"{it['repo'].split('/')[-1]}#{it['number']}"
+    issue_item["coworker"] = it["coworker"]
+    return issue_item
+
+
+def opt_out_time(gh, repo, number, labels_now):
+    """When the issue was opted out: the time of the first timeline `labeled` event that
+    added a newcomer label still on the issue. None when the timeline shows no such event
+    (the label was on the issue at creation, which the timeline does not record, or the
+    timeline could not be read)."""
+    try:
+        events = gh.cached(f"repos/{repo}/issues/{number}/timeline?per_page=100")
+    except GitHubUnavailable:
+        return None
+    times = []
+    for ev in events if isinstance(events, list) else []:
+        if ev.get("event") != "labeled":
+            continue
+        name = str((ev.get("label") or {}).get("name", "")).lower()
+        t = parse_ts(ev.get("created_at"))
+        if name in NEWCOMER_LABELS and name in labels_now and t is not None:
+            times.append(t)
+    return min(times) if times else None
+
+
+def check_issue_opt_out(rep, items, since, gh, bot_login=BOT_LOGIN):
+    """R6, first half, over human-filed issues created in the window that the bot
+    commented on. One item per issue. An issue without a newcomer label passes. With one,
+    the label's time (from the issue timeline) splits the bot's comments: comments before
+    it are fine (the bot stood down when the label came), any comment after it fails.
+    A label the timeline does not date (present at creation, or unreadable) counts from
+    the issue's creation, so every bot comment on it fails: the bot was never meant to
+    see that issue."""
     results = []
-    for (_repo, _n), it in sorted(by_issue.items()):
+    for (repo, number), comments in sorted(human_issue_comments(items, since, bot_login).items()):
+        it = comments[0]
         parent = it["parent"]
         labels = {str(lb.get("name", "")).lower() for lb in parent.get("labels") or []}
-        issue_item = dict(it, kind="issue", url=parent.get("html_url") or it["url"], title=parent.get("title") or it["title"])
-        issue_item["id"] = f"{it['repo'].split('/')[-1]}#{it['number']}"
-        issue_item["coworker"] = it["coworker"]
+        issue_item = issue_item_for(it)
         newcomer = sorted(labels & NEWCOMER_LABELS)
-        if labels & BOT_OK_LABELS:
-            results.append(result(issue_item, PASS, "labelled bot-ok: a maintainer handed the issue to the bot", first_comment=it["url"]))
-        elif newcomer:
-            results.append(result(issue_item, FAIL, f"commented on an issue labelled {', '.join(newcomer)} (reserved for people)", first_comment=it["url"]))
+        if not newcomer:
+            results.append(result(issue_item, PASS, "no opt-out label; the bot may comment", first_comment=it["url"]))
+            continue
+        cutoff = opt_out_time(gh, repo, number, labels)
+        after = [c for c in comments if cutoff is None or parse_ts(c["created_at"]) > cutoff]
+        if after:
+            when = f"after the {', '.join(newcomer)} label was added" if cutoff else f"on an issue labelled {', '.join(newcomer)} from the start"
+            results.append(result(issue_item, FAIL, f"{len(after)} comment(s) {when} (reserved for people)", first_comment=after[0]["url"]))
         else:
-            results.append(result(issue_item, PASS, "no newcomer label; the bot may comment", first_comment=it["url"]))
-    rep.conclude("issue-newcomer", results)
+            results.append(result(issue_item, PASS, f"stood down: every comment predates the {', '.join(newcomer)} label", first_comment=it["url"]))
+    rep.conclude("issue-opt-out", results)
+
+
+def check_issue_silent_hold(rep, gh, repos, items, since, now=None, bot_login=BOT_LOGIN):
+    """R6, second half, over every human-filed issue created in the window that is at
+    least `silent_hold_hours` old. One item per issue. The bot must have said something
+    on it (any comment, including the stand-down note) unless the issue is opted out
+    (a newcomer label: silence is what the label asks for) or was closed before the
+    deadline (nothing to say). Returns the source problems met (a truncated search)."""
+    now = now or utcnow()
+    hours = threshold("silent_hold_hours")
+    deadline_age = dt.timedelta(hours=hours)
+    since_d = since.strftime("%Y-%m-%d")
+    commented = {key for key in human_issue_comments(items, since, bot_login)}
+    for it in items:
+        if it["kind"] == "issue_comment" and it.get("parent") and "pull_request" not in it["parent"]:
+            commented.add((it["repo"], it["number"]))
+    problems, results = [], []
+    for repo in repos:
+        try:
+            found, truncated = gh.paginate("search/issues", {"q": f"repo:{repo} is:issue created:>={since_d} -author:{search_login(bot_login)}"}, "items")
+        except GitHubUnavailable as e:
+            problems.append(f"{repo}: human issue search failed: {e}")
+            continue
+        if truncated:
+            problems.append(f"{repo}: human issue search truncated at {gh.max_pages} pages")
+        for issue in found:
+            if "pull_request" in issue or (issue.get("user") or {}).get("login") == bot_login:
+                continue
+            created = parse_ts(issue.get("created_at"))
+            if created is None or created < since or now - created < deadline_age:
+                continue
+            number = issue.get("number")
+            item = {"kind": "issue", "repo": repo, "number": number, "url": issue.get("html_url") or "", "title": issue.get("title") or "",
+                    "created_at": issue.get("created_at"), "coworker": "triager", "id": f"{repo.split('/')[-1]}#{number}"}
+            labels = {str(lb.get("name", "")).lower() for lb in issue.get("labels") or []}
+            closed = parse_ts(issue.get("closed_at"))
+            newcomer = sorted(labels & NEWCOMER_LABELS)
+            if (repo, number) in commented:
+                results.append(result(item, PASS, "the bot commented on the issue"))
+            elif newcomer:
+                results.append(result(item, PASS, f"opted out ({', '.join(newcomer)}): the bot's silence is what the label asks for"))
+            elif closed is not None and closed - created < deadline_age:
+                results.append(result(item, PASS, f"closed within {hours} hours of creation; nothing for the bot to say"))
+            else:
+                results.append(result(item, FAIL, f"silent hold: no bot comment and no stand-down note in the first {hours} hours"))
+    rep.conclude("issue-silent-hold", results)
+    return problems
 
 
 def ste_allowance(words, per_100):
@@ -1014,9 +1103,10 @@ def check_judge_rules(rep, items, judge):
 # ---------- orchestration ----------
 
 
-def run_all(rep, gh, repos, since, judge, discord_export=None, bot_login=BOT_LOGIN):
+def run_all(rep, gh, repos, since, judge, discord_export=None, bot_login=BOT_LOGIN, now=None):
     """Collect, then score every rule, containing failures: an exception inside a rule
-    becomes that rule's UNKNOWN, so one broken source cannot blank the rest."""
+    becomes that rule's UNKNOWN, so one broken source cannot blank the rest. `now` is the
+    clock the age-based rule reads; tests pin it."""
     items, problems = [], []
     for repo in repos:
         try:
@@ -1051,7 +1141,8 @@ def run_all(rep, gh, repos, since, judge, discord_export=None, bot_login=BOT_LOG
     guarded("comment-rationale", lambda: check_judge_rules(rep, items, judge))
     if lint is not None:
         guarded("ai-disclosure", lambda: check_ai_disclosure(rep, items, lint))
-    guarded("issue-newcomer", lambda: check_issue_newcomer(rep, items, since, bot_login))
+    guarded("issue-opt-out", lambda: check_issue_opt_out(rep, items, since, gh, bot_login))
+    guarded("issue-silent-hold", lambda: problems.extend(check_issue_silent_hold(rep, gh, repos, items, since, now, bot_login)))
     if ste is not None:
         guarded("simple-english", lambda: check_simple_english(rep, items, ste))
     guarded("bot-label", lambda: check_bot_label(rep, items))

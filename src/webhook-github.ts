@@ -34,7 +34,6 @@ import {
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
-  ISSUE_BOT_OK_LABEL,
   ISSUE_NEWCOMER_LABELS,
   ROUTE_ISSUES_TO,
   ROUTE_READY_PRS_TO,
@@ -121,8 +120,12 @@ export interface GitHubIssueOpenedEvent {
   eventType?: string;
   /** GitHub delivery id (idempotency tag). */
   deliveryId?: string;
-  /** True when this delivery is an `issues.labeled` event that added the bot-ok label, handing a newcomer-labeled issue to the bot. */
-  botOkLabeled?: boolean;
+  /**
+   * True when the issue is delivered again after its last newcomer label was
+   * removed (the opt-out was released). The row id then carries the delivery id,
+   * so the idempotency guard does not mistake it for the original delivery.
+   */
+  redelivery?: boolean;
 }
 
 /**
@@ -562,16 +565,29 @@ export async function deliverGitHubMention(event: GitHubMentionEvent): Promise<D
  * leaves room for people).
  *
  * - `skip`: the issue carries a newcomer label (GoodFirstBug, HelpWanted, no-bot
- *   by default). People own it; the bot does not see it.
- * - `now`: everything else, and any issue a maintainer labels bot-ok, which
- *   hands a newcomer-labeled issue to the bot after all.
+ *   by default). People own it; the bot does not see it. The host records the
+ *   opt-out and the gate refuses writes to the issue until the label goes
+ *   (src/issue-opt-out.ts).
+ * - `now`: everything else.
  */
 export function classifyIssueForBot(event: GitHubIssueOpenedEvent): 'skip' | 'now' {
   const labels = (event.labels ?? []).map((l) => l.toLowerCase());
-  if (event.botOkLabeled || labels.includes(ISSUE_BOT_OK_LABEL)) return 'now';
   if (labels.some((l) => (ISSUE_NEWCOMER_LABELS ?? []).includes(l))) return 'skip';
   return 'now';
 }
+
+/**
+ * The standing rule that travels with every issue delivery, so the orchestrator
+ * reads it next to the issue rather than from a group file it may not carry: a
+ * decision not to work an issue is announced on the issue, never kept silent.
+ */
+export const ISSUE_STANDING_RULE =
+  'Every issue is yours to look at. If you decide not to triage or fix it (it is assigned to and reads as a ' +
+  "person's own work item, or a label or comment asks the bot to stand down), post one short stand-down note on " +
+  'the issue saying so and offering help on request; never hold an issue silently. A GoodFirstBug, HelpWanted or ' +
+  'no-bot label, or a comment telling the bot to stop, opts the issue out for good: do not comment, open a PR or ' +
+  'push a branch for it after that. After 24 hours without any word from the bot the host posts the stand-down ' +
+  'note itself.';
 
 /**
  * Deliver a GitHub `issues` event (action=opened) to the orchestrator —
@@ -640,12 +656,15 @@ export async function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): P
     author: event.author,
     labels: event.labels,
     body: event.body,
+    redelivery: event.redelivery === true,
+    standing_rule: ISSUE_STANDING_RULE,
   });
 
+  const baseRowId = `gh-issue-${event.repo}-${event.issueNumber}`;
   return await deliverToOrchestrator({
     repo: event.repo,
     issueNumber: event.issueNumber,
-    rowId: `gh-issue-${event.repo}-${event.issueNumber}`,
+    rowId: event.redelivery ? `${baseRowId}-redeliver-${event.deliveryId || Date.now()}` : baseRowId,
     threadId: `gh-issue-${event.repo}-${event.issueNumber}`,
     eventContent,
     mintPerThread: true,

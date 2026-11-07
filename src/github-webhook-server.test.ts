@@ -10,6 +10,8 @@ vi.mock('./config.js', () => ({
   INSTANCE_SLUG: 'prod',
   ROUTE_ISSUES_TO: 'lego',
   INTERNAL_REGISTER_SECRET: 'trust-secret',
+  ISSUE_NEWCOMER_LABELS: ['goodfirstbug', 'helpwanted', 'no-bot'],
+  ISSUE_STOP_PHRASES: ['stop'],
 }));
 
 vi.mock('./webhook-github.js', () => ({

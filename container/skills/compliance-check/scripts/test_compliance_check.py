@@ -106,13 +106,23 @@ class FakeGitHub:
             20: {"number": 20, "html_url": f"https://github.com/{r}/issues/20", "title": "slangc segfaults", "body": "crash ```x```", "created_at": ts(40), "labels": labels("bot", "reproduced"), "user": user(BOT)},
             30: {"number": 30, "html_url": f"https://github.com/{r}/issues/30", "title": "fresh human issue", "body": "plain", "created_at": ts(26), "labels": [], "user": user("alice")},
             31: {"number": 31, "html_url": f"https://github.com/{r}/issues/31", "title": "newcomer issue", "body": "plain", "created_at": ts(60), "labels": labels("GoodFirstBug"), "user": user("alice")},
-            32: {"number": 32, "html_url": f"https://github.com/{r}/issues/32", "title": "bot-ok issue", "body": "plain", "created_at": ts(26), "labels": labels("bot-ok"), "user": user("bob")},
+            32: {"number": 32, "html_url": f"https://github.com/{r}/issues/32", "title": "labelled later", "body": "plain", "created_at": ts(26), "labels": labels("HelpWanted"), "user": user("bob")},
+            35: {"number": 35, "html_url": f"https://github.com/{r}/issues/35", "title": "held in silence", "body": "plain", "created_at": ts(30), "labels": [], "user": user("erin")},
+            36: {"number": 36, "html_url": f"https://github.com/{r}/issues/36", "title": "too young to judge", "body": "plain", "created_at": ts(3), "labels": [], "user": user("erin")},
+            37: {"number": 37, "html_url": f"https://github.com/{r}/issues/37", "title": "closed by its author", "body": "plain", "created_at": ts(30), "closed_at": ts(29), "labels": [], "user": user("erin")},
+            38: {"number": 38, "html_url": f"https://github.com/{r}/issues/38", "title": "reserved for people", "body": "plain", "created_at": ts(30), "labels": labels("no-bot"), "user": user("erin")},
             33: {"number": 33, "html_url": f"https://github.com/{r}/issues/33", "title": "crash with repro", "body": "slangc segfaults:\n```slang\nvoid main(){}\n```\n", "created_at": ts(26), "labels": [], "user": user("bob")},
             34: {"number": 34, "html_url": f"https://github.com/{r}/issues/34", "title": "old enough", "body": "plain", "created_at": ts(5 * 24 + 1), "labels": [], "user": user("carol")},
             40: {"number": 40, "html_url": f"https://github.com/{r}/pull/40", "title": "human PR", "body": "x", "created_at": ts(70), "labels": [], "user": user("dave"), "pull_request": {"url": "u40"}},
         }
         for pr in self.prs:
             self.issues[pr["number"]] = pr
+        # Timeline `labeled` events: issue 31 carried GoodFirstBug from creation (no event),
+        # issue 32 got HelpWanted ten hours ago, after the bot's only comment.
+        self.timelines = {
+            31: [],
+            32: [{"event": "labeled", "label": {"name": "HelpWanted"}, "created_at": ts(10)}],
+        }
         self.issue_comments = [
             {"html_url": f"https://github.com/{r}/issues/30#issuecomment-1", "issue_url": f"https://api.github.com/repos/{r}/issues/30", "user": user(BOT), "body": "- **Status:** Reproduced.\n\n" + DISCLAIMER, "created_at": ts(25)},
             {"html_url": f"https://github.com/{r}/issues/30#issuecomment-2", "issue_url": f"https://api.github.com/repos/{r}/issues/30", "user": user(BOT), "body": "later comment", "created_at": ts(2)},
@@ -150,6 +160,8 @@ class FakeGitHub:
                 return {"items": [self.issues[20]]}
             if "reviewed-by:" in q:
                 return {"items": [self.issues[40]]}
+            if "is:issue created:" in q and "-author:" in q:
+                return {"items": [i for n, i in sorted(self.issues.items()) if "pull_request" not in i and i["user"]["login"] != BOT]}
             raise RuntimeError("unexpected search " + q)
         if path == f"repos/{r}/issues/comments":
             return self.issue_comments
@@ -159,6 +171,8 @@ class FakeGitHub:
             return self.files[int(path.split("/")[-2])]
         if path.startswith(f"repos/{r}/pulls/") and path.endswith("/reviews"):
             return self.reviews[int(path.split("/")[-2])]
+        if path.startswith(f"repos/{r}/issues/") and "/timeline" in path:
+            return self.timelines.get(int(path.split("/")[4]), [])
         if path.startswith(f"repos/{r}/issues/"):
             return self.issues[int(path.rsplit("/", 1)[-1])]
         raise RuntimeError("unexpected path " + path)
@@ -183,7 +197,7 @@ class ComplianceCheckTest(unittest.TestCase):
         rep = m.Report()
         gh = self.mod.GitHub(fetch=fake or self.fake)
         judge = judge or m.NullJudge()
-        items, problems = m.run_all(rep, gh, [FakeGitHub.REPO], SINCE, judge, discord)
+        items, problems = m.run_all(rep, gh, [FakeGitHub.REPO], SINCE, judge, discord, now=NOW)
         doc = m.build_document(rep, 0.0, SINCE, [FakeGitHub.REPO], items, problems, judge, gh)
         return rep, doc, items
 
@@ -245,28 +259,52 @@ class ComplianceCheckTest(unittest.TestCase):
         self.assertEqual(self.verdicts(rep, "bot-label"), {"slang#10": "fail", "slang#11": "pass", "slang#20": "pass"})
         self.assertEqual(self.rule(rep, "pr-description")["state"], "DRIFT")
 
-    def test_r6_newcomer_labels_and_bot_ok(self):
+    def test_r6_opt_out_splits_comments_at_the_label_time(self):
         rep, _, _ = self.run_all()
-        v = self.verdicts(rep, "issue-newcomer")
+        v = self.verdicts(rep, "issue-opt-out")
         self.assertEqual(v, {"slang#30": "pass", "slang#31": "fail", "slang#32": "pass", "slang#33": "pass", "slang#34": "pass"})
-        reasons = {x["id"]: x["reason"] for x in self.rule(rep, "issue-newcomer")["results"]}
-        self.assertIn("goodfirstbug", reasons["slang#31"])
-        self.assertIn("bot-ok", reasons["slang#32"])
-        # A one-hour-old plain issue passes: there is no wait, only the label rule.
+        reasons = {x["id"]: x["reason"] for x in self.rule(rep, "issue-opt-out")["results"]}
+        # Labelled from creation: the timeline has no event, so every comment fails.
+        self.assertIn("goodfirstbug from the start", reasons["slang#31"])
+        # Labelled after the bot's comment: the bot stood down, pass.
+        self.assertIn("stood down", reasons["slang#32"])
+        self.assertIn("helpwanted", reasons["slang#32"])
         self.assertIn("may comment", reasons["slang#30"])
         # The bot's own issue and the PR comments are not R6 items.
         self.assertNotIn("slang#20", v)
         self.assertNotIn("slang#10", v)
 
-    def test_r6_bot_ok_wins_over_a_newcomer_label(self):
-        self.fake.issues[31]["labels"] = labels("GoodFirstBug", "bot-ok")
+    def test_r6_opt_out_fails_a_comment_after_the_label(self):
+        r = FakeGitHub.REPO
+        self.fake.issue_comments.append(
+            {"html_url": f"https://github.com/{r}/issues/32#issuecomment-10", "issue_url": f"https://api.github.com/repos/{r}/issues/32", "user": user(BOT), "body": "Still here.", "created_at": ts(2)}
+        )
         rep, _, _ = self.run_all()
-        self.assertEqual(self.verdicts(rep, "issue-newcomer")["slang#31"], "pass")
+        self.assertEqual(self.verdicts(rep, "issue-opt-out")["slang#32"], "fail")
+        reason = next(x["reason"] for x in self.rule(rep, "issue-opt-out")["results"] if x["id"] == "slang#32")
+        self.assertIn("1 comment(s) after the helpwanted label", reason)
 
-    def test_r6_skips_issues_opened_before_the_window(self):
+    def test_r6_opt_out_skips_issues_opened_before_the_window(self):
         self.fake.issues[30]["created_at"] = ts(10 * 24)
         rep, _, _ = self.run_all()
-        self.assertNotIn("slang#30", self.verdicts(rep, "issue-newcomer"))
+        self.assertNotIn("slang#30", self.verdicts(rep, "issue-opt-out"))
+
+    def test_r6_silent_hold_over_every_human_issue_old_enough(self):
+        rep, _, _ = self.run_all()
+        v = self.verdicts(rep, "issue-silent-hold")
+        self.assertEqual(
+            v,
+            {"slang#30": "pass", "slang#31": "pass", "slang#32": "pass", "slang#33": "pass", "slang#34": "pass", "slang#35": "fail", "slang#37": "pass", "slang#38": "pass"},
+        )
+        reasons = {x["id"]: x["reason"] for x in self.rule(rep, "issue-silent-hold")["results"]}
+        self.assertIn("silent hold", reasons["slang#35"])
+        self.assertIn("the bot commented", reasons["slang#31"])
+        self.assertIn("opted out", reasons["slang#38"])
+        self.assertIn("closed within", reasons["slang#37"])
+        # Too young to judge, and PRs, are not items.
+        self.assertNotIn("slang#36", v)
+        self.assertNotIn("slang#40", v)
+        self.assertEqual(self.rule(rep, "issue-silent-hold")["state"], "DRIFT")
 
     def test_r8_density_threshold_and_disclaimer_stripping(self):
         rep, _, _ = self.run_all()
@@ -520,7 +558,7 @@ class ComplianceCheckTest(unittest.TestCase):
         self.assertEqual(doc["counts"]["perRule"]["bot-label"], {"pass": 2, "fail": 1, "unknown": 0, "total": 3, "rate": round(2 / 3, 4)})
         self.assertEqual(doc["coworkers"]["fixer"]["bot-label"]["total"], 2)
         self.assertEqual(doc["coworkers"]["triager"]["bot-label"]["total"], 1)
-        self.assertEqual([r["rule"] for r in doc["rules"]], ["R1", "R2/R3", "R5", "R6", "R7", "R8", "R9", "R10"])
+        self.assertEqual([r["rule"] for r in doc["rules"]], ["R1", "R2/R3", "R5", "R6", "R6", "R7", "R8", "R9", "R10"])
 
     def test_all_passing_with_null_judge_exits_two_not_zero(self):
         m = self.mod
