@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse hook (matcher: Bash|Write|Edit|MultiEdit|mcp__github__<review tools>):
+# PreToolUse hook (matcher: Bash|Write|Edit|MultiEdit|mcp__github__<review tools>), and with
+# `--post` a PostToolUse hook (matcher: Bash|Write|Edit|MultiEdit):
 # a posted review stays under REVIEW_LENGTH_CAP_CHARS characters of review text
 # (default 4,000: summary or body plus every inline comment). A length rule in the
 # prompt does not change how much a reviewer writes; a refusal at posting time does.
@@ -28,6 +29,17 @@ fi
 
 INPUT=$(cat)
 TOOL=$(printf '%s' "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null || true)
+
+# `--post` (PostToolUse): measure the answer files the call just wrote, whatever wrote
+# them. The pre-write branch below sees only the text a tool call carries; a script the
+# agent writes and then runs carries none, so its output is checked after the fact.
+if [ "${1:-}" = "--post" ]; then
+  case "$TOOL" in Bash|Write|Edit|MultiEdit) ;; *) exit 0 ;; esac
+  command -v python3 >/dev/null 2>&1 || exit 0
+  printf '%s' "$INPUT" | REVIEW_LENGTH_STATE_DIR="${REVIEW_LENGTH_STATE_DIR:-$OVERLAY_DIR}" \
+    python3 "$(dirname "${BASH_SOURCE[0]}")/lib/review_length.py" --post
+  exit $?
+fi
 
 case "$TOOL" in
   Bash)

@@ -735,6 +735,30 @@ class JobTest(unittest.TestCase):
         self.assertIn("/workspace/agent/eval/slang-pr-7-abcdef0/r1/answer.json", prompt)
         self.assertNotIn("triage answer", prompt)
 
+    def test_review_answer_over_the_cap_scores_zero_as_a_gate_failure(self):
+        write_task(self.bank, "slang-pr-8-abcdef0", "review", timeout=100)
+        tasks = er.load_bank(self.bank, "review")
+        long_answer = {"summary": "Narrow change.", "findings": [{"file": "a.cpp", "line": 3, "comment": "x" * 4500}],
+                       "subsystem": "parser"}
+        dispatcher = FakeDispatcher(lambda task, repeat: self.write_answer(task.id, repeat, long_answer))
+        # Without a cap the verifier's reward stands; with the production cap the same
+        # answer is a gate failure, because the review-length gate would have refused it.
+        job = er.EvalJob(self.cfg(kind="review", repeats=1), tasks, dispatcher, er.Budget(300.0, lambda s: 0.5, 3.0),
+                         clock=self.clock, sleep=self.clock.sleep)
+        self.assertEqual(job.run_all()[0].reward, 1.0)
+        self.clock.sleep(1)
+        capped = self.cfg(kind="review", repeats=1, job_id="job-cap", answer_cap_chars=4000)
+        job = er.EvalJob(capped, tasks, FakeDispatcher(lambda task, repeat: self.write_answer(task.id, repeat, long_answer)),
+                         er.Budget(300.0, lambda s: 0.5, 3.0), clock=self.clock, sleep=self.clock.sleep)
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.SCORED, 0.0))
+        self.assertIn("over the 4,000-character cap (4,514 characters of review text)", trial.reason)
+        with open(os.path.join(self.reports, "evals", "job-cap", "trials", trial.trial_name, "verifier", "reward.txt")) as fh:
+            self.assertEqual(fh.read().strip(), "0.0")
+        self.assertEqual(er.write_job(capped, job)["answer_cap_chars"], 4000)
+        self.assertEqual(er.review_text_chars(long_answer), 4514)
+        self.assertEqual(er.review_text_chars({"subsystem": "parser"}), 0)
+
     def test_timeout_and_dispatch_failure_are_trial_states_not_crashes(self):
         write_task(self.bank, "slang-1", "triage", timeout=50)
         write_task(self.bank, "slang-2", "triage", timeout=50)

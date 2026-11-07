@@ -2342,6 +2342,9 @@ export function ensureEvalSandboxGate(settingsFile: string): void {
 }
 
 export const REVIEW_LENGTH_GATE_CMD = 'bash /app/hooks/gate-review-length.sh';
+export const REVIEW_LENGTH_POST_GATE_CMD = 'bash /app/hooks/gate-review-length.sh --post';
+// The tools that can write a file: the post-write check measures the answer file they left.
+export const REVIEW_LENGTH_POST_GATE_MATCHER = 'Bash|Write|Edit|MultiEdit';
 // Every tool call that can post or write a review: Bash (`gh pr review|comment`,
 // `gh api …/reviews`, a heredoc into answer.json), the file tools for the evaluation
 // answer file, and the GitHub MCP review tools. The hook steps aside for anything else.
@@ -2362,14 +2365,22 @@ export function ensureReviewLengthGate(settingsFile: string): void {
   if (!fs.existsSync(settingsFile)) return;
   const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
   if (!settings.hooks) settings.hooks = {};
-  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  const before = JSON.stringify([settings.hooks.PreToolUse ?? [], settings.hooks.PostToolUse ?? []]);
   settings.hooks.PreToolUse = upsertGuardHook(
     settings.hooks.PreToolUse ?? [],
     REVIEW_LENGTH_GATE_MATCHER,
     'gate-review-length.sh',
     REVIEW_LENGTH_GATE_CMD,
   );
-  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+  // The post-write check: a script the agent writes and runs carries no review text
+  // the pre-write hook could measure, so the answer file is measured after the call.
+  settings.hooks.PostToolUse = upsertGuardHook(
+    settings.hooks.PostToolUse ?? [],
+    REVIEW_LENGTH_POST_GATE_MATCHER,
+    'gate-review-length.sh --post',
+    REVIEW_LENGTH_POST_GATE_CMD,
+  );
+  if (JSON.stringify([settings.hooks.PreToolUse, settings.hooks.PostToolUse]) !== before) {
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
 }
