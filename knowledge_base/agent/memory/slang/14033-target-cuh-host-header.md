@@ -90,3 +90,12 @@ nothing went to the dashboard, and the fixer did not need a nudge.
 draft. The correct human step is: `gh pr ready` → real CI → jkwak-work review. The PR is BEHIND but mergeable, and it has had no human review,
 so a `merge master` dispatch would be fine once it is non-draft. No timer remains on this chain. Webhooks (ready_for_review,
 review, CI) and the weekly list will drive it.
+
+**11-06 22:57Z — the reporter commented on PR #14197.** The `__extern_cpp` prototype is what they need. They ask for a
+maintainer decision on **B** (most important to them) and **C**, and offer to test a draft on their cloth kernels.
+The fixer replied on the PR (6697952586, no pings) and edited the issue status in place (6586945527). Main verified both,
+and the fixer asked Main to route B/C. **Main 11-06 23:1xZ:** dashboard msg 51 gives the operator an opt-in. They can
+raise B/C with jkwak-work (assignee, already notified) or csyonghe (author of #3938, not subscribed), or reply
+"ping <names>" so the triager posts one @-mention on #14033. The default is no ping. One-shot
+**`chase-14033-bc-maintaine-2e3c`** (11-13 18:00Z) relays any maintainer direction verbatim to slang-triager. If there
+is none, it records that and parks with no re-ask. The ready-flip for #14197 is still on the weekly list.

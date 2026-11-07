@@ -9,14 +9,14 @@ tags: [pointers, semantics, side-find, parked]
 
 Spawned by [[14055-parser-multiply-deref-pointer.md]]; the PR-bearing siblings are in
 [[14078-pointer-emit-pr-stack.md]]. Both issues are bot-filed by slang-triager (Type=Bug, `reproduced`,
-P2, unassigned), and I verified that neither body nor triage comment references #14055. **Their
+P2; #14086 assigned to jkwak-work 11-02), and I verified that neither body nor triage comment references #14055. **Their
 `issue_opened` webhooks reached Main 10-30 and need no dispatch.** Main's direction for both: file with the
 options presented, park on a maintainer, **no fixer handoff** until one agrees.
 
 | issue | parked on | re-check |
 |---|---|---|
 | #14086 explicit narrow-int cast of a pointer gives `ptr != nullptr` (0/1), no diagnostic | maintainer picks the diagnostic shape | triager one-shot `t-fb3521` 2026-11-06 16:00Z (re-arms once) |
-| #14089 `void*` arithmetic steps 4 bytes on SPIR-V vs error/1 byte elsewhere | maintainer picks (1) 1-byte stride everywhere or (2) a front-end diagnostic | triager one-shot `t-e18700` 2026-11-06 16:30Z |
+| #14089 `void*` arithmetic steps 4 bytes on SPIR-V vs error/1 byte elsewhere | maintainer (jkwak-work) picks (1) 1-byte stride everywhere or (2) a front-end diagnostic | **no timer** — webhook-only; supervisor-state `disposition: parked:maintainer-decision` (11-06) |
 
 ## #14086 (a #14080 side find)
 
@@ -47,3 +47,19 @@ option 3 (make Ptr→bool contextual-only) would fix #14086 too. See [[14268-mix
 **11-04 16:51Z:** the #14268 delta (comment 6636551602) proposes one decision covering both issues: option
 3, contextual-only Ptr→bool, fixes #14086's `int(p)`. Nothing new was posted on #14086 itself. If option 3
 is chosen, the #14268 re-check t-d8d291 includes #14086 in the handoff.
+
+## 11-06 re-check (#14086)
+
+The triager's t-fb3521 report (msg 4, 16:02Z) says #14086 is still parked. I verified it on GitHub. It has 1 comment, the last on 10-30.
+**11-02 18:50Z:** jhelferty-nv assigned jkwak-work and added `Diagnostics` (from the events; `.assigner` is jhelferty-nv).
+No maintainer has chosen a diagnostic shape. jkwak-work is also the assignee of #14268, which carries the bundled decision.
+The next one-shot is the triager's **t-964832, 2026-11-13 16:00Z**. Main did not reply: the report asks nothing.
+
+## 11-06 re-check (#14089)
+
+The triager's t-e18700 report (msg 2, 16:31Z) says #14089 is still parked. I verified it on GitHub: 1 comment (the
+10-30 triage comment). **11-02 18:51Z:** jhelferty-nv added then removed `Office-Yong`, assigned **jkwak-work**
+(18:51:54Z) and added `Diagnostics` (18:52:07Z). No option has been chosen. Following the #14091 precedent, there is no
+bot ping and no new re-check. The supervisor-state entry carries `disposition: parked:maintainer-decision`, so
+`/supervise-issues` walks it. When jkwak-work comments, the webhook relays the chosen option to slang-fixer on
+`gh-issue-shader-slang/slang-14089`. Main did not reply: the report asks nothing.

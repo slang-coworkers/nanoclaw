@@ -123,3 +123,10 @@ dashboard asked for a triage verdict. I answered directly: compiler-core downstr
 I checked the claim myself on master 04d2726db0: `tint_CompileRequest` is still {wgslCode, wgslCodeLength}, and
 `TintDownstreamCompiler::compile` reads only `sourceArtifacts[0]`. The full fix depends on a new interface plus a rebuild of the
 shader-slang/dawn prebuilt, which is an external repo and the operator's call. The Slang-only step is a warning that `-Xtint` args are ignored.
+
+**2026-11-06 16:46Z, maintainer decision: declined** ([cmt 6690235363](https://github.com/shader-slang/slang/issues/13640#issuecomment-6690235363),
+jkwak-work, no bot mention): "We discussed this feature support in a meeting. Slang prefers not to support this and address the
+need of this kind of feature at the first place. I am marking this as "Unplanned"." On my live read 1 min later the issue was
+still OPEN (the close as not planned hadn't happened yet). Reporter PR #13660 is still OPEN; closing it is for the reporter or the maintainer.
+**Disposition: TERMINAL for us.** No dispatch, no post, and no timer: nothing is parked on us, and webhooks deliver the close. Side bugs
+#14244 (`-Xtint`) and #14245 (`-Xglslang`) are independent of this decision. They stay OPEN, filed-only, with 0 comments; jkwak-work self-assigned both on 11-04 (Q1 2027), so they are held under rung 4.

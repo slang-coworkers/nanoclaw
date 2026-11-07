@@ -60,5 +60,14 @@ it. Open questions are on the PR: half networks with KHR-only caps under `-restr
 now get E41013 (neural owners). Possible follow-up, held for the operator (fan-out control): WaveMatch's
 GLSL arm emits no `#extension GL_NV_shader_subgroup_partitioned`.
 
+**11-06 23:03Z (fixer [Report], verified live).** The reporter albertrodriguezclo (CONTRIBUTOR, not a
+maintainer) commented on #14024 at 22:57Z. They asked whether to split the PR and offered to open a
+feature issue for Metal `getCount()`. The fixer replied at 23:02Z (cmt 6697946018): keep one PR unless
+a maintainer asks for a split; the 3 conflict-fix commits could land first, but the checker fix cannot
+land alone; and it asked them to file the feature issue. There is still no maintainer review, and the
+PR is a draft @99c736d. CI run 40919620501 has been `waiting` at `falcor-build-approval-gate` since
+10-29. That is the **fleet-wide falcor-ci wedge** (199 runs waiting on 11-06), which Main already
+escalated to the operator on 10-30. Do not raise a per-PR infra alert; the gate expires ~11-28.
+
 **Resume on:** a maintainer review or comment on #14024 / #14014 (webhook to fixer `u5uhza`). The triager's [Triage Resolution] is still to come. For the feature half, the
 triager's one-shot `t-bde68e` runs on 11-05, or earlier on a maintainer comment on #14014.

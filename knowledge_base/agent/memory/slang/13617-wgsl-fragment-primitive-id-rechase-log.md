@@ -39,3 +39,10 @@ canonical session `sess-1791952546270-bc3zew` last active 10-14 10:26Z); no GitH
   ([undraft-asks-replaced-by-weekly-list](../orchestrator/undraft-asks-replaced-by-weekly-list.md)) decision (1),
   `gh pr ready` on #13619, is "ready-flip pending" on the weekly list; never ask per-PR. Pending (msg 7). Re-arm
   `rechase-13617-primitive-0dd5` (2026-11-06T10:30Z).
+- **11-06 10:3xZ:** no change (still draft @ `b5340af7ab`, 0 reviews, no human events since 11-04, only `license/cla`; no
+  operator answer in the dashboard window 11-03 17:30Z→11-06 10:30Z). This was the 12th unchanged re-check, so the re-ask cap
+  applies ([reask-cap-park-after-final-ask](../orchestrator/reask-cap-park-after-final-ask.md)). Decision (2), the
+  SV_WaveLaneIndex `enable subgroups;` side note, is retired under the 10-31 filing rule: I routed it to slang-triager
+  (pinned `sess-1791952660010-g4b0dg`, delivered as row 22) to re-check at HEAD, dedupe, and file one unrouted Type=Bug.
+  Dashboard msg 13. Only the ready-flip (weekly list) is left. **FINAL** re-check `rechase-13617-final-b248` (11-08 10:30Z) parks it webhook-only.
+- **11-06 10:38Z, filed [#14383](https://github.com/shader-slang/slang/issues/14383)** (the subgroups side note; checked live: open, nv-slang-bot, `WebGPU`+`reproduced`, no assignee, 0 comments, opens "Found while working on #13619 (#13617)"). Re-measured on master `6d43c8d88`: 5 variants (`SV_WaveLaneIndex` compute/struct/fragment, `SV_WaveLaneCount`, `SV_WaveIndex`) miss `enable subgroups;` and Tint rejects them on null + Vulkan backends; intrinsics path is fine. Unrouted by design, so its `issue_opened` webhook is a self-echo: no dispatch. Decision (2) is closed; only the ready-flip (weekly list) remains.

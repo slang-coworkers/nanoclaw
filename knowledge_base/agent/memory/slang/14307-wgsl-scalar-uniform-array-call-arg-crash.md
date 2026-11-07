@@ -48,3 +48,5 @@ maintainer's call, not ours.
 supervisor (tick 326) found #13381 CONFLICTING/DIRTY and sent its pr-mappings owner `sess-1790902405168-47vkqg` a pinned
 merge-master nudge on `gh-issue-shader-slang/slang-13380` (00:25Z, working by 00:26Z): merge master, keep the assert +
 compute tests if they still add coverage, report what #13381 still adds. Chain terminal for #14307.
+
+**11-06:** jkwak-work APPROVED #13381 at 17:18:37Z and flipped it ready 17:18:44Z (head `6b04e327`, the 11-05 merge-master; CI 57 pass / 0 fail); review requested from dshreiner-nv. Its `pr_ready_for_review` was NOT forwarded: slang-pr-approver is paused; queued in `data/approver-pause-queue.md`. Merge is the maintainers' call.

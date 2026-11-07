@@ -60,3 +60,18 @@ precedent option B respects.
   dashboard line when it changes the evidence the pick rests on.
 - **CPU sampler-half drop** was filed as #13851 on my order (the #13620/#13622 precedent: owned by this chain, no fixer);
   its `issue_opened` webhook is not a fresh triage. The reviewer's "Metal segfault" side note is existing #13654.
+
+**11-06 22:58Z reporter comment on #13843** ([cmt 6697885028](https://github.com/shader-slang/slang/pull/13843#issuecomment-6697885028), checked live,
+unedited, addressed to no one). They prefer 16-byte packing, "because it makes the shader work instead of rejecting it", and say they
+are "fine with" the diagnostic if maintainers don't want combined handles in AnyValues on Metal. They routed it to the fixer through the
+mapping; the triager reported it (msg 86).
+- #13755 is open, at head 075169d4d7. The reporter's branch is at ccfdaa4c4.
+- No maintainer comment on #13823 or #13843 since 10-21.
+
+**Main 11-06 decision: (a) stay silent. No bot nudge, no new one-shot.**
+- The reporter's comment already puts both options in front of the maintainers, so a bot post right after it is noise.
+- #13823 is **self-assigned to jkwak-work** (10-23), who also reviews #13755. The pick follows #13755, and a maintainer-held issue gets
+  no bot chasing.
+- The triager's option (b) would have pinged @saipraveenb25, who was unassigned on 10-23.
+- Resume: the `/supervise-issues` register entry. I rewrote its disposition at 23:10Z to point at the #13755 merge and the timeline
+  cross-reference.

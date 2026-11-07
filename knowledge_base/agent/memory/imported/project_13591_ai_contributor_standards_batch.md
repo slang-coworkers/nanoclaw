@@ -76,6 +76,8 @@ the stale wait was put to the operator on 11-02.
 under triager one-shots `r6-release-*`, which fire 11-05/11-06 and release them anyway. I released only **#14159** early, because it came up through the
 slangpy#1261 side-find, and told the dashboard. The rest are left to their one-shots, since the ask is moot by 11-06.
 
+**11-06 12:3xZ stale-hold re-check (`r6-stale-holds-recheck-c666`): none stalled, no message.** Live check of 46 issues (slang #14029–#14179, slang-rhi #961–#965): 5 CLOSED (#14066/#14112/#14133/#14155/#14177); the rest have a bot comment or bot PR, or a recorded post-R6 disposition: reporter PR owns it (#14135/#14136/#14137/#14152/#14153/#14156/#14158/#14160, rhi#962→#963) or rung-4 maintainer hold, jkwak-work self-assigned 11-02 (#14138/#14141/#14144/#14154/#14179, rhi#961/#964/#965). Bot-filed #14162/#14166/#14173–#14175 were never R6-held. No operator answer to the 11-02 release question (last 300 dashboard rows).
+
 ## R10 (#13600) prod audit, 2026-10-13 (read-only, #13600 session sess-1791889641831-376bet)
 
 Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belong to **Slang Maintainer

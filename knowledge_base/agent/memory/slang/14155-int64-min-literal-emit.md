@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14155 — C-like targets emit INT64_MIN as `-9223372036854775808LL`
-description: Human-filed (albertrodriguezclo, external, cloth-sim batch) 2026-11-02 10:04:28Z. CLikeSourceEmitter::emitSimpleValueImpl BaseType::Int64 writes decimal + "LL", so INT64_MIN becomes unary minus on an out-of-range literal; Metal/clang/nvcc warn (-Werror fails). Reporter has a fix prepared. TRIAGED 10:17Z (bug/medium/P2; IntPtr + GLSL sites and a switch-case hard error beyond the report). Reporter PR #14168 (Int64 case only; approved by jkwak-work 11-02) queued for the paused approver; IntPtr + GLSL gaps put to the operator 11-02 ~16:30Z. Main one-shot r6-release-14155-755e at 11-06 10:08Z is now a re-check.
+description: Human-filed (albertrodriguezclo, external, cloth-sim batch) 2026-11-02 10:04:28Z. CLikeSourceEmitter::emitSimpleValueImpl BaseType::Int64 writes decimal + "LL", so INT64_MIN becomes unary minus on an out-of-range literal; Metal/clang/nvcc warn (-Werror fails). Reporter has a fix prepared. TRIAGED 10:17Z (bug/medium/P2; IntPtr + GLSL sites and a switch-case hard error beyond the report). Reporter PR #14168 (Int64 case only; approved by jkwak-work 11-02) queued for the paused approver; IntPtr + GLSL gaps put to the operator 11-02 ~16:30Z. #14168 MERGED 11-02 17:59Z (8b351e2613), issue closed; IntPtr + GLSL sites still open on master 6d43c8d88f. The operator ask was withdrawn; the triager re-verified both sites at 6d43c8d88 and filed follow-up #14382 (11-06 10:36Z). Closed on our side.
 tags: [emit, c-like, metal, hlsl, cuda, cpp, int64, literal, r6, triage, community-pr]
 ---
 
@@ -61,4 +61,40 @@ and GLSL switch cases are still broken. This is the PR branch of the R6 one-shot
 has already approved and the PR could merge first. I told the operator the missing sites and asked whether to raise them;
 I posted nothing. R6 waiting period is retired (Core Memory), so the 11-06 hold is stale; the one-shot is repurposed as a re-check.
 
-**Resume on:** the operator's answer (raise the sites with the reporter, or leave them), #14168 merging, or the one-shot (11-06).
+**Re-check one-shot `r6-release-14155-755e` (11-06 ~10:10Z).**
+- jkwak-work merged #14168 at 11-02 17:59:32Z (`8b351e2613`); #14155 closed 17:59:34Z. No comments on the issue.
+- I found no operator answer. I read the dashboard session from seq 509402 (10-30) to 511528 (11-06 09:30Z), and the asking Main session `sess-1793636508331-mwm9p1`.
+- On master `6d43c8d88f` (11-06) both sites are unchanged, by my code read: c-like `IntPtr` at `slang-emit-c-like.cpp:1402-1409` and the GLSL Int64/IntPtr override at `slang-emit-glsl.cpp:1416-1422`. No open issue or PR tracks them (GitHub search for `9223372036854775808` and "INT64_MIN GLSL").
+- I posted nothing on GitHub and sent nothing to the triager. I told orchestrator-dashboard **once** (msg id 19, thread `gh-issue-shader-slang/slang-14155`) and gave three options: raise the sites with the reporter, have the triager reproduce and file a follow-up (allowed by the filing rule), or leave them. **Do not re-ask.**
+
+**Resume on:** an operator reply only. If they say file, send it to slang-triager on `gh-issue-shader-slang/slang-14155` (session `sess-1793614086392-0zk9h0`, `in_reply_to` = my own row). The triager must re-verify on master and dedupe first; [raw/comment-14155-held.md](raw/comment-14155-held.md) has the findings. Otherwise the chain is closed.
+
+**11-06 ~10:15Z: the operator question is withdrawn and the filing is delegated (me).** As with #13674, the
+filing rule covers this case, so asking the operator was wrong. I sent slang-triager its owner session
+`sess-1793614086392-0zk9h0` (row id 511537 on my side): re-check the c-like `IntPtr` and GLSL Int64/IntPtr
+(+ `case INT64_MIN:`) sites at HEAD, dedupe, and file ONE follow-up issue. It posts nothing on #14155 or
+#14168 and starts no fixer chain. I told the dashboard (511539). **Resume on:** the triager's report
+with the issue number. Record it here and in slang/index.md. Its issue_opened webhook needs NO dispatch.
+**11-06 10:37Z: filed as #14382 (verified on GitHub: OPEN, bot-authored, labels `GLSL` + `reproduced`, no @-mentions, no "Fixes").**
+The triager reproduced both sites at master `6d43c8d88`, which includes the #14168 fix:
+- c-like `IntPtr` still writes `int64_t(-9223372036854775808)`. It warns on LLVM and gcc, and dxc gives a hard error on `case`.
+- GLSL writes `case -9223372036854775808L:`. glslang fails it with "scalar integer expression required" in the `-emit-spirv-via-glsl` lane.
+
+No duplicates; the #13986 family is a different layer. The held #14155 draft is superseded and will not be posted. #14382 is
+FILED-ONLY with no fixer chain, and **its issue_opened webhook needs NO dispatch**. Side finding, already tracked: the
+runtime `intptr_t` local crash on SPIR-V is #13200 (draft PR #13202). **This chain is closed.**
+
+**11-06 10:37Z: follow-up filed as [#14382](https://github.com/shader-slang/slang/issues/14382)** (triager [Report], its
+seq 19; the report also reached the dashboard, row 511554). Both sites reproduce at master `6d43c8d88`:
+- c-like `IntPtr` (`slang-emit-c-like.cpp:1402-1416`) emits `int64_t(-9223372036854775808)`: clang/gcc warn, nvrtc silent,
+  `-cpu`/`-cuda` run lanes correct; dxc hard-errors on `case intptr_t(INT64_MIN):`.
+- GLSL Int64/IntPtr override (`slang-emit-glsl.cpp:1416-1423`) emits `case -9223372036854775808L:`; the
+  `-vk -emit-spirv-via-glsl` lane fails in glslang. `-vk`, `-cuda`, `-cpu` pass.
+- Dedup: none (searched `9223372036854775808`, INT64_MIN, intptr literal, glslang case error). Side note, already known:
+  runtime `intptr_t` local crashes direct SPIR-V emit = open #13200 / draft PR #13202.
+- #14382: labels `GLSL`, `reproduced`, Type=Bug; no assignee at 10:36Z; body says "Related: #14155, #14168", no `Fixes`.
+  Nothing was posted on #14155 or #14168; the held draft is superseded. No fixer chain (a new chain is an operator call).
+- The #14382 `issue_opened` webhook reached Main at ~10:37Z; I sent no dispatch (this chain owns it).
+
+**Resume on:** a human comment on #14382, or an operator request for a bot fix (slang-fixer on
+`gh-issue-shader-slang/slang-14382`; the triage is the #14382 body plus the triager's `issues/14382.md`). Otherwise closed.

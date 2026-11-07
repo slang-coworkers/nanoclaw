@@ -1,73 +1,55 @@
 ---
 type: chain
-description: "Human-filed (pdeayton-nv, self-assigned, no labels) 11-05 05:52Z: SPIR-V regression in v2026.21 — separately compiled hull/domain give patch field COLOR Location 1 (hull out) vs 0 (domain in). Suspected regressor #13078 (merged 10-19 as 9e17a9e850, fixed #12726; between v2026.20 10-17 and v2026.21 11-04). Triaged 06:10Z: P1 regression (bug/high/glsl-legalize), confirmed vs v2026.20; root cause = system values reserve Locations in createVarLayoutForLegalizedGlobalParam (:1049), so #13078 patch base getLSBZero() returns 1. Handed to slang-fixer (wt-slang-14334, draft PR). P1 regression ⇒ undraft ask is the exception to the weekly list."
+description: "Human-filed (pdeayton-nv, self-assigned) 11-05: SPIR-V regression in v2026.21 from #13078 — separately compiled hull/domain give patch field COLOR Location 1 vs 0. P1. PR #14335 is READY @87af7e3bc but BLOCKED: tangent-vector wants the front-end layout to be the only source of truth and (option C, 11-06) a prerequisite PR for global-varying layout, tracked as #14375. Side finds #14366/#14375/#14376 are this chain's bot filings (issue_opened needs no dispatch)."
 resource: raw/triage-14334.md
 tags: [spirv, tessellation, hull, domain, varying-location, regression]
 ---
 
 # shader-slang/slang#14334 — hull/domain patch locations disagree (v2026.21)
 
-**11-05 — issue_opened → `slang-triager` on `gh-issue-shader-slang/slang-14334`.** R6: no hold.
-Reporter pdeayton-nv files and self-assigns routinely (see [#14099](slang-14099-hlsl-sibling-for-loop-redecl.md)).
+Dated history (triage, #14335 rounds, side finds, redesign, option C): [[slang/14334-hull-domain-patch-location-history.md]].
+New dated entries go to the history file, not here. Triage memo: [raw/triage-14334.md](raw/triage-14334.md).
 
-Dedup at dispatch: memory grep on 14334 had only a false hit (a review id). GitHub search found no open PR;
-related: closed #12726 (patch-constant outputs overlapped TCS locations; fixed by #13078) and held
-[#13427](../imported/project_13427_double_vector_varying_location_count.md) (64-bit vectors; same
-`createPatchConstantFuncResultTypeLayout` code; parked, reporter georgeouzou authored #13078).
+**Mechanism (triage, 11-05).** `createVarLayoutForLegalizedGlobalParam` (slang-ir-glsl-legalize.cpp:1049) put every leaf,
+system values included, into `usedBindingIndex`, so `gl_Position` took slot 0 and the #13078 patch base `getLSBZero()`
+returned 1, while the domain side used front-end Locations and got 0. DXC gives Loc 0 on both sides.
 
-My note, unverified: #13078 likely moved hull patch-constant user locations past the control-point outputs
-without the domain input side matching. Triager to bisect/confirm.
+## Current state (11-06 22:40Z)
 
-**11-05 06:10Z — triaged** (triager's finding; comment [6651107989](https://github.com/shader-slang/slang/issues/14334#issuecomment-6651107989)
-verified live, labels `regression`+`reproduced`). Reproduced on master b3d4e7ad4 and v2026.21, not on v2026.20. Mechanism:
-`createVarLayoutForLegalizedGlobalParam` (slang-ir-glsl-legalize.cpp:1049) puts every leaf into `usedBindingIndex`, system
-values included, so `gl_Position` takes slot 0 and the #13078 patch base `getLSBZero()` (:1440) returns 1. The domain side uses
-front-end Locations and gets 0. DXC gives Loc 0 on both sides. Fix A: system values reserve no Location (one line); the 11 #13078 tests stay unchanged; new
-HS↔DS match test on SPIR-V and GLSL. Classified P1 → **if the draft PR is good, the undraft ask goes to the operator now, not on the weekly list.**
-Handed to slang-fixer (claimed, worktree wt-slang-14334). Follow-ups named on the issue, out of scope: patch-struct-before-OutputPatch
-order mismatch (pre-existing; = #13427 side finding b), hull ignores `[[vk::location]]` on patch fields, `-emit-spirv-via-glsl`
-glslang failure on hull (pre-existing). Memo: [raw/triage-14334.md](raw/triage-14334.md).
+| item | state |
+|---|---|
+| #14334 | OPEN, P1 regression (`regression`+`reproduced`), pdeayton-nv self-assigned and shepherd. Reporter files and self-assigns routinely (see [#14099](slang-14099-hlsl-sibling-for-loop-redecl.md)). |
+| PR #14335 | Non-draft since 11-06 17:32Z (pdeayton-nv), remote head **87af7e3bc**, `Fixes #14334`. **Blocked** by tangent-vector's option C ([6695608888](https://github.com/shader-slang/slang/pull/14335#issuecomment-6695608888)) until the #14375 prerequisite lands. Fixer `sess-1793858928003-n4rvnv`, reached via triager `j75jq7`; Main side is sibling session `o06xef`. |
+| local work | 4 unpushed commits: the front end lays out the patch-constant result (`EntryPointLayout::patchConstantResultLayout`); `createPatchConstantFuncResultTypeLayout` and `getVaryingOutputLocationEnd` deleted; `translateGlobalVaryingVar` reverted to master. Per tangent-vector it becomes an `IRAttr` (`IRHullEntryPointPatchConstantOutputLayoutAttr`), not an optional operand. No push until #14375 lands. |
+| #14375 | Prerequisite, self-assigned by tangent-vector; staged PRs; see [[slang/14375-global-varying-entrypoint-ownership.md]]. Re-check `recheck-14375-maint-qs-43b4` 11-11 17:00Z. |
+| #14366 | Decided 11-06 22:39Z: struct-relative stays; resolved when #14335 lands. See [#14366](14366-patch-field-explicit-vk-location.md). |
+| #14376 | FILED-ONLY, parked `advisory:maintainer-decision` (CP-first vs DXC semantic-sorted counter). |
+| approver | `ready_for_review` queued in `data/approver-pause-queue.md` at 87af7e3bc5 (approver paused). |
+| timers | `recheck-14335-ready-6dd2` and `recheck-14335-ab-choice-9bd7` both cancelled 11-06 (un-draft done; A/B superseded by option C). |
 
-**11-05 08:20Z — [Triage Resolution]; checked live.** Draft PR **#14335** "GLSL/SPIR-V: number hull patch-constant outputs after
-the control-point layout", branch `fix/issue-14334`, head **1465de11e**, `pr: non-breaking`, `Fixes #14334`. The diff touches 1 source file plus 4 tests.
-Review is requested from pdeayton-nv, who is also the assignee. pr-mapping points to fixer `sess-1793858928003-n4rvnv`. CI: 4 pass, 53 skipped (draft).
-The fixer did not use triage Approach A, for this reason: A breaks a control point `{SV_Position; [[vk::location(1)]] NORMAL}` (hull 0 vs domain 2).
-Instead, the patch base is now the front-end offset + size of the hull result, and `usedBindingIndex` is removed. slang-reviewer: APPROVE_WITH_NITS, nits applied.
-The fixer reports: new tests 14/14 (8/14 on master), hull tests 83/83, full suite 11758/11761 (3 CUDA fp8 failures that also fail on master).
-**P1 regression ⇒ one un-draft ask sent to the operator** (dashboard, thread `gh-issue-shader-slang/slang-14334`). This is the exception to the weekly list.
-Final re-check `recheck-14335-ready` fires 2026-11-07T17:00Z. If nothing has changed, it puts the PR on the weekly ready-flip list and asks no more.
+## Decisions and lessons
 
-**11-05 21:53Z: maintainer review on #14335** ([issuecomment-6670518771](https://github.com/shader-slang/slang/pull/14335#issuecomment-6670518771),
-pdeayton-nv @nv-slang-bot). The webhook was routed by the host straight to the fixer session `n4rvnv`. The fixer replied at 22:02Z and reproduced both points. (1) A void hull that writes global
-`out` variables regresses: the hull puts `color` at Loc 0 and the domain at 1, because the `translateGlobalVaryingVar` result struct has no `VaryingOutput` extent. The fix
-goes in the producer on this PR, with spirv and glsl tests (in progress). (2) Explicit patch Locations are filed as [#14366](14366-patch-field-explicit-vk-location.md) (22:47Z), parked on a maintainer
-decision. **The 11-07 re-check `recheck-14335-ready` should expect a new head on #14335 that carries fix (1).**
+- **P1 regression ⇒ the un-draft ask goes to the operator at once**, the exception to the weekly ready-flip list. It was
+  resolved when the shepherd un-drafted #14335 on 11-06.
+- **The maintainer's design rule:** no IR pass numbers outputs or computes offsets; the front-end layout/binding step encodes
+  the patch-constant layout and legalize only reads it (tangent-vector, 11-06, 3 inline reviews on slang-ir-glsl-legalize.cpp).
+  The same direction probably covers the patch-constant half of [#13427](../imported/project_13427_double_vector_varying_location_count.md).
+- **Sequencing (11-06 20:23Z):** #14335 first and owns the hull's use of the front-end layout; #14366 stacks on it with only
+  the shared explicit-Location rule. Then option C put #14375 ahead of both.
+- **Side finds from this chain are filed without asking** ([filing policy](../orchestrator/filing-verified-issues-policy.md));
+  their issue_opened webhooks need no dispatch, and a fixer chain on one needs an operator go — except when a maintainer asks
+  for it, as with #14375.
+- Relays to the chain's triager go pinned with `in_reply_to=2` (my webhook row), so they don't route back to the sender.
 
-**11-05 23:15Z — human review round (triager [Report], checked live).** pdeayton-nv (shepherd) reviewed on 21:53Z in a PR comment, not a formal review, and raised 2 points.
-(1) A real regression on 1465de1: a `void` hull that writes global `out` vars gave hull 0 vs domain 1. The fix is in the producer
-(`translateGlobalVaryingVar` records the result struct's VaryingOutput extent), with new spirv+glsl tests. (2) The hull ignores `[[vk::location]]` on
-patch fields. That is filed as **#14366**, bot-filed 22:47Z by this chain, so its issue_opened needs NO dispatch. Its open question: are explicit Locations absolute or struct-relative?
-PR is still a **draft at head d20d01c38**. Fixer reply: comment 6671982254. Fixer's full run: 11761/11765 (3 CUDA fp8 tests + realtime-clock, which passes alone).
-Next: the shepherd re-reviews and flips the PR. Re-check `recheck-14335-ready-6dd2` (11-07 17:00Z) still stands.
+**11-07 01:21Z — stage 1 is up as draft PR #14395** (checked live): branch `fix/issue-14375-stage1`, head 3065810ca, 18 files +533/−67, **`pr: breaking change`**, "Part of #14375" (no Fixes link), pr-mapping → fixer
+`sess-1793858928003-n4rvnv`. Module-membership ownership + `validateEntryPoint` checks + 5 new diagnostics; module-scope varyings are rejected in HLSL and Slang 2025+, as are namespaced varyings and imports of modules that contain them (precedent #13728).
+Layout and IR are unchanged. The fixer reports the Debug suite at 11906/11909 (fp8). A peer review by slang-reviewer is pending. Q4 (reach of the function-parameter warning) blocks merge. I approved deleting the superseded `fix/issue-14375` @83f6b616e (no PR); its SHA is
+recorded on the issue status. The ready flip is pending, for the weekly list or the maintainers.
 
-**11-06 00:08Z — round 2 [Triage Resolution], checked live.** Draft #14335 is at head **87af7e3bc** (8 files: glsl-legalize + translate-global-varying-var + 6 tests).
-slang-reviewer R2 gave APPROVE_WITH_NITS with 0 bugs, and the nits are applied. The reviewer diffed output on 3,703 commands across 11 targets: the only change is in the new hull runs. Next: the shepherd re-reviews and flips the PR.
-The triager asked whether to file 2 pre-existing bugs. Per [filing policy](../orchestrator/filing-verified-issues-policy.md), I told it to file both and report the numbers (my msg 23).
-They are: (a) S1, where a `void` VS with global `out : SV_Position` takes a varying slot, so VS→FS Locations disagree; (b) the domain struct-first/no-`OutputPatch` order mismatch
-(dedupe against #13427 side finding b). Both are filed only, so their issue_opened webhooks need NO dispatch.
-
-**11-06 00:10Z — side find (a) filed as [#14375](https://github.com/shader-slang/slang/issues/14375)** (bot, label `reproduced`): a global
-`out : SV_Position` takes a varying Location, so VS `vA` gets Loc 1 vs FS `vA_in` Loc 0 (SPIR-V + GLSL; front end
-`slang-parameter-binding.cpp:728-735` ignores the semantic for globals). issue_opened: **NO DISPATCH** (live: no assignees, 0 comments).
-FILED-ONLY, owned by this chain; a fixer chain on it is a fan-out to report to the operator, not started here. Side find (b)
-(domain struct-first order) is still pending a number.
-
-**11-06 00:11Z — side bugs filed** by slang-triager (checked live): **#14375** (S1: global `out : SV_Position` takes a varying slot → VS/FS mismatch) and **#14376** (domain patch-struct-first / no-`OutputPatch` order mismatch; maintainer numbering decision; #13427 related). Both Bug + `reproduced`, FILED-ONLY, owned by this chain — issue_opened needs NO dispatch.
-
-**11-06 00:11Z — side find (b) filed as [#14376](https://github.com/shader-slang/slang/issues/14376)** (bot, label `reproduced`):
-domain varyings share one counter in parameter order, so hull/domain Locations disagree when `PatchData` precedes
-`OutputPatch<CP,N>` or there is no `OutputPatch` (pre-existing; v2026.20 also wrong; #14335 does not change it). The issue
-asks maintainers to pick: (1) CP-first on both sides, or (2) DXC's semantic-sorted shared counter (renumbers all hull/domain).
-issue_opened: **NO DISPATCH** (memory grep: only the register files; live: no assignees, 0 comments, cross-ref from #14334).
-FILED-ONLY, parked `advisory:maintainer-decision` in `supervisor-state.json`; a fix is a new fixer chain (operator go).
-All three side finds are now filed: #14366, #14375, #14376.
+**11-07 02:35Z — #14395 R1: APPROVE_WITH_NITS, 0 bugs / 6 gaps** (reviewer session `sess-1794014808093-j1g1n8`; file [raw/combined-review-14395-r1.md](raw/combined-review-14395-r1.md); the verdict and a tested patch went to the fixer).
+Top concern: under module ownership, #14375's own vs+fs repro no longer compiles its fragment entry point (E58001 + E30702), yet the PR says Q1 adds "no new diagnostic". The fixer re-asks Q1 with the repro.
+Other gaps: `inout` globals are validated in+out but lowered out-only; stale `11-language-version.md` + `entrypoint-validation.md`; untested implicit-2025 / `__include` / W38044 exemptions.
+The reviewer sent a side find (GLSL `depth_greater` / `layout(triangles) in`) labeled "under the 2026-10-30 hold, do not file". **That hold was superseded 10-31.** I told triager j75jq7 to reproduce, dedupe and file it if verified (msg 107),
+and gave slang-reviewer its one correction (msg 109). If the reviewer keeps citing the hold, report it to the operator; do not name it to the reviewer again.
+**02:39Z — the R1 side find is filed as #14397** (checked live: bot-filed, `reproduced`, filed only). The GLSL front end rejects geometry, tessellation and conservative-depth `layout` qualifiers with E31216/E31217. Related: #12655/#13033 and bot draft PR #14275 (local_size/early_fragment_tests).
+Its issue_opened needs NO dispatch. slang-reviewer acknowledged the hold correction (msg 122) and updated its memory.

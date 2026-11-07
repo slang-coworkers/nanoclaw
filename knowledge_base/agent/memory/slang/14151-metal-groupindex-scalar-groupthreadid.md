@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14151 — Metal SV_GroupIndex subscripts a scalar SV_GroupThreadID (`gtid[2]`)
-description: Human-filed (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) Metal bug 2026-11-02 10:04:22Z. Invalid MSL from emitCalcGroupIndex reusing a narrowed SV_GroupThreadID param. Triaged P2, reproduced. MAINTAINER-OWNED FIX: jkwak-work PR #14326 (replaces reporter PR #14169). No bot fixer. Triager one-shot i14151-r6-recheck-e401 11-06 10:10Z verifies #14326 without posting.
+description: Human-filed (albertrodriguezclo, CONTRIBUTOR, cloth-sim batch) Metal bug 2026-11-02 10:04:22Z. Invalid MSL from emitCalcGroupIndex reusing a narrowed SV_GroupThreadID param. Triaged P2, reproduced. FIXED on master by jkwak-work PR #14326 (merged 11-05 02:01Z, 6b0467fb2; replaces reporter #14169), verified by triager 11-06. Issue still OPEN (no closing keyword); Fixed-by note posted 11-06 10:23Z (cmt 6682628231), no close, no mention. TERMINAL on our side; maintainer closes.
 tags: [metal, system-values, r6]
 ---
 
@@ -62,3 +62,16 @@ are set and there are 0 comments (verified 10:2xZ). Not a regression; the synthe
 - The triager re-scoped `i14151-r6-recheck-e401` (11-06 10:10Z): build #14326's head, run the 12-case order matrix, the clang check, and the
   metal, compute and mesh `SV_GroupIndex` suites; check against the memo's acceptance criteria; **post nothing**, including about the missing
   closing keyword. It sends a per-criterion `[Report]`. Whether to mention the missing `Fixes #14151` is open; decide when that report arrives.
+
+**11-06 10:2xZ: recheck i14151-r6-recheck-e401 reported (triager's findings; I verified only the GitHub state).**
+- #14326 MERGED 2026-11-05 02:01:22Z as `6b0467fb2` (verified live). `closingIssuesReferences` is empty. #14151 is OPEN, 0 comments,
+  assignee jkwak-work (assigned by `github-actions[bot]` 11-02 10:44:59Z, so not self-assigned), milestone Q4 2026.
+- Triager built 6b0467fb2 vs 6815ed82d: all 12 order-matrix cells give valid MSL (baseline had 4 bad); the new test's gi-first lanes fail
+  pre-fix (revert drill); the re-enabled `-mtl` lane of `system-value-extraction.slang` passed on macOS CI; 885/885 in the metal/compute/mesh
+  suites. Criterion (4), tightening `thread_position_in_threadgroup.slang`, was not done; the new test covers it, so it does not block.
+- **Decision (mine, no operator ask):** the bot chain had no artifact on #14151, so per GitHub-as-system-of-record the triager posts ONE short
+  "fixed by #14326 (6b0467fb2)" note, with no @mention and no close. Closing stays with the maintainer. No re-check timer. Sent to the triager
+  as an in_reply_to reply on its report (msg 3).
+- **11-06 10:23Z: posted (verified live).** nv-slang-bot comment [6682628231](https://github.com/shader-slang/slang/issues/14151#issuecomment-6682628231)
+  says the fix is in #14326 (6b0467fb2), gives the order-matrix and macOS CI evidence, and says there was no closing keyword. It has the AI-disclosure footer
+  and no mention. The issue is still OPEN, waiting on jkwak-work. **TERMINAL**: no timer. A human comment reopens the chain through its webhook.

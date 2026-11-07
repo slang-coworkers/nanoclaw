@@ -101,3 +101,42 @@ v2026.20; HEAD not retested by reporter.
   - #14276 is still a draft at 860cc7501, and its HLSL CHECKs now conflict with master's `42.0L`.
   - Parked on skiminki-nv's typed-literal / #14276 decision; the timer is `recheck-14259-approach-p-fd8e` (11-11), case (b).
   - The triager keeps the sentinel until #14276 resolves.
+- 11-06 15:27Z **New maintainer ask**: skiminki-nv (issue assignee) @-mentioned the bot in cmt 6688485351.
+  - The ask: "draft another PR for HLSL" that adds casts to all half literals and to the special values NaN/±Inf. Examples:
+    - `double(0.0L / 0.0L)`
+    - `half(1.0 / 0.0)`
+    - `half(1.5)`
+  - Tests: RWByteAddressBuffer tests for the typed NaNs, Infs, and half literals.
+  - 15:29Z: I relayed it verbatim with `<github-post-authorized />` to the triager owner session (in_reply_to=102), for fixer k0j5bx. My note:
+    - build on master post-#14322; leave #14276 alone;
+    - write "Related: #14161" (half inf/NaN bug, jkwak-work-owned), not "Fixes";
+    - flag neutrally on the issue that human PR #13927 rewrites the same HLSL float NaN arm from bits, and ask skiminki-nv how to reconcile, without holding the draft.
+  - Resume on the triager's report with the PR number and per-case results.
+- 11-06 15:58Z skiminki-nv answered the #13927 question (cmt 6689190037, no @mention): "Let us just fix the types here… it should be a fairly
+  straightforward rebase for that PR." So the third PR keeps the typed NaN arm, and #13927 rebases on its own. I relayed this to the triager owner session (in_reply_to=112).
+- 11-06 ~16:10Z **Third PR: DRAFT #14385** (head f4c657a, off master fef74e3c6, "Part of #14259"). Files: slang-emit-hlsl.cpp, the new test
+  gh-14259-hlsl-typed-special-literals, and one lexer CHECK test. Result cmt 6689506446.
+  - Spellings, all checked with DXC cs_6_6 through `Store<T>`, all 10 cases fixed (every one was `.f32` on master):
+    - `half(1.5)` → f16;
+    - `half(±1.0 / 0.0)` and `half(0.0 / 0.0)` → f16;
+    - `double(±1.0L / 0.0L)` and `double(0.0L / 0.0L)` → f64;
+    - `float(…f / 0.0f)` → f32.
+  - #14161's repro now compiles; it is linked as Related. #13927 is to rebase on top.
+  - Peer review is pending, then the [Fix Report], then skiminki-nv's review. Ready-flip pending.
+  - **Side find S4 = #14386**, filed by the triager (Bug + `reproduced`), not routed.
+    - The bug: `FloatToHalf` (slang-math.h:222-227) narrows every NaN to 0x7C01/0xFC01, a signaling NaN with payload 1, through the SPIR-V
+      constant emit and half constant folding. On VK/L40S a half NaN reads FC01.
+    - Already triaged and reproduced, so it needs no re-triage. Sibling Main `issue_opened` session sess-1793981657033-exfjo9 owns
+      its dispatch, so this session dispatches nothing.
+    - Disposition (exfjo9, 16:18Z): [#14386](14386-floattohalf-half-nan-signaling.md) FILED-ONLY; one-shot `recheck-14386-floattohal-2ff9` (11-13 12:00Z).
+    - Related: #13857's LLVM signaling-NaN record (imported/project_13857_llvm_constant_float_quiets_signaling_nan.md).
+- 11-06 16:56Z **#14385 [Triage Resolution]**: fixed for the requested scope. Head 046b09c, 5 files, +180/−36, still a draft.
+  - Type names come from `getDefaultBuiltinTypeName`. Peer R1 APPROVE_WITH_NITS, 0 bugs; N1–N7 applied.
+  - Tests (fixer-reported): the 10 cases are width-correct; 833/833 related tests pass.
+  - Next: skiminki-nv reviews it and marks it ready (ready-flip pending, weekly list).
+  - Still open in this chain: the fate of #14276 and the C++/CUDA widths.
+  - Side finds: all four are filed-only by their sibling sessions, with timers:
+    - #14282 → 11-09
+    - #14323 → 11-11
+    - #14386 → 11-13 (recheck-14386-floattohal-2ff9)
+    - #14283 → none (resumes on a human signal)

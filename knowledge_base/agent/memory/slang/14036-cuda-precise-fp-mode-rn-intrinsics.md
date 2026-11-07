@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14036 — CUDA `precise` / `-fp-mode precise` leave no trace in emitted .cu (FMA contraction)
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:20Z, cloth-sim batch. Triaged feature/medium/P2 (CUDA emit) by slang-triager. Parked on maintainer direction (jkwak-work, tangent-vector). Parked 5-bullet posted 2026-11-02 17:32Z after the R6 hold; no re-check scheduled — the supervisor register is the timer.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:20Z, cloth-sim batch. Triaged feature/medium/P2 (CUDA emit) by slang-triager. 11-06 tangent-vector @-mentioned the bot, calling approach A reasonable for the general -fp-mode precise case (per-value precise waits on their language proposal). Bot DRAFT PR #14396 @2f563aa (11-07 02:30Z, approach A only, 'Part of #14036'), with slang-reviewer; assignee jkwak-work (shepherd routing by jhelferty-nv 11-02).
 tags: [cuda, precise, fp-mode, fma, feature-request, parked, r6]
 resource: /workspace/inbox/a2a-1793294503154-lqb5sc/triage-14036.md
 ---
@@ -34,3 +34,35 @@ No fixer has been dispatched.
 
 **Next (superseded, kept for history).** The triager's one-shot `t-4a15ea` runs 2026-11-02 17:30Z. It posts the parked 5-bullet unless a human has moved the issue on. If there is a reporter PR, it records the PR and does not compete.
 If there is maintainer direction, the triager hands off to slang-fixer. Owner: slang-triager, thread `gh-issue-shader-slang/slang-14036`. Memo: see `resource`.
+
+**11-02 18:34Z.** jhelferty-nv assigned the issue to jkwak-work. This is not a self-assign; events API shows `assigner=jhelferty-nv`.
+
+**11-06 22:46Z: maintainer direction.** tangent-vector (MEMBER) mentioned the bot in comment 6697700464 (verified). Quoted verbatim:
+> The recommended approach A seems reasonable to me for the general `-fp-mode precise` case.
+> I am actively working on a language feature proposal to codify our language rules for `precise`, as a prerequisite to working through fixes to our implementation. For the immediate future users are probably best off using the "big hammer" of `-fp-mode precise` (on targets where that is effective), while we work toward a proper fix.
+
+I forwarded it to slang-triager (owner session `sess-1793293919345-acyb6s`, thread `gh-issue-shader-slang/slang-14036`), with `<github-post-authorized />`.
+I told the triager three things: A covers the global mode only, per-value `precise` stays out until the proposal lands, and jkwak-work (the assignee) has not commented yet.
+Next: the triager's [Triage handoff] to slang-fixer, or a GitHub question if it reads the comment otherwise.
+
+**11-07 00:18Z: handed to the fixer.** The triager read the comment the same way I did, so it asked no question. It counts jkwak-work's assignment as shepherd routing by jhelferty-nv, which is not a stand-down.
+- The triager posted ack 6699439326 as a fresh delta at 00:17:41Z. I verified it: no @-mentions; it says a draft PR is coming and that the assignee may take it over or close it.
+- The handoff went to slang-fixer, session `sess-1794010689277-2rqq4g` (verified running, thread `gh-issue-shader-slang/slang-14036`). Scope: approach A only. Out of scope: per-value `precise`, E56005 and SPIR-V NoContraction.
+- The PR is a draft with a non-closing "Part of #14036".
+- Dedup at the time of the post: 0 cross-referenced PRs.
+- The triager has scheduled no re-check; webhooks deliver any change.
+
+**Next.** slang-fixer sends a [Fix Report], and the triager verifies the PR and sends me a [Triage Resolution].
+The ready-flip goes on the weekly list, not into a per-PR ask.
+
+**11-07 02:30Z: draft PR #14396.** Title "CUDA: emit _rn arithmetic under -fp-mode precise". Facts I verified:
+- Branch `fix/issue-14036`, head 2f563aacf, label `pr: non-breaking`.
+- The body says "Part of #14036" and has no closing keyword.
+- pr-mapping → slang-fixer `sess-1794010689277-2rqq4g`.
+- Issue comment 6699439326 was edited in place at 02:32:32Z to "fix in draft PR #14396, held pending review".
+
+The PR is now with slang-reviewer.
+- ⚠️ The bot's GitHub App cannot push `.github/workflows/` changes. The fixer therefore left the offline-nvcc CI step as a suggestion in the PR explanation comment, and a human has to add it.
+- Next: the reviewer verdict, then [Fix Report] → [Triage Resolution].
+- The ready-flip goes on the weekly list; it is not a per-PR ask.
+

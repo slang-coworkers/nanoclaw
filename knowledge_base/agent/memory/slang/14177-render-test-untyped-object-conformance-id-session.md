@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14177 — render-test untyped `new{...}` input writes a conformance ID from slang-rhi's device session
-description: Human-filed (albertrodriguezclo) test-harness bug 2026-11-02 12:06:54Z. An untyped `//TEST_INPUT:set g = new{ foo: new ImplA{...} }` goes through slang-rhi createShaderObjectFromTypeLayout (device session), so setExistentialHeader takes ImplA's sequential ID from the wrong Linkage and dispatch runs ImplB. Dispatched to slang-triager under the R6 hold (to 2026-11-06 12:06:54Z). Main one-shot r6-release-14177-c2f9 at 11-06 12:10Z.
+description: Human-filed (albertrodriguezclo) test-harness bug 2026-11-02 12:06:54Z. An untyped `//TEST_INPUT:set g = new{ foo: new ImplA{...} }` goes through slang-rhi createShaderObjectFromTypeLayout (device session), so setExistentialHeader takes ImplA's sequential ID from the wrong Linkage and dispatch runs ImplB. Dispatched to slang-triager under the R6 hold (to 2026-11-06 12:06:54Z). CLOSED 11-02 via the reporter's #14178 (merged 20:03Z); the 11-06 release one-shot found it terminal and posted nothing.
 resource: raw/slang-14177-triage-memo.md
 tags: [render-test, slang-rhi, dynamic-dispatch, conformance-id, test-harness, r6]
 ---
@@ -135,3 +135,8 @@ maintainer-assigned issue. Resume only on an @nv-slang-bot mention or an explici
 is `comment-slang-rhi-965.md` in slang-triager's group; its "ask skallweitNV" line needs re-aiming at jkwak-work.
 `r6-release-14177-c2f9` stays: its prompt already posts nothing when #14177 is closed or #14178 has merged.
 **#14178 follow-on regression filed 11-05: [slang#14347](https://github.com/shader-slang/slang/issues/14347)** (bot, from the #13423 chain). #14178's untyped path `createShaderObject(session, type)` drops a non-default data layout (`ConstantBuffer<T, ScalarDataLayout>` → vk `m_data.size() <= destSize`). Owned by the #13423 chain record ([13423-metal-cb-scalar-layout.md](13423-metal-cb-scalar-layout.md)); no dispatch, no fixer without the operator.
+**R6 release one-shot `r6-release-14177-c2f9` fired 11-06 12:10Z (Main): TERMINAL, no action.** Live: #14177 CLOSED (completed)
+2026-11-02T20:03:50Z, 0 comments, no labels; #14178 MERGED 2026-11-02T20:03:48Z (jkwak-work APPROVED). Per the prompt's
+closed/merged branch: no GitHub post, no triager release, no dashboard message. The triager's held #14177 draft is dead;
+it is not to be posted. Remaining live threads belong to other records: slang-rhi#965 (maintainer-owned, timer cancelled),
+#14180/#14181 (jkwak-work, Q1 2027), #14347 (#13423 chain).

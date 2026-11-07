@@ -85,3 +85,25 @@ it, filed-only, no fixer). The `llvm-host-ir` half is #14329.
 **11-04 22:28Z — side-finds filed** (slang-triager): (1)+(2) → [#14327](14327-generic-sizeof-bool-4-vs-concrete-1.md)
 (generic `sizeof(T)` bool 4 vs 1, plus the stale docs/comments); (3) split into #14328 (`host-cpp` assert `layoutDecoration`)
 and #14329 (`llvm-host-ir` unsupported instruction). All filed-only, Type=Bug + `reproduced`; their webhooks need no dispatch.
+
+**11-06 10:21Z — `t-92b792` ran (edit-only): no change.** #14157 is open. #14167 is open, non-draft and unmerged, at head
+`480bff04a` (reporter nits 11-04 23:05Z; coderabbit re-reviewed). 6643360049 is still accurate, so it was not patched.
+Nothing was posted. **Decision (me): no new timer.** A merge or close of #14167, or the issue closing, arrives as a
+webhook or a supervise-issues tick. Then the triager PATCHes only the "Issue status:" line of 6643360049.
+**Chain is idle; owner slang-triager; no fixer.**
+
+**11-06 16:43Z — jkwak-work comment** ([6690153386](https://github.com/shader-slang/slang/issues/14157#issuecomment-6690153386),
+MEMBER, **no bot mention**): *"I am gonna discuss about the size of bool from Slang perspective in a meeting, because it is
+unclear to me. I think when the sizeof(bool) on the target is not 4 bytes, we may need to emit `uint` instead of `bool`."*
+No reply was asked for, so nothing was posted (precedent: szihs on #13596). **PARKED on a maintainer decision** (the bool-size
+policy). It may reshape #14167, now at `fbf00ddcd`, and #14327. Register: supervisor-state disposition updated 16:50Z. No
+one-shot timer. **Resumes on:** a maintainer comment or review on #14157/#14167, or a #14167 merge/close. I told the triager
+(FYI only, no post).
+
+**11-06 18:59Z — jkwak-work after the meeting** ([6692959097](https://github.com/shader-slang/slang/issues/14157#issuecomment-6692959097),
+MEMBER, no bot mention): *"We discussed this and I learned that I was under the wrong impression that the size of a type should be
+consistent across all target platforms. Based on the new information, I will review the issue and propose the fixes more
+carefully."* So the per-target sizes are now accepted, and the next step is the maintainer's: review #14167 (still `fbf00ddcd`,
+no jkwak-work review yet) and propose fixes. No reply was asked for, so nothing was posted, and the triager was not pinged.
+Register disposition is now `advisory:maintainer-review`. **Resumes on:** a review or comment on #14167, a bot mention, or a
+#14167 merge/close.

@@ -84,3 +84,6 @@ pr-mapping for #14218 points to the fixer session `jhxxze`. Main's one-shot is
 PR is still a draft, it reports, and the chain then rests on the /supervise-issues register. S1
 filing is in progress with the triager.
 - 11-03 02:40Z: S1 filed as #14222 (verified: nv-slang-bot, Type=Bug, reproduced). Filed-only; trigger added to recheck-14062-pr14218-55f1.
+- 11-07: ⚠️ **Coverage gap.** The #14057 triager reports that its planned warning cannot see unsuffixed generic `T(0.1)`: `T` is unknown at check time, and no conversion exists to hook. So "left to #14057" covers no one.
+  If jkwak-work closes #14062 on the assumption that #14057 has it, the case is lost.
+  The triager plans to propose a separate follow-up issue when a maintainer replies on #14057. Detail: [14057 record](14057-unsuffixed-float-literal-double-warning.md).

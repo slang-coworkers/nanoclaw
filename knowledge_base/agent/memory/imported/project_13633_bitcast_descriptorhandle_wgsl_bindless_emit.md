@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13633_bitcast_descriptorhandle_wgsl_bindless_emit
-description: "[FIX REPORTED 10-16 08:54Z; draft #13679 head e2c77882c4, CI waiting on human gate; awaits human review] slang#13633 (albertrodriguezclo, external, 10-15 13:15Z): bit_cast<DescriptorHandle<T>>(uint2) ICEs E99997 on all 7 targets, and WGSL prints every DescriptorHandle<T> as T (isResourceTypeBindless hard-wired true). Triaged 13:46Z, handed to slang-fixer: Fix 1 (WGSL emitter uses the layout predicate) + Fix 2-B (a located diagnostic, no new legal cast). Sibling #13641 keeps the resource-table feature."
+description: "[PARKED 11-06: draft #13679 unreviewed 3 wks; reporter asks to make bit_cast INTO a handle legal = maintainer scope call; re-check 11-13] slang#13633 (albertrodriguezclo, external, 10-15 13:15Z): bit_cast<DescriptorHandle<T>>(uint2) ICEs E99997 on all 7 targets, and WGSL prints every DescriptorHandle<T> as T (isResourceTypeBindless hard-wired true). Triaged 13:46Z, handed to slang-fixer: Fix 1 (WGSL emitter uses the layout predicate) + Fix 2-B (a located diagnostic, no new legal cast). Sibling #13641 keeps the resource-table feature."
 metadata:
   node_type: memory
   type: project
@@ -69,9 +69,23 @@ at 2026-10-20T13:00Z (no recurrence).
 earlier Metal findings + #13695 overlap question). The comment went verbatim to the #13633 triager (`d21hbq` seq 30). The metal-filing loop is closed.
 Re-check task `rechase-13633-draft-pr-dd7b` was updated with these facts.
 
-**10-19 20:20Z:** the triager replied on the issue (cmt 6276457769). The #13707 overlap is harmless: both PRs produce the identical
-`slang-emit-wgsl.h` blob `abd726c0113` (I verified this), and it's the only shared file, so whichever lands second rebases cleanly. No note on #13679, no fixer ping.
+**10-19 20:20Z:** the triager replied on the issue (cmt 6276457769). The #13707 overlap is harmless: both PRs produced the identical
+`slang-emit-wgsl.h` blob `abd726c0113` on 10-19 (verified then; stale by 11-06, see below), and it's the only shared file, so whichever lands second rebases cleanly. No note on #13679, no fixer ping.
 
 **10-20 13:00Z re-check (`rechase-13633-draft-pr-dd7b`, branch 7):** no change. Head still `e2c77882c4`, draft, MERGEABLE/BEHIND, review still requested from jkwak-work with none submitted, CI 38873310343 still `waiting`. No human comment since cmt 6276275674. #13707 is not merged. jkwak-work self-assigned and milestoned #13695 on 10-19 16:13Z. I asked the operator on orchestrator-dashboard (thread `-13633`) whether to nudge jkwak-work. **No re-arm**; the chain is parked on that operator decision.
+
+**10-20 re-check:** no change. The operator was asked once (dashboard msg 3) whether to nudge jkwak-work; no answer is recorded.
+
+**11-06 22:57Z, reporter cmt 6697869518 on #13679:** asks that `bit_cast<DescriptorHandle<T>>(uint2)` on non-bindless targets lower like the
+`DescriptorHandle<T>(uint2)` ctor. That is Approach A, a contract widening. Its argument is a real asymmetry: #13679 already makes bit_cast *out of* a handle work.
+#13480 shows no maintainer decision; skiminki-nv cmt 6193120460 (10-15) quoted the spec and SPIR-V OpBitcast and said "I don't have an immediate opinion".
+I told the fixer (msg 181, landed vgdo6h seq 48) to reply honestly about the asymmetry, defer scope to the maintainers (jkwak-work + #13480), and make no code change.
+Timer: one-shot `rechase-13679-scope-6ec0` at 2026-11-13T13:00Z.
+
+**11-06 23:19Z fixer reply** (cmt 6698283183, verified live): it acknowledges the asymmetry, quotes the #13480 maintainers verbatim, names the
+`DescriptorHandle<T>(uint2)` ctor as the supported path, and puts both questions to jkwak-work (no @-mention). No code change. Build dir reclaimed, so any change needs a ~20 min rebuild.
+**Corrections (the fixer caught both):**
+- tangent-vector's exact words are "were not really vetted for general-purpose use out in the wild", not "never vetted for general use".
+- The `slang-emit-wgsl.h` blobs are no longer identical. #13707 at `c09c746ea6` has `c7ea931f4f4`, because it merged master (`m_requiresImmediateAddressSpace`); #13679 still has `abd726c0113`. The deletion hunk is the same and `git merge-tree` is clean. My "byte-identical" was true on 10-19 and went stale.
 
 **Next resume trigger:** the fixer's draft PR report, or a human comment on #13633.

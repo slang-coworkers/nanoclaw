@@ -68,3 +68,31 @@ nothing. No separate bug exists yet for the default-argument E99997 / segfault c
 related sibling is #13720, which covers initializer visibility. Both operator decisions above have
 gone **unanswered** since 10-16. The triager set no further timer, so I scheduled the one-shot
 `rechase-slang-13674-r1` for 2026-11-06T07:00Z. It is re-chase 1 of 3, reserved through task-hygiene.
+
+**2026-11-06T07:00Z: re-chase r1 (me).** Nothing has changed. The newest comment is still skiminki-nv
+6213400436. There is no new cross-reference since #13720 (10-16) and no linked PR. The issue last
+updated on 10-21 (milestone). I posted nothing on GitHub. I searched the dashboard session
+(seq 503706–511490, 10-15 to 11-06) on its `text` field, and the operator has answered **neither**
+decision. I named both again on `orchestrator-dashboard` (msg 43). It noted that decision 1 qualifies
+for self-filing under [filing-verified-issues-policy](../orchestrator/filing-verified-issues-policy.md)
+once it is re-reproduced at HEAD and deduped. Scheduled the one-shot `rechase-slang-13674-r2` for
+2026-11-20T07:00Z.
+- **Lesson: `task-hygiene.py next` RESERVES an ordinal on every call.** I ran it twice (a worktree
+  copy, then `~/.claude/skills/...`), which bumped `max_ordinal` from 1 to 3. I reset it by hand to 2
+  in `.task-hygiene/state.json`. Run it once, from `~/.claude/skills/supervise-issues/scripts/`.
+
+**2026-11-06T07:4xZ: the operator decisions are withdrawn and sent to the triager (me).** Under
+[filing-verified-issues-policy](../orchestrator/filing-verified-issues-policy.md), r1 should not have
+asked the operator again, so I told the dashboard (msg 511507). I sent slang-triager its owner
+session `sess-1792134043420-erzcp8` (thread `gh-issue-shader-slang/slang-13674`, row 30, verified
+landed), asking it to re-check at HEAD, dedupe, and file:
+- (a)+(b): the default-argument E99997 and the segfault;
+- (c): the body-only `s.c` Invalid op, only if it is not one of #12430's failure paths.
+
+The triager posts nothing on #13674, @-mentions no one, and starts no fixer chain. Waiting for its
+report with the issue numbers.
+**2026-11-06T07:44Z: the triager filed (verified on GitHub).** It filed (a)+(b) as **#14380**,
+recorded in [14380-default-arg-caller-context](../slang/14380-default-arg-caller-context.md). That
+issue includes a new silent wrong-`this` case. (c) is a duplicate of open #10150, with fix PR #10854,
+so it was not filed. Both former decisions are closed. #14380 is filed-only, because its fix depends
+on this issue's design.

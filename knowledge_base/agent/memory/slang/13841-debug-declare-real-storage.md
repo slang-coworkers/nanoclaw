@@ -1,52 +1,36 @@
 ---
 type: chain
 title: slang#13841 — SPIR-V DebugDeclare should name the variable's real storage
-description: "slang-fixer efb8e6 / triager 2zq0tf. DRAFT PR #13872 @ba3211739 (Fixes #13841): DebugDeclare names the real OpVariable / out-inout pointer param instead of a _dbgvar_ copy. Adds Decoration.DebugVarStorage = 910 and module version 38, which COLLIDES with draft #13564 (#13555, noTargetCase = 910, v38) and draft #13425 (#13423, MetalConstantBufferLayout = 910, max 37), so three PRs claim 910. #13842 is parked on the #5398 design call and builds on this PR."
+description: "slang-fixer efb8e6 / triager 2zq0tf. Draft PR #13872 (DebugVarStorage) stays open, but tangent-vector rejected its design 10-30 and wants an IR debug-info redesign, tracked by bot-filed #14106. Phase-1 draft #14114 @f2779c645 is under its first maintainer review (11-06). Fixer efb8e6 is escalated near its $300 ceiling; the operator ceiling ask ('raise 14114', $400) is open. Stable id 910 / module v38 are claimed by several drafts, which all need the next free id + v39 at rebase."
 tags: [slang, spirv, debug-info, stable-names, module-version]
 ---
 
 # slang#13841 — DebugDeclare on real storage
 
-**10-22 16:26Z:** the triager reports draft PR #13872 is open at `ba3211739`. It has 2 new tests, and the full suite
-passes 10918/10921; the 3 failures are fp8 CUDA tests that also fail on master. `OpDebugValue` is unchanged, so the
-overlap work stays with #13842.
+Dated history: PR #13872 phase (10-22 → 10-30) in [[slang/13841-pr13872-history.md]]; the #14106 redesign and PR #14114
+(10-30 →) in [[slang/13841-debuginfo-redesign-history.md]]. New dated entries go to the redesign log, not here.
 
-**Collision, checked 16:30Z:** master's max stable id is 909, with module version 37.
-- #13872 adds `["Decoration.DebugVarStorage"] = 910` and `k_maxSupportedModuleVersion = 38`.
-- Draft #13564 (#13555, fixer `w74ros`) adds `["Decoration.noTargetCase"] = 910` and also sets 38.
+## Current state (11-06 18:32Z)
 
-Whichever merges second must take 911 (and keep 38 if both land in the same release window, or bump to 39 if a release
-ships in between). Both PRs are draft and unreviewed by humans. I told the #13841 fixer to note it in the PR body and
-handle it at rebase, not to renumber now.
+| item | state |
+|---|---|
+| #13841 | OPEN. Triage resolved (fixed) 10-23 in bot comment 6345766573. |
+| PR #13872 | DRAFT @`70cb286`, kept open at pdeayton-nv's request. Design rejected 10-30 by tangent-vector (cmt 6530975517: `DebugVarStorage` is a band-aid; he wants IR `DebugDeclare` at lowering, every pass maintaining debug insts, close to 1:1 with SPIR-V NSDI). |
+| #14106 | Bot-filed tracking issue, **owned by this chain** (issue_opened needs no dispatch). 3-phase plan in cmt 6534546653; Q1–Q3 to tangent-vector unanswered. Assigned to pdeayton-nv 11-02; jhelferty-nv's question there (6585610084) was to pdeayton-nv, so no bot reply. |
+| PR #14114 | Phase-1 draft @`f2779c645` (`pr: non-breaking`, no closing keyword, mapped to efb8e6, shepherd jkwak-work). Not mergeable: deliberate -O1/-O2 failures and other disclosed gaps (redesign log, 10-31 00:51Z). slang-reviewer R1 REQUEST_CHANGES (L1 🔴, L2/L3 🟡), not posted. **First maintainer review 11-06:** 17 inline from tangent-vector, 1 from pdeayton-nv; batched ack [6692400190](https://github.com/shader-slang/slang/pull/14114#issuecomment-6692400190); a scope question (skipping pair/tuple/implicitDeref) waits on their pick in [r4496154889](https://github.com/shader-slang/slang/pull/14114#discussion_r4496154889). Worktree reaped; recreate from origin/fix/issue-14106. |
+| #13842 | Tracked by #14106 as a symptom; phase 2 closes it. Bot comment 6329267840 edited 10-31. Next one-shot: triager `t-47f371`, 11-14 16:00Z. |
+| fixer efb8e6 | `sess-1792627891313-efb8e6`, escalated ($269.44/$300 on 11-06, keeping a $10 reserve). Ceiling ask open: msg 509617 (10-31), re-asked 511607 (11-06) with keyword "raise 14114", $400 recommended. **Do not re-ask.** |
 
-**10-22 16:32Z:** the #13564 fixer confirmed the collision and found a third claimant, #13425 (`Type.MetalConstantBufferLayout` = 910). Its PR body now carries a merge-order line that says "next free id". I logged it in the [#13423 re-chase log](13423-metal-cb-scalar-layout-rechase-log.md); `rechase-13425-maintainer-e658` (10-24) re-reads master before merging.
-**10-22 16:53Z:** #13872 head `54457e374` (comment-only). The Risk section lists the 910 collision with #13564 and #13425. Peer review is running.
-**10-22 18:07Z:** peer review R1 at `54457e374` returned REQUEST_CHANGES. R1 is partial: modified non-promotable `in` params keep a `_dbgvar_` copy and lose DebugDeclare at -O1, and the reviewer sent a 4-line remedy. It also found 2 gaps (late-bound entry points via findAndCheckEntryPoint, and the CHECK-NOT window) plus stale comments. The fixer is applying them.
-**10-22 22:45Z:** peer review R2 at `5ac1c3cdb` returned REQUEST_CHANGES. A 🔴 regression reproduces at -g2: a dynamic-dispatch generic with an `inout` param hits the new release assert, because `specializeGenericWithSetArgs` leaves a stale DebugVarStorage. Reverse mode also leaves a stale decoration (fails -validate-ir with E40007). All R1 items are fixed. Remedy options: shared post-clone rebinding (the producer-side fix) or a copy fallback. Next review is the last round.
-**10-22 23:38Z:** R2 fixes are pushed at `35eac4a`: a shared post-clone rebind helper, plus an emitter copy fallback that -validate-ir flags. 7 PR tests pass; the full suite is 10926/10929 (fp8 CUDA). R3, the last round, is requested. CI run 39871746309.
-**10-23 00:33Z:** peer review R3 (last round) at `35eac4a2f` returned APPROVE_WITH_NITS. The R2 ICE and the reverse-mode stale decoration are both fixed and verified; PR tests 15/15, a 4427-test subset and 22 probes are clean. Only test and contract nits remain. Next: the fixer applies the nits and sends the Fix Report to the triager, then human review (shepherd pdeayton-nv).
-**10-23 00:55Z:** the Fix Report (head `5c5909334`, 26 files +796/−57, full suite 10927/10930, R3 APPROVE_WITH_NITS applied) reached me instead of the triager. That's the second time today, after #13828. The cause is that I messaged the fixer directly (the 910-collision heads-ups), which skips the triager tier, so the fixer's report-up drifts to me. I forwarded it to triager `2zq0tf`. The PR is a draft and BEHIND master.
-**10-23 00:57Z, triage resolved (fixed).** The triager edited bot comment 6345766573 in place. PARKED on pdeayton-nv's review. Webhooks and /supervise-issues cover it.
-**10-24 16:02Z, #13842 re-check (triager, Branch 3 no-op):** I verified it on GitHub. The newest comment on #13842 is still bot comment 6329267840. #13872 is still a draft at `5c5909334`, BEHIND master, with no human review. The next one-shot is triager `t-2a6862`, at 10-31 16:00Z.
-**10-26 ~08:25Z:** a fourth claimant on module version 38 is #13953 (#13952, reflection float attribute args). R1 asked it to bump `k_min/k_maxSupportedModuleVersion` to 38 for a new serialized AST field. A v38 from #13872 and a v38 from #13953 would be two different layouts. I told the #13952 chain (via its triager, to avoid Fix Report drift) to add the merge-order line.
-**10-30 18:45Z:** tangent-vector left wording review comments, which were addressed in `70cb286` (fast-forward). The fixer replied on both threads and left them unresolved. The draft dispatch 41109353803 is waiting (the expected yield). Still a draft; human review is under way.
-**10-30 18:52Z — design REJECTED by tangent-vector** (cmt 6530975517). He called `DebugVarStorage` a band-aid and wants an IR debug-info redesign: IR `DebugDeclare` at lowering, every pass maintaining debug insts, and close to 1:1 with SPIR-V NSDI. The fixer agreed and asked him to pick A (rework this PR into his model) or B (close it and track the redesign with the #13841 repro and #13842) (cmt 6531189371, no ping). PARKED on that pick. If B, a human closes the PR and #13872 drops out of the 910/v38 collision set.
-**10-30 21:23–21:26Z:** pdeayton-nv asked the bot to "track the redesign in a new issue and come up with a draft PR" and to keep #13872 open. I scoped the fixer: (1) tracking issue quoting tangent-vector's model, no @; (2) phased plan on that issue; (3) phase-1-only draft (`DebugDeclare` at lowering, plus SSA promotion to `DebugValue`); (4) stop and report by about $280. The fixer was at $198.51/$300 and acked. I told the operator a ceiling raise is needed for the full redesign.
-**10-30 21:40Z — tracking issue #14106 filed** by fixer `efb8e6` (step 1 of the 21:26Z scope): "Encode variable debug info in Slang IR as a near one-to-one analog of SPIR-V NSDI". It quotes tangent-vector's model from cmt 6530975517 and says a phased plan follows in a comment. No labels or comments yet. Bot-filed, so the R6 hold does not apply. **This chain owns #14106. Its `issue_opened` webhook needs no dispatch** (checked 21:4xZ: the only other session on `gh-issue-shader-slang/slang-14106` is the Main webhook session `5q3ifi`). Next from the fixer: the plan comment, then the phase-1 draft PR, then a report by about $280.
-**10-30 22:10Z:** tracking issue **#14106** is filed with the 3-phase plan (cmt 6534546653), linked from #13872 (cmt 6534550940, which notifies tangent-vector because he's a #13872 participant). There are no @-mentions; codex wanted @tangent-vector and the fixer declined. A phase-1 subagent is implementing on `fix/issue-14106` (`wt-slang-debuginfo`), with a budget timer every 25 min. Merge risk Q1: at -O1, spirv-opt may lose member values of unpromoted struct locals.
-**10-31 00:51Z, phase-1 draft #14114** at `f2779c645` (#14106, `pr: non-breaking`, no closing keyword, mapped to efb8e6). The fixer stopped for budget at $264.58/$300. NOT mergeable yet: 3 deliberate new failures (-O1/-O2 spirv-opt splits struct locals into OpUndef), an autodiff -g2 assert, texture-footprint over 900 s at -g2 -O1, LLVM dropping inout declares, and an inlined inout in a merge block with no initial DebugValue. Waiting on tangent-vector's Q1–Q3 on #14106 and the slang-reviewer verdict. A fix round needs a ceiling raise on efb8e6 (one owner per PR, so no fresh session).
-**10-31 01:54Z, slang-reviewer interim on #14114:** C (clarity) is done. A second sweep over 3415 configs found no new head-only failures beyond the two disclosed issues. A (correctness) is still pending, with the full slang-test suite running on head. No reply sent; the verdict comes next.
-**10-31 02:10Z, slang-reviewer interim 2 on #14114:** A (correctness) is done: 0 bugs, 6 gaps, drift 0. The full suite on head is 11115/11121, the same 6 failures the fixer reported. A's quadratic-DebugValue gap was measured at 34009 vs 1283 OpDebugValue for 256 inlined inout calls. The reviewer is building a small tested remedy for the dropped-declare / unwritten `_dbgvar_` and the E40007 finding, then sends the combined report. No reply sent. (02:16Z correction from the reviewer: the E40007 retarget comes from `specializeFuncsForBufferLoadArgs`, a pass the PR does not touch, not from copy elimination; the remedy moves there.)
-**10-31 02:26Z, #14114 R1 combined review (slang-reviewer) at `f2779c645`: REQUEST_CHANGES**, which is expected for a design draft. It was not posted to GitHub. The findings:
-- L1 🔴: `specializeFuncsForBufferLoadArgs` and `moveDebugDeclaresAfterStore` retarget a declare onto a `ConstantBuffer`, giving E40007, and the `_dbgvar_` is never written. The reviewer attached a tested remedy: 3 files, +41/−5, plus `tests/spirv/debug-declare-dropped.slang`.
-- L2 🟡: the inliner makes the `DebugValue` count quadratic (34009 vs 1283 at N=256). This is NOT the cause of the footprint timeout.
-- L3 🟡: DCE treats the declare as a use, so `-g2` keeps dead locals in HLSL/GLSL.
-- L4: the disclosed regressions are confirmed head-only.
-- Requirements: M3 and M4 are partial (phase 1). M1, M5 and M6 are deferred and still unconfirmed by tangent-vector.
+## On "raise 14114"
 
-The fixer saved the review to `reports/debuginfo-redesign/r1/` and **parked**. It is at $267.12 of $300 (status escalated). The fix round (L1, then L3, then L2) needs the operator to raise the ceiling, and Q1–Q3 on #14106 are still unanswered. Shepherd for #14114 is jkwak-work (auto-assigned). I asked the operator for the ceiling decision at 02:29Z (msg 509617), recommending about $400. If approved, I run `ncl cost-cap set-ceiling --session sess-1792627891313-efb8e6 --ceiling 400` and send the fixer a go-ahead on thread gh-issue-shader-slang/slang-13841. The reviewer sent its verdict twice (509614 and 509616, identical).
-**10-31 16:10Z, #13842 re-check `t-2a6862` (triager, Branch 3, nothing posted):** I verified it on GitHub: bot comment 6329267840 is still the newest on #13842, #14114 is a draft at `f2779c645`, and #13872 is a draft at `70cb286`. The triager says #13842 is now tracked by #14106, which names it as a symptom. The triager's local finding (#14114 vs master `d7bc9fb0c`, -g2): phase 1 removes the overlap for aggregates only (`arr`, `s`). Scalars and params (`x`, `i`, `tid`) still overlap at -O0, the -O1 ADCE doubling is unchanged, and phase 2 is what closes #13842. **Two #14114 gaps that are not in its known-gaps table (the triager's finding, not yet verified):** (a) at -O1, the DebugValue for a re-read scalar is `OpUndef` (`x` in a merge block before `outBuf[1]=x`; `i` in the loop header); (b) at -O0, those re-loads get an extra DebugValue. **Queued with me, not sent:** fixer efb8e6 is escalated ($267.20/$300, container stopped) and the operator has not answered the 02:29Z ceiling ask (msg 509617). Put (a) and (b) in the efb8e6 go-ahead, after L1/L3/L2, labelled as the triager's finding. I approved the in-place edit of 6329267840 with constraints: no claim that #5398 is answered (the #14106 plan is still a proposal; Q1–Q3 are open), the issue stays open, no closing keyword, no @-mentions, and the #14114 gaps go on the PR chain, not on #13842. The triager will persist the repro outside `/tmp` and send it inline. Next one-shot: `t-47f371`, 11-14 16:00Z.
-**10-31 16:17Z, #13842 comment 6329267840 edited in place (triager; I checked it live at 16:17:03Z, and it is still the only comment).** It now says #13842 is tracked by #14106 and partly addressed by #14114 (aggregates only), that phase 2 is the remaining step, and that the plan is still unconfirmed (open question 2 is #13842's question). It has no @-mentions and no closing keyword. **Repro for the efb8e6 go-ahead** (it lives in the triager's group folder `scratch-13842/m14114-2026-10-31/`, which the fixer can't read, so paste this inline):
+Run `ncl cost-cap set-ceiling --session sess-1792627891313-efb8e6 --ceiling 400`, then send the go-ahead on
+gh-issue-shader-slang/slang-13841 (in_reply_to the fixer's row). Fix-round order:
+1. tangent-vector's comments, including one `List<DebugDeclareInfo>` instead of two containers, a `dominates` helper with a stated
+   contract, and pdeayton-nv's requirement that `DebugDeclare` comes before any store that references it (as glslang does);
+2. reviewer findings L1, then L3, then L2;
+3. the triager's gaps A/B below, labelled as the triager's finding, with the repro pasted inline (it lives in the triager's
+   group folder `scratch-13842/m14114-2026-10-31/`, which the fixer can't read).
+
 ```
 RWStructuredBuffer<float> outBuf;
 [shader("compute")][numthreads(1,1,1)]
@@ -59,11 +43,18 @@ void main(uint3 tid : SV_DispatchThreadID) {
 - Gap B (-O0), merge block: #14114 adds `OpLoad %x` → `DebugValue %x_0` → `OpStore %_dbgvar_x`, and master has none of these. The same happens for `i` in the loop header (repro-arr, `for (int i=0;i<4;i++)`).
 - Gap A (-O1), same spot: it emits `DebugValue %x_0 %OpUndef` right before `outBuf[1]=x`. For `i` it emits `DebugValue %i_0 %OpUndef` after `OpLoopMerge`.
 - The triager's unverified hypothesis is that gap A comes from gap B. Phase 1 emits a DebugValue at a surviving phi, which at -O0 is a re-load. ADCE then deletes that load, because its only users are debug ones, and the operand becomes OpUndef.
-**11-02 18:55Z — jhelferty-nv assigned #14106 to pdeayton-nv** and asked them (cmt 6585610084): "@pdeayton-nv It looks like this was raised by the bot off of some of the work you did?" It came in as a `pr_mention` webhook, but it does not mention @nv-slang-bot. The question is addressed to pdeayton-nv, so **no bot reply and no dispatch**. The issue body already links the #13872 comments that requested it. Checked live at 18:56Z: #14106 has 3 comments (the bot plan 6534546653, the bot phase-1 note 6536769653, and jhelferty's). #14114 is still a draft at `f2779c645` with 0 reviews. efb8e6 is still `escalated` at $267.20/$300, so the ceiling ask (10-31 02:29Z) is still open.
 
-**11-05 ~09:10Z, the collision set changed under the drafts:** master #14051 (merged 11-04) took stable ids **911/912** and set module version
-**min=max=38**. Master's ids are now 909, 911, 912; **910 is still free**, but four drafts claim it: #13564, #13872, #14114 and #13425.
-A plain master merge **auto-merges `k_maxSupportedModuleVersion` to 38, silently reusing v38** for a different format change. So every one of
-these drafts needs **v39** (and the next free id) at its next rebase. The PR Risk lines already say "next free id + the version that follows
-master's"; the #13425 re-chase caught it as collision 5. #13953 claims v38 only, no id, and it needs v39 too.
-**11-05 10:02Z:** #13564 merged master again (head `a4e7e33342`) and now takes **913 / v39**, so it's out of the 910 set. Still claiming 910/v38: #13872, #14114, #13425, plus #13953 on v38 only.
+## Stable id 910 / module version collision (11-05)
+
+Master #14051 (merged 11-04) took stable ids **911/912** and set module version **min=max=38**, so master has 909, 911, 912, and
+**910 is still free**. #13564 moved to **913 / v39** on 11-05 and left the set. Still claiming 910/v38: #13872, #14114 and #13425;
+#13953 claims v38 only. **A plain master merge auto-merges `k_maxSupportedModuleVersion` to 38, silently reusing v38** for a
+different format change, so each of these drafts needs the next free id and **v39** at its next rebase. The PR Risk lines already
+say "next free id + the version that follows master's".
+
+## Lessons
+
+- **Messaging a fixer directly skips the triager tier**, so its report-up drifts to Main (twice on 10-23). Send cross-chain
+  heads-ups through the chain's triager.
+- A webhook that is a question to a human, with no @nv-slang-bot, gets no bot reply and no dispatch.
+- One owner per PR: a fix round on #14114 needs a ceiling raise on efb8e6, never a fresh session.

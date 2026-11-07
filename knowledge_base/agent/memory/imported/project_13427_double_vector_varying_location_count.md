@@ -146,3 +146,7 @@ operator release, or `bot-ok`, restarts the chain. The fixer stays HELD and was 
 (a draft PR with the front-end `GLSLVaryingLayoutRulesImpl` fix, plus GPU-free spirv-asm/reflection tests that name the hull/domain
 patch-constant disagreement), quoting the authorizing human. If jkwak-work's #13892 inventory turns into a fix PR that covers 64-bit vectors, that is rule B.
 
+
+**Cross-link (11-06, from the #14334 chain):** tangent-vector told PR #14335 (the fix for #14334) that the front-end layout must be the only source of truth for hull
+patch-constant outputs, and asked to remove `createPatchConstantFuncResultTypeLayout` (the `fromRaw(1)` leaf site). If that refactor lands, re-check `double3` patch-constant
+fields before releasing this chain's fixer: the patch-constant half of #13427 may be fixed, or made easier to fix. The front-end `GetVectorLayout` half is unaffected.

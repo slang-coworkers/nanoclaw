@@ -78,6 +78,13 @@ still a draft, 5 checks pass and 56 are skipped, and the Risk line in the PR bod
 fallback. The fixer declined `[__requiresNVAPI]` on `__hlslInvokeHitObject` with a reason, and withdrew its GPU explanation.
 Still not done: the reviewer's re-check of the changed tests and comments, and the triager's [Triage Resolution].
 
+**11-06 23:10Z: still a draft at head 7445767, ready-flip pending** (it goes on the weekly list, with no per-PR ask, per
+[[undraft-asks-replaced-by-weekly-list]]). It is 135 commits BEHIND master and merges cleanly. `kaizhangNV` is the requested
+reviewer, and no maintainer has reviewed it yet. The reporter (now CONTRIBUTOR) commented at 22:57Z: the names and the fallback
+are confirmed, and they plan an RTX 40 run of `ReorderExecute(hit, hint, bits, payload)` after `TraceRay`. That would be the
+first real GPU run of the fused path. The fixer replied at 23:10Z (issuecomment-6698075293), which I verified. I sent the
+dashboard no new row, because the state is unchanged.
+
 **Open maintainer decision:** keep the non-EXT fallback, as the reporter asked, or trim it to EXT-only, as the docs said.
 
 **Next:** slang-reviewer gives its verdict, then the fixer sends its [Fix Report] and the triager its [Triage Resolution].

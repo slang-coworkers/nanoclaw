@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14152 — inout of an interface-typed uniform-struct field mixes two existential layouts
-description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:23Z, same-minute batch with #14154/#14156. Dispatched to slang-triager under the R6 hold (no bot comment, label, PR or commit naming the issue before 2026-11-06 10:04:23Z). Main one-shot r6-release-14152-013b at 11-06 10:08Z. Triaged 11-02 10:30Z bug/medium/P2 (typeflow-specialize), rec A (copy in/out through a tagged-union temp); draft held, fixer handoff at release.
+description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:23Z, same-minute batch with #14154/#14156. Dispatched to slang-triager under the R6 hold (no bot comment, label, PR or commit naming the issue before 2026-11-06 10:04:23Z). Triaged 11-02 10:30Z bug/medium/P2 (typeflow-specialize), rec A. CLOSED-OUT for the bot 11-06 10:08Z (r6-release-14152-013b): reporter's own PR #14176 + maintainer jkwak-work assigned/typed/milestoned, so no bot post and no fixer handoff.
 tags: [dynamic-dispatch, existential, anyvalue, metal, hlsl, inout, r6]
 ---
 
@@ -49,10 +49,18 @@ spirv-val "OpAccessChain result type Tuple_0 does not match ... Tuple".
 At release (`r6-release-14152-013b`): post the draft, set Type=Bug + `reproduced`, hand off to slang-fixer
 on A unless the reporter has a PR of their own by then (they often do, e.g. #14010 → #14011).
 
-**Open.** Owner: slang-triager, thread `gh-issue-shader-slang/slang-14152`. Parked on R6 until 11-06 10:04:23Z.
+**Status: stood down (no bot artifact on GitHub, by design).** Triager thread `gh-issue-shader-slang/slang-14152` keeps its unposted draft; nothing pending on it.
 
 **Reporter PR 11-02 11:59Z.** albertrodriguezclo opened [#14176](https://github.com/shader-slang/slang/pull/14176)
 (`fix/inout-interface-struct-field`, `Fixes #14152`): new `specializeFieldAddress` + a copy-in/out temporary
 in `specializeCall` (`slang-ir-typeflow-specialize.cpp`) — the triager's rec A. So the reporter has taken it;
 at R6 release (`r6-release-14152-013b`, step 1) there should be no bot fixer handoff. Seen while dispatching
 sibling [#14177](14177-render-test-untyped-object-conformance-id-session.md).
+
+**R6 release 11-06 10:08Z (`r6-release-14152-013b`) — no release, stand-down.** Live: OPEN, 0 comments, no labels.
+Assignee jkwak-work (auto-assigned as shepherd by the PR-board-sync action, `assigner` github-actions[bot],
+11-02 11:59:57Z when #14176 opened); jkwak-work then set Type=Bug and milestone "Q4 2026 (Fall)" at 17:35Z.
+#14176 OPEN, not draft, `Fixes #14152`, 6/6 checks pass, 0 reviews, last update 11-02 12:06Z. Per the task's step 1
+(reporter's own PR + assignee) the triager's held draft is NOT posted, Type/`reproduced` not touched, no fixer
+handoff, no triager or dashboard message. If #14176 is closed unmerged, or a human @-mentions the bot, the chain
+re-opens through the webhook; the triager memo and repro are still on the triager side.

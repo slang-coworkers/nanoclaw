@@ -69,3 +69,10 @@ description: External bug (albertrodriguezclo), triaged and reproduced 10-29. Fi
   `gh-issue-shader-slang/slang-14013` (msg id 7), with reopen on "un-draft 14023" or GitHub activity. `supervisor-state.json` row now carries disposition `parked:no-timer — ready-flip pending`
   (weekly list, per [undraft-asks-replaced-by-weekly-list](../orchestrator/undraft-asks-replaced-by-weekly-list.md)). `task-hygiene.py next` → `allowed:false, parked:true` (count 3 of cap 3), so nothing is scheduled.
   Nothing went to the triager or fixer; nothing was posted on GitHub. **Next:** webhook-driven only. A human comment goes to slang-triager on this thread, quoted verbatim. On ready_for_review, check `paused` before routing to the approver.
+- **11-06 22:56Z: reporter comment on #14023** (albertrodriguezclo, CONTRIBUTOR, [6697864196](https://github.com/shader-slang/slang/pull/14023#issuecomment-6697864196)).
+  It confirms this is the fix they suggested, and says they would call it a behaviour change rather than `pr: non-breaking`. **It asks for the PR to land together with rhi#959 and the
+  D3D12 #289 read**, so slang-rhi users never get swapped CBVs. They offer a validated slang-rhi run once both rhi pieces exist. The fixer replied at 23:01Z ([6697929684](https://github.com/shader-slang/slang/pull/14023#issuecomment-6697929684)),
+  handing the label and the landing order to maintainers. Main verified both comments, and that the PR is still a draft @1236549a8 with 0 reviews and PR assignee kaizhangNV.
+  rhi#959 is assigned to jkwak-work and milestoned Q1 2027. **Main decision 11-06:** no operator ask (weekly-list policy, 11-03); there is no plain ready-flip,
+  because the ready-flip is HELD on the maintainers' landing-order decision (supervisor-state disposition updated). No bot rhi work while #959 has a human assignee.
+  No new GitHub post, because the fixer's 23:01Z reply is the current artifact. If the reporter posts a real Windows D3D12 run, the #289 standing authorization applies.

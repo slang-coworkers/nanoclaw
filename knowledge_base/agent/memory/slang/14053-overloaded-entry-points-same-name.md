@@ -62,3 +62,10 @@ one overload; B (renaming) conflicts with #13264. Related: #13882 (entry-point i
   `i14053-r6-post-b43c`). Re-dispatch it to the canonical thread session.
 - ⚠️ The `weekly-undraft-list-4573` prompt tells fixers to run `gh pr ready` after operator approval; fixer spines forbid that
   ([feedback_fixers_cannot_request_reviewers](../feedback_fixers_cannot_request_reviewers.md)). Fix the prompt before its first bulk approval.
+
+## 11-06 23:09Z: reporter reviewed #14221 (positive), fixer replied (verified)
+
+- Reporter albertrodriguezclo, comment 6697864708 (22:56Z), says "this covers what I hit". They are happy with either merge order against their #14147 and will rebase #14147 if #14221 goes first.
+  They asked for the user-visible changes in one place in the description. This is not a stand-down.
+- Fixer reply 6698056658 (23:08Z): #14147 is still needed, since the empty E30015 before E38000/E31006 persists at c429a39. The Summary now lists E38016/E38017/E39999 first.
+  Head is unchanged at c429a3999, still a draft. The r2 re-chase on 11-09 and the weekly un-draft list are unchanged.

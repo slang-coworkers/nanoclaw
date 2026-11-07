@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14160 — Metal emits `[[raster_order_group(0)]]` on a ROV in a compute kernel
-description: Human-filed (albertrodriguezclo) Metal bug 2026-11-02 10:04:38Z. Every RasterizerOrdered* param gets `[[raster_order_group(0)]]` whatever the stage; Apple's compiler rejects it in a `[[kernel]]` (slangc returns 0). Dispatched to slang-triager under the R6 hold (to 2026-11-06T10:04:38Z). Main one-shot r6-release-14160-aa3d at 11-06 10:08Z. Triaged 10:32Z bug/medium/P2 (Metal emit: emitPostDeclarationAttributesForType has no stage check; rec plain device buffer outside fragment). Side bug #14166 (ROV in ParameterBlock loses the attribute) owned here. No fixer; operator asked.
+description: Human-filed (albertrodriguezclo) Metal bug 2026-11-02 10:04:38Z. Every RasterizerOrdered* param gets `[[raster_order_group(0)]]` whatever the stage; Apple's compiler rejects it in a `[[kernel]]` (slangc returns 0). Dispatched to slang-triager under the R6 hold (to 2026-11-06T10:04:38Z). Main one-shot r6-release-14160-aa3d at 11-06 10:08Z. Triaged 10:32Z bug/medium/P2 (Metal emit: emitPostDeclarationAttributesForType has no stage check; rec plain device buffer outside fragment). Side bug #14166 (ROV in ParameterBlock loses the attribute) owned here. Reporter PR #14171 + jkwak-work self-assign (11-02 17:58Z) → R6 release 11-06 posted nothing; chain closed for the bot.
 tags: [metal, emit, rov, rasterizer-ordered, compute, bug, r6]
 ---
 
@@ -54,7 +54,21 @@ Label `reproduced`; the body does not name #14160 (verified). Filed only; no fix
 **Fixer: none.** Precedent [14151](14151-metal-groupindex-scalar-groupthreadid.md): R6 blocks a PR until 11-06 and the
 reporter often ships their own PR, so the fixer go (for #14160 and #14166) went to the operator on 11-02.
 
-**Open.** Operator: fixer go for #14160/#14166. At release (`r6-release-14160-aa3d`, 11-06 10:08Z): if no reporter PR,
+**Open (superseded 11-06, see below).** Operator: fixer go for #14160/#14166. At release (`r6-release-14160-aa3d`, 11-06 10:08Z): if no reporter PR,
 the triager posts the held draft and sets Type=Bug + `reproduced`. Owner: slang-triager, thread `gh-issue-shader-slang/slang-14160`.
 
 **Reporter PR (supervisor tick 321).** albertrodriguezclo opened [#14171](https://github.com/shader-slang/slang/pull/14171) (`Fixes #14160`) at 11-02 10:53Z. It is non-draft and BLOCKED, waiting on a maintainer review. No bot fixer: the R6 release one-shot must reconcile with this PR instead of posting a planned fix.
+
+**R6 release one-shot (11-06 10:08Z, `r6-release-14160-aa3d`): no post, chain closed for the bot.** Live state:
+- #14160: OPEN, 0 comments, no labels, Issue Type blank. jkwak-work self-assigned it 11-02 17:58:42Z (`assigner`
+  jkwak-work; the bot auto-assignment of jhelferty-nv was replaced) and set milestone "Q4 2026 (Fall)" at 17:58:51Z.
+- Reporter PR #14171 (`Fixes #14160`): OPEN, non-draft, mergeState BEHIND, no human review yet. Shepherd jhelferty-nv
+  (review requested); only coderabbit has reviewed (11-04).
+- No no-bot/GoodFirstBug/HelpWanted label. The operator gave no answer on the fixer go: dashboard rows 509402–511528
+  (10-30 → 11-06) have no operator row naming #14160 or #14166. The question is moot now, because both are maintainer-owned.
+
+Both stop conditions (reporter PR, maintainer self-assign) hold, so I sent the triager no release. Its held draft
+(`/workspace/agent/drafts/comment-14160-held.md` in its workspace) stays unposted, and Type/`reproduced` stay unset:
+they are the maintainer's call. **Open: nothing for the bot.** Re-engage only if jkwak-work unassigns or asks, or a
+human comment @-mentions the bot.
+

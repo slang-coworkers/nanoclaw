@@ -102,3 +102,9 @@ description: Human-filed (albertrodriguezclo) WGSL texel-format mapping + E56106
   The triager found no competing PR and no maintainer B1–B4 pick. The only new master commit to `slang-emit-wgsl.cpp` (#13908) does not overlap.
   **PARKED, NO TIMER**: recorded as `awaiting_human` + disposition in `memory/supervisor-state.json`, and one park line sent to the dashboard.
   Reopen on a human comment (webhook), "un-draft 13778", or a maintainer pick. Do not ask the operator again.
+- 2026-11-06 22:57Z: the reporter commented on #13778 ([6697866995](https://github.com/shader-slang/slang/pull/13778#issuecomment-6697866995), not edited).
+  They thanked us for part 1, repeated their B1 / B2-as-warning preference, and **@-pinged zangold-nv + expipiplus1** for part 2. The bot did not reply (correct).
+  #13778 is still OPEN, draft @9cfc373449, 0 reviews, BEHIND (~135 commits, merges cleanly) (verified). `t-79c65a` was the last timer, so I
+  told the triager (msg 71) to arm a **final one-shot at 2026-11-20T13:00Z** (armed as `i13768-recheck-1120-3d42`): if maintainers are silent, no post and no ping, report once, no further
+  re-check (webhooks carry the chain after that); if a maintainer decides or reviews, send it to me verbatim before any part-2 work or merge of master.
+  The ready-flip HOLD still stands.

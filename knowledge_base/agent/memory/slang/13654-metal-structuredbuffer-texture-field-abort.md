@@ -74,10 +74,23 @@ Next: minimize, dedup, then re-check follow-up 2. Not a completion report; the d
 - **#14336**: `uniform Material*` / `ConstBufferPointer<Material>` → `fieldLayout || !typeLayout` assert at
   `slang-ir-legalize-types.cpp:3508` (`declareVars` tuple case); spirv/metal/hlsl/glsl/wgsl, CUDA/cpp compile. Possibly
   related: #13206 / draft #13305.
+  **11-06 18:34Z: jkwak-work assigned tangent-vector** (comment 6692446641: "looks similar to #13206; if not same";
+  tangent-vector also owns #13206). Maintainer-owned → held (rung 4): no triage, no fixer, no bot post; the operator
+  routing call for #14336 is moot. Resumes only on a human ask to the bot.
 - **#14337**: E38204 for an SB struct field points at the struct, not the field. The triager suspects `createStructField`
   (`slang-lower-to-ir.cpp:12704`) gives the field no location of its own (not traced further).
 **Their `issue_opened` webhooks are self-echoes of this chain: they need no dispatch.** No fixer chain was opened; routing either one is
 the operator's call. Decision 3 is closed. Final dashboard line sent (11-05).
+
+**11-06 22:56Z, first human activity on #13681: the reporter's comment** (albertrodriguezclo, issuecomment-6697865250).
+They accept the PR as the stopgap ("a located E38204 is much better than the assert") and ask whether a follow-up issue
+for in-place Metal lowering would be welcome. That means keeping a plain `Texture2D` field inside a buffer element, as
+`DescriptorHandle<Texture2D>` fields already are. The PR-mapping routed it to the fixer, which **replied 23:10:08Z**
+(issuecomment-6698076600, verified; OUTPUT_REVIEW approved): yes; the split comes from `isSpecialType`
+(`slang-ir-legalize-types.cpp:4146`); the scope question is buffer elements only vs every Metal resource-holding struct;
+see #14336; prioritization is the maintainers' call. No code change. Still draft at 87c393d, 0 reviews (fixer [Report] msg 124).
+**Expected:** the reporter may file an in-place-lowering follow-up issue. If its `issue_opened` arrives, it is human-filed, so
+dispatch it to slang-triager on its own canonical thread, citing this chain and #14336 as context.
 
 **Resumes on:** `un-draft 13681`, a human comment/review on #13654 or #13681, a CI webhook (owned by the fixer), or the
 operator's answer. There is no re-check timer.

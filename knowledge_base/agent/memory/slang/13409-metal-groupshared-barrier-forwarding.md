@@ -86,3 +86,15 @@ Human-filed #14345 (a Metal helper `sh[0]` load moved past a barrier, hit by a r
 
 ## 2026-11-05: competing human PR #14346
 The #14345 reporter opened fork PR **#14346** (12:41Z, head aa9a4ef676, `Fixes #14345`). It fixes the same `kIROp_Call` arm of `canInstHaveSideEffectAtAddress` with a broader rule: only a local `IRVar` root is exempt. Shepherd jhelferty-nv calls it "the right fix" and says it is needed whichever of it and #11709 lands first (cmt 6661049450). #13421 and #14346 both list `Fixes #14345`. Whether #13421 drops that line is the operator's call (flagged 11-05). #13421's own #13409 scope (the entry-point path and a pure callee reading groupshared memory) is not covered by #14346's test.
+
+## 2026-11-06 22:50Z: reporter asks for #14346 to close #14345 (cmt 6697767694)
+albertrodriguezclo (CONTRIBUTOR) suggests #14346 close #14345 and the #13409-only part of #13421 be split into "its own small PR". Fixer holding reply 6697835607.
+#14346 is open, not a draft, head `ee34e4b86f`. It now exempts a local `var` or an Out/BorrowInOut/BorrowIn param (`isCallerExclusiveRoot`), and the shepherd is jhelferty-nv.
+The operator's 11-05 "drop Fixes #14345?" question got no answer in ~34h. **I decided it (a body edit on our own draft; not gated):**
+(1) If the fixer's check shows #14346's head fixes the #14345 repro, replace `Fixes #14345` with "Related to #14345 (fixed by #14346)". Otherwise post the result and don't edit.
+(2) No re-scope now. Once #14346 merges, open a NEW small draft PR from master carrying only what #14346 doesn't fix (App identity, which also clears the CLA with no force-push) and ask a maintainer to close #13421 as superseded. Never close it ourselves.
+I also asked for #13412's repros to be run on #14346's head, since #14346's rule looks like corrected B, i.e. #13431's scope.
+**11-06 23:19Z result (verified on GitHub):** #13421's description has `Related to #14345 (fixed by #14346)`, closing issues = [13409] only, still a draft at `c42049e18f`. Follow-up comment 6698276336 (bot, 2202 chars).
+Fixer's check on #14346 `ee34e4b86f` (its finding): fixes #14345. **11 of #13421's 13 variants still fail** (every entry-point case; `isCallerExclusiveRoot` exempts any local `var`).
+It fixes all 6 #13412 shapes on 6 targets. Escaped-local shapes were not tested. At 23:20Z I routed the #13412 side to the #13431 owner `rpnjyi` (landed seq 48, pinned, in_reply_to=2): run the escaped-local shapes and #13431's tests on #14346, post on #13412, close nothing.
+Resumes on: #14346 merging (→ a new small #13409 draft PR, then ask a maintainer to close #13421), and rpnjyi's report.
