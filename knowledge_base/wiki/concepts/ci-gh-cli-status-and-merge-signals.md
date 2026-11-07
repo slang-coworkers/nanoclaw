@@ -3,7 +3,7 @@ title: "gh CLI CI Status & Merge Signals — Instrument-Lie Folds"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, ci, graphql, rerun, merge-detection, corrections, slang]
-source_count: 15
+source_count: 17
 ---
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
@@ -11,7 +11,8 @@ source_count: 15
 ## TL;DR
 - **`gh pr checks`/`gh pr view` are GraphQL-backed** — on a GraphQL-401-while-REST-healthy split they print to stderr and emit nothing on stdout, so a stdout-grepping sweep reads every PR false-green. Probe `gh api graphql -f query='{viewer{login}}'` before trusting suspiciously-uniform all-green; route failure-enumeration through REST check-runs + statuses.
 - **`gh pr checks` can also omit failing check runs while GraphQL is healthy** — #13880 showed 5 pass / 52 skipping while the head's check-runs had `check-ci` and `wait-for-human-priority` failed. Count conclusions from `commits/<head>/check-runs` before stating CI status; on a bot PR that red pair over a mostly-skipped run is a priority yield ("CI red, not yet run"), never "passing".
-- **`is:merged` search is broken** — infer merge from the closing issue's `state==closed` + matching `closed_at`, not from `is:merged`.
+- **`is:merged` through the slang-mcp search tool returned 0 (July–August)** — there, infer merge from the closing issue's `state==closed` + matching `closed_at`. By 2026-11 a GraphQL `is:merged merged:W0..W1` search counts window merges correctly; never count them from commit dates.
+- **A merged PR with no `AddedToMergeQueueEvent` bypassed the queue** (admins can, `enforcement_level: non_admins`); confirm with the merge time against its CI run's start.
 - **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** — proof is a second rerun's 403 "already running"; key reruns on `(workflow_id, event, name)`.
 - **A `success` conclusion can mean "declined to act"** — priority-yield aging is contention-gated (12h yield-out / 16h lookback, then expires unrerun), not a timer; grep the decision line from the log output, not the echoed `run:` block.
 - **Bucket a red by terminal outcome, never by a signature string** — `slang-test` retries, so signature-presence over-counts; a correct total can hide a wrong composition. Presence proves an event occurred, never that it caused the red.
@@ -49,7 +50,7 @@ Notes: (1) `--paginate` concatenates JSON objects, so a bare `.check_runs[]` die
 
 ## is:merged Search Is Broken — Infer PR Merge From Simultaneous Issue-Close (2026-08-01 fold)
 
-A companion to the "gh search prs is unreliable" section, but for merge-detection specifically: the `mcp__slang-mcp__github_search_issues` `is:merged` query returns 0 results even over wide windows while PRs are demonstrably merging (confirmed 07-26 and again 08-01). Do NOT use `is:merged` to decide whether a PR merged. Reliable substitute: check whether the PR's **closing issue** is now CLOSED via `github_get_issue` — a PR with `Fixes #N`/`Closes #N` auto-closes its issue at the merge instant, so `issue.state == closed` + a matching `closed_at` = fix merged (e.g. 08-01, #12071 CLOSED 2026-07-30T18:34Z confirmed PR #12095 merged though `is:merged` returned nothing). Alternatively page the REST `commits` API — but note it truncates to ~15 entries, so widen the window or paginate or you'll undercount merges (07-28: counted 5, actual 9) ([is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)).
+A companion to the "gh search prs is unreliable" section, but for merge-detection specifically: the `mcp__slang-mcp__github_search_issues` `is:merged` query returns 0 results even over wide windows while PRs are demonstrably merging (confirmed 07-26 and again 08-01). Do NOT use `is:merged` to decide whether a PR merged. Reliable substitute: check whether the PR's **closing issue** is now CLOSED via `github_get_issue` — a PR with `Fixes #N`/`Closes #N` auto-closes its issue at the merge instant, so `issue.state == closed` + a matching `closed_at` = fix merged (e.g. 08-01, #12071 CLOSED 2026-07-30T18:34Z confirmed PR #12095 merged though `is:merged` returned nothing). Alternatively page the REST `commits` API — but note it truncates to ~15 entries, so widen the window or paginate or you'll undercount merges (07-28: counted 5, actual 9) ([is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)). By the 2026-11-05/06 sweeps the GraphQL search `is:merged merged:W0..W1` (merge-time search) counted window merges correctly, and the commit-date routes were the broken ones: a merge-queue commit carries its enqueue time, so `history(since:)` and `commits?until=` misplace PRs queued before a boundary and merged after it (details on [Counts, apertures & reconciliation](misc-f0909b1-counts-apertures-and-reconciliation.md)) ([Master history(since:) undercounts merges when the MQ commit predates the window](../learnings/1793955732333-master-history-since-undercounts-merges-when-the-m.md)).
 
 ## `gh run rerun` Returns 0 Before Anything Changes
 
@@ -87,15 +88,18 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 
 **The queue does not read PR comments.** On 2026-11-03 jkwak-work queued external PR #14150 at 00:45Z; at 01:10Z nv-slang-bot commented two cases that compile on master and fail with the PR (integer `/` or `%` in a `[ForceInline]` helper; a user constructor under `-g`). The queue merged it at 02:06Z anyway, and the next morning jvepsalainen-nv filed #14235 (CUDA broken in the falcor2-slang nightly) and the bot filed #14238. A regression found on a queued PR therefore has to reach the person who queued it by name, be filed as an issue immediately, or be acted on by a human who removes the PR from the queue; a plain PR comment is not seen in time. The same day showed the opposite misreading: GitHub reports a ready, all-green PR on this merge-queue branch as `mergeStateStatus: BLOCKED` until someone queues it (#14045), so BLOCKED there is not a failing gate ([a bot comment on a queued PR does not stop the merge queue](../learnings/1793695966509-a-bot-comment-on-a-queued-pr-does-not-stop-the-mer.md)).
 
+**Detect a merge-queue bypass from the timeline plus run timing.** A merged PR with no `AddedToMergeQueueEvent` was merged directly: #14363 merged 4 s after its CI run started, and the run finished green 2 h later. Branch protection's `enforcement_level: non_admins` lets admins do this, so a sweep must not assume every master commit passed a merge group ([GitHub sweep: merge-queue commit dates, MQ bypass, vanished AR suites, onboard auto-assign](../learnings/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md)).
+
 ## Contradictions / supersessions
 
+- **"`is:merged` search is broken"** — scoped: it was the slang-mcp search tool in July–August; by 2026-11 GraphQL `is:merged merged:W0..W1` is the correct window count, and commit-date filters are what break.
 - **`--paginate` "gives no non-zero exit code"** — superseded. `gh` does exit 1; a pipe into `jq` (or `2>/dev/null`) launders it. The mechanism claim must always name the *invocation form* measured.
 - **`jq -s '[.[]|.check_runs[]?]'` as the recommended `--paginate` slurp** — superseded. The optional `?` is a silencer for gateway error documents; the GraphQL-401 section now says gate on `jq -e '.check_runs'` and reconcile the count instead.
 - **`repos/.../branches/main/protection` 403 ⇒ "CI-not-required clause unverifiable"** — retracted; `branches/main` carries `.protection.required_status_checks.contexts` unprivileged, and the fact was the opposite of what the caveat implied.
 - **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (15):**
+**Source learnings (17):**
 
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -112,5 +116,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. To
 - [slang merge queue evicts with checks_timed_out ~2 h after enqueue (SM80 starvation)](../learnings/1793781538310-slang-merge-queue-evicts-with-checks-timed-out-abo.md) — #14111 evicted twice; a green MQ run is not a merge.
 - [Merge-queue sm80 job stuck: compare against a later-created sm80 job](../learnings/1793822643773-merge-queue-sm80-job-stuck-compare-against-a-later.md) — one lost job, not a pool outage; human re-run before 2 h.
 - [Stale master head with empty merge queue: compare failing test names across eviction runs](../learnings/1793808444330-stale-master-head-with-empty-merge-queue-compare-f.md) — #14269: same 7 tests twice = PR-side.
+- [MQ bypass: no `AddedToMergeQueueEvent`, #14363 merged 4 s after CI start](../learnings/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md)
+- [GraphQL `is:merged merged:W0..W1` counts correctly; `history(since:)` undercounts](../learnings/1793955732333-master-history-since-undercounts-merges-when-the-m.md)
 
 _Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-586 learnings. [Catalog](../index.md)
+591 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -303,6 +303,7 @@ type: topic
 - [CORRECTION: a worktree's submodule init CLONES per worktree — it does not reuse the parent's .git/modules, so it is neither offline nor free](../learnings/1786045455716-correction-a-worktree-s-submodule-init-clones-per-.md)
 - [CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR; shipped #11542 bug is the wrong OpExtension token](../learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md)
 - [CORRECTION: absence of an instruction is not a missing-barrier bug — EmitMeshTasksEXT implies barrier()](../learnings/1785804434887-correction-absence-of-an-instruction-is-not-a-miss.md)
+- [CORRECTION: an MSL weak-CAS retry loop with a value == test does not spin on ±0. It stores against the wrong bits.](../learnings/1794006824951-correction-an-msl-weak-cas-retry-loop-with-a-value.md)
 - [CORRECTION: attributing a quote to "the peer in front of you" under a shared bot identity — the quote was real, the addressee was not](../learnings/1785963082792-correction-attributing-a-quote-to-the-peer-in-fron.md)
 - [CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not author-binding — remedy is a fresh SUPERSEDING comment](../learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md)
 - [Correction: cite the OPTION not one toolchain's flags — and "updating on a peer's evidence" is NOT the error](../learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md)
@@ -389,11 +390,13 @@ type: topic
 - [isParameterLocationUsed false positive: split ConstantBuffer keeps stale resource size attrs (#13789)](../learnings/1792522133573-isparameterlocationused-false-positive-split-const.md)
 - [Issue line-number pointers relayed from a static-analysis bot go stale — verify the branch still exists, not just the file](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md)
 - [Issue may describe code that lives only in an unmerged PR — verify against the source PR branch, not just master](../learnings/1787545144849-issue-may-describe-code-that-lives-only-in-an-unme.md)
+- [Local compile-perf bisect without perf/valgrind: interleaved timers + A/A](../learnings/1793956764481-local-compile-perf-bisect-without-perf-valgrind-in.md)
 - [Local git ancestry gives confident false negatives — verify merges by content](../learnings/1785847142026-local-git-ancestry-gives-confident-false-negatives.md)
 - [Maintainer labels can encode intended future direction, not current-diff state — verify scope currency before flagging a "mismatch"](../learnings/1785540385736-maintainer-labels-can-encode-intended-future-direc.md)
 - [Make pre-publish rules executable — a prepublish-check.sh found a second overclaim that three careful re-reads missed](../learnings/1785929007612-make-pre-publish-rules-executable-a-prepublish-che.md)
 - [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md)
 - [Match the check to the claim — membership → get, completeness → bound test, identity → hash](../learnings/1785820665177-match-the-check-to-the-claim-membership-get-comple.md)
+- [MDL perf nightly: read the auto-bisect artifact before calling it noise; merge_group skips functional test-falcor](../learnings/1793952713959-mdl-perf-nightly-read-the-auto-bisect-artifact-bef.md)
 - [Measure a carried memory instead of re-reading it — half of mine didn't reproduce](../learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md)
 - [Measuring a state correctly licenses nothing about the vehicle you prescribe to produce it — verify the join](../learnings/1786460387365-measuring-a-state-correctly-licenses-nothing-about.md)
 - [Merge-queue eviction: the sha in the gh-readonly-queue branch name is the BASE, not the merge commit — probe beforeCommit.oid](../learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md)
@@ -418,6 +421,7 @@ type: topic
 - [OKF migration of always-injected dossier: verify distillation completeness, not just thinness](../learnings/1787038292328-okf-migration-of-always-injected-dossier-verify-di.md)
 - [okf-synthesis DOSSIER heuristic false-positives on groups using memory/ as operational storage](../learnings/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md)
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)
+- [okf_synth DANGLING-LINK false positive on MSL attribute shorthand with a slash](../learnings/1794031636307-okf-synth-dangling-link-false-positive-on-msl-attr.md)
 - [okf_synth DANGLING-LINK false-positives on code-span link syntax](../learnings/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md)
 - [okf_synth.py DANGLING-LINK class has code-span false positives](../learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md)
 - [okf_synth.py DANGLING-LINK false positive on `](` inside code spans](../learnings/1793902050791-okf-synth-py-dangling-link-false-positive-on-insid.md)
@@ -427,6 +431,7 @@ type: topic
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md)
 - [Only the passing cases locate a trigger — four wrong characterizations of one guard, all from denial-only evidence](../learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md)
 - [Over-claims have three origins, not one — compression, recall, and uncontrolled instruments; and the second error arrives while correcting the first](../learnings/1785831112646-over-claims-have-three-origins-not-one-compression.md)
+- [Ownership/semantics redesign PRs: compile the issue's own repro under the new rule first](../learnings/1794019004705-ownership-semantics-redesign-prs-compile-the-issue.md)
 - [Partition a count by the mechanism before using it as evidence for a fix](../learnings/1786351744859-partition-a-count-by-the-mechanism-before-using-it.md)
 - [Path-set cycle guards in recursive type walks can be exponential — probe with a complete pointer graph](../learnings/1790981687370-path-set-cycle-guards-in-recursive-type-walks-can-.md)
 - [Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts to distinguish semantic vs LTO-layout)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)

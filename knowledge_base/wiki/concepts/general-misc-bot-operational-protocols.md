@@ -3,7 +3,7 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 36
+source_count: 37
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
@@ -21,7 +21,7 @@ source_count: 36
 - A clear, verified answer can be the whole fix for a docs-discoverability issue. A bot PR closed in favor of the reporter's own PR is a good outcome, but refresh the issue comment. How-to prose belongs in `docs/user-guide/`, not in `include/slang.h`.
 - Before a cross-cutting IR fix, grep open PRs for the same file or fold, including PRs from our own bot's other sessions.
 - On a PR under review, push new commits and use `git merge origin/master`. Never force-push a rebase.
-- If you spot an adjacent defect by reading code while an unmerged PR covers the issue, mention it in the resolution comment. Don't file it.
+- If you spot an adjacent defect by reading code while an unmerged PR covers the issue, mention it in the resolution comment. Don't file it on a code-read alone. A side find with a master repro goes reviewer → fixer → triager, and the triager files it once verified and deduped; the 2026-10-30 "do not file" hold is superseded.
 - Verified comments, labels, Type, review replies and reactions post freely, and so does a verified issue (reproduces on current master with a minimal repro, dedup-clean, AI disclosure). Only `gh pr ready`, `gh pr merge` and closing are operator-gated; a defect seen only on an unmerged PR stack is a known limitation in that PR's body, not an issue.
 - The API returns the bot login as bare `nv-slang-bot`, so match it loosely. Other coworkers post under the same identity.
 - Write parent-agreed timing gates and ownership claims to the tracker, because a respawn sees only disk. If you were the last commenter, edit your comment in place, except for an escalation @-mention, which must be a fresh POST because edits never notify.
@@ -83,6 +83,8 @@ Under review, add new commits and sync with `git merge origin/master`; never for
 
 **So is filing a verified issue.** Confirmed twice by the Orchestrator on 2026-10-29 (slang#14007, #14017): a coworker files a tracking or follow-up issue without operator approval when (1) it reproduces on CURRENT master with a minimal repro independent of any in-flight PR that exercises the exact API in question (codex OUTPUT_REVIEW caught a "`Sample` repro" answered with `SampleLevel`); (2) dedup finds nothing, including tracking issues, follow-ups held by other chains, and follow-up lists in related PRs' explanation comments (on a hit, link it); (3) the body carries the AI disclosure line, and bot posts go only on the new issue. Such follow-ups are authorized, not reported up as "awaits operator authorization". A defect seen only on an unmerged PR stack is a known limitation in that PR's body, not an issue. The #13737 chain's five held follow-ups were a one-off parent hold [Filing a verified follow-up issue is not an operator gate](../learnings/1793294266192-filing-a-verified-follow-up-issue-is-not-an-operat.md) [Filing a verified GitHub issue is the bot's own authority; only `gh pr ready`/merge need the operator](../learnings/1793296109958-filing-a-verified-github-issue-is-the-bot-s-own-au.md).
 
+**Side finds are filed by the triager.** A defect found while working another issue goes reviewer → fixer → triager as `dedup result · minimal repro · master sha · one-line cause`; the triager reproduces it on master, dedupes it and files the verified ones without asking. The 2026-10-30 hold (file no side-find issues, post nothing on GitHub) was superseded on 2026-10-31, so a relay must not add "do not file on GitHub": that line blocks the triager's filing step (parent correction, 2026-11-07, [Side-find routing: the 2026-10-30 "hold / do not file" rule is superseded](../learnings/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md)).
+
 ## Bot Identity and Comment Hygiene
 
 The fleet's identity is `nv-slang-bot[bot]`; `slang-coworker-nanoclaw[bot]` is stale ([identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)). But `gh api .../issues/<n>/comments` returns `.user.login` as bare `nv-slang-bot` (`.user.type == User`), so an edit-if-self check against `"nv-slang-bot[bot]"` never matches and quietly double-posts. Match both (`case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\])`); PATCH an existing duplicate into a "Superseded, see <link>" pointer ([login is bare nv-slang-bot: fix the matcher](../learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md)). Several coworkers share this identity, so a bot comment on your PR may be another agent's; re-read the newest comment before posting ([bot comments on your PR may be another agent](../learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md)).
@@ -115,7 +117,7 @@ Standing down from off-lane drift on a handled thread (e.g. a trusted maintainer
 
 A correct diagnosis fails if the user can't tell it's a bug. A #slang-support user with a `bit_cast`→`PrimalTensor` ICE (2026-10-08 sweep; later slang#13480, 7 targets) "wasn't sure if it was a bug/issue or a coding error from my side": the bot's "worth filing" sat below the workarounds, and they filed only after a maintainer nudge 3 days later (a `[Differentiable]` no-op reporter still hadn't after 16 days). For any E99997/ICE diagnosis, line 1 is "This is a Slang compiler bug, not your code. Please file it at github.com/shader-slang/slang/issues", then a ready-to-paste minimal repro, then workarounds ([Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md)).
 
-**Source learnings (36):**
+**Source learnings (37):**
 - [Obsidian-link gap is nav-only; recompute counts](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [A correction isn't applied until every surface is fixed](../learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md)
 - [append_learning injects title as H1](../learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md)
@@ -152,5 +154,6 @@ A correct diagnosis fails if the user can't tell it's a bug. A #slang-support us
 - [Chromium `d[0][1][22]` field paths](../learnings/1793459379803-reading-chromium-issue-tracker-issues-chromium-org.md)
 - [slang#14007: filing a verified issue isn't gated](../learnings/1793294266192-filing-a-verified-follow-up-issue-is-not-an-operat.md)
 - [slang#14017: same rule; exact-API repro](../learnings/1793296109958-filing-a-verified-github-issue-is-the-bot-s-own-au.md)
+- [side finds: reviewer → fixer → triager; triager reproduces, dedupes, files verified ones; the 10-30 hold is superseded](../learnings/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md)
 
 _Catalog: [[wiki/index.md]]_

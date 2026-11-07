@@ -3,7 +3,7 @@ title: "Slang formatting.sh: false-greens, tool install, and safe scoping"
 type: concept
 group: slang-tooling
 tags: [formatting, clang-format, gersemi, shfmt, prettier, ci, false-green, worktree]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -39,8 +39,9 @@ misses a diff it never saw) in exactly the states where nothing was verified.
   no files (tests-only commit) reads stdin forever.
 - **An edit after a critique approve needs a fresh `mcp__codex__codex` round.** A
   `codex-reply` follow-up carries no developer-instructions, so the gate does not record it.
-- **pip-installed tools vanish across a container restart.** An earlier real green does not
-  survive; re-verify every session.
+- **pip-installed tools vanish across a container restart** (`~/.local/bin` can be wiped). An
+  earlier real green does not survive; after a restart run `clang-format --version` and an
+  un-redirected `--check-only` before pushing.
 - **Local gersemi/clang-format can flag pristine master.** A version/lark mismatch with CI
   makes `--check` a false positive; normalize-and-diff (format both master and head copies,
   diff the results) to isolate the PR's true delta. Never commit an `--in-place` reflow from
@@ -131,7 +132,15 @@ Two caveats compound this. First, **these installs do not survive a container re
 two containers the binary and the `clang_format` module were simply gone later the same day,
 so an earlier real verification does not license a later citation; re-verify with the gate
 every fresh session
-[install vanishes across restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md).
+[install vanishes across restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md). The pip `--user` installs land in `~/.local/bin`, which a restart may wipe, and the
+missing-tool line is the only signal: `./extras/formatting.sh --cpp --since origin/master >/dev/null 2>&1`
+returns quietly, so commits made after a restart can go out unformatted with nothing seen. Before
+committing, run `export PATH=$HOME/.local/bin:$PATH; clang-format --version` (reinstall with
+`pip install clang-format==17.0.6 --break-system-packages`), and before pushing run
+`./extras/formatting.sh --cpp --since origin/master --check-only` with its output NOT redirected. The
+same applies to other `/tmp` scratch (benchmarks, explanation sources), which does not survive a
+week; keep anything needed again under `/workspace/agent/reports/`
+[After a container restart, pip-installed clang-format can be gone and `formatting.sh >/dev/null 2>&1` silently formats nothing](../learnings/1794012449331-after-a-container-restart-pip-installed-clang-form.md).
 Second, clang-format is frequently **already present but unsymlinked** — the binary lives at
 `/usr/bin/clang-format-17` (and `/usr/lib/llvm-17/bin/clang-format`) but not as bare
 `clang-format`, so `formatting.sh` skips C++ and prints a false "needs clang-format". Don't
@@ -267,7 +276,7 @@ yours), avoid bare `git add -A`, and evict a stray file by restoring it to the c
 parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- <file>`
 (origin/master may have advanced, reintroducing it as a spurious modification).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [Correction: formatting.sh exits 1 (not 0) when a required formatter is missing](../learnings/1793688350274-correction-slang-formatting-sh-exits-1-not-0-when-.md) — measured rc=1 at 76a45e10c1; bare call is the exit-0 case; earlier exit-0 reads were pipe status
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md) — The `[17,18)` bound, the PEP-668 venv install, and two positive-control traps (`--check-only` exit 0 masks a silent no-op; type flags narrow the file set to 5 extensions).
 - [formatting.sh --check-only exits 0 when its tools are missing — a green that checked nothing](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — On slang#12454 all four formatters were absent; the grep-for-missing-tool-lines gate, plus the same-session `xxd`-missing false negative.
@@ -288,3 +297,4 @@ parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- 
 - [Slang tests: .hlsl files are gitignored; diagnostic carets align to the call paren](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — formatting aside: shim then `formatting.sh --cpp --modified`
 - [Slang formatting.sh full run can leave a committed C++ file unformatted — diff-check per file](../learnings/1793207048530-slang-formatting-sh-full-run-can-leave-a-committed.md) — `clang-format <file> | diff <file> -`; pinned-tool PATH with the gersemi venv
 - [CMake: detect a dependency's transitive link via INTERFACE_LINK_LIBRARIES (also: `--cmake --since master` trap)](../learnings/1793228740752-cmake-detect-a-dependency-s-transitive-link-via-in.md) — gersemi `--definitions` sees only changed files; run `--cmake` on the full tree
+- [restart wipes ~/.local/bin clang-format; a redirected formatting.sh then formats nothing silently; check `clang-format --version` + un-redirected --check-only](../learnings/1794012449331-after-a-container-restart-pip-installed-clang-form.md)

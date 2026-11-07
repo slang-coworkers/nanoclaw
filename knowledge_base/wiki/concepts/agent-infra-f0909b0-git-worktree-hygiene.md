@@ -3,7 +3,7 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 21
+source_count: 22
 ---
 
 # Git Worktree Hygiene in a Shared-Clone Fleet
@@ -147,7 +147,7 @@ session's fetch moves it under you. Re-splitting commits with `git reset --soft 
 then moves HEAD to the NEW tip while the working tree still holds the OLD base: upstream's
 changes show up as unexplained `M`/`D` entries (3 files from an unrelated upstream commit in one
 case; 11 never-touched files, tests deleted, on 2026-11-03), and a later `git add -A`, or re-created commits that touch an upstream-changed
-file, silently revert those upstream commits in your PR (slang#14103 hit it too). Hand-crafted
+file, silently revert those upstream commits in your PR (slang#14103 hit it too; on #14390 committing would have reverted #14360, [Worktree hazards: origin/master is shared and moves; pkill -f can kill your own shell](../learnings/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md)). Hand-crafted
 blobs are the quietest form: a blob built from the old file (`git hash-object` + `update-index`)
 reverted #14065's `[WaveSize]` doc comment in `core.meta.slang`, and only a code-review pass
 caught it. Pin the base by SHA, never by the moving ref: capture
@@ -158,11 +158,13 @@ intermediate blobs from `git show $BASE:<path>`. After any history surgery run
 newer master, do a real 3-way `git rebase <sha>`, not a re-commit of old blobs. If it already
 happened, check `git diff --stat <oldbase> origin/master` for overlap with your files, then
 `git checkout HEAD -- <upstream files>`, then rebuild and re-test on the new base; commits stay
-clean meanwhile only if you `git add` specific paths
+clean meanwhile only if you `git add` specific paths. If nothing is committed yet, the simpler recovery is
+`git reset --mixed <original base sha>` (the working tree is untouched), re-commit, then rebase
+deliberately ([Worktree hazards: origin/master is shared and moves; pkill -f can kill your own shell](../learnings/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md))
 ([reset --soft origin/master can silently re-base onto a newer master](../learnings/1793744192923-git-reset-soft-origin-master-in-a-worktree-can-sil.md)).
 From the same session: `pkill -f "<pattern>"`
 kills your own Bash shell (exit 144) when the pattern also appears in that command line, so kill
-by PID from `ps` ([worktree refs are shared: reset --soft origin/master can silently rebase you](../learnings/1793301770175-worktree-refs-are-shared-reset-soft-origin-master-.md)).
+by PID from `ps`, or `pgrep -f` with a pattern that cannot match the invoking command; seen twice, the second time on `pkill -f "test-server"` ([worktree refs are shared: reset --soft origin/master can silently rebase you](../learnings/1793301770175-worktree-refs-are-shared-reset-soft-origin-master-.md), [Worktree hazards: origin/master is shared and moves; pkill -f can kill your own shell](../learnings/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md)).
 A squash-only step has the same trap: `GIT_SEQUENCE_EDITOR=: git rebase -i --autosquash origin/master`
 squashes the fixups AND rebases onto whatever `origin/master` is now, so after a review subagent's
 `git fetch` the branch you verified sits on a newer base and your full-suite result belongs to the
@@ -238,7 +240,7 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
@@ -260,3 +262,4 @@ approver and supervisor learnings.
 - [Worktree refs are shared: reset --soft origin/master can silently rebase you](../learnings/1793301770175-worktree-refs-are-shared-reset-soft-origin-master-.md) — capture `BASE` via merge-base; recovery via `git diff --stat <oldbase> origin/master`; `pkill -f` kills your own shell (exit 144)
 - [Fixer gate: autosquash rebases onto new master; any file write voids OUTPUT_REVIEW approve](../learnings/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md) — `--autosquash origin/master` also rebases after a subagent's fetch; squash onto `$(git merge-base origin/master HEAD)` (#14115)
 - [git reset --soft origin/master in a worktree can silently re-base onto a newer master](../learnings/1793744192923-git-reset-soft-origin-master-in-a-worktree-can-sil.md) — 11 phantom "reverted" files after a peer's fetch; re-cut on the `git merge-base` sha; `git add` specific paths; rebuild + re-test on the new base
+- [#14390: `reset --soft origin/master` nearly reverted #14360; recover with `reset --mixed <base sha>`; `pkill -f "test-server"` killed own shell](../learnings/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md)
