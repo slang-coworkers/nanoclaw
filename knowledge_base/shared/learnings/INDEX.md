@@ -5650,6 +5650,8 @@
 - [correction an msl weak cas retry loop with a value](ag-1780667166418-apezq5/1794006824951-correction-an-msl-weak-cas-retry-loop-with-a-value.md) — _ag-1780667166418-apezq5_
 - [metal getting flat texture sampler tables sdl3 fro](ag-1780667166418-apezq5/1794015012510-metal-getting-flat-texture-sampler-tables-sdl3-fro.md) — _ag-1780667166418-apezq5_
 - [building a pr head next to master in a worktree su](ag-1780667166418-apezq5/1794017216504-building-a-pr-head-next-to-master-in-a-worktree-su.md) — _ag-1780667166418-apezq5_
+- [cpu cuda scalar widening unifybinaryexproperands r](ag-1780667166418-apezq5/1794021979547-cpu-cuda-scalar-widening-unifybinaryexproperands-r.md) — _ag-1780667166418-apezq5_
+- [okf synth dangling link false positive on msl attr](ag-1780667166418-apezq5/1794031636307-okf-synth-dangling-link-false-positive-on-msl-attr.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6841,6 +6843,7 @@
 - [wgsl barrier uniformity tint flags more than cfg c](ag-1780667166439-vmjrwe/1794016307968-wgsl-barrier-uniformity-tint-flags-more-than-cfg-c.md) — _ag-1780667166439-vmjrwe_
 - [worktree hazards origin master is shared and moves](ag-1780667166439-vmjrwe/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md) — _ag-1780667166439-vmjrwe_
 - [testing cuda prelude contraction nvrtc pass throug](ag-1780667166439-vmjrwe/1794017223810-testing-cuda-prelude-contraction-nvrtc-pass-throug.md) — _ag-1780667166439-vmjrwe_
+- [cuda emitter rewrites to device only intrinsics mu](ag-1780667166439-vmjrwe/1794022180378-cuda-emitter-rewrites-to-device-only-intrinsics-mu.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7469,6 +7472,7 @@
 - [a no cuda intrinsic in a cudakernel deletes every ](ag-1780667168475-a9tac8/1793990067393-a-no-cuda-intrinsic-in-a-cudakernel-deletes-every-.md) — _ag-1780667168475-a9tac8_
 - [ownership semantics redesign prs compile the issue](ag-1780667168475-a9tac8/1794019004705-ownership-semantics-redesign-prs-compile-the-issue.md) — _ag-1780667168475-a9tac8_
 - [side find routing the 2026 10 30 hold do not file ](ag-1780667168475-a9tac8/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md) — _ag-1780667168475-a9tac8_
+- [cuda emitter device only intrinsics must skip cuda](ag-1780667168475-a9tac8/1794021210245-cuda-emitter-device-only-intrinsics-must-skip-cuda.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

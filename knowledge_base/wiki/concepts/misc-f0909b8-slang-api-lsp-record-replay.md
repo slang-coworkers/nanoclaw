@@ -3,7 +3,7 @@ title: "Slang public API boundary, LSP null-result serialization, and the record
 type: concept
 group: misc
 tags: [slang, public-api, slang-h, lsp, language-server, json-rpc, nullresponse, record-replay, wrapObject, refcount, singleton, com]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -23,6 +23,10 @@ Three adjacent Slang subsystems where the *contract* and the
   `Slang::Guid` leak into public headers. Adding a `slang::ComPtr` alias is not a
   free fix: it makes `ComPtr` ambiguous for users who combine `using namespace
   slang;` with their own ComPtr.
+- **A lone `undefined reference to 'slang_createGlobalSession2'` means no (or the
+  wrong) Slang library was linked.** It is usually the only exported symbol an app
+  needs, because every other call is a COM virtual. Beware Debian's unrelated S-Lang
+  `libslang.so`; link `libslang-compiler.so` from a built or released Slang.
 - **A `SLANG_RELEASE_ASSERT` on a value derived from a public-API argument is a
   latent user-facing crash** that ships in the Vulkan SDK. Validate + diagnose API
   inputs; assert only genuinely-internal invariants.
@@ -79,6 +83,24 @@ namespace slang;` plus a using-directive for its own ComPtr (for example WRL's),
 is a source-compat risk
 [slang:: is public, Slang:: is internal; a slang::ComPtr alias risks ambiguity](../learnings/1792559661330-slang-c-api-namespaces-slang-is-public-slang-is-in.md).
 
+The same boundary explains the commonest link error users report. `slang::createGlobalSession()`
+is an inline function in `slang.h` (master `6d43c8d8`, `:6326-6335`) that calls the exported C
+function `slang_createGlobalSession2` (`:6110`); every other API call goes through COM virtual
+methods, so that one C function is usually the ONLY Slang symbol an application links against.
+A single `undefined reference to 'slang_createGlobalSession2'` therefore means the linker got no
+Slang library, an old one, or an unrelated `libslang.so`. Verified 2026-11-06: a test `main.cpp`
+linked with no library gives exactly that error, and linked against v2026.21's
+`lib/libslang-compiler.so` (`libslang.so` is a symlink to it) it links and runs. A likely cause
+for users following howtovulkan.com (a hypothesis from a Discord report): its CMake does
+`find_library(Slang_LIBRARY NAMES slang slang-compiler HINTS "$ENV{VULKAN_SDK}/lib")`, and
+without `VULKAN_SDK` set it can pick up S-Lang's `libslang.so` from Debian/Ubuntu
+`libslang2-dev` (the name clash of shader-slang/slang#4016, #8334, #13308). A bare `git clone`
+of slang has no library until built (`cmake --preset default && cmake --build --preset
+release` → `build/Release/lib/`). Fix: set `VULKAN_SDK` (SDK ≥ 1.4.363.0) or pass
+`-DSlang_LIBRARY=<release>/lib/libslang-compiler.so`, then confirm with
+`grep Slang_LIBRARY build/CMakeCache.txt`
+([Slang link error "undefined reference to slang_createGlobalSession2" = no (or wrong) Slang library linked](../learnings/1793954192931-slang-link-error-undefined-reference-to-slang-crea.md)).
+
 ## LSP null-result serialization and its test traps
 
 Slang's language server sends the `NullResponse` sentinel for "no result", but that
@@ -128,11 +150,12 @@ for those *extended* guids is correct for a plain FS, and clarity findings that 
 on "X is never called" must be grounded by tracing call sites, not inferred
 [MutableFileSystemProxy ctor calls castAs during wrapping](../learnings/1788255005317-record-replay-mutablefilesystemproxy-ctor-calls-ca.md).
 
-**Source learnings (9):**
+**Source learnings (10):**
 
 - [getModuleDependencies/enumerateModules are internal-only, not in public slang.h](../learnings/1788093186621-getmoduledependencies-enumeratemodules-are-interna.md) — DeepWiki described internal symbols as public; grep include/slang.h before advising a user; closest public workarounds are session-scoped, not program-scoped.
 - [loadModuleFromSource supports null source + path; #10996 regressed it with an unconditional digest assert](../learnings/1788198536182-loadmodulefromsource-supports-null-source-path-loa.md) — #12852; the nominal "source cannot be null" doc is contradicted by loadSourceModuleImpl; a SLANG_RELEASE_ASSERT on a public-API-derived value is a shipping crash.
 - [Slang C++ API namespaces: slang:: is public, Slang:: is internal (only ComPtr/Result/Guid leak); a slang::ComPtr alias risks ambiguity](../learnings/1792559661330-slang-c-api-namespaces-slang-is-public-slang-is-in.md) — #13802 (dup of #5957); ComPtr made public in #604 unrenamed; g++/clang++-verified ambiguity with `using namespace slang;` + WRL ComPtr
+- [lone `slang_createGlobalSession2` undefined reference = no/wrong library (S-Lang `libslang.so` clash)](../learnings/1793954192931-slang-link-error-undefined-reference-to-slang-crea.md)
 - [Record-replay: MutableFileSystemProxy ctor calls castAs during wrapping](../learnings/1788255005317-record-replay-mutablefilesystemproxy-ctor-calls-ca.md) — #12863 FG001; a custom FS's castAs IS reached with extended guids; null for those is correct; ground "X is never called" clarity flags in traced call sites.
 - [Singleton-designed class with no-op refcount LEAKS if heap-allocated (NULLFileSystem)](../learnings/1788257348928-singleton-designed-class-with-no-op-refcount-leaks.md) — #12865; give it a real singleton accessor + private ctor (mirror OSFileSystem); static ⇒ no alloc ⇒ leak gone by construction; LSan-only observable, dead on master.
 - [Record-replay stand-in objects must be per-call, not singletons (wrapObject dedups by identity)](../learnings/1788260579889-record-replay-stand-in-objects-must-be-per-call-no.md) — #12863; playback must reproduce the exact registration sequence; a per-call heap stand-in must be genuinely ref-counted (ReplayNullFileSystem overriding addRef/release); don't pre-addRef.

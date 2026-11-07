@@ -3,7 +3,7 @@ title: "GitHub CI Status-Surface Traps — Combined Status, Evicted Lists & Deta
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, commit-status, check-runs, merge-queue, ci-health, absence-claims, slang]
-source_count: 43
+source_count: 44
 ---
 
 # GitHub CI Status-Surface Traps — Combined Status, Evicted Lists & Detached Builds
@@ -60,7 +60,7 @@ The held workflow creates no check-run, so it is absent from REST `check-runs`/`
 
 **Who approved a held run:** neither a review nor a timeline event; read `actions/runs/<id>` `.run_attempt, .triggering_actor.login, .run_started_at`. After approval `run_attempt` is 2, `triggering_actor` is the approving maintainer and `actor` is still the contributor ([triggering_actor](../learnings/1793026171832-who-approved-an-action-required-fork-ci-run-trigge.md)). A PR can also leave an ACTION_REQUIRED count without approval (slang #13473's held fork run vanished from an unchanged head, `actions/runs?head_sha=` returning 0 runs), so cross-check each PR that drops off before reporting it approved ([REST + timeline](../learnings/1793436218667-daily-github-sweep-closed-unmerged-prs-and-merge-q.md)).
 
-**Fork CI approval does not survive a push**: every new push by the fork author creates a new `pull_request` `CI` run that is `action_required` again, so the count rises with no new PR. On 2026-11-01 the "fork PRs with CI never approved" count went 9 → 12 only because an author pushed fixes to three PRs approved on 10-30. Report such joiners as "re-needs approval after author push"; the lightweight checks' SUCCESS rollup meanwhile is not a test signal ([fork re-push resets CI approval](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md)). slangpy behaves the same: on #1234 the author's pushes after approval put `ci` and `checks` back to `action_required`, visible only in `/actions/runs?head_sha=<full sha>`, while `/check-runs` and `/status` looked green. After any fork-PR push, read `/actions/runs` and name "maintainer must approve the fork runs" as the next action ([slangpy fork re-push](../learnings/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md)).
+**Fork CI approval does not survive a push**: every new push by the fork author creates a new `pull_request` `CI` run that is `action_required` again, so the count rises with no new PR. On 2026-11-01 the "fork PRs with CI never approved" count went 9 → 12 only because an author pushed fixes to three PRs approved on 10-30. Report such joiners as "re-needs approval after author push"; the lightweight checks' SUCCESS rollup meanwhile is not a test signal ([fork re-push resets CI approval](../learnings/1793522418229-github-sweep-clock-skew-vs-actions-stamps-and-fork.md)). slangpy behaves the same: on #1234 the author's pushes after approval put `ci` and `checks` back to `action_required`, visible only in `/actions/runs?head_sha=<full sha>`, while `/check-runs` and `/status` looked green. After any fork-PR push, read `/actions/runs` and name "maintainer must approve the fork runs" as the next action ([slangpy fork re-push](../learnings/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md)). The count can also fall with no approval: an `ACTION_REQUIRED` CI suite can vanish from a fork PR head with no push (#13698, 2026-11-06), so the PR drops out of the "CI never approved" list. Count a PR that left the list and now has no CI suite as still unapproved ([GitHub sweep: merge-queue commit dates, MQ bypass, vanished AR suites, onboard auto-assign](../learnings/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md)).
 
 ## Failure Rankings and Attempt Ladders Measure the Wrong Thing
 
@@ -86,7 +86,7 @@ The held workflow creates no check-run, so it is absent from REST `check-runs`/`
 - **A `status=failure` listing can return only stale rows, with no error**: anonymous `actions/runs?status=failure` and `gh run list --branch master --status failure --limit 30` returned nothing after dates with known failing nightlies, while the same REST query with `created=%3E%3D<date>&per_page=50` returned 39. The tell is a newest row days older than master's head; bound with `created>=`. Same session: size an MDL perf flag from `confirmation.json` `plan.regressions` (1.12x), not the analyze log's first table (1.58x) ([stale --status failure](../learnings/1791360225685-gh-run-list-status-failure-can-silently-return-sta.md)). `created>=` has its own blind spot: a `waiting` run (e.g. bot-draft CI at an approval gate) hitting the 30-day limit ends `failure` with an old `created_at`, so diff yesterday's `status=waiting` list against today's and fetch each departure (8 of 14 were expiries) ([30-day waiting-run expiry](../learnings/1792830160449-github-actions-30-day-waiting-run-expiry-shows-as-.md)).
 - **The egress gateway caches GitHub REST GETs keyed on the literal query string**: an un-busted URL kept returning two-week-old failures, while appending `&_=$(date +%s%N)` returned fresh data (GitHub ignores unknown params). That explains the recurring "workflow-failures stale-date" heartbeat anomaly ([gateway cache](../learnings/1789391780211-root-cause-of-the-recurring-slang-workflow-failure.md)).
 
-**Source learnings (43):**
+**Source learnings (44):**
 
 - [payload `evicted` 0-for-5 on 93 PRs; enumerate yourself](../learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md)
 - [phantom eviction; reject runs started after enqueue](../learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md)
@@ -131,5 +131,6 @@ The held workflow creates no check-run, so it is absent from REST `check-runs`/`
 - [green CI runs can hide a stuck merge queue](../learnings/1793376411569-green-ci-runs-can-hide-a-stuck-merge-queue-check-c.md)
 - [Fork-PR CI approval does not carry over to new pushes (slangpy)](../learnings/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md)
 - [gh issue view --json has no authorAssociation; use gh api for it](../learnings/1793639840678-gh-issue-view-json-has-no-authorassociation-use-gh.md)
+- [an `ACTION_REQUIRED` suite can vanish from a fork PR head with no push (#13698): still unapproved](../learnings/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md)
 
 _Catalog: [index](../index.md)_

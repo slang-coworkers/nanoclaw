@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-997 learnings. [Catalog](../index.md)
+1001 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -258,8 +258,10 @@ type: topic
 - [codex first reply in a fresh critique thread can be a wiki recall, not the review](../learnings/1792748776667-codex-first-reply-in-a-fresh-critique-thread-can-b.md)
 - [Codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md)
 - [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md)
+- [codex OUTPUT_REVIEW attestation must be `- <sha256> <abs path>` (hash first) or the public-comment gate refuses](../learnings/1794008715794-codex-output-review-attestation-must-be-sha256-abs.md)
 - [codex OUTPUT_REVIEW can return a recall digest instead of a verdict; hook may still record "approve"](../learnings/1793206692748-codex-output-review-can-return-a-recall-digest-ins.md)
 - [codex OUTPUT_REVIEW can return a wiki-recall digest instead of the review](../learnings/1793640100680-codex-output-review-can-return-a-wiki-recall-diges.md)
+- [codex OUTPUT_REVIEW can return recall bullets that the hook records as approve](../learnings/1793999712599-codex-output-review-can-return-recall-bullets-that.md)
 - [codex OUTPUT_REVIEW can return recall notes and still be recorded as approve](../learnings/1793839501898-codex-output-review-can-return-recall-notes-and-st.md)
 - [codex OUTPUT_REVIEW can return wiki recall bullets instead of a review — and the gate still records it as approve](../learnings/1792025053096-codex-output-review-can-return-wiki-recall-bullets.md)
 - [codex STAGE prompts can return wiki recall instead of a verdict — re-ask; don't count it](../learnings/1791912236710-codex-stage-prompts-can-return-wiki-recall-instead.md)
@@ -783,6 +785,7 @@ type: topic
 - [Report up right after push+CI dispatch; don't gate the report on a long CI watch](../learnings/1790669062658-report-up-right-after-push-ci-dispatch-don-t-gate-.md)
 - [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](../learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)
 - [report_pr_created remaps the PR to the CALLING session](../learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
+- [Reporter-owned fix PR: verify and report up only; don't route review suggestions onto it](../learnings/1793960241760-reporter-owned-fix-pr-verify-and-report-up-only-do.md)
 - [Reports answering a re-chase task's dispatch go to that task's session and get lost once it closes](../learnings/1791316462228-reports-answering-a-re-chase-task-s-dispatch-go-to.md)
 - [Repro core-writer/mutex bugs standalone against libcore.a; TSan is unusable in prod containers](../learnings/1792517123202-repro-core-writer-mutex-bugs-standalone-against-li.md)
 - [rerun-log.jsonl verdict for gate-wedged entries must be 'intermittent', not 'unclassifiable'](../learnings/1790469245380-rerun-log-jsonl-verdict-for-gate-wedged-entries-mu.md)
@@ -830,6 +833,7 @@ type: topic
 - [SGL ui::Context::begin_frame gates mouse-cursor sync on a non-null window arg](../learnings/1789818274564-sgl-ui-context-begin-frame-gates-mouse-cursor-sync.md)
 - [shader-slang/spec has no writable path from the slang-fixer container (no push, no fork, invalid GH_TOKEN)](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md)
 - [Shared bot identity: an artifact's updated_at cannot tell you which session wrote it](../learnings/1786040214790-shared-bot-identity-an-artifact-s-updated-at-canno.md)
+- [Side-find routing: the 2026-10-30 "hold / do not file" rule is superseded](../learnings/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md)
 - [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)
 - [Skill scripts under ~/.claude/skills are not executable; invoke wait-run.sh via bash](../learnings/1792509790688-skill-scripts-under-claude-skills-are-not-executab.md)
 - [Slang CI: test-falcor failures can't be read from the container, so do a public-Falcor differential compile to triage](../learnings/1792769226659-slang-ci-test-falcor-failures-can-t-be-read-from-t.md)

@@ -3,7 +3,7 @@ title: Slang Compiler Casts, Lookup & Language Server — Operator Resolution, D
 type: concept
 group: slang-grab-bag
 tags: [slang, name-resolution, operators, lookup, optional, language-server, module-serialization, diagnostics]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -29,7 +29,7 @@ because even maintainers get surprised.
 - **`Decl::hiddenFromLookup` only affects LOCAL vars** — it's `&&`-gated on `isLocalVar`, so setting
   it on a container member (struct/type/func) has no effect. Read the *honoring* site, not just the
   field definition, before trusting "set this flag."
-- **Function parameters are visible to sibling default arguments** (one `FuncDecl` scope; `_isUncheckedLocalVar` never filters a `ParamDecl`), and any call using such a default ICEs in lowering. DeepWiki says otherwise and is wrong.
+- **Function parameters are visible to sibling default arguments** (one `FuncDecl` scope; `_isUncheckedLocalVar` never filters a `ParamDecl`), and any call using such a default ICEs in lowering. DeepWiki says otherwise and is wrong. Defaults are lowered in the CALLER's context, so a default naming `m`/`this.m` silently reads the caller's `this` when the caller is a method (wrong code, #14380) and segfaults when it is a free function.
 - **`-experimental-feature` gates `__func_extension` and `__apply` syntax as well as `[ExperimentalModule]` imports**, so enabling it in slangd changes the whole session's syntax handling.
 - **`IGlobalSession::parseCommandLineArguments` discards its parse result on master (#14103)** — predict a fix's results through the deprecated `ICompileRequest::processCommandLineArguments` (same parse path), and run every in-tree `-Xslang` argv set through it before claiming "no change".
 - **HLSL `for`-init scoping keys off the source language, not the extension alone** — a `-lang hlsl` before the file selects it; one after the file is ignored.
@@ -133,8 +133,15 @@ both check with no diagnostic, and the inner `y` binds to the sibling parameter,
 global. Any call that relies on such a default ICEs with E99997 "unimplemented: decl catch-all"
 (slang-lower-to-ir.cpp:10385), because default arguments are lowered in the CALLER's context
 (lower-to-ir:4614), where a `ParamDecl` has no lowering; even `int g(int x, int y = x); g(3)` ICEs.
-A default that uses `this.m` or `m` on a non-static member segfaults in the prelinking peephole
-(slang-ir-peephole.cpp:853), even with `-no-codegen`. DeepWiki says parameters are not visible to
+A default that uses `this.m` or `m` on a non-static member reads whatever `this` the CALLER has,
+because lowering runs the default expression in a copy of the caller's `IRGenContext`
+(slang-lower-to-ir.cpp:4626-4644), so `thisVal` is the caller's. Consider
+`struct S { int m; int f(int x = m) {...} int callOnOther(S o) { return o.f(); } }`: `o.f()` lowers to
+`S_f(o, this.m)`, a silent miscompile with no diagnostic (1 instead of 2 on cpu, cuda and vk;
+shader-slang/slang#14380). When the caller is a free function there is no `this`, and the same
+default segfaults in the prelinking peephole (slang-ir-peephole.cpp:853), even with `-no-codegen`.
+So when probing a crash-only lowering bug, also try a caller that has a value of the same kind: it
+can turn the crash into wrong code [Slang default arguments that use `this` silently read the CALLER's `this` when the caller is a method](../learnings/1793951024729-slang-default-arguments-that-use-this-silently-rea.md). DeepWiki says parameters are not visible to
 later defaults; that is false, so do not trust it for scope-order questions. Debugging tip for a
 container without gdb: `LD_PRELOAD` a small SIGSEGV handler (`sigaltstack` +
 `backtrace_symbols_fd`), then run `addr2line -f -C -i -e build/Debug/lib/libslang-compiler.so.0.<ver>
@@ -227,7 +234,7 @@ k_maxSupportedModuleVersion IS range-checked at module load since
 
 **IntelliSense for `[ExperimentalModule]` std modules works today through a gate-stripped source shim.** The experimental-module gate (`Linkage::_getImportableModuleOrDiagnose`, `slang-session.cpp` ~1636) reads the ModuleDecl's `[ExperimentalModule]` attribute, and user search paths are tried before the std-module fallback dir (~1951). So until slangd gets an ExperimentalFeature setting, `import slang.numerics` resolves in the editor if you copy the module *sources* from the matching tag into `<shim>/slang/{numerics,interfaces,*-conformances,wrappers}.slang` and `<shim>/slang/numerics/{__builtin,__builtin_differentiable,differentiable*}.slang` (mirroring the CMake staging in `numerics/CMakeLists.txt`; `__builtin-differentiable` is renamed), delete the `[ExperimentalModule]` line, and add `<shim>` to `slang.additionalSearchPaths`; verified with the v2026.19 slangd over an LSP stdio driver (no diagnostics, hover resolves, real errors still reported). The slangd version must match the sources: VS Code extension v2.0.10 bundles slangd 2026.8, which reports ~170 diagnostics on them, so point `slang.slangdLocation` at a matching release. The shim bypasses the gate for slangc too if it lands on a build `-I` path, so keep it outside the project and out of compiler search paths (codex must-fix; slang-vscode-extension#78) [editor-only workaround for [ExperimentalModule] std modules in slangd](../learnings/1792083766359-editor-only-workaround-for-experimentalmodule-std-.md).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [Slang: function params are visible to sibling defaults; using such a default crashes in lowering (DeepWiki says otherwise — wrong)](../learnings/1792134928808-slang-function-params-are-visible-to-sibling-defau.md) — one FuncDecl scope; E99997 decl catch-all in caller-context lowering; LD_PRELOAD SIGSEGV + addr2line
 - [ExperimentalFeature gates syntax too, not just [ExperimentalModule] imports — matters for slangd settings](../learnings/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md) — three consumers; `parseCommandLineArguments` swallows errors; critique-gate recording rule
 - [Slang: fallible `as` cast already yields Optional<T>](../learnings/1787675835939-slang-fallible-as-cast-already-yields-optional-t-v.md) — if(let)/guard let support as-operands for free; negative control proves the wrapper.
@@ -244,3 +251,4 @@ k_maxSupportedModuleVersion IS range-checked at module load since
 - [Predict post-fix parse results for IGlobalSession::parseCommandLineArguments without editing code](../learnings/1793392947549-predict-post-fix-parse-results-for-iglobalsession-.md) — #14103; deprecated ICompileRequest runs the same parseOptions; which argv flip to FAIL; stale `slangc -version`
 - [Before claiming "no change" for a fix that stops discarding a parse result, run every in-tree -Xslang argv through it](../learnings/1793400452611-before-claiming-no-change-for-a-fix-that-stops-dis.md) — 3 suite breaks on PR #14111 (removed `-serial-ir`, E00044 with no target, render-test DeviceCache key); one case per validator code
 - [Slang tests: -lang hlsl applies only to later files; tests/**/*.hlsl is gitignored](../learnings/1793398431165-slang-tests-lang-hlsl-applies-only-to-later-files-.md) — corrects the "`UnscopedForStmt` keys off the extension, not `-lang`" reading: a `-lang hlsl` before the file selects HLSL
+- [a `this`-using default lowers in the caller's context: wrong code from a method caller (#14380), segfault from a free function](../learnings/1793951024729-slang-default-arguments-that-use-this-silently-rea.md)

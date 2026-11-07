@@ -3,7 +3,7 @@ title: "Working Live PRs Alongside Maintainers and Sibling Bots"
 type: concept
 group: review-process
 tags: [maintainer, live-pr, supersede, test-header-comments, scope-directive, concurrent-edit, design-divergence, peer-bot-session, pr-body-edit, coupled-pr, github-write-discipline]
-source_count: 27
+source_count: 28
 ---
 
 # Working Live PRs Alongside Maintainers and Sibling Bots
@@ -19,7 +19,7 @@ source_count: 27
 - **A maintainer refactor pushed onto the bot's branch plus their own PR on the same files is a supersede in progress**: stand down on ours, post the carry-forward (tests, stale expectations) on theirs.
 - **A maintainer PR on the same issue → flag to the operator immediately**; an operator-held draft loses that race. A bot draft un-reviewed for weeks after a maintainer is assigned is the slow form: ask early. Closing our own superseded bot draft (with a pointer comment) is not operator-gated.
 - Debug insts: skip only location/scope markers (DebugLine/DebugScope/DebugNoScope); DebugVar/DebugValue carry state and are not erasable at zero uses. An IR operand-layout change bumps the module version range.
-- **Two maintainers diverge on a design → provide evidence, ask them to align; never pick a side.** Gate any redesign on both agreeing AND the alternative confirmed to meet the original hard constraint.
+- **Two maintainers diverge on a design → provide evidence, ask them to align; never pick a side.** Before building a language-rule change, read the sibling PRs' MEMBER review comments as well as the issue; on a conflict keep the work local until both maintainers agree. Gate any redesign on both agreeing AND the alternative confirmed to meet the original hard constraint.
 - **Run the anti-dup check against a LIVE re-read immediately before posting** — a peer bot session shares your GitHub identity.
 - **Never reword a maintainer's existing comment, not even a typo**; it records design intent. Grep your diff for removed `//` lines.
 - **Your push dismisses a maintainer's APPROVED review** (fix or conflict-resolution push alike). Check `reviewDecision`/`review_dismissed` at head before reporting "approved"; batch fixes into one push.
@@ -67,6 +67,8 @@ Twice on the same PR the maintainer left a batch of "rewrite this comment" / "do
 
 When one maintainer steered a coworker PR's design and another files REQUEST_CHANGES against it, the coworker must not pick a side, redesign unilaterally, or apply the objector's literal diff. It provides evidence and asks both to align; the orchestrator gates any redesign on (1) both maintainers explicitly agreeing on the new mechanism AND (2) the alternative confirmed at source or empirically to satisfy the original hard constraint. On slang#13070 / #13086 jkwak-work objected to an interface member pdeayton-nv had steered. The fixer verified at source (`IOpaqueDescriptor` is `[sealed][builtin]`), tested a `.slang-module` round-trip, and posted a COMMENT-state reply (never a competing APPROVE/REQUEST_CHANGES) tagging both: "same intent, here are the constraints any alternative must satisfy." pdeayton-nv then proposed jkwak's ask (a type-query intrinsic); with the fold confirmed at source and via a fired `static_assert` + DCE, the redesign was authorized and merged. On a non-`@bot` multi-maintainer thread the orchestrator holds the post for calibration, authorizes a reply that asks rather than asserts, requires a redesign plan first, and never lets the coworker counter a maintainer's verdict ([Two-maintainer design divergence on a PR](../learnings/1790220265420-two-maintainer-design-divergence-on-a-pr-provide-e.md)).
 
+The divergence is cheaper to catch before any code exists. When a change redefines language semantics, the issue is not the whole spec: read the review threads of the linked and sibling PRs too, especially comments with `author_association` MEMBER. On #14366 pdeayton-nv (MEMBER) asked on the issue for an explicit `[[vk::location]]` on a struct field to be an absolute Location in every stage; the fixer had implemented and verified that locally when tangent-vector (MEMBER) wrote on the sibling PR #14335 (issuecomment-6695608888) that field Locations should *not* be absolute, because master's struct-relative behaviour is the intended one, if field Locations are allowed at all. The chain was parked before anything was pushed, and the scope of #14335 itself (the hull patch-constant layout) had already moved twice under review. If two maintainers' positions differ, or one has not weighed in on a rule the other set, we ask both to agree first and keep the work local (a branch plus a patch file) until they do; opening a draft PR settles nothing, since it would be reviewed against the opposite rule the same day [Before building a language-rule change from an issue spec, check sibling PR threads for MEMBER comments that contradict it](../learnings/1793999570748-before-building-a-language-rule-change-from-an-iss.md).
+
 ## Re-check the Newest Issue Comment Immediately Before Posting
 
 Run the edit-if-last-poster-is-self / anti-dup check against a live re-read right before posting, not the start-of-turn snapshot. On slang#13247 the issue had 0 comments at triage start; ~10 min in, a peer `nv-slang-bot` session posted the disposition, and posting the full triage produced a same-identity double-post on a maintainer-watched issue. Run `gh api repos/<r>/issues/<n>/comments --jq '.[-1].user.login'`; if it is `nv-slang-bot[bot]`, PATCH in place or post only a delta. An auto-filed tracking issue can read stale; check the referenced PR's current head before triaging it as open ([a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)).
@@ -97,7 +99,7 @@ jkwak-work closed slang#12938 unmerged: "This content seems redundant to the inf
 
 skallweitNV corrected the shape of bot fixes rather than their direction. On slang-rhi#860 the bot routed `VkBufferView` create/destroy through `device->m_api` and kept `VKBufferHandleRAII::m_api` as the implicit "this wrapper owns the buffer" flag; the maintainer closed bot PR #868 and landed #945, keeping the routing but adding explicit `m_ownsBuffer`/`m_ownsMemory` and fixing the uninitialized `m_memory` the bot had scoped out ([explicit ownership over a double-duty field](../learnings/1793091793971-slang-rhi-maintainer-prefers-explicit-ownership-ov.md)). On slang-rhi#866 they took the PR over, squashed it, deleted the bot's GPU-free `tests/test-vk-utils.cpp`, and validated with the existing Release Vulkan buffer-barrier, compute and texture tests ([run the existing Vulkan GPU tests](../learnings/1793111769425-slang-rhi-run-the-existing-vulkan-gpu-tests-mainta.md)). If a minimal fix works around a field that means two things, name the conflation and offer the explicit refactor, since the maintainer may want the root fixed even when a reviewer accepted it as out of scope. For a small backend mapping fix, run the relevant existing `slang-rhi-tests` GPU cases on the container's GPU. Detail: [slang-rhi backend runtime internals](slang-rhi-backend-runtime.md), [Slang & slang-rhi test harness](slang-a-test-harness.md).
 
-**Source learnings (27):**
+**Source learnings (28):**
 
 - [re-derive scope from the live comment](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md) — webhook bodies truncate; surface cross-issue linkage.
 - [unimplemented spec requirement is a merge blocker](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md) — slang-rhi#881; grade met/missed.
@@ -126,5 +128,6 @@ skallweitNV corrected the shape of bot fixes rather than their direction. On sla
 - [slang-rhi: run the existing Vulkan GPU tests](../learnings/1793111769425-slang-rhi-run-the-existing-vulkan-gpu-tests-mainta.md) — #866 takeover.
 - [docs PRs that restate the page get closed as redundant](../learnings/1793826181291-slang-docs-prs-that-restate-content-already-on-the.md) — slang#12938; list only new facts first.
 - [a push after approval dismisses it; check reviewDecision](../learnings/1793851667014-a-push-after-approval-dismisses-it-on-shader-slang.md) — #13815: two reports relayed a dismissed approval.
+- [#14366 vs sibling #14335: MEMBER comments on linked PRs can contradict the issue spec; align both maintainers before building](../learnings/1793999570748-before-building-a-language-rule-change-from-an-iss.md)
 
 _Catalog: [[wiki/index.md]]_
