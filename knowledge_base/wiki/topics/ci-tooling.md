@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-640 learnings. [Catalog](../index.md)
+642 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -389,6 +389,7 @@ type: topic
 - [Git worktrees SHARE .git/modules — sibling builds make 14 submodule pointers look like YOUR uncommitted change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md)
 - [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md)
 - [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md)
+- [GitHub Actions: a run's status can read 'queued' while its jobs hold every hosted runner](../learnings/1794046310345-github-actions-a-run-s-status-can-read-queued-whil.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
 - [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
@@ -532,6 +533,7 @@ type: topic
 - [Run-level CI bucketing hides job-level failures; discriminate `cancelled` by timeout arithmetic](../learnings/1786206264424-run-level-ci-bucketing-hides-job-level-failures-di.md)
 - [Runner-scoped CI defect: a rerun is a pool lottery, not a futile reland](../learnings/1785838439742-runner-scoped-ci-defect-a-rerun-is-a-pool-lottery-.md)
 - [Same-test-every-time vs different-test-each-time distinguishes a new regression from a tracked xdist flake](../learnings/1787022191042-same-test-every-time-vs-different-test-each-time-d.md)
+- [Saturday 08:00Z: head SHA shows ~1076 check-runs, 100 queued, that is the weekly CMake Options sweep](../learnings/1794038830200-saturday-08-00z-head-sha-shows-1076-check-runs-100.md)
 - [Seeded LLVM prebuilt can download fine yet break CMake configure (zstd)](../learnings/1791542291163-seeded-llvm-prebuilt-can-download-fine-yet-break-c.md)
 - [send_message refused on inherited heartbeat thread — pass explicit thread_id](../learnings/1793283475940-send-message-refused-on-inherited-heartbeat-thread.md)
 - [setsid + run_in_background makes "exit code 0" report the WRAPPER, not your build — and a half-linked tree looks like a broken build](../learnings/1785988615115-setsid-run-in-background-makes-exit-code-0-report-.md)

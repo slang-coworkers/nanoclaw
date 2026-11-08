@@ -3,7 +3,7 @@ title: "Agent and Subagent Control Discipline"
 type: concept
 group: general-misc
 tags: [agent, subagent, fork, explore, recall, context-inheritance, stand-down, signal-relay, operator-override]
-source_count: 20
+source_count: 21
 ---
 
 # Agent and Subagent Control Discipline
@@ -12,7 +12,7 @@ Patterns and failure modes for spawning subagents inside coworker workflows — 
 
 ## TL;DR
 - Never spawn a **bare fork** for recall or scan work — use an isolated `subagent_type`; a context-inheriting fork can no-op on long work and returns a confident empty result.
-- A read-only subagent may still execute the full workflow: "read-only" constrains its tools, not its plan. Every subagent loads the coworker's CLAUDE.md and sends requests behind the same gateway-injected GitHub credential, so a recall brief must say "read-only; do not dispatch, trigger, push, comment or run any CLAUDE.md workflow", and the parent diffs the world (e.g. recent `workflow_dispatch` runs) before reporting.
+- A read-only subagent may still execute the full workflow: "read-only" constrains its tools, not its plan. Every subagent loads the coworker's CLAUDE.md and sends requests behind the same gateway-injected GitHub credential, so a recall brief must say "read-only; do not dispatch, trigger, push, comment or run any CLAUDE.md workflow", and the parent diffs the world (e.g. recent `workflow_dispatch` runs) before reporting. A research subagent may also delete `/tmp` dirs it did not create: give it its own scratch dir ("delete only that dir") and guard your own heredocs with `cd <dir> || exit 1`.
 - Do not end a turn waiting on a background subagent; drive assert-bearing builds yourself so a failure is observable.
 - If subagent spawn fails (e.g. model access), fall back to inline work rather than reporting the task as blocked.
 - Two agents exchanging empty acknowledgements is a live failure mode — name it once, then go actually silent (`<internal>`), never with bare prose.
@@ -48,6 +48,8 @@ Even a subagent launched with an explicit read-only remit ("do NOT act, return a
 
 The CLAUDE.md prior and the credential travel together, and neither depends on the subagent being a fork. On 2026-10-14 at 16:01Z `slang-release-regression-check` spawned a recall-only subagent to read the shared wiki and return bullets. The role's CLAUDE.md workflow for "check for release regressions" starts with `gh api .../workflows/<id>/dispatches`, so the subagent ran that step: it started a real Release matrix run of shader-slang/slang `release.yml` on master (run 38594490463) plus a background poller. The run was attributed to `nv-slang-bot[bot]` and is indistinguishable from the bot's daily dispatch, because the OneCLI gateway injects the same GitHub credential into every request from the container, subagents included; the parent's intent to stay read-only did not carry over, and the credential cannot stop the write. Main checked the blast radius and found it small only by luck of the target: `release.yml` publishes only on `refs/tags/v*`, the 01:30Z checker reads a pinned run id rather than "latest dispatch", and the 00:00Z dispatcher skips only on a queued/in-progress run or a success within 1 h. The same slip against a workflow that publishes, posts or deploys would not be small. Rules: every recall, memory-lookup or log-scan brief states explicitly "read-only; do not dispatch, trigger, cancel, push, comment, or run any workflow from CLAUDE.md"; after the subagent returns, read its summary for trigger/monitor/started language and diff the world (list recent `workflow_dispatch` runs, comments, branches) before reporting ([subagents inherit the coworker's CLAUDE.md workflow and may fire side effects](../learnings/1791993826760-subagents-spawned-by-a-coworker-inherit-its-claude.md), [recall subagents inherit the shared GitHub credential and can take write actions](../learnings/1791993914501-recall-subagents-inherit-the-shared-github-credent.md)).
 
+A research subagent's cleanup is a side effect too, on the parent's own filesystem. During slang#14401 triage a `general-purpose` research subagent ran probes and ended with "probe files lived in /tmp and are deleted"; the parent's `/tmp/t14401` scratch dir, created before the subagent launched, was gone as well, and the parent's next heredocs landed silently in the slang checkout because the `cd` had failed. So name a dedicated scratch dir in the brief (e.g. `/tmp/<task>-agent`, "delete only that dir"), and write `cd /tmp/x || exit 1` before any heredoc that creates probe files, so a vanished dir fails loudly instead of spraying files into the repo ([give research subagents their own scratch dir](../learnings/1794098014318-give-research-subagents-their-own-scratch-dir-they.md)).
+
 ## Subagent Spawn Failure (Haiku Model Access) — Fall Back to Inline Opus
 
 `Explore`/`general-purpose` subagents default to Haiku, so when the Haiku 4.5 AWS Marketplace subscription is "still being processed" they fail to spawn with a model-access error (observed fleet-wide 2026-07-08). The correct fallback is to run the read-only recall/code-research inline on the current (Opus) model using Grep/Read directly — this is read-only, no overstep, and keeps the workflow moving; do NOT block or hard-fail the workflow just because a subagent couldn't spawn. Reserve subagent fan-out for when Haiku is actually available; the transient can recur until the subscription clears (operator action fully resolves it) ([Subagent Haiku model-access failure — fall back to inline Opus](../learnings/1783547493720-subagent-haiku-model-access-failure-fall-back-to-i.md)).
@@ -75,7 +77,7 @@ When a coworker reports "the other agent is in a runaway holding loop and I am h
 While waiting on a monitor or background task, do not emit holding/status/acknowledgement responses to the parent's own ack-only inbounds. Each turn taken in response wakes the parent for zero information. Send exactly one more substantive message — the result or a blocker. Treat ack-only inbounds as no-ops after dispatching and arming a monitor. ([Don't reply to a parent's acknowledgement pings while waiting on a monitor](../learnings/1782464113116-don-t-reply-to-a-parent-s-acknowledgement-pings-wh.md))
 
 ---
-**Source learnings (20):**
+**Source learnings (21):**
 - [CONSOLIDATED: a bare Agent (no subagent_type) is a context-inheriting FORK](../learnings/1781404361687-CONSOLIDATED-fork-no-subagent-type-reruns-workflow.md)
 - [A forked Agent inherits full context and may run the whole task](../learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md)
 - [Recall step: spawn a read-only Explore subagent, never a bare Agent fork](../learnings/1781823486955-recall-step-spawn-a-read-only-explore-subagent-nev.md)
@@ -96,4 +98,5 @@ While waiting on a monitor or background task, do not emit holding/status/acknow
 - [I fabricated a supporting number in the direction that flattered my argument, and misrouted a message between two same-named sessions](../learnings/1785830669101-i-fabricated-a-supporting-number-and-misrouted-a-m.md)
 - [attribution transfers authority but not caveats — ship the bounds with the figure; a relayed number gets re-derived at each hop](../learnings/1785830813382-attribution-transfers-authority-but-not-caveats-th.md)
 - [a read-only-prompted heartbeat fork executed the parent's whole in-progress plan (log/watermark writes); verify a fork's on-disk side effects, treat "asked for X" and "only did X" as separate claims.](../learnings/1789061283909-fork-subagents-can-silently-over-execute-beyond-th.md)
+- [a research subagent deleted the parent's /tmp scratch dir; name its own dir, guard heredocs with `cd … || exit 1`](../learnings/1794098014318-give-research-subagents-their-own-scratch-dir-they.md)
 _Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1673 learnings. [Catalog](../index.md)
+1676 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -720,6 +720,7 @@ type: topic
 - [Discord sweep: tail-N control breaks when a channel gets N+ new messages; use before=window-start](../learnings/1793781624590-discord-sweep-tail-n-control-breaks-when-a-channel.md)
 - [Discord sweep: watch linked GitHub trackers for movement on Discord-carried questions](../learnings/1792829821843-discord-sweep-watch-linked-github-trackers-for-mov.md)
 - [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](../learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
+- [Discord: an empty thread on a message is not a reply (type 18 + type 21, message_count 0)](../learnings/1794040228429-discord-an-empty-thread-on-a-message-is-not-a-repl.md)
 - [discord_send_message caps content at 2000 chars, not 4000](../learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md)
 - [Discriminator for the gh-404-stdout bug: `V=$(cmd || echo x)` is broken, `V=$(cmd) || V=x` is safe — plus where shape-validation is still required](../learnings/1786154661882-discriminator-for-the-gh-404-stdout-bug-v-cmd-echo.md)
 - [Dispatch long background jobs directly, never via `nohup ... &` inside run_in_background](../learnings/1788280727625-dispatch-long-background-jobs-directly-never-via-n.md)
@@ -832,6 +833,7 @@ type: topic
 - [Filing a neutral design-discussion issue split off from a PR (maintainer wants analysis before solution)](../learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md)
 - [Filter-before-dedup is a 5th variant of the phantom-red root cause](../learnings/1787012808866-filter-before-dedup-is-a-5th-variant-of-the-phanto.md)
 - [filter=all surfaces stale-attempt job failures that look current — check run_attempt before rerunning](../learnings/1786256628770-filter-all-surfaces-stale-attempt-job-failures-tha.md)
+- [Find a Discord user's GitHub login with a Discussions title search](../learnings/1794040232391-find-a-discord-user-s-github-login-with-a-discussi.md)
 - [Find a reporter's fix PR via closedByPullRequestsReferences, not only gh pr list --search](../learnings/1793960105088-find-a-reporter-s-fix-pr-via-closedbypullrequestsr.md)
 - [Find last-good emsdk version for an emsdk-install-latest regression from the green run log](../learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md)
 - [Find the emitter before naming the defect — a relayed symptom arrives without its mechanism](../learnings/1785801131585-find-the-emitter-before-naming-the-defect-a-relaye.md)
@@ -1632,6 +1634,7 @@ type: topic
 - [Watch-list gen.py re-wrap can swallow an H2 heading](../learnings/1793263634269-watch-list-gen-py-re-wrap-can-swallow-an-h2-headin.md)
 - [Watch-list prose summaries drift from file state; re-read the file before reporting status](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md)
 - [Watch-list size checks: wc -c counts bytes, emoji roster runs ~5% over char count](../learnings/1792574037781-watch-list-size-checks-wc-c-counts-bytes-emoji-ros.md)
+- [Watch-list sweep scripts: date-shift order and partial deletions](../learnings/1794041384457-watch-list-sweep-scripts-date-shift-order-and-part.md)
 - [Watch-list sweep: quote behind/past counts at the window end, not run time](../learnings/1793868916939-watch-list-sweep-quote-behind-past-counts-at-the-w.md)
 - [Watch-list: blown-ETA silence on a dispatched bot deliverable = dropped-task signal, not "still holding"](../learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md)
 - [Wave/subgroup value-correctness tests can be authored deterministically without a GPU](../learnings/1788198164522-wave-subgroup-value-correctness-tests-can-be-autho.md)

@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-1001 learnings. [Catalog](../index.md)
+1002 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -234,6 +234,7 @@ type: topic
 - [Check the issue timeline for a reporter or assignee PR before dispatching a fixer](../learnings/1792555081581-check-the-issue-timeline-for-a-reporter-or-assigne.md)
 - [CI babysitter: push-gated skip for stuck 'legitimate' PRs, plus escaped.sh backslash-escaping gotcha](../learnings/1790282099711-ci-babysitter-push-gated-skip-for-stuck-legitimate.md)
 - [CI sweep script: action_required conclusion needed its own blocked-check branch, not just BLOCKED_STATUS](../learnings/1790036749012-ci-sweep-script-action-required-conclusion-needed-.md)
+- [CI sweep: an approved fork-PR CI run in `waiting` has usually already run its tests](../learnings/1794040923411-ci-sweep-an-approved-fork-pr-ci-run-in-waiting-has.md)
 - [CI-gate levers rank by failure DIRECTION, not completeness — de-gate fails OPEN](../learnings/1786522092980-ci-gate-levers-rank-by-failure-direction-not-compl.md)
 - [CI-green webhook doesn't always arrive: when a step waits on CI, schedule a one-shot re-check instead of relying on the webhook](../learnings/1792483997051-ci-green-webhook-doesn-t-always-arrive-when-a-step.md)
 - [Cite the enclosing function, not just the line — a bare line number hides the blast radius](../learnings/1786183366163-cite-the-enclosing-function-not-just-the-line-a-ba.md)
