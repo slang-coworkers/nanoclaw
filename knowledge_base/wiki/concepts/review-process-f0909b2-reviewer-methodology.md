@@ -36,9 +36,9 @@ compiles, exit 0, green validators and passing tests all prove less than they ap
   non-constant and spec-constant inputs, decl-synthesizing expressions. Checker loops over a
   ContainerDecl's members that can call `ensureDecl`/`CheckExpr`/folding iterate by index.
 - **Compile a reviewer-proposed test snippet on head before forwarding it**; if it crashes, offer a
-  compiling alternative that reaches the same branch.
+  compiling form that reaches the same branch.
 - **Exercise new `SLANG_ASSERT`s on a Debug build**: in Release they are `[[assume]]`.
-- **When someone disputes YOUR claim with a runnable check, run it before defending.**
+- **If YOUR claim is disputed with a runnable check, run it before defending.**
 - **Don't close a finding you raised on the author's EXIT=0**; keep it open as a coverage gap. Push
   back on the critic where it is wrong; concede at once where it is right.
 - **Spot-check the full file list of review-fix commits** for scratch `.md`, dotfiles and logs.
@@ -52,265 +52,224 @@ compiles, exit 0, green validators and passing tests all prove less than they ap
 ## Coverage lenses: numeric routing and the revert-drill
 
 slang#12875 (AnyValue bulk-copy / empty-struct legalize) gives two lenses. **Numeric routing:** the
-fix targeted the `Foo2` conformer whose collapsed context drives a new zero-fill, but the `-cpu` test
-dispatched only thread 0 under `numthreads(1)`, which selects `Foo1`. The collapsed path was checked
-only structurally (`CPP-NOT: packAnyValue…`), so a live-payload miscompile would pass. The same PR's
-new `legalizeBitCast` Form-2 sat in the shared all-targets `legalizeInst` switch and turned a loud
-`SLANG_UNEXPECTED` into a silent default for any empty-source bit_cast; the hardening asserts
-`as<IRAnyValueType>` before the zero-fill and gates on the source TYPE, not the operand value
+fix targeted the `Foo2` conformer's collapsed-context zero-fill, but the `-cpu` test ran only thread 0
+under `numthreads(1)` (selecting `Foo1`) and checked the collapsed path only structurally (`CPP-NOT:
+packAnyValue…`), so a live-payload miscompile would pass. Its new `legalizeBitCast` Form-2 in the
+shared `legalizeInst` switch also made a loud `SLANG_UNEXPECTED` a silent default for any empty-source
+bit_cast; the hardening asserts `as<IRAnyValueType>` before the zero-fill and gates on the source
+TYPE, not the operand value
 [AnyValue bulk-copy lens: numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md).
-**Revert-drill:** a `bool enclosingPreserved` flag threaded down the recursive
-`countWordScalarLeaves` had two new tests, but both tripped a local check (the empty was a direct
-field) and never the flag. Its real job, an undecorated empty inside an undecorated inner struct
-inside a preserved outer, had no coverage, and the failure mode was a silent miscompile. Delete any
-new parameter or guard and see whether a test fails; if none does, ask for the deeper case in both
-member orders plus a numeric readback
+**Revert-drill:** a `bool enclosingPreserved` flag threaded down the recursive `countWordScalarLeaves`
+had two tests that never reached the flag; its real job (an undecorated empty inside an undecorated
+inner struct inside a preserved outer) was uncovered and would miscompile silently. Delete each new
+parameter or guard; if no test fails, ask for the deeper case in both member orders plus a numeric
+readback
 [a threaded/recursive parameter: revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md).
 
 Two traps make a passing test prove only its own spelling. **A guard in front of the new leg hides
-it.** On slang#13724 R2 the GLSL skip became `m_hasMultiplePushConstantBlocks &&
-isPushConstantBlockByLayout(v) && !v->hasUses()`, but the test used a single-block module, so
-swapping `!hasUses()` back to the buggy reachability test still passed 21/21. Only a module with two
-blocks, one read by an `export` function and one unused, tells them apart. An emit-time
-`return SLANG_FAIL` is also invisible to slangc-based tests, because slangc already suppresses output
-on error and DIAGNOSTIC_TEST does not parse glslang's text: pin it with an `-emit-spirv-via-glsl` run
-plus `CHECK-NOT: glslang`, never `CHECK-NOT: error`, which matches slang-test's own "standard error ="
-header [revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md).
+it:** on slang#13724 R2 the GLSL skip became `m_hasMultiplePushConstantBlocks &&
+isPushConstantBlockByLayout(v) && !v->hasUses()`, but the single-block test passed 21/21 even with
+`!hasUses()` reverted to the buggy reachability test; only two blocks (one read by an `export`
+function, one unused) tell them apart. Pin an emit-time `return SLANG_FAIL` (invisible to slangc
+tests) with an `-emit-spirv-via-glsl` run plus `CHECK-NOT: glslang`, never `CHECK-NOT: error`, which
+matches slang-test's own "standard error =" header [revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md).
 **A stale-CHECK refresh that passes on head and fails on base** shows only that the new spelling
-matches. Copy the block into a temp test and run it against a target whose output has the forbidden
-shape. For slang#13731 that was HLSL, which keeps the trailing `break;` that WGSL drops, and the
-`X-NOT: break;` placed after `default :` had never covered case 0. Tighten the block until it passes
-on the real target and fails on the contrast target, and keep anchors off incidental tokens such as
-paren counts (`if({{\(*}}…`), since re-pinning those is what made the test stale
+matches. Run it against a target with the forbidden shape (slang#13731: HLSL keeps the `break;` WGSL
+drops, and the `X-NOT: break;` after `default :` never covered case 0) until it fails there, and keep
+anchors off incidental tokens such as paren counts (`if({{\(*}}…`)
 [stale-CHECK refresh: run the block against the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md).
 
 ## Guard fixes: sibling sites and the round-2 checks
 
-slang#13063 fixed a slangi/HostVM `printf("%s", <runtime String>)` SIGSEGV by guarding one site that
-calls the fallible `getNaturalSizeAndAlignment`. The sibling `kIROp_Var`/`kIROp_Store` sites query the
-POINTEE type (`tryGetPointedToType`) and stayed unguarded, so an unrepresentable pointee still got a
-silent 0-byte slot, and the `checkUnsupportedInst` safety net the PR cited does not run for HostVM.
-For any "reject unrepresentable input" fix, search the sibling sites that run the same query; grade
-the hole **Gap (not Bug)** while crash-reachability is unverified, and ask for one shared
-check-diagnose-reset helper at every layout-query site. Only Reviewer A's correctness subagents caught
-this class; B and C rarely flag missing sibling coverage
+slang#13063 fixed a slangi/HostVM `printf("%s", <runtime String>)` SIGSEGV by guarding one call to
+the fallible `getNaturalSizeAndAlignment`; sibling `kIROp_Var`/`kIROp_Store` sites query the POINTEE
+type (`tryGetPointedToType`) unguarded, so an unrepresentable pointee still got a silent 0-byte slot
+(`checkUnsupportedInst` does not run for HostVM). Search sibling sites running the same query; grade
+the hole **Gap (not Bug)** while crash-reachability is unverified; ask for one shared
+check-diagnose-reset helper. Only Reviewer A's correctness subagents caught this class
 [reject-unrepresentable fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md).
-In round 2, with `getRepresentableSizeAndAlignment` routed through four sites, check three more
-things. (a) The helper's doc must not overstate coverage: it claimed every VM slot, while ~16 raw
-`getNaturalSizeAndAlignment`/`getNaturalOffset` calls stayed safe only by an invariant stated in the
-PR body. (b) Removal-insensitive guards (`kIROp_Var`/`kIROp_Store`, already covered by type-keyed
-dedup and a co-located function-result guard) should be marked defensive or become a `SLANG_ASSERT`;
-on a final round that is a nit, not a removal demand. (c) A-vs-C disagreements about a comment's
-accuracy are surfaced, not resolved. A round-1 REQUEST_CHANGES whose round 2 has 0 bugs and only
-clarity or coverage gaps maps to APPROVE_WITH_NITS; confirm Devin analyzed the new head (its analysis
-names the round-2 files) before trusting a "clean" result
+In round 2 (`getRepresentableSizeAndAlignment` at four sites) check that (a) the helper's doc does not
+overstate coverage (it claimed every VM slot; ~16 raw `getNaturalSizeAndAlignment`/`getNaturalOffset`
+calls stayed safe only by a PR-body invariant); (b) removal-insensitive guards are marked defensive or
+become a `SLANG_ASSERT` (a final-round nit); (c) A-vs-C disagreements on a comment's accuracy are
+surfaced, not resolved. A round-1 REQUEST_CHANGES whose round 2 has 0 bugs and only clarity/coverage
+gaps maps to APPROVE_WITH_NITS, once Devin's analysis names the round-2 files
 [round 2 of a shared-helper guard fix](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md).
 
 ## Moving a lowering pass later
 
-On slang#13699 (issue #13446) `legalizeMatrixTypes`, which turns int/uint/bool matrices into arrays of
-row vectors, moved from before the main `lowerBufferElementTypeToStorageType` to just after it
-(background: [[wiki/concepts/slang-compiler-ir-type-legalization.md]]). The PR's tests passed; two
-review rounds then found five regressions, each in a pass that saw an int `IRMatrixType` for the first
-time. `legalizeBinaryOp` (called by `legalizeIRForWGSL` and `legalizeIRForMetal`) treated int
-matrices as float (`/` gave E56102 or `1.0h/s`, and a matrix shift amount was not made unsigned).
-`lowerMatrixAddresses` had no `kIROp_SwizzledStore` case (`buf[0].m[1].xz = …` aborted with E99997),
-read a padded std140 vec4 row as vec3 through a new `emitCast` that emitted an invalid-WGSL intCast,
-and mishandled the scalar row of a one-column matrix on load and store. `findLeafValueAtOffset` picked
-the wrong row, which also broke float `bit_cast`. A generated probe set found them, not the PR's
-tests: ~25 binary and unary ops × int/uint/bool, plus ~20 access forms (swizzle store, `+=` through a
-swizzle, row and element store, cbuffer row and whole-matrix reads, transpose, `mul`, casts,
-ByteAddressBuffer Load/Store, inout and function params and returns, varyings, CB/SB/PB/push-constant
-containers). Compile each for spirv/glsl/wgsl/metal/hlsl with master and head builds, diff the exit
-status, then run Tint over all WGSL output (`node /workspace/agent/tools/tint-13635/tint-validate.mjs
-*.wgsl`, dawn.node null backend). FileCheck legs passed two invalid WGSL outputs because a WGSL
-FileCheck leg never validates, and `wgsl-spirv-asm` legs are skipped on Linux (slang-tint is fetched
-only on Windows x64). Every pass between the old and new position consumes the new shape, so the probe
-matrix belongs before review
+On slang#13699 (issue #13446) `legalizeMatrixTypes` (int/uint/bool matrices → arrays of row vectors)
+moved to just after the main `lowerBufferElementTypeToStorageType` (background:
+[[wiki/concepts/slang-compiler-ir-type-legalization.md]]). The PR's tests passed; review found five
+regressions, each in a pass first seeing an int `IRMatrixType`: `legalizeBinaryOp` treated int
+matrices as float (E56102); `lowerMatrixAddresses` lacked `kIROp_SwizzledStore` (E99997), read a
+padded std140 row as vec3 via an invalid-WGSL intCast, and mishandled one-column matrices;
+`findLeafValueAtOffset` picked the wrong row, breaking float `bit_cast`. A probe set found them: ~25 ops ×
+int/uint/bool plus ~20 access forms (swizzle stores, row/element stores, cbuffer reads, transpose,
+`mul`, casts, ByteAddressBuffer, params/returns, varyings, CB/SB/PB/push-constant), compiled for
+spirv/glsl/wgsl/metal/hlsl on master and head, exit statuses diffed, then Tint over all WGSL
+(`node /workspace/agent/tools/tint-13635/tint-validate.mjs *.wgsl`, dawn.node null backend). A WGSL
+FileCheck leg never validates (two invalid outputs passed), and `wgsl-spirv-asm` legs are skipped on
+Linux (slang-tint is fetched only on Windows x64). Every pass between the old and new position
+consumes the new shape, so the matrix belongs before review
 [probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md),
 [probe every op × access form × target before review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md).
 
 ## slang-rhi: pooled staging, RAII free and a fallible wait
 
-On slang-rhi#869 (Vulkan `readBuffer` via the pooled `m_readbackHeap`) a readback submits a
-GPU→staging copy, waits with `queue->waitOnHost()` (`vkQueueWaitIdle`), then frees the staging.
-`vkQueueWaitIdle` can return `VK_ERROR_OUT_OF_HOST/DEVICE_MEMORY`, and OOM is not device loss: the
-queue is alive and the copy may still be in flight. `StagingHeap::Handle::~Handle()` frees with no
-completion fence, so the wait-fail path marks the region reusable mid-copy, and a later *sequential*
-readback re-allocs it and reads torn data. "Mirror `readTexture`" is also wrong: it frees only on
-success, so a failure leaks and trips the teardown `SLANG_RHI_ASSERT(m_totalUsed == 0)`. The robust
-fixes couple the free to GPU completion (fence or token) or quarantine the region. Run the critique
-gate on the verdict as well as the code: it caught this being closed as "0 bugs, not blocking" on the
-device-loss premise
+On slang-rhi#869 (Vulkan `readBuffer` via the pooled `m_readbackHeap`) a readback copies
+GPU→staging, waits with `queue->waitOnHost()` (`vkQueueWaitIdle`), then frees the staging. The wait
+can return `VK_ERROR_OUT_OF_HOST/DEVICE_MEMORY`, and OOM is not device loss: the copy may still be in
+flight, yet `StagingHeap::Handle::~Handle()` frees with no fence, so a later *sequential* readback
+reads torn data. "Mirror `readTexture`" (free only on success) leaks and trips the teardown
+`SLANG_RHI_ASSERT(m_totalUsed == 0)`. Couple the free to GPU completion (fence or token) or quarantine
+the region. The critique gate on the verdict caught this being closed as "0 bugs" on the device-loss
+premise
 [pooled staging + RAII free + fallible queue-wait = in-flight page reuse](../learnings/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md).
 
 ## Reproduce the exact scenario; a static gate is not a proof
 
 Codegen effects are use/lowering-dependent, so a near-miss repro lies. Codex claimed a global
-`RayQuery` under `-fspv-reflect` emits `UserTypeGOOGLE "rayquery:<0>"`. A three-test "refutation" was
-wrong because every test *used* the RayQuery (lowering it to query ops and copying it to a local),
-while codex's case left it **unused** in a `[noinline]` body and added **`-emit-spirv-directly`**, so
-it survived as an `IRGlobalParam` and got the decoration. Running the literal case turned a 5-round
-must-fix into an approve
+`RayQuery` under `-fspv-reflect` emits `UserTypeGOOGLE "rayquery:<0>"`; a three-test "refutation"
+*used* the RayQuery, while codex's case left it **unused** in a `[noinline]` body with
+**`-emit-spirv-directly`**, so it survived as an `IRGlobalParam` and got the decoration. Running the
+literal case turned a 5-round must-fix into an approve
 [reproduce a reviewer's EXACT codegen scenario before disputing](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md).
-The trap behind it (slang#12922, which names six opaque builtins in `getTypeNameHint`):
-`addUserTypeHintDecorations` is gated on `as<IRGlobalParam>`, and "these types lower away, so the
-effect is non-manifesting" does not follow. A used and an unused global RayQuery differ, and
-`DescriptorHandle<T>` globals fold into the parameter cbuffer while a `Texture2D` global is the control
-that does emit. Exercise the survival path or say "unverified"; the effect there was real but
-additive and benign (a docs or optional-test item, not a bug)
+The trap (slang#12922): `addUserTypeHintDecorations` is gated on `as<IRGlobalParam>`, so "these types
+lower away, so non-manifesting" does not follow; `DescriptorHandle<T>` globals fold into the parameter
+cbuffer while a `Texture2D` global is the control that does emit. Exercise the survival path or say
+"unverified" (there the effect was real but benign: a docs or optional-test item)
 [an IRGlobalParam gate doesn't prove 'non-manifesting'](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md).
 
-The rule holds when YOU are the one disputed: if a grep, a `git merge-tree` or a read at the current
-head can settle it, run it before writing a defense. On slangpy#1091/PR #1162 a 30-second check proved
-codex right twice: a "needs a live Device+GPU" test was Python-bound and device-free, and `git
-merge-tree` found real conflicts behind "merge stays clean". Re-read a fast-moving sibling PR at its
-current head, not from memory. For a branch weeks behind main, `git diff --name-only
-origin/main..<branch>` mostly lists main's own drift, so compare the files both sides changed or use
-`merge-tree`. Naming the failure mode does not inoculate you; only the tool call does
+When YOU are disputed and a grep, `git merge-tree` or a read at head can settle it, run it before
+defending. On slangpy#1091/PR #1162 a 30-second check proved codex right twice (a "needs a live
+Device+GPU" test was device-free; `git merge-tree` found real conflicts behind "merge stays clean").
+Re-read sibling PRs at head; for a branch weeks behind main, `git diff --name-only
+origin/main..<branch>` mostly lists main's drift, so use `merge-tree`. Naming the failure mode does
+not inoculate you; only the tool call does
 [when a reviewer disputes your claim with a runnable check, run it first](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md).
 
-A reviewer's traced example is a prediction until someone executes it. On slang#13283 Reviewer A's 🟡
-cross-scope temporary example (`while (s.a[k+2] != 0) k++; return s.a[k+2];`) emitted the same valid
-GLSL on PR and master, because `fixValueScoping` had already given the index a temporary. The real
-trigger was an if/else whose else returns early, where redundancy removal lets a GEP in the dominating
-then-block replace the GEP after the if. For emitter or scoping findings, build PR and base in
-`wt-<N>-verify` / `wt-<N>-master` (copy `external/` from `/workspace/agent/slang`, `cmake --preset
-default`, Release slangc) and probe through `-target spirv -emit-spirv-via-glsl`, where glslang turns
-an out-of-scope identifier into a hard error. The same review saw Reviewer C exit CLARITY-INCOMPLETE on
-API 503 `server_error` (grep the log for `api_retry`, then retry) and Devin exit 3 on a fresh draft,
-which is the normal best-effort skip
+A traced example is a prediction until executed. On slang#13283 Reviewer A's 🟡 cross-scope
+temporary example (`while (s.a[k+2] != 0) k++; return s.a[k+2];`) emitted identical valid GLSL on PR
+and master (`fixValueScoping` had already made a temporary); the real trigger was an if/else with an
+early-returning else, where redundancy removal replaces the post-if GEP with the then-block's. For
+emitter or scoping findings build PR and base in `wt-<N>-verify` / `wt-<N>-master` (copy `external/`
+from `/workspace/agent/slang`, `cmake --preset default`, Release slangc) and probe via `-target spirv
+-emit-spirv-via-glsl` (glslang makes an out-of-scope identifier a hard error). Reviewer C's
+CLARITY-INCOMPLETE on API 503 `server_error` is retried (grep the log for `api_retry`); Devin's exit 3
+on a fresh draft is the normal best-effort skip
 [an executed repro beats Reviewer A's traced example](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md).
 
-The converse failure is running only the example when the reviewer also suggested a sharper shape. In
-slang#11709 R2 Reviewer A's plain-`__ref` example ICEd on master and PR alike, so its claim (the
-backward-diff `Ref` mapping makes a `no_diff groupshared` parameter by-value) was dismissed, but its
-*suggested* `no_diff const groupshared` test was the regression. `fwd_diff(f)`/`bwd_diff(f)` applied
-directly to `f(uint i, no_diff const groupshared float a[4], float x)` emits invalid SPIR-V with rc=0
-(spirv-val: "OpLoad Pointer … is not a logical pointer"), CUDA that nvrtc rejects (`(**&s_0)[i]`) and
-Metal that dereferences an array value, while master is valid for all three. Test both a *direct*
-`fwd_diff`/`bwd_diff(f)` and a *differentiated caller* of `f`, since only the direct path broke. nvrtc
-12.6 works in this container; Metal has no downstream compiler here
+Conversely, run the reviewer's *suggested* shape, not just its example. In slang#11709 R2 Reviewer
+A's plain-`__ref` example ICEd on master and PR alike and was dismissed, but its suggested `no_diff
+const groupshared` test was the regression: `fwd_diff(f)`/`bwd_diff(f)` applied directly to `f(uint
+i, no_diff const groupshared float a[4], float x)` emits invalid SPIR-V with rc=0 (spirv-val: "OpLoad
+Pointer … is not a logical pointer"), CUDA nvrtc rejects (`(**&s_0)[i]`) and bad Metal; master is
+valid. Test a *direct* `fwd_diff`/`bwd_diff(f)` and a *differentiated caller* (only direct broke).
+nvrtc 12.6 works in this container; Metal has no downstream compiler here
 [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md).
 
-A test snippet a reviewer offers as the *fix* for a coverage gap needs the same check. On slang#13468
-Reviewer A's snippet `useBar<IFoo<int>>(a)`, whose body calls the requirement `t.v()`, hit E99997
-"Unexpected context type for parameter info retrieval" (#13469) on head and master. The compiling
-alternative that reaches the same `isInterfaceType(sub)` guard is the array form
-`useBar<T>(T[2] t) where T : IBar<int>` called with `IFoo<int> arr[2]`, which keeps `T` an interface
-`DeclRefType`; a plain `IFoo<int>` argument is existential-opened and never reaches the guard. The
-revert drill also answers "is each half of the fix needed?": revert each leg alone in the verify
-worktree (`git show <base>:path > path`) and rerun the PR's tests. On #13468 either single revert
-failed all 3 tests
+A reviewer's suggested test snippet needs the same check. On slang#13468 Reviewer A's
+`useBar<IFoo<int>>(a)` hit E99997 (#13469) on head and master; the compiling form reaching the same
+`isInterfaceType(sub)` guard is `useBar<T>(T[2] t) where T : IBar<int>` with `IFoo<int> arr[2]`,
+which keeps `T` an interface `DeclRefType` (a plain `IFoo<int>` argument is existential-opened). To
+test whether each half of a fix is needed, revert each leg alone in the verify worktree (`git show
+<base>:path > path`) and rerun the PR's tests; on #13468 either revert failed all 3
 [check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md).
 
-A clean validator is not a correct program, and that includes your own remedy (the remedy-vs-finding
-rule is on [Slang code-review lenses](review-pr-slang-review-lenses.md)). On slang#13726 (global
-varyings shared by several entry points) a remedy that kept the global→Input shadowing for
-address-passed globals passed every PR test and four spirv-val probes. A fifth, where the second EP has
-an extra varying, still gave *valid* SPIR-V, but fsA read the input at Location 1 while fsA compiled
-alone (`-entry fsA`) uses Location 0: a silent mislink. When a remedy shares one module-scope Input
-between entry points, compare each EP's `OpDecorate … Location` with the same EP compiled alone; the
-safe remedy there was a diagnostic. A GPU trap from the same review: WGSL through dawn.node on the L40S
-needs `requestDevice({requiredFeatures:['subgroups']})` for subgroup builtins, or Tint rejects
-`enable subgroups;` and every output reads 0 on base and head alike
+A clean validator is not a correct program, including for your own remedy (remedy-vs-finding rule:
+[Slang code-review lenses](review-pr-slang-review-lenses.md)). On slang#13726 (global varyings shared
+by several entry points) a remedy keeping global→Input shadowing for address-passed globals passed
+every PR test and four spirv-val probes; a fifth, with an extra varying on the second EP, gave *valid*
+SPIR-V where fsA read Location 1 but fsA alone (`-entry fsA`) uses Location 0, a silent mislink. When
+a remedy shares one module-scope Input between EPs, compare each EP's `OpDecorate … Location` with
+that EP compiled alone; the safe remedy was a diagnostic. GPU trap: WGSL via dawn.node on the L40S
+needs `requestDevice({requiredFeatures:['subgroups']})` for subgroup builtins, or Tint rejects `enable
+subgroups;` and every output reads 0 on base and head alike
 [rejecting a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md).
 
-A reviewer's "tested remedy" needs the same adversarial pass as the PR, and so does adopting one.
-On #14284 the fixer applied the reviewer's remedy patches verbatim, the PR tests passed, and the next
-review rounds found four regressions that came from the patches. (1) A use-after-free: the patch
-looped `for (auto d : parentDecl->getMembersOfType<EmptyDecl>())` while calling `checkConstantIntVal`
-on sibling expressions, and checking can `addMember` on the module (`[__AttributeUsage]` struct
-validation synthesizes an attribute decl in `slang-check-modifier.cpp`), so when the List regrows the
-iterator reads freed memory. It crashed deterministically only at 27 and 59 padding decls, with or
-without `MALLOC_PERTURB_`, which a probe over padding sizes 0–140 found. Iterate by index
-(`for (Index i = 0; i < getDirectMemberDeclCount(); ++i)`) whenever semantic checking can run in the
-loop body, as `ensureAllDeclsRec` documents. (2) Making `checkGLSLLayoutAttribute` drop every
-attribute that fails validation removed `binding` from `atomic_uint` and added a spurious E20016
-"missing binding"; scope such a drop to the one attribute whose consumer needs the invariant
-(`VkConstantIdAttribute`). (3) Folding a sibling's expression with `checkConstantIntVal` reports "not
-constant" on every call, so E39999 appeared twice; the remedy had been tested only with an undefined
-identifier, which `CheckExpr` reports once. Fold silently with `CheckExpr` and then
-`CheckIntegerConstantExpression(..., sink=nullptr)`; a temporary sink is wrong because it swallows a
-later E30015. (4) Folding a specialization-constant `local_size_x` as a compile-time constant added a
-new E39999 ([reviewer remedies need the same adversarial pass](../learnings/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md),
-[probe a reviewer's remedy patch before adopting it](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md)). So a reviewer runs their own remedy through
-the PR's probe matrix and diagnostic-count checks (undefined-name and non-constant inputs, every
-attribute kind the function touches), and a fixer runs CODE_REVIEW on a remedy before adopting it and
-probes later declarations, non-constant and spec-constant arguments, and expressions that synthesize
-declarations.
+A reviewer's "tested remedy" needs the PR's adversarial pass from the reviewer (probe matrix,
+diagnostic counts) and from an adopting fixer (CODE_REVIEW; probe later declarations, non-constant and
+spec-constant arguments, decl-synthesizing expressions). On #14284 verbatim-applied remedy patches
+passed the PR tests; later rounds found four regressions in them.
+(1) Use-after-free: `for (auto d : parentDecl->getMembersOfType<EmptyDecl>())` called
+`checkConstantIntVal` on siblings, and checking can `addMember` (`[__AttributeUsage]` validation
+synthesizes an attribute decl in `slang-check-modifier.cpp`), so a List regrow frees the iterator's
+storage; a 0–140 padding-size probe found crashes only at 27 and 59. Iterate by index (`for (Index i =
+0; i < getDirectMemberDeclCount(); ++i)`) whenever checking can run in the body, as
+`ensureAllDeclsRec` documents. (2) Making `checkGLSLLayoutAttribute` drop every failing attribute
+removed `binding` from `atomic_uint` (spurious E20016); scope a drop to the one attribute whose
+consumer needs it (`VkConstantIdAttribute`). (3) `checkConstantIntVal` reports "not constant" per call,
+so E39999 appeared twice (tested only with an undefined identifier, reported once); fold silently with
+`CheckExpr` then `CheckIntegerConstantExpression(..., sink=nullptr)`, since a temporary sink swallows
+a later E30015. (4) A spec-constant `local_size_x` was folded as a compile-time constant (new E39999)
+([reviewer remedies need the same adversarial pass](../learnings/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md),
+[probe a reviewer's remedy patch before adopting it](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md)).
 
-**A new `SLANG_ASSERT` has to run on a Debug build.** In Release `SLANG_ASSERT` is `SLANG_ASSUME`
-(`[[assume]]`), so a false condition is silent UB, and a Release-only fixer and reviewer never see it.
-On #13811 a new `SLANG_ASSERT(oldArrayCount % oldElementCount == 0)` in `_createArrayTypeLayoutLike`
-(`slang-ir-legalize-types.cpp`) fired in Debug on valid HLSL (`struct Inner{Texture2D t; float x;};
-struct S{Inner inner; float y; float z;}; S gS[2];`, `-target hlsl -profile cs_5_0`), because HLSL
-cbuffer array sizes are not multiples of the element size. The recipe takes about 10 minutes: in an
-instrumented worktree replace each new assert and fallback with an `fopen("/tmp/x.log","a")` marker,
-run the corpus (every SIMPLE test plus `computeMain` × 5 targets, ~12k compiles) and adversarial shapes
-through it, then confirm any hit on a Debug `slangc` (`cmake --build --preset debug --target slangc`,
-~6 min). For `isParameterLocationUsed` reviews, diff a `getEntryPointMetadata` probe over
-category/space/register against bindings parsed from the emitted code for a per-shape × target FP/FN
-table; parse arrays as ranges, or HLSL `T x[2] : register(t0)` reads as an FP
+**A new `SLANG_ASSERT` has to run on a Debug build:** in Release it is `SLANG_ASSUME` (`[[assume]]`),
+so a false condition is UB. On #13811 `SLANG_ASSERT(oldArrayCount % oldElementCount == 0)` in
+`_createArrayTypeLayoutLike` (`slang-ir-legalize-types.cpp`) fired in Debug on valid HLSL (`struct
+Inner{Texture2D t; float x;}; struct S{Inner inner; float y; float z;}; S gS[2];`, `-target hlsl
+-profile cs_5_0`): HLSL cbuffer array sizes are not element-size multiples. Recipe (~10 min): swap
+each new assert/fallback for an `fopen("/tmp/x.log","a")` marker, run the corpus (every SIMPLE test
+plus `computeMain` × 5 targets, ~12k compiles) and adversarial shapes, then confirm hits on a Debug
+`slangc` (`cmake --build --preset debug --target slangc`). For
+`isParameterLocationUsed` reviews, diff a `getEntryPointMetadata` probe over category/space/register
+against bindings parsed from emitted code; parse arrays as ranges, or HLSL `T x[2] : register(t0)`
+reads as an FP
 [release-only review misses SLANG_ASSERT regressions](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md).
 
 ## Self-raised findings, EXIT=0, and the full file list
 
 On slang#12921 the reviewer raised C001 (does excluding extension conformances re-open the
-cross-module #12917 bug?) and closed it on the fixer's "EXIT=0 — extension cases compile clean"; the
-codex OUTPUT_REVIEW gate caught it. EXIT=0 proves the program compiled, not that the witness resolves
-despite its visibility. The likely real mechanism: `_getDefaultCtor` scans only DIRECT members, so an
-extension-declared conformance is never found and the path falls through to a raw
-`DefaultConstructExpr`. Keep such a finding OPEN as a coverage/justification gap and spec the isolating
-test. The critique gate is load-bearing: delivery of `[Resolution]`/`[Review Verdict]` markers is
-DENIED until an OUTPUT_REVIEW records approve via the exact protocol. Justify and decline where the
-critic is wrong (bot reviews are COMMENT-only and never gate a human merge), concede at once where it
-is right, and never concede reflexively to clear the gate
+cross-module #12917 bug?) and closed it on the fixer's "EXIT=0 — extension cases compile clean"; codex
+OUTPUT_REVIEW caught it. EXIT=0 proves compilation, not that the witness resolves (likely
+`_getDefaultCtor` scans only DIRECT members, so an extension-declared conformance falls through to a
+raw `DefaultConstructExpr`). Keep such a finding OPEN as a coverage gap and spec the isolating test.
+The gate is load-bearing (`[Resolution]`/`[Review Verdict]` delivery is DENIED until OUTPUT_REVIEW
+records approve): decline with justification where the critic is wrong (bot reviews are COMMENT-only
+and never gate a human merge), concede at once where it is right, never reflexively to clear the gate
 [don't close a self-raised finding on the author's unverifiable EXIT=0](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md).
-A review-fixes commit also needs a file-list check, not just its hunks. On slang#12931 an "address
-review" commit `git add`'d `.pr-body-12929.md` to the repo root, a merge-blocker no code review
-catches. Scan every follow-up commit's touched files for `.pr-body*.md`, scratch `.md`, dotfiles and
-`*.log` (a broad `git add .` sweeps them up), and verify a claimed fix by reading the new commit, not
-its description
+Also check a review-fixes commit's file list: on slang#12931 an "address review" commit `git add`'d
+`.pr-body-12929.md` to the repo root, a merge-blocker no code review catches. Scan follow-up commits
+for `.pr-body*.md`, scratch `.md`, dotfiles and `*.log` (`git add .` sweeps them up), and verify a
+claimed fix by reading the commit, not its description
 [re-check the full file list of post-review fix commits](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md).
 
 ## Blind spots of the automated review stack
 
-**Subtle ABI/legalization correctness.** On slang#12875 (the AnyValue PR above) slang-reviewer's
-3-reviewer pass, CodeRabbit, an independent bot review and the codex PLAN/CODE/OUTPUT gates all
-returned APPROVE with 0 correctness bugs. The maintainer's own GPT-5-assisted review found two. An
-ABI-preserved empty member (zero-leaf but carrying ExternCpp/Public/BinaryInterfaceType) is not
-byte-compatible. A user `bit_cast<Word>(Empty{})` was silently zero-filled: the empty-source zero-fill
-has to be provenance-gated to the marshalling pass's own whole-object casts, so that an unmarked user
-cast stays a loud failure (master: `E99997`; the naive gate: a silent `Word{0}`). Treat a clean pass
-on a byte-compatibility or type-legalization PR as not yet proven, and apply the numeric lens harder
+**Subtle ABI/legalization correctness.** On slang#12875 slang-reviewer's 3-reviewer pass,
+CodeRabbit, an independent bot review and the codex PLAN/CODE/OUTPUT gates all returned APPROVE with 0
+bugs; the maintainer's GPT-5-assisted review found two: an ABI-preserved empty member (zero-leaf but
+carrying ExternCpp/Public/BinaryInterfaceType) is not byte-compatible, and a user
+`bit_cast<Word>(Empty{})` was silently zero-filled. Provenance-gate the empty-source zero-fill to the
+marshalling pass's own whole-object casts so an unmarked user cast stays loud (master: `E99997`; naive
+gate: a silent `Word{0}`). A clean pass on a byte-compatibility or type-legalization PR is not yet
+proof; apply the numeric lens harder
 [maintainer's own deep review caught bugs the automated stack missed](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md).
 
 **Fidelity to a maintainer's written spec**, because every diff-focused pass checks the code against
-itself. On slang-rhi#881 five rounds signed off a head that missed two requirements from the spec in
-#787 comment 5798248018. The spec said cross-queue ownership misuse is an "error if the PRODUCER is
-Vulkan", but the code decided on `ctx->deviceType`, the device doing the use, so the headline misuse
-(CUDA using a resource Vulkan still owns) was only a warning; and "Unowned→Owned(Q) on initData" was
-never registered at create. Fetch the spec
+itself. On slang-rhi#881 five rounds signed off a head missing two requirements of the spec in #787
+comment 5798248018: misuse is an "error if the PRODUCER is Vulkan", but the code keyed on
+`ctx->deviceType` (the user), so the headline misuse was only a warning; and "Unowned→Owned(Q) on
+initData" was never registered at create. Fetch the spec
 (`gh api repos/O/R/issues/N/comments --jq '.[]|select(.user.login=="<maintainer>")'` plus the PR
-review comments), list each requirement with its comment link, and mark it met or missed with a
-location before sign-off. "Partial" says how much is missing, not a lower severity: a missed item
-gates the verdict until the maintainer defers it on record (see
+review comments), and mark each requirement (with its comment link) met or missed with a location
+before sign-off. "Partial" is not a lower severity: a missed item gates the verdict until the
+maintainer defers it on record (see
 [Working Live PRs Alongside Maintainers](../concepts/review-maintainer-live-pr-interaction.md) and
 [an unimplemented spec requirement is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md)).
-Tooling trap: `gh run list --commit <sha>` needs the full 40-character SHA; a short one silently
-returns `[]`
+Tooling trap: `gh run list --commit <sha>` needs the full 40-char SHA; a short one returns `[]`
 [review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md).
 
 ## Durable-text disciplines
 
-Two disciplines, both caught by codex OUTPUT_REVIEW. (1) Never cite `file.cpp:NNNN` in source
-comments, PR descriptions or review replies: a maintainer merging master shifts every line number. Use
-stable symbol names (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers
-belong only in scratch and logs. (2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a
-plain substring; `{{.*}}` FileCheck regex is not supported and silently fails (0/1). The CHECK must
-also reject the buggy variant: `//CHECK: cyclic reference '$inheritance'`, not a loose
-`//CHECK: cyclic reference` that also matches a wrong `'E'` diagnostic and would not catch a revert
+Both caught by codex OUTPUT_REVIEW. (1) Never cite `file.cpp:NNNN` in source comments, PR
+descriptions or review replies (a master merge shifts lines); cite stable symbols
+(`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`). (2)
+`//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches a plain substring (`{{.*}}` regex silently fails, 0/1),
+so the CHECK must reject the buggy variant: `//CHECK: cyclic reference '$inheritance'`, not a loose
+`//CHECK: cyclic reference` that also matches a wrong `'E'` diagnostic
 [never cite file.cpp:line in durable text; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md).
 
 **Source learnings (25):**

@@ -3,7 +3,7 @@ title: "Slang Generics & Type System"
 type: concept
 group: slang-language-core
 tags: [generics, specialization, inference, overload-resolution, diagnostics, entry-point, IRAttributedType, vector-t-1, TryJoinTypes, nullptr, Optional, equality-constraint, E38029]
-source_count: 31
+source_count: 32
 ---
 
 # Slang Generics & Type System
@@ -27,6 +27,7 @@ Generic specialization, inference, overload resolution, checker recursion, and t
 - A new `TryJoinTypes` arm is gated off the constraint solver (on only at `mergeTypeConstraint`); `_coerce` arbitrates. Missing Ptr⊕NullPtr/Optional⊕None arms make `c ? p : nullptr` and `c ? opt : none` fail E39999 (#14059); PR #14219 adds Ptr⊕NullPtr.
 - Positive-only tests do not pin a new join or coercion arm. Ship a negative companion diagnostic test and prove it by widening the predicate in a drill worktree.
 - Recursion that builds a NEW type per level defeats identity guards: skip the converse join for interface subjects (except concrete equalities), carry a budget across the extension candidate search, cap type walkers at `kMaxTypeNestingDepth`, key seen-sets on instantiated `Type*`.
+- A field-recursing checker predicate can run before E39997 (`checkVarDeclCommon`, static-const checks), so it needs its own seen-set; `getFields(..., MemberFilterStyle::Instance)` omits base-struct fields.
 - `where X == Concrete` reduces a fresh `X.A` but not a substituted one (no congruence). Workaround: state the nested equality.
 - A false E38029 that disappears when two interface declarations swap places, or under `-disable-non-essential-validations`, is the `==` orientation bug (#14075), not missing congruence.
 - Through `where X : I`, `X.Assoc` stays symbolic; `where X.Assoc == Y` feeds coercion, not member lookup. Do not route public aliases through associated types.
@@ -87,6 +88,8 @@ The flag alone does not keep widening out of the solver: `TryJoinVectorAndScalar
 
 **A type walker's seen-set needs a depth cap too (#13538).** `struct LoopTail<each T> { float4 x[]; LoopTail<T, int> next; }` builds a new type each step, so a walk that stops on a repeated `Type*` hangs or segfaults, as master's `getTrailingUnsizedArrayElement` did for `ConstantBuffer<LoopTail<int>>`. Bound every walker with `for (UInt depth = 0; depth < kMaxTypeNestingDepth; depth++) { ... } return nullptr;` so validation reports fatal E39997, pinned by a `diag=CHECK,non-exhaustive` test in its own file [seen-set needs a depth cap](../learnings/1791547431780-slang-a-seen-types-cycle-guard-does-not-terminate-.md). Key the seen-set on the instantiated `Type*`, not the `Decl*`: `Box<Box<float4>>` instantiates one decl twice and is not a cycle. After `IComponentType::specialize`, validate only the composite's entry points. New front-end errors can also break the nightly agentic suite, so run docs/generated/tests too [key guards on Type*](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md).
 
+**A recursive field predicate needs its own cycle guard, and `getFields` skips base-struct fields (#14379).** A by-value recursive struct (`struct R { Texture2D t; R r; }`) reaches `checkVarDeclCommon` and the static-const initializer checks *before* the fatal E39997 "maximum type nesting level exceeded", so a field-recursing "is this struct made only of X" predicate in `slang-check-*.cpp` without a guard segfaults there (exit 139 on PR #14379): E39997 protects only the walkers that run after it. `_typeTransitivelyContainsOpaqueHandleImpl` in `slang-check-decl.cpp` shows the guard pattern (`HashSet<Decl*> seen`); for generic structs, key it on the instantiated `Type*` as above. Separately, `getFields(astBuilder, structDeclRef, MemberFilterStyle::Instance)` returns only the fields the struct itself declares, not those of a struct base (`struct D : B`, deprecated with warning E30816 but still compiled), so an "only resources" test accepts `struct B { float k; } struct D : B { Texture2D t; }`, which HLSL emits with a `base_0` member. A probe loop over targets that prints exit codes and E-codes, run against the old build too, shows both problems in about a minute [Slang type predicates: recursive structs and inherited fields](../learnings/1794036031168-slang-type-predicates-recursive-structs-and-inheri.md).
+
 ## Associated types through constraints: what lookup can and cannot reduce (#13509, #13537)
 
 **No congruence for equality constraints.** With `where C.Primitive == TrianglePrimitive`, a freshly spelled `C.Primitive.Attributes` resolves to `TrianglePrimitive.Attributes`, because member lookup sees the equality base added by the generic-parameter scan (slang-check-inheritance.cpp). The same type arriving through substitution (a field of `Input<C>`, a `let`, the return type of `g<C>()`) stays unreduced: substitution yields `LookupDeclRef(Attributes, witness C.Primitive : IPrimitive)`, `resolve()` is context-free, and neither inheritance scan matches it. There is no `X == Y ⇒ X.A == Y.A` rule, on every release back to v2025.1. A 36-line congruence base at the end of the lookup-derived block fixes it (full suite green): project `Y.A` from the lookup source's equality facets via `isSubtype(Y, interface)` + `getLookupDeclRef` and `resolve()` it. Workaround: state `where C.Primitive.Attributes == TriangleAttributes` directly (the prefix constraint before it gives E30405) [no congruence](../learnings/1791443571566-slang-equality-constraints-lack-congruence-substit.md). The module-scope projection gap of #12822 is on [[wiki/concepts/slang-language-core-f0909b0-interfaces-witness-conformance.md]].
@@ -99,7 +102,7 @@ The flag alone does not keep widening out of the solver: `TryJoinVectorAndScalar
 
 `as<T>` and `dynamicCast<T>` default to `IRDynamicCastBehavior::Unwrap` (`slang-ir.h`) and look through `kIROp_AttributedType`, so `as<IRVectorType>(unorm float2)` succeeds without `unwrapAttributedType`. Type-pointer equality still needs the unwrap, because `getDataType()` strips only the rate qualifier (a #13342 review missed this). User code reaches a `vector<T,1>` swizzle via `__vectorReshape<1>(uint3(...))`; hlsl, cpp, cuda, metal and spirv all legalize it to a scalar and emit `return x_0;`, so only an IR-dump check can tell whether the type survived. In a verify worktree use `git -c protocol.file.allow=always submodule update --init --recursive` (`--reference` to the shallow clone fails) [as<T> unwraps; vector<T,1> erased](../learnings/1792750703434-slang-ir-as-t-unwraps-irattributedtype-vector-t-1-.md).
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [Equality constraints lack congruence: substituted X.A never reduces](../learnings/1791443571566-slang-equality-constraints-lack-congruence-substit.md) — nested-constraint workaround
 - [Interface __init requirements cannot have default bodies (E30317)](../learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md) — bare __init(float) is value-preserving
 - [Generic (T)float-literal cast floors to 0 (#12311)](../learnings/1785559222590-generic-t-float-literal-cast-floors-to-0-iarithmet.md) — IArithmetic lacks __init(float); fork A/B
@@ -131,5 +134,6 @@ The flag alone does not keep widening out of the solver: `TryJoinVectorAndScalar
 - [`c ? p : nullptr` / `c ? opt : none` fail in TryJoinTypes (#14059)](../learnings/1793311739945-c-p-nullptr-c-opt-none-fail-in-tryjointypes-not-in.md) — #6022 select trap
 - [`==` constraint orientation depends on declaration order (#14075)](../learnings/1793320533848-slang-equality-constraint-orientation-depends-on-d.md) — false E38029; v2025.18
 - [Positive-only tests don't pin a new TryJoinTypes arm — drill by widening it (#14219)](../learnings/1793673507370-positive-only-tests-don-t-pin-a-new-tryjointypes-a.md) — negative diagnostic test catches it
+- [by-value recursive struct reaches `checkVarDeclCommon` before E39997 (segfault, #14379); `getFields` omits base-struct fields](../learnings/1794036031168-slang-type-predicates-recursive-structs-and-inheri.md)
 
 _Catalog: [[wiki/index.md]]_

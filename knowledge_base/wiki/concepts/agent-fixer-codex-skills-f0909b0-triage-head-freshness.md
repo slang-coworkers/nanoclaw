@@ -3,7 +3,7 @@ title: "Triage discipline: verify at HEAD, distrust stale memos, check for exist
 type: concept
 group: agent-fixer-codex-skills
 tags: [triage, head-freshness, stale-checkout, verification, draft-pr, close-recommendation]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -14,7 +14,7 @@ source_count: 18
 - **On a well-scoped author-driven issue, search for an existing `Fixes #N` PR before assuming a fix must be built.** A companion PR opened seconds after the issue means triage flips from *dispatch fixer* to *verify the PR*. Re-run `gh pr list --author <maintainer> --state open` right before posting too — a sibling-issue PR can appear mid-research. Verify it: fetch `pull/N/head` into a named ref, `git show` the files, and run the tests if binaries exist.
 - **"Out of scope" / "already correct" claims in a triage handoff are hypotheses, not facts.** A report scoping a neighboring block OUT is a statement about the report's boundary, not a correctness certificate. If you'll say a block is fine, open it and check — otherwise say "out of scope, not evaluated." Surface any contradiction to the dispatcher as a separate flag; don't self-expand scope or stay silent.
 - **When a downstream agent reverses your specific instruction with a fresh reading, spawn a read-only verification against current source** — neither accept nor reject from memory. Then correct the memo in place (strike the wrong finding with the verifying HEAD + date).
-- **When a maintainer redirects a fix, re-run the issue repro on current master before planning the rework.** An unrelated merge may already have fixed it. Read the build's commit from the reflog and binary mtime (`slangc -version` prints the configure-time `git describe`), and a merge time from the PR's `mergedAt` (`git log` shows author dates).
+- **When a maintainer redirects a fix, re-run the issue repro on current master before planning the rework.** An unrelated merge may already have fixed it. Neither the binary mtime nor `slangc -version` (the configure-time `git describe`) proves which commit the build holds: run the incremental build first, then cite the sha [slangc mtime and -version are NOT freshness signals — rebuild before claiming "reproduced on master <sha>"](../learnings/1794103854670-slangc-mtime-and-version-are-not-freshness-signals.md). Take a merge time from the PR's `mergedAt` (`git log` shows author dates).
 - **A landed fix + green multi-platform CI warrants a close recommendation** — continued caution creates avoidable maintainer toil. The evidence bar is "merged (not draft) + multi-platform green."
 - **Re-run `git ls-remote origin refs/heads/<branch>` immediately before citing someone else's open branch**, and quote the pinned SHA — an author can force-push a rewritten tip mid-triage (slang#13397: a 6-minute-old WIP diff made the report wrong).
 - **Re-read the OTHER PR's live head before acting on a claim about it.** Before filing a follow-up for an "uncovered" case, or opening a superseding/competing PR, fetch `pulls/<n>` `.head.sha` (or `pulls/<n>/commits --jq '.[-1].sha'`), compare it to the SHA your decision was measured against, and diff its core change against yours. If it moved, hold and re-decide — a parallel chain may have already landed the same fix.
@@ -54,7 +54,7 @@ The mirror case is a superseding PR. On slang#13046 a path-A "supersede #12935" 
 
 No contradictions; the atoms are one discipline observed across many issues, all pointing to "re-verify at current HEAD before asserting or dispatching." The draft-PR atoms ([#12691 family](../learnings/1787671421853-12691-family-the-fix-is-often-the-commit-after-the.md), [checkpoint SHA](../learnings/1787669533760-a-triage-checkpoint-sha-can-be-stale-within-minute.md), [re-verify at HEAD](../learnings/1787669928995-re-verify-a-triaged-draft-pr-issue-at-pr-head-befo.md)) are progressive refinements of the same pattern rather than competing claims.
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [scoping-out is not a correctness certificate](../learnings/1786985585376-triage-trap-an-issue-scoping-something-out-is-not-.md) — an issue scoping a neighboring block OUT does not certify it correct; open and check, or say "not evaluated."
 - [triage handoff out-of-scope claim unverified](../learnings/1786985585404-a-triage-handoff-s-out-of-scope-already-correct-cl.md) — incidental "X is correct/out of scope" handoff claims are hypotheses; verify at source and surface contradictions as a separate flag.
 - [check for an author's self-implemented PR](../learnings/1787035926588-triage-check-for-an-author-s-self-implemented-pr-b.md) — search for a companion `Fixes #N` PR before building; verify it (named ref, git show, run tests), don't just read it.
@@ -72,4 +72,5 @@ No contradictions; the atoms are one discipline observed across many issues, all
 - [re-run ls-remote right before citing a branch author's WIP](../learnings/1790952109142-re-run-ls-remote-right-before-citing-a-branch-auth.md) — slang#13397's author force-pushed 6 minutes into triage; pin and re-check the tip SHA before posting. Also: deleting a file's explicit `-cuda` line can *add* a synthesized CUDA run
 - [re-check for a same-author PR right before posting a triage comment on a maintainer's design issue](../learnings/1791406258335-re-check-for-a-same-author-pr-right-before-posting.md) — slang#13496: sibling #13495's PR #13497 opened mid-research; `ParseClass` is 2017-shape, generic-class gap is parser-only
 - [re-run a regression repro on current master before a rework](../learnings/1793820509349-slang-re-run-a-regression-repro-on-current-master-.md) — #14238's repro already passed after #14204; stale `slangc -version`; author dates vs `mergedAt`
-- [Built slangc can be older than the checkout HEAD; the -version string is stale too](../learnings/1793902086746-built-slangc-can-be-older-than-the-checkout-head-t.md) — compare artifact mtime with HEAD commit time; `git describe --tags HEAD`; `genFType(0) == sign(...)` tests cannot catch a wrong return type
+- [Built slangc can be older than the checkout HEAD; the -version string is stale too](../learnings/1793902086746-built-slangc-can-be-older-than-the-checkout-head-t.md) — `git describe --tags HEAD` names the checkout; mtime is not a freshness proof, rebuild first; `genFType(0) == sign(...)` tests cannot catch a wrong return type
+- [mtime newer than HEAD's commit time can still be stale; build first, then cite the sha](../learnings/1794103854670-slangc-mtime-and-version-are-not-freshness-signals.md)

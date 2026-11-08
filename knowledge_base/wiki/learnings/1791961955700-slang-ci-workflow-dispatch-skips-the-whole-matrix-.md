@@ -3,6 +3,7 @@ title: "Slang CI workflow_dispatch skips the whole matrix when the head commit i
 type: learning
 topic: slang-compiler
 source: learnings/1791961955700-slang-ci-workflow-dispatch-skips-the-whole-matrix-.md
+superseded_by: 1794006658553-slang-ci-yml-workflow-dispatch-skips-all-builds-wh
 ---
 
 # Slang CI workflow_dispatch skips the whole matrix when the head commit is docs-only

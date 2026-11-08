@@ -3,7 +3,7 @@ title: "Slang Build — CMake Packaging, Generators, System Deps, and WASM"
 type: concept
 group: slang-grab-bag
 tags: [build-infrastructure, cmake, packaging, WASM, CPack, generators, EXCLUDE_FROM_ALL, SLANG_USE_SYSTEM, MSVC-PDB, slang-wasm, npm, release, docs-routing, gcc, fiddle, PR108900, flarge-source-files, prelude, slang-embed, slang-cpp-types]
-source_count: 15
+source_count: 16
 ---
 
 # Slang Build — CMake Packaging, Generators, System Deps, and WASM
@@ -21,6 +21,7 @@ source_count: 15
 - Editing `source/slang-llvm/` — the default build fetches a PREBUILT `libslang-llvm.so`, so your edit is NOT compiled locally.
 - Editing only an included prelude header (`prelude/slang-cpp-types.h`) does not regenerate the embedded C++ prelude, and slang-test, slangc and render-test hide it by loading the source-tree prelude. `touch prelude/slang-cpp-prelude.h` before building, and check the library with `strings`.
 - GCC <14.3 FIDDLE errors where line N expands `FIDDLE_<N-1>` are GCC libcpp PR108900 (off-by-one `__LINE__` once a TU passes 0x50000000 locations), not stale PCH or a generator bug; any header growth can trip a different TU. Fix: `-flarge-source-files` for GNU. Reproducing needs the exact Ubuntu CI headers.
+- Install-rule bugs reproduce in minutes: minimal Release configure, build only the producer targets, run that directory's `cmake_install.cmake` with `-P`. A new standard module must append to both manifests and skip its own `install()` under `SLANG_BUILD_MONOLITHIC_STANDARD_MODULE_LIBRARY`; only the weekly CMake Options run catches a miss.
 - `slang-wasm` ships build artifacts (`slang-wasm.js` + `.wasm` + `interface.d.ts`) but has no npm publish — web-packaging asks are maintainer-infra, HOLD not fixer.
 - Companion page [[wiki/concepts/slang-build-pch-provenance-and-capgen.md]] covers the stale-GCC-PCH FIDDLE-state trap, `SKIP_PRECOMPILE_HEADERS`, binary provenance, and the capability-generator invariants. Prior companion [[wiki/concepts/slang-misc-build-infrastructure-and-tooling.md]] covers CMake options, compiler flags, downstream-compiler discovery, and language-server config.
 
@@ -76,7 +77,11 @@ A Linux GCC 13 build (e.g. SlangPy CI on Ubuntu 24.04, GCC 13.3) can fail in one
 
 Reproducing needs the exact CI headers; host gcc-12, or conda gcc-13 with its own sysroot, does not reproduce because the line counts differ. The working recipe is micromamba `gxx_linux-64=13.3` (pass `--ssl-verify $SSL_CERT_FILE` behind the OneCLI proxy) plus Ubuntu noble debs extracted with `dpkg-deb -x` (libstdc++-13-dev, libc6-dev, linux-libc-dev, libgcc-13-dev, libcrypt-dev), compiling with `-nostdinc -nostdinc++ -isystem <root>/usr/include/c++/13 ...` and Ubuntu's default `-D_FORTIFY_SOURCE=3 -fstack-protector-strong -fcf-protection -fstack-clash-protection`, against a PCH built the same way. `-fdump-internal-locations` shows the culprit as an EMPTY `LC_RENAME` map right before an `LC_ENTER`. The fix is `-flarge-source-files` for GNU compilers, which sets `default_range_bits=0` and uses about 32x fewer locations, so the peak drops to ~6% of the threshold. Compile-time cost is within noise and RSS grows 3–4%. It landed on PR shader-slang/slang#13406 in `cmake/CompilerFlags.cmake` `set_default_compile_options`; master is exposed too ([GCC <14.3 off-by-one __LINE__ breaks FIDDLE in huge TUs; -flarge-source-files](../learnings/1791635533469-gcc-14-3-off-by-one-line-breaks-slang-fiddle-in-hu.md)).
 
-**Source learnings (15):**
+## Install rules: repro one directory's install with `cmake_install.cmake -P`
+
+Checking what part of the tree installs (for example the standard modules under `-DSLANG_BUILD_MONOLITHIC_STANDARD_MODULE_LIBRARY=ON`) needs no full build or `cmake --install`. Configure a fresh Release dir with minimal deps (`-DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_EXAMPLES=OFF -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`, about 5 s), build only the producer targets (`slang-portable-raytracing-module slang-standard-modules`, about 3 min on 64 cores), then run `cmake -DCMAKE_INSTALL_PREFIX=<dir> -DCMAKE_INSTALL_CONFIG_NAME=Release -P <build>/source/standard-modules/cmake_install.cmake`, and the same for `source/slang-monolithic-standard-module-library/cmake_install.cmake`. Configure alone already answers part of it: `grep -c 'file(INSTALL' <build>/source/standard-modules/*/cmake_install.cmake` shows which module directories install under the option, and `SLANG_STANDARD_MODULE_FILES`/`SLANG_STANDARD_MODULE_TARGETS` in `CMakeCache.txt` show the manifests. Every new standard module must follow the numerics pattern (`numerics/CMakeLists.txt:202-216`): append to both manifests, and guard its `install()` with `if(NOT SLANG_BUILD_MONOLITHIC_STANDARD_MODULE_LIBRARY)`. #14051 missed this and broke the weekly CMake Options run (#14400); PR CI cannot catch it, because CMake Options does not run on PRs [Cheap local repro of slang install-rule bugs: per-directory cmake_install.cmake with -P](../learnings/1794057130628-cheap-local-repro-of-slang-install-rule-bugs-per-d.md).
+
+**Source learnings (16):**
 - [DXC not in release packages: no install() call; the -dxc-path CLI override exists (DeepWiki wrong); UOI-NCSA license already shipped](../learnings/1789128761047-slang-dxc-install-gap-dxc-path-exists-deepwiki-wro.md)
 - [SLANG_BUILD_MIMALLOC is out of scope at top-level (no PARENT_SCOPE) — inline the boolean for a release-packaging install guard](../learnings/1789247912043-slang-cmake-slang-build-mimalloc-is-unreachable-at.md)
 - [slang-wasm emits js/wasm/interface.d.ts but has NO npm publish (no package.json, no NPM_TOKEN in workflows) — web-packaging asks are maintainer-infra, HOLD not fixer; reflection→TS is already feasible, WGSL is WIP](../learnings/1785699886372-slang-wasm-ships-types-but-is-not-npm-published-pu.md)
@@ -92,5 +97,6 @@ Reproducing needs the exact CI headers; host gcc-12, or conda gcc-13 with its ow
 - [GCC <14.3 off-by-one __LINE__ breaks Slang FIDDLE in huge TUs (PR108900); fix -flarge-source-files](../learnings/1791635533469-gcc-14-3-off-by-one-line-breaks-slang-fiddle-in-hu.md) — `FIDDLE_<N-1>` expanded at line N past 0x50000000 locations; repro needs exact Ubuntu headers; `-flarge-source-files` in CompilerFlags.cmake (#13406)
 - [Editing only prelude/slang-cpp-types.h does not regenerate the embedded C++ prelude; slang-test hides it](../learnings/1792170798320-editing-only-prelude-slang-cpp-types-h-does-not-re.md) — slang-embed DEPENDS on the top-level header only; `setSessionDefaultPreludeFromRootPath`; `touch` fix (#13716)
 - [CMake: detect a dependency's transitive link via INTERFACE_LINK_LIBRARIES, not LINK_LIBRARIES (imported targets)](../learnings/1793228740752-cmake-detect-a-dependency-s-transitive-link-via-in.md) — `$<LINK_ONLY:dep>`; IMPORTED targets reject PRIVATE props; SPIRV-Tools mimalloc export-set clash (#13867)
+- [per-directory `cmake_install.cmake -P` repro; new standard modules must join both manifests and guard `install()` under the monolithic option (#14051/#14400)](../learnings/1794057130628-cheap-local-repro-of-slang-install-rule-bugs-per-d.md)
 
 _Catalog: [[wiki/index.md]]_

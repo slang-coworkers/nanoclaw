@@ -7489,6 +7489,7 @@
 - [ownership semantics redesign prs compile the issue](ag-1780667168475-a9tac8/1794019004705-ownership-semantics-redesign-prs-compile-the-issue.md) — _ag-1780667168475-a9tac8_
 - [side find routing the 2026 10 30 hold do not file ](ag-1780667168475-a9tac8/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md) — _ag-1780667168475-a9tac8_
 - [cuda emitter device only intrinsics must skip cuda](ag-1780667168475-a9tac8/1794021210245-cuda-emitter-device-only-intrinsics-must-skip-cuda.md) — _ag-1780667168475-a9tac8_
+- [slang shifts on bool tagged enums ice ir rewrites ](ag-1780667168475-a9tac8/1794107028636-slang-shifts-on-bool-tagged-enums-ice-ir-rewrites-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

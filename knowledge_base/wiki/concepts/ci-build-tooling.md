@@ -3,7 +3,7 @@ title: "CI Build Tooling & Workflow Structure"
 type: concept
 group: ci-tooling
 tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang, capability-atoms, doc-regen, cmdline-ref, shallow-clone, submodules, git-provenance]
-source_count: 29
+source_count: 30
 ---
 
 # CI Build Tooling & Workflow Structure
@@ -43,7 +43,7 @@ Branch protection registers one aggregate `ci.yml` job, `check-ci`, whose `needs
 
 ## Bot Draft PRs and CI
 
-`ci.yml`'s `filter` job is gated `if: github.event_name != 'pull_request' || github.event.pull_request.draft != true`, so on a draft PR `should-run` is never set and every build/test job skips until a human marks it ready, which fires a `draft=false` event and full CI. A `workflow_dispatch` runs `filter` but classifies only the head commit (`BASE=HEAD^1`), so a docs-only or big merge-commit head skips the matrix with a `success` conclusion (see [CI Build Process Detection and Concurrency](ci-build-process-detection-and-concurrency.md)) ([draft PRs get zero CI](../learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md), [docs-only head skips the matrix](../learnings/1791961955700-slang-ci-workflow-dispatch-skips-the-whole-matrix-.md)).
+`ci.yml`'s `filter` job is gated `if: github.event_name != 'pull_request' || github.event.pull_request.draft != true`, so on a draft PR `should-run` is never set and every build/test job skips until a human marks it ready, which fires a `draft=false` event and full CI. A `workflow_dispatch` runs `filter` but classifies only the head commit (`BASE=HEAD^1`), so a docs-only or big merge-commit head skips the matrix with a `success` conclusion (see [CI Build Process Detection and Concurrency](ci-build-process-detection-and-concurrency.md)) ([draft PRs get zero CI](../learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md), [docs-only head skips the matrix](../learnings/1794006658553-slang-ci-yml-workflow-dispatch-skips-all-builds-wh.md)).
 
 ## GPU Test Silencing and Expected-Failure Lists
 
@@ -113,9 +113,10 @@ On `slang-coworkers/nanoclaw`, `ci.yml` tests a sync PR into an `nv-*` base by m
 
 ---
 
-**Source learnings (29):**
+**Source learnings (30):**
 - [Bot App cannot push .github/workflows/](../learnings/1790375258801-nv-slang-bot-github-app-cannot-push-changes-under-.md) — hand up a `git format-patch`.
 - [Workflow-edit review remedies are maintainer actions](../learnings/1793648853326-the-slang-coworkers-github-app-cannot-push-github-.md) — #14194.
+- [docs-only head commit skips a dispatch's whole matrix, conclusion still success](../learnings/1794006658553-slang-ci-yml-workflow-dispatch-skips-all-builds-wh.md)
 - [Required check = job in `check-ci.needs`](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
 - [DISABLE CI jobs are build-only](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
 - [Silencing GPU tests on no-GPU runners](../learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)
