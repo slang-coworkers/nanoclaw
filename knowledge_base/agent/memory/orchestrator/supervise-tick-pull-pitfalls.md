@@ -33,6 +33,8 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
 - **Merge state key-by-key:** scan's `state` drops closed chains, so after writing it back, re-add every pre-tick key
   the scan omitted (tick 284: 9 closed keys would have been lost).
 - **Not every state value is a dict:** `gh-issue-shader-slang/slang-12432_note` is a bare string, so a key-by-key merge that does `dict(old).update(new)` crashes. Merge dicts, assign anything else verbatim (tick 306).
+- **A Main session can journal a new chain into `supervisor-state.json` between ticks** (tick 331: #14398 written 03:30Z with a disposition). scan then reports it `updated`, not `new`; diff the state's keys against the previous tick's `state-final.json` and count such keys as 🆕 (force it with a 🆕 `notes.json` entry).
+- **When building the board message, append the 🔼 rows to the 🆕 table with no blank line in between** — a blank line ends the markdown table and the 🔼 rows render as raw pipes (caught before sending, tick 331).
 - **New-chain diff must union `_archived`.** State has ~830 top-level keys plus ~1,260 in `_archived`; diffing threads
   against top-level keys alone reports ~1,250 false "new" chains. Sub-thread sessions (`…-<n>/<suffix>`) need a
   `subthread:` journal entry by hand — scan never creates one (tick 288).

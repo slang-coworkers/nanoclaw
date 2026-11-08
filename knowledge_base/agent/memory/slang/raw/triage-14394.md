@@ -57,7 +57,7 @@ resources, set 3 = uniforms (vertex: 0/1). GLSL/WGSL ParameterBlock already give
 - Where: new `CompilerOptionName` (append-only, `include/slang.h`) + `slang-options.cpp`; gate the MetalParameterBlock pass
   (`slang-emit.cpp:2064`), the element-type skip (`slang-legalize-types.cpp:~1308`), and `getParameterBlockRules` /
   `wantConstantBuffer` in BOTH `slang-type-layout.cpp` (reflection) and `slang-ir-layout.cpp` (emit) so reflection stays in step.
-- Delta: ParameterBlock<T> on Metal → per-resource `[[texture/sampler/buffer(N)]]` + uniform `[[buffer(N)]]`.
+- Delta: ParameterBlock<T> on Metal → per-resource `[[texture(N)]]`/`[[sampler(N)]]`/`[[buffer(N)]]` + uniform `[[buffer(N)]]`.
 - Tradeoffs: lets portable ParameterBlock code target SDL3-style hosts; but a second Metal layout mode doubles test surface,
   and nested ParameterBlock / resource arrays / bindless (DescriptorHandle) inside blocks have no flat equivalent (must diagnose).
 - Risk: medium — reflection/emit drift (cf. #14042, #13900 history). Must be opt-in; the default is a tested, documented contract.

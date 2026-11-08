@@ -103,3 +103,4 @@ Numbers are the fixer's or reviewer's own unless marked "I checked".
   `getConstantBufferRules` returns `kWGSLConstantBufferLayoutRulesImpl_`, whose `WGSLObjectLayoutRulesImpl` adds the 2nd
   `DescriptorTableSlot` (~1271). That is the 1-vs-2. Verdict sent: layout/reflection, P2, maintainer-owned.
 - 11-05 11:3xZ: operator asked for a triage of follow-up 3 = #14124 (dashboard msg 40). jkwak-work self-assigned it on 11-02 (Q1 2027). Answered directly, no dispatch: P3, maintainer-owned. Record: [[slang/14124-extension-self-application-shared-param-e30027.md]].
+- 11-07 08:0xZ one-shot `564d` re-check: no change. #13741 OPEN DRAFT @`fb36938e7`, MERGEABLE, 143 behind; last update = the 11-04 body edit. Run 40897173994 still `waiting` (falcor-ci). No human comment/review/event on #13737/#10522/#13741 since 10-31 08:00Z; no operator answer on the dashboard (seq 509100–511746 read). No dashboard line (rule e). Re-armed one one-shot for 11-14 08:00Z.

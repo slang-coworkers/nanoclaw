@@ -1,6 +1,6 @@
 ---
 type: chain
-description: "Human-filed (rope-hmg, external, no labels/assignees) 11-07 01:19Z: on Metal, ParameterBlock<T> emits an argument buffer (`T constant* [[buffer(0)]]`) where the reporter expected flat `[[texture(0)]]`/`[[sampler(0)]]` (to match SDL3). TRIAGED 01:30Z as a question / working as designed (P3); workaround posted (cmt 6700349707); opt-in flatten mode parked on Metal maintainers. No fixer."
+description: "Human-filed (rope-hmg, external, no labels/assignees) 11-07 01:19Z: on Metal, ParameterBlock<T> emits an argument buffer (`T constant* [[buffer(0)]]`) where the reporter expected flat `[[texture(0)]]`/`[[sampler(0)]]` (to match SDL3). TRIAGED 01:30Z as a question / working as designed (P3); workaround posted (cmt 6700349707). Reporter confirmed it and CLOSED the issue 21:54Z — terminal. No fixer."
 resource: raw/triage-14394.md
 tags: [metal, parameterblock, argument-buffer, layout, sdl3]
 ---
@@ -21,4 +21,6 @@ tags: [metal, parameterblock, argument-buffer, layout, sdl3]
   (memo Approach B). Changing the default is rejected. Triager one-shot re-check t-fd0ad5, 11-11 02:00Z (the triager's
   task; `ncl tasks get` from Main cannot see it).
 
-Next: nothing for the bot unless the reporter or a maintainer replies (webhook). If a maintainer asks for Approach B → slang-fixer.
+- 11-07: reporter confirmed the workaround works (cmt 6713508208, "That does appear to work. Thank you."). The reporter **closed the issue as completed** at 21:54:01Z. TERMINAL. I told the triager to cancel re-check t-fd0ad5. The opt-in flatten mode is unrequested, so no follow-up issue unless a maintainer asks.
+
+Next: none. A reopen or a maintainer reply arrives by webhook; if a maintainer asks for Approach B → slang-fixer.

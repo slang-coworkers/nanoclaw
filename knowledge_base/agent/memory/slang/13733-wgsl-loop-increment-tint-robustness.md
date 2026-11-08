@@ -56,3 +56,9 @@ the operator can raise it if needed.
 request list is `[jkwak-work]`). It still has 0 human reviews (only github-actions and the author's thread replies). On #13733 the last comment is still our 10-19 delta, and there is no D/E pick for Ask 2. The triager also reports that the Chromium bug 574559077
 is unchanged (New/P2, unassigned); I did not re-check that. **Escalated to the operator (dashboard):** at 14 days a human should ask jkwak-work to review. The bot does not nudge the reporter's PR. **Timer:** the triager's
 one-shot `t-b53ffe`, 11-07 15:00Z (I cannot see it from Main).
+
+**2026-11-07 15:02Z, recheck `t-b53ffe` fired. Triager [Report]: no change, nothing posted, no further re-check scheduled.** I checked it live at 15:0xZ and it matches.
+#13740 is OPEN, not a draft, head 13a739b6e3, CI green, **85 behind** / 3 ahead of master, last update 10-28. The review request is `[jkwak-work]`; the PR assignees are jkwak-work
+and albertrodriguezclo. There are still 0 human reviews (21 days). #13733's last comment is still our 10-19 delta, and Ask 2 has no D/E pick. **Escalated to the dashboard a 2nd and
+final time** (row 511796): a human should nudge jkwak-work or pick another WGSL reviewer. The bot does not ping the reporter's PR. **Parked webhook-only, no timer:** the
+`supervisor-state.json` operator_decisions entry is marked FINAL, so do not re-ask. **Resumes on:** a #13740 review/merge webhook, a human comment on #13733, or an operator reply.

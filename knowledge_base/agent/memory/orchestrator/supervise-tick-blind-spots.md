@@ -1,6 +1,6 @@
 ---
 type: runbook
-description: Real stalls that /supervise-issues scan.py misreads as awaiting_human / running / cost_stopped — each with the detector that catches it and how to nudge. Split from the tick runbook 2026-10-13.
+description: Hub for real stalls that /supervise-issues scan.py misreads as awaiting_human / running / cost_stopped — the general detector plus a numbered shape list; detail lives in three subtopic files. Split from the tick runbook 2026-10-13; split again by subtopic 2026-11-07.
 ---
 
 # /supervise-issues scan blind spots (real stalls scan misses)
@@ -11,155 +11,36 @@ tick after the scan. Procedure: [[orchestrator/supervise-tick-runbook.md]]. The 
 
 **General detector:** `tickNNN/blind.py` — sort rows by **timestamp** (`--reverse` order is by seq and unreliable), read
 20, flag sessions whose newest row is an unanswered `in` with the container not running. Always nudge with
-`target_session_id` pinned and confirm the `in` landed. Its top hits are mostly "Learning saved" system acks (5 of 6 at
-tick 289) — skip those.
+`target_session_id` pinned and confirm the `in` landed; pinned nudges typically ack in 1–3 min. Its top hits are mostly
+"Learning saved" system acks (5 of 6 at tick 289) — skip those.
 
-1. **Round-2 review request stalls in the reviewer, not the fixer** (tick 264). A `[Fix Review Request]` lands in a
-   slang-reviewer session whose container stops without processing it; scan flags `awaiting_us` against the *fixer*.
-   Nudge **slang-reviewer** pinned.
-2. **Bot said "On it", then the owning container stopped** (tick 267, #12875: 9 h stall, fixer lost context). Bot spoke
-   last → `awaiting_human`. Detector: owning session's newest row is an `in` webhook with no `out` after, PR head unmoved.
-3. **Owning session is on a sub-thread** (tick 275). #13406 work ran on `gh-issue-shader-slang/slang-11709/13406-resume`,
-   in neither chain's session set; jhelferty's split-PR ask sat 9 h while scan read `cost_stopped`/`awaiting_human`.
-   Detector: for chains whose newest human comment is an instruction the bot acked, find the PR's `pr-mappings` row and
-   grep `ncl sessions list` for `thread_id`s with `/` after the issue number.
-4. **Reviewer acked with an ETA, then died silently** (tick 277, #13518: "verdict in ~45 min", sub-runs failed —
-   A out of its $30 inner budget, C ECONNREFUSED — 11 h idle). Newest row is an `out`, so blind.py misses it. Detector:
-   a stopped reviewer whose newest `out` promises an ETA older than ~2× that ETA; corroborate with
-   `A-/B-/C-<pr>-r<N>.done` (`.done` = rc) in `/workspace/extra/ephemeral/prod-groups/slang-reviewer/`.
-5. **Fixer never processed the reviewer's verdict** (tick 278, #13571: inbound `[Review Verdict]` REQUEST_CHANGES at
-   00:06Z, container stopped, head unmoved 12 h). blind.py catches it; check the PR head before nudging.
-6. **Inbound lost to compaction while the container stays `running`** (tick 279, #13579). scan treats `running` as live.
-   The triager's newest row was the 22:33Z relay, but its last model request was 22:02Z. Read `request.timestamp`
-   across the last ~25 lines of `.claude-trace/session-<sid>.jsonl` — not the file mtime or the last `logged_at`, which
-   was a long-lived SSE stream flushed later (00:11Z). Nudged pinned; it acked "lost the relay when my context was
-   compacted".
+Shape numbers are stable (the tick runbook, chain records and helper names cite them). New shapes take the next number
+and go in the matching subtopic file, not here.
 
-Shape 3 recurred at tick 282 (#13537): owning fixer `rt7qwx` sits on `gh-pr-shader-slang/slang-11344` (a takeover PR's
-old-PR thread — `ncl pr-mappings list` names it), died 06:48Z mid-prototype after promising a #13537 report; scan read
-`awaiting_human` and blind.py only saw the chain's own sessions. For every 🔼 row with a fresh human instruction, look up
-the PR's `pr-mappings` session and check its `.claude-trace` last `request.timestamp`. Pinned nudge → working in <1 min.
+## Owner session stopped or deaf — [[orchestrator/supervise-tick-blind-spots-session-stalls.md]]
 
-Shape 3 is now routine for R6-release work (tick 322): a release one-shot opens the PR from its own `system:tasks:<series>` session, so the PR owner is on no `gh-issue-` thread (#14209 → `fejlik` on `system:tasks:slang-14058-resume-0060`, #14210 → `5f63gx`, #14194 → `j9up0v`). For every fresh bot PR, read `ncl pr-mappings list` and check that session's `lastreq.py` before calling the chain idle. **These task sessions close when the task ends, and a closed mapped session swallows human webhooks: they land as `in` rows and are never read.** #14210 lost jkwak-work's 6-comment review for about 2 h (11-04 23:22Z → relayed 11-05 01:13Z). On 11-05, #14209 (`fejlik`) and #14194 (`j9up0v`) were also open PRs mapped to closed task sessions, with nothing stranded yet. Check: `ncl sessions get <mapped sid>` → `closed` means relay pinned to the chain session and request a remap.
+1. Round-2 review request stalls in the reviewer, not the fixer.
+2. Bot said "On it", then the owning container stopped.
+3. Owning session is on a sub-thread / takeover-PR thread / closed `system:tasks:` session (pr-mappings).
+4. Reviewer acked with an ETA, then died silently.
+5. Fixer never processed the reviewer's verdict.
+6. Inbound lost to compaction while the container stays `running`.
+12. Fixer waits on a CI-rerun webhook that never comes.
+17. The operator's cost Continue is recorded but never takes.
+19. A relay or webhook that never lands (`relaycheck.py`, `deliv.py`).
 
-Shape 1 recurred at tick 280 (#11803 R2 request, reviewer `bokz3c` stopped 6.7 h); blind.py caught it and the
-pinned nudge acked in under a minute.
+## Turn killed mid-flight — [[orchestrator/supervise-tick-blind-spots-dead-turns.md]]
 
-7. **Approved + auto-merge armed, but the PR is `DIRTY`** (tick 283, #13537). A maintainer approves and enables
-   auto-merge, then master moves and the branch conflicts; auto-merge silently never fires. scan reads `awaiting_us`
-   as "human spoke last" and `ci.py` shows ✅ (DIRTY isn't BEHIND, so no rebase-nudge cell). Detector: for every
-   open PR with `autoMergeRequest != null`, check `mergeStateStatus == DIRTY`. Nudge the `pr-mappings` owner pinned
-   to merge master (merge commit, keep the approver's commits). Fixer acked in 2 min. Sweep, since `gh pr list` GraphQL
-   502s often: `gh api 'repos/<o>/<r>/pulls?state=open&per_page=100&page=N' --jq '.[]|select(.auto_merge!=null)|.number'`,
-   then `pulls/<n>` → `mergeable_state` (`dirty`/`behind`). Tick 283's first sweep found 2 more bot PRs: #13171
-   (behind 66, its only CI run yielded at the priority gate 2 days earlier and was never retried) and #12820 (approved
-   09-03, dirty, 281 behind) — both invisible to scan for weeks.
+10. Fleet restart killed a turn mid-tool-call (`stop_reason: tool_use`).
+11. Gateway key budget 422 (`budget.py`).
+13. Context overflow 400s; session went running → stopped (`runstop.py`).
+14. Gateway 429 wave (`rl429.py`).
+18. Gateway 5xx wave (`rl5xx.py`); also how to resume a dead Main chain session.
 
-8. **Approved bot PR evicted from the merge queue** (tick 284, #13171). After the shape-7 fix the maintainer
-   queued it, and the merge-group CI lost 3 Windows debug GPU runners ("runner lost communication", infra). The
-   queue removed it, which also drops auto-merge. The PR is now `BLOCKED` with green PR CI and no `auto_merge`,
-   so the shape-7 sweep no longer sees it either. The babysitter reports evictions to the dashboard, but the bot
-   can't re-enqueue, so the PR waits silently for a human. Detector: for each open approved bot PR, read
-   `issues/<n>/timeline` for a trailing `removed_from_merge_queue` with no later `added_to_merge_queue`. This
-   needs no nudge to a coworker; it goes on the board as an operator call (requeue, or ask the approver).
-9. **Open bot draft whose target issue closed under it** (tick 297: #13650 after #13644 merged, #13699 after
-   jkwak-work's #13715 closed #13446). Closed chains drop out of scan, so the stale draft is invisible on the board
-   and nobody owns closing it. Detector: one GraphQL `search(is:pr is:open author:app/nv-slang-bot)` with
-   `closingIssuesReferences{number state closedAt}`; any row whose every closing ref is CLOSED goes on the board as an
-   operator call (close with a pointer to the superseding PR). Tick 297 also found #13079 and #13154 (all refs closed) and #13741 (one closed ref, plus the open #10522).
+## GitHub state scan can't see — [[orchestrator/supervise-tick-blind-spots-github-state.md]]
 
-10. **Fleet restart killed a coworker mid-tool-call** (tick 298, 00:20Z). Containers that were `running` show `stopped`
-    with no `out` after their last inbound, so scan reads `awaiting_human`. blind.py misses it because the newest row
-    is the coworker's own progress `out`. Detector: for every `.claude-trace/session-*.jsonl` modified since the fire,
-    parse the last request's `body_raw` SSE `message_delta.stop_reason`; a **`tool_use`** stop on a now-`stopped`
-    container means the turn was killed (an `end_turn` stop means it finished). Tick 298 found #13632 (fix done, PR not
-    opened for jkwak-work's ask) and rhi#911 (GitHub post landed, report not sent). Pinned nudges had both running in <8 min.
-    The supervisor's own tick can die the same way: resume from the `tickNNN/` artifacts, don't restart the pull.
-
-11. **Gateway key budget hit killed a turn** (tick 299, #13828). For 22 s (10-22 07:42:25–47Z) every model call got HTTP 422
-    `budget_exceeded`: LiteLLM key `slang_coworkers-prod-svc_slang_dev` was at $32.7k against a $25k max. The agent SDK
-    retried 5× across models, then the turn ended. Shape 10's detector misses this, because the last trace line has no
-    `stop_reason`. Scan read "fixer owns this chain, no PR, silent". Detector: grep traces modified since the fire for
-    `"status_code": 422` with `budget` in the body. Sessions with no later 200 are dead (`tick299/budget.py`). Pinned
-    nudge → resumed in 3 min. Escalate the key budget to the operator, because a longer window stalls the whole fleet.
-
-12. **Fixer waits on a CI-rerun webhook that never comes** (tick 302, #13876 / PR #13880). `test-falcor` failed; the fixer
-    judged it infra (public-Falcor compile showed no diff), started a rerun and ended its turn saying "the webhook will
-    report the result". The rerun (attempt 2) failed 1 h later, but `ci_failed` did not fire again for the same check
-    suite, so the fixer waited 9 h. Detector: a stopped fixer whose last turn text promises a rerun/webhook result;
-    check `actions/runs/<id>` `run_attempt` + `attempts/<n>/jobs`, and compare the same job on other runs (merge-queue
-    runs passing → not infra). Pinned nudge with the attempt-2 result.
-
-13. **Turn died on a context overflow, and the session had stopped since the last tick** (tick 309, #13828 / draft #13867).
-    The triager's 23:29Z "merge master" ask reached fixer `4stbs2`. Every main-thread call returned HTTP 400
-    (598–682 messages, 4.5–7 MB per request; the gzip body in `.claude-trace` can't be decoded). The turn ended with no `out`.
-    blind.py missed it, because the session was `running` at the previous re-list and its `last_active` never moved. Detector:
-    `tickNNN/runstop.py`, which flags open-chain sessions that went `running` → stopped since the previous `sessions2.json`
-    (copy that file to `prev-sessions2.json`). Check the trace for runs of 400s with message counts in the hundreds.
-    A pinned nudge recovered it: after about 4 min of 400s it compacted (~280 messages) and acked. **Wait at least 5 min
-    after a nudge before calling a session wedged.** Tick 309 posted a reset request and then had to send a correction.
-
-14. **Gateway 429 wave killed in-flight turns** (tick 314, 10-29 21:58–22:01Z). Every model call got HTTP 429
-    `rate_limit_error` ("Model capacity reached for azure/anthropic/…, Priority: prod"). 27 sessions hit it; 23 got a
-    later 200, and 4 never did: #12714 triager + Main, #14026 fixer, #13685 fixer. Containers stayed `running`, so
-    scan read them as live, and shapes 10/11 miss it (no `stop_reason`, no 422). The worst case was #13685: the bot had
-    acked pdeayton-nv's "file a new issue and fix it" with "On it", and nothing was filed for 2.5 h. Detector:
-    `tickNNN/rl429.py` (429s since the previous tick with no later 200 → DEAD). A pinned nudge that names the
-    unfinished step worked: all 3 nudges landed within 4 min.
-
-15. **A merged PR fires a resume trigger that lives only in chain memory** (tick 318, #13658). jkwak-work's #14132
-    (merged 10-31 17:23Z, closing #13902) changed WGSL emission and broke a CHECK in operator-held bot draft #13669.
-    The #13902 record said "Resume on: … merging (→ tell the #13669 owner …)". scan saw nothing: #13902 closed and dropped
-    out, and #13669's chain had no GitHub activity. Detector: for every merged PR and closed issue in `closed-since.txt`,
-    run `grep -rl '<num>' memory/slang/` and read each hit's **Resume on:** line. Then nudge the `pr-mappings` owner,
-    pinned. Here the fixer acked in 45 s. Tick 327 caught it again: jkwak-work's #14299 (02:55Z) turned off tests that drafts #14317/#14314 also edit, so both went DIRTY unseen; both pinned merge-master nudges were pushed within 7 min.
-16. **The reporter's own fix PR lands after dispatch, and the chain never learns of it** (tick 321, batch #14151–#14160).
-    Within ~1 h of filing 10 R6-held issues, the reporter opened 8 `Fixes #N` PRs (#14164–#14176). A cross-reference
-    triggers no issue webhook, and scan sees only the issue. Only #14152's chain noticed. #14153 had a fixer and a
-    reviewer building a wider local fix in parallel with #14170. Detector: for every new or R6-held human-filed
-    chain, run `gh api repos/<o>/<r>/issues/<n>/timeline` and keep `cross-referenced` events whose source is a PR by
-    the reporter. Then `grep` the chain record for that PR number. If the chain has a fixer, send it a pinned
-    heads-up: compare the PRs, report to the parent, and make no GitHub writes. In the heads-up, state only what the
-    PR is and what it touches, never what it fails to cover: I read #14170's diff and wrote "no `RWBuffer<float>`/half",
-    but its `isTextureAccess` check includes `RWBuffer`. The fixer's 14-probe matrix corrected me in 3 min, and the
-    parent deferred to #14170 at 12:21Z.
-    Tick 329 hit it on a fresh chain: minco3 opened #14379 (`Fixes #14378`) 20 min after our triage offered them the PR, inside
-    the triager's 24 h window, and the record never learned of it. Its `assigned` event at the same second has
-    `assigner=github-actions[bot]` (auto-assign of the requested reviewer), which is not a maintainer self-assign (rung 4).
-
-17. **The operator's Continue is recorded but never takes** (tick 324, #13685 fixer `yiuh5a`). The dashboard Continue at
-    11-03 11:24Z (and a second `cost_override` row at 18:11Z) set the ledger episode `cst-ioav1ri` to `continued`, but
-    `ncl cost-cap status --session` still read `stopped` with the old $300 ceiling, and the trace had no model request
-    since 10-30 04:00Z. The same 11:24Z press on `yofko5` did take (ceiling → $496.77), so tick 323 recorded the batch
-    as done. Detector: for every row of `ncl cost-cap stopped`, read `ncl cost-cap escalations --group <folder>`; a
-    `continued` episode on a session that is still `stopped` means the Continue failed. Board it as an operator call
-    (`set-ceiling` or a session restart); don't press it again from here.
-
-Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
-finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
-`prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned
-nudge got the verdict sent in 4 min.
-
-Typical outcome: every pinned nudge above acked within 1–3 min.
-
-18. **Gateway 5xx wave killed in-flight turns** (tick 326, 11-04 22:39–23:16Z). HTTP 503 "upstream connect error … connection
-    timeout", then HTTP 500 on every SDK retry for ~3 min per session. 13 sessions had no later 200, and none recovered by
-    itself; containers stayed `running`, several posted the runtime's "Sorry, something went wrong" row. Shape 14's
-    `rl429.py` misses it (codes 500/503). Detector: `tickNNN/rl5xx.py` (429/500/502/503/504/529 with no later 200, reading
-    each trace's last 6 MB). Triage each DEAD row by its newest `in`: ack-only ("Learning saved") or moot → no nudge; owed
-    work → pinned resume naming the unfinished step. 6 of 13 owed work; all 6 resumed in ≤10 min. **A dead Main chain
-    session can be resumed the same way:** `send_message(to="orchestrator", target_session_id=<Main sid>, thread_id=<its
-    gh-issue thread>)` landed in that exact session in 1 min (slangpy#1260, `z557lh`), with no self-loop to the legacy
-    null-thread session — the pin wins when the cron session's auto in_reply_to has no source session.
-
-19. **A relay or webhook that never lands** (tick 330, 11-06 22:48–23:01Z). scan reads Main's `out` relay as "us acted", but
-    the target never received it. Two Main sessions whose only inbound was a webhook relayed maintainer/reporter input to a
-    **stopped** triager session on the canonical thread (#14036 `acyb6s`, #14057 `axf4gg`): no `in` row ever appeared there
-    and no new session was minted. Separately, a reporter comment on #14048 arrived 4 s after the mapped fixer's [Report] and
-    never reached it (end-of-turn race), and #14194's pr-mapping pointed at a **closed** one-shot task session, so its webhook
-    was dropped. Detectors: `tickNNN/relaycheck.py` (each Main `out` relay since the last tick that carries a comment id →
-    is that id in an `in` row of a triager/fixer/reviewer on the same thread?) and `tickNNN/deliv.py comments-since.txt
-    <since>` (each human comment from the repo-wide `issues/comments?since=` feed → is its id in the mapped/thread session?).
-    Ignore hits whose only carrier is your own re-delivery. Fix: re-send the original relay text verbatim, pinned
-    (`target_session_id` + `in_reply_to=<the cron session's task row>`); all 3 landed in ≤1 min and were acted on in ≤3 min.
-    A closed-session pr-mapping needs an operator `ncl pr-mappings remap`.
+7. Approved + auto-merge armed, but the PR is `DIRTY`.
+8. Approved bot PR evicted from the merge queue.
+9. Open bot draft whose target issue closed under it.
+15. A merged PR fires a resume trigger that lives only in chain memory.
+16. The reporter's own fix PR lands after dispatch.

@@ -45,3 +45,27 @@ at 06:52:31Z — not a maintainer self-assign). Found by the tick-329 supervisor
 chain had no record of it. The 24 h reporter window is answered: no fixer handoff. The triager's re-check `t-5870bd`
 (11-07 07:00Z) should find the PR and stand down; the P1 ready-flip ask above is moot (no bot PR).
 **Resume on:** #14379 merge/close, or a human comment asking the bot to help.
+
+**11-07 07:15Z — follow-up #14399 filed (bot)**: "SPIR-V: static const texture initialized from a constant `?:` select
+emits OpSelect on an image (E99999)". Function-local `static const Texture2D t = kUseFirst ? tex : tex2;` fails only on
+SPIR-V; also fails in v2026.5.2/v2026.8 (E99997), so **not a regression**. With #14379 the global form reaches the same
+failure. Filer: the triager's re-check task `t-5870bd` (session `sess-1793946881855-z4prjs`, building #14379's head at
+07:07; the issue cites "a build of #14379's head"; `reproduced` + Type set 6 s after filing). No assignees.
+**Main 07:1xZ: NO dispatch** — per the side-find rule above, it belongs to this chain; the triager owns the
+follow-up and reports from the re-check session. **Resume on:** that report (fixer handoff for #14399, if any), #14379
+merge/close, or a human comment on #14399.
+
+
+**11-07 07:19Z — triager [Report] (msg 2, re-check `t-5870bd`)**: branch (a), human PR, no fixer handoff. The triager
+reviewed #14379 head `3d2ade649` on a local Release build (L40S). Review comment
+[6703835762](https://github.com/shader-slang/slang/pull/14379#issuecomment-6703835762); issue comment 6678800838 edited
+in place. Main verified both on GitHub at 07:2xZ. Verdict: fix A is implemented as designed; the #8279 cbuffer/uniform
+forms still give E31226; both deleted tests are restored byte-identical; tests pass on vk/cuda/cpu/llvm, and a 7046-test sweep passed.
+**Must-fix:** a by-value recursive struct `struct R { Texture2D t; R r; }` makes slangc segfault (master gives diagnostics instead;
+`_isResourceHandleOnlyType` has no cycle guard). **Should-fix:** fields inherited from a struct base are skipped, so `struct D : B` lets a uniform float through;
+add negative edge-of-exemption tests. `texArr[1]` stays E31226 (no E99997). PR state: OPEN, non-draft, no labels, fork
+CI all `action_required` (needs maintainer approval; shepherd kaizhangNV, also needs `pr: non-breaking`). No ready-flip
+or operator ask (human PR). Triager scheduled no re-check and offered a one-shot re-review on request.
+**Main: no reply sent, no timer** (R10; webhooks deliver). **Resume on:** a `synchronize` on #14379 → forward to
+slang-triager on `gh-issue-shader-slang/slang-14378` for the one-shot re-review (re-fetch the head first; see the
+synchronize-moves-head hazard); #14379 merge/close; or a human comment on #14378/#14379/#14399.
