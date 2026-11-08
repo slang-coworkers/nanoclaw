@@ -2285,6 +2285,7 @@ export function upsertGuardHook(entries: HookEntry[], matcher: string, marker: s
 }
 
 export const PR_DESCRIPTION_GATE_CMD = 'bash /app/hooks/gate-pr-description.sh';
+export const STE_WRITING_GATE_CMD = 'bash /app/hooks/gate-ste-writing.sh';
 
 /**
  * Register gate-pr-description.sh as a PreToolUse Bash hook in a group's
@@ -2335,6 +2336,29 @@ export function ensureEvalSandboxGate(settingsFile: string): void {
     EVAL_SANDBOX_GATE_MATCHER,
     'gate-eval-sandbox.sh',
     EVAL_SANDBOX_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
+/**
+ * Register gate-ste-writing.sh as a PreToolUse Bash hook in a group's
+ * settings.json, once. The gate checks PR and issue text against the
+ * slang-ste-writing skill's checker and is a no-op in groups without that
+ * skill, so it is wired for every group like the description gate.
+ */
+export function ensureSteWritingGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-ste-writing.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    'Bash',
+    'gate-ste-writing.sh',
+    STE_WRITING_GATE_CMD,
   );
   if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
@@ -2837,6 +2861,7 @@ export async function buildMounts(
   // may write only to the evaluation fork. Self-scoped by the overlay marker, so
   // every Claude-surface group carries the registration and only eval groups feel it.
   if (defaultSurfaces) ensureEvalSandboxGate(settingsFile);
+  if (defaultSurfaces) ensureSteWritingGate(settingsFile);
   // gate-review-length.sh: a group with the `review-length` overlay posts or delivers
   // reviews under the character cap (summary plus inline comments). Marker-scoped
   // like the eval-sandbox gate, so the registration is universal and inert elsewhere.
