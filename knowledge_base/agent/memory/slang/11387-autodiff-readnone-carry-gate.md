@@ -20,4 +20,5 @@ tags: [slang, autodiff, readnone, pr, awaiting-maintainer]
 - 10-23 12:25Z: fixer pushed head `7d1757f4e2`. Local L40S runs: `no-diff-carry-*` 16/16, `tests/autodiff/` 1025/1025 (292 ignored). Fixer posted one no-ping status comment restating (1)/(2): [6364833308](https://github.com/shader-slang/slang/pull/11387#issuecomment-6364833308). It also refreshed the explanation comment.
 - 10-24 12:00Z verify (`rechase-11387-post-merge-0cda`): head `7d1757f4e2`, MERGEABLE/BLOCKED (CHANGES_REQUESTED still stands). CI: 53 pass, 1 skipped, 0 fail; `falcor-build-approval-gate` WAITING. No human comment, review or inline since 09-30. Dashboard line sent.
 - 10-31 12:00Z `rechase-11387-maintainer-a511`: no human comment/review/inline since the 10-23 bot comment; OPEN, BEHIND (not DIRTY), head `7d1757f4e2`. No message sent.
-- Next: one-shot `rechase-11387-maintainer-3d96` on 11-07 12:00Z (same check; re-arms +7d).
+- 11-07 12:00Z `rechase-11387-maintainer-3d96`: same result (no human activity, OPEN, BEHIND, head `7d1757f4e2`, updatedAt still 10-23T12:30:09Z). No message sent.
+- Next: one-shot `rechase-11387-maintainer-21db` on 11-14 12:00Z (same check; re-arms +7d).

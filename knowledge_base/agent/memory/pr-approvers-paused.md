@@ -5,7 +5,7 @@ description: Both PR approvers are operator-paused; check `paused` before dispat
 
 # PR approvers are paused: check before dispatching
 
-**State (last verified 2026-11-07, at slang#14393 ready_for_review):** `slangpy-pr-approver` (`ag-1783611156448-d49n0a`) and
+**State (last verified 2026-11-07, at slang#14242 ready_for_review, 11-07 20:15Z):** `slangpy-pr-approver` (`ag-1783611156448-d49n0a`) and
 `slang-pr-approver` (`ag-1783611156430-vvj8oi`) are both `paused=1`. Neither has processed a
 message since about 2026-09-10. Whether to unpause them is the operator's call. I asked on
 2026-09-29 (dashboard msg 29) with three options: keep both paused / resume slangpy only / resume

@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107). TERMINAL 2026-11-04 — PR #13356 merged by jkwak-work (f0660607f1, 20:48:10Z), issue closed COMPLETED. Open, not ours to drive: #13355 (62 builtins) + #13359 (filecheck=A,B) held on jkwak-work; #14257 (std140/Metal) own chain.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107). TERMINAL 2026-11-04 — PR #13356 merged by jkwak-work (f0660607f1, 20:48:10Z), issue closed COMPLETED. Open, not ours to drive: #13355 (62 builtins) + #13359 (filecheck=A,B) held on jkwak-work (r8 11-07: no change; r9 11-14); #14257 (std140/Metal) own chain.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -8,21 +8,19 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
 Dated re-chase entries live in [[slang/13350-glsl-matrix-mul-rechase-log.md]]. **New re-chases append there**;
 update only the state table below in this file.
 
-## Current state (r7, 2026-10-31 09:00Z, checked live)
+## Current state (r8, 2026-11-07 09:00Z, checked live)
 
 | item | state | owner / hold |
 |---|---|---|
-| #13350 (issue) | assignee jhelferty-nv, milestone Q4 2026 | fixed by #13356 |
-| PR **#13356** | OPEN draft, fix/issue-13350 @ 39e7f04 (+101/−8, 2 files), 2 ahead / 178 behind, MERGEABLE. Review requested from jhelferty-nv; 0 reviews, no human comments. Checks 5 pass / 56 skipping. Last comment: our status cmt 6534088003 | **parked for jhelferty-nv**: no push, no rerun, no re-dispatch |
-| CI run 36780286138 | `completed/failure` 10-30 21:34:36Z (falcor-ci 30-day env wait expired; no build steps) | not a code fault |
-| #13355 (62 gated builtins) | bot-filed, assigned jkwak-work by jhelferty-nv 10-05, Q4 2026, 0 comments, no competing PR | **HOLD** |
-| #14257 (dup, Metal only) | jkwak-work self-filed + self-assigned 11-03 21:29Z; same 7 gates. Triager posts a pointer to #13350/#13356 ([record](14257-glsl-matrix-mul-metal-dup-13350.md)) | no fixer; a maintainer ask for #13356 → slang-fixer on this chain's thread |
-| #13359 (`filecheck=A,B`) | assigned jkwak-work, last human cmt 6026415243, our reply 6026863543 | **HOLD** |
+| #13350 (issue) | CLOSED COMPLETED 11-04 20:48:12Z; assignee now jkwak-work | terminal |
+| PR **#13356** | MERGED 11-04 20:48:10Z as `f0660607f1` | terminal |
+| #13355 (62 gated builtins) | open, assigned jkwak-work, Q4 2026, 0 comments, no competing PR. Only new timeline event: cross-ref from the #14249 triage (11-03), owned by [14249](14249-glsl-subgroup-hlsl-cuda-gap.md) | **HOLD** |
+| #14257 (dup, Metal only) | open, jkwak-work; #13356 cross-referenced it 11-04 ([record](14257-glsl-matrix-mul-metal-dup-13350.md)) | its own chain |
+| #13359 (`filecheck=A,B`) | open, assigned jkwak-work, 4 comments, last is our 6026863543 (10-06) | **HOLD** |
 
-- Master `glsl.meta.slang` still has 69 `cpp_cuda_glsl_hlsl_spirv_llvm` gates (r7), so #13356 is not superseded.
-- Events on #13350/#13356 route to slang-fixer on `gh-issue-shader-slang/slang-13350`.
-- **Resumes on:** a review or comment on #13356, a human comment on any of the three issues.
-- **Next:** `rechase-13350-13355-r8-6fd2`, 2026-11-07 09:00Z. If all three chains are still held on maintainers, re-arm once ~7 days out (process-after only); if all are closed/merged, do not re-arm.
+- Master `glsl.meta.slang` (ae4e57957a, 11-06) has **62** `cpp_cuda_glsl_hlsl_spirv_llvm` gates = 69 − the 7 that #13356 widened. Only #13356 touched the file since 10-30. **Expected count from now on is 62**; lower means someone widened #13355 builtins.
+- **Resumes on:** a human comment on #13355 or #13359, or a competing PR.
+- **Next:** `rechase-13355-13359-r9-59a2`, 2026-11-14 09:00Z (dashboard from seq 511752). If both are still held on jkwak-work, re-arm once ~7 days out (process-after only); if both are closed, do not re-arm.
 
 ## Root cause and fix
 

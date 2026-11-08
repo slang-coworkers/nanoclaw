@@ -11,20 +11,20 @@ HLSL, so DXC rejected them; WGSL/Metal `Load`/subscript used the sampler as the 
 (#10522) are the same bug. Dated history (dispatch → R4, SHAs, msg ids): [[slang/13737-hlsl-combined-sampler-history.md]] —
 **new dated entries append there**, not here.
 
-## Current state (10-31 08:1xZ — no change since 10-29)
+## Current state (11-07 08:0xZ — no GitHub change since the 11-04 body edit)
 
 | | |
 |---|---|
 | Issue | #13737 **closed by Buriola 10-18 15:12Z** (COMPLETED, no comment, before any merge). #10522 open. Triage cmt 6236169441 (`reproduced`, Bug, P2); thread `gh-issue-shader-slang/slang-13737` |
-| PR | **#13741 DRAFT @`fb36938e7`**, +970/−77, 16 files vs base 60a7c8c88, `Fixes #13737` + `Fixes #10522` + `Fixes #14298` (11-04), `pr: non-breaking`. MERGEABLE, 95 behind master (10-31). Issue artifact: fixer cmt 6243760176 |
+| PR | **#13741 DRAFT @`fb36938e7`**, +970/−77, 16 files vs base 60a7c8c88, `Fixes #13737` + `Fixes #10522` + `Fixes #14298` (11-04), `pr: non-breaking`. MERGEABLE, 143 behind master (11-07). Issue artifact: fixer cmt 6243760176 |
 | Owner | slang-fixer `sess-1792252474641-muhgh6` (the `pr-mappings` row for #13741) |
 | Reviews | R1 REQUEST_CHANGES @45d7d9f · R2 APPROVE_WITH_NITS @68f06ed · R3 REQUEST_CHANGES @c94e1d0 (B1) · **R4 APPROVE @fb36938** — a delta check only (`reviewers_complete:false`); the last full pass is R3 |
-| CI | `workflow_dispatch` **40897173994** @fb36938 `waiting`: priority yield + **`falcor-ci`** gate (`can_approve=false` for the bot). queued 10-29 15:00Z ⇒ 30-day approval clock ≈ **11-28** (an older prompt said 11-17; that was a cancelled run) |
+| CI | `workflow_dispatch` **40897173994** @fb36938 `waiting`: priority yield + **`falcor-ci`** gate (`can_approve=false` for the bot). queued 10-29 15:00Z ⇒ 30-day approval clock ≈ **11-28** (an older prompt said 11-17; that was a cancelled run). Still `waiting` 11-07 |
 | Stacked | #14017 (`fix/issue-14007`, chain [14007](14007-metal-parameterblock-combined-sampler-texture-only-ops.md)) sits on #13741; #13741 goes first |
-| Timer | one-shot `rechase-13737-pr13741-564d`, 11-07 08:00Z |
+| Timer | one-shot re-check 11-14 08:00Z (11-07 run re-armed it; `564d` fired 11-07) |
 
 **Parked only on humans:** `falcor-ci` approval and the ready flip (operator; restated 10-31 dashboard msg 21), maintainer review. The filing question was **withdrawn 10-31**: filing is not operator-gated ([policy](../imported/feedback_github_writes_operator_authorized.md)).
-**Resumes on:** an operator answer, a #13741 webhook, or the 11-07 one-shot. (The triager's filing report for 1/3/6 arrived 10-31 08:11Z, its seq 29.) Follow-up filing is done (10-31): #14123, #14124, #14125, #14126. #14126 is maintainer-owned (jkwak-work self-assigned 11-02, Q1 2027): held, no dispatch or post. **#14123 and #14125 are self-assigned by jkwak-work (11-02, Q1 2027): held, no bot work** unless jkwak-work @mentions the bot or the operator says "do (a)" (operator triage reply 11-05, msg 33).
+**Resumes on:** an operator answer, a #13741 webhook, or the 11-14 one-shot. #13741 is a review-complete bot draft, so the ready flip rides the weekly un-draft list (no per-PR ask). (The triager's filing report for 1/3/6 arrived 10-31 08:11Z, its seq 29.) Follow-up filing is done (10-31): #14123, #14124, #14125, #14126. #14126 is maintainer-owned (jkwak-work self-assigned 11-02, Q1 2027): held, no dispatch or post. **#14123 and #14125 are self-assigned by jkwak-work (11-02, Q1 2027): held, no bot work** unless jkwak-work @mentions the bot or the operator says "do (a)" (operator triage reply 11-05, msg 33).
 
 ## The fix (what fb36938 does)
 

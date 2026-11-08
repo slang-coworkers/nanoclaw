@@ -53,3 +53,8 @@ The reviewer sent a side find (GLSL `depth_greater` / `layout(triangles) in`) la
 and gave slang-reviewer its one correction (msg 109). If the reviewer keeps citing the hold, report it to the operator; do not name it to the reviewer again.
 **02:39Z — the R1 side find is filed as #14397** (checked live: bot-filed, `reproduced`, filed only). The GLSL front end rejects geometry, tessellation and conservative-depth `layout` qualifiers with E31216/E31217. Related: #12655/#13033 and bot draft PR #14275 (local_size/early_fragment_tests).
 Its issue_opened needs NO dispatch. slang-reviewer acknowledged the hold correction (msg 122) and updated its memory.
+
+**11-07 03:08Z — R1 applied to #14395** (checked live): draft, head **38243ae99**, fast-forward. Declined: the "Breaking changes avoided" table remark (version policy) and the unverified `loadModule` claim. Fixer reports PR + neighbour tests 61/61 and the full Debug suite 11915/11918 (fp8).
+Explanation comment 6700240768 is refreshed. **Q1 is critical:** under module membership the #14375 repro itself (vs+fs in one module with module-scope `out`s) regresses: `-entry fsMain` and a whole-module compile fail with E58001+E30702, while master compiles all three forms.
+The fixer re-asked with the repro ([6701407273](https://github.com/shader-slang/slang/issues/14375#issuecomment-6701407273)). **#14395 must not leave draft before tangent-vector answers Q1** (error vs legacy-Slang warning for mixed-stage modules).
+Parked on tangent-vector (Q1–Q4); webhooks plus `recheck-14375-maint-qs-43b4` (11-11) cover it. Stages 2–3 not started.

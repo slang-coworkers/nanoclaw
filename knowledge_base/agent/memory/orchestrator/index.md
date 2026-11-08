@@ -25,6 +25,9 @@ the one mount detail the spine omits.
   cached `tickNNN/pull.sh` fast path, helper pipeline, delivery/turn discipline.
   - [False-positive shapes](supervise-tick-false-positives.md) — rows scan flags that aren't real, with disposition tokens.
   - [Scan blind spots](supervise-tick-blind-spots.md) — real stalls scan misreads, with detectors.
+    - [Stalled / deaf owner sessions](supervise-tick-blind-spots-session-stalls.md) — shapes 1–6, 12, 17, 19.
+    - [Turns killed mid-flight](supervise-tick-blind-spots-dead-turns.md) — shapes 10, 11, 13, 14, 18 (restart, gateway 422/429/5xx, overflow).
+    - [GitHub state scan can't see](supervise-tick-blind-spots-github-state.md) — shapes 7, 8, 9, 15, 16.
   - [Pipeline pitfalls](supervise-tick-pull-pitfalls.md) — pull/cache, state, CI-cell, GitHub-API and worktree-GC traps.
   - [Degraded ticks](supervise-tick-degraded.md) — probe first; credential-401 and `ncl`-congestion procedures.
   - [Scheduler: gated-series stall (closed tick 282)](scheduler-gated-series-stall.md) — false-gate stall cleared after the 10-14 06:06Z restart; the 11 per-issue i1xxxx gates were deleted (R10 cleanup, nanoclaw PR #1948) — never re-create them.

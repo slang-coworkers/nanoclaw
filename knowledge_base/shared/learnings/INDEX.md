@@ -4232,6 +4232,7 @@
 - [a push after approval dismisses it on shader slang](ag-1776713211742-1w6l4e/1793851667014-a-push-after-approval-dismisses-it-on-shader-slang.md) — _ag-1776713211742-1w6l4e_
 - [github a bot push can dismiss a maintainer s fresh](ag-1776713211742-1w6l4e/1793899701772-github-a-bot-push-can-dismiss-a-maintainer-s-fresh.md) — _ag-1776713211742-1w6l4e_
 - [one shot re check sessions cannot see the chain ow](ag-1776713211742-1w6l4e/1793903645395-one-shot-re-check-sessions-cannot-see-the-chain-ow.md) — _ag-1776713211742-1w6l4e_
+- [github actions a run s status can read queued whil](ag-1776713211742-1w6l4e/1794046310345-github-actions-a-run-s-status-can-read-queued-whil.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4411,6 +4412,11 @@
 - [ci sweep read actions artifacts via proxy find los](ag-1776713258088-r8pp2t/1793954343982-ci-sweep-read-actions-artifacts-via-proxy-find-los.md) — _ag-1776713258088-r8pp2t_
 - [github sweep merge queue commit dates mq bypass va](ag-1776713258088-r8pp2t/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md) — _ag-1776713258088-r8pp2t_
 - [master history since undercounts merges when the m](ag-1776713258088-r8pp2t/1793955732333-master-history-since-undercounts-merges-when-the-m.md) — _ag-1776713258088-r8pp2t_
+- [discord an empty thread on a message is not a repl](ag-1776713258088-r8pp2t/1794040228429-discord-an-empty-thread-on-a-message-is-not-a-repl.md) — _ag-1776713258088-r8pp2t_
+- [find a discord user s github login with a discussi](ag-1776713258088-r8pp2t/1794040232391-find-a-discord-user-s-github-login-with-a-discussi.md) — _ag-1776713258088-r8pp2t_
+- [ci sweep an approved fork pr ci run in waiting has](ag-1776713258088-r8pp2t/1794040923411-ci-sweep-an-approved-fork-pr-ci-run-in-waiting-has.md) — _ag-1776713258088-r8pp2t_
+- [watch list sweep scripts date shift order and part](ag-1776713258088-r8pp2t/1794041384457-watch-list-sweep-scripts-date-shift-order-and-part.md) — _ag-1776713258088-r8pp2t_
+- [merge queue can merge a pr without a commit pushed](ag-1776713258088-r8pp2t/1794041868538-merge-queue-can-merge-a-pr-without-a-commit-pushed.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4609,6 +4615,7 @@
 - [merge queue slangpy tests can stick pending when t](ag-1776919222241-zghq0h/1793909119749-merge-queue-slangpy-tests-can-stick-pending-when-t.md) — _ag-1776919222241-zghq0h_
 - [gate recentmasterfailures n can be github side 502](ag-1776919222241-zghq0h/1793923434923-gate-recentmasterfailures-n-can-be-github-side-502.md) — _ag-1776919222241-zghq0h_
 - [mdl perf nightly read the auto bisect artifact bef](ag-1776919222241-zghq0h/1793952713959-mdl-perf-nightly-read-the-auto-bisect-artifact-bef.md) — _ag-1776919222241-zghq0h_
+- [saturday 08 00z head sha shows 1076 check runs 100](ag-1776919222241-zghq0h/1794038830200-saturday-08-00z-head-sha-shows-1076-check-runs-100.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4679,6 +4686,8 @@
 - [raw constant data in a vk ext descriptor heap heap](ag-1777389337838-f54d9l/1793362893935-raw-constant-data-in-a-vk-ext-descriptor-heap-heap.md) — _ag-1777389337838-f54d9l_
 - [heap constants via untyped route store a ubo descr](ag-1777389337838-f54d9l/1793363112852-heap-constants-via-untyped-route-store-a-ubo-descr.md) — _ag-1777389337838-f54d9l_
 - [discord summon research deepwiki ask wiki question](ag-1777389337838-f54d9l/1793988435258-discord-summon-research-deepwiki-ask-wiki-question.md) — _ag-1777389337838-f54d9l_
+- [hosted runner stall on shader slang slang can be t](ag-1777389337838-f54d9l/1794046344621-hosted-runner-stall-on-shader-slang-slang-can-be-t.md) — _ag-1777389337838-f54d9l_
+- [slang and operators are not generic over ilogical ](ag-1777389337838-f54d9l/1794095435907-slang-and-operators-are-not-generic-over-ilogical-.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -5652,6 +5661,12 @@
 - [building a pr head next to master in a worktree su](ag-1780667166418-apezq5/1794017216504-building-a-pr-head-next-to-master-in-a-worktree-su.md) — _ag-1780667166418-apezq5_
 - [cpu cuda scalar widening unifybinaryexproperands r](ag-1780667166418-apezq5/1794021979547-cpu-cuda-scalar-widening-unifybinaryexproperands-r.md) — _ag-1780667166418-apezq5_
 - [okf synth dangling link false positive on msl attr](ag-1780667166418-apezq5/1794031636307-okf-synth-dangling-link-false-positive-on-msl-attr.md) — _ag-1780667166418-apezq5_
+- [slang type predicates recursive structs and inheri](ag-1780667166418-apezq5/1794036031168-slang-type-predicates-recursive-structs-and-inheri.md) — _ag-1780667166418-apezq5_
+- [git worktree of shared slang clone submodule file ](ag-1780667166418-apezq5/1794036034182-git-worktree-of-shared-slang-clone-submodule-file-.md) — _ag-1780667166418-apezq5_
+- [cheap local repro of slang install rule bugs per d](ag-1780667166418-apezq5/1794057130628-cheap-local-repro-of-slang-install-rule-bugs-per-d.md) — _ag-1780667166418-apezq5_
+- [slang core module no generic ilogical shift operat](ag-1780667166418-apezq5/1794098012080-slang-core-module-no-generic-ilogical-shift-operat.md) — _ag-1780667166418-apezq5_
+- [give research subagents their own scratch dir they](ag-1780667166418-apezq5/1794098014318-give-research-subagents-their-own-scratch-dir-they.md) — _ag-1780667166418-apezq5_
+- [slangc mtime and version are not freshness signals](ag-1780667166418-apezq5/1794103854670-slangc-mtime-and-version-are-not-freshness-signals.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6844,6 +6859,7 @@
 - [worktree hazards origin master is shared and moves](ag-1780667166439-vmjrwe/1794016313091-worktree-hazards-origin-master-is-shared-and-moves.md) — _ag-1780667166439-vmjrwe_
 - [testing cuda prelude contraction nvrtc pass throug](ag-1780667166439-vmjrwe/1794017223810-testing-cuda-prelude-contraction-nvrtc-pass-throug.md) — _ag-1780667166439-vmjrwe_
 - [cuda emitter rewrites to device only intrinsics mu](ag-1780667166439-vmjrwe/1794022180378-cuda-emitter-rewrites-to-device-only-intrinsics-mu.md) — _ag-1780667166439-vmjrwe_
+- [slang base clone build release can be months stale](ag-1780667166439-vmjrwe/1794103502564-slang-base-clone-build-release-can-be-months-stale.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_

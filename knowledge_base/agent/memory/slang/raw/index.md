@@ -7,6 +7,7 @@ title: Raw chain source material
 
 Verbatim coworker memos kept as `resource:` targets for chain records. The distilled state lives in the chain record; a memo here is never edited. A memo of 12 KB or more opens with `type: source` + `okf_synth: exempt` frontmatter, because splitting a verbatim source destroys it.
 
+- [combined-review-14395-r1.md](combined-review-14395-r1.md) — slang-reviewer R1 combined review of PR #14395 (stage 1 of #14375), APPROVE_WITH_NITS (0 bugs / 6 gaps; Q1 vs+fs repro regression), 2026-11-07, 80 KB
 - [triage-14394.md](triage-14394.md) — slang-triager memo for slang#14394 (Metal ParameterBlock → argument buffer), 2026-11-07
 - [triage-14359.md](triage-14359.md) — slang-triager memo for slang#14359 (binary-module dependency resolves from wrong include root), 2026-11-05
 - [slangpy-1250-triage-memo.md](slangpy-1250-triage-memo.md) — slangpy-triager memo for slangpy#1250, 2026-10-30
@@ -50,3 +51,4 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [triage-14345.md](triage-14345.md) — slang-triager memo for slang#14345 (Metal groupshared load sunk past barrier; dup root cause of #13409), 2026-11-05
 - [triage-14348.md](triage-14348.md) — slang-triager memo for slang#14348 (CoopMat spec-constant dims), 2026-11-05
 - [triage-14357.md](triage-14357.md) — slang-triager memo for slang#14357 (bare `Foo(...)` on a defaulted generic struct, E39999; language-design park), 2026-11-05
+- [triage-14401.md](triage-14401.md) — slang-triager memo for slang#14401 (generic `T:ILogical` shifts missing), 2026-11-08

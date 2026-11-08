@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14036 — CUDA `precise` / `-fp-mode precise` leave no trace in emitted .cu (FMA contraction)
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:20Z, cloth-sim batch. Triaged feature/medium/P2 (CUDA emit) by slang-triager. 11-06 tangent-vector @-mentioned the bot, calling approach A reasonable for the general -fp-mode precise case (per-value precise waits on their language proposal). Bot DRAFT PR #14396 @2f563aa (11-07 02:30Z, approach A only, 'Part of #14036'), with slang-reviewer; assignee jkwak-work (shepherd routing by jhelferty-nv 11-02).
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:20Z, cloth-sim batch. Triaged feature/medium/P2 (CUDA emit) by slang-triager. 11-06 tangent-vector @-mentioned the bot, calling approach A reasonable for the general -fp-mode precise case (per-value precise waits on their language proposal). Bot DRAFT PR #14396 @855c4635c (approach A only, 'Part of #14036'), reviewer R2 APPROVE_WITH_NITS; ready-flip pending (weekly list); PARKED on maintainer review + 2 PR questions; assignee jkwak-work (shepherd routing by jhelferty-nv 11-02).
 tags: [cuda, precise, fp-mode, fma, feature-request, parked, r6]
 resource: /workspace/inbox/a2a-1793294503154-lqb5sc/triage-14036.md
 ---
@@ -65,4 +65,19 @@ The PR is now with slang-reviewer.
 - ⚠️ The bot's GitHub App cannot push `.github/workflows/` changes. The fixer therefore left the offline-nvcc CI step as a suggestion in the PR explanation comment, and a human has to add it.
 - Next: the reviewer verdict, then [Fix Report] → [Triage Resolution].
 - The ready-flip goes on the weekly list; it is not a per-PR ask.
+
+**11-07 03:25Z, side find.** The triager filed [#14398](14398-cpu-cuda-static-const-vector-scalar-widening.md) from the #14396 review: CPU/CUDA module-scope `vector op scalar` is not widened. That record is filed-only; this chain owns its `issue_opened`, so it needs no dispatch.
+
+**11-07 03:41Z: [Triage Resolution], partial as scoped.** Verified live: #14396 is OPEN and draft, head 855c4635c, +564/−40 across 7 files, `pr: non-breaking`, and has 0 GitHub reviews.
+- slang-reviewer: R1 REQUEST_CHANGES (a host-code compile bug, bf16 `dot`, `--fmad=false` coverage, the double/half PTX lane), all fixed. R2 APPROVE_WITH_NITS, nit applied.
+- Fixer's tests (as the fixer reports them): offline nvcc `--fmad=true` gives 30 `fma.rn` on master and 1 on the PR. Default and fast `.cu` are byte-identical to master. Full slang-test 11682/11685; the 3 fp8 CoopMat failures are on master too.
+- CI: 4 pass and 53 skipped, because of the draft.
+- Open maintainer questions are in the PR explanation comment 6701043814 (verified, bot, 13.2k chars):
+  - (1) Should CUDA honour the per-function `Fast` override that auto-diff sets, as SPIR-V does?
+  - (2) Is the NVRTC `-pch` cost on `-target ptx` acceptable?
+- A human with `workflows` permission adds the offline-nvcc CI line.
+- Issue comment 6699439326 was edited 03:41:39Z, now names #14398 (verified).
+
+The triager has closed its side and re-opens on a human comment on #14036 or #14396.
+**State: ready-flip pending → weekly list (no per-PR ask; P2 feature).** The webhooks for #14396 route to slang-fixer `2rqq4g` through the pr-mapping.
 

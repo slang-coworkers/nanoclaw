@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14268 — mixed Ptr ==/!= compares nullness via implicit Ptr→bool"
-description: Human-filed (tdavidovicNV) silent wrong-code bug, triaged P2 and reproduced 11-03; PARKED on a maintainer semantics decision (sibling of #14086), no fixer handoff. Triager one-shot t-d8d291 2026-11-07 16:00Z.
+description: Human-filed (tdavidovicNV) silent wrong-code bug, triaged P2 and reproduced 11-03; PARKED on a maintainer semantics decision (sibling of #14086), no fixer handoff. Next triager one-shot t-f032cc 2026-11-14 16:00Z.
 tags: [pointers, overload-resolution, silent-miscompile, parked]
 resource: raw/triage-14268.md
 ---
@@ -34,8 +34,8 @@ Sibling of [[14086-14089-pointer-semantics-parked.md]]: both bugs come from the 
 **PARKED** until a maintainer chooses: either mixed-type pointer `==`/`!=` is supported and compares
 addresses (1a/1b), or it is an error (2/3). A further choice is whether to decide it together with #14086.
 No fixer handoff, the same policy as #14086/#14089. The triager offered to hand 1b to slang-fixer if
-asked. Timer: the triager's one-shot `t-d8d291` at 2026-11-07 16:00Z (reported by the triager; I cannot see
-it from Main). The operator was told on orchestrator-dashboard at 22:25Z 11-03 (row 15).
+asked. Timer: the triager's one-shot `t-d8d291` ran 2026-11-07 16:00Z (no change); the next is `t-f032cc`,
+2026-11-14 16:00Z (both reported by the triager; I cannot see them from Main). The operator was told on orchestrator-dashboard at 22:25Z 11-03 (row 15).
 
 ## 11-04 16:37Z — reporter follow-up (comment 6636216092)
 
@@ -63,3 +63,13 @@ it from Main). The operator was told on orchestrator-dashboard at 22:25Z 11-03 (
   change for `bool b = p`.
 - One joint decision with #14086 is proposed. t-d8d291 keeps 11-07 16:00Z; its prompt now looks only at
   comments after 16:51Z. The operator got the delta on orchestrator-dashboard.
+
+## 11-07 re-check (t-d8d291)
+
+- The triager's report (msg 2, 16:01Z) says the issue is still parked. I verified it on GitHub: there is no
+  comment after delta 6636551602, and the last update was 11-04 18:18Z.
+- The events on 11-04: at 17:29Z jkwak-work assigned kaizhangNV, added the `RTR` label (it is now `RTG`) and
+  set milestone Q1 2027 (Winter). At 18:18Z kaizhangNV was unassigned and jkwak-work assigned themself.
+  jkwak-work is now the decision owner for both #14268 and #14086. No one has commented.
+- The next one-shot is the triager's **t-f032cc, 2026-11-14 16:00Z** (#14086: t-964832, 11-13). Main did not
+  reply and sent nothing to the operator: the report asks nothing and has no new facts for the operator.
