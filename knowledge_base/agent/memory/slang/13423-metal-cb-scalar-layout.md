@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13423 — Metal ConstantBuffer ignores ScalarDataLayout / -fvk-use-scalar-layout
-description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (5 so far; #5 merged e855bd5db0 11-05); vk lane hit by master #14178 render-test regression, filed as #14347
+description: Enhancement P2, not a regression (#11578 kept Metal CBs native on purpose). GO on Approach A via the triager → draft PR #13425; parked on maintainer review/un-draft, re-merged after each stable-id/version collision (6 so far, all resolved; #6 verified 11-08 at head 8fc73592b7); vk lane hit by master #14178 render-test regression, filed as #14347
 ---
 
 # slang#13423 (external reporter mellinoe, 2026-10-03)
@@ -50,8 +50,9 @@ OUTPUT approve. The fixer merges master (never force-pushes — not authorized);
 | 3 | 10-21 | #13078 `9e17a9e850` | id 909 (`glslPatch`), max 36 | 910 / max 37 → head `3a41ab51a0` (verified 10-21 13:00Z) |
 | 4 | 10-24 | #13406 `0bd71cd709` (+ #13706 code conflict in entry-point-uniforms.cpp) | min=max 37 | 910 / min 37 / max 38 → head `4b7541ad55` (verified 10-24 13:00Z) |
 | 5 | 11-05 | #14051 `c8bd944484` (kaizhangNV, portable RT API) | ids 911/912 (skipped 910), min=max 38 | 910 (kept, unused on master) / min 38 / max 39 → head `e855bd5db0` (verified 11-05 13:00Z) |
+| 6 | 11-08 | #13792 `286cdeee49` (bot, Metal texture fences) + #14360 `ae4e57957a` (tangent-vector, HLSL loop scope) | id 910 (`metalTextureFence`), max 39; then min=max 40 | 913 / min 40 / max 41 → head `8fc73592b7` (verified 11-08 13:00Z) |
 
-Rival claimants on the same numbers: #13564, #13872, #13953, #13992, #14115 (drafts; see Current state) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
+Rival claimants on the same numbers: #13564, #13872, #13953, #13992 (drafts; see Current state; #14115 closed 11-05, superseded by #14360) and #13406 (jhelferty-nv, min=max 37 as of 10-21) — see
 [[slang/13555-ignore-capabilities-caseless-target-switch.md]]. Whoever merges second renumbers; never renumber early.
 
 ## Lessons
@@ -61,13 +62,13 @@ Rival claimants on the same numbers: #13564, #13872, #13953, #13992, #14115 (dra
 2. **`slang-ir.h` can auto-merge to a wrong version.** In collision 3 both sides made the same `35→36` edit, so git merged it cleanly and the
    PR's "Version 36 adds MetalConstantBufferLayout" comment rode along — silently reusing master's version. Always compare the PR's
    version and ids against master's directly; `merge-tree` conflict output alone is not enough.
+3. **A gap in master's ids is not a reservation.** #14051 skipped 910 on 11-04, so the PR kept it; #13792 then took 910 on 11-06 (collision 6). Each merge recomputes from master's max id, not from gaps.
 
-## Current state (11-05 13:00Z)
-Head **`e855bd5db0`** (a merge of master `04d2726db0`, no force-push), draft, MERGEABLE, 9 ahead / 0 behind. Verified directly: 910 / min 38 / max 39, `MetalConstantBuffer`=8, the gate is kept and so is the WGPU→Metal order. Comment 6078307404 names the head.
-**One vk failure comes from master:** `constant-buffer-scalar-layout-compute.slang` `.1 (vk)` hits slang-rhi's `m_data.size() <= destSize` because #14178 (`48802eb480`) made render-test create untyped object inputs with `createShaderObject(session, type)`, which drops `ScalarDataLayout`.
-The triager's 09:39Z GO request reached no Main session, so I answered it at 13:07Z (triager seq 64): **GO (a)**. The triager reproduces on pure master, files a shader-slang/slang issue (no @-mentions, no fix chain, no expected-failure entry), keeps the test unchanged, links the issue in 6078307404 and reports the number. **Filed 11-05 13:11:57Z as [slang#14347](https://github.com/shader-slang/slang/issues/14347)** (triager seq 67/69; bot-filed, `regression` + `reproduced`, no assignee, no @-mentions; repro'd on pure master 04d2726db0, Std140 control passes; fix options A = slang-rhi session+layout entry point, B = render-test-only fallback). **Its issue_opened needs no dispatch** (Main, 11-05): GO (a) said no fix chain, and option A overlaps maintainer-owned slang-rhi#965 (jkwak-work). A fixer chain needs the operator.
-CI run 42002753764 is `waiting`. 0 human reviews; the assignee and review request are still kaizhangNV. #13386 and #13300 are unmerged. Next: `rechase-13425-maintainer-37f9` 11-08 09:00Z, which also checks that the issue was filed.
+## Current state (11-08 13:00Z)
+Head **`8fc73592b7`** (draft) is MERGEABLE/BLOCKED, 10 ahead / 0 behind master `ae4e57957a`: collision 6 is resolved and verified. The numbers are **913 / min 40 / max 41** (master: max id 912, 40/40), with `MetalConstantBuffer`=8, the gate kept and the WGPU→Metal order kept. Comment 6078307404 names the head.
+The `.1 (vk)` failure is master regression [slang#14347](https://github.com/shader-slang/slang/issues/14347) (from #14178), filed 11-05. **jkwak-work self-assigned it 11-06 22:06Z**, so it is maintainer-held with no bot fix chain. Don't touch the test.
+Dispatch run 42466395856 on 8fc73592b7 is `waiting` (old run 42002753764 was cancelled). 0 human reviews; the assignee and review request are still kaizhangNV. #13386 and #13300 are unmerged, and #14115 is closed (superseded by #14360). Next maintainer re-chase: `rechase-13425-maintainer-9062` 11-11 09:00Z (prompt carries the verified head).
 
 ## Resumes on
-A maintainer comment or assignment on #14347 (filed); a human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human
+A maintainer comment or fix on #14347 (jkwak-work assigned 11-06); a human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then merges master); a human
 comment on #13423; any maintainer objection on the #11578 design.

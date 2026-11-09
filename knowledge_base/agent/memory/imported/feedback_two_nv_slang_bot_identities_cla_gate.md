@@ -94,6 +94,16 @@ check-counting copy of this fact (with the two-call recipe) is
   #13363, #13081, #13038, #13421. The 10-02 operator escalation is unanswered. #13421 (fix for #13409) turned it
   into a per-PR force-push ask, which I bundled back into the operator decision instead of authorizing
   the rewrite. Re-chase `rechase-cla-bot-identity-4012`.
+- **2026-11-08 (32nd ask, weekly since 10-31): ⚠️ the fixer identity guard leaks.** slang#14210
+  (fix/issue-14060, merged 11-05 by jkwak-work, squash `37fc7aa7d2`) carried `a70747f88d`,
+  "review nits for device float atomics": author `286953280` (author date 10-30 00:13Z), committer
+  App (00:29Z). It is slang-reviewer's nit patch, applied by the fixer. The guard is a
+  pre-commit/pre-merge-commit hook, and `git am`/`cherry-pick` skip pre-commit (my inference, not
+  verified). So the reviewer's git author is still the User identity. ⭐**The open-PR `measure.py`
+  cannot see this class once the PR merges: also run `tmp/cla1014/late_scan.py`** (all bot PRs
+  updated since 10-13 in slang/slangpy/slang-rhi). Other 11-08 facts: slangpy#1172 merged 11-03
+  (skallweitNV, with `license/cla` pending even though it is required on slangpy main). On 11-04,
+  cla-assistant re-posted "not signed yet" on 6 PRs. Still no operator answer.
 
 ## Method lessons from the 08-04 retractions
 

@@ -67,6 +67,14 @@ the merged #13406 and the unrelated #11418. The author's newer PR #13955 (CI rev
 is unrelated. The fixer is still HELD and the author has not been re-asked. A one-line note went to the
 dashboard. Re-armed as `rechase-13536-hlsl-choic-bf55`, firing 2026-11-08T22:00Z.
 
+**2026-11-08 22:00Z re-chase: still silent.** Checked live: the issue is open and still assigned to
+jhelferty-nv, with no labels, and `updated_at` is still 10-15. The only comment is still the bot triage.
+There are no timeline events after 11-01. Searches for `13536` and `RTexture` still find only #13406 and
+#11418. The author's only new PR is #14393 (commenting guidelines, opened 11-07), which is unrelated.
+#14392 (Metal const read-only buffers, by albertrodriguezclo) is also unrelated. The fixer is still HELD
+and the author has not been re-asked. A one-line note went to the dashboard. Re-armed as
+`rechase-13536-hlsl-choic-eeda`, firing 2026-11-15T22:00Z.
+
 **Resume:**
 - The author answers and asks for a bot PR → the triager releases the fixer (Approach A plus the
   chosen HLSL lowering, GPU-free FileCheck tests, a DIAGNOSTIC_TEST that includes silence for

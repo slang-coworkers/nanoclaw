@@ -106,7 +106,11 @@ PASSED, `does not currently own` = 0, FATAL/crash = 0.
    - **11-04: no change.** Head `ec514f4`, MERGEABLE, BEHIND 12. No new comments, inline comments or reviews
      since 10-27. jhelferty silent 35 days; skallweitNV silent but active on slangpy (merged #1156, #1172 on
      11-02/03). Dashboard checked through seq 510734, no operator reply. Status sent to dashboard; nothing
-     dispatched. Next one-shot re-check is `rhi-881-review-rechase-4084` on 11-08 09:00Z.
+     dispatched.
+   - **11-08: no change.** Same head and state (BEHIND 12), and no GitHub activity of any kind since 10-27.
+     jhelferty silent 39 days. skallweitNV is active on slang-rhi itself (merged #760 on 11-05, #963 on 11-06,
+     closed #876) but silent on #881. Dashboard checked through seq 511848, no operator reply. Status sent
+     (dashboard msg 13); nothing dispatched. Next one-shot re-check: `rhi-881-review-rechase-62a1` on 11-12 09:00Z.
 2. **After the fix lands:** file the dedicated-allocation asymmetry. `cuda-buffer.cpp:129` sets
    `CUDA_EXTERNAL_MEMORY_DEDICATED` unconditionally, while `cuda-texture.cpp:545` threads `isDedicated`. ⚠️ The
    evidence is an NVIDIA-staff forum post, not docs, so state it as such. It isn't firing today.

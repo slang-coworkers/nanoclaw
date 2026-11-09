@@ -40,3 +40,9 @@ not news). **Sibling watch #13411 is half addressed:** PR #14241 (jvepsalainen-n
 skiminki-nv 11-04; open) rewrites `docs/generated/design/ir-reference/misc.md` so its IsVector text is correct. It leaves the vacuous
 `docs/generated/tests/design/ir-reference/misc/is-vector-folds-false.slang` untouched and does not close #13411. Both are held, with no
 bot post. This was reported to the dashboard (msg 9). Next one-shot: `rechase-12249-13411-8dd3` (11-08 09:00Z).
+
+**Status as of 11-08 09:00Z: #13486 and #13677 still unchanged since 10-15.** On #13411, **PR #14241 MERGED 11-06 11:46Z (fef74e3c67)**.
+The misc.md half is now fixed on master: lines 250/266 read "True for a builtin vector type; false for a scalar or a matrix". The test
+`is-vector-folds-false.slang` is unchanged (dee8b6a6f2, 09-15). I paged all 174 files of #14241 to confirm it does not touch the test, and
+#13411 stays open (assignee's call, no bot post). This was reported to the dashboard (11-08). Next one-shot: `rechase-12249-13411-7f82`
+(11-11 09:00Z).
