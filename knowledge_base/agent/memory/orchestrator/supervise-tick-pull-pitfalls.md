@@ -21,6 +21,8 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
   repo (`payload3r.json`), re-scan. Compare `pr` counts against the previous **payload1** (prfix/botbind add ~20 PRs in payload3), and find the stripped set as chains whose previous payload1 had comments/pr and this one has none (tick 326: 41 contiguous #12909–#12962; carried pr/comments/our_last_push/issue_open, re-fetched the 1 that moved).
 
+- **Build `lo-cache.json`/`prev-la.json` before launching `run-pull.sh`** — they are not among the copied helpers; a missing
+  `lo-cache.json` makes `pull.sh` die at its line-83 `open()` after the cost-cap stamp (~1 min lost, tick 333).
 - **`payload3.json` `chains` is a dict keyed by thread** (no `key` field; `sessions` is a list of ids) — build `lo-cache.json` as `{thread:{ts:our_last_outbound,text:last_outbound_text,sess:sessions}}`. Include **every** chain, also those with `ts: null` — `pull.sh:594` reuses an entry only on a key hit, so dropping the null ones turns ~1,300 chains into `ncl` cache misses (tick 324 caught it before launch).
 - **The mid-tick `ncl sessions list` re-list can come back empty** (0-byte stdout, exit 0) — `moved.py` then dies on `json.load`. Retry until the file is non-empty (tick 307).
 - **`ncl sessions messages` truncates every row to 300 chars unless `--full` is passed** — hold reasons and operator asks get cut mid-sentence. `tick305/msgs.py` passes `--full`. Any `ncl` call made while `pull.sh` is running fails with `database is locked`; do GitHub-only checks (auto-merge sweep, closed-since) during the pull instead (tick 305).
@@ -61,7 +63,7 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
 - **`gh api rate_limit` → OneCLI `app_not_connected` is not an outage.** Probe with `gh api -i repos/shader-slang/slang`
   (`X-Ratelimit-Limit: 6000`) + `gh api graphql -f query='{viewer{login}}'` before reporting auth trouble (tick 284).
 - **Auto-merge sweep / closed-since without GraphQL search:** the org-wide GraphQL `search` 502s intermittently; use
-  REST `repos/shader-slang/<r>/pulls?state=open&per_page=100&page=N` filtered on `.auto_merge!=null` (**5 pages** for slang — 445 open PRs at tick 292; 3 pages missed the armed #10769/#10098 on page 4),
+  REST `repos/shader-slang/<r>/pulls?state=open&per_page=100&page=N` filtered on `.auto_merge!=null` (**6 pages** for slang — 544 open PRs at tick 333, 445 at tick 292; 3 pages missed the armed #10769/#10098 on page 4),
   and `gh search issues --owner shader-slang --closed '>=<date>' --include-prs` (raw `gh api search/issues?q=…closed:>=`
   returns empty JSON).
 

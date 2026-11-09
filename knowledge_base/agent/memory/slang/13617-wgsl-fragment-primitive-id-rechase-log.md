@@ -46,3 +46,9 @@ canonical session `sess-1791952546270-bc3zew` last active 10-14 10:26Z); no GitH
   (pinned `sess-1791952660010-g4b0dg`, delivered as row 22) to re-check at HEAD, dedupe, and file one unrouted Type=Bug.
   Dashboard msg 13. Only the ready-flip (weekly list) is left. **FINAL** re-check `rechase-13617-final-b248` (11-08 10:30Z) parks it webhook-only.
 - **11-06 10:38Z, filed [#14383](https://github.com/shader-slang/slang/issues/14383)** (the subgroups side note; checked live: open, nv-slang-bot, `WebGPU`+`reproduced`, no assignee, 0 comments, opens "Found while working on #13619 (#13617)"). Re-measured on master `6d43c8d88`: 5 variants (`SV_WaveLaneIndex` compute/struct/fragment, `SV_WaveLaneCount`, `SV_WaveIndex`) miss `enable subgroups;` and Tint rejects them on null + Vulkan backends; intrinsics path is fine. Unrouted by design, so its `issue_opened` webhook is a self-echo: no dispatch. Decision (2) is closed; only the ready-flip (weekly list) remains.
+- **11-08 10:3xZ, FINAL (`rechase-13617-final-b248`), parked webhook-only with no timer.** No change: still an open draft
+  @ `b5340af7ab`, 0 reviews, 0 inline comments, only `license/cla`. The only timeline events since 11-06 10:30Z are bot
+  cross-refs from #14383. No operator answer in the dashboard window 11-05 11:38Z→11-08 10:30Z (no 'unpark 13617', no
+  weekly-list answer naming #13619, no 'un-draft all'). Triager outcome: filed #14383 (row 31, 11-06 10:39Z). On 11-06
+  at 22:09Z jkwak-work self-assigned #14383, so it is maintainer-owned now; no dispatch. Recorded `awaiting_human` in
+  `supervisor-state.json`; nothing scheduled. Reopens on a human comment/review webhook or operator 'unpark 13617'.

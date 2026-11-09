@@ -154,3 +154,16 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
     `gh-issue-shader-slang/slang-13732`) with a status table and the repeated question. I did not message the
     triager, dispatch the fixer, or contact an approver. Successor one-shot `rechase-13732-pr13734-cb-aa7d` runs on
     11-08 15:00Z.
+- 2026-11-08 15:00Z re-check `-cb-aa7d` (live read): no change. The PR is OPEN and not merged. The head is still
+  cb4ad5253a. `mergeStateStatus` is `BEHIND`, and PR updated_at is still 10-28 15:48:18Z. Checks: 52 pass, 1 pending
+  (`falcor-build-approval-gate`), 1 skipping (CodeRabbit). jkwak-work is still the requested reviewer. There is no human
+  maintainer review: the newest review is still the author's at 10-28 15:04Z. There are no issue, PR or review comments
+  and no PR timeline events since 11-05 15:00Z. Comment 6278114155 is unchanged (updated_at 10-29 15:22:35Z) and names
+  cb4ad5253a. Issue #13732 is OPEN, assigned to jkwak-work.
+  - Side finding (struct `storeCoherent` through `Big*`): still **no answer**. Main session
+    `sess-1792248849265-73m1n3` ends at seq 65. In the dashboard session, the only matching row since 11-05 15:00Z is my
+    own 11-05 15:04Z row (seq 511348); no operator reply. It was asked twice (10-29, 11-05). Do not ask again.
+    (The dashboard JSON rows carry the body in `.text`, not `.content`.)
+  - Decision row (2): parked 10 days since 10-29, which is less than 14, so I sent nothing. I did not message the
+    triager, dispatch the fixer, or contact an approver. The successor one-shot runs on 11-12 15:00Z (the 14-day mark):
+    it sends one dashboard row if nothing changes. Successor id `rechase-13732-pr13734-cb-5510`.

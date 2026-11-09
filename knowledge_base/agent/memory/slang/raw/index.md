@@ -52,3 +52,5 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [triage-14348.md](triage-14348.md) — slang-triager memo for slang#14348 (CoopMat spec-constant dims), 2026-11-05
 - [triage-14357.md](triage-14357.md) — slang-triager memo for slang#14357 (bare `Foo(...)` on a defaulted generic struct, E39999; language-design park), 2026-11-05
 - [triage-14401.md](triage-14401.md) — slang-triager memo for slang#14401 (generic `T:ILogical` shifts missing), 2026-11-08
+- [triage-14407.md](triage-14407.md) — slang-triager memo for slang#14407 (render-test indented `//TEST_INPUT:`), 2026-11-08
+- [review-14411-r1.md](review-14411-r1.md) — slang-reviewer r1 combined review of PR #14411 (#14407 render-test TEST_INPUT), 2026-11-08

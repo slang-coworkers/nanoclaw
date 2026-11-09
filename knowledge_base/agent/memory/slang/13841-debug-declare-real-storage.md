@@ -58,3 +58,8 @@ say "next free id + the version that follows master's".
   heads-ups through the chain's triager.
 - A webhook that is a question to a human, with no @nv-slang-bot, gets no bot reply and no dispatch.
 - One owner per PR: a fix round on #14114 needs a ceiling raise on efb8e6, never a fresh session.
+**11-08 09:04Z (per the #13425 re-chase; I have not re-checked):** stable id **910 is now taken on master.** Our own Metal
+fence PR #13792 (`286cdeee49`, 11-06) took 910 and set max = 39. Then #14360 (`ae4e57957a`) set **min = max = 40**. So
+every draft still claiming 910 or v38/v39 must renumber at its next master merge: #13872, #14114, #13425 (conflicting
+now) and #13953. Before giving any of them a "merge master" go-ahead, have the fixer take the next free id after
+master's highest and set min = max to 41 (or whatever master's max + 1 is at that point).

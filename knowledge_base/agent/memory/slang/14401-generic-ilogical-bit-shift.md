@@ -1,6 +1,6 @@
 ---
 type: chain
-description: "Human-filed (JasperKr, no labels/assignees) 11-08 00:23Z: `T:ILogical` (or IInteger) generic operand rejects `>>` — 'no overload for >> applicable to arguments of type (T, uint)', although the user guide says ILogical provides all bit operations. TRIAGED 00:33Z bug/low/P2 (cmt 6715095387); core.meta.slang has no generic ILogical shift operators. Triager handed to slang-fixer (session iyvxbu). Draft PR #14402 (peer review); open maintainer question on bool-left shift overloads."
+description: "Human-filed (JasperKr, no labels/assignees) 11-08 00:23Z: `T:ILogical` (or IInteger) generic operand rejects `>>` — 'no overload for >> applicable to arguments of type (T, uint)', although the user guide says ILogical provides all bit operations. TRIAGED 00:33Z bug/low/P2 (cmt 6715095387); core.meta.slang has no generic ILogical shift operators. Triager handed to slang-fixer (session iyvxbu). Draft PR #14402 R2 APPROVE; PARKED on falcor-ci gate + maintainer bool-left shift question; ready-flip on weekly list."
 resource: raw/triage-14401.md
 tags: [generics, ilogical, iinteger, operators, bit-shift, core-module]
 ---
@@ -34,5 +34,18 @@ Repro (reporter, Slang 2026.21): `uint TestFunc<T:ILogical>(T first, uint second
     parameter; `b + n` already behaves this way. Is that acceptable? A "no" may also bear on the `pr: non-breaking`
     label, because it changes which overload existing code binds.
 
-Next: the fixer reports when peer review is done. Then the PR is ready-flip pending (weekly list; P2, not a regression),
-and the bool question goes to maintainers on the PR.
+- 03:45Z triager resolution: head **16af4062a**, 8 files +487/−10. Changes: generic `<< >> <<= >>=` for `T:ILogical` with a
+  scalar builtin-integer amount, plus enum shifts. The checker promotes a `bool` left operand to `int`. The enum lowering
+  fixes an E99997 on `enum : bool` shifts (`m.shr(1)` on master); a reviewer found it and it is pinned by a test, so no
+  separate issue. Docs fixed. slang-reviewer R1 REQUEST_CHANGES → R2 APPROVE (0 findings).
+  Local: 3 new tests 7/7 cpu/vk/cuda/HLSL; full suite 11901/11904 (the 3 fp8-cuda coopmat failures also fail on master).
+  Fixer issue comment 6715953864 carries the final state (verified, nv-slang-bot).
+- GitHub CI dispatch **42441928885** (03:15Z, head 16af4062a) is `waiting` on the `falcor-ci` environment gate (Team
+  ci-approvers), verified.
+- **PARKED (awaiting_human), 03:50Z:** (1) a ci-approvers human approves the falcor-ci gate; (2) a maintainer answers
+  the bool-left shift question; (3) ready-flip goes on the weekly list (P2, not a regression; no per-PR undraft ask).
+  Timer: register entry `gh-issue-shader-slang/slang-14401` in supervisor-state.json, walked by /supervise-issues.
+  Decision named on the dashboard 11-08.
+
+Next: a maintainer reply or a CI result arrives by webhook → fixer iyvxbu (pr-mapping). Out of scope: per-component
+`T >> T`, which would need a new interface requirement; file it only if a maintainer asks.

@@ -140,3 +140,9 @@ is `comment-slang-rhi-965.md` in slang-triager's group; its "ask skallweitNV" li
 closed/merged branch: no GitHub post, no triager release, no dashboard message. The triager's held #14177 draft is dead;
 it is not to be posted. Remaining live threads belong to other records: slang-rhi#965 (maintainer-owned, timer cancelled),
 #14180/#14181 (jkwak-work, Q1 2027), #14347 (#13423 chain).
+**slang-rhi#967 (reporter's fix for rhi#965), first event 11-08 ~09:5xZ (Main).** albertrodriguezclo opened non-draft
+`fix/shader-object-from-type-layout-session` at 09:48:27Z, "Fixes #965": the memo's rec (a), a leading `ISession*` on
+`createShaderObjectFromTypeLayout` + inline two-arg overload (vtable change, source-compatible). It does not touch the
+`shader-object.cpp:714` `specializeType` device-session call. Review requested from jkwak-work, jvepsalainen-nv, skallweitNV.
+Not forwarded: slang-pr-approver is paused; queued in `data/approver-pause-queue.md`. rhi#965 stays maintainer-owned (no bot post).
+
