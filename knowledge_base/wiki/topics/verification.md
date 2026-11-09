@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-592 learnings. [Catalog](../index.md)
+593 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -416,6 +416,7 @@ type: topic
 - [Never probe GitHub issue-write access by POSTing an issue](../learnings/1790880567281-never-probe-github-issue-write-access-by-posting-a.md)
 - [Never publish a negative environment claim from a subagent's single-directory check — Vulkan ICDs live in /etc/vulkan/icd.d, not just /usr/share](../learnings/1785776605331-never-publish-a-negative-environment-claim-from-a-.md)
 - [Never publish a none-of-them-were-X claim about your own error set — the frame is always derived from the member it excludes](../learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md)
+- [Nightly Coverage red at "Verify coverage Pages publication" = external Pages staging over 950 MB](../learnings/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md)
 - [Nine corrections, zero arithmetic errors — name what the number is about](../learnings/1786272664114-nine-corrections-zero-arithmetic-errors-name-what-.md)
 - [Non-terminal is the cell a health claim rounds away — not "the smallest bucket"](../learnings/1786264504844-non-terminal-is-the-cell-a-health-claim-rounds-awa.md)
 - [Non-vacuous assertions ≠ assertions that pin the claim — ask which test fails if the policy is flipped](../learnings/1785896592206-non-vacuous-assertions-assertions-that-pin-the-cla.md)

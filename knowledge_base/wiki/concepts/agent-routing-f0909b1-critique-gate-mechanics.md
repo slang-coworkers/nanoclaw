@@ -3,7 +3,7 @@ title: Critique / delivery gate mechanics — satisfying it and not tripping it
 type: concept
 group: agent-routing
 tags: [critique-gate, codex-critique, delivery-gate, attestation, token-matching, ledger-ordering, git-push, worktree]
-source_count: 46
+source_count: 47
 ---
 
 # Critique / delivery gate mechanics — satisfying it and not tripping it
@@ -65,9 +65,9 @@ On an open PR, OUTPUT_REVIEW compares the live head SHA and posted body with you
 
 ## The review-request format check
 
-The hook refuses a `[Fix Review Request]` without a `Maintainer direction:` line linking a canonical GitHub comment or saying `none — <reason>`. If that section contains any canonical comment link (`…/issues|pull/<n>#issuecomment-…`, `#discussion_r…`, `#pullrequestreview-…`, `#issue-…`), even a triager comment cited in the reason, it also requires a `Fixer self-check:` line with R1, R2… items (map a triager's numbered asks to R1–Rn); a bare `none — <reason>` passes (hook `review_request_problem`) ([review-request gate requires Fixer self-check R-items](../learnings/1792261551774-critique-gate-a-narrow-codex-reply-approve-leaves-.md)). Both labels match literally: `**Fixer self-check (R1 findings):**` ([recall stub](../learnings/1792695817981-codex-critique-run-with-cwd-outside-workspace-agen.md)) and a bold `- **Maintainer direction:** none` ([plain Maintainer direction line](../learnings/1792748776667-codex-first-reply-in-a-fresh-critique-thread-can-b.md)) were refused, while on slangpy-fixer plain `Maintainer direction: none — <why>` passed where bold `**Maintainer direction:** none.` failed ([plain review-request lines](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md), [fixer delivery gates](../learnings/1793850163791-fixer-delivery-gates-review-request-field-format-i.md)). When the only comment to cite is a reporter's or a bot/triage comment, keep the `none — <why>` line link-free and put the link on a separate `Scope source:` line (without the full `#issuecomment-` URL) or under Artifacts ([a URL on the 'Maintainer direction: none' line trips the R-item gate](../learnings/1793658431464-task-started-fixer-sessions-delivery-gates-want-in.md)).
+The hook refuses a `[Fix Review Request]` without a `Maintainer direction:` line linking a canonical GitHub comment or saying `none — <reason>`. If that section contains any canonical comment link (`…/issues|pull/<n>#issuecomment-…`, `#discussion_r…`, `#pullrequestreview-…`, `#issue-…`), even a triager comment cited in the reason, it also requires a `Fixer self-check:` line with R1, R2… items (map a triager's numbered asks to R1–Rn); a bare `none — <reason>` passes (hook `review_request_problem`) ([review-request gate requires Fixer self-check R-items](../learnings/1792261551774-critique-gate-a-narrow-codex-reply-approve-leaves-.md)). Both labels match literally: `**Fixer self-check (R1 findings):**` ([recall stub](../learnings/1792695817981-codex-critique-run-with-cwd-outside-workspace-agen.md)) and a bold `- **Maintainer direction:** none` ([plain Maintainer direction line](../learnings/1792748776667-codex-first-reply-in-a-fresh-critique-thread-can-b.md)) were refused, while on slangpy-fixer plain `Maintainer direction: none — <why>` passed where bold `**Maintainer direction:** none.` failed ([plain review-request lines](../learnings/1793010303873-slangpy-worktrees-submodule-init-needs-protocol-fi.md), [fixer delivery gates](../learnings/1793850163791-fixer-delivery-gates-review-request-field-format-i.md)). When the only comment to cite is a reporter's or a bot/triage comment, keep the `none — <why>` line link-free and put the link on a separate `Scope source:` line (without the full `#issuecomment-` URL) or under Artifacts; a link to the reporter's issue body trips it the same way, so quote the reporter without a URL on that line ([a URL on the 'Maintainer direction: none' line trips the R-item gate](../learnings/1793658431464-task-started-fixer-sessions-delivery-gates-want-in.md), [reporter issue-body link, #14407](../learnings/1794135375190-fresh-slang-worktree-init-submodules-seed-dxc-tarb.md)).
 
-**Source learnings (46):**
+**Source learnings (47):**
 - [codex-reply records no round](../learnings/1787339458278-codex-reply-does-not-record-a-critique-round-for-t.md) — fresh call per stage.
 - [codex-reply does not count](../learnings/1787672164164-codex-reply-does-not-count-toward-the-critique-del.md) — first STAGE token only.
 - [quoting BLOCK/WOULD_APPROVE defeats ABSTAIN fast-path](../learnings/1787621185331-approver-infra-critique-gate-abstain-fast-path-is-.md)
@@ -112,5 +112,6 @@ The hook refuses a `[Fix Review Request]` without a `Maintainer direction:` line
 - [backticked hashes record no attestation](../learnings/1793659362706-codex-wrapping-attested-hashes-in-backticks-record.md) — FORMAT NOTE.
 - [OUTPUT_REVIEW can return a recall digest](../learnings/1793640100680-codex-output-review-can-return-a-wiki-recall-diges.md) — #14032.
 - [task-started fixer sessions](../learnings/1793658431464-task-started-fixer-sessions-delivery-gates-want-in.md) — `Scope source:` line.
+- [reporter issue-body link on the `none` line](../learnings/1794135375190-fresh-slang-worktree-init-submodules-seed-dxc-tarb.md) — demands R-items; quote without URL.
 - [round 1 recall on all three stages](../learnings/1793815964150-codex-critique-round-1-can-return-a-wiki-recall-su.md) — slang#14297.
 - [fixer delivery gates: field format](../learnings/1793850163791-fixer-delivery-gates-review-request-field-format-i.md) — plain labels.
