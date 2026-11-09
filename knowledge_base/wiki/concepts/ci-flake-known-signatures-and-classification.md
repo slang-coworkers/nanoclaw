@@ -3,12 +3,10 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 33
+source_count: 34
 ---
 
 # CI Flake Triage — Classification and Known Signatures
-
-Deciding whether a red Slang CI job is a flake or a legitimate author-owned failure, and the catalogue of recurring signatures with their per-signature disposition. The fleet these run on is [runner pools and infrastructure](ci-flake-runner-pools-and-infrastructure.md); *when a rerun helps at all* is [rerun decision rules](ci-flake-rerun-decision-rules.md).
 
 ## TL;DR
 
@@ -24,6 +22,8 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - **slang-rhi OMM `VUID-10904` on a submodule-bump PR is likely a Vulkan SDK 1.4.341.1 validation-layer false positive** (lavapipe SKIPs OMM in slang-rhi's CI). Fix CI-side (pin/suppress the VUID) or report upstream; not rerun-clearable.
 - **Nightly Coverage reds:** a `merge-and-deploy` red can be slang-coverage-reports' 950 MB Pages budget (the bytes are in `reports/latest`, so pruning history does not help; file it there); a `coverage-windows` red on a Chocolatey 503 is infra unless it fails two nights running.
 - **The nightly `agentic-tests` job is advisory doc-bundle drift**: the non-blocking `docs/generated/tests` corpus drifts with breaking-change PRs; regenerate periodically, no issue per drift.
+
+Deciding whether a red Slang CI job is a flake or a legitimate author-owned failure, and the catalogue of recurring signatures with their per-signature disposition. The fleet these run on is [runner pools and infrastructure](ci-flake-runner-pools-and-infrastructure.md); *when a rerun helps at all* is [rerun decision rules](ci-flake-rerun-decision-rules.md).
 
 ## Classifying Failures: Flake vs. Legitimate
 
@@ -61,7 +61,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **Nightly Coverage `coverage-windows` red on a Chocolatey 503** (run 41375586658, 2026-11-02): only `coverage-windows / coverage` failed, ~8 s into installing `opencppcoverage` 0.9.9 via `choco` (HTTP 503 from `community.chocolatey.org/api/v2`, "choco install exited 1") before any Slang build. Read the first failing step with `gh run view <run> --job <id> --log-failed`; a feed 503 leaves nothing to bisect. The install step has no retry, so treat it as a flake unless it fails two nights in a row ([Chocolatey 503](../learnings/1793592113911-nightly-coverage-coverage-windows-red-on-chocolate.md)).
 
-**Nightly Coverage `merge-and-deploy` red on the Pages size budget** (from 2026-11-05): `Verify coverage Pages publication` goes red when shader-slang/slang-coverage-reports fails `pages.yml` at `Stage published reports` (`tools/stage-pages.py`: `MAX_CONTENT_BYTES` = 950,000,000, tar bound `MAX_ARCHIVE_BYTES` = 1e9, warning at 800 MB; first trip 950.55 MB, filed as slang-coverage-reports#5). Not code, and it will not self-clear. 950.4 MB of the staged bytes are the 8 `reports/latest/{linux,macos,windows}/new/{full,slangc}` and `merged/{full,slangc}` views; history adds ~0.4 MB, so retention pruning (`cleanup-old-reports.sh`) shrinks the Git repo but not the Pages number. Growth is ~0.8 MB/day. Measure without a checkout by summing blob sizes per view from `gh api repos/shader-slang/slang-coverage-reports/git/trees/<reports/latest sha>?recursive=1`; per-night staged sizes are the `Pages content:` lines of `gh run view <id> --log` on pages.yml runs, and the served marker is https://shader-slang.org/slang-coverage-reports/reports/publication.json [Pages budget](../learnings/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md).
+**Nightly Coverage `merge-and-deploy` red on the Pages size budget** (from 2026-11-05): `Verify coverage Pages publication` goes red when shader-slang/slang-coverage-reports fails `pages.yml` at `Stage published reports` (`tools/stage-pages.py`: `MAX_CONTENT_BYTES` = 950,000,000, tar bound `MAX_ARCHIVE_BYTES` = 1e9, warning at 800 MB; first trip 950.55 MB, filed as slang-coverage-reports#5). Not code, and it will not self-clear: upload and deploy are skipped, so the public site freezes at the last good report (red 4 nights, 11-05..11-08). The slang-side log says only "Pages run <url>: completed with failure" while all three `coverage-*` jobs are green, so triage in the other repo: `gh run list --repo shader-slang/slang-coverage-reports` for the history, then `gh run view <run> --repo shader-slang/slang-coverage-reports --json jobs` for the failing step (`deploy` › `Stage published reports`); file there, never against slang ([Pages triage recipe](../learnings/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md)). 950.4 MB of the staged bytes are the 8 `reports/latest/{linux,macos,windows}/new/{full,slangc}` and `merged/{full,slangc}` views; history adds ~0.4 MB, so retention pruning (`cleanup-old-reports.sh`) shrinks the Git repo but not the Pages number. Growth is ~0.8 MB/day. Measure without a checkout by summing blob sizes per view from `gh api repos/shader-slang/slang-coverage-reports/git/trees/<reports/latest sha>?recursive=1`; per-night staged sizes are the `Pages content:` lines of `gh run view <id> --log` on pages.yml runs, and the served marker is https://shader-slang.org/slang-coverage-reports/reports/publication.json [Pages budget](../learnings/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md).
 
 **JSON-RPC failure** (`waitForResult()`/`hasMessage()`): the test-server child died mid-test (stdio EOF), a crash symptom, not an RPC-infra bug; since PR #11753 fixed the `runUnitTestModule()` stale-pass bug, crashing unit tests record failure instead of silently passing ([JSON-RPC crash](../learnings/1782407732117-slang-ci-json-rpc-failure-on-a-unit-test-test-serv.md)). The surface conflates (a) a genuine harness flake (CPU concurrency on aarch64), (b) GPU device-loss/faulty ICD killing the worker, and (c) the PR's own consistently failing test; dedup by run id and exclude (b) and (c) from the harness-flake count ([dedup by run id](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)).
 
@@ -85,7 +85,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 is a SPIRV-Tools assert flake.** It fails only on `test-macos-debug-clang-aarch64 / test-slang` with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` (SPIRV-Tools, via debug-info SPIR-V emission); slang-test's auto-retry doesn't always clear it. If it is the only failure and the PR doesn't touch debuginfo/SPIR-V emit, rerun `--failed` (≤3×); if it reproduces across reruns, report a pre-existing platform issue rather than block (PR #12504, run 34891043815) ([do-while flake](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (33):**
+**Source learnings (34):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [Benign DWARF ld-note can mask the real undefined-reference cause](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -119,5 +119,6 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [Bot CI priority-yield + classifying failures on a pure-Python PR](../learnings/1790019959011-slang-bot-ci-priority-yield-classifying-ci-failure.md) — Python+format green ⇒ infra/master
 - [via-GLSL expected-failure lists differ per workflow](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md) — key needed in both -github and -via-glsl lists
 - [Nightly Coverage red = slang-coverage-reports Pages 950 MB budget; bytes are in reports/latest views, history pruning doesn't help](../learnings/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md)
+- [Nightly Coverage red at 'Verify coverage Pages publication' = external Pages staging over 950 MB](../learnings/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md) — slang log is opaque; read slang-coverage-reports runs; site frozen
 
 _Catalog: [[wiki/index.md]]_

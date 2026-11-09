@@ -3,7 +3,7 @@ title: "Slang variadic packs: expand, each, pack queries and where they fold (AS
 type: concept
 group: slang-language-core
 tags: [slang, variadic-generics, type-pack, value-pack, expand, each, countof, ExpandType, ExpandTypeOrVal, kIROp_Expand, lowerExpandType, maybeSpecializeCountOf, getPackBranchCardinality, maybeSpecializeExpand, visitEachExpr, tryConstantFoldExpr, EachIntVal, ExpandIntValPack, __trimFirst, __trimLast, __packBranch, getPackCardinalityFromStructure, E30105, E39999]
-source_count: 5
+source_count: 8
 ---
 
 # Slang variadic packs: expand, each, pack queries and where they fold (AST vs IR)
@@ -16,7 +16,8 @@ folder), or in IR specialization (`slang-ir-specialize.cpp`). The pack bugs foun
 #14297, and the reviews of #14313 and PR #14314) mostly came from one layer answering early with an incomplete
 model of `expand`.
 This page records where each decision is made, the bugs found at each layer, and the testing traps
-that hid them. Printf/abort packs are on [[wiki/concepts/slang-compiler-printf-and-abort-variadic-arguments.md]];
+that hid them; the last two sections give the user-facing limits of writing variadic functions on
+release v2026.21 (constraints, element-wise relations, recursion). Printf/abort packs are on [[wiki/concepts/slang-compiler-printf-and-abort-variadic-arguments.md]];
 empty-pack inference (#11210) is on [[wiki/concepts/slang-language-core-f0909b0-generics-overload-inference.md]].
 
 ## TL;DR
@@ -33,6 +34,10 @@ empty-pack inference (#11210) is on [[wiki/concepts/slang-language-core-f0909b0-
 - **Pack tests need order-sensitive folds.** `sum`/`countof` give the same answer for any element order, so swapped `__trimFirst`/`__trimLast` still pass. Fold with `a = a*100 + b` over pairs.
 - **`-output-using-type` CHECK trap:** the first output line is `type: int32_t`, so `CHECK: 3` matches inside it. Start with `CHECK: type: int32_t`, then `CHECK-NEXT`.
 - **`-dump-ir` does not print an `Expand`'s capture operands.** Compare the dump before and after `specializeModule` to see where a fold happened.
+- **Writing variadic functions (v2026.21):** pack constraints apply per element; use `func f<each U>(args: expand Box<each U>) where U : IScalar` (C-style signatures mis-parse `<`); no generic param after a pack (E30522); one `where` per constraint (E20001).
+- **Element-wise relations between two packs (`T[i] : IThing<U[i]>`) are not expressible.** Put the information in an `associatedtype` bounded inside the interface and read `(each T).U`.
+- **An interface-typed pack parameter (`expand IThing<each U>`) whose elements are used segfaults** slangc and slangi.
+- **Recurse in types, not values.** A trimmed pack loses `nonempty` (E30440); use `expand` maps, an accumulator inside `expand`, or `__packBranch` recursive types with both branches conforming to one interface.
 
 ## Where a pack query is decided: check LOWER-TO-IR before blaming an IR list
 
@@ -105,9 +110,63 @@ the PR test still passed. Use an order-sensitive fold (`a = a*100 + b`) on pairs
 first output line is `type: int32_t`, so a first `CHECK: 3` matches the "3" in `int32_t`; start with
 `CHECK: type: int32_t`, then use `CHECK-NEXT` [captured packs of different lengths are never compared](../learnings/1793820351955-slang-expand-captured-packs-of-different-lengths-a.md).
 
-**Source learnings (5):**
+## Constraining pack elements: what v2026.21 can and cannot express
+
+These are user-facing answers, measured by compiling with a release slangc/slangi v2026.21 (the
+linux-x86_64 tarball from the GitHub release gives a working `slangc` in about 10 s; docs, repo tests and
+compiler runs were an adequate substitute when DeepWiki was hook-blocked).
+
+A constraint on a type pack applies per element: `where T : IFoo` and `where T : IThing<float>` on
+`each T` are enforced for every element. To keep the generic arguments of each argument's type, use the
+modern declaration syntax, `func f<each U>(args: expand Box<each U>) where U : IScalar`. The C-style form
+`float f<each U>(expand Box<each U> args)` mis-parses the `<` as less-than (E39999 "no overload for <").
+`Box<each U>` also needs `U : IScalar` restated in the `where` clause, or it fails E38029 "each U does not
+conform". A single shared parameter before the pack works (`<U, each T> where T : IThing<U>`); a generic
+parameter after a pack is E30522. Several constraints need separate `where` keywords, not commas
+(E20001). Value-pack inference from `Arr<each T, each N>` fails (E30019), but explicit arguments
+(`f<float,float,2,3>(a,b)`) work [inner generic args of pack elements](../learnings/1794150948259-slang-variadics-keeping-inner-generic-args-of-pack.md).
+
+An element-wise relation between two packs (`T[i] : IThing<U[i]>`) cannot be written. `where T : IThing<U>`
+reads `U` as the whole pack, that is one interface `IThing<int, float>`; `where expand each T : IThing<each U>`
+and the inline `<each T : IThing<each U>, each U>` are E30104; and an adapter struct
+`AsThing<U, T : IThing<U>>` expanded over the packs is E38029. Constraints on an associated type of a pack
+element through a `where` clause (`where T.Elem : IFancy`, `T.Elem == float`) fail with E30027/E30440
+[inner generic args of pack elements](../learnings/1794150948259-slang-variadics-keeping-inner-generic-args-of-pack.md).
+What works is to move the information into the interface: declare `associatedtype U : IScalar` with its
+bound inside the interface and read it per element as `(each T).U`, for example
+`-> Tuple<expand (each T).U>` returning `makeTuple(expand (each args).get())` (slangi prints `1 2.500000`)
+[associatedtype route for generic-interface info](../learnings/1794152721648-slang-variadics-associatedtype-route-for-generic-i.md).
+
+An interface-typed pack parameter crashes. `func f<each U>(args: expand IThing<each U>) { expand (each args).get(); }`
+segfaults (exit 139) in both slangc and slangi, while the same signature with an empty body or only
+`countof(U)`, or a non-pack `IThing<U>` parameter, is fine. No upstream issue existed on 2026-11-08 (a draft
+is in the support agent's memory); it differs from the #12796 different-arity segfault above
+[associatedtype route for generic-interface info](../learnings/1794152721648-slang-variadics-associatedtype-route-for-generic-i.md).
+
+## Recursion over packs: recurse in types, not in values
+
+Head/tail recursion over pack VALUES is blocked on v2026.21. A function `f<each T>(args) where nonempty(T)`
+that calls itself with `expand each __trimFirst(args)` fails E30440, because `nonempty(T)` cannot be proven
+for the trimmed pack. A forwarded `nonempty` survives only for the same pack
+(`tests/language-feature/generics/variadic-pack-query-nonempty-forwarding.slang`), and a trimmed pack can
+only be forwarded to a callee that accepts an empty pack (`variadic-pack-query-pack-conformance.slang`).
+The same reason stops building a recursive node from a pack of arguments. Separately, with return type
+`Tuple<expand (each T).U>`, `concat(makeTuple(head.get()), makeTuple(expand (each __trimFirst(args)).get()))`
+is E30019 even without recursion: the checker does not re-associate `__first`/`__trimFirst` into the whole
+pack. Test the non-recursive form before blaming such a mismatch on the recursion.
+
+The working shapes are `expand` as a map; a fold through a local accumulator inside the expansion
+(`expand (acc += ...)`); and recursive TYPES built with
+`__packBranch(Tail, Empty, Node<__first(Tail), __trimFirst(Tail)>)`, where both branches conform to one
+interface (otherwise `rest.sum()` is E30027). The type-recursion form was verified in slangi (`6.5`)
+[head/tail recursion over pack values is blocked](../learnings/1794154848910-slang-packs-head-tail-recursion-over-pack-values-i.md).
+
+**Source learnings (8):**
 - [Slang variadic packs: check LOWER-TO-IR before blaming an IR pack-cardinality list](../learnings/1793819033261-slang-variadic-packs-check-lower-to-ir-before-blam.md) — #14313: AST folds `__packBranch`/trims first; positional-operand counting in AST helpers; slangi `.slang-module` tip
 - [IR countOf folds TupleType(Expand) early — bail-out lists must include kIROp_Expand](../learnings/1793810978051-ir-countof-folds-tupletype-expand-early-bail-out-l.md) — #14297: `lowerExpandType` → `kIROp_Expand`; `expand each T` reduces to `T`; compare around `specializeModule`
 - [Value-pack `each` only handles a bare DeclRefExpr operand (#14296)](../learnings/1793811048051-value-pack-each-only-handles-a-bare-declrefexpr-op.md) — `visitEachExpr` + `tryConstantFoldExpr` limits; E30105/E39999; worktree submodule tip
 - [Value-pack `each` capture: a local that holds a pack does not constant-fold](../learnings/1793815993642-value-pack-each-capture-a-local-that-holds-a-pack-.md) — PR #14314 keeps the declref capture fallback for `let p = S`
 - [Slang expand: captured packs of different lengths are never compared](../learnings/1793820351955-slang-expand-captured-packs-of-different-lengths-a.md) — length from capture 0; silent count or segfault; order-sensitive folds; `type: int32_t` CHECK trap
+- [Slang variadics: keeping inner generic args of pack elements, and what v2026.21 cannot express](../learnings/1794150948259-slang-variadics-keeping-inner-generic-args-of-pack.md) — per-element where; modern syntax; E30522/E20001/E30019; element-wise relation impossible
+- [Slang variadics: associatedtype route for generic-interface info; interface-typed pack param crashes](../learnings/1794152721648-slang-variadics-associatedtype-route-for-generic-i.md) — `(each T).U` works; `expand IThing<each U>` param segfaults
+- [Slang packs: head/tail recursion over pack VALUES is blocked; recurse in types with __packBranch](../learnings/1794154848910-slang-packs-head-tail-recursion-over-pack-values-i.md) — E30440 nonempty lost on trim; E30019 no re-association; `__packBranch` recursive types

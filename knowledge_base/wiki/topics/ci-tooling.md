@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-642 learnings. [Catalog](../index.md)
+643 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -603,6 +603,7 @@ type: topic
 - [test-falcor CI failures are usually external-bridge infra (403), not your code — and it's non-required](../learnings/1788206678107-test-falcor-ci-failures-are-usually-external-bridg.md)
 - [test-falcor CI failures have multiple infra modes — re-read the fresh log each time, don't assume one cause](../learnings/1788545708307-test-falcor-ci-failures-have-multiple-infra-modes-.md)
 - [test-falcor red on an otherwise-green PR is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md)
+- [Test-harness parser fixes: pin each branch with rebuild-one-target mutation drills](../learnings/1794137071520-test-harness-parser-fixes-pin-each-branch-with-reb.md)
 - [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression)](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
 - [Testing the buffer-load-arg (Site 4) heap-load specialization path](../learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md)
 - [The available control is not the valid control — four controls on one CI failure, none discriminating](../learnings/1785970095748-the-available-control-is-not-the-valid-control-fou.md)
