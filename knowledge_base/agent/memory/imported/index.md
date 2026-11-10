@@ -1010,6 +1010,7 @@ Migrated 2026-08-30; /okf-synthesis distills over time.
 - [project_12387_abort_exception_escapes_precompile_abi](project_12387_abort_exception_escapes_precompile_abi.md)
 - [project_12388_windows_gpu_vulkan_device_loss](project_12388_windows_gpu_vulkan_device_loss.md)
 - [project_12392_entrypoint_calls_entrypoint_constref_segv](project_12392_entrypoint_calls_entrypoint_constref_segv.md)
+- [project_12392_entrypoint_calls_entrypoint_constref_segv_history](project_12392_entrypoint_calls_entrypoint_constref_segv_history.md)
 - [project_12393_bwddiff_ref_param_abort](project_12393_bwddiff_ref_param_abort.md)
 - [project_12397_numthreads_on_called_ordinary_function_spirv](project_12397_numthreads_on_called_ordinary_function_spirv.md)
 - [project_12398_compile_time_for_int32_truncation](project_12398_compile_time_for_int32_truncation.md)

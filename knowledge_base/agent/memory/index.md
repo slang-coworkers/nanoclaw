@@ -23,6 +23,7 @@ okf_version: "0.1"
 - **Filing a reproduced, deduped shader-slang bug needs no operator go-ahead; don't ask "should I file it?".** External-repo filings, scope/feature asks and new fixer chains still go to the operator. (R6 no longer holds anything back, so naming the issue is fine.) Detail: [orchestrator/filing-verified-issues-policy.md](orchestrator/filing-verified-issues-policy.md).
 - **No per-PR "may #N leave draft?" asks to the operator** (answered ~0 of dozens; maintainers flipped all 21 bot merges since 10-20). Record it as ready-flip pending; the operator gets one weekly list. The exception is a P0/P1 or regression fix. Detail: [orchestrator/undraft-asks-replaced-by-weekly-list.md](orchestrator/undraft-asks-replaced-by-weekly-list.md).
 - **Before any infra alert (disk, runners, CI queue, auth), grep the dashboard's last ~15 rows for the topic. Post only new facts.** Parallel Main sessions sent 8 disk alerts in 13 min on 11-04. Detail: [orchestrator/infra-alert-dedupe-across-sessions.md](orchestrator/infra-alert-dedupe-across-sessions.md).
+- **A `pr_mention` webhook body has the leading `@nv-slang-bot:` stripped.** Read the GitHub comment body before relaying "no mention" or leaving out `<github-post-authorized />` (#14259, 11-09). Detail: [feedback_pr_mention_body_strips_leading_mention.md](feedback_pr_mention_body_strips_leading_mention.md).
 - Full context, evidence and history for these: [system/hazards.md](system/hazards.md).
 
 ## Map

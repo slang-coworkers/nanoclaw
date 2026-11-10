@@ -92,7 +92,7 @@ Project macOS CI (run 40862424323) still yielded. At 11:5xZ I told the dashboard
 (19:12:27Z) with 8 inline comments and a request to resolve conflicts. I checked: `CONFLICTING`, review requests to kaizhangNV + `dev` team, head still
 18cc8ac929. The fixer merged master locally (stable name 910, writer version 39), applied all 8 comments and is rebuilding, ~25 min, not pushed yet.
 **Operator decision resolved and moot.** I removed it from supervisor-state `_meta.operator_decisions` and the weekly ready-flip list, added a `_operatorDecisionsPending.resolved` row, and set the chain to `in_review`.
-I told the triager that the fixer must not "re-request review" ([[feedback_fixers_cannot_request_reviewers]] is in the root store): it should @-mention jkwak-work in a PR comment after the push.
+I told the triager that the fixer must not "re-request review" ([feedback_fixers_cannot_request_reviewers](../feedback_fixers_cannot_request_reviewers.md) is in the root store): it should @-mention jkwak-work in a PR comment after the push.
 The PR is now non-draft, so check approver `paused` before any approver routing.
 
 **11-05 20:10Z: head 1c506c7adf**, checked by me. Non-draft, MERGEABLE, mergeStateStatus BLOCKED. The fixer's reply cmt 6668082639 (20:08:13Z) @-mentions jkwak-work

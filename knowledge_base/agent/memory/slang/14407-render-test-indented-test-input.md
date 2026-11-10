@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14407 — render-test ignores indented `//TEST_INPUT:` lines
-description: Human-filed (albertrodriguezclo, CONTRIBUTOR) tooling bug 2026-11-08 10:07:39Z. `shader-input-layout.cpp` parse() tests `line.startsWith("//")` before trimming, so an indented TEST_INPUT is silently skipped; the param is unbound (vk/mtl read 0, -cpu segfaults slang-test). Dispatched to slang-triager 11-08 ~10:10Z.
+description: Human-filed (albertrodriguezclo, CONTRIBUTOR) tooling bug 2026-11-08 10:07:39Z. `shader-input-layout.cpp` parse() tests `line.startsWith("//")` before trimming, so an indented TEST_INPUT is silently skipped; the param is unbound (vk/mtl read 0, -cpu segfaults slang-test). Dispatched to slang-triager 11-08 ~10:10Z. MERGED 11-09 as PR #14411 (4da025571); #14409 follow-up is maintainer-owned.
 tags: [render-test, test-tooling, test-input, metal, vulkan, cpu]
 ---
 
@@ -36,7 +36,7 @@ slang-test does, plus a cpu/vk/cuda regression test (no tracked test changes). A
 `reproduced`): render-test runs with unbound resource params, and `-cpu`/`-cuda` then crash slang-test in-process
 (render-test-main.cpp:947-960 never checks that every param is bound). **Owned by this chain, so its issue_opened needs
 NO dispatch.** It is split out because of its larger blast radius: some tests may rely on vk reading 0 from an unbound
-buffer, so it needs a full-suite run. Fixer chain for #14409: **offered to the operator 11-08**, not opened. Re-check: one-shot `recheck-14409-operator-chain` 11-11 10:20Z.
+buffer, so it needs a full-suite run. Fixer chain for #14409: **offered to the operator 11-08**, not opened. Re-check: one-shot `recheck-14409-operator-chain` 11-11 10:20Z (cancelled 11-09: moot, see below).
 **Draft PR [#14411](https://github.com/shader-slang/slang/pull/14411) (11-08 ~10:48Z, verified).** "render-test: accept
 indented and /// TEST_INPUT directives", branch `fix/issue-14407`, head `8f77b57`, draft, body has "Fixes #14407".
 pr-mapping → fixer session `sess-1794132916394-9erno5`. Fixer status comment 6720572160 (10:51:52Z). Triager relays the
@@ -55,5 +55,18 @@ finish. The verdict reached the fixer (its row 18); I received CC copies of the 
 a back-pointer comment in `slang-test-main.cpp`; new test `tests/compute/entry-point-uniform-params-indented-test-input.slang`.
 CI run **42475701068** on 6daf450 (`waiting` at 11:30Z; only macOS CI runs the metal lane). Explanation comment updated.
 **Ready-flip pending** (weekly operator list, no per-PR ask); a maintainer review is needed; jkwak-work is shepherd.
-⇒ **NEXT:** CI 42475701068; a maintainer review on #14411. Then the triager's `[Triage Resolution]`. Ready-flip pending: weekly list, no
+**11-09 17:44Z: jkwak-work APPROVED #14411** (review 5830117449, "Looks good to me", verified) **and marked it ready**
+(verified isDraft=false), so it is off the weekly ready-flip list. Head is still 6daf450; the `pull_request` CI is queued.
+The 3 `pull_request_target` runs (PR Maintenance, Claude PR Review, CI SlangPy Trigger Test) ended `startup_failure`.
+That is **repo-wide, not this PR**: every `pull_request_target` run on every PR has failed since 16:21Z 11-09, the last
+success was 15:10Z, master `.github` is unchanged since 11-06, githubstatus shows no incident, and the actions-permissions
+API returns 403 to us. Alerted the operator on the dashboard 11-09 ~17:50Z (first alert; none in the dashboard's prior
+40 rows).
+**11-09 ~20:2xZ: approver `ready_for_review` webhook NOT forwarded** — slang-pr-approver is paused=1; queued in `data/approver-pause-queue.md` at head 6daf450 (CI 53 pass, 1 pending, 0 fail). One-line note to the dashboard.
+**MERGED 11-09 21:57:57Z** by jkwak-work (merge commit `4da025571`, verified); #14407 closed `completed` 21:57:58Z.
+The fixer updated the issue status comment in place and removed worktree `wt-slang-14407` and the claim marker.
+**#14409: jkwak-work self-assigned it 11-09 17:38Z** (`assigner`=jkwak-work on /events, verified). That is rung 4: no bot
+fixer chain, and my 11-08 operator ask is withdrawn (told the dashboard 11-09).
+⇒ **TERMINAL.** Nothing left for the bot on #14407. #14409 is maintainer-owned; act only on an @nv-slang-bot mention or an
+operator ask. Then the triager's `[Triage Resolution]`. Ready-flip pending: weekly list, no
 per-PR ask. The operator's ruling on a #14409 chain (re-check 11-11).

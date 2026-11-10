@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14053 — overloaded same-name `[shader("compute")]` entry points emit invalid CUDA/Metal/SPIR-V with no diagnostic
-description: Human-filed (albertrodriguezclo) bug 2026-10-29, P2. Bot DRAFT PR #14221 review-complete, master merged 11-05 16:55Z (head c429a3999, MERGEABLE); ready-flip pending on the weekly list; r2 re-chase 11-09 12:00Z. Owns side issues #14228/#14229/#14230 (no dispatch).
+description: Human-filed (albertrodriguezclo) bug 2026-10-29, P2. Bot DRAFT PR #14221 review-complete (head c429a3999, MERGEABLE, 16 behind, no conflict). Ready-flip pending; the 11-09 weekly list left it out (25-row cap), so it carries to the 11-16 list. Parked after r2 (11-09), no timer. Owns side issues #14228/#14229/#14230 (no dispatch).
 tags: [entry-points, diagnostics, cuda, metal, spirv, bug]
 ---
 
@@ -24,16 +24,16 @@ is valid SPIR-V, so the rule is target-aware. **Approach C (chosen):** a link-ti
 (slang-ir-entry-point-decorations.cpp:25), plus an `-entry` ambiguity error. A (front-end error) breaks API users who compile
 one overload; B (renaming) conflicts with #13264. Related: #13882 (entry-point identity redesign), #12392/#12721, #7473, #13264.
 
-## State (11-05 16:55Z)
+## State (11-09 12:00Z, r2)
 
 | item | state |
 |---|---|
 | GitHub | OPEN, Type=Bug, `reproduced`; assignee jkwak-work (a shepherd assignment by jhelferty-nv 11-02, not a stand-down). Bot triage comment 6589648302 (offers the draft PR; links #14228) |
-| PR | **#14221** DRAFT, `fix/issue-14053`, head c429a3999 (merge 5e3cd0e69 with master 04d2726db), MERGEABLE (verified). CI run 42067743915 gated at `wait-for-human-priority`. Explanation comment 6592904573 |
+| PR | **#14221** DRAFT, `fix/issue-14053`, head c429a3999 (merge 5e3cd0e69 with master 04d2726db). 11-09: `mergeable_state=behind`, 16 behind master, no conflict (verified). CI run 42067743915 gated at `wait-for-human-priority`. Explanation comment 6592904573 |
 | Fix | E38016 `checkEntryPointNamesAreUnique` (SPIR-V per execution model, CUDA includes the OptiX prefix; GLSL, Slang VM, non-compute LLVM and a renamed `main` exempt); E38017 `-entry` ambiguity via `findFunctionDeclsByName`. 9 new tests; 38/38 PR lanes, 3477/3477 subset (the fixer's figures) |
 | Review | R1/R2 REQUEST_CHANGES (fixed), **R3 APPROVE_WITH_NITS** (nits applied) — review complete |
-| Gate | **ready-flip pending on the weekly list** (`weekly-undraft-list-4573`, Mon 09:00Z); no per-PR un-draft ask (P2, not a regression) |
-| Timer | `rechase-slang-14053-r2-3f30` 2026-11-09 12:00Z (re-chase 2 of max 3) |
+| Gate | **review-complete bot draft, ready-flip pending: belongs on the 11-16 weekly list** (`weekly-undraft-list-4573`, Mon 09:00Z). The 11-09 list (dashboard seq 511974) left it out under its 25-row oldest-first cap. No per-PR un-draft ask (P2, not a regression) |
+| Timer | none. Parked after r2 (11-09); the weekly list is the register. No r3: no fixer push or maintainer reply is pending |
 | Sessions | fixer `sess-1793657193763-f9uw61` (pr-mapping owner); triager thread session `sess-1793310892824-ykqeww`; thread `gh-issue-shader-slang/slang-14053` |
 
 ## Side issues owned by this chain (their `issue_opened` webhooks need no dispatch)

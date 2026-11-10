@@ -138,3 +138,11 @@ dispatch and no bot post; resume only on an @nv-slang-bot mention or an operator
   change with it (`special-macro-redefine-function.slang`, and `special-macro-redefine-object.slang`,
   already on master with its `filecheck=` line disabled). Live `assignees` read **before** routing
   (the #14333 lesson). Held, no dispatch, no post. Resume on an @nv-slang-bot mention or an operator ask.
+- **2026-11-09, #14421** (jhelferty-nv, MEMBER; SPIR-V: `BFloat16` in storage buffers does not request
+  `UniformAndStorageBuffer16BitAccess`/`StorageBuffer16BitAccess`, because `kIROp_BFloat16Type` is missing
+  from the 16-bit group of `checkTypeNeedsStorageCapability` in `slang-emit-spirv.cpp`; FP8 side question
+  for the 8-bit group). Self-assigned 14 s after filing (17:56:43Z → 17:56:57Z, `/events`
+  assigner = actor = author), 0 comments, no labels, no PR. Body names cause, a one-line fix and the test
+  to add. It is a side find from their review of our slangpy#1261 (bot PR, slangpy-fixer, chain
+  [[slangpy-1260-torch-bfloat16-dtype]]). Same pattern as #13747–#13749/#13758/#13838. Live `assignees`
+  read before routing. Held, no dispatch, no post. Resume on an @nv-slang-bot mention or an operator ask.

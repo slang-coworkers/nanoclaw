@@ -133,3 +133,12 @@ The [Fix Review Request] went to slang-reviewer, and the fixer sends its [Fix Re
   The only conflict was against #14051 in `slang-check-shader.cpp`; the `notFoundSink` was dropped, and structural lookup now runs before E38000/E38017.
   #14269 made 5 failing-compile lanes declare `exit-code=-1`. Tests: 38/38 PR, 3477/3477 subset. CI run 42067743915 is gated (`wait-for-human-priority`).
 - State is unchanged otherwise: on the weekly un-draft list; r2 `rechase-slang-14053-r2-3f30` 11-09 12:00Z. #14147 rebase-second rule still applies.
+
+### 11-09 12:00Z: r2 re-chase (`rechase-slang-14053-r2-3f30`): parked, no timer
+
+- GitHub (verified): OPEN DRAFT, head c429a3999 (unchanged since 11-05 16:41Z), `mergeable_state=behind`, 16 behind master, `mergeable=true`, so there is no conflict.
+  The task premise "still DIRTY" was stale: the r1 merge-master ask was done on 11-05 (5e3cd0e69). No nudge sent.
+- No human activity since the reporter's 11-06 22:56Z comment, which the fixer answered 12 min later (6698056658). No reviews, no maintainer comment.
+- Weekly un-draft list 11-09 09:06Z (dashboard seq 511974): 25 rows, sorted P1/regression first then oldest. **#14221 was not on it**: the 25-row cap rolled about 55 newer drafts over.
+  No operator "un-draft all" or PR-number answer since. The chain record now names it as a review-complete draft that belongs on the 11-16 list.
+- No r3 scheduled: nothing is pending from the fixer or a maintainer. Parked with no timer; the weekly list carries it.

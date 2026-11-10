@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14075 — explicit generic associated-type equality does not satisfy an interface `__constraint` requirement (E38029)"
-description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-30 00:19:34Z, found during portable-RT work. Triaged bug/medium/P2/frontend; NOT #13509's cause (equality-side sort in checkGenericTypeEqualityConstraintSubType + one-way isSubtype). Bot triage comment 6592159047 posted 11-03 00:33Z; `reproduced` + Type=Bug verified. Parked on the reporter's go-ahead (bot draft PR vs self-fix); triager one-shot t-567683 runs 11-10 00:30Z.
+description: Human-filed by kaizhangNV (MEMBER, self-assigned) 2026-10-30 00:19:34Z, found during portable-RT work. Triaged bug/medium/P2/frontend; NOT #13509's cause (equality-side sort in checkGenericTypeEqualityConstraintSubType + one-way isSubtype). Bot triage comment 6592159047 posted 11-03 00:33Z; `reproduced` + Type=Bug verified. Parked on the reporter's go-ahead (bot draft PR vs self-fix); t-567683 re-check 11-10: still silent, milestoned Q1 2027; maintainer-driving, no further timer.
 tags: [frontend, conformance, associated-type, equality-constraint, r6]
 resource: /workspace/agent/reports/triage/triage-14075.md
 ---
@@ -50,3 +50,10 @@ I verified it, the `reproduced` label and Type=Bug live. No reporter fix PR: the
 #14075 as a known issue, and #14051 adds PortableRT hooks only. Next: the reporter chooses a bot draft PR (Approach A) or a self-fix.
 One-shot **t-567683** runs 2026-11-10 00:30Z. No slang-fixer until the reporter agrees.
 (Hindsight: the 4-day R6 hold in my 10-30 dispatch was the stale #1993-draft rule, retired 11-02; see Core Memory.)
+
+**t-567683 re-check (11-10 00:31Z; triager's report, verified live by me).** Still open, still 1 comment (the bot's),
+labels `reproduced` + Type=Bug, assignee kaizhangNV. Only new event: jkwak-work milestoned it **Q1 2027 (Winter)** on
+11-04. No PR references #14075. The triager posted nothing and scheduled nothing. **No further timer:** the reporter is a
+self-assigned maintainer and the issue has a milestone, so this is maintainer-driving; a human comment arrives by
+webhook. On a go-ahead, the triager hands off to slang-fixer on `gh-issue-shader-slang/slang-14075` (draft in its
+`issues/comment-14075.md`, worktree `wt-14075`). The parked-chain register entry in `supervisor-state.json` is the timer.

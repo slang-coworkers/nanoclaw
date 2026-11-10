@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14037 — `-target cuda` source using `half` needs a manual `-DSLANG_CUDA_ENABLE_HALF` for nvcc
-description: Human-filed (albertrodriguezclo) bug 2026-10-29 17:10:21Z, cloth-sim batch. Triaged bug/medium/P2, reproduced (nvcc 12.6, sm_89). Fixed by slang-fixer (approach A); DRAFT PR #14194 (head baef466b5, R2 approve-with-nits, nits applied) waits on a maintainer to apply the CI-workflow hunk and on the operator to un-draft. Triage comment 6583466378.
+description: Human-filed (albertrodriguezclo) bug 2026-10-29 17:10:21Z, cloth-sim batch. Triaged bug/medium/P2, reproduced (nvcc 12.6, sm_89). Fixed by slang-fixer (approach A); DRAFT PR #14194 (head baef466b5, R2 approve-with-nits, nits applied) waits on a maintainer to apply the CI-workflow hunk and on the operator to un-draft; 11-09 re-check found an unanswered reporter comment, fixer dispatched. Triage comment 6583466378.
 tags: [cuda, prelude, half, emit, r6, 14196, 14199]
 ---
 
@@ -105,4 +105,17 @@ and dispatches nothing unless jkwak-work asks. On 11-05 the dashboard asked for 
 **Next.** The R2 nits are done. The remaining steps are human: a maintainer commits `fix-14037-ci-step.patch` (`workflows` permission), and the operator un-drafts; the triager edits comment 6583466378 for the PR. Un-drafting is the operator's call (drafts-only).
 Owners: slang-fixer (PR), slang-triager (issue comment), thread `gh-issue-shader-slang/slang-14037`.
 
-**Timer.** Main's one-shot `i14194-recheck-4c40` runs 2026-11-09 15:00Z. It re-checks #14194 against the human steps: workflow hunk, review, un-draft.
+**11-09 15:00Z re-check (`i14194-recheck-4c40`, Main verified live).** Not merged; still a draft at head baef466b5 with no new commits.
+`ci-slang-test.yml` is still not in the diff (5 files). There are 0 reviews, and jkwak-work is assigned with a pending review request. All three human steps are still open.
+**Human activity:** the reporter albertrodriguezclo commented on the PR at 11-06 22:51:58Z (comment 6697789987). They endorse the approach, ask a maintainer with `workflows` access to add the nvcc step, and will report a plain-nvcc build of their `law<half>` repro.
+Nobody answered it, because the PR mapping owner `j9up0v` is **closed**, so the comment woke no fixer session.
+→ I dispatched slang-fixer (row 19) on `gh-issue-shader-slang/slang-14037`, pinned to its chain session `sess-1793295441468-63xfrp` with `in_reply_to=2`; it landed as row 68 at 15:02:54Z.
+The ask: one reply to the reporter that points at the patch. No code, no reviewer request, no ready-flip. Per the decision table, there was no dashboard message (human activity, so row 2 applies).
+⚠️ Later PR webhooks still route to the closed `j9up0v`. An operator `pr-mappings remap` to `63xfrp` would fix that, and it is approval-gated. Not requested.
+
+**11-09 15:06Z — the fixer replied to the reporter**: comment 6743388746 (Main verified). It asks for their plain-nvcc results and says the CI step needs a maintainer with `workflows` permission.
+It links the hunk in explanation comment 6584453646. **The PR mapping is fixed:** the fixer's `report_pr_created` re-pointed #14194 to its chain session
+`sess-1793295441468-63xfrp` (thread `gh-issue-shader-slang/slang-14037`, Main verified 15:06Z), so the closed-`j9up0v` problem is gone and no remap is needed.
+
+**Next.** The steps still waiting on humans are the workflow hunk (a maintainer), review (jkwak-work), and the un-draft (the operator, on the weekly ready-flip list).
+No new timer is set: the reporter's nvcc report and any maintainer action arrive as comments on this PR.

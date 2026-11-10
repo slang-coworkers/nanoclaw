@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14071: CUDA/PTX separate-sampler SampleGrad rejected while separate-sampler SampleLevel drops the sampler"
-description: "Human request (minco3) 10-29: CUDA separate-sampler SampleGrad is E36107 while SampleLevel drops s. Preferred fix reverses jkwak-work's #13559 ruling. PARKED for jkwak-work (assignee) on A/B/C since triage comment 6591886780 (11-03); re-check t-35ef08 11-10 00:10Z. Owns spin-outs #14073 (items 1-3 merged in #14079; closed 11-06 via #14079 + #14388) and #14083 (parked)."
+description: "Human request (minco3) 10-29: CUDA separate-sampler SampleGrad is E36107 while SampleLevel drops s. Preferred fix reverses jkwak-work's #13559 ruling. PARKED for jkwak-work (assignee) on A/B/C since triage comment 6591886780 (11-03); re-checked 11-10 (no change); last one-shot t-7858dd 11-17 00:10Z, then webhooks + the supervise-issues register only. Owns spin-outs #14073 (items 1-3 merged in #14079; closed 11-06 via #14079 + #14388) and #14083 (parked)."
 tags: [cuda, texture, samplegrad, r6, maintainer-decision]
 ---
 

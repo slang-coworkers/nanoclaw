@@ -72,3 +72,5 @@ session, and the Main session that received the fixer's `[Report]` decided all f
 "siblings must NOT dispatch") at 21:50Z. I had already drafted a fixer dispatch, and I saw the record only
 because I happened to read `slang/index.md` again. ⇒ **When an issue is one of a batch a coworker has just
 filed, run `ls memory/slang/<N>-*` again immediately before sending any dispatch.**
+
+⚠️ **Watch, 2026-11-10: the shared GitHub token runs near its hourly limit (6000) in the window just before 00:00Z.** On 11-07 the babysitter saw 5967/6000 at 00:00:39Z, and one call returned a 401 `app_not_connected` just before the reset (the gateway reports a rate-limited call as "not connected"). On 11-10 it saw 5755/6000 at 00:00Z. The babysitter's own sweeps use about 50–900 calls each, so most of this load is other consumers that I can't attribute; nightly jobs are suspected. ⇒ **Treat an `app_not_connected` that comes just before a quota reset as quota exhaustion, not a lost credential.** If a coworker's GitHub write fails this way, retry after the reset before alerting. Escalate if exhaustion happens outside the 23–00Z window or blocks real work.

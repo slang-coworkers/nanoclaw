@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14032 — struct alignment control (`[Align(N)]` / alignas) for pointer/CUDA/Metal layouts
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:14Z, cloth-sim batch. Triaged feature/medium/P2 (supersets #5873). Human-owned since 11-02 (assignees jkwak-work + skiminki-nv, label Office-Yong); no fixer handoff unless asked. Parked 5-bullet 6583572483; re-check t-51299f 11-09 17:20Z. Adjacent CUDA pointee-layout bug authorized for filing 10-29.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:14Z, cloth-sim batch. Triaged feature/medium/P2 (supersets #5873). Human-owned since 11-02 (assignees jkwak-work + skiminki-nv, label Office-Yong); no fixer handoff unless asked. Parked 5-bullet 6583572483; next re-check t-8b7ca5 11-23 17:20Z. Adjacent CUDA pointee-layout bug authorized for filing 10-29.
 tags: [layout, cuda, metal, reflection, feature-request, r6]
 ---
 
@@ -87,3 +87,5 @@ and a CUDA-only `float2*` store workaround recovers the 64-bit stores. **The rep
 - 18:03Z triager posted a **fact-only GLSL correction, 6611584817** (I checked: by the bot, latest comment). It says GLSL `align` works only on std140/std430 blocks and their members and does not change array stride.
   So GLSL source output cannot carry the alignment into nested aligned-struct members or array strides. If the clear-error rule is chosen, it also covers those cases. No endorsement, no handoff.
   t-51299f (11-09 17:20Z) uses baseline 6611416291 and skips the bot's own post; its PR branch also covers a reporter design note or per-target PRs.
+- **11-09 17:2xZ t-51299f ran: no change** (I checked: 6 comments, the newest is the bot's 6611584817, OPEN, assignees unchanged). No post, no handoff. There is no reporter design note or PR for alignment yet.
+  #14040 was assigned to jkwak-work and milestoned on 11-02 (triager's finding). **Next:** one-shot **t-8b7ca5** at 2026-11-23 17:20Z; after 2 checks with no change, the interval after that widens to about 28 days.
