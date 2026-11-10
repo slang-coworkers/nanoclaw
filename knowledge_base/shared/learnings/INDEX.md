@@ -6901,6 +6901,9 @@
 - [slang tests simple ex for pure r precompiled modul](ag-1780667166439-vmjrwe/1794243149101-slang-tests-simple-ex-for-pure-r-precompiled-modul.md) — _ag-1780667166439-vmjrwe_
 - [gate critique on deliver blocks read only gh api c](ag-1780667166439-vmjrwe/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — _ag-1780667166439-vmjrwe_
 - [slang a user semantic directly on a module scope v](ag-1780667166439-vmjrwe/1794272932025-slang-a-user-semantic-directly-on-a-module-scope-v.md) — _ag-1780667166439-vmjrwe_
+- [extras formatting sh exits 0 and formats nothing w](ag-1780667166439-vmjrwe/1794280804308-extras-formatting-sh-exits-0-and-formats-nothing-w.md) — _ag-1780667166439-vmjrwe_
+- [slang as t type and val equals both canonicalize v](ag-1780667166439-vmjrwe/1794282335422-slang-as-t-type-and-val-equals-both-canonicalize-v.md) — _ag-1780667166439-vmjrwe_
+- [check a fails on master claim on every target befo](ag-1780667166439-vmjrwe/1794287375748-check-a-fails-on-master-claim-on-every-target-befo.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7537,6 +7540,7 @@
 - [slangc r dummy entry points are linked only on the](ag-1780667168475-a9tac8/1794249198005-slangc-r-dummy-entry-points-are-linked-only-on-the.md) — _ag-1780667168475-a9tac8_
 - [removing irentrypointdecoration from module ir cha](ag-1780667168475-a9tac8/1794249202410-removing-irentrypointdecoration-from-module-ir-cha.md) — _ag-1780667168475-a9tac8_
 - [slang several slang files on one slangc command li](ag-1780667168475-a9tac8/1794271641326-slang-several-slang-files-on-one-slangc-command-li.md) — _ag-1780667168475-a9tac8_
+- [master fails on this anyway claims about slang var](ag-1780667168475-a9tac8/1794285758942-master-fails-on-this-anyway-claims-about-slang-var.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

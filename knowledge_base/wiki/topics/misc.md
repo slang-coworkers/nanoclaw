@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1683 learnings. [Catalog](../index.md)
+1689 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -810,6 +810,7 @@ type: topic
 - [exported_symbols_list must not go through check_linker_flag helpers](../learnings/1787679115155-exported-symbols-list-must-not-go-through-check-li.md)
 - [extern static const link-time folding only works for bare-literal int/bool initializers (enum and non-literal get no map entry)](../learnings/1790993221985-extern-static-const-link-time-folding-only-works-f.md)
 - [extras/formatting.sh checks only root-level *.md (unquoted $@ globs the pathspec)](../learnings/1793523914446-extras-formatting-sh-checks-only-root-level-md-unq.md)
+- [extras/formatting.sh exits 0 and formats nothing when tools are missing](../learnings/1794280804308-extras-formatting-sh-exits-0-and-formats-nothing-w.md)
 - [Falcor full-duration external pipeline failure isolated by cross-PR corroboration check](../learnings/1786998078325-falcor-full-duration-external-pipeline-failure-iso.md)
 - [Falcor job can fail on EXPIRED test artifact when it runs ~24h late](../learnings/1786558246816-falcor-job-can-fail-on-expired-test-artifact-when-.md)
 - [FETCH_HEAD is mutable and a checkout of the wrong ref fails silently](../learnings/1786081698988-fetch-head-is-mutable-and-a-checkout-of-the-wrong-.md)
@@ -961,6 +962,7 @@ type: topic
 - [git worktree DOES protect against a co-tenant `reset --hard` — but `refs/stash` is shared and cross-worktree destructive](../learnings/1786044390060-git-worktree-does-protect-against-a-co-tenant-rese.md)
 - [git worktree list reports prunable from a foreign mount and the worktree is HEALTHY - never run worktree prune against a clone reached by a foreign path](../learnings/1786002315941-git-worktree-list-reports-prunable-from-a-foreign-.md)
 - [git worktree: origin/master is shared across worktrees — `git reset --soft origin/master` can silently re-parent onto a newer master](../learnings/1793398588095-git-worktree-origin-master-is-shared-across-worktr.md)
+- [GitHub "MERGED" does not prove the PR's last push landed — diff the squash tree](../learnings/1794269194512-github-merged-does-not-prove-the-pr-s-last-push-la.md)
 - [GitHub /actions/workflows paginates at 30 — a name filter on page 1 reads as "no such workflow"](../learnings/1786036886504-github-actions-workflows-paginates-at-30-a-name-fi.md)
 - [GitHub `Fixes #N` inside backticks does NOT register a closing reference — issue won't auto-close](../learnings/1787035918180-github-fixes-n-inside-backticks-does-not-register-.md)
 - [GitHub Actions 30-day waiting-run expiry shows as failure on old created_at](../learnings/1792830160449-github-actions-30-day-waiting-run-expiry-shows-as-.md)
@@ -998,6 +1000,7 @@ type: topic
 - [GitHub issue events API: on `assigned`, actor is the ASSIGNEE, assigner is who did it](../learnings/1792502659332-github-issue-events-api-on-assigned-actor-is-the-a.md)
 - [GitHub issue-linkage is a false-appearance trap in BOTH directions: query the parsed result, never read the prose](../learnings/1786417868727-github-issue-linkage-is-a-false-appearance-trap-in.md)
 - [GitHub issues filed for human maintainers must lead with a TL;DR](../learnings/1786553859095-github-issues-filed-for-human-maintainers-must-lea.md)
+- [GitHub merge-queue events do not bump a PR's updatedAt](../learnings/1794215145532-github-merge-queue-events-do-not-bump-a-pr-s-updat.md)
 - [GitHub parses "does not close #N" in a PR body as a closing keyword](../learnings/1790887966113-github-parses-does-not-close-n-in-a-pr-body-as-a-c.md)
 - [GitHub parses close/fixes keyword even inside a negation in PR bodies](../learnings/1789173822407-github-parses-close-fixes-keyword-even-inside-a-ne.md)
 - [GitHub per-file arrays truncate on EVERY endpoint — three measured on one PR; only the PR-level scalars are trustworthy for size](../learnings/1785865684637-github-per-file-arrays-truncate-on-every-endpoint-.md)
@@ -1015,6 +1018,7 @@ type: topic
 - [GitHub shows DIRTY when two branches bump the same submodule; a local merge-ort resolves it silently](../learnings/1793286210373-github-shows-dirty-when-two-branches-bump-the-same.md)
 - [GitHub sub-issues are the tracking surface; parent checkboxes are a stale mirror](../learnings/1785960849623-github-sub-issues-are-the-tracking-surface-parent-.md)
 - [GitHub sweep: merge-queue commit dates, MQ bypass, vanished AR suites, onboard auto-assign](../learnings/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md)
+- [GitHub timeline 'assigned' event: actor is the assigner, not the assignee](../learnings/1794244607697-github-timeline-assigned-event-actor-is-the-assign.md)
 - [GitHub timestamps read 1 h late on the US DST fall-back day (08:00-09:00Z)](../learnings/1793609300972-github-timestamps-read-1-h-late-on-the-us-dst-fall.md)
 - [GitHub workflow identity is keyed to file path — pin the id but cross-check via the path endpoint, which 404s loudly](../learnings/1786153514241-github-workflow-identity-is-keyed-to-file-path-pin.md)
 - [GitHub zeroes steps[] on jobs older than ~7 days — an nsteps==0 "untested" rule silently reclassifies aging failures](../learnings/1786074037902-github-zeroes-steps-on-jobs-older-than-7-days-an-n.md)
@@ -1076,6 +1080,7 @@ type: topic
 - [isDeclRefTypeOf takes Val* and does NOT canonicalize — pass getCanonicalType() to see through typealias](../learnings/1789055848395-isdeclreftypeof-takes-val-and-does-not-canonicaliz.md)
 - [isFromCoreModule excludes only the embedded core module, not standard-library modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md)
 - [Issue milestones are public, not confidential Project-board fields](../learnings/1793286449078-issue-milestones-are-public-not-confidential-proje.md)
+- [Issue Onboard failures are staff-only (iteration ID! vs String), not transient](../learnings/1794254599652-issue-onboard-failures-are-staff-only-iteration-id.md)
 - [Issue Onboard failures on Source=Internal issues = the #12982 GraphQL iteration bug](../learnings/1791361321427-issue-onboard-failures-on-source-internal-issues-t.md)
 - [Issue-closing linkage: under squash-only the PR TITLE closes issues, draft status suppresses nothing, and closingIssuesReferences is only corroboration](../learnings/1786426115544-issue-closing-linkage-under-squash-only-the-pr-tit.md)
 - [Jekyll Liquid breaks generated-doc READMEs; fix dual-render-safely at the producer](../learnings/1786564480989-jekyll-liquid-breaks-generated-doc-readmes-fix-dua.md)
@@ -1642,6 +1647,7 @@ type: topic
 - [Watch-list size checks: wc -c counts bytes, emoji roster runs ~5% over char count](../learnings/1792574037781-watch-list-size-checks-wc-c-counts-bytes-emoji-ros.md)
 - [Watch-list sweep scripts: date-shift order and partial deletions](../learnings/1794041384457-watch-list-sweep-scripts-date-shift-order-and-part.md)
 - [Watch-list sweep: quote behind/past counts at the window end, not run time](../learnings/1793868916939-watch-list-sweep-quote-behind-past-counts-at-the-w.md)
+- [Watch-list sweep: split a near-cap detail file after the day's edits (SPLITS step), not with @@NEW@@](../learnings/1794214951194-watch-list-sweep-split-a-near-cap-detail-file-afte.md)
 - [Watch-list sweep: splitting a near-cap detail file and Monday-deadline timing](../learnings/1794127463880-watch-list-sweep-splitting-a-near-cap-detail-file-.md)
 - [Watch-list: blown-ETA silence on a dispatched bot deliverable = dropped-task signal, not "still holding"](../learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md)
 - [Wave/subgroup value-correctness tests can be authored deterministically without a GPU](../learnings/1788198164522-wave-subgroup-value-correctness-tests-can-be-autho.md)

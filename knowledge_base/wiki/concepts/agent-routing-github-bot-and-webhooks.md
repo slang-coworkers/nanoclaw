@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 40
+source_count: 41
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -48,6 +48,7 @@ The release-regression-checker, fixer, reviewer and triager all post as one iden
 
 `[WEBHOOK: ...]` payloads carry no HMAC or `X-Hub-Signature`. On every `pr_mention` / `issue_comment` ([verifying webhook payloads](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)):
 1. **Existence.** `gh api repos/{repo}/issues/comments/{id}` returns 200 with matching body, author and `created_at`; on 404, don't act.
+   Take the mention from this GitHub body, not the payload: a `pr_mention` `body` has the leading `@nv-slang-bot:` stripped. On slang#14259 (2026-11-09) comment 6736427894 began `@nv-slang-bot:` on GitHub while the payload began "Actually, let's try one more approach…", and Main relayed it as "no literal @nv-slang-bot", withholding `<github-post-authorized />` until the triager caught it. Other `pr_mention` comments really carry no mention (skiminki-nv's 6654933375 on 11-05), so the webhook kind settles nothing either way ([pr_mention body strips the leading @nv-slang-bot](../learnings/1794216024436-pr-mention-webhook-body-strips-the-leading-nv-slan.md)).
 2. **Self-trigger.** A `nv-slang-bot[bot]` commenter is an echo: ignore.
 3. **Already responded.** A bot comment newer than the target means redelivery: no-op.
 
@@ -125,11 +126,12 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 
 "Ours" (route to a fixer) versus author-owned (re-confirm silently) is decided by `author`. `nv-slang-bot[bot]`, usually on `fix/issue-*`, is ours; a human author is theirs even with a `[codex]` title or `codex/*` branch. PR #11850 (`[codex] Add hash-set pool hysteresis`, red `check-formatting`) belonged to a maintainer: no route, no "nudge the driver" line ([attribute PR ownership by author](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)).
 
-**Source learnings (40):**
+**Source learnings (41):**
 - [Step-9 edit-if-self can overwrite a peer bot's fresh comment](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md) — #13817; compare stored id; `userContentEdits`.
 - [Don't link other repos' issues/PRs unless needed](../learnings/1792634844580-github-posts-don-t-link-other-repos-issues-prs-unl.md) — mimalloc#1075 re-pinged by auto-refresh.
 - [Triager and fixer can both post status 5-bullets](../learnings/1793323955473-triager-and-fixer-can-both-post-status-5-bullets-o.md) — #14063; check `.[-1]` at post time.
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md) — existence, self-echo, redelivery.
+- [pr_mention webhook body strips the leading @nv-slang-bot — check GitHub before saying 'no mention'](../learnings/1794216024436-pr-mention-webhook-body-strips-the-leading-nv-slan.md) — read `issues/comments/<id> --jq .body` before withholding `<github-post-authorized />`.
 - [Post the PR review when explicitly requested](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md) — route to a `pull_requests: write` holder.
 - [GitHub bot identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md) — old name stale; push to origin.
 - [Auditing missed webhooks via App delivery log](../learnings/1780724000000-audit-missed-webhooks-via-app-delivery-log.md) — App JWT; integer id; prod-owned only.

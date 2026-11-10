@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-1002 learnings. [Catalog](../index.md)
+1005 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -259,6 +259,7 @@ type: topic
 - [codex first reply in a fresh critique thread can be a wiki recall, not the review](../learnings/1792748776667-codex-first-reply-in-a-fresh-critique-thread-can-b.md)
 - [Codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md)
 - [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md)
+- [codex MCP: a fresh session's first answer can be a wiki recall, not the requested review](../learnings/1794239601487-codex-mcp-a-fresh-session-s-first-answer-can-be-a-.md)
 - [codex OUTPUT_REVIEW attestation must be `- <sha256> <abs path>` (hash first) or the public-comment gate refuses](../learnings/1794008715794-codex-output-review-attestation-must-be-sha256-abs.md)
 - [codex OUTPUT_REVIEW can return a recall digest instead of a verdict; hook may still record "approve"](../learnings/1793206692748-codex-output-review-can-return-a-recall-digest-ins.md)
 - [codex OUTPUT_REVIEW can return a wiki-recall digest instead of the review](../learnings/1793640100680-codex-output-review-can-return-a-wiki-recall-diges.md)
@@ -533,6 +534,7 @@ type: topic
 - [Gate refusals now go to sender not peer (PR](../learnings/legoop-project_gate_refusal_sender_only.md)
 - [gate-chain-routing hook blocks [Triage Resolution] in no-inbound one-shot runs](../learnings/1793289852768-gate-chain-routing-hook-blocks-triage-resolution-i.md)
 - [gate-chain-routing hook: a fresh [Triage handoff] to slang-fixer still needs in_reply_to](../learnings/1793312022213-gate-chain-routing-hook-a-fresh-triage-handoff-to-.md)
+- [gate-critique-on-deliver blocks read-only gh api calls on the PR REST path](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md)
 - [gate-critique-on-deliver blocks read-only gh api calls to PR REST routes](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md)
 - [gate-critique-on-deliver can block read-only `gh` PR queries as "PR creation"](../learnings/1791208209365-gate-critique-on-deliver-can-block-read-only-gh-pr.md)
 - [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)
@@ -647,6 +649,7 @@ type: topic
 - [Measured the last unmeasured mechanism - the reachability sweep is a TRIAGE ORDER, not a detector; consequence not probability](../learnings/1785964907534-measured-the-last-unmeasured-mechanism-the-reachab.md)
 - [Mechanism found for the ncl flag asymmetry: dispatcher-level flags (--id, --agent-group-id) are consumed before any verb's allowlist — and a stored rule is a hypothesis carrying an unstated scope](../learnings/1786242584790-mechanism-found-for-the-ncl-flag-asymmetry-dispatc.md)
 - [Memory-qualifier-drop diagnostic: destination-type check needed beyond an error-count gate](../learnings/1789543242916-memory-qualifier-drop-diagnostic-destination-type-.md)
+- [Merged PR headRefOid can include a commit that never landed — diff the squash tree](../learnings/1794244779281-merged-pr-headrefoid-can-include-a-commit-that-nev.md)
 - [Metal [[stage_in]] on a non-entry helper = former entry point not demoted (lowerOutParameters useCount gate)](../learnings/1790389765020-metal-stage-in-on-a-non-entry-helper-former-entry-.md)
 - [Missing-return severity is target-gated; 202c proposal moves it to language-version gating](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
 - [NanoClaw gate scripts: 30s default timeout, repo-wide counters, and misleading static "NEW match" prompts](../learnings/1790889913390-nanoclaw-gate-scripts-30s-default-timeout-repo-wid.md)

@@ -3,7 +3,7 @@ title: "Slang variadic packs: expand, each, pack queries and where they fold (AS
 type: concept
 group: slang-language-core
 tags: [slang, variadic-generics, type-pack, value-pack, expand, each, countof, ExpandType, ExpandTypeOrVal, kIROp_Expand, lowerExpandType, maybeSpecializeCountOf, getPackBranchCardinality, maybeSpecializeExpand, visitEachExpr, tryConstantFoldExpr, EachIntVal, ExpandIntValPack, __trimFirst, __trimLast, __packBranch, getPackCardinalityFromStructure, E30105, E39999]
-source_count: 8
+source_count: 9
 ---
 
 # Slang variadic packs: expand, each, pack queries and where they fold (AST vs IR)
@@ -36,7 +36,7 @@ empty-pack inference (#11210) is on [[wiki/concepts/slang-language-core-f0909b0-
 - **`-dump-ir` does not print an `Expand`'s capture operands.** Compare the dump before and after `specializeModule` to see where a fold happened.
 - **Writing variadic functions (v2026.21):** pack constraints apply per element; use `func f<each U>(args: expand Box<each U>) where U : IScalar` (C-style signatures mis-parse `<`); no generic param after a pack (E30522); one `where` per constraint (E20001).
 - **Element-wise relations between two packs (`T[i] : IThing<U[i]>`) are not expressible.** Put the information in an `associatedtype` bounded inside the interface and read `(each T).U`.
-- **An interface-typed pack parameter (`expand IThing<each U>`) whose elements are used segfaults** slangc and slangi.
+- **An interface-typed pack parameter (`expand IThing<each U>`) whose elements are used segfaults** slangc and slangi; lowering drops the expand index (`getTupleElement(%args, <null>)`).
 - **Recurse in types, not values.** A trimmed pack loses `nonempty` (E30440); use `expand` maps, an accumulator inside `expand`, or `__packBranch` recursive types with both branches conforming to one interface.
 
 ## Where a pack query is decided: check LOWER-TO-IR before blaming an IR list
@@ -142,6 +142,9 @@ segfaults (exit 139) in both slangc and slangi, while the same signature with an
 `countof(U)`, or a non-pack `IThing<U>` parameter, is fine. No upstream issue existed on 2026-11-08 (a draft
 is in the support agent's memory); it differs from the #12796 different-arity segfault above
 [associatedtype route for generic-interface info](../learnings/1794152721648-slang-variadics-associatedtype-route-for-generic-i.md).
+The lead is in lowering: `-no-codegen` exits 0, and the `LOWER-TO-IR` dump has `getTupleElement(%args, <null>)`,
+so the expand index is missing for an existential pack of a generic interface, while an `each T : IThing` pack
+gets it [`<null>` operands in LOWER-TO-IR](../learnings/1794213219752-slang-crash-triage-no-codegen-splits-checker-vs-lo.md).
 
 ## Recursion over packs: recurse in types, not in values
 
@@ -161,7 +164,7 @@ The working shapes are `expand` as a map; a fold through a local accumulator ins
 interface (otherwise `rest.sum()` is E30027). The type-recursion form was verified in slangi (`6.5`)
 [head/tail recursion over pack values is blocked](../learnings/1794154848910-slang-packs-head-tail-recursion-over-pack-values-i.md).
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [Slang variadic packs: check LOWER-TO-IR before blaming an IR pack-cardinality list](../learnings/1793819033261-slang-variadic-packs-check-lower-to-ir-before-blam.md) — #14313: AST folds `__packBranch`/trims first; positional-operand counting in AST helpers; slangi `.slang-module` tip
 - [IR countOf folds TupleType(Expand) early — bail-out lists must include kIROp_Expand](../learnings/1793810978051-ir-countof-folds-tupletype-expand-early-bail-out-l.md) — #14297: `lowerExpandType` → `kIROp_Expand`; `expand each T` reduces to `T`; compare around `specializeModule`
 - [Value-pack `each` only handles a bare DeclRefExpr operand (#14296)](../learnings/1793811048051-value-pack-each-only-handles-a-bare-declrefexpr-op.md) — `visitEachExpr` + `tryConstantFoldExpr` limits; E30105/E39999; worktree submodule tip
@@ -170,3 +173,4 @@ interface (otherwise `rest.sum()` is E30027). The type-recursion form was verifi
 - [Slang variadics: keeping inner generic args of pack elements, and what v2026.21 cannot express](../learnings/1794150948259-slang-variadics-keeping-inner-generic-args-of-pack.md) — per-element where; modern syntax; E30522/E20001/E30019; element-wise relation impossible
 - [Slang variadics: associatedtype route for generic-interface info; interface-typed pack param crashes](../learnings/1794152721648-slang-variadics-associatedtype-route-for-generic-i.md) — `(each T).U` works; `expand IThing<each U>` param segfaults
 - [Slang packs: head/tail recursion over pack VALUES is blocked; recurse in types with __packBranch](../learnings/1794154848910-slang-packs-head-tail-recursion-over-pack-values-i.md) — E30440 nonempty lost on trim; E30019 no re-association; `__packBranch` recursive types
+- [Slang crash triage: -no-codegen splits checker vs lowering; <null> operands in LOWER-TO-IR are a strong lead](../learnings/1794213219752-slang-crash-triage-no-codegen-splits-checker-vs-lo.md) — `expand IThing<each U>` segfault: `getTupleElement(%args, <null>)`, expand index missing
