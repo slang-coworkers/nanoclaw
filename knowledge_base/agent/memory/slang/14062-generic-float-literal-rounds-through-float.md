@@ -87,3 +87,4 @@ filing is in progress with the triager.
 - 11-07: ⚠️ **Coverage gap.** The #14057 triager reports that its planned warning cannot see unsuffixed generic `T(0.1)`: `T` is unknown at check time, and no conversion exists to hook. So "left to #14057" covers no one.
   If jkwak-work closes #14062 on the assumption that #14057 has it, the case is lost.
   The triager plans to propose a separate follow-up issue when a maintainer replies on #14057. Detail: [14057 record](14057-unsuffixed-float-literal-double-warning.md).
+- 11-10 02:30Z (recheck-14062-pr14218-55f1): outcome (c). #14218 is still a draft at 8762d8911, no reviews, no human comments since 11-03; #14062 has no new human comments. #14211/#14222 still have 0 comments and no linked PRs; both are self-assigned to jkwak-work (Q1 2027). Dashboard told that the chain is parked on jkwak-work and #14211/#14222 stay filed-only. Nothing more scheduled: the chain now rests on the /supervise-issues register.

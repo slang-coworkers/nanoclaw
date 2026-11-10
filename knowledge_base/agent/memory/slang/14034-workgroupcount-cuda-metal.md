@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14034 — WorkgroupCount() unavailable on CUDA (gridDim) and Metal ([[threadgroups_per_grid]])
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:17Z, same cloth-sim porting batch as #14026–#14031. Triaged feature/P2 and reproduced. Parked 5-bullet posted 11-02 17:17Z; PARKED on maintainer direction (approve Approach A? public semantic?) and on a likely reporter PR; re-check t-f136f9 2026-11-09 17:15Z.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29, P2, reproduced. Assigned to jkwak-work (by jhelferty-nv) 11-02 18:32Z, so rung 4 applies (no bot post). PARKED on jkwak-work, who is weighing the design on sibling #14148 with Yong. The FINAL one-shot re-check is 2026-11-16 17:15Z; after it there is no timer.
 tags: [cuda, metal, capabilities, system-values, feature-request, r6]
 ---
 
@@ -39,7 +39,14 @@ maintainers to decide (1) whether to approve A for cuda+metal and (2) whether to
 ⚠️ The R6 4-day hold that I put in the 10-29 dispatch was the stale rule (see the root index Core Memory, retired 11-02). Here it only delayed the
 comment and changed nothing else.
 
-**Next.** The triager's one-shot `t-f136f9` runs 2026-11-09 17:15Z. It hands off to slang-fixer only if a maintainer approves A and the reporter is not doing it.
+**11-09 re-check (t-f136f9), verified live by Main.** The bot comment 6583505566 is still the only comment. The events API shows `assigned`:
+assignee **jkwak-work**, assigner jhelferty-nv, 2026-11-02T18:32:22Z. So a maintainer owns the issue, and under rung 4 there is no bot post and no @-ping.
+Sibling #14148 is OPEN with CHANGES_REQUESTED at head 7bbe1a316. The triager reports that jkwak-work wrote on 11-07 "not sure we want a new intrinsic just
+for Metal/CUDA; will discuss with Yong next week". Approach A adds no public API, but the owner is still deciding the design.
+**Decision (Main, 11-09):** I chose option (a), capped. The triager scheduled ONE final one-shot, **`t-d38249`**, for 2026-11-16T17:15Z (recurrence null; confirmed by the triager 11-09 17:19Z). I rejected option (b), the @jkwak-work delta, because of rung 4.
+If the final run finds silence, the chain parks webhook-only with no timer, and I add it to `supervisor-state.json` awaiting_human.
+
+**Superseded:** The triager's one-shot `t-f136f9` ran 2026-11-09 17:15Z. It hands off to slang-fixer only if a maintainer approves A and the reporter is not doing it.
 If nothing has changed, it re-posts nothing and asks me whether to keep parking.
 (Superseded: `t-f093d7` 11-02 17:15Z, done.) If the reporter has opened a PR, validate it against the memo.
 If a maintainer has given direction, hand off to slang-fixer. On silence, post the parked 5-bullet. The decision owners are the maintainers

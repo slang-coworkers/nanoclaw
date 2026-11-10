@@ -58,3 +58,35 @@ Its issue_opened needs NO dispatch. slang-reviewer acknowledged the hold correct
 Explanation comment 6700240768 is refreshed. **Q1 is critical:** under module membership the #14375 repro itself (vs+fs in one module with module-scope `out`s) regresses: `-entry fsMain` and a whole-module compile fail with E58001+E30702, while master compiles all three forms.
 The fixer re-asked with the repro ([6701407273](https://github.com/shader-slang/slang/issues/14375#issuecomment-6701407273)). **#14395 must not leave draft before tangent-vector answers Q1** (error vs legacy-Slang warning for mixed-stage modules).
 Parked on tangent-vector (Q1–Q4); webhooks plus `recheck-14375-maint-qs-43b4` (11-11) cover it. Stages 2–3 not started.
+
+**11-09 23:05Z — tangent-vector answered stage-1 questions 1–4** on #14375 ([6753868655](https://github.com/shader-slang/slang/issues/14375#issuecomment-6753868655)).
+Stage 1 is draft **#14395** (`fix/issue-14375-stage1`, head 38243ae99, pr-mapping → fixer `n4rvnv`). Their answers:
+- module-level checking gives a warning when a module has global varyings and more than one `[shader]` function;
+- composed-program checking gives an error, unconditionally, when two entry points come from the same module and that module has global varyings;
+- core-module builtins are handled in IR only;
+- Q3 is an error;
+- the varying-parameter rule applies only in modules that declare global varyings, and uniform parameters stay allowed.
+
+They also asked the bot to state where and when each diagnostic fires. I relayed the comment verbatim to triager `j75jq7` (pinned, `in_reply_to=42`, thread `gh-issue-shader-slang/slang-14334`). The chain had been idle since 11-07 03:08Z.
+
+**11-09 23:45Z — R2 on #14395 is pushed** (checked live): draft, head **2792441f5**. tangent-vector answered Q1–Q4 in [6753868655](https://github.com/shader-slang/slang/issues/14375#issuecomment-6753868655) (23:05Z): the strong overlap check stays per-program on purpose, and a module-level warning is reasonable.
+Bot reply [6754526232](https://github.com/shader-slang/slang/issues/14375#issuecomment-6754526232) lays out each diagnostic: W30628 is a module-level warning for global varyings plus 2+ `[shader]` functions; E38049 fires at program layout when 2 entry points come from such a module. Q2–Q4 needed no code change.
+**One open question to tangent-vector:** does per-entry-point validation keep module ownership? Today `-entry fsMain` on the #14375 repro fails with E58001+E30702. The PR stays a draft until the answer. Peer review R2 is requested; CI run 42722687240; the fixer reports 11917/11920 (fp8).
+The maintainers answered, so `recheck-14375-maint-qs-43b4` (11-11) will hit case (a): record only.
+
+**11-10 00:00Z — tangent-vector on the `-entry fsMain` case** ([6754813607](https://github.com/shader-slang/slang/issues/14375#issuecomment-6754813607)),
+replying to the bot's detection table for #14395 (6754526232):
+- E58001 and E30702 are both valid to diagnose.
+- Relaxing something to a warning is OK only if (1) Slang allowed it before and (2) allowing it needs no downstream checks.
+- Goal: anything the front end does not reject must compile with no varying-related back-end errors or ICEs.
+
+Relayed verbatim to triager `j75jq7` (pinned, `in_reply_to=54`). #14395 is still a draft at 2792441f5.
+
+**11-10 00:46Z — #14395 R2: APPROVE_WITH_NITS, 0 bugs / 6 gaps** (file [raw/combined-review-14395-r2.md](raw/combined-review-14395-r2.md); the verdict and a tested nits patch went to the fixer; nothing posted). All of tangent-vector's 6753868655 answers are met.
+Top concern: the docs and Risk line understate the new errors. Legacy Slang and GLSL also hit E38208 when importing a user GLSL module, and several `.slang` files on one slangc command now count as one module. Other gaps: E38049 repeats once per target; `inout` is treated as input but never lowered as one;
+a dead `CHECK-NOT`; W30628 and entry-point discovery disagree about which functions can become entry points. No side finds. Next: the fixer applies the nits; the draft waits on tangent-vector's `-entry fsMain` answer (6754526232).
+
+**11-10 01:08Z — R2 applied** (checked live): draft at **4d2a0d6d3** (5 fast-forward commits: W30628, E38049, new **E30629**, which rejects a user semantic on a module-scope varying and was E49999 on master; plus the R2 patch and docs). tangent-vector confirmed in [6754813607](https://github.com/shader-slang/slang/issues/14375#issuecomment-6754813607) that E58001/E30702 stay errors.
+Open question to tangent-vector: can W38044 stay a warning? The catch is that an explicit `layout(location=0)` global moves to Location 1 when the entry point has varying parameters, on master too; asked in [6755918550](https://github.com/shader-slang/slang/issues/14375#issuecomment-6755918550).
+Not filed separately (the triager's call, which I agreed with): the explicit-Location override is stage 2 of #14375, and IR `inout` being output-only is stage 3. **Before the ready flip:** a peer review of the commits after R2, starting with E30629, which only codex has reviewed (msg to triager).
+Fixer reports 11924/11927 (fp8); CI run 42733364480. Next after the answer: the fixer proposes the reflection-proxy shape before stage 2.

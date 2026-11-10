@@ -78,4 +78,4 @@ Fork PR kaizhangNV/slang#25 says those checks "remain deferred under shader-slan
 - **Fork-only tests:** gh/MCP return 401 on the author's fork (token scope); raw.githubusercontent works. An upstream PR
   cannot re-enable a fork-only test; #14051 has since moved the 4 tests in-tree.
 - slang-test needs libslang-llvm on `LD_LIBRARY_PATH`, or filecheck tests are silently skipped (triager's learning).
-- Update the reviewed PR by merging master, never rebase + force-push ([[feedback_update_reviewed_pr_by_merge_not_rebase]]).
+- Update the reviewed PR by merging master, never rebase + force-push ([feedback_update_reviewed_pr_by_merge_not_rebase](../feedback_update_reviewed_pr_by_merge_not_rebase.md)).

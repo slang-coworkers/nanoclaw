@@ -81,3 +81,5 @@ The PR is now with slang-reviewer.
 The triager has closed its side and re-opens on a human comment on #14036 or #14396.
 **State: ready-flip pending → weekly list (no per-PR ask; P2 feature).** The webhooks for #14396 route to slang-fixer `2rqq4g` through the pr-mapping.
 
+
+**11-09 16:05Z, side find from the #13292 re-chase.** The issue author albertrodriguezclo opened human PR #14405 on 11-08 09:26Z ("CUDA: keep -fp-mode precise arithmetic from FMA contraction"; "Fixes #14036"; "Approach A from the triage"). It is assigned to jkwak-work and albertrodriguezclo and duplicates bot draft #14396. No one on our side had seen it: the chain was idle since 11-07 03:41Z. I flagged it to the operator on dashboard thread `gh-issue-shader-slang/slang-14036` and asked: should #14396 stand down, or stay up for comparison? **#14396 stays off the weekly ready-flip list until the operator answers.** I dispatched nothing.

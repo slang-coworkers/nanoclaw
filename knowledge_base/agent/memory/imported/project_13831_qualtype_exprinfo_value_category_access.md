@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13831_qualtype_exprinfo_value_category_access
-description: "slang#13831 (jhelferty-nv, self-assigned, 10-21 21:06Z): replace QualType's isLeftValue/isReadOnlyMemoryLocation/isWriteOnly/hasReadOnlyOnTarget flags with an ExprInfo {value category, access}, so a non-adjacent swizzle (v.xz) fails __ref in the front end regardless of base access. Design follow-up of her #13406 (isReadOnlyMemoryLocation + its TODO exist only on #13406 head afcc361ae6). Held 10-21; #13406 MERGED 10-22 08:47Z; milestoned Q4 2026 10-23. 10-29 11:33Z operator asked for triage -> slang-triager verdict 11:41Z: enhancement/low/P3, all 6 stage claims reproduce; parked on the author, nothing posted. Sibling #13837 held by Main k1g05q."
+description: "slang#13831 (jhelferty-nv, self-assigned, 10-21 21:06Z): replace QualType's isLeftValue/isReadOnlyMemoryLocation/isWriteOnly/hasReadOnlyOnTarget flags with an ExprInfo {value category, access}, so a non-adjacent swizzle (v.xz) fails __ref in the front end regardless of base access. Design follow-up of her #13406 (isReadOnlyMemoryLocation + its TODO exist only on #13406 head afcc361ae6). Held 10-21; #13406 MERGED 10-22 08:47Z; milestoned Q4 2026 10-23. 10-29 11:33Z operator asked for triage -> slang-triager verdict 11:41Z: enhancement/low/P3, all 6 stage claims reproduce; parked on the author, nothing posted. 11-09 jhelferty-nv pinged tangent-vector (now co-assignee); held. Sibling #13837 held by Main k1g05q."
 metadata:
   node_type: memory
   type: project
@@ -48,3 +48,10 @@ operator ask.
   Recommended: staged split (PR1 enums + legacy accessors, version bump; PR2 checks + tests). #13837 and
   #13833 change the same code. I spot-checked `CheckSwizzleExpr` (:8797), the ref-arg check (:4432) and
   `slang-ir.h:2254-2255` on master. **Parked on jhelferty-nv; nothing posted.** A GitHub post only on an operator ask.
+
+## 2026-11-09: human-to-human ping, held
+
+- 16:05:57Z jhelferty-nv commented (issuecomment-6744811640): "@tangent-vector I believe you were interested in
+  commenting on this one?" The live body is the same as the payload, so no `@nv-slang-bot` was stripped. tangent-vector
+  is now a co-assignee. It arrived as `pr_mention`, but it isn't a summons (rung 5): no dispatch, reaction or post,
+  and no operator row. Still parked on the maintainers.

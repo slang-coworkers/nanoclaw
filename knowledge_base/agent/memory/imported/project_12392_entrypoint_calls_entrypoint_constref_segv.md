@@ -1,6 +1,7 @@
 ---
+type: project
 name: project_12392_entrypoint_calls_entrypoint_constref_segv
-description: "slang#12392 — slangc SIGSEGV, zero diagnostics, when an entry point calls an entry-point-tagged function. FULLY ROOT-CAUSED: gdb $rdi=0x0 ⇒ null layout decoration on an orphaned entry point; the guard is deleted in Release by SLANG_ASSERT→SLANG_ASSUME. Draft PR #12721 (closes #12392/#12397/#12778) CHANGES_REQUESTED; maintainer gates on eliminating EntryPoint reliance in AST-to-IR lowering. RESUME on maintainer in-PR-vs-follow-on ruling / re-review."
+description: "slang#12392 — slangc SIGSEGV, zero diagnostics, when an entry point calls an entry-point-tagged function. FULLY ROOT-CAUSED: gdb $rdi=0x0 ⇒ null layout decoration on an orphaned entry point; the guard is deleted in Release by SLANG_ASSERT→SLANG_ASSUME. Draft PR #12721 (closes #12392/#12397/#12778) CHANGES_REQUESTED; maintainer gates on eliminating EntryPoint reliance in AST-to-IR lowering. RESUME on tangent-vector's land-now-vs-fold-into-#13882 answer to the 11-09 nudge (#12721 issuecomment-6746043020)."
 metadata:
   node_type: memory
   type: project
@@ -88,15 +89,23 @@ selected for codegen. **Fallback (pre-authorized if primary intractable):** atta
 possible (into/after `linkIR`), the non-selected-entry-point strip replaced by assert/enforce-validity, not
 a band-aid.
 
-**Current — REVIEW ROUND 1, 2026-08-26 (verified at source):**
+**PR state — review round 1, 2026-08-26 (verified at source; still draft/CHANGES_REQUESTED 11-09):**
 - **Draft PR [#12721](https://github.com/shader-slang/slang/pull/12721)** OPEN, `reviewDecision=CHANGES_REQUESTED`, `closingIssuesReferences=[12392, 12397, 12778]` (all auto-close on merge). `report_pr_created` registered (pr-mapping → fixer session on the canonical thread).
 - Maintainer **accepts the architectural compromise** (decoration-source fix + disclosed scope trim) but **gates approval on eliminating ALL incorrect `EntryPoint` reliance in AST-to-IR lowering** — the derivative-group path still consults front-end EntryPoints in lowering.
 - Fixer filed **#12777** (derivative-group EntryPoint reliance — asks in-PR-vs-follow-on) and **#12778** (null `EntryPoint::getModule()` on deserialized entries). **Fixer HOLDS** on the derivative-group path pending the maintainer's in-PR-vs-follow-on decision.
 - ⚠️ **Scope-trim the reviewer MUST know:** the fixer **reverted** the two companion changes the maintainer sketched (move `fixEntryPointCallsites` earlier + the constref release-assert) after codex caught real regressions — pass ordering is now **byte-identical to master**. A revert-to-master is invisible in the diff by definition, so it must survive into the PR body/review; the delivered PR is the *decoration-source* fix alone.
 
-**RESUME** on the maintainer's in-PR-vs-follow-on ruling for #12777, or the fixer's post-decision
-`[Fix Report]` / re-review. D3D12/Metal remain unmeasured and labelled as such (no D3D12 on Linux, no Metal
-on the available L40S). The primary #12392 verdict is comment `5207284302`.
+D3D12/Metal remain unmeasured and labelled as such (no D3D12 on Linux, no Metal on the L40S). The primary #12392
+verdict is comment `5207284302`.
+
+**RESUME (11-09):** parked on `tangent-vector`'s answer to the 16:56Z nudge (#12721 issuecomment-6746043020):
+land #12721 now as an interim fix, or fold it into his #13882 rollout (its step 5, "stop decorating ordinary
+implementations as entry points", cmt 6591811561, is #12721's change). The answer arrives as a webhook. The 11-09
+cross-module repro (albertrodriguezclo, issuecomment-6743979356) is clean on the #12721 head on all 6 targets; the
+merge-master push is `df8ad1b`; `tests/bugs/13074/…patch-constant.slang` is re-expected HLSL E56010→E56006 (accepted:
+master's E56010 was the decoration leak). Owners: triager `sess-1786023730364-8w6v1g`, fixer `sess-1787081467438-un38y5`
+(owns #12721, peer-review round 2 with slang-reviewer, B1 remedy pending). Second question **G4** (the PR drops `getDefinedEntryPointCount` for `-entry`-only `.slang-module`s) was added to the same nudge 18:47Z. Side find S1 = #14426 (filed-only). Dated detail: [[project_12392_entrypoint_calls_entrypoint_constref_segv_history]] —
+new dated entries go there, not here.
 
 ## Process lessons this chain paid for (each lives in its own concept)
 

@@ -89,3 +89,10 @@ writing this file, so read its tail before sending to the fixer.
   the IR mechanism (callee is a lone `missingReturn` → after inlining the stores sit in an unreachable block), the
   entry-point E36107 control, and the #14388 Gather-offset path. #14083 stays with jkwak-work. The fixer is idle until
   #14388's CI or review webhook arrives.
+
+**11-10 00:12Z: t-35ef08 parked re-check (triager msg 82). No change** (✅ Main-verified: #14071 OPEN, 1 comment,
+assignee jkwak-work, last updated 11-03). Context: #14388 was MERGED 11-06 21:18Z by jkwak-work, which auto-closed #14073,
+so CUDA Gather offset is now E36107. The triager suggests (as a hypothesis) that the #14073 ruling leans away from
+option A; that is still jkwak-work's call. Next: t-7858dd at 11-17 00:10Z. **Pre-decided:** if 11-17 also shows no change,
+the triager posts nothing and schedules no more re-checks. The 11-03 comment stays as the artifact, and webhooks plus
+the supervise-issues parked register cover it.

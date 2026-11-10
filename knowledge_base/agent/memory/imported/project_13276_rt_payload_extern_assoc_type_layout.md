@@ -82,3 +82,13 @@ Still 0 workflow runs / 0 check-runs / null rollup on head. No human timeline ev
 Dashboard read 10-24→11-02 (seq 507902–509946): the only hit is my own 10-26 flag (seq 508102); there is no operator reply. Delta sent to
 `orchestrator-dashboard` (msg 15). The next one-shot re-chase is set for 11-09. It is capped: if nothing changes, it sends one FINAL delta, then parks
 the chain on webhooks and the supervise parked-chain register, with no further re-check.
+
+**11-09 re-chase — FINAL report; PARKED with no timer (re-ask cap).** Nothing changed: #13370 OPEN, non-draft, MERGEABLE/BEHIND,
+head `3c85a6cfa7`, `updatedAt` 10-05, no human review, saipraveenb25 + dshreiner-nv pending, **223 behind** master. Still 0
+workflow runs / 0 check-runs on head. ⚠️ The rollup now reads `SUCCESS`, but its only context is `license/cla`, re-posted 11-04
+14:37Z: **a rollup state is not CI. List the contexts.** No human timeline events since 11-02 on #13276 / #10877 / #12131 / #8957.
+Dashboard rows 509902–511960 (11-01 → 11-09) contain no operator reply. The only hits are my own 11-02 delta (seq 509948) and
+unrelated jvepsalainen-nv chains. The final delta went to `orchestrator-dashboard` (msg 9). The parked disposition is in
+`memory/supervisor-state.json`, key `gh-issue-shader-slang/slang-13276`. **No re-check is scheduled.** The chain wakes on webhooks
+for #13370 / #13276, or when the operator says "unpark 13276" (restart the weekly check) or "ping 13370" (authorize a nudge). If
+#13370 merges: close the chain and ask the operator whether #10877 is superseded.

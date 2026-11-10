@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14054 — Metal compareExchange emits one weak CAS, so a spurious failure reads as success
-description: "Human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z. Metal kIROp_AtomicCompareExchange (and the texture-atomic branch) emits a single atomic_compare_exchange_weak_explicit; HLSL semantics are strong. Metal twin of #13917/#13918 (WGSL). Triaged 22:08Z: emit reproduced, premise CONTESTED (MSL 4.1 spec text is strong). Park 5-bullet POSTED 11-02 21:56Z (issuecomment-6589472862), Type=Bug, assignee jkwak-work (set by jhelferty-nv 18:40Z). Awaiting jkwak-work harden/no-harden. 11-06 22:58Z the reporter offered to send the #13918-style PR themselves if jkwak-work agrees, so no bot fix. Relayed to the triager; re-check t-c62394 11-09 22:00Z."
+description: "Human bug (albertrodriguezclo, cloth-sim batch) 10-29 21:51Z. Metal kIROp_AtomicCompareExchange (and the texture-atomic branch) emits a single atomic_compare_exchange_weak_explicit; HLSL semantics are strong. Metal twin of #13917/#13918 (WGSL). Triaged 22:08Z: emit reproduced, premise CONTESTED (MSL 4.1 spec text is strong). Park 5-bullet POSTED 11-02 21:56Z (issuecomment-6589472862), Type=Bug, assignee jkwak-work (set by jhelferty-nv 18:40Z). Awaiting jkwak-work harden/no-harden. 11-06 22:58Z the reporter offered to send the #13918-style PR themselves if jkwak-work agrees, so no bot fix. Relayed to the triager. Re-check t-c62394 (11-09 22:00Z) found reporter PR #14404 (ready, Fixes #14054) awaiting jkwak-work review; bot stands down, no timer."
 tags: [metal, atomics, target-emit, r6]
 ---
 
@@ -63,5 +63,22 @@ confirms that the loop needs a bitwise compare (`as_type<uint>`). The decision s
 comparing bits. I had relayed the wrong "spins forever" claim to the dashboard on 10-29, and corrected it 11-06.
 Re-check `t-c62394` (11-09 22:00Z) now looks for a reporter PR that compares bits, or a jkwak-work reply. It goes to the fixer only if jkwak-work asks the bot or the reporter withdraws.
 
-**Open / resume on:** a maintainer reply after the 11-02 post; an author fix PR; or an operator go-ahead to harden it now
+**[Report] 11-09 22:02Z (triager, re-check t-c62394). I verified it live at 22:0xZ.** The reporter opened PR #14404
+"Metal: retry a weak compare-exchange that fails spuriously" on 11-08 09:10Z. It is not a draft, its body has `Fixes #14054`,
+and its head is `53219076d`. It changes 5 files: `slang-emit-metal.cpp` +99/−24, `slang-emit-metal.h`, and
+`tests/metal/{compare-exchange-strong (new), atomic-float-device, read-write-texture-fence}.slang`. The requested
+reviewer is jkwak-work. The only review so far is CodeRabbit's (COMMENTED). The triager says the diff compares bits
+(`as_type<uint>` for float, `ushort` for half, `.x` for textures) and evaluates operands once; I did not re-read the diff.
+CI shows only the gate jobs (filter, CLA, board-sync, SlangPy trigger; all pass) and **`review` failed**. That job is
+Claude PR Review (`pull_request_target`), and I checked it: `Unexpected HTTP response: 504` from the LLM gateway, which is
+infra, not the PR. No build or test lanes have run yet, which is normal for a fork PR that waits on maintainer approval.
+The issue has no comments since our 11-06 delta 6698143860. Its assignee is still jkwak-work, and it has no labels.
+Neither the triager nor I posted anything, no fixer was dispatched, and no timer was set. Reviewing #14404 is a separate
+chain that we don't own, and this session runs no bot review of it.
+
+**Open / resume on (current):** #14404 closed unmerged; the reporter withdraws; jkwak-work asks the bot; or a human comments
+on #14054. **If #14404 merges**, the triager sends a positive close-out. Adjacent, not owned: #14414 (the reporter's
+SPIR-V/GLSL float CAS on integers) and #14408 ([record](14408-spirv-glsl-float-atomic-cas.md)).
+
+**Superseded resume list (pre-11-09):** a maintainer reply after the 11-02 post; an author fix PR; or an operator go-ahead to harden it now
 (dispatch the memo's fixer brief to slang-fixer on this thread).

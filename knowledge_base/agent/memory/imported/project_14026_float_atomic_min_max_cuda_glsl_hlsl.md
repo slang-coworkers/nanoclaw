@@ -82,3 +82,7 @@ The commit makes float-only `reduceMin/Max` skip the NaN post-check (SASS `RED`+
 The 00:18Z comment was edited in place at 00:45:45Z and no longer claims float/double. CUDA suites 964/965 (known fp8-cuda-half-acc). There was no peer R3, only codex CODE_REVIEW.
 **Correction to the fixer's claim that "CI was dispatched":** CI run 42319329139 on ff67e14 is `skipped` (draft), so GitHub CI has still not tested any of the three PRs.
 The reporter will post RTX 4060 Ti numbers on this head. Final timer d880 (11-09 14:00Z) is still pending.
+
+**11-09 14:00Z final re-check (timer d880), checked live:** there are still no maintainer reviews. #14046 c416ff9 (kaizhangNV requested) and #14047 0a3a415 are BEHIND. #14048 ff67e14 (jkwak-work requested) is BLOCKED. All three are OPEN drafts, and CI is skipped (53 skipped, 5 success).
+There has been no human comment since the reporter's 11-06 22:5x comments, which were handled (the bot replied on #14047, and the fixer's 11-07 00:47Z [Report] covers #14048). The reporter has not posted RTX 4060 Ti numbers yet.
+The operator has not answered the 11-02 "ping the reviewers?" question (I searched dashboard rows 11-02→11-09). I sent one line to the dashboard. **No further timer:** the chain rests on the /supervise-issues parked-chain register.

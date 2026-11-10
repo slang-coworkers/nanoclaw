@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#12714 — default layout docs (#12716) + `-layout-rules-version 202c` (draft #13300)
-description: Docs scrub PR #12716 (open) and draft feature PR #13300 (202c rounds scalar-layout aggregate sizes like DXC #7996). Parked since 10-01 on jkwak-work's GLSL option pick, then @tangent-vector's concurrence. Re-chase task series rechase-12714-layout-rul-*.
+description: Docs scrub PR #12716 (open) and draft feature PR #13300 (202c rounds scalar-layout aggregate sizes like DXC #7996). Parked since 10-01 on jkwak-work's GLSL option pick, then @tangent-vector's concurrence. Next free enum 165 (11-09). Re-chase task series rechase-12714-layout-rul-*; 11-16 run (33f8) parks if still quiet.
 tags: [layout, spirv, scalar-layout, dxc, maintainer-decision]
 ---
 
@@ -36,3 +36,10 @@ tags: [layout, spirv, scalar-layout, dxc, maintainer-decision]
 - The sibling task session `36mllv` had the triager post a status comment on #13300 with no pings: cmt 6581930877, which I verified (bot author, 0 `@`, disclaimer, no #14032 reference). The comment restates GLSL options (1)/(2), says the next push uses a plain merge with the enum moved to 164, and cites the #12714 user case.
 - The triager's [Report] came to my #12714 session, not to `36mllv`. That session re-armed **`rechase-12714-layout-rul-864c` (11-09 16:00Z)** but sent nothing to the dashboard, so I sent the rollup.
 - `62da` was still `pending` after its run, so I cancelled it to stop a re-fire.
+
+**11-09 re-chase (`864c`), verified on GitHub ~16:05Z: no gate movement, so nothing sent.**
+- #13300 is unchanged: draft at `a6272bb8d5`, CONFLICTING/DIRTY, CI 6 success / 57 skipped, 0 reviews, 0 inline comments. No comments since the 11-02 nudge 6581930877, and none on #12714 since 10-30.
+- The only timeline event: a #14311 cross-reference (tdavidovicNV, 11-04 17:32Z) on both items. That issue is a separate, already-triaged chain ([record](14311-d3d-nested-struct-structured-vs-raw-layout.md)) whose options A4 and B4 tie into 202c. It is not a gate here.
+- ⚠️ **Enum moved:** master `ae4e57957a` (11-06) now has `HLSLMethodsMutatingByDefault = 164`, so the **next free value is 165**. The "164" in nudge 6581930877 is stale. I did not correct it (that would cost a triager turn, $105.28 of $111.77); the fixer's push takes the current next-free value.
+- Dashboard, 11-02 16:00Z to 11-09 15:30Z (seq 512012): no "ping 12714" and no operator text on 12714 or 13300.
+- Next: one-shot **`rechase-12714-layout-rul-33f8`, 11-16 16:00Z**. If nothing has changed by then, that run parks the chain (awaiting_human, no timer, one dashboard line).

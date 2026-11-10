@@ -1,5 +1,6 @@
 ---
 type: feedback
+name: feedback_in_reply_to_closed_task_session_loses_relay
 title: in_reply_to a one-shot task session's report routes to that task session; once it closes, the relay is lost silently
 description: Relay later human comments to the chain's owner session (pin target_session_id + in_reply_to=my webhook row), never in_reply_to a system:tasks:* report
 tags: [routing, a2a, tasks, in_reply_to]

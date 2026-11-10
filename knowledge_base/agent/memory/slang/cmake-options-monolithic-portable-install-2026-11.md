@@ -26,3 +26,9 @@ also missing from `SLANG_STANDARD_MODULE_FILES`/`_TARGETS`. No duplicate; #13997
 not labelled `regression`, because the monolithic matrix entry is new since 11-03. **FILED-ONLY, no fixer chain.** A fix
 needs a manual CMake Options `workflow_dispatch` to verify. ⚠️ That run is 490 jobs and fills the hosted cap, so dispatch
 it only with `max-parallel` or at a quiet time.
+
+**11-09: fix PR #14417 by jkwak-work** (maintainer, self-assigned on #14400; no closing keyword). CMake-only, guards the
+portable install on `NOT …MONOLITHIC…` and adds the module to the shared manifest. Head `5c152066` at its first
+ready_for_review event, CI 53 pass / 0 fail. Not forwarded: slang-pr-approver is paused; queued in
+`data/approver-pause-queue.md`. Maintainer-owned, so the bot posts nothing on #14400 or #14417.
+**11-09 21:53Z (sibling session):** jkwak-work opened **#14417**, "Skip loose portable ray-tracing module install in monolithic builds", which fixes #14400. It changes CMake only (+25/−4), head `5c152066`, CI 53 pass. It is queued in the approver-pause queue. A human owns the fix, so no bot fixer chain will start on it. The chain closes when #14417 merges.

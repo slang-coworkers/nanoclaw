@@ -69,3 +69,6 @@ resource: raw/slangpy-1260-triage-memo.md
 - **#1264 final (03:56Z, triager's report):** head `42d07987` (test IDs only; N1 applied, N2 optional), 3 files +104/−16. CI pending at that head, green at `31911de8`.
   Shepherd kaizhangNV was auto-requested. Merges in either order with #1261. **Both #1261 and #1264 are READY-FLIP PENDING (weekly list).**
   Watch: if #1264's body is edited or the PR leaves draft, re-check it still closes nothing.
+- **11-09 17:56Z, side find from the #1261 review:** jhelferty-nv filed slang#14421 (bf16 storage-buffer
+  stores do not request the 16-bit storage capability in SPIR-V) and self-assigned it. Rung-4 hold: no
+  dispatch, nothing sent to slangpy-fixer. It does not block #1261 (spirv-val and drivers accept the module).

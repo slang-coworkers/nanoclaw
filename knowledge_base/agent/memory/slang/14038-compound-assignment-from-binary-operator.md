@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14038 — `a -= b` not synthesized from a user `operator-`
-description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z, same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z. 11-03 skiminki-nv leaned to diagnostics (A), floated an opt-in `[AddCompoundOp]` attribute, labeled 'slang 202c', then asked tangent-vector; held for tangent-vector, no fixer handoff.
+description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z; reporter's option-A PR #14246 MERGED 11-06 (squash 442487688), issue still OPEN for maintainer direction; bot report-only, next triager one-shot t-737169 11-16 17:15Z., same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z. 11-03 skiminki-nv leaned to diagnostics (A), floated an opt-in `[AddCompoundOp]` attribute, labeled 'slang 202c', then asked tangent-vector; held for tangent-vector, no fixer handoff.
 tags: [operators, overload-resolution, diagnostics, feature-request, r6]
 ---
 
@@ -112,5 +112,19 @@ also noted that the note in #14246 is correct for current Slang, because no non-
 19:30Z, #14246 had CI 58 pass, and skiminki-nv had approved with "LGTM if CI passes". The result is held, not posted (default),
 and the operator was offered a post. Scratch tests are in the triager's `scratch-14038/`.
 
-**Next.** Follow PR #14246 (human-owned; the bot does not review it) The bot stays report-only unless the operator says to post the `IAdditive` result. A reply comes in through the webhook. The triager's
-one-shot `i14038-recheck-df24` runs 2026-11-09T17:15Z, and I told it to treat the 11-03 comments as already seen. Owner: slang-triager on thread `gh-issue-shader-slang/slang-14038`.
+**11-09: #14246 is MERGED (verified).** skiminki-nv merged it 2026-11-06T22:40:24Z as squash 442487688. The PR head at merge
+was d959f7318. The PR says "Covers option A" with no `Fixes`, so #14038 stays OPEN (6 comments, unchanged since tangent-vector).
+⚠️ **I verified that the last head commit did not land.** d959f7318 (20:18:33Z) adds "if evaluating 'x' twice is safe" to E40026,
+but master's `slang-diagnostics.lua` E40026 still ends "...or write 'x = x ~binaryOp y'", and the lua comment still says "converts"
+although the code needs an exact type match. The triager's hypothesis: the merge queue built from the earlier head 110d70c6d (the
+squash is dated 20:01:36Z). The reporter had asked for a re-approval of d959f7318 7 min before the merge. Not posted; the
+operator was offered the choice. The triager's next one-shot is t-737169 2026-11-16T17:15Z, report-only.
+
+**11-09 18:34Z.** skiminki-nv commented (6748188602; I checked the raw body, which has no bot mention): "Right, that seems reasonable. PR #14246 has
+been merged. This improved the diagnostics. The remaining items are listed in [tangent-vector's 6639966842]." So the
+issue stays OPEN for the maintainers' long-term work: core interfaces (iterated first in `slang.numerics`) and docs that promote the
+interface-based approach. I relayed it to the triager pinned (in_reply_to=98, msg 107) so t-737169 treats it as already seen.
+18:36Z: the triager confirmed. It added 6748188602 to t-737169's ALREADY SEEN list and moved the maintainer-comment cutoff past
+18:34:32Z (still a one-shot at 11-16 17:15Z). I re-checked live: OPEN, 7 comments, labels and assignees unchanged.
+
+**Next.** The open direction (interfaces, numerics, docs, or close now that A has landed) is for skiminki-nv and tangent-vector. The bot posts nothing unless the operator says so.

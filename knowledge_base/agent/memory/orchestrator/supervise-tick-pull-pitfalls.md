@@ -34,6 +34,7 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   real updates by activity after the previous pull's start (`real-why.json`). It can also be entirely real (tick 276).
 - **Merge state key-by-key:** scan's `state` drops closed chains, so after writing it back, re-add every pre-tick key
   the scan omitted (tick 284: 9 closed keys would have been lost).
+- **A Main session can edit an existing key's `disposition` mid-tick, and scan's `state` silently reverts it** — scan copies the disposition from the pre-tick state, so `out[k].update(scan[k])` overwrites the live edit (tick 335: #14053's 12:00Z ready-flip disposition). Merge onto the live file, then for every key where live ≠ pre-tick, re-apply the live fields that changed.
 - **Not every state value is a dict:** `gh-issue-shader-slang/slang-12432_note` is a bare string, so a key-by-key merge that does `dict(old).update(new)` crashes. Merge dicts, assign anything else verbatim (tick 306).
 - **A Main session can journal a new chain into `supervisor-state.json` between ticks** (tick 331: #14398 written 03:30Z with a disposition). scan then reports it `updated`, not `new`; diff the state's keys against the previous tick's `state-final.json` and count such keys as 🆕 (force it with a 🆕 `notes.json` entry).
 - **When building the board message, append the 🔼 rows to the 🆕 table with no blank line in between** — a blank line ends the markdown table and the 🔼 rows render as raw pipes (caught before sending, tick 331).

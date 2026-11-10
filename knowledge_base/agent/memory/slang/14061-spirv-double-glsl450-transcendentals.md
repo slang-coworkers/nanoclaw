@@ -46,3 +46,5 @@ jhelferty-nv assigned jkwak-work at 18:44Z. The triager reproduced it again on d
 direction resumes the chain: the triager sends a [Triage handoff] to slang-fixer.
 Main's final one-shot is `recheck-14061-maintainer-aa6e` at 2026-11-09 22:30Z. It schedules nothing further, and the chain then
 rests on the /supervise-issues parked-chain register.
+
+**11-09 22:30Z: final re-check recheck-14061-maintainer-aa6e — still silent.** Open, assigned jkwak-work, only comment is the bot 5-bullet; no PR (search 14061; none by albertrodriguezclo or jkwak-work on double transcendentals). Only new event is the bot cross-ref from sibling issue #14211 (core-module double constants at float precision). Nothing scheduled; rests on the /supervise-issues parked-chain register.

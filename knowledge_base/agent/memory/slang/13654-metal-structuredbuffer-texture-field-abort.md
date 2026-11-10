@@ -77,6 +77,10 @@ Next: minimize, dedup, then re-check follow-up 2. Not a completion report; the d
   **11-06 18:34Z: jkwak-work assigned tangent-vector** (comment 6692446641: "looks similar to #13206; if not same";
   tangent-vector also owns #13206). Maintainer-owned → held (rung 4): no triage, no fixer, no bot post; the operator
   routing call for #14336 is moot. Resumes only on a human ask to the bot.
+  **11-09 21:19Z tangent-vector (comment 6751747517, no bot mention, still assignee):** NOT the same as #13206; the fix
+  direction is to reject forming `Material*` (a pointer to a type that can't live in memory, e.g. one holding `Texture2D`),
+  and to diagnose any load/store of such a type. Still held: no dispatch, no bot post, no dashboard line (state unchanged).
+  If a bot fix is ever requested, relay that direction verbatim.
 - **#14337**: E38204 for an SB struct field points at the struct, not the field. The triager suspects `createStructField`
   (`slang-lower-to-ir.cpp:12704`) gives the field no location of its own (not traced further).
 **Their `issue_opened` webhooks are self-echoes of this chain: they need no dispatch.** No fixer chain was opened; routing either one is

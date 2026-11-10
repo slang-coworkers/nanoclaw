@@ -60,3 +60,5 @@ description: "Human-filed (albertrodriguezclo) 2026-10-20 WGSL codegen-quality i
   unrolling failed". A possible small follow-up, the operator's call, not filed. Side findings (isnan(half3) E41400 and the one-trip inline wrapper) are still unfiled; the operator decides.
   Triager incident (theirs, fixed): the worktree `wt-13765-pr13740` had already been removed. Their `git checkout --detach` then ran in their own main checkout and left it detached for about 25 min. They restored master
   and rebuilt Release. Worktree pruned, temp branch deleted. A gateway 401 on one paginated `gh` call looked transient. Nothing left to do on the chain.
+- **2026-11-09: follow-up [#14424](14424-cuda-perf-regression-forceunroll-13781.md)** (jkwak-work, HELD rung 4). The nightly shows a CUDA runtime regression
+  attributed to #13781's `[ForceUnroll(4)]`. The 10-23 "no regression" above was correctness and codegen only; no timing was measured.

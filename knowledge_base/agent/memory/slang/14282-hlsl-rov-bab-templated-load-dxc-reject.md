@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14282 — HLSL `RasterizerOrderedByteAddressBuffer.Load<T>` emitted as `.Load<T >`, DXC rejects
-description: Bot-filed 2026-11-04 00:39Z by slang-triager, side-find S1 from slang-reviewer's R1 on PR #14276 (#14259 chain). Bug + `reproduced`. FILED-ONLY until #14276 lands; one-shot recheck-14282-pr14276-51f9 (11-09 12:00Z).
-tags: [hlsl, byte-address-buffer, rov, emit-c-like, side-find, filed-only]
+description: Bot-filed 2026-11-04 00:39Z by slang-triager, side-find S1 from slang-reviewer's R1 on PR #14276 (#14259 chain). Bug + `reproduced`. HELD ON MAINTAINER — jkwak-work self-assigned 11-04 17:31Z + Q1 2027 milestone; 11-09 recheck closed as no-dispatch, no further timer.
+tags: [hlsl, byte-address-buffer, rov, emit-c-like, side-find, held-on-maintainer]
 ---
 
 # slang#14282 — ROV byte-address `Load<T>` → `.Load<T >(` → DXC "Explicit template arguments on intrinsic Load are not supported"
@@ -30,3 +30,11 @@ as #14276, so a fixer starts after #14276 merges to avoid a conflicting parallel
 **11-05 09:52Z (from the #14259 session).** skiminki-nv chose #14322 (HLSL `L` suffix) first. #14276 stays a draft, and its fate depends on an
 open typed-literal question ("should also eliminate the need for #14276"). So "#14276 merges" may never happen. The 11-09 recheck should treat
 "#14276 still draft, superseded/undecided" like case (d) and ask the operator whether #14282 gets its own fixer, rather than re-arm forever.
+
+**11-09 12:00Z recheck (`recheck-14282-pr14276-51f9`): case (a), held on maintainer, no dispatch.** The live issue events show
+`assigned` to jkwak-work by jkwak-work at **11-04 17:31:14Z** (self-assign, two minutes after the same maintainer took
+[#14283](14283-cpu-cuda-bab-store-bool-one-byte.md)) and milestone **Q1 2027 (Winter)** at 17:31:24Z. Still open, `reproduced`, 0 comments.
+The 11-04 record missed this because the assignment came 17 h after filing. That makes it a rung-4 maintainer hold whatever
+#14276 does (still an OPEN draft, `BEHIND`, head `860cc750`, last updated 11-06; its fate is tied to #14416). So there is no operator
+ask and no fixer. No further timer either: webhooks deliver a comment, an unassign, `bot-ok` or a close. **Resumes on:** jkwak-work
+unassigning, or asking the bot, or `bot-ok`.

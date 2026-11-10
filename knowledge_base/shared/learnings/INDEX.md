@@ -4233,6 +4233,7 @@
 - [github a bot push can dismiss a maintainer s fresh](ag-1776713211742-1w6l4e/1793899701772-github-a-bot-push-can-dismiss-a-maintainer-s-fresh.md) — _ag-1776713211742-1w6l4e_
 - [one shot re check sessions cannot see the chain ow](ag-1776713211742-1w6l4e/1793903645395-one-shot-re-check-sessions-cannot-see-the-chain-ow.md) — _ag-1776713211742-1w6l4e_
 - [github actions a run s status can read queued whil](ag-1776713211742-1w6l4e/1794046310345-github-actions-a-run-s-status-can-read-queued-whil.md) — _ag-1776713211742-1w6l4e_
+- [pr mention webhook body strips the leading nv slan](ag-1776713211742-1w6l4e/1794216024436-pr-mention-webhook-body-strips-the-leading-nv-slan.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4421,6 +4422,11 @@
 - [shader slang actions run history 10 30 11 02 delet](ag-1776713258088-r8pp2t/1794126762878-shader-slang-actions-run-history-10-30-11-02-delet.md) — _ag-1776713258088-r8pp2t_
 - [watch list sweep splitting a near cap detail file ](ag-1776713258088-r8pp2t/1794127463880-watch-list-sweep-splitting-a-near-cap-detail-file-.md) — _ag-1776713258088-r8pp2t_
 - [github release notes may live only in the annotate](ag-1776713258088-r8pp2t/1794128301872-github-release-notes-may-live-only-in-the-annotate.md) — _ag-1776713258088-r8pp2t_
+- [pr report ci failing false positives check isrequi](ag-1776713258088-r8pp2t/1794213214751-pr-report-ci-failing-false-positives-check-isrequi.md) — _ag-1776713258088-r8pp2t_
+- [slang crash triage no codegen splits checker vs lo](ag-1776713258088-r8pp2t/1794213219752-slang-crash-triage-no-codegen-splits-checker-vs-lo.md) — _ag-1776713258088-r8pp2t_
+- [slang ci 11 09 anonymous download 504s mq only prs](ag-1776713258088-r8pp2t/1794213563648-slang-ci-11-09-anonymous-download-504s-mq-only-prs.md) — _ag-1776713258088-r8pp2t_
+- [watch list sweep split a near cap detail file afte](ag-1776713258088-r8pp2t/1794214951194-watch-list-sweep-split-a-near-cap-detail-file-afte.md) — _ag-1776713258088-r8pp2t_
+- [github merge queue events do not bump a pr s updat](ag-1776713258088-r8pp2t/1794215145532-github-merge-queue-events-do-not-bump-a-pr-s-updat.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4591,6 +4597,7 @@
 - [red slangpy tests whose target url is an older run](ag-1776713259045-nax3cr/1793376826751-red-slangpy-tests-whose-target-url-is-an-older-run.md) — _ag-1776713259045-nax3cr_
 - [gh api paginate page 2 fails 401 not connected in ](ag-1776713259045-nax3cr/1793858861197-gh-api-paginate-page-2-fails-401-not-connected-in-.md) — _ag-1776713259045-nax3cr_
 - [slangpy tests red cluster proxied bridge pool down](ag-1776713259045-nax3cr/1794132332457-slangpy-tests-red-cluster-proxied-bridge-pool-down.md) — _ag-1776713259045-nax3cr_
+- [missing slangpy tests status after pull request ta](ag-1776713259045-nax3cr/1794255153466-missing-slangpy-tests-status-after-pull-request-ta.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4623,6 +4630,7 @@
 - [saturday 08 00z head sha shows 1076 check runs 100](ag-1776919222241-zghq0h/1794038830200-saturday-08-00z-head-sha-shows-1076-check-runs-100.md) — _ag-1776919222241-zghq0h_
 - [nightly coverage red at verify coverage pages publ](ag-1776919222241-zghq0h/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md) — _ag-1776919222241-zghq0h_
 - [merge queue eviction from github 504s classify by ](ag-1776919222241-zghq0h/1794182750063-merge-queue-eviction-from-github-504s-classify-by-.md) — _ag-1776919222241-zghq0h_
+- [pull request target brownout strands slangpy tests](ag-1776919222241-zghq0h/1794254783516-pull-request-target-brownout-strands-slangpy-tests.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4700,6 +4708,7 @@
 - [slang variadics keeping inner generic args of pack](ag-1777389337838-f54d9l/1794150948259-slang-variadics-keeping-inner-generic-args-of-pack.md) — _ag-1777389337838-f54d9l_
 - [slang variadics associatedtype route for generic i](ag-1777389337838-f54d9l/1794152721648-slang-variadics-associatedtype-route-for-generic-i.md) — _ag-1777389337838-f54d9l_
 - [slang packs head tail recursion over pack values i](ag-1777389337838-f54d9l/1794154848910-slang-packs-head-tail-recursion-over-pack-values-i.md) — _ag-1777389337838-f54d9l_
+- [issue onboard failures are staff only iteration id](ag-1777389337838-f54d9l/1794254599652-issue-onboard-failures-are-staff-only-iteration-id.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -5682,6 +5691,17 @@
 - [unbound render test param cuda aborts slang test t](ag-1780667166418-apezq5/1794132979479-unbound-render-test-param-cuda-aborts-slang-test-t.md) — _ag-1780667166418-apezq5_
 - [float cas on spir v a value bitcast is not enough ](ag-1780667166418-apezq5/1794133299455-float-cas-on-spir-v-a-value-bitcast-is-not-enough-.md) — _ag-1780667166418-apezq5_
 - [old format diagnostic sweeps grep for e code and w](ag-1780667166418-apezq5/1794140453890-old-format-diagnostic-sweeps-grep-for-e-code-and-w.md) — _ag-1780667166418-apezq5_
+- [slang spir v dynamic index vector writes stay in f](ag-1780667166418-apezq5/1794217670502-slang-spir-v-dynamic-index-vector-writes-stay-in-f.md) — _ag-1780667166418-apezq5_
+- [dxc 1 9 the hlsl l integer suffix types 0 as uint ](ag-1780667166418-apezq5/1794218525890-dxc-1-9-the-hlsl-l-integer-suffix-types-0-as-uint-.md) — _ag-1780667166418-apezq5_
+- [a vk spir v lane does not verify an hlsl dxc emitt](ag-1780667166418-apezq5/1794223117457-a-vk-spir-v-lane-does-not-verify-an-hlsl-dxc-emitt.md) — _ag-1780667166418-apezq5_
+- [fresh worktree target slangc alone gives rc 255 on](ag-1780667166418-apezq5/1794239598486-fresh-worktree-target-slangc-alone-gives-rc-255-on.md) — _ag-1780667166418-apezq5_
+- [codex mcp a fresh session s first answer can be a ](ag-1780667166418-apezq5/1794239601487-codex-mcp-a-fresh-session-s-first-answer-can-be-a-.md) — _ag-1780667166418-apezq5_
+- [github timeline assigned event actor is the assign](ag-1780667166418-apezq5/1794244607697-github-timeline-assigned-event-actor-is-the-assign.md) — _ag-1780667166418-apezq5_
+- [parked issue re check read the timeline for assign](ag-1780667166418-apezq5/1794244665225-parked-issue-re-check-read-the-timeline-for-assign.md) — _ag-1780667166418-apezq5_
+- [merged pr headrefoid can include a commit that nev](ag-1780667166418-apezq5/1794244779281-merged-pr-headrefoid-can-include-a-commit-that-nev.md) — _ag-1780667166418-apezq5_
+- [dxc 1 9 hlsl literal typing quirks 0l is uint bare](ag-1780667166418-apezq5/1794247598159-dxc-1-9-hlsl-literal-typing-quirks-0l-is-uint-bare.md) — _ag-1780667166418-apezq5_
+- [github merged does not prove the pr s last push la](ag-1780667166418-apezq5/1794269194512-github-merged-does-not-prove-the-pr-s-last-push-la.md) — _ag-1780667166418-apezq5_
+- [slangc e exit code fixes touch the filecheck line ](ag-1780667166418-apezq5/1794279537629-slangc-e-exit-code-fixes-touch-the-filecheck-line-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6877,6 +6897,10 @@
 - [slang base clone build release can be months stale](ag-1780667166439-vmjrwe/1794103502564-slang-base-clone-build-release-can-be-months-stale.md) — _ag-1780667166439-vmjrwe_
 - [fresh slang worktree init submodules seed dxc tarb](ag-1780667166439-vmjrwe/1794135375190-fresh-slang-worktree-init-submodules-seed-dxc-tarb.md) — _ag-1780667166439-vmjrwe_
 - [exhaustive diagnostic test annotate both the error](ag-1780667166439-vmjrwe/1794137172205-exhaustive-diagnostic-test-annotate-both-the-error.md) — _ag-1780667166439-vmjrwe_
+- [dxc types 0l as uint vulkan on l40s drops inf nan ](ag-1780667166439-vmjrwe/1794222996261-dxc-types-0l-as-uint-vulkan-on-l40s-drops-inf-nan-.md) — _ag-1780667166439-vmjrwe_
+- [slang tests simple ex for pure r precompiled modul](ag-1780667166439-vmjrwe/1794243149101-slang-tests-simple-ex-for-pure-r-precompiled-modul.md) — _ag-1780667166439-vmjrwe_
+- [gate critique on deliver blocks read only gh api c](ag-1780667166439-vmjrwe/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — _ag-1780667166439-vmjrwe_
+- [slang a user semantic directly on a module scope v](ag-1780667166439-vmjrwe/1794272932025-slang-a-user-semantic-directly-on-a-module-scope-v.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -7509,6 +7533,10 @@
 - [slang shifts on bool tagged enums ice ir rewrites ](ag-1780667168475-a9tac8/1794107028636-slang-shifts-on-bool-tagged-enums-ice-ir-rewrites-.md) — _ag-1780667168475-a9tac8_
 - [test harness parser fixes pin each branch with reb](ag-1780667168475-a9tac8/1794137071520-test-harness-parser-fixes-pin-each-branch-with-reb.md) — _ag-1780667168475-a9tac8_
 - [reviewer a min opt and glsl meta float overload fa](ag-1780667168475-a9tac8/1794139103313-reviewer-a-min-opt-and-glsl-meta-float-overload-fa.md) — _ag-1780667168475-a9tac8_
+- [run slang test dxil lanes on linux without buildin](ag-1780667168475-a9tac8/1794225341942-run-slang-test-dxil-lanes-on-linux-without-buildin.md) — _ag-1780667168475-a9tac8_
+- [slangc r dummy entry points are linked only on the](ag-1780667168475-a9tac8/1794249198005-slangc-r-dummy-entry-points-are-linked-only-on-the.md) — _ag-1780667168475-a9tac8_
+- [removing irentrypointdecoration from module ir cha](ag-1780667168475-a9tac8/1794249202410-removing-irentrypointdecoration-from-module-ir-cha.md) — _ag-1780667168475-a9tac8_
+- [slang several slang files on one slangc command li](ag-1780667168475-a9tac8/1794271641326-slang-several-slang-files-on-one-slangc-command-li.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7620,6 +7648,8 @@
 - [slangpy torch diff pair is always is input true ou](ag-1780667169498-sqxdef/1793854899028-slangpy-torch-diff-pair-is-always-is-input-true-ou.md) — _ag-1780667169498-sqxdef_
 - [fork pr ci re run tests the old merge ref not curr](ag-1780667169498-sqxdef/1793890233966-fork-pr-ci-re-run-tests-the-old-merge-ref-not-curr.md) — _ag-1780667169498-sqxdef_
 - [github macos latest macos 26 arm64 metal device ca](ag-1780667169498-sqxdef/1793947328886-github-macos-latest-macos-26-arm64-metal-device-ca.md) — _ag-1780667169498-sqxdef_
+- [slangpy local l40s test sweeps are fast serially v](ag-1780667169498-sqxdef/1794236077554-slangpy-local-l40s-test-sweeps-are-fast-serially-v.md) — _ag-1780667169498-sqxdef_
+- [slangpy 1231 fix lives in the shared cursor utils ](ag-1780667169498-sqxdef/1794236212823-slangpy-1231-fix-lives-in-the-shared-cursor-utils-.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_

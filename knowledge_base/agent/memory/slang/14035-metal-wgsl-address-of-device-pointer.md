@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14035 — Metal/WGSL reject `&ptr[i]` / `&ptr->field` (`operator&` gated cpp_cuda_spirv_llvm)
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:18Z, cloth-sim batch. Triaged enhancement/low/P3 by slang-triager. Parked on maintainer direction (jkwak-work, aidanfnv) because `operator&` is slated for deprecation; Parked 5-bullet posted 2026-11-02 17:16Z (comment 6583479145); re-check t-b1a9ee 2026-11-09 17:15Z.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29 17:10:18Z, cloth-sim batch. Triaged enhancement/low/P3 by slang-triager. Parked on maintainer direction (jkwak-work, aidanfnv) because `operator&` is slated for deprecation; Parked 5-bullet posted 2026-11-02 17:16Z (comment 6583479145); assigned jkwak-work 11-02; register-only after 11-09 re-check.
 tags: [metal, wgsl, pointers, address-of, capabilities, feature-request, parked, r6]
 resource: /workspace/inbox/a2a-1793295608357-kcvdxm/triage-14035.md
 ---
@@ -28,5 +28,9 @@ R6 holds a bot comment until 11-02 17:10:18Z.
 **11-02 R6 re-check (verified).** At 17:15Z the triager found no drift and re-verified at master 8229f2742: the gate is unchanged, #10206 is still a draft, and #10280 is merged.
 It posted the parked 5-bullet as comment **6583479145** (nv-slang-bot, 17:16:09Z, 1 comment total, verified), which pings @jkwak-work/@aidanfnv for A/B/C.
 
-**Next.** The triager's one-shot `t-b1a9ee` runs 2026-11-09 17:15Z. If a maintainer picks A or B, it sends a [Triage handoff] to slang-fixer; option C stays parked.
+**11-02 18:33Z assignment (verified via the events API).** jhelferty-nv assigned the issue to **jkwak-work**. That is a maintainer triage action, not a pick of A/B/C.
+**11-09 re-check `t-b1a9ee`.** Nothing has changed: 6583479145 is still the only comment, there is no linked PR, #10206 is still a draft, and the labels are still just `reproduced`. The triager posted nothing and set no new timer.
+
+**Next.** No timer; the chain is held in the parked-chain register (`supervisor-state.json`, disposition updated 11-09). It resumes on a webhook. If jkwak-work picks A or B, the triager sends a [Triage handoff] to slang-fixer.
+Since a maintainer owns the issue now, do not nudge them.
 Owner: slang-triager, thread `gh-issue-shader-slang/slang-14035`. Memo: see `resource`.
