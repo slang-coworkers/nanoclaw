@@ -3,7 +3,7 @@ title: "Stale Pointers and Regression Checks"
 type: concept
 group: general-misc
 tags: [staleness, verification, regression, triage, citations, byte-compare, source-of-truth, git-blame]
-source_count: 23
+source_count: 25
 ---
 
 # Stale Pointers and Regression Checks
@@ -27,7 +27,7 @@ source_count: 23
 - A single-point triage "recommended fix" is a hypothesis; prove it with a local RED→GREEN + ablation. If you can't name a test that goes RED without a hunk, you don't understand the fix.
 - Don't reflexively concede to a maintainer — re-verify against primary source (spec text, actual code, computed truth table) at claim precision before conceding or defending.
 - Verify an accessor→behavior direction against source AND the emitted artifact; a reversed label survives casual review because the surrounding mechanism reads correctly.
-- An open PR that mentions an issue is not automatically its fix (accept-now/fix-later splits); a tracking issue's premise ("the prerequisite was already made") can outrun reality — verify the prerequisite PR is actually MERGED, and that a squash merge is on main via its `merge_commit_sha`.
+- An open PR that mentions an issue is not automatically its fix (accept-now/fix-later splits); a tracking issue's premise ("the prerequisite was already made") can outrun reality — verify the prerequisite PR is actually MERGED, and that a squash merge is on main via its `merge_commit_sha`. Even then, MERGED does not prove the PR's LAST push landed: diff the squash tree against `headRefOid` for the PR's files before saying "fix landed".
 - Don't trust an agentic test-generation reporter's framing: strip the repro to minimum line-by-line, verify "other targets work" independently, and if the IR op in the error is more generic than the title's construct, the IR op is the real story.
 - Check shallow-clone traps before citing `git blame` or `git log -S` (`test -f .git/shallow`, `git log --oneline | wc -l`); a shallow clone attributes lines to the oldest commit in its window. Get real file-touch history from `/repos/{o}/{r}/pulls/{n}/files`, or `git fetch --unshallow`.
 
@@ -211,6 +211,17 @@ real commit with `gh pr view N --json mergeCommit` (or `.merge_commit_sha`), the
 `gh api compare/<merge_sha>...main --jq .status` should be `identical`/`ahead`; stronger, read the
 changed symbols on `ref=main` via the contents API. slangpy#1162's fixer reported head `2b960f12`
 (diverged), while squash commit `97f0f21a` was `identical` to main ([verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md)).
+The converse also holds: **"MERGED" does not prove the PR's last push landed.** On shader-slang/slang#14246
+(merged 2026-11-06 22:40Z) `gh pr view --json headRefOid` reported d959f7318, and the PR's commit
+list contains it, but squash commit 442487688 has the same tree as the earlier head 110d70c6d for
+every PR file. d959f7318 (pushed 20:18Z) changed a diagnostic's wording, and that change never
+reached master; the squash commit's committer date (20:01Z) is earlier than that push. The likely
+cause, unverified, is that the merge queue built from the head current at enqueue time. So before
+reporting "PR X landed with change Y", run `git diff <headRefOid> <mergeCommit.oid> -- <PR files>`;
+if it is not empty, find what actually landed with `git diff <older-head> <mergeCommit> -- <files>`,
+and check the user-visible text on master with `git show origin/master:<file> | grep`
+([merged PR headRefOid can include a commit that never landed](../learnings/1794244779281-merged-pr-headrefoid-can-include-a-commit-that-nev.md),
+[GitHub "MERGED" does not prove the last push landed](../learnings/1794269194512-github-merged-does-not-prove-the-pr-s-last-push-la.md)).
 
 For issues from an **agentic test-generation pipeline**, don't trust the reporter's framing of the
 trigger: strip the repro by commenting out lines one at a time to find the one whose removal makes
@@ -218,11 +229,13 @@ compilation succeed; re-check "other targets work" (agentic reporters cite sibli
 re-run); and if the error's IR op is more generic than the title's construct (`castToVoid` vs
 "enum-to-int cast"), the IR op is the real story ([Test-Agent-Filed Issues Need Trigger Verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md)).
 
-**Source learnings (23):**
+**Source learnings (25):**
 - [A correct constant-fold fix can expose a latent bug as a regression — bisect sub-cases separately](../learnings/1792570145283-a-correct-constant-fold-fix-can-expose-a-latent-bu.md) — #13805: offset field regressed in v2026.11 via a correct fold
 - [Shallow-clone git-log -S/-L gives false regression attribution — confirm the feature commit with git show, or fetch --unshallow first](../learnings/1789577475326-shallow-clone-git-log-s-gives-false-regression-att.md) — earliest in-window commit is not the origin
 - [Test-agent-filed issues need trigger verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md) — strip the repro; the generic IR op is the real story
 - [A PR's changed-file list does not prove 'not a regression'](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md) — file list proves what changed, not causation
+- [Merged PR headRefOid can include a commit that never landed — diff the squash tree](../learnings/1794244779281-merged-pr-headrefoid-can-include-a-commit-that-nev.md) — #14246: squash tree = earlier head; `git diff <headRefOid> <mergeCommit> -- <files>`, then `git show origin/master:<file>`
+- [GitHub 'MERGED' does not prove the PR's last push landed — diff the squash tree](../learnings/1794269194512-github-merged-does-not-prove-the-pr-s-last-push-la.md) — late 20:18Z push lost; cause (MQ built from enqueue-time head) unverified
 - [Stale PR fix-requests: verify base vs current main, and issue-vs-PR](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md) — patched code may be refactored away on main
 - [Stale feature requests can be half-implemented at HEAD](../learnings/1782215130307-stale-feature-requests-can-be-half-implemented-at-.md) — map landed-vs-missing at HEAD before scoping
 - [Verify against source before trusting single-point triage or contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md) — RED→GREEN + ablation; read source to settle reviewers

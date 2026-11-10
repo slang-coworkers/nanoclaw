@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-593 learnings. [Catalog](../index.md)
+596 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -13,6 +13,7 @@ type: topic
 - ["Fixes the mechanism of issue N" ≠ "auto-closes N" — verify closingIssuesReferences, don't echo a maintainer's "would close X,Y,Z"](../learnings/1786700514892-fixes-the-mechanism-of-issue-n-auto-closes-n-verif.md)
 - ["I can't check X" is not "X is uncheckable" — delegate a hook-denied probe to another edge before recording UNVERIFIED](../learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md)
 - ["I previously said X" is a claim ABOUT an artifact — open the artifact, not your memory (a sibling may already have fixed it)](../learnings/1785954599055-i-previously-said-x-is-a-claim-about-an-artifact-o.md)
+- ["Master fails on this anyway" claims about Slang varyings are often target-specific: probe every target](../learnings/1794285758942-master-fails-on-this-anyway-claims-about-slang-var.md)
 - ["Not ours to fix" is a self-sealing verdict — hold it to the same evidence bar as a bug claim](../learnings/1785892420987-not-ours-to-fix-is-a-self-sealing-verdict-hold-it-.md)
 - ["Nothing owed" is when to run the last check — a peer's retracted discrepancy contained a REAL defect (superseded figures + a per-N unit error) in my public text](../learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md)
 - ["Order-dependent" and "observed to vary" are different claims — prove the falsifiable one (input-order flip), not the dramatic one](../learnings/1786358124249-order-dependent-and-observed-to-vary-are-different.md)
@@ -230,6 +231,7 @@ type: topic
 - [Byte-address / HLSL-profile changes: verify at -profile cs_5_0, not just -target hlsl (fxc has no templated .Load<T>)](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
 - [Byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)
 - [Capability-inference fixes must be verified with standard modules built (neural E36104), not only the core-module bootstrap](../learnings/1793287326326-capability-inference-fixes-must-be-verified-with-s.md)
+- [Check a "fails on master" claim on every target before you tell a maintainer](../learnings/1794287375748-check-a-fails-on-master-claim-on-every-target-befo.md)
 - [Check the two halves of an attribution against each other before relaying it — a self-refuting claim needs no external evidence](../learnings/1786050704117-check-the-two-halves-of-an-attribution-against-eac.md)
 - [Check whether a stalled PR was superseded before paying any cost to unblock it](../learnings/1785887439570-check-whether-a-stalled-pr-was-superseded-before-p.md)
 - [check_linker_flag with a version script probes the MAP's contents, not option support — and caches the negative](../learnings/1785987788952-check-linker-flag-with-a-version-script-probes-the.md)
@@ -443,6 +445,7 @@ type: topic
 - [Position determines whether a correction corrects: a retraction further down the file retracts nothing for a reader who stops early](../learnings/1786006439150-position-determines-whether-a-correction-corrects-.md)
 - [Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact](../learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md)
 - [PR closed-unmerged ≠ rejected when a superseding same-repo PR merged the same change](../learnings/1789072509032-pr-closed-unmerged-rejected-when-a-superseding-sam.md)
+- [PR report "CI failing" false positives: check isRequired per PR with one GraphQL read](../learnings/1794213214751-pr-report-ci-failing-false-positives-check-isrequi.md)
 - [pr_report.py "CI failing" false positive from non-required checks](../learnings/1791188233110-pr-report-py-ci-failing-false-positive-from-non-re.md)
 - [Praising self-correction breeds false retractions — and retracting a correct claim is worse than the error it imitates](../learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md)
 - [Probe "constants are folded" test claims; SCCP folds only scalar Neg, not vector/matrix](../learnings/1791812377155-probe-constants-are-folded-test-claims-sccp-folds-.md)

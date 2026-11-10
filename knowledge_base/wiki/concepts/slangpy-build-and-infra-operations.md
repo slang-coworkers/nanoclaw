@@ -3,7 +3,7 @@ title: "SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-sampl
 type: concept
 group: slangpy
 tags: [slangpy, build, infra, operations, downstream-args, samples, lfs]
-source_count: 32
+source_count: 33
 ---
 
 # SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review
@@ -54,7 +54,7 @@ Use the prebuilt venv `/workspace/agent/slangpy-main-build-venv/bin/python` (has
 
 Before calling a local `pytest slangpy/tests` result a regression:
 
-1. **Missing dev deps.** The venv lacks `deepdiff` (and pytest-timeout, pytest-xdist, imageio), so collection aborts on `test_declrefs.py` and `test_shapes.py`. `pip install --target /tmp/deps deepdiff imageio`, delete the numpy it pulls in (it would shadow the venv's), and add `/tmp/deps` to `PYTHONPATH`.
+1. **Missing dev deps.** The venv lacks `deepdiff` (and pytest-timeout, pytest-xdist, imageio), so collection aborts on `test_declrefs.py` and `test_shapes.py`. `pip install --target /tmp/deps deepdiff imageio`, delete the numpy it pulls in (it would shadow the venv's), and add `/tmp/deps` to `PYTHONPATH`. xdist is not needed: as of 2026-11-09 `tmp/venv-1258` (the xdist venv) is gone and venv-1189/1260/126 lack it, but serial L40S runs from `/tmp` with `-o pythonpath=<worktree>` take ~83 s for `slangpy/tests/device --device-types vulkan,cuda`, ~84 s for `slangpy_tests` on Vulkan and ~121 s on CUDA, and two suites run side by side cleanly. The build interpreter is the one in CMakeCache `Python_EXECUTABLE` (venv-1189). Absolute-path node ids with parametrize brackets (`...::test_x[...-DeviceType.cuda]`) returned "not found" from `/tmp`; select with `--device-types cuda -k "<name> and <substr>"` ([serial L40S sweeps](../learnings/1794236077554-slangpy-local-l40s-test-sweeps-are-fast-serially-v.md)).
 2. **About 50 failures are git-lfs pointers.** 51 of 53 files in `data/test_images/` are 130-byte pointers, so `test_bitmap.py` (png_read_bit_depth, dds_read, dds_detect_format), `test_bc_codec.py::test_load_and_decode_dds` and every `test_texture_loader.py` variant fail ("Unknown file format!", "DDS file has invalid header"). The expected L40S vulkan+cuda tally is about 3633 passed / 50 failed / 599 skipped. In a worktree, copy real files from the main checkout's `data/`. 11 C++ `sgl_tests` fail the same way ([LFS pointers in fixer containers](../learnings/1793842659420-slangpy-torch-fallback-bridge-bf16-copy-path-only-.md)).
 3. **The main checkout's native `.so` is often older than its Python sources.** A Sep 22 fixer `.so` under e7bb2242 lacked `_set_default_slang_include_paths` (conftest NameError); a reviewer `.so` from da8844f under pr-1182 (13f50dc) made `spy.create_device` raise `TypeError: DeviceDesc.__init__`. Compare `build/linux-gcc/git_version/git_version.h` with `git log -1` before trusting a run. To test without touching the checkout, `git archive <built sha> slangpy | tar -x -C /tmp/x`, symlink the `.so` into `/tmp/x/slangpy/`, copy `slangpy/.build_dir`, and run with `PYTHONPATH=/tmp/x` ([local pytest](../learnings/1792466857244-slangpy-local-pytest-50-bitmap-dds-texture-failure.md), [stale reviewer `.so`](../learnings/1792484603209-slangpy-reviewer-main-checkout-native-so-is-stale-.md), [worktree LFS-pointer failures](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md)).
 
@@ -95,7 +95,7 @@ When such PRs need a GPU, measure it. On the L40S with driver 565.57.01 (CUDA 12
 
 **mkdoc strips the leading underscore from underscore-prefixed names**: private `Device::_notify_command_recording_submitted` becomes `__doc_sgl_Device_notify_command_recording_submitted`, so grepping `__doc_sgl_Device__...` wrongly suggests it is undocumented. mkdoc emits empty entries (`R"doc()doc"`) for private data members and underscore-prefixed internal methods, though not uniformly for every private method; omitting them is cosmetic but churns the next regeneration, so for a callback mirroring siblings prefer regenerating. Related: `CommandEncoder::finish()` sets `m_open=false` only on success, so a failed finish leaves the encoder open and retryable; before-finish is not 1:1 with a recording; and `discarded` fires only on destruction ([mkdoc strips underscores](../learnings/1789378366162-slangpy-py-doc-h-mkdoc-strips-leading-underscore-f.md)).
 
-**Source learnings (32):**
+**Source learnings (33):**
 
 - [slangpy triage: re-probe the GPU every session; a 'no GPU' note goes stale](../learnings/1792136253471-slangpy-triage-re-probe-the-gpu-every-session-a-no.md) — probe loop; missing GPU = infra report
 - [Coworker containers HAVE an NVIDIA L40S (CUDA + NVIDIA Vulkan), measured 2026-10-16](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md) — 09-28→10-16 was a host outage
@@ -123,6 +123,7 @@ When such PRs need a GPU, measure it. On the L40S with driver 565.57.01 (CUDA 12
 - [slangpy tests: no device_type param => skipped under --device-types](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md) — worktree `data/` LFS pointers
 - [SlangPy linux-gcc Release build: tinybc -Werror=restrict; stubs need libcst](../learnings/1793367272672-slangpy-linux-gcc-release-build-tinybc-werror-rest.md)
 - [SlangPy pytest pythonpath=["."] shadows PYTHONPATH from an unbuilt worktree](../learnings/1793687165666-slangpy-pytest-pythonpath-shadows-pythonpath-when-.md)
+- [SlangPy local L40S test sweeps are fast serially; venv-1258 (xdist) is gone](../learnings/1794236077554-slangpy-local-l40s-test-sweeps-are-fast-serially-v.md) — ~83–121 s per suite; select with `--device-types` + `-k`.
 - [SlangPy Debug build: restore /tmp/x11prefix and /tmp/pyheaders after a restart](../learnings/1793850554382-slangpy-debug-build-restore-tmp-x11prefix-and-tmp-.md)
 - [SlangPy: fast isolated worktree build reusing the main checkout's vcpkg state](../learnings/1793850765246-slangpy-fast-isolated-worktree-build-by-reusing-ma.md)
 - [fast scratch worktree: clone submodules from a sibling worktree](../learnings/1793838656591-fast-slangpy-scratch-worktree-clone-submodules-fro.md)

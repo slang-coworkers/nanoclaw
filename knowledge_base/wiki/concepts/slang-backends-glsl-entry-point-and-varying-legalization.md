@@ -3,7 +3,7 @@ title: "Slang GLSL legalization: entry-point parameters, varyings, and precise o
 type: concept
 group: slang-backends
 tags: [glsl, glsl-legalize, entry-point, varying, system-values, precise, NoContraction, IRPreciseDecoration, geometry-shader, layout-qualifier, emit-spirv-via-glsl, buildEntryPointReferenceGraph, export, translateGlobalVaryingVar, multi-entry-point, whole-program]
-source_count: 13
+source_count: 14
 ---
 
 # Slang GLSL legalization: entry-point parameters, varyings, and precise outputs
@@ -23,6 +23,7 @@ source_count: 13
 - **Entry-point reachability is not liveness.** `buildEntryPointReferenceGraph` starts only from entry points and CUDA kernels, but `export` functions are still emitted. An emitter that skips a global because no entry point reaches it produces an undeclared identifier when an `export` function reads that global (#13724 R1). Key such skips on `!inst->hasUses()`.
 - **Before writing "target X is unaffected" for a multi-entry-point varying bug, test a global `in` and a global `out`, and a linked build** (HLSL needs `-whole-program -profile lib_6_6`). On #13687 a global `in` looked fine on SPIR-V while a global `out` dropped out of the second `OpEntryPoint` interface, and HLSL whole-program dropped both.
 - **Getters backed by an internal `__builtinX : SV_X` global (WGSL `WorkgroupCount()`, Metal `DispatchedWorkgroupSize()`) inherit #13687:** only the first entry point in a multi-entry module gets the builtin; blame the shared root cause, not the new getter.
+- **A user semantic directly on a module-scope varying (`in float4 g : TEXCOORD0;`) is E49999 in `translateGlobalVaryingVar`**; semantics on struct-typed globals' fields work, and #14395 adds checker error E30629. With varying entry-point parameters present, globals get Locations after them, silently overriding an explicit GLSL `layout(location = 0)`.
 
 ## System-Value Legalization (Per-Entry-Point Decorations)
 
@@ -66,7 +67,11 @@ Multi-entry-point bugs need a matching test matrix. #13687 reports that `transla
 
 New getters backed by an internal `in uint3 __builtinX : SV_X` global inherit the same gap. WGSL `WorkgroupCount()` (#13920) and Metal `DispatchedWorkgroupSize()` (PR #14148) work only for the FIRST entry point in emit order when one module has two or more entry points that reach the global (`slangc -entry a -entry b`, or no `-entry`): later entry points get no `@builtin(num_workgroups)` / `[[threads_per_threadgroup]]` parameter and read a `var<private>` / KernelContext field that is never set, so they silently get garbage, and swapping the `-entry` order changes which kernel works. That is #13687's root cause (fix in draft #13726), not the new getter; single-entry compiles (the slang-rhi/SlangPy path) are fine and SPIR-V is unaffected. Worktree note: `cp -a external` from the main checkout breaks `git status` (submodule `.git` files point at `../../.git/modules`); run `git -c protocol.file.allow=always submodule update --init --recursive` instead ([internal __builtin SV globals inherit the #13687 multi-entry gap](../learnings/1793889912164-internal-builtin-sv-globals-workgroupcount-dispatc.md)).
 
-**Source learnings (13):**
+## Module-scope varyings: semantics and Locations (#14395)
+
+A user semantic placed directly on a module-scope varying fails in IR. Consider `in float4 g : TEXCOORD0;` or `out float4 g : COLOR0;` at module scope: the front end accepts it, then `translateGlobalVaryingVar` reports E49999 "unknown system-value semantic", because that pass treats a semantic on the global itself as a system value. Master b3d4e7ad4 does the same. Semantics on the fields of a struct-typed global (`in VIn gIn;` whose fields carry `pos : POSITION`) compile fine, and shader-slang/slang#14395 adds checker error E30629 for the direct case. A module-scope varying mixed with varying entry-point parameters also compiles on master: the parameters get Locations first and the globals follow, so an explicit `layout(location = 0)` on such a GLSL global is silently moved to Location 1 when parameters are present. Probe with `-o out.spv`, not `-o /dev/null`, which returns rc 255 for SPIR-V even on clean code [user semantic on a module-scope varying is E49999](../learnings/1794272932025-slang-a-user-semantic-directly-on-a-module-scope-v.md). The per-module ownership side of #14395 is on [[wiki/concepts/slang-test-output-assertions-and-truncated-runs.md]].
+
+**Source learnings (14):**
 - [GLSL legalize: per-entry-point system-value decorations (correction — depth is unreachable)](../learnings/1782175454099-glsl-legalize-per-entry-point-system-value-decorat.md)
 - [#13287: IRPreciseDecoration on params/struct keys is lost in glsl-legalize, computePreciseInsts seeding and C-like param/field emit; non-inlined callee out params work; grep dxil-asm for `fmul fast`.](../learnings/1790611075004-precise-on-entry-point-out-params-struct-fields-is.md)
 - [#13292: -pass-through glslang aborts E99997; libslang-glslang `glslang_compile_1_2` harness; `precise gl_Position;` redeclaration gives NoContraction; tryEmitGlobalParamImpl skips emitVarModifiers for gl_*.](../learnings/1790614490406-testing-glsl-spir-v-qualifier-fixes-without-slangc.md)
@@ -80,5 +85,6 @@ New getters backed by an internal `in uint3 __builtinX : SV_X` global inherit th
 - [Slang global varyings: verify 'target X unaffected' claims for both `in` and `out`, and HLSL -whole-program](../learnings/1792220060940-slang-global-varyings-verify-target-x-unaffected-c.md) — #13687: SPIR-V drops a global `out` from the second `OpEntryPoint`; HLSL `-whole-program -profile lib_6_6` drops both; decode opcode 15 when spirv-dis is missing
 - [GLSL-source GPU tests: add `[shader("compute")]` and a fixed-size control](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md) — post-lowering entry lookup drops `local_size` (#14256, PR #14275); name the entry `computeMain`
 - [Internal __builtin SV globals (WorkgroupCount/DispatchedWorkgroupSize) inherit the #13687 multi-entry gap on Metal and WGSL](../learnings/1793889912164-internal-builtin-sv-globals-workgroupcount-dispatc.md) — only the first entry point gets the builtin; SPIR-V and single-entry fine
+- [Slang: a user semantic directly on a module-scope varying fails in IR (E49999); struct-field semantics work](../learnings/1794272932025-slang-a-user-semantic-directly-on-a-module-scope-v.md) — `translateGlobalVaryingVar` reads it as a system value; #14395 adds E30629; params take Locations before globals
 
 _Catalog: [[wiki/index.md]]_

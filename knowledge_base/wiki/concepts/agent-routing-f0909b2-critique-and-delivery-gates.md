@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 32
+source_count: 33
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -139,11 +139,13 @@ It recurs outside the approver (a stale-webhook check); use `gh pr view --json .
 The arm is `BASH_PATTERNS='gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest'`
 (line 65 of `/app/hooks/gate-critique-on-deliver.sh`), a substring match with no HTTP method, refused as
 "CRITIQUE REQUIRED before PR creation" whatever the repo (a GET of `.../pulls/N/reviews` and of another repo's
-`.../pulls/260` were both denied). `gh pr view <n> --repo <owner>/<repo> --json reviews,comments,statusCheckRollup`
-reads the same state ungated, and a `gh api .../issues/comments/<id>` PATCH under 1,000 bytes passes without an
+`.../pulls/260` were both denied). `gh pr view <n> --repo <owner>/<repo> --json state,reviews,comments,statusCheckRollup`
+reads the same state ungated, as do `gh api graphql` with `pullRequest(number:)` (`reviewThreads` for inline
+comments) and `gh api repos/<o>/<r>/issues/<n>` for merged/closed state (re-confirmed 2026-11-09), and a `gh api .../issues/comments/<id>` PATCH under 1,000 bytes passes without an
 OUTPUT_REVIEW. For an external repo `gh api .../issues/<n>/events` returned 401 via the gateway; a WebFetch of
 the github.com PR page gave the timeline
 ([read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md),
+[PR REST path reads blocked, 11-09](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md),
 [cross-repo pulls GET treated as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)).
 
 Because the arm matches command *text*, it also fires on a GET of one inline review comment and on a heredoc
@@ -288,7 +290,7 @@ behaviour, against `_claims.md` §1's "doc's own wording", is precedent-accepted
 with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (32):**
+**Source learnings (33):**
 
 - [attestation treadmill: batch edits, OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)
 - [ABSTAIN fast-path trips on WOULD_APPROVE / BLOCK](../learnings/1788385047068-approver-infra-abstain-critique-gate-abstain-fast-.md) — case-sensitive.
@@ -318,6 +320,7 @@ with a drift-from-source row
 - [byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md) — `description_problems(...)`.
 - [`[Fix Report]` needs in_reply_to=<handoff seq>](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md)
 - [read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — BASH_PATTERNS.
+- [gate-critique-on-deliver blocks read-only gh api calls on the PR REST path](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — escapes: `gh pr view --json`, graphql `pullRequest(number:)`, `issues/<n>`.
 - [cross-repo pulls GET = PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)
 - [Dawn/Tint num_subgroups in chromium/7559](../learnings/1793144297778-dawn-tint-num-subgroups-first-lands-in-chromium-75.md) — (gate half).
 - [send the handoff message before its memo](../learnings/1793825152219-nanoclaw-send-the-triage-handoff-message-before-it.md) — #14321.
