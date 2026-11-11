@@ -7,6 +7,8 @@
  * Text inside fenced code blocks, inline code and `>` quoted lines is ignored:
  * code shows the handle without addressing the bot, and a quote repeats an
  * earlier request (GitHub's "Quote reply"), which must not start the work again.
+ * Known limits: an inline code span that crosses a line break, and a 4-space
+ * indented code block, still count as prose, as they did before.
  */
 export function mentionsHandle(body: string, handle: string): boolean {
   const login = handle.trim().replace(/^@/, '');
@@ -39,7 +41,8 @@ function stripNonProse(body: string): string {
       continue;
     }
     if (/^\s{0,3}>/.test(line)) continue;
-    out.push(line.replace(/(`+)[\s\S]*?\1/g, ' '));
+    // An escaped backtick is literal text, so it never opens a span.
+    out.push(line.replace(/(?<!\\)(`+)[\s\S]*?\1/g, ' '));
   }
   return out.join('\n');
 }
