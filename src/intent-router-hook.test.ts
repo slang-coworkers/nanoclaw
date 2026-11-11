@@ -25,6 +25,7 @@ let server: http.Server;
 let baseUrl: string;
 let seen: Seen[];
 let reply: (path: string) => { status: number; json: unknown };
+let delayMs: number;
 
 function openAiReply(content: string) {
   return { status: 200, json: { choices: [{ message: { role: 'assistant', content } }] } };
@@ -37,14 +38,17 @@ function anthropicReply(text: string) {
 beforeEach(async () => {
   seen = [];
   reply = () => ({ status: 404, json: {} });
+  delayMs = 0;
   server = http.createServer((req, res) => {
     let raw = '';
     req.on('data', (c) => (raw += c));
     req.on('end', () => {
       seen.push({ path: req.url ?? '', headers: req.headers, body: raw ? JSON.parse(raw) : {} });
       const r = reply(req.url ?? '');
-      res.writeHead(r.status, { 'content-type': 'application/json' });
-      res.end(JSON.stringify(r.json));
+      setTimeout(() => {
+        res.writeHead(r.status, { 'content-type': 'application/json' });
+        res.end(JSON.stringify(r.json));
+      }, delayMs);
     });
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -99,6 +103,19 @@ describe('intent-router.sh in a non-Claude group', () => {
     expect(seen[0].body.model).toBe('openai/openai/gpt-6-luna');
     expect(seen[0].headers.authorization).toBe('Bearer ROUTED_VIA_ONECLI_PROXY');
     expect(JSON.stringify(seen[0].body.messages)).toContain('please fix the null check');
+  });
+
+  it('turns luna reasoning off, which classification does not need', async () => {
+    reply = () => openAiReply('{"workflow":"plan","reason":"r"}');
+    await runHook({ AGENT_PROVIDER: 'codex' });
+    expect(seen[0].body.reasoning_effort).toBe('none');
+  });
+
+  it('waits past 5 s for luna, which took up to 7.2 s through the gateway', { timeout: 15000 }, async () => {
+    delayMs = 5500;
+    reply = () => openAiReply('{"workflow":"implement","reason":"r"}');
+    const r = await runHook({ AGENT_PROVIDER: 'codex' });
+    expect(routedWorkflow(r.stdout)).toBe('implement');
   });
 
   it('strips a leading slash, which is how luna names the workflow', async () => {
@@ -156,5 +173,6 @@ describe('intent-router.sh in a Claude group (unchanged)', () => {
     expect(r.status).toBe(0);
     expect(routedWorkflow(r.stdout)).toBe('plan');
     expect(seen.map((s) => s.path)).toEqual(['/v1/messages']);
+    expect(seen[0].body).not.toHaveProperty('reasoning_effort');
   });
 });
