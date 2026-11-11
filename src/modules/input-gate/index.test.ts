@@ -141,6 +141,28 @@ describe('scheduleGitHubObservation', () => {
     expect((await listGateDecisions()).map((r) => r.delivery_id)).toEqual(['d-first', 'd-late']);
   });
 
+  it('drainInputGate gives up after its budget, so shutdown is never held by a slow lookup', async () => {
+    let unblock!: (v: string) => void;
+    const hanging = {
+      repoPermission: () => new Promise<string>((r) => (unblock = r)),
+      orgMember: async () => false,
+    };
+    setInputGateDepsForTest({ settings: () => shadow, lookups: hanging });
+    scheduleGitHubObservation({
+      eventType: 'issue_comment',
+      rawBody: mention,
+      deliveryId: 'd-hang',
+      botMention: '@nv-slang-bot',
+      currentOutcome: 'local',
+    });
+    const t0 = Date.now();
+    await drainInputGate(50);
+    expect(Date.now() - t0).toBeLessThan(1000);
+
+    unblock('read');
+    await drainInputGate();
+  });
+
   it('drainInputGate resolves at once when nothing is pending', async () => {
     await expect(drainInputGate()).resolves.toBeUndefined();
   });

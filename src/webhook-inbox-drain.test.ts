@@ -8,8 +8,9 @@ const row = {
   status: 'failed',
   last_error: null,
 };
+const row2 = { ...row, delivery_id: 'd-2' };
 vi.mock('./db/webhook-inbox.js', () => ({
-  listRetryableWebhookDeliveries: vi.fn(async () => [row]),
+  listRetryableWebhookDeliveries: vi.fn(async () => [row, row2]),
   acceptWebhookDelivery: vi.fn(async () => ({ attempts: 2 })),
   completeWebhookDelivery: vi.fn(async () => undefined),
   failWebhookDelivery: vi.fn(async () => undefined),
@@ -47,5 +48,7 @@ describe('stopWebhookInboxDrain', () => {
     release();
     await stop;
     expect(completeWebhookDelivery).toHaveBeenCalledTimes(1);
+    // The rest of the pass is left for the next start: shutdown waits for one row, not 50.
+    expect(process_).toHaveBeenCalledTimes(1);
   });
 });

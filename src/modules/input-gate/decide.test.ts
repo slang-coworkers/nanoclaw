@@ -39,6 +39,15 @@ describe('decide (one gate, two checks)', () => {
     expect(d).toMatchObject({ outcome: 'system_event', tier: 'n/a', allowlist: null });
   });
 
+  it("the bot's own user login is judged as the bot, not as a person", async () => {
+    const self = { id: 9, login: 'nv-slang-bot', type: 'User', association: 'NONE' };
+    const c = ctx({ selfLogins: new Set(['nv-slang-bot']) });
+    expect(await decide(req({ actor: self, event: 'pr_reviewable', startsWork: false }), c)).toMatchObject({
+      outcome: 'bot',
+    });
+    expect(c.lookups.repoPermission).not.toHaveBeenCalled();
+  });
+
   it('a Bot account is never judged as a person', async () => {
     const d = await decide(
       req({ actor: { id: 9, login: 'dependabot[bot]', type: 'Bot', association: 'NONE' } }),
