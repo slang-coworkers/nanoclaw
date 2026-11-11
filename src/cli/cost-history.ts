@@ -157,9 +157,7 @@ interface PerFileRow {
 }
 
 type LedgerOutcome =
-  | { kind: 'ok'; rows: PerFileRow[]; baselineUsd: number }
-  | { kind: 'no_table' }
-  | { kind: 'error'; detail: string };
+  { kind: 'ok'; rows: PerFileRow[]; baselineUsd: number } | { kind: 'no_table' } | { kind: 'error'; detail: string };
 
 /** Read + pre-aggregate one session's ledger, excluding baseline lumps from the
  *  buckets and totalling them separately. Distinguishes "no ledger table" from a
