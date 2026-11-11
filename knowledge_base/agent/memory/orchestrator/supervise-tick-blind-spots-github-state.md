@@ -33,6 +33,10 @@ Part of [[orchestrator/supervise-tick-blind-spots.md]] (hub). Shape numbers are 
     `closed-since.txt`, `grep -rl '<num>' memory/slang/` and read each hit's **Resume on:** line; nudge the
     `pr-mappings` owner pinned (acked in 45 s). Tick 327: jkwak-work's #14299 turned off tests that drafts #14317/#14314
     also edit, so both went DIRTY unseen; both merge-master nudges were pushed within 7 min.
+    Tick 337 (#14432): jkwak-work parked the fixer "until #14422 is merged"; #14422 merged 07:58Z but the one-shot
+    re-check was set for the next day (03:30Z), so the chain sat 4 h with the condition met. scan flagged it only as
+    `human spoke last`. A park-until-merge timer is a backstop, not the trigger: run this detector every tick, wake the
+    fixer pinned with the maintainer's words, and cancel the now-redundant one-shot.
 16. **The reporter's own fix PR lands after dispatch, and the chain never learns of it** (tick 321, batch
     #14151–#14160). Within ~1 h the reporter opened 8 `Fixes #N` PRs (#14164–#14176); a cross-reference fires no
     issue webhook. #14153 had a fixer and reviewer building a wider fix in parallel with #14170. Detector: for every

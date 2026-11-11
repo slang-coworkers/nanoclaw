@@ -67,4 +67,6 @@ and cited elsewhere. Siblings: [[orchestrator/supervise-tick-blind-spots-dead-tu
     comment from the repo-wide `issues/comments?since=` feed → is its id in the mapped/thread session?). Ignore hits
     whose only carrier is your own re-delivery. Fix: re-send the original relay text verbatim, pinned
     (`target_session_id` + `in_reply_to=<the cron session's task row>`); all 3 landed in ≤ 1 min, acted on in ≤ 3 min.
-    A closed-session pr-mapping needs an operator `ncl pr-mappings remap`.
+    A closed-session pr-mapping does not always need an operator `ncl pr-mappings remap`. On 11-10 the live owner's
+    `report_pr_created` re-claimed #14209's mapping from the closed `fejlik` (Main-verified). First route the work
+    to the live owner. Ask for a remap only if the mapping still points at the closed session after the owner reports again.

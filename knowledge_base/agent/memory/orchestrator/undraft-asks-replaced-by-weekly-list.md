@@ -25,7 +25,7 @@ pdeayton-nv: #14111, #13850; and others).
   #12813 #12932 #12967 #12980 #13027 #13038, slangpy#1158, rhi#869. "un-draft all" = these 25 only. Excluded on purpose:
   #13966 (superseded by merged #14352), #14081 (unanswered tangent-vector CR), #14300 (waits #14293), #14023 (landing
   order), #12382/#12408 (hazard). Unverified review, so left off: #12429, #12713. About 55 newer review-complete drafts
-  roll to the next list. **Carry-over checked for the 11-16 list:** slang#14221 (fixes #14053; R3 APPROVE_WITH_NITS applied; MERGEABLE, behind; no human review). Next run: do a bounded dashboard read after 11-09 09:00Z for "un-draft all"/PR numbers, then route each PR
+  roll to the next list. **Carry-over checked for the 11-16 list:** slang#14221 (fixes #14053; R3 APPROVE_WITH_NITS applied; MERGEABLE, behind; no human review); slang#14446 (fixes #14443, P2 LLVM first-codegen race; reviewer APPROVE_WITH_NITS applied, head `5952662ce`; owner: fixer on gh-issue-shader-slang/slang-14443). Next run: do a bounded dashboard read after 11-09 09:00Z for "un-draft all"/PR numbers, then route each PR
   to its owning fixer session (merge master by plain merge → `gh pr ready` → report). Never flip it yourself.
 - **Method that worked:** match open bot drafts (`gh pr list --author app/nv-slang-bot`) to supervisor-state dispositions and
   `slang/*.md` lines naming the PR. Live-check them with one aliased GraphQL batch (isDraft, reviews, closing-issue labels), then get

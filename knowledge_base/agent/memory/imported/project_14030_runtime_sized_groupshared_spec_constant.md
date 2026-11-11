@@ -110,3 +110,11 @@ but MERGEABLE. The issue owner (jkwak-work) and the PR reviewer (kaizhangNV) are
 Timers: triager **t-9ed81f** 11-19T16:30Z (final, no recurrence); Main `recheck-14049-maintainer-8601` 11-10 14:00Z (final). After both,
 the chain stays parked on jkwak-work / kaizhangNV via the /supervise-issues register. Operator told on orchestrator-dashboard 11-05.
 
+
+**11-10 14:00Z FINAL Main re-check (`recheck-14049-maintainer-8601`), live:** still no human activity on #14030/#14049 since 11-03 (no
+comments, review comments or events). #14049: draft, head d73c1ea6d, 0 reviews, kaizhangNV assigned + review-requested, checks 4 SUCCESS /
+53 SKIPPED, BEHIND (75 commits) but MERGEABLE. Master's highest code in the block is still 55218, so E55222/E55223 are free. No operator reply
+to the 11-03 "ping kaizhangNV?" ask (checked the dashboard rows 11-05..11-10). **No more Main timers.** The chain is added by hand to the
+task-hygiene parked register (`.task-hygiene/state.json` → `parked["shader-slang/slang#14030"]`, refs #14030 + #14049; it drops out when both
+close). Ready-flip is still pending on the weekly un-draft list. Triager t-9ed81f (11-19) is the last timer anywhere. Resume only on a webhook
+(maintainer review/comment, un-draft) or an operator "unpark". Operator told on orchestrator-dashboard (msg 7).

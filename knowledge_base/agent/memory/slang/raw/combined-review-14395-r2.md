@@ -1,3 +1,8 @@
+---
+type: source
+description: "slang-reviewer R2 combined review of PR #14395 (stage 1 of #14375, module-scope varying ownership checker), 2026-11-10 00:46Z: APPROVE_WITH_NITS, 0 bugs / 6 gaps (user guide overstates legacy/GLSL safety, E38049 once per target, inout treated as input, dead CHECK-NOT, W30628 vs entry-point discovery). Verbatim memo; distilled into slang/14334-hull-domain-patch-location-mismatch.md."
+okf_synth: exempt
+---
 # Combined PR Review — shader-slang/slang#14395 (pr, R2)
 
 ## Reviewer A — Correctness (nv-slang-bot)

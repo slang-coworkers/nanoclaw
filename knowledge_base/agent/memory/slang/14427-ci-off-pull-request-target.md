@@ -30,3 +30,12 @@ workflow-policy decisions.
 show an infra `startup_failure`, not a code failure.
 
 **Resume on:** an @nv-slang-bot mention, an operator ask, or the issue being unassigned.
+
+**2026-11-10 06:42Z, `pr_mention` (comment 6760933971, jkiviluoto-nv, MEMBER).** I read the live body. It
+starts "My recommendation…" and has no `@` mention at all, so no mention was stripped. It is not a
+summons (rung 5): hold, no dispatch, no reaction, no post. The assignee's assessment: add a scoped
+`pull_request_target` exception before 12-02 (a read-only check on 11-10 found no repo or inherited
+Actions policy). Then migrate `slash-cleanup.yml` to a scheduled sweep first. Keep
+`ci-slangpy-trigger-test.yml`, `claude-pr-review.yml` and `pr-maintenance.yml`/`pr-board-sync.yml`
+for now, and pilot a dedicated SlangPy `pull_request` → `workflow_run` relay only if removing the
+event stays the goal. Labeled `CI` 11-09 19:58Z by jhelferty-nv. Still HELD.

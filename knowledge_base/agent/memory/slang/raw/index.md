@@ -8,6 +8,10 @@ title: Raw chain source material
 Verbatim coworker memos kept as `resource:` targets for chain records. The distilled state lives in the chain record; a memo here is never edited. A memo of 12 KB or more opens with `type: source` + `okf_synth: exempt` frontmatter, because splitting a verbatim source destroys it.
 
 - [combined-review-14395-r1.md](combined-review-14395-r1.md) — slang-reviewer R1 combined review of PR #14395 (stage 1 of #14375), APPROVE_WITH_NITS (0 bugs / 6 gaps; Q1 vs+fs repro regression), 2026-11-07, 80 KB
+- [combined-review-14395-r2.md](combined-review-14395-r2.md) — slang-reviewer R2 combined review of PR #14395, APPROVE_WITH_NITS (0 bugs / 6 gaps), 2026-11-10, 82 KB
+- [combined-review-14395-r3.md](combined-review-14395-r3.md) — slang-reviewer R3 combined review of PR #14395 at 5447ca14b, REQUEST_CHANGES small (0 bugs / 8 gaps / 3 questions), 2026-11-10, 80 KB
+- [triage-14448.md](triage-14448.md) — slang-triager memo for slang#14448 (AbortCompilationException escapes getLayout/findAndCheckEntryPoint/getTargetHostCallable on E39997), 2026-11-10
+- [triage-14432.md](triage-14432.md) — slang-triager memo for slang#14432 (`slangc -E` exits 0 on preprocessor error), 2026-11-10
 - [triage-14394.md](triage-14394.md) — slang-triager memo for slang#14394 (Metal ParameterBlock → argument buffer), 2026-11-07
 - [triage-14359.md](triage-14359.md) — slang-triager memo for slang#14359 (binary-module dependency resolves from wrong include root), 2026-11-05
 - [slangpy-1250-triage-memo.md](slangpy-1250-triage-memo.md) — slangpy-triager memo for slangpy#1250, 2026-10-30

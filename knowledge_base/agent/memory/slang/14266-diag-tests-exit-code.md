@@ -27,3 +27,5 @@ nothing. The stand-down comes from the self-assignment, not from an R6 hold.
 so no re-check timer.
 
 **11-04.** Umbrella [#14292](14292-slang-test-exit-code-all-test-types.md) (same author, self-assigned) now lists this issue as its `diag=` step. Still held.
+
+**11-10.** jkwak-work's own PR [#14422](https://github.com/shader-slang/slang/pull/14422) ("slang-test: check the exit code of diag= and .expected tests", created 11-09 18:16Z, 203 files) implements this issue. Its `pr_ready_for_review` (synchronize, head `9bc729b075`) reached Main 11-10; not forwarded because slang-pr-approver is paused — queued in `data/approver-pause-queue.md`. #14432's fixer chain is parked on #14422 merging. Issue still held for the bot.

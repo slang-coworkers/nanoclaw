@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shader-slang/slang#14438 — Fail slangc -E when preprocessing reports an error</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 860px; margin: 0 auto; padding: 1.5rem; color: #1f2328; background: #fff; }
+  h1 { font-size: 1.6rem; margin-bottom: 0.2rem; }
+  h2 { border-bottom: 1px solid #d0d7de; padding-bottom: 0.3rem; margin-top: 2.2rem; }
+  .meta { color: #59636e; font-size: 0.9rem; }
+  nav ol { padding-left: 1.2rem; }
+  pre, .code { background: #f6f8fa; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85rem; white-space: pre; }
+  .code { white-space: pre-wrap; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; background: #f6f8fa; padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.9em; }
+  pre code { background: none; padding: 0; }
+  .callout { border-left: 4px solid #0969da; background: #ddf4ff; padding: 0.6rem 0.9rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .callout.warn { border-color: #9a6700; background: #fff8c5; }
+  .skippable { border: 1px dashed #8c959f; border-radius: 6px; padding: 0.4rem 1rem; margin: 1rem 0; }
+  .flow { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: stretch; margin: 1rem 0; }
+  .box { flex: 1 1 150px; border: 1px solid #d0d7de; border-radius: 6px; padding: 0.6rem; background: #fafbfc; font-size: 0.85rem; }
+  .box b { display: block; margin-bottom: 0.3rem; }
+  .arrow { align-self: center; font-size: 1.3rem; color: #59636e; }
+  .box.bad { border-color: #cf222e; background: #ffebe9; }
+  .box.good { border-color: #1a7f37; background: #dafbe1; }
+  .term { background: #0d1117; color: #e6edf3; border-radius: 6px; padding: 0.8rem; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 0.85rem; white-space: pre-wrap; }
+  .term .err { color: #ff7b72; } .term .ok { color: #7ee787; } .term .dim { color: #8b949e; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin: 1rem 0; }
+  th, td { border: 1px solid #d0d7de; padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+  th { background: #f6f8fa; }
+  .q { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.8rem 1rem; margin: 1rem 0; }
+  .opts { list-style: none; padding: 0; }
+  .opt { border: 1px solid #d0d7de; border-radius: 6px; padding: 0.4rem 0.7rem; margin: 0.35rem 0; cursor: pointer; }
+  .opt:hover { background: #f6f8fa; }
+  .opt.right { border-color: #1a7f37; background: #dafbe1; }
+  .opt.wrong { border-color: #cf222e; background: #ffebe9; }
+  .why { display: none; margin-top: 0.5rem; padding: 0.5rem 0.8rem; background: #f6f8fa; border-radius: 6px; }
+  @media (max-width: 600px) { body { padding: 0.8rem; } .arrow { transform: rotate(90deg); width: 100%; text-align: center; } }
+</style>
+</head>
+<body>
+<h1>Fail <code>slangc -E</code> when preprocessing reports an error</h1>
+<p class="meta">shader-slang/slang#14438 · head 5ec21e4 · base master 500e75b · fixes #14432 · 2026-11-10</p>
+
+<nav>
+<b>Contents</b>
+<ol>
+  <li><a href="#background">Background</a></li>
+  <li><a href="#intuition">Intuition</a></li>
+  <li><a href="#code">Code walkthrough</a></li>
+  <li><a href="#quiz">Quiz</a></li>
+</ol>
+</nav>
+
+<h2 id="background">1. Background</h2>
+
+<div class="skippable">
+<p><b>Deep background (skippable).</b> A <code>slangc</code> run builds one <em>end-to-end compile request</em>. That request owns a <em>front-end request</em>, which preprocesses, parses and checks the source, and the back end, which generates code for the targets. Every diagnostic goes into a single <em>diagnostic sink</em>. The sink counts the diagnostics that have error severity, including warnings that <code>-warnings-as-errors</code> promotes.</p>
+<p><code>slangc</code> calls <code>spCompile</code>. If the result is a failure, <code>source/slangc/main.cpp</code> changes it to <code>SLANG_E_INTERNAL_FAIL</code>, and the tool exits with -1 (255 in a POSIX shell). The test runner <code>slang-test</code> runs <code>slangc</code> and can check that exit code: a <code>filecheck=</code> lane expects 0 unless it says <code>exit-code=N</code>. Since #14422, a <code>diag=</code> lane expects -1 by default, and an <code>.expected</code> file pins a <code>result code = N</code> line.</p>
+</div>
+
+<p><code>-E</code> (also spelled <code>-output-preprocessor</code>) asks Slang to preprocess the input, write the token stream to stdout and stop. It never runs the parser or the semantic checker. The issue reporter found that this mode always reported success, even when preprocessing failed:</p>
+
+<div class="term"><span class="dim">$ cat t.slang</span>
+#define POUND_POUND ##
+Hello POUND_POUND There;
+<span class="dim">$ slangc t.slang -E; echo $?</span>
+<span class="err">error[E15405]: invalid '##' position</span>
+Hello ## There ;
+<span class="ok">0</span>   <span class="dim">&lt;- a build script sees success</span></div>
+
+<p>The same input without <code>-E</code> exits -1. <code>gcc -E</code>, <code>clang -E</code> and <code>cpp</code> also write their output and exit 1 in this case.</p>
+
+<h2 id="intuition">2. Intuition</h2>
+
+<p><code>FrontEndCompileRequest::executeActionsInner</code> does its work in three steps. First it preprocesses each file, which in <code>-E</code> mode also writes the tokens. Then it asks the sink whether any error was reported. Then it parses and checks the code. The <code>-E</code> early exit was placed <em>between</em> the first two steps, so a preprocess-only request returned before the error question was asked.</p>
+
+<div class="flow">
+  <div class="box"><b>parseTranslationUnit</b>preprocess <code>t.slang</code><br>sink: 1 error (E15405)<br>stdout: <code>Hello ## There ;</code></div>
+  <div class="arrow">→</div>
+  <div class="box bad"><b>before: -E? → return OK</b>error count never read</div>
+  <div class="arrow">→</div>
+  <div class="box"><b>slangc</b>exit 0</div>
+</div>
+<div class="flow">
+  <div class="box"><b>parseTranslationUnit</b>preprocess <code>t.slang</code><br>sink: 1 error (E15405)<br>stdout: <code>Hello ## There ;</code></div>
+  <div class="arrow">→</div>
+  <div class="box good"><b>after: errors? → FAIL</b>then -E? → return OK</div>
+  <div class="arrow">→</div>
+  <div class="box"><b>slangc</b>exit -1, text already on stdout</div>
+</div>
+
+<div class="callout"><b>Why the text survives.</b> In <code>-E</code> mode, <code>parseTranslationUnit</code> writes the tokens to the stdout writer and then returns. The output is on stdout before any result is decided, so a failed result cannot remove it. This change affects only the exit code, as the issue asks.</div>
+
+<table>
+  <tr><th>Input under <code>-E</code></th><th>Before</th><th>After</th></tr>
+  <tr><td><code>#error boom</code> (E15900)</td><td>0</td><td>-1</td></tr>
+  <tr><td><code>##</code> at the start of a macro body (E15405), duplicate macro parameter (E15408)</td><td>0</td><td>-1</td></tr>
+  <tr><td><code>#warning w</code> with <code>-warnings-as-errors all</code></td><td>0</td><td>-1</td></tr>
+  <tr><td><code>#warning w</code> alone</td><td>0</td><td>0</td></tr>
+  <tr><td><code>int x = ;</code> (invalid only for the parser)</td><td>0</td><td>0, because <code>-E</code> never parses</td></tr>
+</table>
+
+<div class="callout warn"><b>Requests without <code>-E</code> do not change.</b> When the request is not preprocess-only, the <code>-E</code> branch is never taken. The old order and the new order both reach the error check, which then fails in the same way. Only the <code>-E</code> path behaves differently.</div>
+
+<h2 id="code">3. Code walkthrough</h2>
+
+<p><b>The fix</b> (<code>source/slang/slang-compile-request.cpp</code>) moves the error-count check above the <code>PreprocessorOutput</code> return:</p>
+<pre><code>    for (TranslationUnitRequest* translationUnit : translationUnits)
+    {
+        parseTranslationUnit(translationUnit);
+    }
+
+    // We check for errors before the preprocessor-only (`-E`) return so that `-E` fails like any
+    // other request with errors. Under `-E`, `parseTranslationUnit` has already written the
+    // preprocessed text, so failing here keeps that text.
+    if (getSink()->getErrorCount() != 0)
+        return SLANG_FAIL;
+
+    if (optionSet.getBoolOption(CompilerOptionName::PreprocessorOutput))
+    {
+        // If doing pre-processor output, then we are done
+        return SLANG_OK;
+    }</code></pre>
+<p>The caller needs no change. <code>EndToEndCompileRequest::executeActionsInner</code> already wraps this call in <code>SLANG_RETURN_ON_FAIL</code>, so the failure reaches <code>spCompile</code>, and <code>slangc</code> turns it into exit -1. The caller's own <code>-E</code> return runs only after the front end has succeeded.</p>
+
+<p><b>Tests.</b> All <code>-E</code> tests are in <code>tests/preprocessor/</code> and <code>tests/bugs/</code>. Three of them report an error, and this PR changes their expectations. With a master binary, all three fail:</p>
+<ul>
+  <li><code>preproc-pound-pound-1.slang</code> and <code>preproc-detail-2.slang</code>. #14422 had marked their <code>diag=</code> lines <code>exit-code=0</code>, to match the old behavior. This PR removes that option, so the lines use #14422's default of -1, which is what the issue asks for. Their <code>filecheck=</code> lines get <code>exit-code=-1</code>. Each <code>filecheck=</code> lane still checks the preprocessed text, so it also pins that <code>-E</code> keeps its output.</li>
+  <li><code>tests/bugs/preproc-lex-failure-2.slang.expected</code>. Lexer error 10005 ("newline in literal") is counted in the sink, so <code>result code = 0</code> becomes <code>-1</code>. The stderr and stdout blocks do not change.</li>
+</ul>
+<p>The other <code>-E</code> tests that carry <code>exit-code=0</code> (<code>preproc-concat-3</code>, <code>preproc-detail-3</code>, <code>special-macro-redefine-*</code>) report only warnings, so they still exit 0. As jkwak-work asked in review, this PR adds no separate exit-code test.</p>
+
+<p><b>Verification.</b> <code>slang-test tests/preprocessor/ tests/bugs/</code> passes 1068/1068 at head 5ec21e4. On the L40S, the full suite passed 12041/12044 at ba506b4; the source has not changed since then except for the comment above. The 3 failures are fp8 cooperative-matrix CUDA lanes that fail with <code>CUDA_ERROR_INVALID_PTX</code>. They do not use <code>-E</code>, and this change does not touch requests without <code>-E</code>.</p>
+
+<div class="callout warn"><b>Open question for the maintainer.</b> The chosen behavior is this: <code>-E</code> keeps its output and exits -1 on any error, as <code>gcc -E</code> and <code>clang -E</code> do. Please confirm that this is intended.<br><b>Out of scope.</b> With <code>-pass-through &lt;compiler&gt; -E</code>, the front end is skipped completely (<code>slang-end-to-end-request.cpp</code>, the <code>-E</code> return after the pass-through check). That mode writes no text and exits 0 even for <code>#error</code>. This PR does not change it.</div>
+
+<h2 id="quiz">4. Quiz</h2>
+
+<div class="q" data-q>
+<p><b>1. After the fix, why does <code>slangc -E</code> still print <code>Hello ## There ;</code> when it exits -1?</b></p>
+<ul class="opts">
+  <li class="opt" data-correct="true">The tokens are written to the stdout writer inside <code>parseTranslationUnit</code>, before the error check runs.</li>
+  <li class="opt">The end-to-end request writes the token stream again after the front end fails.</li>
+  <li class="opt">The error check skips requests that have <code>PreprocessorOutput</code> set.</li>
+  <li class="opt"><code>slangc</code> buffers stdout and flushes it only when a request fails.</li>
+</ul>
+<div class="why">The output is written when preprocessing finishes, in <code>parseTranslationUnit</code>. <code>executeActionsInner</code> decides the result after that. Nothing writes the text again or holds it back, so failing afterwards cannot remove it. The check applies to every request, and that is the whole point of the fix.</div>
+</div>
+
+<div class="q" data-q>
+<p><b>2. Which input still exits 0 under <code>-E</code> after this change?</b></p>
+<ul class="opts">
+  <li class="opt"><code>#error boom</code></li>
+  <li class="opt"><code>#warning w</code> together with <code>-warnings-as-errors all</code></li>
+  <li class="opt"><code>#define P ##</code> followed by a use of <code>P</code></li>
+  <li class="opt" data-correct="true"><code>int x = ;</code></li>
+</ul>
+<div class="why"><code>-E</code> stops after preprocessing and never runs the parser, so the syntax error in <code>int x = ;</code> is never reported. The sink has no errors, and the request succeeds. The other three inputs put an error into the sink while preprocessing runs. That includes the promoted warning, because <code>-warnings-as-errors</code> reports it with error severity.</div>
+</div>
+
+<div class="q" data-q>
+<p><b>3. Why do the <code>diag=</code> lines of <code>preproc-pound-pound-1</code> and <code>preproc-detail-2</code> drop <code>exit-code=0</code>, instead of changing it to <code>exit-code=-1</code>?</b></p>
+<ul class="opts">
+  <li class="opt"><code>slang-test</code> does not check exit codes on <code>diag=</code> lines.</li>
+  <li class="opt" data-correct="true">Since #14422, a <code>diag=</code> lane expects -1 by default, so the plain line already expects the compile to fail.</li>
+  <li class="opt"><code>slang-test</code> rejects <code>exit-code=-1</code> as a reserved value.</li>
+  <li class="opt">The <code>filecheck=</code> lane on the next line makes the exit code of the <code>diag=</code> lane irrelevant.</li>
+</ul>
+<div class="why">#14422 changed <code>_checkExpectedExitCode</code>: <code>diag=</code> tests now expect -1 unless they say otherwise, and a <code>diag=</code> lane that succeeds (only warnings, or no diagnostics) writes <code>exit-code=0</code>. No test on master writes <code>exit-code=-1</code> on a <code>diag=</code> line, so removing the override is the usual way to say "this compile fails". The value that is rejected is -2, the code for an internal compiler error. -1 is allowed.</div>
+</div>
+
+<script>
+document.querySelectorAll('[data-q]').forEach(function (q) {
+  var list = q.querySelector('.opts');
+  var opts = Array.prototype.slice.call(list.children);
+  for (var i = opts.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var t = opts[i]; opts[i] = opts[j]; opts[j] = t;
+  }
+  opts.forEach(function (o) { list.appendChild(o); });
+  var why = q.querySelector('.why');
+  opts.forEach(function (o) {
+    o.addEventListener('click', function () {
+      opts.forEach(function (x) { x.classList.remove('right', 'wrong'); });
+      o.classList.add(o.getAttribute('data-correct') === 'true' ? 'right' : 'wrong');
+      if (o.getAttribute('data-correct') !== 'true') {
+        opts.forEach(function (x) { if (x.getAttribute('data-correct') === 'true') x.classList.add('right'); });
+      }
+      why.style.display = 'block';
+    });
+  });
+});
+</script>
+</body>
+</html>

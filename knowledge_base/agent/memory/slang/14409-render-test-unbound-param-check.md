@@ -28,3 +28,9 @@ not opened; one-shot task `recheck-14409-operator-chain` at 11-11 10:20Z. The `i
 
 **Resume on:** the operator's ruling (→ slang-fixer, thread `gh-issue-shader-slang/slang-14409`; prefer the #14407 fixer
 `sess-1794132916394-9erno5` after its PR lands); a human comment on #14409; the 11-11 recheck.
+
+**11-10 (tick 337) — operator ask WITHDRAWN (rung 4).** Live events: jkwak-work self-assigned #14409 at
+2026-11-09T17:38:12Z (actor = assigner = assignee = jkwak-work); tick 336 missed it. The 11-10 01:38Z `referenced` is
+only the #14411 merge commit `4da0255716` naming #14409 as out of scope. Held: no fixer chain, no bot post. Resume only
+on an @nv-slang-bot mention, an operator ask, or the issue being unassigned. If the 11-11 10:20Z re-check fires, it
+should find this and stop.
