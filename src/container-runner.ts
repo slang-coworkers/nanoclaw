@@ -7,7 +7,7 @@
  * here is composition and lifecycle policy: which mounts, which env, restart
  * ordering, exit bookkeeping.
  */
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
 import os from 'os';
@@ -3769,7 +3769,8 @@ TOML_EOF
 # it reappears as a duplicate hooks/list entry per event.
 exec bun run /app/src/index.ts`;
 }
-const execAsync = promisify(exec);
+// Argument lists, not shell strings: DATA_DIR is the install folder, which may hold spaces.
+const execFileAsync = promisify(execFile);
 
 /** The last build started for each agent group, while it runs. */
 const groupImageBuilds = new Map<string, Promise<void>>();
@@ -3832,7 +3833,13 @@ async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Prom
   // all and an id is unambiguous either way.
   let baseId = '';
   try {
-    const { stdout } = await execAsync(`${CONTAINER_RUNTIME_BIN} image inspect --format '{{.Id}}' ${CONTAINER_IMAGE}`);
+    const { stdout } = await execFileAsync(CONTAINER_RUNTIME_BIN, [
+      'image',
+      'inspect',
+      '--format',
+      '{{.Id}}',
+      CONTAINER_IMAGE,
+    ]);
     baseId = stdout.trim();
   } catch {
     // Non-fatal: the build below fails on its own if the base is really absent.
@@ -3873,7 +3880,7 @@ async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Prom
   fs.writeFileSync(tmpDockerfile, dockerfile);
   try {
     // Awaited async exec so the single-threaded host stays responsive during
-    // the build (can take minutes) instead of blocking on execSync. exec buffers
+    // the build (can take minutes) instead of blocking on execSync. execFile buffers
     // stdout/stderr (matching the old stdio: 'pipe') and rejects on a non-zero
     // exit, so error propagation is unchanged.
     // --pull=false: the FROM tag is a local-only base image (built by
@@ -3883,7 +3890,7 @@ async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Prom
     // Note: --pull is a boolean flag in docker buildx — `--pull=never` is
     // INVALID and fails with "strconv.ParseBool: parsing 'never'". Use
     // `--pull=false` (or omit; default is false).
-    await execAsync(`${CONTAINER_RUNTIME_BIN} build --pull=false -t ${imageTag} -f ${tmpDockerfile} .`, {
+    await execFileAsync(CONTAINER_RUNTIME_BIN, ['build', '--pull=false', '-t', imageTag, '-f', tmpDockerfile, '.'], {
       cwd: DATA_DIR,
       timeout: 900_000,
     });

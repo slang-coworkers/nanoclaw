@@ -16,10 +16,10 @@ type ExecCallback = (err: Error | null, out?: { stdout: string; stderr: string }
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
   const nodeFs = await import('fs');
-  const exec = (cmd: string, opts: unknown, cb?: ExecCallback) => {
+  const execFile = (_bin: string, args: string[], opts: unknown, cb?: ExecCallback) => {
     const done = (typeof opts === 'function' ? opts : cb) as ExecCallback;
-    const file = / -f (\S+) /.exec(cmd)?.[1];
-    if (!cmd.includes(' build ') || !file) {
+    const file = args.includes('-f') ? args[args.indexOf('-f') + 1] : undefined;
+    if (args[0] !== 'build' || !file) {
       done(null, { stdout: '', stderr: '' });
       return;
     }
@@ -30,7 +30,7 @@ vi.mock('child_process', async (importOriginal) => {
       fail: (err) => done(err),
     });
   };
-  return { ...actual, exec };
+  return { ...actual, execFile };
 });
 vi.mock('./config.js', async () => {
   const actual = await vi.importActual<typeof import('./config.js')>('./config.js');
