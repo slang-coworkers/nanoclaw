@@ -204,8 +204,7 @@ export function insertMessageIfAbsent(
   if (info.changes > 0) return { inserted: true };
 
   const existing = db.prepare('SELECT kind, content FROM messages_in WHERE id = ?').get(message.id) as
-    | { kind: string; content: string }
-    | undefined;
+    { kind: string; content: string } | undefined;
   // The INSERT targeted this exact id and hit ON CONFLICT — the row MUST
   // exist. A missing row here would mean it was deleted between the conflict
   // and this read, which nothing in this codebase does to messages_in rows.
@@ -736,8 +735,7 @@ export function migrateMessagesInTable(db: Database.Database): void {
  */
 export function getInboundSourceSessionId(db: Database.Database, messageId: string): string | null {
   const row = db.prepare('SELECT source_session_id FROM messages_in WHERE id = ?').get(messageId) as
-    | { source_session_id: string | null }
-    | undefined;
+    { source_session_id: string | null } | undefined;
   return row?.source_session_id ?? null;
 }
 
