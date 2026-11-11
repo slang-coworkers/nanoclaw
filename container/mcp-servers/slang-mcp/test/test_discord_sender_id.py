@@ -70,4 +70,5 @@ def test_every_forward_names_the_acting_user(name):
     # The summon button is pressed by interaction.user; a follow-up is written by message.author.
     expected = ["f'discord:{interaction.user.id}'", "f'discord:{message.author.id}'"]
     sent = [ast.unparse(kw.value) for call in calls for kw in call.keywords if kw.arg == "sender_id"]
+    assert len(sent) == len(calls), f"{name}: a _post_to_dashboard call has no sender_id"
     assert sorted(sent) == sorted(expected), f"{name}: {sent}"
