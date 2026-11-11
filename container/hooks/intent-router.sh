@@ -93,16 +93,19 @@ else
 
   [ -z "$API_KEY" ] && exit 0
 
-  # max_completion_tokens leaves room for a reasoning model's hidden tokens;
-  # the visible answer is one short JSON object.
-  RESPONSE=$(curl -sf --max-time 5 \
+  # Classification needs no reasoning, and turning it off cut the mean luna
+  # latency through the gateway from 3.4 s to 2.3 s (24 calls each). The rare
+  # slow call still runs to about 7 s, so curl waits 7 s, under the bridge's
+  # 8 s for non-Claude groups (intent-router-bridge.ts). max_completion_tokens
+  # keeps room for a model that reasons anyway; the answer is one short JSON.
+  RESPONSE=$(curl -sf --max-time 7 \
     "${API_URL%/}/chat/completions" \
     -H "Content-Type: application/json" \
     -H "Authorization: Bearer $API_KEY" \
     -d "$(jq -n \
       --arg model "$MODEL" \
       --arg prompt "$CLASSIFY_PROMPT" \
-      '{model: $model, max_completion_tokens: 300, messages: [{role: "user", content: $prompt}]}')" \
+      '{model: $model, max_completion_tokens: 300, reasoning_effort: "none", messages: [{role: "user", content: $prompt}]}')" \
     2>/dev/null) || exit 0
 
   TEXT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)
