@@ -3553,6 +3553,8 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'CODEX_MODEL',
     'CODEX_MODEL_PROVIDER',
     'CODEX_REASONING_EFFORT',
+    // Model the intent-router hook uses in non-Claude groups (default in the hook).
+    'INTENT_ROUTER_OPENAI_MODEL',
     'PI_MODEL',
     'PI_PROVIDER',
     'PI_THINKING_LEVEL',
