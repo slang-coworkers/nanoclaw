@@ -54,7 +54,11 @@ export function gateRequestFromPayload(
       event = 'pr_closed';
     } else {
       event = 'pr_reviewable';
-      actor = actorOf(pr?.user, pr?.author_association);
+      // The sender acted (a push to someone else's PR included); the author's
+      // association describes only the author.
+      const sender = obj(payload.sender) ?? obj(pr?.user);
+      const isAuthor = sender?.id !== undefined && sender.id === obj(pr?.user)?.id;
+      actor = actorOf(sender, isAuthor ? pr?.author_association : null);
     }
   } else if (eventType === 'issue_comment' || eventType === 'pull_request_review_comment') {
     event = 'comment';

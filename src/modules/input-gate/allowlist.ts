@@ -42,15 +42,17 @@ export function loadRoster(rosterPath: string): Set<number> {
 /**
  * Check 1 (threat model): is this GitHub account on the allowlist?
  *
- * Order: the roster by numeric id; then, only when `author_association` says
- * the account has a relationship to the repo (or the event carries none, as for
- * a label's sender), repo permission write or above, then org membership. A
+ * Order: the roster by numeric id; then repo permission write or above, then
+ * org membership. With `prefilter` (the default), the lookups run only when
+ * `author_association` says the account has a relationship to the repo, or the
+ * event carries none. A mention turns it off: GitHub may report a private org
+ * member as CONTRIBUTOR or NONE, and a mention is where the answer matters. A
  * failed lookup counts as not allowlisted and is recorded, so an API outage
  * shows up in the log instead of silently admitting people.
  */
 export async function checkAllowlist(
   actor: GateActor,
-  ctx: { repo: string; org: string; roster: Set<number>; lookups: GitHubLookups },
+  ctx: { repo: string; org: string; roster: Set<number>; lookups: GitHubLookups; prefilter?: boolean },
 ): Promise<AllowlistResult> {
   const evidence: AllowlistResult['evidence'] = {
     association: actor.association,
@@ -58,7 +60,7 @@ export async function checkAllowlist(
   };
   if (evidence.rosterHit) return { allowlisted: true, via: 'roster', evidence };
 
-  if (actor.association !== null && !LOOKUP_ASSOCIATIONS.has(actor.association)) {
+  if ((ctx.prefilter ?? true) && actor.association !== null && !LOOKUP_ASSOCIATIONS.has(actor.association)) {
     return { allowlisted: false, via: null, evidence };
   }
 

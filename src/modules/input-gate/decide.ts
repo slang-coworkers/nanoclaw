@@ -30,6 +30,7 @@ export async function decide(req: GateRequest, ctx: DecideContext): Promise<Gate
     org: ctx.org,
     roster: ctx.roster,
     lookups: ctx.lookups,
+    prefilter: !req.startsWork,
   });
   const tier = allowlist.allowlisted ? 'allowlisted' : 'external';
 

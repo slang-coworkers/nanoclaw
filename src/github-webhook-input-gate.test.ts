@@ -40,7 +40,7 @@ vi.mock('./env.js', () => ({ readEnvFile: () => ({}) }));
 import { closeDb, initTestDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
 import { processGitHubDelivery } from './github-webhook-server.js';
-import { setInputGateDepsForTest } from './modules/input-gate/index.js';
+import { drainInputGate, setInputGateDepsForTest } from './modules/input-gate/index.js';
 import { listGateDecisions } from './modules/input-gate/store.js';
 import { deliverGitHubIssueOpened, deliverGitHubMention } from './webhook-github.js';
 
@@ -104,6 +104,8 @@ describe('input gate in shadow mode blocks nothing', () => {
     setInputGateDepsForTest({ settings: () => off });
     const withoutGate = await run('issue_comment', externalMention, 'd-off');
     expect(mentionMock).toHaveBeenCalledTimes(1);
+    // The observation runs after the call returns and reads settings then.
+    await drainInputGate();
 
     setInputGateDepsForTest({ settings: () => shadow, lookups: failingLookups });
     const withGate = await run('issue_comment', externalMention, 'd-on');

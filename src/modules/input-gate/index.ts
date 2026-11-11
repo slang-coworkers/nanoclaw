@@ -99,3 +99,22 @@ export async function observeGitHubDelivery(input: ObserveInput): Promise<GateDe
     return null;
   }
 }
+
+const pending = new Set<Promise<unknown>>();
+
+/**
+ * Observe a delivery after the caller has returned, so not even the settings
+ * read or the payload parse runs before routing's response goes out. Tracked
+ * so a graceful shutdown can wait for the decision row (drainInputGate); the
+ * inbox marks the delivery complete at once, so a lost row is never replayed.
+ */
+export function scheduleGitHubObservation(input: ObserveInput): void {
+  const run = new Promise<void>((resolve) => setImmediate(resolve)).then(() => observeGitHubDelivery(input));
+  pending.add(run);
+  void run.finally(() => pending.delete(run));
+}
+
+/** Shutdown step: wait for scheduled observations before the DB closes. */
+export async function drainInputGate(): Promise<void> {
+  await Promise.allSettled([...pending]);
+}
