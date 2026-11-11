@@ -11,7 +11,7 @@ metadata:
 
 # Codex agent provider
 
-> Shortcut: `pnpm exec tsx setup/index.ts --step provider-auth codex` performs this whole install (barrels, CLI manifest entry, image rebuild) plus auth in one command. The steps below are the same operations, for agent-driven or manual application.
+> Shortcut: `pnpm exec tsx setup/index.ts --step provider-auth codex` performs this whole install (barrels, CLI manifest entry, image rebuild, host rebuild and restart) plus auth in one command. The steps below are the same operations, for agent-driven or manual application.
 
 NanoClaw resolves each group's agent backend through three tiers — `sessions.agent_provider` → `agent_groups.agent_provider` → `container_configs.provider` → `claude` (see **Use it** below). This fork carries the Codex payload in trunk, so this skill wires and authenticates rather than fetching: confirm the payload, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
 
@@ -137,7 +137,9 @@ The same walk-through fresh installs get from the setup picker: ChatGPT subscrip
 
 ## Use it
 
-Per group:
+After applying the steps above by hand on a running NanoClaw host, restart it first so it loads the Codex registration: `bash setup/lib/restart.sh`. The provider-auth shortcut already did this. A host still on the old build doesn't know Codex, and Codex groups fail on their first message.
+
+Then, per group:
 
 ```bash
 ncl groups config update --id <group-id> --provider codex
