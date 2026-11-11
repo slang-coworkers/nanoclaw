@@ -136,7 +136,7 @@ async def test_onecli_placeholder_reads_as_unset():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("value", ["111 222", "111;222", "<#111>", "abc"])
+@pytest.mark.parametrize("value", ["111 222", "111;222", "<#111>", "abc", ","])
 async def test_a_set_list_with_no_valid_id_refuses_every_read(value):
     # A typo must not turn the gate off: a set value that yields no ids
     # refuses, it does not fall back to "unrestricted".
@@ -144,8 +144,9 @@ async def test_a_set_list_with_no_valid_id_refuses_every_read(value):
     with (
         _env(DISCORD_ALLOWED_READ_CHANNELS=value),
         patch("src.discord.discord.discord_rest_read_messages", rest),
-        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="111")),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="111")) as parent,
     ):
         result = await read_messages(ReadMessagesArgs(channel_id="111", limit=5))
     assert "error" in result
     rest.assert_not_awaited()
+    parent.assert_not_awaited()

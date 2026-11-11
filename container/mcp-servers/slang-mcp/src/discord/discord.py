@@ -1078,8 +1078,8 @@ def _read_allowlist() -> Optional[tuple[set[str], set[str]]]:
             return set()
         entries = [c.strip() for c in value.split(",") if c.strip()]
         bad = [c for c in entries if not c.isdigit()]
-        if bad:
-            logger.warning(f"discord read allowlist: {key} has entries that are not channel ids: {bad}")
+        if bad or not entries:
+            logger.warning(f"discord read allowlist: {key} has entries that are not channel ids: {bad or value}")
         return {c for c in entries if c.isdigit()}
 
     return ids("DISCORD_ALLOWED_READ_CHANNELS"), ids("DISCORD_ALLOWED_READ_FORUMS")
@@ -1112,6 +1112,8 @@ async def _read_refused(channel_id: str) -> Optional[str]:
     channels, forums = allow
     if channel_id in channels or channel_id in forums:
         return None
+    if not channels and not forums:
+        return f"Channel {channel_id} is not in the allowed read list"
     try:
         parent = await _channel_parent_id(channel_id)
     except Exception as e:
