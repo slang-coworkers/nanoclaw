@@ -118,6 +118,7 @@ import { configuredGatewayKind, detectInstalledGateway } from './gateways/select
 import { SERVICE_NAME_CAVEAT, getLaunchdLabel, getSystemdUnit, serviceRestartHint } from '../src/install-slug.js';
 import type { AgentGroup } from '../src/types.js';
 import { claudeCliAvailable, resolveTimezoneViaClaude } from './lib/tz-from-claude.js';
+import { dockerAccessHint } from './lib/docker-access-hint.js';
 import * as setupLog from './logs.js';
 import { ensureAnswer, fail, runQuietChild, runQuietStep, spawnQuiet } from './lib/runner.js';
 import { emit as phEmit } from './lib/diagnostics.js';
@@ -604,18 +605,19 @@ async function main(): Promise<void> {
         ),
       );
     }
-    if (res.terminal?.fields.DOCKER_GROUP_STALE === 'true') {
-      p.log.warn(brandBody("NanoClaw's permissions need a tweak before it can reach Docker."));
-      // Linux-only context (setfacl on /var/run/docker.sock), so systemctl alone
-      // is correct here — but the unit name is DERIVED from the checkout path, so
-      // it is the name a default install would have, not necessarily this one's.
+    const dockerFix = dockerAccessHint(res.terminal?.fields ?? {}, getSystemdUnit());
+    if (dockerFix) {
+      p.log.warn(brandBody(dockerFix.title));
+      // The unit name is DERIVED from the checkout path, so it is the name a
+      // default install would have, not necessarily this one's.
       p.log.message(
         brandBody(
-          '  sudo setfacl -m u:$(whoami):rw /var/run/docker.sock\n' +
-            `  systemctl --user restart ${getSystemdUnit()}\n` +
-            '  (custom unit name? find it: systemctl --user list-units --all | grep -i claw)',
+          [...dockerFix.commands, '(custom unit name? find it: systemctl --user list-units --all | grep -i claw)']
+            .map((c) => `  ${c}`)
+            .join('\n'),
         ),
       );
+      p.log.message(brandBody(dockerFix.note));
     }
   }
 
