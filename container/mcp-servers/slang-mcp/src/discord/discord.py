@@ -1058,24 +1058,39 @@ def filter_message_data(message) -> dict:
     return filtered
 
 
+# src/mcp-registry.ts fills every unset .env-vars name with this value.
+_ENV_PLACEHOLDER = "onecli-placeholder"
+
+
 def _read_allowlist() -> Optional[tuple[set[str], set[str]]]:
     """(channels, forums) from DISCORD_ALLOWED_READ_CHANNELS / _FORUMS, or None when both are unset.
 
-    Only numeric ids count: the host fills unset .env-vars names with "onecli-placeholder".
+    A set value with entries that are not numeric ids keeps only the valid ones,
+    and one with none at all allows nothing: a typo must not turn the gate off.
     """
+    raw = {k: os.environ.get(k, "").strip() for k in ("DISCORD_ALLOWED_READ_CHANNELS", "DISCORD_ALLOWED_READ_FORUMS")}
+    if all(v in ("", _ENV_PLACEHOLDER) for v in raw.values()):
+        return None
 
     def ids(key: str) -> set[str]:
-        return {c.strip() for c in os.environ.get(key, "").split(",") if c.strip().isdigit()}
+        value = raw[key]
+        if value in ("", _ENV_PLACEHOLDER):
+            return set()
+        entries = [c.strip() for c in value.split(",") if c.strip()]
+        bad = [c for c in entries if not c.isdigit()]
+        if bad:
+            logger.warning(f"discord read allowlist: {key} has entries that are not channel ids: {bad}")
+        return {c for c in entries if c.isdigit()}
 
-    channels = ids("DISCORD_ALLOWED_READ_CHANNELS")
-    forums = ids("DISCORD_ALLOWED_READ_FORUMS")
-    if not channels and not forums:
-        return None
-    return channels, forums
+    return ids("DISCORD_ALLOWED_READ_CHANNELS"), ids("DISCORD_ALLOWED_READ_FORUMS")
 
 
 async def _channel_parent_id(channel_id: str) -> Optional[str]:
-    """The parent channel of a thread (REST, through the OneCLI proxy); None for a top-level channel."""
+    """The channel's parent_id (REST, through the OneCLI proxy).
+
+    A thread's parent is its forum or text channel; a top-level channel's is its
+    category, so a listed category id would allow every channel in it.
+    """
     client_http = await _get_discord_http_client()
     resp = await client_http.get(f"{DISCORD_API_BASE}/channels/{channel_id}")
     resp.raise_for_status()
