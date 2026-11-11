@@ -203,8 +203,6 @@ describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
     }
   });
 
-  // The mention must be the exact handle as a word, outside code and quotes;
-  // a substring match let a longer login or a quoted/code-fenced handle start work.
   it.each([
     ['a longer login', `Hey ${BOT_MENTION}-x please take a look`],
     ['a fenced code block', `Run:\n\n\`\`\`\n${BOT_MENTION} review\n\`\`\`\n`],

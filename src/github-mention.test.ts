@@ -28,6 +28,8 @@ describe('mentionsHandle', () => {
     ['```\n@nv-slang-bot review\n```', 'a fenced code block'],
     ['```ts\n@nv-slang-bot review\n```', 'a fenced code block with an info string'],
     ['~~~\n@nv-slang-bot review\n~~~', 'a tilde code fence'],
+    ['```\n```not-a-close\n@nv-slang-bot review\n```', 'a fence after a line that cannot close it'],
+    ['~~~\n~~~not-a-close\n@nv-slang-bot review\n~~~', 'a tilde fence after a line that cannot close it'],
     ['> @nv-slang-bot please fix\n\nThanks', 'a quoted line'],
     ['nv-slang-bot without the at sign', 'no @'],
     ['', 'an empty body'],
