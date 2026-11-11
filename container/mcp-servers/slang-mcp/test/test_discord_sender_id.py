@@ -60,13 +60,14 @@ async def test_post_carries_the_discord_sender(module):
 
 
 @pytest.mark.parametrize("name", ["discord.py", "feedback_collector.py"])
-def test_every_forward_names_its_sender(name):
+def test_every_forward_names_the_acting_user(name):
     tree = ast.parse((SRC / name).read_text())
     calls = [
         node
         for node in ast.walk(tree)
         if isinstance(node, ast.Call) and getattr(node.func, "id", None) == "_post_to_dashboard"
     ]
-    assert len(calls) == 2
-    for call in calls:
-        assert "sender_id" in {kw.arg for kw in call.keywords}, f"{name}:{call.lineno} posts without sender_id"
+    # The summon button is pressed by interaction.user; a follow-up is written by message.author.
+    expected = ["f'discord:{interaction.user.id}'", "f'discord:{message.author.id}'"]
+    sent = [ast.unparse(kw.value) for call in calls for kw in call.keywords if kw.arg == "sender_id"]
+    assert sorted(sent) == sorted(expected), f"{name}: {sent}"
