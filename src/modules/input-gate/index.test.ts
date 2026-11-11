@@ -2,7 +2,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { closeDb, initTestDb } from '../../db/connection.js';
 import { runMigrations } from '../../db/migrations/index.js';
-import { observeGitHubDelivery, readGateSettings, setInputGateDepsForTest, type GateSettings } from './index.js';
+import {
+  drainInputGate,
+  observeGitHubDelivery,
+  readGateSettings,
+  scheduleGitHubObservation,
+  setInputGateDepsForTest,
+  type GateSettings,
+} from './index.js';
 import { listGateDecisions } from './store.js';
 
 const shadow: GateSettings = { mode: 'shadow', rosterPath: '/nonexistent/roster.json', org: 'shader-slang' };
@@ -105,5 +112,26 @@ describe('readGateSettings', () => {
     expect(readGateSettings().mode).toBe('shadow');
     process.env.NANOCLAW_INPUT_GATE = 'enforce';
     expect(readGateSettings().mode).toBe('off');
+  });
+});
+
+describe('scheduleGitHubObservation', () => {
+  it('starts after the caller returns, and drainInputGate waits for the row', async () => {
+    const settings = vi.fn(() => shadow);
+    setInputGateDepsForTest({ settings, lookups });
+    scheduleGitHubObservation({
+      eventType: 'issue_comment',
+      rawBody: mention,
+      deliveryId: 'd-sched',
+      botMention: '@nv-slang-bot',
+      currentOutcome: 'local',
+    });
+    expect(settings).not.toHaveBeenCalled();
+    await drainInputGate();
+    expect(await listGateDecisions()).toMatchObject([{ delivery_id: 'd-sched' }]);
+  });
+
+  it('drainInputGate resolves at once when nothing is pending', async () => {
+    await expect(drainInputGate()).resolves.toBeUndefined();
   });
 });

@@ -56,7 +56,7 @@ const externalMention = JSON.stringify({
     body: 'Hey @bot please fix this',
     html_url: 'https://github.com/shader-slang/slang/issues/11#issuecomment-900',
     user: { login: 'stranger', id: 55, type: 'User' },
-    author_association: 'NONE',
+    author_association: 'MEMBER',
   },
 });
 
@@ -118,7 +118,7 @@ describe('input gate in shadow mode blocks nothing', () => {
       actor_id: 55,
       starts_work: 1,
       outcome: 'external_blocked',
-      reason: 'not_allowlisted',
+      reason: 'lookup_failed_permission',
       current_outcome: 'local',
     });
   });

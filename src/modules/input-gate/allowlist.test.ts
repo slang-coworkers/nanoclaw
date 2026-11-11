@@ -52,6 +52,18 @@ describe('checkAllowlist (Check 1)', () => {
     },
   );
 
+  it('with the pre-filter off (a mention), an external-looking association still runs the lookups', async () => {
+    const l = lookups('write', false);
+    const r = await checkAllowlist(actor({ association: 'CONTRIBUTOR' }), {
+      repo,
+      org,
+      roster: new Set(),
+      lookups: l,
+      prefilter: false,
+    });
+    expect(r).toMatchObject({ allowlisted: true, via: 'permission', evidence: { association: 'CONTRIBUTOR' } });
+  });
+
   it.each(['admin', 'maintain', 'write'])('repo permission %s is allowlisted', async (permission) => {
     const l = lookups(permission, false);
     const r = await checkAllowlist(actor({ association: 'COLLABORATOR' }), {

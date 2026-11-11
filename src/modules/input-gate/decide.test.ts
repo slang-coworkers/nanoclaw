@@ -57,6 +57,20 @@ describe('decide (one gate, two checks)', () => {
     expect(d).toMatchObject({ outcome: 'external_blocked', reason: 'not_allowlisted', tier: 'external' });
   });
 
+  it('a mention runs the lookups whatever the association says; a non-mention keeps the pre-filter', async () => {
+    const stranger = { id: 55, login: 'stranger', type: 'User', association: 'CONTRIBUTOR' };
+    const asMention = ctx({}, { repoPermission: vi.fn(async () => 'write') });
+    expect(await decide(req({ actor: stranger }), asMention)).toMatchObject({
+      outcome: 'not_eligible',
+      tier: 'allowlisted',
+    });
+
+    const asIssue = ctx({}, { repoPermission: vi.fn(async () => 'write') });
+    const d = await decide(req({ actor: stranger, event: 'issue_opened', startsWork: false }), asIssue);
+    expect(d).toMatchObject({ outcome: 'no_start', tier: 'external' });
+    expect(asIssue.lookups.repoPermission).not.toHaveBeenCalled();
+  });
+
   it('an external block caused by a failed lookup names the lookup', async () => {
     const d = await decide(
       req({ actor: { id: 55, login: 'x', type: 'User', association: 'MEMBER' } }),

@@ -40,6 +40,24 @@ describe('gateRequestFromPayload', () => {
     expect(r.actor?.association).toBe('CONTRIBUTOR');
   });
 
+  it('PR push by another account: the pusher (sender) asks, not the PR author', () => {
+    const r = req('pull_request', {
+      action: 'synchronize',
+      pull_request: { number: 9, user: alice, author_association: 'MEMBER' },
+      sender: { login: 'mallory', id: 303, type: 'User' },
+    });
+    expect(r.actor).toEqual({ login: 'mallory', id: 303, type: 'User', association: null });
+  });
+
+  it('PR opened by its author keeps the author association', () => {
+    const r = req('pull_request', {
+      action: 'opened',
+      pull_request: { number: 9, user: alice, author_association: 'CONTRIBUTOR' },
+      sender: alice,
+    });
+    expect(r.actor).toEqual({ login: 'alice', id: 101, type: 'User', association: 'CONTRIBUTOR' });
+  });
+
   it('PR closed is a system event with no actor', () => {
     const r = req('pull_request', { action: 'closed', pull_request: { number: 9, user: alice } });
     expect(r).toMatchObject({ event: 'pr_closed', actor: null, startsWork: false });
