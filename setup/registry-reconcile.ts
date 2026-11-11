@@ -22,6 +22,7 @@ import { CENTRAL_DB_PATH, CONTAINER_IMAGE_BASE } from '../src/config.js';
 import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
 import { getAllContainerConfigs, updateContainerConfigScalars } from '../src/db/container-configs.js';
 import { getDb, hasTable, initDb } from '../src/db/connection.js';
+import { derivedImageTag } from '../src/derived-image-repair.js';
 import type { DbDriver } from '../src/db/driver.js';
 import { log } from '../src/log.js';
 import { readImageSource } from './lib/registry-state.js';
@@ -88,7 +89,7 @@ export async function reconcileDerivedImages(): Promise<ReconcileResult> {
   for (const row of await getAllContainerConfigs()) {
     if (!row.image_tag) continue;
 
-    const derivedTag = `${CONTAINER_IMAGE_BASE}:${row.agent_group_id}`;
+    const derivedTag = derivedImageTag(CONTAINER_IMAGE_BASE, row.agent_group_id);
     if (row.image_tag !== derivedTag) {
       // An operator-supplied image, not one buildAgentGroupImage produced.
       // Removing it would destroy something we never created, so report it and
