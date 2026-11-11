@@ -267,6 +267,7 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
     rawBody: input.rawBody,
     deliveryId: input.deliveryId,
     botMention: GITHUB_WEBHOOK_BOT_MENTION,
+    selfLogins: BOT_LOGINS,
     currentOutcome: typeof outcome === 'string' ? outcome : null,
   });
   return result;

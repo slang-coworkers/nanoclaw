@@ -50,6 +50,8 @@ export interface ObserveInput {
   rawBody: string;
   deliveryId: string;
   botMention: string;
+  /** This instance's own GitHub logins: its pushes are the bot's, not a person's. */
+  selfLogins?: ReadonlySet<string>;
   /** What routing did with this delivery (`body.outcome` of the webhook result). */
   currentOutcome: string | null;
 }
@@ -87,6 +89,7 @@ export async function observeGitHubDelivery(input: ObserveInput): Promise<GateDe
       roster: loadRoster(settings.rosterPath),
       lookups: deps.lookups,
       eligibility: deps.eligibility,
+      selfLogins: input.selfLogins,
     });
     await recordGateDecision(req, decision, { mode: settings.mode, currentOutcome: input.currentOutcome });
     return decision;
@@ -116,8 +119,21 @@ export function scheduleGitHubObservation(input: ObserveInput): void {
 
 /**
  * Shutdown step: wait for scheduled observations before the DB closes. Loops
- * because an inbox replay still in flight can schedule one while we wait.
+ * because an inbox replay still in flight can schedule one while we wait, and
+ * gives up after `budgetMs`: a gh lookup can take 15 s, and the whole host
+ * shutdown has 7 s. A row still pending then is lost, as on a crash.
  */
-export async function drainInputGate(): Promise<void> {
-  while (pending.size > 0) await Promise.allSettled([...pending]);
+export async function drainInputGate(budgetMs = 2000): Promise<void> {
+  const deadline = Date.now() + budgetMs;
+  while (pending.size > 0) {
+    const left = deadline - Date.now();
+    if (left <= 0) {
+      log.warn('input-gate: shutdown left shadow decisions unrecorded', { pending: pending.size });
+      return;
+    }
+    let timer: NodeJS.Timeout | undefined;
+    const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, left)));
+    await Promise.race([Promise.allSettled([...pending]), timeout]);
+    clearTimeout(timer);
+  }
 }

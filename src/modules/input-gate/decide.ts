@@ -9,6 +9,7 @@ export interface DecideContext {
   roster: Set<number>;
   lookups: GitHubLookups;
   eligibility: EligibilitySources;
+  selfLogins?: ReadonlySet<string>;
 }
 
 /**
@@ -21,7 +22,7 @@ export async function decide(req: GateRequest, ctx: DecideContext): Promise<Gate
   if (SYSTEM_EVENTS.has(req.event) || !req.actor) {
     return { outcome: 'system_event', reason: null, tier: 'n/a', allowlist: null, eligibility: null };
   }
-  if (req.actor.type === 'Bot') {
+  if (req.actor.type === 'Bot' || ctx.selfLogins?.has(req.actor.login)) {
     return { outcome: 'bot', reason: null, tier: 'n/a', allowlist: null, eligibility: null };
   }
 
