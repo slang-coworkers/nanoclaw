@@ -39,6 +39,10 @@ on:
   # must decide whether a push to `main` skips the composed merge the way a PR
   # to `main` does.
 
+# Read-only token for every job, whatever the repository default is.
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-26.04
