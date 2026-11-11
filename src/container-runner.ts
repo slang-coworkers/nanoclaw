@@ -74,6 +74,7 @@ import {
 import { getHostInstanceId } from './host-instance.js';
 import { getDb, hasTable } from './db/connection.js';
 import { getSession } from './db/sessions.js';
+import { derivedImageTag, requestDerivedImageRebuild, shouldRebuildDerivedImage } from './derived-image-repair.js';
 import { getSessionDriver, isSessionEventsDriver } from './drivers/index.js';
 import type { SupervisedHandle, SupervisedSnapshot } from './drivers/session-events.js';
 import { GROUP_FOLDER_LABEL, labelValueLegal, specInvalid } from './drivers/types.js';
@@ -1438,6 +1439,20 @@ async function spawnContainer(session: Session): Promise<void> {
   } catch (err) {
     await releaseClaimQuietly(session.id, claimIncarnation);
     await releaseGatewaySession(gatewaySession, { kind: 'session-ended', reason: 'driver-prepare-failed' });
+    // A group's derived image is the one image this host builds itself, so when the runtime
+    // reports it missing we start the rebuild here instead of waiting for an operator. The wake
+    // still fails; the sweep's first wake after the build spawns from the rebuilt image.
+    if (
+      shouldRebuildDerivedImage({
+        err,
+        imageTag: containerConfig.imageTag,
+        imageBase: CONTAINER_IMAGE_BASE,
+        agentGroupId: agentGroup.id,
+        imageBuild: !!driver.capabilities().imageBuild,
+      })
+    ) {
+      requestDerivedImageRebuild(agentGroup.id, buildAgentGroupImage);
+    }
     throw err;
   }
 
@@ -3813,7 +3828,7 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
   dockerfile += 'LABEL dev.nanoclaw.image-source="derived"\n';
   if (baseId) dockerfile += `LABEL dev.nanoclaw.derived-from="${baseId}"\n`;
 
-  const imageTag = `${CONTAINER_IMAGE_BASE}:${agentGroupId}`;
+  const imageTag = derivedImageTag(CONTAINER_IMAGE_BASE, agentGroupId);
 
   log.info('Building per-agent-group image', { agentGroupId, imageTag, apt: aptPackages, npm: npmPackages });
 
