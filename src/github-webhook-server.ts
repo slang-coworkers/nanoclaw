@@ -28,6 +28,7 @@ import { issueSessionExists } from './db/sessions.js';
 import { acceptWebhookDelivery, completeWebhookDelivery, failWebhookDelivery } from './db/webhook-inbox.js';
 import { readEnvFile } from './env.js';
 import { mentionsHandle } from './github-mention.js';
+import { observeGitHubDelivery } from './modules/input-gate/index.js';
 import { log } from './log.js';
 import {
   TRUST_SIGNATURE_HEADER,
@@ -253,8 +254,25 @@ export interface GitHubDeliveryInput {
  * (src/webhook-inbox-drain.ts) both call this, so a replayed delivery is
  * routed exactly like a fresh one. Throws propagate to the caller, which
  * records the failure for retry.
+ *
+ * The input gate observes each routed delivery in shadow mode (decide and
+ * log, block nothing). It runs after routing, is not awaited, and cannot
+ * change the result, so turning it on cannot delay or stop any delivery.
  */
 export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookResult> {
+  const result = await routeGitHubDelivery(input);
+  const outcome = result.body.outcome;
+  void observeGitHubDelivery({
+    eventType: input.eventType,
+    rawBody: input.rawBody,
+    deliveryId: input.deliveryId,
+    botMention: GITHUB_WEBHOOK_BOT_MENTION,
+    currentOutcome: typeof outcome === 'string' ? outcome : null,
+  });
+  return result;
+}
+
+async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookResult> {
   const { eventType, rawBody, deliveryId, isPeerForward } = input;
   let payload: Record<string, unknown>;
   try {
