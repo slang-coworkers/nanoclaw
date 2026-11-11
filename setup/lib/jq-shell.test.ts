@@ -144,7 +144,10 @@ describe('jq install (setup/lib/jq.sh)', { timeout: 20_000 }, () => {
 });
 
 // The real nanoclaw.sh and setup.sh in a copy of the repo, with Node and pnpm stubbed.
-const COPIED = ['nanoclaw.sh', 'setup.sh', 'assets/setup-splash.txt'].concat(
+// setup/host-profile.sh is fork-only: the fork's setup.sh sources it
+// unconditionally (a no-op off NVIDIA agent-sandbox VMs), so without it the
+// scratch bootstrap dies before it reaches jq.
+const COPIED = ['nanoclaw.sh', 'setup.sh', 'setup/host-profile.sh', 'assets/setup-splash.txt'].concat(
   ['diagnostics', 'jq', 'node-version', 'sudo-preflight'].map((lib) => `setup/lib/${lib}.sh`),
 );
 const TOOLS = ['bash', 'cat', 'date', 'dirname', 'grep', 'head', 'mkdir', 'mktemp', 'rm', 'sed', 'sleep', 'tail'];
