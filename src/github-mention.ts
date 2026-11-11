@@ -29,7 +29,9 @@ function stripNonProse(body: string): string {
     // line starting with an inline span such as ```x``` is prose, not a fence.
     const marker = /^\s{0,3}(`{3,}(?!.*`)|~{3,})/.exec(line)?.[1];
     if (fence) {
-      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
+      // A closing fence carries nothing but optional trailing spaces.
+      const closing = /^\s{0,3}(`{3,}|~{3,})[ \t]*$/.exec(line)?.[1];
+      if (closing && closing[0] === fence[0] && closing.length >= fence.length) fence = null;
       continue;
     }
     if (marker) {
