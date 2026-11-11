@@ -14,6 +14,7 @@ describe('mentionsHandle', () => {
     ['line one\n@nv-slang-bot on line two', 'on a later line'],
     ['@nv-slang-bot.', 'followed by a full stop'],
     ['```x``` @nv-slang-bot please look', 'after an inline triple-backtick span'],
+    ['\\`@nv-slang-bot\\` please review', 'between escaped (literal) backticks'],
   ])('matches %j (%s)', (body) => {
     expect(mentionsHandle(body, BOT)).toBe(true);
   });
@@ -25,6 +26,7 @@ describe('mentionsHandle', () => {
     ['mail foo@nv-slang-bot.com', 'an email-like address'],
     ['see shader-slang/@nv-slang-bot', 'a path segment'],
     ['run `@nv-slang-bot review` to start', 'inline code'],
+    ['\\``@nv-slang-bot` review', 'a code span opened after an escaped backtick'],
     ['```\n@nv-slang-bot review\n```', 'a fenced code block'],
     ['```ts\n@nv-slang-bot review\n```', 'a fenced code block with an info string'],
     ['~~~\n@nv-slang-bot review\n~~~', 'a tilde code fence'],
