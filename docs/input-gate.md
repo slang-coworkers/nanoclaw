@@ -66,9 +66,10 @@ login share one call.
 
 `input_gate_decisions` (migration 947) is append-only, with one row per delivery id. A
 redelivery or an inbox-drain replay does not add a second row. A delivery forwarded to a
-peer instance is judged by the peer. The decision is made after routing returns; a
-graceful shutdown waits for it, but a crash in between loses that row, because the inbox
-has already marked the delivery complete.
+peer instance is judged by the peer. The decision is made after routing returns, and the
+inbox has already marked the delivery complete, so a lost row is never replayed. A graceful
+shutdown waits up to 2 s for pending decisions and logs how many it left; a crash loses
+them.
 
 It stores ids and evidence **kinds** only:
 - the actor id, login and type;
