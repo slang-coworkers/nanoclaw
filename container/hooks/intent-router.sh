@@ -93,11 +93,10 @@ else
 
   [ -z "$API_KEY" ] && exit 0
 
-  # Classification needs no reasoning, and turning it off cut the mean luna
-  # latency through the gateway from 3.4 s to 2.3 s (24 calls each). The rare
-  # slow call still runs to about 7.5 s, so curl waits 7.5 s, under the bridge's
-  # 8 s for non-Claude groups (intent-router-bridge.ts). max_completion_tokens
-  # keeps room for a model that reasons anyway; the answer is one short JSON.
+  # Classification needs no reasoning, and reasoning only adds latency. A slow
+  # gateway call can still take about 7 s; 7.5 s keeps the hook under the
+  # bridge's 8 s for non-Claude groups (intent-router-bridge.ts), so it exits
+  # cleanly. max_completion_tokens leaves room for a model that reasons anyway.
   RESPONSE=$(curl -sf --max-time 7.5 \
     "${API_URL%/}/chat/completions" \
     -H "Content-Type: application/json" \

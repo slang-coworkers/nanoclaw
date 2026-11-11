@@ -19,9 +19,8 @@ import { existsSync } from 'fs';
 const HOOK_PATH = '/app/hooks/intent-router.sh';
 /**
  * How long the hook may run before the prompt goes on unrouted. Claude groups
- * keep 4 s (Haiku answers in about 2 s). Non-Claude groups classify with luna,
- * which took up to 7.2 s through the gateway with reasoning off, and 3 of 24
- * calls passed 4 s (2026-11-11), so they get 8 s.
+ * keep 4 s: Haiku answers in about 2 s. Non-Claude groups classify with luna
+ * through the gateway, which often passes 4 s, so they get 8 s.
  */
 export function hookTimeoutMs(provider = process.env.AGENT_PROVIDER || 'claude'): number {
   return provider === 'claude' ? 4000 : 8000;
