@@ -166,7 +166,7 @@ The `on_wake` column on `messages_in` ensures wake messages are only picked up b
 
 Key files: `src/container-restart.ts`, `src/container-runner.ts` (`killContainer`), `container/agent-runner/src/db/messages-in.ts` (`getPendingMessages`).
 
-After a base image rebuild, groups with their own derived image (apt/npm packages) stay on the old base until `pnpm run rebuild:derived-images` re-derives them; it rebuilds only stale pins and restarts nothing. `--rebuild` on a single group does the same for that group plus a restart. A pinned derived image that is missing altogether is rebuilt by the host on the group's next wake (`src/derived-image-repair.ts`).
+After a base image rebuild, groups with their own derived image (apt/npm packages) stay on the old base until `pnpm run rebuild:derived-images` re-derives them; it rebuilds only stale and missing pins and restarts nothing. `--rebuild` on a single group does the same for that group plus a restart. A pinned derived image that is missing altogether is rebuilt by the host on the group's next wake (`src/derived-image-repair.ts`).
 
 ## Secrets / Credentials / Gateways
 

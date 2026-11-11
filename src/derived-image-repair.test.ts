@@ -29,6 +29,7 @@ function deferredBuild() {
 }
 
 afterEach(() => {
+  vi.useRealTimers();
   resetDerivedImageRebuildsForTests();
 });
 
@@ -87,12 +88,42 @@ describe('requestDerivedImageRebuild', () => {
     expect(build).toHaveBeenCalledWith('ag-1');
   });
 
-  it('builds different groups independently', async () => {
-    const build = vi.fn(async (_agentGroupId: string) => {});
-    expect(requestDerivedImageRebuild('ag-1', build, 0)).toBe('started');
-    expect(requestDerivedImageRebuild('ag-2', build, 0)).toBe('started');
+  it('builds one group at a time across the install', async () => {
+    const first = deferredBuild();
+    const second = vi.fn(async (_agentGroupId: string) => {});
+    expect(requestDerivedImageRebuild('ag-1', first.build, 0)).toBe('started');
+    expect(requestDerivedImageRebuild('ag-2', second, 0)).toBe('started');
+    await vi.waitFor(() => expect(first.build).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(second).not.toHaveBeenCalled();
+    first.finish();
     await settleDerivedImageRebuilds();
-    expect(build.mock.calls.map((c) => c[0]).sort()).toEqual(['ag-1', 'ag-2']);
+    expect(second).toHaveBeenCalledWith('ag-2');
+  });
+
+  it('stays in flight past the cooldown while the build still runs', async () => {
+    const { build, finish } = deferredBuild();
+    expect(requestDerivedImageRebuild('ag-1', build, 0)).toBe('started');
+    await vi.waitFor(() => expect(build).toHaveBeenCalledTimes(1));
+    expect(requestDerivedImageRebuild('ag-1', build, DERIVED_IMAGE_REBUILD_COOLDOWN_MS + 1)).toBe('in-flight');
+    finish();
+    await settleDerivedImageRebuilds();
+    expect(build).toHaveBeenCalledTimes(1);
+  });
+
+  it('reads the clock when no time is given, and cools down after a successful build too', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const start = 1_800_000_000_000;
+    vi.setSystemTime(start);
+    const build = vi.fn(async (_agentGroupId: string) => {});
+    expect(requestDerivedImageRebuild('ag-1', build)).toBe('started');
+    await settleDerivedImageRebuilds();
+    vi.setSystemTime(start + DERIVED_IMAGE_REBUILD_COOLDOWN_MS - 1);
+    expect(requestDerivedImageRebuild('ag-1', build)).toBe('cooling-down');
+    vi.setSystemTime(start + DERIVED_IMAGE_REBUILD_COOLDOWN_MS);
+    expect(requestDerivedImageRebuild('ag-1', build)).toBe('started');
+    await settleDerivedImageRebuilds();
+    expect(build).toHaveBeenCalledTimes(2);
   });
 
   it('waits out the cooldown after a failed build, then tries again', async () => {

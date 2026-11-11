@@ -28,7 +28,7 @@ vi.mock('./derived-image-repair.js', async () => {
 });
 
 import { CONTAINER_IMAGE_BASE } from './config.js';
-import { isContainerRunning, killContainer, wakeContainer } from './container-runner.js';
+import { isContainerRunning, killContainer, repairDerivedImage, wakeContainer } from './container-runner.js';
 import { ensureContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { initTestDb, closeDb, runMigrations, createAgentGroup, createSession } from './db/index.js';
 import { asFailureError } from './drivers/types.js';
@@ -118,23 +118,26 @@ describe('missing derived image on wake', () => {
       expect.objectContaining({ containers: expect.arrayContaining([expect.objectContaining({ image: DERIVED })]) }),
     );
     expect(requestRebuild).toHaveBeenCalledTimes(1);
-    expect(requestRebuild).toHaveBeenCalledWith('ag-1', expect.any(Function));
+    expect(requestRebuild).toHaveBeenCalledWith('ag-1', repairDerivedImage);
   });
 
   it('leaves a missing operator-supplied pin and a missing base image alone', async () => {
     expect(await failPrepare('registry.example/agent:custom', 'image-unavailable')).toBe(false);
     expect(await failPrepare(null, 'image-unavailable')).toBe(false);
+    expect(prepare).toHaveBeenCalledTimes(2);
     expect(requestRebuild).not.toHaveBeenCalled();
   });
 
   it('does not rebuild for other prepare failures', async () => {
     expect(await failPrepare(DERIVED, 'runtime-unavailable')).toBe(false);
+    expect(prepare).toHaveBeenCalledTimes(1);
     expect(requestRebuild).not.toHaveBeenCalled();
   });
 
   it('does not rebuild on a driver without imageBuild', async () => {
     capabilities.mockReturnValue({ imageBuild: false });
     expect(await failPrepare(DERIVED, 'image-unavailable')).toBe(false);
+    expect(prepare).toHaveBeenCalledTimes(1);
     expect(requestRebuild).not.toHaveBeenCalled();
   });
 });

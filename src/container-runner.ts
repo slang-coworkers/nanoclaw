@@ -1451,7 +1451,7 @@ async function spawnContainer(session: Session): Promise<void> {
         imageBuild: !!driver.capabilities().imageBuild,
       })
     ) {
-      requestDerivedImageRebuild(agentGroup.id, buildAgentGroupImage);
+      requestDerivedImageRebuild(agentGroup.id, repairDerivedImage);
     }
     throw err;
   }
@@ -3771,8 +3771,43 @@ exec bun run /app/src/index.ts`;
 }
 const execAsync = promisify(exec);
 
-/** Build a per-agent-group Docker image with custom packages. */
-export async function buildAgentGroupImage(agentGroupId: string): Promise<void> {
+/** The last build started for each agent group, while it runs. */
+const groupImageBuilds = new Map<string, Promise<void>>();
+
+/**
+ * Build a per-agent-group Docker image with the group's apt and npm packages, tagged
+ * `${CONTAINER_IMAGE_BASE}:<agent-group-id>`.
+ *
+ * Builds of one group run one after another, in call order. Each build reads the package lists
+ * when it starts, so the build that started last also ends last and its image keeps the tag. The
+ * in-process callers can overlap: an approved `install_packages`, `ncl groups restart --rebuild`,
+ * and the wake-path repair of a missing image. scripts/rebuild-derived-images.ts runs in its own
+ * process, outside this queue.
+ *
+ * By default the build also pins the group to the new image. `pin: false` leaves
+ * `container_configs.image_tag` as it is; the wake-path repair uses it, because a pin change made
+ * while a long build runs must not be undone when the build ends.
+ */
+export function buildAgentGroupImage(agentGroupId: string, opts: { pin?: boolean } = {}): Promise<void> {
+  const previous = groupImageBuilds.get(agentGroupId) ?? Promise.resolve();
+  const build = previous.catch(() => {}).then(() => buildAgentGroupImageNow(agentGroupId, opts.pin ?? true));
+  groupImageBuilds.set(agentGroupId, build);
+  const forget = () => {
+    if (groupImageBuilds.get(agentGroupId) === build) groupImageBuilds.delete(agentGroupId);
+  };
+  build.then(forget, forget);
+  return build;
+}
+
+/**
+ * Rebuild a group's missing derived image for the wake path. The pin already names this image when
+ * the repair starts, so the build leaves the pin alone.
+ */
+export function repairDerivedImage(agentGroupId: string): Promise<void> {
+  return buildAgentGroupImage(agentGroupId, { pin: false });
+}
+
+async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Promise<void> {
   const agentGroup = await getAgentGroup(agentGroupId);
   if (!agentGroup) throw new Error('Agent group not found');
 
@@ -3785,7 +3820,7 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
   }
 
   // Image building is not on the runtime path (drivers never build) and shells
-  // the local Docker daemon. Both call sites gate on the `imageBuild`
+  // the local Docker daemon. Every caller gates on the `imageBuild`
   // capability; this is the backstop for any future caller that forgets.
   if (!getSessionDriver().capabilities().imageBuild) {
     throw new Error('Per-agent-group image builds are unavailable on this runtime driver');
@@ -3832,7 +3867,9 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
 
   log.info('Building per-agent-group image', { agentGroupId, imageTag, apt: aptPackages, npm: npmPackages });
 
-  const tmpDockerfile = path.join(DATA_DIR, `Dockerfile.${agentGroupId}`);
+  // A file of its own per build: rebuild-derived-images.ts builds from another process, outside
+  // the per-group queue, and a shared name let one build delete the other's Dockerfile.
+  const tmpDockerfile = path.join(DATA_DIR, `Dockerfile.${agentGroupId}.${crypto.randomUUID()}`);
   fs.writeFileSync(tmpDockerfile, dockerfile);
   try {
     // Awaited async exec so the single-threaded host stays responsive during
@@ -3851,12 +3888,12 @@ export async function buildAgentGroupImage(agentGroupId: string): Promise<void> 
       timeout: 900_000,
     });
   } finally {
-    fs.unlinkSync(tmpDockerfile);
+    fs.rmSync(tmpDockerfile, { force: true });
   }
 
   // Store the image tag in the DB — container.json is re-materialized from it
   // at the next spawn, so writing the file here would be redundant.
-  await updateContainerConfigScalars(agentGroup.id, { image_tag: imageTag });
+  if (pin) await updateContainerConfigScalars(agentGroup.id, { image_tag: imageTag });
 
-  log.info('Per-agent-group image built', { agentGroupId, imageTag });
+  log.info('Per-agent-group image built', { agentGroupId, imageTag, pinned: pin });
 }

@@ -3,21 +3,23 @@
  *
  * A group that ran `install_packages` spawns from its own image,
  * `${CONTAINER_IMAGE_BASE}:<agent-group-id>`, which `buildAgentGroupImage()` layered onto the
- * base image. Nothing else recreates that image once it is gone. After an image prune or a disk
+ * base image. Nothing recreates that image automatically once it is gone. After an image prune or a disk
  * cleanup removes it, every wake of the group fails in `driver.prepare` with `image-unavailable`,
  * the host sweep retries once a minute, and the group's inbound messages stay pending until an
  * operator runs `ncl groups restart --rebuild`.
  *
  * The spawn path therefore starts that rebuild itself. The rebuild runs in the background: the
  * failing wake still returns false, and the first sweep tick after the build spawns from the new
- * image. One rebuild per group runs at a time, and a group is not rebuilt again within the cooldown
- * after an attempt, so a build that keeps failing (base image gone, package mirror down) costs one
- * build per cooldown rather than one per sweep tick.
+ * image. The wake path asks for one repair per group at a time, and repairs build one at a time
+ * across the install, so a prune that removed several images does not start several builds at
+ * once. A group is not repaired again within the cooldown after an attempt starts, so a build that
+ * keeps failing (base image gone, package mirror down) costs one build per cooldown rather than one
+ * per sweep tick.
  */
 import type { SessionFailure } from './drivers/types.js';
 import { log } from './log.js';
 
-/** How long after a rebuild attempt the same group is not rebuilt again, whatever the outcome. */
+/** How long after a rebuild attempt starts the same group is not rebuilt again, whatever the outcome. */
 export const DERIVED_IMAGE_REBUILD_COOLDOWN_MS = 15 * 60_000;
 
 /**
@@ -64,12 +66,14 @@ export type RebuildRequest = 'started' | 'in-flight' | 'cooling-down';
 
 const inFlight = new Map<string, Promise<void>>();
 const lastAttemptAt = new Map<string, number>();
+/** The end of the install-wide queue: repairs build one at a time. It never rejects. */
+let queueTail: Promise<void> = Promise.resolve();
 
 /**
- * Start `build(agentGroupId)` in the background, unless a rebuild of that group is already running
- * or one started within the cooldown. The returned value says which of the three happened. The call
- * never throws and the background build never rejects: a failed build is logged, and the first
- * request after the cooldown tries again.
+ * Queue `build(agentGroupId)` in the background, unless a rebuild of that group is already queued or
+ * running, or one started within the cooldown. The returned value says which of the three happened.
+ * The call never throws and the background build never rejects: a failed build is logged, and the
+ * first request after the cooldown tries again.
  */
 export function requestDerivedImageRebuild(
   agentGroupId: string,
@@ -82,20 +86,24 @@ export function requestDerivedImageRebuild(
 
   lastAttemptAt.set(agentGroupId, now);
   log.warn('Derived image missing — rebuilding it', { agentGroupId });
-  const startedAt = Date.now();
-  const rebuild = Promise.resolve()
-    .then(() => build(agentGroupId))
+  const rebuild = queueTail
+    .then(async () => {
+      const startedAt = Date.now();
+      await build(agentGroupId);
+      return startedAt;
+    })
     .then(
-      () => log.info('Derived image rebuilt', { agentGroupId, ms: Date.now() - startedAt }),
+      (startedAt) => log.info('Derived image rebuilt', { agentGroupId, ms: Date.now() - startedAt }),
       (err: unknown) =>
         log.error('Derived image rebuild failed', {
           agentGroupId,
           err,
-          retryAfterMs: DERIVED_IMAGE_REBUILD_COOLDOWN_MS,
+          retryAfterMs: Math.max(0, now + DERIVED_IMAGE_REBUILD_COOLDOWN_MS - Date.now()),
         }),
     )
     .finally(() => inFlight.delete(agentGroupId));
   inFlight.set(agentGroupId, rebuild);
+  queueTail = rebuild;
   return 'started';
 }
 
@@ -108,4 +116,5 @@ export async function settleDerivedImageRebuilds(): Promise<void> {
 export function resetDerivedImageRebuildsForTests(): void {
   inFlight.clear();
   lastAttemptAt.clear();
+  queueTail = Promise.resolve();
 }
