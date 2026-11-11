@@ -26,6 +26,8 @@
  */
 import { spawnSync } from 'child_process';
 
+import { derivedImageTag } from '../src/derived-image-repair.js';
+
 /** One pinned derived image and how it relates to the current base. */
 export interface DerivedImage {
   agentGroupId: string;
@@ -74,7 +76,7 @@ export function classifyDerivedImages(
 ): DerivedImage[] {
   const out: DerivedImage[] = [];
   for (const row of rows) {
-    const tag = `${imageBase}:${row.agent_group_id}`;
+    const tag = derivedImageTag(imageBase, row.agent_group_id);
     if (row.image_tag !== tag) continue;
     if (only.size > 0 && !only.has(row.agent_group_id)) continue;
     const created = inspect(tag, '{{.Created}}');
