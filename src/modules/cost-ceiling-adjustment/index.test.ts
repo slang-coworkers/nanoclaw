@@ -111,8 +111,7 @@ function inboundRow(id: string): { kind: string; content: string } | undefined {
   const db = openInboundDbRaw(inboundPathFor(AGENT_GROUP_ID, SESSION_ID));
   try {
     return db.prepare('SELECT kind, content FROM messages_in WHERE id = ?').get(id) as
-      | { kind: string; content: string }
-      | undefined;
+      { kind: string; content: string } | undefined;
   } finally {
     db.close();
   }

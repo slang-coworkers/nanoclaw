@@ -114,8 +114,7 @@ export async function readSessionCostCapStatus(sessionId: string): Promise<Sessi
     if (!cols.some((c) => c.name === 'value')) return { ...base, status: 'unknown' };
 
     const row = db.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get() as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     if (!row?.value) return { ...base, status: 'unknown' };
 
     const parsed = JSON.parse(row.value) as StoredCostCap;
@@ -200,8 +199,7 @@ export async function readSessionCostControlProtocol(
     if (!cols.some((c) => c.name === 'value')) return undefined;
 
     const row = db.prepare("SELECT value FROM session_state WHERE key = 'cost_control_protocol'").get() as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     if (!row?.value) return undefined;
 
     const parsed = JSON.parse(row.value) as StoredCostControlProtocol;
