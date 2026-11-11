@@ -1058,12 +1058,58 @@ def filter_message_data(message) -> dict:
     return filtered
 
 
+def _read_allowlist() -> Optional[tuple[set[str], set[str]]]:
+    """(channels, forums) from DISCORD_ALLOWED_READ_CHANNELS / _FORUMS, or None when both are unset."""
+    channels = {c.strip() for c in os.environ.get("DISCORD_ALLOWED_READ_CHANNELS", "").split(",") if c.strip()}
+    forums = {c.strip() for c in os.environ.get("DISCORD_ALLOWED_READ_FORUMS", "").split(",") if c.strip()}
+    if not channels and not forums:
+        return None
+    return channels, forums
+
+
+async def _channel_parent_id(channel_id: str) -> Optional[str]:
+    """The parent channel of a thread (REST, through the OneCLI proxy); None for a top-level channel."""
+    client_http = await _get_discord_http_client()
+    resp = await client_http.get(f"{DISCORD_API_BASE}/channels/{channel_id}")
+    resp.raise_for_status()
+    parent = resp.json().get("parent_id")
+    return str(parent) if parent else None
+
+
+async def _read_refused(channel_id: str) -> Optional[str]:
+    """Why a read of `channel_id` is refused, or None when it is allowed.
+
+    The read tool hands every author's text to the agent and never passes the
+    host router, so it carries its own channel gate. Unset means no restriction
+    (existing readers keep working until the operator sets the list); a thread
+    is allowed when its parent is listed; a failed parent lookup is refused.
+    """
+    allow = _read_allowlist()
+    if allow is None:
+        return None
+    channels, forums = allow
+    if channel_id in channels or channel_id in forums:
+        return None
+    try:
+        parent = await _channel_parent_id(channel_id)
+    except Exception as e:
+        logger.warning(f"discord read allowlist: parent lookup failed for {channel_id}: {e}")
+        parent = None
+    if parent and (parent in channels or parent in forums):
+        return None
+    return f"Channel {channel_id} is not in the allowed read list"
+
+
 async def read_messages(args: ReadMessagesArgs) -> Dict[str, Any]:
     """Read messages from a Discord channel.
 
     Uses REST API via OneCLI proxy when Gateway client is unavailable.
     """
     global client
+
+    refused = await _read_refused(args.channel_id)
+    if refused:
+        return {"error": refused}
 
     # Prefer REST API — works without Gateway token, goes through OneCLI proxy
     if not client or not hasattr(client, "is_ready") or not client.is_ready():
