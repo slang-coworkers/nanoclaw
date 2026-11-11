@@ -57,8 +57,7 @@ export interface RunawayCost {
 export function readRunawayCost(outDb: Database.Database): RunawayCost | null {
   try {
     const row = outDb.prepare(`SELECT value FROM session_state WHERE key = 'cost_cap'`).get() as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     if (!row?.value) return null;
     const parsed = JSON.parse(row.value) as { spentUsd?: unknown; capUsd?: unknown };
     const spentUsd = Number(parsed.spentUsd);

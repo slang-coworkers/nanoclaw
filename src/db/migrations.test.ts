@@ -52,8 +52,7 @@ describe('migration 006 — coworker fields', () => {
     await runMigrations(db);
 
     const row = sqliteRaw(db).prepare("SELECT name FROM schema_version WHERE name = 'coworker-fields'").get() as
-      | { name: string }
-      | undefined;
+      { name: string } | undefined;
     expect(row?.name).toBe('coworker-fields');
   });
 });
@@ -136,8 +135,7 @@ describe('migration 007 — hook_events table', () => {
     await runMigrations(db);
 
     const row = sqliteRaw(db).prepare("SELECT name FROM schema_version WHERE name = 'hook-events'").get() as
-      | { name: string }
-      | undefined;
+      { name: string } | undefined;
     expect(row?.name).toBe('hook-events');
   });
 });
@@ -162,8 +160,7 @@ describe('migration 027 — pr-mapping owner_instance', () => {
       )
       .run();
     const row = sqliteRaw(db).prepare("SELECT owner_instance FROM pr_session_mappings WHERE repo = 'foo/bar'").get() as
-      | { owner_instance: string }
-      | undefined;
+      { owner_instance: string } | undefined;
     expect(row?.owner_instance).toBe('prod');
   });
 
