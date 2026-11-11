@@ -289,7 +289,10 @@ async def discord_rest_read_messages(channel_id: str, limit: int = 20) -> Dict[s
 
 
 async def _post_to_dashboard(
-    content: str, thread_id: str | None = None, reservation_id: str | None = None
+    content: str,
+    thread_id: str | None = None,
+    reservation_id: str | None = None,
+    sender_id: str | None = None,
 ) -> bool:
     """Forward an event to the dashboard ingress to wake the target agent."""
     if not DASHBOARD_INGRESS_URL:
@@ -303,6 +306,10 @@ async def _post_to_dashboard(
     # into the group's single thread_id=null catch-all session.
     if thread_id:
         body["thread_id"] = thread_id
+    # Without it, ingress stamps the post as dashboard-admin (the owner); the
+    # host accepts only "discord:<id>" here.
+    if sender_id:
+        body["sender_id"] = sender_id
     # Sent so ingress CAN become idempotent and reconcilable later: with this id
     # echoed back, a crash between "HTTP 200" and "reply_accepted" would be
     # resolvable instead of merely visible. Ingress ignores it today; it costs
@@ -400,7 +407,9 @@ class SummonView(discord.ui.View):
             f"\n"
             f"Use this exact phrasing — users see it on every first reply."
         )
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
+        posted = await _post_to_dashboard(
+            prompt, thread_id=thread_id, reservation_id=reservation, sender_id=f"discord:{interaction.user.id}"
+        )
         _settle_reply(thread_id, reservation, posted)
 
         if posted:
@@ -688,7 +697,9 @@ async def init_discord_client():
             f"{final_clause}"
         )
 
-        posted = await _post_to_dashboard(prompt, thread_id=thread_id, reservation_id=reservation)
+        posted = await _post_to_dashboard(
+            prompt, thread_id=thread_id, reservation_id=reservation, sender_id=f"discord:{message.author.id}"
+        )
         _settle_reply(thread_id, reservation, posted)
         if posted:
             logger.info(
