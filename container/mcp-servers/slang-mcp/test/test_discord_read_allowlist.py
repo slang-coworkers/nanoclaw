@@ -2,9 +2,9 @@
 
 The read tool returns every author's text, bots included, from any channel the
 bot can see, and it never passes the host router, so it needs its own channel
-gate. DISCORD_ALLOWED_READ_CHANNELS / DISCORD_ALLOWED_READ_FORUMS mirror the
-send allowlist: a listed channel, a listed forum, or a thread whose parent is
-listed. Unset means no restriction, so existing readers keep working until the
+gate. DISCORD_ALLOWED_READ_CHANNELS / DISCORD_ALLOWED_READ_FORUMS are shaped
+like the send allowlist: a listed channel, a listed forum, or a thread whose
+parent (forum or text channel) is listed. Unset means no restriction, so existing readers keep working until the
 operator sets the list. A failed parent lookup is refused.
 """
 
@@ -58,9 +58,14 @@ async def test_listed_channel_is_read_without_a_parent_lookup():
 @pytest.mark.asyncio
 async def test_listed_forum_itself_is_read():
     rest = _rest_ok()
-    with _env(DISCORD_ALLOWED_READ_FORUMS="900"), patch("src.discord.discord.discord_rest_read_messages", rest):
+    with (
+        _env(DISCORD_ALLOWED_READ_FORUMS="900"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock()) as parent,
+    ):
         result = await read_messages(ReadMessagesArgs(channel_id="900", limit=5))
     assert "error" not in result
+    parent.assert_not_awaited()
 
 
 @pytest.mark.asyncio
@@ -115,7 +120,7 @@ async def test_failed_parent_lookup_is_refused():
 
 
 @pytest.mark.asyncio
-async def test_non_numeric_entries_are_ignored():
+async def test_onecli_placeholder_reads_as_unset():
     # src/mcp-registry.ts fills every .env-vars name with "onecli-placeholder"
     # when none is set in .env; that must read as unset, not as a list.
     rest = _rest_ok()
@@ -128,3 +133,19 @@ async def test_non_numeric_entries_are_ignored():
     assert "error" not in result
     rest.assert_awaited_once()
     parent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["111 222", "111;222", "<#111>", "abc"])
+async def test_a_set_list_with_no_valid_id_refuses_every_read(value):
+    # A typo must not turn the gate off: a set value that yields no ids
+    # refuses, it does not fall back to "unrestricted".
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS=value),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="111")),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="111", limit=5))
+    assert "error" in result
+    rest.assert_not_awaited()
