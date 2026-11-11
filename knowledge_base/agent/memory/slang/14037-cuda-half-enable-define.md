@@ -119,3 +119,7 @@ It links the hunk in explanation comment 6584453646. **The PR mapping is fixed:*
 
 **Next.** The steps still waiting on humans are the workflow hunk (a maintainer), review (jkwak-work), and the un-draft (the operator, on the weekly ready-flip list).
 No new timer is set: the reporter's nvcc report and any maintainer action arrive as comments on this PR.
+
+**11-10 (tick 337) — #14194 pr-mapping now points to fixer `sess-1793295441468-63xfrp`** (`ncl pr-mappings list
+--limit 10000`), no longer the closed task session `j9up0v`. Operator row "approve remap" resolved; webhooks route to
+the fixer again.

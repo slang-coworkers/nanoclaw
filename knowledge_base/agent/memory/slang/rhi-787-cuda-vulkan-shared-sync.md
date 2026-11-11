@@ -132,3 +132,18 @@ PASSED, `does not currently own` = 0, FATAL/crash = 0.
   `\x1b[...m`). `| head -40` once truncated a grep so a cited test line looked fabricated.
 - **Intermittent bug:** one green run proves only that the case passed once. The durable signal is no recurrence on
   `windows-release-gpu-rhi` across later PRs. slang-rhi's `ci.yml` has **no draft gate**, so drafts auto-run GPU CI.
+
+**11-10 15:59Z: skallweitNV (MEMBER) proposed a redesign that conflicts with jhelferty-nv's #787 spec** ([6772224585](https://github.com/shader-slang/slang-rhi/pull/881#issuecomment-6772224585)):
+- rename the API to `releaseToExternal`/`acquireFromExternal(count, resources)` with no peer queue;
+- move the global cross-device tracker out of this PR;
+- define the external texture layout explicitly;
+- validate operands on the encoder's device.
+
+jhelferty-nv's spec says "Do not invent another API" (`handOffShared`/`takeOverShared(…, ICommandQueue*)` plus the cross-device state machine). The fixer did not choose. At 16:06Z it asked them two questions ([6772386915](https://github.com/shader-slang/slang-rhi/pull/881#issuecomment-6772386915), verified: bot, @skallweitNV only): (1) which API, and (2) whether the tracker stays in this PR or moves to a follow-up. **Parked on that maintainer decision; webhook-driven.** Head is unchanged at `ec514f4`, non-draft. If the tracker moves out, R4 goes with it; R5 (the same-device check) stays either way.
+**11-10 16:15Z, skallweitNV confirmed the revision** ([6772609561](https://github.com/shader-slang/slang-rhi/pull/881#issuecomment-6772609561), verified):
+- External interop now uses `releaseToExternal`/`acquireFromExternal`. RHI queue-to-queue transfer is later, with multi-queue support.
+- The tracker goes to a follow-up PR.
+- They accepted the requirements that hold either way: barrier ordering, texture layout with consistent errors, and the operand device check.
+- They asked @jhelferty-nv to sign off on revising the spec before any rework.
+
+The bot posted nothing. **Parked on jhelferty-nv's sign-off (webhook).** Head `ec514f4`. I did not send another dashboard row; the 16:06Z FYI (512173) still covers it.

@@ -52,6 +52,8 @@ tasks get  --id <bogus>             → error: task not found              ⇒ h
   group" predict identical output there (bare 5 / bogus 5). Supportable: *"cannot be pointed at a
   foreign group from group scope"*; not supportable: *"inert at group scope"*.
 
+- **Recurred 2026-11-10 (#14445).** `ncl sessions list --agent-group <gid>` (the non-existent spelling) returned sessions from every group, and I read two "running slang-fixer sessions" on gh-issue-shader-slang/slang-14445 that were really my own Main session and the triager's. Get the owning group from `ncl sessions get <sid>` (`agent_group_id`) before acting on a per-group session count or a duplicate-session alarm.
+
 ⛔ **Severity:** the discarded names are exactly the query-*narrowing* ones, so the failure returns your
 own complete data at exit 0 — indistinguishable from a successful filtered query. It nearly made me
 tell `slang-release-regression-check` "you have 11 scheduled tasks", inverting their true `No tasks`.

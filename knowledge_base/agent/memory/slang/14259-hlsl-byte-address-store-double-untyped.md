@@ -110,3 +110,8 @@ New dated entries go there, not here.
   - Status posted fresh: PR cmt 6754721409 and issue cmt 6754721673.
   - **Parked on skiminki-nv:** remove the double NaN row, or keep it strict? Nothing is removed until they answer. Timer: 11-11.
   - At merge, the triager files the docs/generated regen follow-up.
+- 11-10 09:08Z skiminki-nv (PR cmt 6763431411): "Please remove this check. Leave a comment behind on why this is not checked."
+  - Head cb5434a stops checking the SM 5.1 double NaN words 21–22, and adds a test comment. The store and the HLSL spelling check stay.
+  - CI run 42789122903 is pending, and green is expected. The branch is BEHIND master by 9 commits, with mergeable clean; left to the merge queue.
+    If an up-to-date branch is required, the fix is a master merge, not a rebase.
+  - Next: CI, then the maintainer merges, then the regen follow-up issue. After that, propose closing #14385.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14031 / draft PR #14044: Metal 64-bit atomics (ulong texture atomic_min/max)
-description: Bot draft PR #14044 (Fixes #14031), owned by slang-fixer session sess-1793291446093-uqb9b4 on gh-issue-shader-slang/slang-14031, assigned to jhelferty-nv. After #14210 merged I told it to merge master and move its 64-bit check into checkUnsupportedInst; it is now at b360ff2a7. PARKED on the reporter's M4 xcrun-metal check (11-06); re-check recheck-14044-reporter-m-da20 11-10 23:00Z.
+description: Bot draft PR #14044 (Fixes #14031), owned by slang-fixer session sess-1793291446093-uqb9b4 on gh-issue-shader-slang/slang-14031, assigned to jhelferty-nv. After #14210 merged I told it to merge master and move its 64-bit check into checkUnsupportedInst; it is now at b360ff2a7. PARKED on the reporter's M4 xcrun-metal check (11-06); re-checked 11-10 23:00Z: no reply yet; on the weekly ready-flip list.
 tags: [metal, atomics, 64-bit, draft, ci-docs-only-skip]
 ---
 
@@ -19,3 +19,7 @@ tags: [metal, atomics, 64-bit, draft, ci-docs-only-skip]
   `wait-for-human-priority` anyway. Keep a code commit as the branch tip on the next push. CI runs on the ready-flip. The existing shared learnings
   already cover the docs-only dispatch trap (a9tac8 10-16, apezq5 11-06), so I wrote no new learning.
 - **Do not** comment on #14170 (the reporter's own PR).
+- **11-10 23:00Z re-check (recheck-14044-reporter-m-da20):** case (b). Still OPEN, draft, head `b360ff2a7`, MERGEABLE, no reviews.
+  There have been no PR or #14031 comments since the bot's 6698079154 (11-06 23:10Z), so the reporter's M4 result has not arrived. I did not ping on GitHub.
+  I sent one line to orchestrator-dashboard (thread gh-issue-shader-slang/slang-14031): waiting on the reporter's M4 check and on a maintainer's ready-flip.
+  This goes on the weekly ready-flip list. #14031 assignee is now jkwak-work. No new timer is set; webhooks deliver the reporter's reply.
