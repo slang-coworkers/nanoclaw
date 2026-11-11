@@ -131,6 +131,16 @@ describe('scheduleGitHubObservation', () => {
     expect(await listGateDecisions()).toMatchObject([{ delivery_id: 'd-sched' }]);
   });
 
+  it('drainInputGate also waits for an observation scheduled while it waits', async () => {
+    setInputGateDepsForTest({ settings: () => shadow, lookups });
+    const base = { eventType: 'issue_comment', rawBody: mention, botMention: '@nv-slang-bot', currentOutcome: 'local' };
+    scheduleGitHubObservation({ ...base, deliveryId: 'd-first' });
+    const drained = drainInputGate();
+    scheduleGitHubObservation({ ...base, deliveryId: 'd-late' });
+    await drained;
+    expect((await listGateDecisions()).map((r) => r.delivery_id)).toEqual(['d-first', 'd-late']);
+  });
+
   it('drainInputGate resolves at once when nothing is pending', async () => {
     await expect(drainInputGate()).resolves.toBeUndefined();
   });

@@ -114,7 +114,10 @@ export function scheduleGitHubObservation(input: ObserveInput): void {
   void run.finally(() => pending.delete(run));
 }
 
-/** Shutdown step: wait for scheduled observations before the DB closes. */
+/**
+ * Shutdown step: wait for scheduled observations before the DB closes. Loops
+ * because an inbox replay still in flight can schedule one while we wait.
+ */
 export async function drainInputGate(): Promise<void> {
-  await Promise.allSettled([...pending]);
+  while (pending.size > 0) await Promise.allSettled([...pending]);
 }
