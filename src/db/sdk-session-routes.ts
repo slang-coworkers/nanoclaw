@@ -106,8 +106,7 @@ export function touchRouteLastSeen(db: Database.Database, sdkSessionId: string, 
 export function getRoute(db: Database.Database, sdkSessionId: string): SdkSessionRoute | null {
   return (
     (db.prepare('SELECT * FROM sdk_session_routes WHERE sdk_session_id = ?').get(sdkSessionId) as
-      | SdkSessionRoute
-      | undefined) ?? null
+      SdkSessionRoute | undefined) ?? null
   );
 }
 
