@@ -32,8 +32,7 @@ export interface StoredGpuProbe {
 export function readGpuProbe(outDb: Database.Database): StoredGpuProbe | null {
   try {
     const row = outDb.prepare('SELECT value FROM session_state WHERE key = ?').get(GPU_PROBE_STATE_KEY) as
-      | { value: string }
-      | undefined;
+      { value: string } | undefined;
     if (!row?.value) return null;
     const p = JSON.parse(row.value) as Partial<StoredGpuProbe>;
     if (!p || typeof p !== 'object' || typeof p.gpu !== 'boolean' || typeof p.probedAt !== 'string') return null;
