@@ -435,6 +435,7 @@ type: nav
 **slang-compiler**
 - [Slang IR passes that clone or keep functions: linkage decorations on clones, keep-alive originals, widened work-list roots, and lazily lowered values](concepts/slang-compiler-ir-clones-linkage-and-pass-roots.md)
 - [Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks](concepts/slang-compiler-linker-entry-point-checks.md)
+- [Slang public API exception boundaries: unguarded SLANG_NO_THROW methods, the link()-style guard, and how to test it](concepts/slang-compiler-api-exception-boundary-guards.md)
 - [Slang unsupported-shape diagnostics and emitter result-unused checks: where they run, what they must look through, and debug-info users](concepts/slang-compiler-unsupported-shape-checks-and-emitter-use-checks.md)
 
 **slang-grab-bag**

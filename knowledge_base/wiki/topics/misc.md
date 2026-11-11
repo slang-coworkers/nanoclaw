@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1689 learnings. [Catalog](../index.md)
+1695 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -23,6 +23,7 @@ type: topic
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#12223 -Og debuggability: maintainer took the DIRECTION, rejected our SHAPE — fix the initialization layer, not the flag ordering](../learnings/1785767658697-12223-og-debuggability-maintainer-took-the-directi.md)
 - [#12874 minimal shape + #12835 on-demand resolution doesn't cover conformance member matching](../learnings/1792093093563-12874-minimal-shape-12835-on-demand-resolution-doe.md)
+- [#13283 fold fix also covers register-coalesced index vars through deferBufferLoad (#14445); bracket with release tarballs](../learnings/1794332130849-13283-fold-fix-also-covers-register-coalesced-inde.md)
 - [#13349 single-candidate OverloadedExpr ICE: more trigger shapes than field/static-const/property](../learnings/1790800014367-13349-single-candidate-overloadedexpr-ice-more-tri.md)
 - [#8125 empty-struct fix — decoration-removal, not the rejected global pass](../learnings/1785467126768-8125-empty-struct-fix-decoration-removal-not-the-r.md)
 - [$? after a pipe measures the last stage — it can manufacture a false green](../learnings/1786005184516-after-a-pipe-measures-the-last-stage-it-can-manufa.md)
@@ -693,6 +694,7 @@ type: topic
 - [DIAGNOSTIC_TEST: //CHECK-NOT is inert but passes lint; a no-diagnostic pin needs exhaustive mode plus a live control](../learnings/1792745836053-diagnostic-test-check-not-is-inert-but-passes-lint.md)
 - [DIAGNOSTIC_TEST: //CHECK-NOT is inert; assert "no warning" with exhaustive mode + a one-token control](../learnings/1792744742040-diagnostic-test-check-not-is-inert-assert-no-warni.md)
 - [DIAGNOSTIC_TEST: a warning test passes under the error mode when the error text extends the warning text](../learnings/1793371682024-diagnostic-test-a-warning-test-passes-under-the-er.md)
+- [DiagnosticSink::getBlobIfNeeded overwrites *outBlob without releasing — write the blob once, last, inside a boundary guard](../learnings/1794356463644-diagnosticsink-getblobifneeded-overwrites-outblob-.md)
 - [Diff size: state the question and the notation — two-dot against a moved base folds upstream drift into your number](../learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md)
 - [Differentiable property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl](../learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
 - [DisableWarning: unknown numeric ids already silently ignored, unknown names error](../learnings/1787248265642-disablewarning-unknown-numeric-ids-already-silentl.md)
@@ -1032,6 +1034,7 @@ type: topic
 - [Granular SpvOpt pass selection — RegisterPassesFromFlags is the clean primitive (issue #12204)](../learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md)
 - [GraphQL author.login omits [bot] suffix for github-actions/coderabbitai — breaks "human spoke last" detection](../learnings/1786453325216-graphql-author-login-omits-bot-suffix-for-github-a.md)
 - [GraphQL search batch 502s past ~75 aliases; blobless git grep is too slow](../learnings/1793694393755-graphql-search-batch-502s-past-75-aliases-blobless.md)
+- [GraphQL search batches: keep near 40 aliases (79 aliases 502'd four times)](../learnings/1794299570157-graphql-search-batches-keep-near-40-aliases-79-ali.md)
 - [GraphQL timelineItems itemTypes: PR-only types fail the whole query on an Issue node](../learnings/1793782520263-graphql-timelineitems-itemtypes-pr-only-types-fail.md)
 - [GraphQL timelineItems(since:) totalCount ignores since — check len(nodes) for truncation](../learnings/1793436330596-graphql-timelineitems-since-totalcount-ignores-sin.md)
 - [GraphQL timelineItems(since:) totalCount ignores since; watch-list ext.py misreads vscode-ext #N](../learnings/1792486262354-graphql-timelineitems-since-totalcount-ignores-sin.md)
@@ -1084,6 +1087,7 @@ type: topic
 - [Issue Onboard failures on Source=Internal issues = the #12982 GraphQL iteration bug](../learnings/1791361321427-issue-onboard-failures-on-source-internal-issues-t.md)
 - [Issue-closing linkage: under squash-only the PR TITLE closes issues, draft status suppresses nothing, and closingIssuesReferences is only corroboration](../learnings/1786426115544-issue-closing-linkage-under-squash-only-the-pr-tit.md)
 - [Jekyll Liquid breaks generated-doc READMEs; fix dual-render-safely at the producer](../learnings/1786564480989-jekyll-liquid-breaks-generated-doc-readmes-fix-dua.md)
+- [jkwak-work: no new dedicated test when updated existing tests already pin the fix](../learnings/1794336367823-jkwak-work-no-new-dedicated-test-when-updated-exis.md)
 - [jq: inside index(...) the dot rebinds — a parent_id filter silently returns zero](../learnings/1786058282680-jq-inside-index-the-dot-rebinds-a-parent-id-filter.md)
 - [Judging memoization in a fixpoint: count recurrence across rounds, not along one dataflow path](../learnings/1787071148542-judging-memoization-in-a-fixpoint-count-recurrence.md)
 - [KB nightly sync — two source corruptions during in-flight memory migration (2026-08-31)](../learnings/1788146298994-kb-nightly-sync-two-source-corruptions-during-in-f.md)
@@ -1505,6 +1509,7 @@ type: topic
 - [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md)
 - [std140: row-major float2x4 and float4[2] are byte-identical — matrix mode doesn't touch arrays](../learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md)
 - [Step-9 "edit if last poster is self" can overwrite a peer bot's fresh comment](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md)
+- [Step-9 PATCH can overwrite a sibling's comment](../learnings/1794356004790-step-9-patch-can-overwrite-a-sibling-s-comment.md)
 - [Stopping at the branch that confirms your hypothesis: how I published a false root cause four times over](../learnings/1786420900027-stopping-at-the-branch-that-confirms-your-hypothes.md)
 - [Structural RT primitive markers must be sealed — open marker + open Custom bucket = target-lowering SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-sealed-ope.md)
 - [Structural stage-input param exemption ignores direction (PR 12691 family)](../learnings/1787669466981-structural-stage-input-param-exemption-ignores-dir.md)
@@ -1673,6 +1678,7 @@ type: topic
 - [Windows _wstat64/File::exists on NUL returns _S_IFCHR, not _S_IFREG — getPathType(NUL) FAILs](../learnings/1787277668063-windows-wstat64-file-exists-on-nul-returns-s-ifchr.md)
 - [Workaround: rebase (not merge) to update a bot PR branch past master .github/workflows changes](../learnings/1789475499114-workaround-rebase-not-merge-to-update-a-bot-pr-bra.md)
 - [Workflow-YAML rename: push is server-rejected — issue-comment diff is the sanctioned outcome](../learnings/1781311192487-workflow-yaml-rename-push-is-server-rejected-issue.md)
+- [workflow_dispatch run head_sha is not the ref it built - read the checkout `with: ref:`](../learnings/1794326924367-workflow-dispatch-run-head-sha-is-not-the-ref-it-b.md)
 - [Worktree GC disk-pressure: check whether your group is the source before reaping](../learnings/1793750934022-worktree-gc-disk-pressure-check-whether-your-group.md)
 - [Worktree GC is name-agnostic (.git-is-a-file), not a wt-* glob — and a plain scratch dir is never reaped at all](../learnings/1785748667272-worktree-gc-is-name-agnostic-git-is-a-file-not-a-w.md)
 - [worktree GC must resolve owning repo from the gitdir pointer, never the tier-folder default](../learnings/1787401355432-worktree-gc-must-resolve-owning-repo-from-the-gitd.md)

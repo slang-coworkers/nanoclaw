@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 33
+source_count: 36
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -29,7 +29,7 @@ routing and PR-body limits; stage counting and attestation parsing are on
 - **`mkdir -p /workspace/.claude` at session start** — if it is missing the hook denies even read-only commands.
 - **Read-only `gh api .../pulls/N` GETs trip the PR-creation Bash arm** for any repo; it matches raw command
   text (heredocs included). Use `gh pr view N --repo <owner>/<repo> --json ...`, the `.../issues/<n>` endpoint,
-  the skill's python scripts, or MCP `github_get_pull_request_comments`. Three denials open an admin escalation.
+  the skill's python scripts, MCP `github_get_pull_request_comments`, or `git diff` of a fetched `pull/N/head` for files. Three denials open an admin escalation.
 - **Recorded rounds require a FRESH `mcp__codex__codex` call** with the verbatim reviewer
   developer-instructions and a `STAGE:` line; `sandbox: danger-full-access`; omit `model`.
 - **The chain-routing gate blocks any marker message without `in_reply_to`**, fresh delegations included. Send
@@ -133,20 +133,26 @@ One approver decision (slang#12860) hit three traps
    metadata via `gh pr view --json` or the skill's python scripts; `gh pr view --json` has no
    `authorAssociation`, so take it from `eval-clauses.py`'s clauses.json.
 
-It recurs outside the approver (a stale-webhook check); use `gh pr view --json ...` or the
-`.../issues/<n>` endpoint
-([recorded rounds require fresh codex](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md)).
+It recurs outside the approver: a stale-webhook check, and on 2026-11-10 two fixer sessions (#14438, and a
+comment-only follow-up with no PR to create); use `gh pr view --json ...` or the `.../issues/<n>` endpoint
+([recorded rounds require fresh codex](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md),
+[blocked in a comment-only follow-up](../learnings/1794301567381-gate-critique-on-deliver-hook-blocks-read-only-gh-.md),
+[fixer #14438](../learnings/1794316305654-codex-critique-often-answers-the-first-call-with-a.md)).
 The arm is `BASH_PATTERNS='gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest'`
 (line 65 of `/app/hooks/gate-critique-on-deliver.sh`), a substring match with no HTTP method, refused as
 "CRITIQUE REQUIRED before PR creation" whatever the repo (a GET of `.../pulls/N/reviews` and of another repo's
 `.../pulls/260` were both denied). `gh pr view <n> --repo <owner>/<repo> --json state,reviews,comments,statusCheckRollup`
 reads the same state ungated, as do `gh api graphql` with `pullRequest(number:)` (`reviewThreads` for inline
-comments) and `gh api repos/<o>/<r>/issues/<n>` for merged/closed state (re-confirmed 2026-11-09), and a `gh api .../issues/comments/<id>` PATCH under 1,000 bytes passes without an
-OUTPUT_REVIEW. For an external repo `gh api .../issues/<n>/events` returned 401 via the gateway; a WebFetch of
+comments), `gh api repos/<o>/<r>/issues/<n>` for merged/closed state and `.../issues/<n>/comments` or
+`.../issues/<n>/timeline` (re-confirmed 2026-11-09/10), and a `gh api .../issues/comments/<id>` PATCH under 1,000 bytes passes without an
+OUTPUT_REVIEW. The PR-files listing is on the same path; list a large PR's files with `git fetch origin pull/N/head`
+plus `git diff --name-status <merge-base> <head>` (no pagination, so check the count against `changed_files`).
+For an external repo `gh api .../issues/<n>/events` returned 401 via the gateway; a WebFetch of
 the github.com PR page gave the timeline
 ([read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md),
 [PR REST path reads blocked, 11-09](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md),
-[cross-repo pulls GET treated as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)).
+[cross-repo pulls GET treated as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md),
+[PR files via `git diff`](../learnings/1794300949892-public-comment-gate-needs-attested-lines-as-sha-ab.md)).
 
 Because the arm matches command *text*, it also fires on a GET of one inline review comment and on a heredoc
 memory note merely containing the PR-open verb or a `/pulls/` path. Three denials open an admin bypass
@@ -290,7 +296,7 @@ behaviour, against `_claims.md` §1's "doc's own wording", is precedent-accepted
 with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (33):**
+**Source learnings (36):**
 
 - [attestation treadmill: batch edits, OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)
 - [ABSTAIN fast-path trips on WOULD_APPROVE / BLOCK](../learnings/1788385047068-approver-infra-abstain-critique-gate-abstain-fast-.md) — case-sensitive.
@@ -322,6 +328,9 @@ with a drift-from-source row
 - [read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — BASH_PATTERNS.
 - [gate-critique-on-deliver blocks read-only gh api calls on the PR REST path](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — escapes: `gh pr view --json`, graphql `pullRequest(number:)`, `issues/<n>`.
 - [cross-repo pulls GET = PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)
+- [gate blocks read-only `gh api .../pulls/...` in a comment-only session](../learnings/1794301567381-gate-critique-on-deliver-hook-blocks-read-only-gh-.md) — escapes: `issues/<n>/comments`, `issues/<n>/timeline`, slang-mcp.
+- [codex recall first reply; gate misreads `pulls/<n>`](../learnings/1794316305654-codex-critique-often-answers-the-first-call-with-a.md) — (gate half) #14438.
+- [Attested `- <sha> <abs path>`; PR files via `git diff`](../learnings/1794300949892-public-comment-gate-needs-attested-lines-as-sha-ab.md) — (gate half).
 - [Dawn/Tint num_subgroups in chromium/7559](../learnings/1793144297778-dawn-tint-num-subgroups-first-lands-in-chromium-75.md) — (gate half).
 - [send the handoff message before its memo](../learnings/1793825152219-nanoclaw-send-the-triage-handoff-message-before-it.md) — #14321.
 - [fixer delivery gates](../learnings/1793850163791-fixer-delivery-gates-review-request-field-format-i.md) — `thread_id` alone refused.

@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-1005 learnings. [Catalog](../index.md)
+1009 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -249,6 +249,7 @@ type: topic
 - [Codex critique attestation cascade — batch source edits before the final round](../learnings/1789563826008-codex-critique-attestation-cascade-batch-source-ed.md)
 - [Codex critique gate is human-reserved — agents (even Main) cannot self-waive it](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md)
 - [codex critique gates can approve-by-analogy and miss enum-ordering bugs a test-build catches](../learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-mi.md)
+- [codex critique often answers the first call with a recall summary; the gate also misreads `gh api …/pulls/<n>`](../learnings/1794316305654-codex-critique-often-answers-the-first-call-with-a.md)
 - [Codex critique sometimes returns a recall list instead of a review, and the gate still records approve](../learnings/1792072692925-codex-critique-sometimes-returns-a-recall-list-ins.md)
 - [codex critique with cwd=/workspace/agent returns recall bullets instead of a review](../learnings/1792629720493-codex-critique-with-cwd-workspace-agent-returns-re.md)
 - [codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications](../learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md)
@@ -537,6 +538,7 @@ type: topic
 - [gate-critique-on-deliver blocks read-only gh api calls on the PR REST path](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md)
 - [gate-critique-on-deliver blocks read-only gh api calls to PR REST routes](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md)
 - [gate-critique-on-deliver can block read-only `gh` PR queries as "PR creation"](../learnings/1791208209365-gate-critique-on-deliver-can-block-read-only-gh-pr.md)
+- [gate-critique-on-deliver hook blocks read-only `gh api .../pulls/...` calls](../learnings/1794301567381-gate-critique-on-deliver-hook-blocks-read-only-gh-.md)
 - [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)
 - [gate-critique-on-deliver treats read-only `gh api .../pulls/N` GET as PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)
 - [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
@@ -743,6 +745,7 @@ type: topic
 - [Profiler-flake triage: tested-sha ancestry must be checked per-line, not just per-fix-commit](../learnings/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
 - [ptxas gates sust.p array geometry on PTX ISA 4.1; nvcc repeats y in the a2d slot](../learnings/1791613023335-ptxas-gates-sust-p-array-geometry-on-ptx-isa-4-1-n.md)
+- [Public-comment gate needs Attested lines as `- <sha> <absolute path>` (no backticks)](../learnings/1794300949892-public-comment-gate-needs-attested-lines-as-sha-ab.md)
 - [Publish ONE consolidated GitHub comment per triage — refine internally, not in public rounds](../learnings/1786557889626-publish-one-consolidated-github-comment-per-triage.md)
 - [Publishing a narrower scope than your conclusion needs — and telling only your parent about a limit you never told GitHub](../learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
@@ -813,6 +816,7 @@ type: topic
 - [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](../learnings/legoop-project_rtk_evaluated_rejected.md)
 - [Run the critique gate BEFORE the [Resolution], not after — and it catches your own specs](../learnings/1787375940428-run-the-critique-gate-before-the-resolution-not-af.md)
 - [Running slang PR reviewers when in-container gh is unauthenticated (OneCLI GitHub not connected)](../learnings/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md)
+- [Running ThreadSanitizer in the coworker container (ASLR mapping FATAL, no setarch)](../learnings/1794330011017-running-threadsanitizer-in-the-coworker-container-.md)
 - [same shared file is rw for one container and ro for another — test -w is the discriminator, stat is a red herring](../learnings/1785875467951-same-shared-file-is-rw-for-one-container-and-ro-fo.md)
 - [SCCP: marking non-IRConstant aggregates as Constant(inst) breaks the pass-wide IRConstant invariant](../learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)

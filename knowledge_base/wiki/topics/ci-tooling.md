@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-643 learnings. [Catalog](../index.md)
+646 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -311,6 +311,7 @@ type: topic
 - [Depfile-aarch64 systemic CI regression (#12666) — fix landed, PRs just need rebase](../learnings/1787898092490-depfile-aarch64-systemic-ci-regression-12666-fix-l.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
 - [devin-fetch done-guard: a partial CI rail is not a verdict — the class stayed open for 12 recorded instances because the fix was never wired into the artifact](../learnings/1786121384159-devin-fetch-done-guard-a-partial-ci-rail-is-not-a-.md)
+- [diag= exit codes: decide by the whole run's outcome, not by the target code's kind; -g1 still skips [Artificial] debug lines](../learnings/1794331397967-diag-exit-codes-decide-by-the-whole-run-s-outcome-.md)
 - [Diagnosing a case-less __target_switch must happen after the FINAL DCE, not in specializeTargetSwitch](../learnings/1791593675740-diagnosing-a-case-less-target-switch-must-happen-a.md)
 - [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](../learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
@@ -434,6 +435,7 @@ type: topic
 - [macOS DXC-from-source Bad-CPU-type: pin CMAKE_OSX_ARCHITECTURES; NATIVE sub-build doesn't inherit it](../learnings/1789420445233-macos-dxc-from-source-bad-cpu-type-pin-cmake-osx-a.md)
 - [MakeVectorFromScalar getScalarValue() reads getOperand(2) but builder emits 1 operand](../learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md)
 - [MakeVectorFromScalar scalar is getOperand(0), NOT getScalarValue() — Lua schema (3 ops) diverges from the 1-operand builder](../learnings/1785335653192-makevectorfromscalar-scalar-is-getoperand-0-not-ge.md)
+- [Manual perf dispatch shows master head_sha but builds an old ref](../learnings/1794341123370-manual-perf-dispatch-shows-master-head-sha-but-bui.md)
 - [Manually dispatching ci.yml on a DRAFT slang PR produces a spurious test-falcor failure (missing build artifact)](../learnings/1789147576274-manually-dispatching-ci-yml-on-a-draft-slang-pr-pr.md)
 - [Measure a Slang perf regression with official release binaries, not a local build — plus the three-platform trap](../learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md)
 - [Measure CI freshness by failing-check started_at, not just head commit date](../learnings/1785809336773-measure-ci-freshness-by-failing-check-started-at-n.md)
@@ -605,6 +607,7 @@ type: topic
 - [test-falcor red on an otherwise-green PR is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md)
 - [Test-harness parser fixes: pin each branch with rebuild-one-target mutation drills](../learnings/1794137071520-test-harness-parser-fixes-pin-each-branch-with-reb.md)
 - [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression)](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
+- [Testing a one-file PR head cheaply: swap the file in the base clone, rebuild incrementally, restore](../learnings/1794316905816-testing-a-one-file-pr-head-cheaply-swap-the-file-i.md)
 - [Testing the buffer-load-arg (Site 4) heap-load specialization path](../learnings/1780769206960-testing-the-buffer-load-arg-site-4-heap-load-speci.md)
 - [The available control is not the valid control — four controls on one CI failure, none discriminating](../learnings/1785970095748-the-available-control-is-not-the-valid-control-fou.md)
 - [The third diligence slot: a figure that confirms a suspicion you already hold gets checked least](../learnings/1785896737715-the-third-diligence-slot-a-figure-that-confirms-a-.md)
