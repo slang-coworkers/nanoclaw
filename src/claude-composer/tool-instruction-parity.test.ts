@@ -75,8 +75,8 @@ const SHADOWS: Record<string, Shadow> = {
   },
   'interactive.instructions.md': {
     fragments: ['interactive.md'],
-    digest: 'd7dfd5909b760125',
-    note: 'Carries the action-validation and callback-button rules; adds that `send_card` has no `to:` and does not route across coworkers.',
+    digest: '82d96518e8bc2515',
+    note: 'Carries the action-validation and callback-button rules and the card-part limits; adds that `send_card` has no `to:` and does not route across coworkers.',
     rules: [
       'never renders a callback button',
       'dropped before the card is sent',
