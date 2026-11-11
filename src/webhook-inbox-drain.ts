@@ -49,7 +49,7 @@ const PASS_INTERVAL_MS = 60_000;
 const PRUNE_INTERVAL_MS = 6 * 60 * 60_000;
 
 let timer: ReturnType<typeof setTimeout> | null = null;
-let running = false;
+let running: Promise<DrainResult> | null = null;
 let lastPruneAt = 0;
 
 /**
@@ -150,21 +150,23 @@ export function startWebhookInboxDrain(process_: WebhookInboxProcessor): void {
   if (timer) return;
   const tick = async (): Promise<void> => {
     if (running) return;
-    running = true;
+    running = drainWebhookInbox(process_);
     try {
-      const r = await drainWebhookInbox(process_);
+      const r = await running;
       if (r.replayed > 0) log.info('webhook-inbox: drain pass', { ...r });
     } catch (err) {
       log.warn('webhook-inbox: drain pass threw', { err: err instanceof Error ? err.message : String(err) });
     } finally {
-      running = false;
+      running = null;
       if (timer) timer = setTimeout(() => void tick(), PASS_INTERVAL_MS);
     }
   };
   timer = setTimeout(() => void tick(), FIRST_PASS_DELAY_MS);
 }
 
-export function stopWebhookInboxDrain(): void {
+/** Stop the timer and wait for a pass in flight, so its replays land before the DB closes. */
+export async function stopWebhookInboxDrain(): Promise<void> {
   if (timer) clearTimeout(timer);
   timer = null;
+  await running?.catch(() => undefined);
 }
