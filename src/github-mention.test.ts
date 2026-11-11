@@ -27,6 +27,8 @@ describe('mentionsHandle', () => {
     ['see shader-slang/@nv-slang-bot', 'a path segment'],
     ['run `@nv-slang-bot review` to start', 'inline code'],
     ['\\``@nv-slang-bot` review', 'a code span opened after an escaped backtick'],
+    ['\\\\`@nv-slang-bot` review', 'a code span after an escaped backslash'],
+    ['\\\\\\\\`@nv-slang-bot` review', 'a code span after two escaped backslashes'],
     ['```\n@nv-slang-bot review\n```', 'a fenced code block'],
     ['```ts\n@nv-slang-bot review\n```', 'a fenced code block with an info string'],
     ['~~~\n@nv-slang-bot review\n~~~', 'a tilde code fence'],
