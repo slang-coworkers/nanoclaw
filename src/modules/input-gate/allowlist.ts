@@ -33,6 +33,7 @@ export function loadRoster(rosterPath: string): Set<number> {
         .map((e) => (e && typeof e === 'object' ? (e as RosterEntry).github_id : undefined))
         .filter((id): id is number => typeof id === 'number' && Number.isInteger(id) && id > 0),
     );
+    // eslint-disable-next-line no-catch-all/no-catch-all -- a missing or malformed roster is an empty roster
   } catch {
     return new Set();
   }
@@ -63,6 +64,7 @@ export async function checkAllowlist(
 
   try {
     evidence.permission = await ctx.lookups.repoPermission(ctx.repo, actor.login);
+    // eslint-disable-next-line no-catch-all/no-catch-all -- a failed lookup is recorded and never admits
   } catch {
     evidence.lookupError = 'permission';
   }
@@ -72,6 +74,7 @@ export async function checkAllowlist(
 
   try {
     evidence.orgMember = await ctx.lookups.orgMember(ctx.org, actor.login);
+    // eslint-disable-next-line no-catch-all/no-catch-all -- a failed lookup is recorded and never admits
   } catch {
     evidence.lookupError = evidence.lookupError ?? 'org';
   }

@@ -26,6 +26,7 @@ export async function checkEligibility(actor: GateActor, sources: EligibilitySou
   const read = async (f: (a: GateActor) => Promise<EvidenceState>): Promise<EvidenceState> => {
     try {
       return await f(actor);
+      // eslint-disable-next-line no-catch-all/no-catch-all -- an unreachable source is "unknown" evidence, never an admit
     } catch {
       return 'unknown';
     }
