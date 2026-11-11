@@ -4,8 +4,9 @@
  * not enough: it also fires on a longer login (`@nv-slang-bot-x`), an
  * email-like string, and a handle someone quoted or put in a code sample.
  *
- * Text inside fenced code blocks, inline code and `>` quoted lines is ignored,
- * the same places GitHub sends no mention notification.
+ * Text inside fenced code blocks, inline code and `>` quoted lines is ignored:
+ * code shows the handle without addressing the bot, and a quote repeats an
+ * earlier request (GitHub's "Quote reply"), which must not start the work again.
  */
 export function mentionsHandle(body: string, handle: string): boolean {
   const login = handle.trim().replace(/^@/, '');
@@ -24,7 +25,9 @@ function stripNonProse(body: string): string {
   const out: string[] = [];
   let fence: string | null = null;
   for (const line of body.replace(/\r\n/g, '\n').split('\n')) {
-    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+    // A backtick fence's info string cannot contain a backtick (CommonMark), so a
+    // line starting with an inline span such as ```x``` is prose, not a fence.
+    const marker = /^\s{0,3}(`{3,}(?!.*`)|~{3,})/.exec(line)?.[1];
     if (fence) {
       if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
       continue;

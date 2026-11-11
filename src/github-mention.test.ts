@@ -13,6 +13,7 @@ describe('mentionsHandle', () => {
     ['Hey @NV-Slang-Bot take a look', 'in another case'],
     ['line one\n@nv-slang-bot on line two', 'on a later line'],
     ['@nv-slang-bot.', 'followed by a full stop'],
+    ['```x``` @nv-slang-bot please look', 'after an inline triple-backtick span'],
   ])('matches %j (%s)', (body) => {
     expect(mentionsHandle(body, BOT)).toBe(true);
   });
@@ -25,6 +26,7 @@ describe('mentionsHandle', () => {
     ['see shader-slang/@nv-slang-bot', 'a path segment'],
     ['run `@nv-slang-bot review` to start', 'inline code'],
     ['```\n@nv-slang-bot review\n```', 'a fenced code block'],
+    ['```ts\n@nv-slang-bot review\n```', 'a fenced code block with an info string'],
     ['~~~\n@nv-slang-bot review\n~~~', 'a tilde code fence'],
     ['> @nv-slang-bot please fix\n\nThanks', 'a quoted line'],
     ['nv-slang-bot without the at sign', 'no @'],
