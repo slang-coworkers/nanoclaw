@@ -1059,9 +1059,16 @@ def filter_message_data(message) -> dict:
 
 
 def _read_allowlist() -> Optional[tuple[set[str], set[str]]]:
-    """(channels, forums) from DISCORD_ALLOWED_READ_CHANNELS / _FORUMS, or None when both are unset."""
-    channels = {c.strip() for c in os.environ.get("DISCORD_ALLOWED_READ_CHANNELS", "").split(",") if c.strip()}
-    forums = {c.strip() for c in os.environ.get("DISCORD_ALLOWED_READ_FORUMS", "").split(",") if c.strip()}
+    """(channels, forums) from DISCORD_ALLOWED_READ_CHANNELS / _FORUMS, or None when both are unset.
+
+    Only numeric ids count: the host fills unset .env-vars names with "onecli-placeholder".
+    """
+
+    def ids(key: str) -> set[str]:
+        return {c.strip() for c in os.environ.get(key, "").split(",") if c.strip().isdigit()}
+
+    channels = ids("DISCORD_ALLOWED_READ_CHANNELS")
+    forums = ids("DISCORD_ALLOWED_READ_FORUMS")
     if not channels and not forums:
         return None
     return channels, forums

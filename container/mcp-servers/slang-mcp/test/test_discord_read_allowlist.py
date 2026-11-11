@@ -112,3 +112,19 @@ async def test_failed_parent_lookup_is_refused():
         result = await read_messages(ReadMessagesArgs(channel_id="4242", limit=5))
     assert result == {"error": "Channel 4242 is not in the allowed read list"}
     rest.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_non_numeric_entries_are_ignored():
+    # src/mcp-registry.ts fills every .env-vars name with "onecli-placeholder"
+    # when none is set in .env; that must read as unset, not as a list.
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS="onecli-placeholder", DISCORD_ALLOWED_READ_FORUMS="onecli-placeholder"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock()) as parent,
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="111", limit=5))
+    assert "error" not in result
+    rest.assert_awaited_once()
+    parent.assert_not_awaited()
