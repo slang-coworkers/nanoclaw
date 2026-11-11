@@ -101,6 +101,12 @@ describe('intent-router.sh in a non-Claude group', () => {
     expect(JSON.stringify(seen[0].body.messages)).toContain('please fix the null check');
   });
 
+  it('strips a leading slash, which is how luna names the workflow', async () => {
+    reply = () => openAiReply('{"workflow":"/implement","reason":"r"}');
+    const r = await runHook({ AGENT_PROVIDER: 'codex' });
+    expect(routedWorkflow(r.stdout)).toBe('implement');
+  });
+
   it('uses INTENT_ROUTER_OPENAI_MODEL when set', async () => {
     reply = () => openAiReply('{"workflow":"plan","reason":"r"}');
     const r = await runHook({ AGENT_PROVIDER: 'codex', INTENT_ROUTER_OPENAI_MODEL: 'openai/openai/gpt-5.6-luna' });

@@ -9,6 +9,11 @@
 # ($INTENT_ROUTER_OPENAI_MODEL, default the luna model) via the same
 # OpenAI-compatible endpoint and gateway credential path the Codex provider
 # uses, so a group that runs off Claude makes no Claude call here either.
+# The default model id and the /chat/completions call assume the NVIDIA
+# inference endpoint (CODEX_BASE_URL's default). Another endpoint needs
+# INTENT_ROUTER_OPENAI_MODEL set to a model it serves and must accept chat
+# completions (a Responses-only endpoint is not supported); otherwise
+# routing is skipped, never broken.
 #
 # Falls back gracefully (no-op) if the API call fails.
 set -euo pipefail
