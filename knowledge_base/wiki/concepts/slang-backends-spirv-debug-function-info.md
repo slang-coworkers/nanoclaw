@@ -3,7 +3,7 @@ title: "Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction rep
 type: concept
 group: slang-backends
 tags: [spirv, debug-info, nonsemantic, IRDebugFunction, DebugFunctionDefinition, autodiff, copyDebugInfo, cloneDecoration, fixUpDebugFuncType, inliner, DebugInlinedAt]
-source_count: 13
+source_count: 14
 ---
 
 # Slang SPIR-V DebugFunction / NonSemantic debug-info
@@ -23,7 +23,8 @@ The NonSemantic.Shader.DebugInfo `DebugFunction`/`DebugFunctionDefinition` famil
 - **A function's `DebugFuncDecoration` record is not always the root of its body's debug-scope tree** (after #13219 lexical scopes). Function cloning, autodiff and the inliner can each leave a different or second root. Audit from the spirv-asm, excluding scopes that carry an inlinedAt operand.
 - **Some functions have NO record, and then the inliner drops `DebugInlinedAt`.** Three autodiff synthesis paths never call `copyDebugInfo`, so a fix inside `copyDebugInfo` does not reach them. The inliner emits an inline chain only when the caller has a `DebugFunction` AND a `DebugLine` precedes the call in the call's own block (a `?:` branch block fails this). Both defects are silent under spirv-val.
 - **fwd_diff of a CONCRETE generic specialization does NOT hit `copyDebugInfo`'s generic path** — a concrete `fwd_diff(gen<float>)` resolves to a module-scope `IRFunc` first, so no hoisted name-hint-less `IRGeneric` reaches `copyDebugInfo`. Check generic-vs-concrete before flagging an autodiff-of-generics debug-info abort.
-- **`FlagArtificial` (0x20) has no defined stepping semantics in the NSDI spec**, and Slang emits DebugFunction Flags = 0. Do not claim debuggers skip artificial functions; in spvdb `step` is step-into and `next` step-over.
+- **`FlagArtificial` (0x20) has no defined stepping semantics in the NSDI spec**, and Slang emitted DebugFunction Flags = 0 before #14344. Do not claim debuggers skip artificial functions; in spvdb `step` is step-into and `next` step-over.
+- **Since #14344 a synthesized initializer is `[Artificial]`, and its debug info depends on the level:** `-g2` gives DebugLines plus `[Artificial]` on the function and its `DebugFunction`; `-g1` (Minimal) skips its debug lines entirely. Qualify every such claim with the debug level.
 
 ## IRDebugFunction representation (operands are IR-carried)
 
@@ -73,6 +74,8 @@ A plausible-but-usually-wrong autodiff debug-info 🔴: "fwd_diff of a named gen
 
 The NonSemantic.Shader.DebugInfo spec lists `FlagArtificial` = 1<<5 (0x20) in its Debug Info Flags table with no description, and says nothing about how debuggers step, so "debuggers skip artificial functions" cannot be claimed from the spec. The `.100.html` registry URL is only a meta-refresh redirect (WebFetch returns nothing); curl the redirected `NonSemantic.Shader.DebugInfo.html`. Slang's SPIR-V emitter always passes 0 for DebugFunction Flags (`slang-emit-spirv.cpp` ~11004 at e638298fe). In the vendored spvdb (`tests/spvdb/cli/main.cpp` ~918), `step`/`s` is step-INTO and `next`/`n` is step-over, as in gdb; `tests/debuginfo/debug-no-step-into-ctor.slang` uses `step`. Attribution trap: the `this` debug-name gate on synthesized constructors (`slang-lower-to-ir.cpp` ~14342) came from PR #11815 (#11565), not #12148; `git log -S isSynthesizedConstructorDecl` shows only b9fd870 (#11555) and 94d4e4736 (#11815) ([FlagArtificial has no defined semantics; spvdb step is step-into](../learnings/1793396528691-nonsemantic-shader-debuginfo-100-flagartificial-is.md)).
 
+After #14344 the synthesized initializer is marked `[Artificial]` instead, and `isSynthesizedConstructorDecl` no longer exists. At `-g2` it gets DebugLines and `[Artificial]` on both the function and its `DebugFunction`. At `-g1` it still gets no debug lines: `maybeEmitDebugLine` (`slang-lower-to-ir.cpp:9555`) and `maybeAddDebugLocationDecoration` (`:9591`) skip an `[Artificial]` function at `DebugInfoLevel::Minimal`, because minimal debug info cannot mark a function artificial. `docs/generated/tests/design/ir-reference/metadata/debug-line-skips-synthesized-constructor.slang` pins the `-g1` case ([-g1 still skips Artificial-function debug lines](../learnings/1794331397967-diag-exit-codes-decide-by-the-whole-run-s-outcome-.md)).
+
 ## Tooling trap
 
 `awk 'length>100'` for column checks counts **bytes**; an em-dash `—` is 3 bytes / 1 char, so it false-flags ≤100-column comment lines as over-length. `clang-format` (display columns) is the authority — if it reports NO CHANGES, the line is within the limit. When the container has no formatter, clang-format 17 installs without apt: `python3 -m pip install --target /tmp/cf17 clang-format==17.0.6`, then `PYTHONPATH=/tmp/cf17 python3 /tmp/cf17/bin/clang-format --style=file <file>` [Check which targets run a pass before citing it as a producer; lowerOutParameters is Metal-only](../learnings/1792829218517-check-which-targets-run-a-pass-before-citing-it-as.md).
@@ -80,7 +83,7 @@ The NonSemantic.Shader.DebugInfo spec lists `FlagArtificial` = 1<<5 (0x20) in it
 In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. Use `= OpFunction %` ([debug-scope roots; FileCheck gotcha](../learnings/1792817169469-slang-spir-v-debug-scopes-a-function-s-debugfuncde.md)).
 
 ---
-**Source learnings (13):**
+**Source learnings (14):**
 - [IRDebugFunction has a parentScope operand (idx 5) at HEAD; supersedes the "no scope operand" learning](../learnings/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md)
 - [getDebugType() returns a raw IRType, not a debug-type record](../learnings/1790164801529-irdebugfunction-getdebugtype-returns-a-raw-irtype-.md)
 - [#13235: DebugFunctionDefinition dropped when a callee is inlined (record/definition cache conflation)](../learnings/1790151769234-spir-v-debugfunctiondefinition-dropped-when-a-call.md)
@@ -94,4 +97,5 @@ In FileCheck, `CHECK-LABEL: = OpFunction` also matches `= OpFunctionParameter`. 
 - [NonSemantic.Shader.DebugInfo.100 FlagArtificial is 1<<5 with no defined semantics; spvdb `step` is step-into](../learnings/1793396528691-nonsemantic-shader-debuginfo-100-flagartificial-is.md) — #14107; emitter passes Flags 0; ctor `this` gate came from #11815
 - [`emitCalleeDebugInlinedAt` scans only the call's own block for a `DebugLine`; a `?:` repro drops `DebugInlinedAt` and the caller-scope restore, silent under spirv-val](../learnings/1793435804089-slang-inliner-drops-debuginlinedat-when-call-s-blo.md)
 - [three autodiff synthesis paths never call `copyDebugInfo` (no record; #13239 does not cover them); the inliner then skips `DebugInlinedAt`; `-dump-ir-after finalizeAutoDiffPass` detection](../learnings/1793436267860-slang-g2-three-autodiff-synthesis-paths-never-call.md)
+- [diag= exit codes by whole-run outcome; -g1 still skips Artificial debug lines](../learnings/1794331397967-diag-exit-codes-decide-by-the-whole-run-s-outcome-.md) — #14344 synthesized initializer: `-g2` DebugLines + `[Artificial]`, `-g1` none (`maybeEmitDebugLine` at Minimal)
 _Catalog: [[wiki/index.md]]_

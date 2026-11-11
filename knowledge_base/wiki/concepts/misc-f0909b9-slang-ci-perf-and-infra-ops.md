@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 32
+source_count: 34
 ---
 
 # Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
@@ -24,6 +24,7 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles: readin
 - **Per-pass compile-time A/B:** phase-scoped callgrind plus ABBA wall-clock where valgrind exists. On the shared box (no valgrind/perf/sudo), bisect with shuffled interleaved timer rounds over per-commit Release builds plus tools-only-commit A/A controls, then attribute with a revert experiment.
 - **When an MDL perf red moves the SAME IR-pass timers on several backends, read `claude-perf-bisect.yml`'s `bisect.json` before calling it noise**: a rebuild-confirmed shift well above the A/A spread is real even at `interval`.
 - **Nightly MDL perf: split disclosed benchmark resizes from real regressions; a green night after a red one is usually a sub-threshold confirmation** (1.08× < 1.10×), not baseline absorption. Read `Confirmation:`; size a real step by per-timer geomeans over size-matched workloads (`perf-confirmation-*` artifacts expire in a week).
+- **A `workflow_dispatch` run's `head_sha` is not the commit it built**: a manual MDL perf dispatch with a `ref` input records master tip but builds the checkout `ref:` (read it in the log) — an old-ref link error is a backfill, not a master regression.
 
 ## Causation must be read at the failure site
 
@@ -80,6 +81,8 @@ Perf-epic sub-tasks are maintainer-curated, no-repro ops/infra work: don't auto-
 
 ## Triaging the Nightly MDL Perf Test gate
 
+**First check which commit a red dispatch actually built.** `nightly-mdl-perf-test.yml` takes `ref` and `suite-ref` inputs, so a manual `workflow_dispatch` (a perf bisect or backfill) can build an old commit with the current suite while the run records `head_sha` = master tip, and CI gates count its red as a master failure. Run 42828865221 (2026-11-10) showed `head_sha` `4f66408b`, but its `actions/checkout` block had `ref: ed15ffc9…` (2026-06-25) and `SUITE_REF: 500e75be…`; its Windows LNK2005/LNK1169 (`mimalloc.lib` vs `SPIRV-Tools-opt.lib(mimalloc.cpp.obj)`) came from a ref older than the mimalloc link fixes, while the scheduled run on master built fine. Before blaming the commits near `head_sha`, read `event`/`actor` and `gh run view <id> --log-failed | grep -a 'ref:'` ([dispatch head_sha is not the built ref](../learnings/1794326924367-workflow-dispatch-run-head-sha-is-not-the-ref-it-b.md), [manual perf dispatch shows master head_sha](../learnings/1794341123370-manual-perf-dispatch-shows-master-head-sha-but-bui.md)).
+
 When `trend.py` lights many workloads/metrics at once, split it. (1) **Check for a disclosed methodology change first**: merged PRs touching `tools/compile-perf/lib/manifest.py` `default_size`/`sweep_sizes` often predict the ratio in their body (#13035). (2) **Read which timer flagged**: a localized pass regression moves a sub-pass timer (`specializeModule`, `simplifyIR`, `linkAndOptimizeIR`) while `compileInner` stays under threshold; `compileInner` moving for every workload suggests runner contention. (3) **Narrow suspects to PRs touching `core.meta.slang` / `hlsl.meta.slang`**: the prelude is checked and specialized on every compile, so new generics there inflate `specializeModule`/`simplifyIR` across unrelated workloads under titles with no perf hint. (4) Self-merge (author == merged_by, no APPROVED review) marks thin review, a signal not proof. Example (2026-09-19): four workloads' 2.4–10× jumps were #13035's resize; a separate ~1.7–2.4× `specializeModule`/`simplifyIR` jump traced to self-merged #13138/#13135 (prelude generics) ([resize vs regression](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md)).
 
 **A green night after a red one is usually a threshold miss, not baseline absorption.** `analyze` compares each night to a trailing-7 median. After a 10-07 step, 10-09 went green and one reading blamed absorption ([trailing median hides steps](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)), but the median was still 45.9 ms (only 2 of 7 trailing nights post-step) and confirmation measured 1.08×, under the 1.10× ERROR threshold, so it only warned. Grep the analyze log for `Confirmation:` and `baseline: trailing 7 point(s)` first ([threshold miss](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md)). The median moves only once 4 of 7 nights are post-step, after which a real step goes quiet, so localize early against a fixed green night. For front-end moves after 2026-10-07, check #13445 (e2e217dd2) first: it turned `SemanticsVisitor::getTypeTags` from a cached `aggTypeDecl->typeTags` read into a per-call walk with no `-Gec` gate (#13565).
@@ -90,7 +93,7 @@ When `trend.py` lights many workloads/metrics at once, split it. (1) **Check for
 
 **Finishing the bisect locally without perf or valgrind.** The shared coworker box has no perf counters (`perf_event_paranoid=4`, no PMU), no valgrind and no sudo. What works: one build-capable worktree (submodules need `git -c protocol.file.allow=always submodule update --init --recursive`, else "transport 'file' not allowed"); an incremental Release `slangc` build per first-parent commit (~2-5 min), copying `bin/slangc` and `lib/*.so*` to `builds/<sha>`; inputs from `tools/compile-perf/lib/workloads.py` (e.g. `gen_matrix_chain(512)`) with flags from `manifest.py`; then 15-20 rounds, after one warm-up, each running every build × workload once in shuffled order pinned with `taskset`, comparing medians. Tools-only commits (render-test, slang-test, scripts) produce a byte-identical `libslang-compiler.so`, so they are free A/A controls; copied binary dirs give a second A/A (pairs within ~1.2%, spread ≤2.5%). A revert experiment (reverse-apply one PR hunk on head, rebuild, measure) attributes the cost: on 2026-11-06 it pinned the interval above to #13792's 24-line `canInstHaveSideEffectAtAddress` hunk, filed as #14381. Local ratios exceeded the Windows runner's (+16-22% vs +10-13%) with the same shape ([local bisect + A/A](../learnings/1793956764481-local-compile-perf-bisect-without-perf-valgrind-in.md)).
 
-**Source learnings (32):**
+**Source learnings (34):**
 
 - [Maintainer readying a bot draft PR](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check actor; don't re-run ci.yml.
 - [Heartbeat: verify the base](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive from the anchor.
@@ -124,3 +127,5 @@ When `trend.py` lights many workloads/metrics at once, split it. (1) **Check for
 - [Read bisect.json before "noise"](../learnings/1793952713959-mdl-perf-nightly-read-the-auto-bisect-artifact-bef.md) — interval ≠ noise.
 - [Local bisect without perf/valgrind](../learnings/1793956764481-local-compile-perf-bisect-without-perf-valgrind-in.md) — found #13792 hunk.
 - [Artifacts via proxy](../learnings/1793954343982-ci-sweep-read-actions-artifacts-via-proxy-find-los.md) — no auth header needed.
+- [workflow_dispatch head_sha is not the ref it built; read checkout `with: ref:`](../learnings/1794326924367-workflow-dispatch-run-head-sha-is-not-the-ref-it-b.md) — run 42828865221, mimalloc LNK2005 from a June ref
+- [Manual perf dispatch shows master head_sha but builds an old ref](../learnings/1794341123370-manual-perf-dispatch-shows-master-head-sha-but-bui.md) — `--log-failed | grep -a 'ref:'`; counts as a master failure in CI gates

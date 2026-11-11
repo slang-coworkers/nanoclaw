@@ -3,7 +3,7 @@ title: "Reproducing version-specific Slang bugs with release tarballs, and bisec
 type: concept
 group: slang-tooling
 tags: [slang, release-tarball, gh-release-download, bisect, version-matrix, c-api, libslang-compiler, exit-codes, triage, regression, git-tag-contains, blobless-clone, soname-swap]
-source_count: 6
+source_count: 7
 ---
 
 # Reproducing version-specific Slang bugs with release tarballs, and bisecting across releases
@@ -30,7 +30,7 @@ On a glibc-2.36 host such as the Debian-12 coworker container, the standard tarb
 
 ## Choosing the version bracket and finding the fix commit
 
-Bracket a suspect commit with the release tags on either side, `git tag --no-contains <sha> | sort -V | tail -1` and `git tag --contains <sha> | sort -V | head -1`, then fetch each with `gh release download v<ver> -R shader-slang/slang -p "slang-<ver>-linux-x86_64.tar.gz"`. For #14281, WaveMatch lost its `#extension` in PR 4099, between v2024.1.11 and v2024.1.12 ([release tarballs in minutes; #14281](../learnings/1793750844303-confirm-a-slang-regression-in-minutes-with-officia.md)).
+Bracket a suspect commit with the release tags on either side, `git tag --no-contains <sha> | sort -V | tail -1` and `git tag --contains <sha> | sort -V | head -1`, then fetch each with `gh release download v<ver> -R shader-slang/slang -p "slang-<ver>-linux-x86_64.tar.gz"`. For #14281, WaveMatch lost its `#extension` in PR 4099, between v2024.1.11 and v2024.1.12 ([release tarballs in minutes; #14281](../learnings/1793750844303-confirm-a-slang-regression-in-minutes-with-officia.md)). The same bracket answers "is this old-version report already fixed?": #14445's text output was wrong in v2026.20 and right in v2026.21, the first release with the #13283 fold fix ([#13283 fold fix covers #14445](../learnings/1794332130849-13283-fold-fix-also-covers-register-coalesced-inde.md)).
 
 **Fresh source and a codegen diff without REST quota.** The shared `/workspace/agent/slang` clone can be broken: on 2026-10-27 its fetch failed with "bad object refs/remotes/origin/Sirox0/master; failed to run repack" and `origin/master` was stuck at 04-15. Leave it alone and make a blobless clone: `git clone --filter=blob:none --no-checkout https://github.com/shader-slang/slang.git /tmp/slang-bl` takes about 2 s, carries the full history, and fetches blobs on demand for `git show <rev>:<path>`, `git log -S` and per-path history. To check a "regressed between release X and Y" report, download both `github.com/shader-slang/slang/releases/download/v<ver>/slang-<ver>-linux-x86_64.tar.gz` assets (a plain download, no API quota), compile the same shader with each, and diff the `spirv-asm` after normalizing IDs with `sed -E 's/%[A-Za-z0-9_]+/%X/g'`, so that only real instruction changes remain. The tarballs also ship `include/` and `lib/libslang-compiler.so`, so the linked API probes below work from the same downloads ([blobless clone + cross-release codegen diff](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md)).
 
@@ -46,12 +46,13 @@ In 2024-era tarballs slangc is at `bin/linux-x64/release/slangc`, not `bin/slang
 
 A failure on a build that already contains the fix is probably a separate variant, not a failed fix: isolate the axis with boundary controls before reopening. Function-local struct conformance is the worked case. A constrained generic method (`apply<T : __BuiltinArithmeticType>`) on a local `struct Op : IOp` crashes the front end (#12987, fixed by PR #12988), while a *generic* local struct (`Op<U>`) passes the front end and crashes in `lowerWitnessTable` (#13092), which #12988 does not fix ([two-stage crash](../learnings/1789483742996-function-local-interface-conformance-crashes-at-tw.md)); the mechanism is on [[wiki/concepts/slang-language-witness-and-conformance.md]].
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [Local conformance crashes at two stages (#12987 vs #13092)](../learnings/1789483742996-function-local-interface-conformance-crashes-at-tw.md) — a crash on a build with the fix can be a separate variant
 - [Bisect on a glibc-2.36 host with the -glibc-2.27 tarballs](../learnings/1792917334487-bisect-old-slang-behavior-on-a-glibc-2-36-host-use.md) — #13931 → #9260
 - [Verify Discord/bot claims with the release tarball](../learnings/1792571968734-verify-discord-bot-slang-claims-with-the-release-s.md)
 - [Fast fresh Slang source + cross-release codegen diff without REST quota](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md) — broken shared clone → 2 s `--filter=blob:none` clone; `releases/download` tarballs; ID-normalized `spirv-asm` diff
 - [Run a released Slang compiler under the master slang-test harness (GPU) via LD_LIBRARY_PATH SONAME swap](../learnings/1793683623557-run-a-released-slang-compiler-under-the-master-sla.md) — rename to the NEEDED SONAME; `LD_DEBUG=libs` proof; keep `libslang-llvm.so`; lib-only `<fix>^`/`<fix>` builds (#14231)
 - [Confirm a Slang regression in minutes with release tarballs; #14281 WaveMatch](../learnings/1793750844303-confirm-a-slang-regression-in-minutes-with-officia.md) — bracket a suspect sha with `git tag --no-contains/--contains | sort -V`; 2024 layout `bin/linux-x64/release/`; print exit codes; `-emit-spirv-via-glsl` validates GLSL; `__target_switch` user-function probe for `__glsl_extension`
+- [#13283 fold fix also covers register-coalesced index vars (#14445)](../learnings/1794332130849-13283-fold-fix-also-covers-register-coalesced-inde.md) — v2026.20 broken, v2026.21 fixed; no source build
 
 _Catalog: [[wiki/index.md]]_

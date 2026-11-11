@@ -3,17 +3,23 @@ title: "docs/generated nightly agentic suite: harness-rule fallout, building the
 type: concept
 group: slang-tooling
 tags: [slang-test, docs-generated, nightly, agentic-tests, exit-code, filecheck, triage, spirv-validation]
-source_count: 9
+source_count: 11
 ---
 
 ## TL;DR
 
 - **Since #14269 (2026-11-04) a `SIMPLE(filecheck=X)` lane fails on a non-zero slangc exit
-  unless it says `exit-code=N`**, even when every CHECK matches. `diag=` lanes are not checked
-  yet (#14266); REFLECTION and INTERPRET got the same check in #14299.
+  unless it says `exit-code=N`**, even when every CHECK matches. REFLECTION and INTERPRET got
+  the same check in #14299; `diag=` lanes and `.expected` tests in #14422 (2026-11-10), where
+  the default is **-1**.
+- **Pick a `diag=` lane's `exit-code=N` from the whole run's outcome**, not the code's kind:
+  only warnings/notes/info (incl. command-line warnings) → 0; a note that comes with an error
+  stays -1; a command-line option error (`OptionsParser`) → 1.
 - **A harness-rule PR that sweeps only `tests/` breaks the nightly.** `docs/generated/tests/**`
   runs only in the nightly agentic-tests job (not PR CI, not the merge queue), so the break
-  appears the next night (80 fixtures on 2026-11-05). Grep `docs/generated/tests/` too.
+  appears the next night (80 fixtures on 2026-11-05). Grep `docs/generated/tests/` too, and
+  measure the blast radius first with a one-file A/B: swap in the old
+  `slang-test-main.cpp`, rebuild only slang-test, rerun, diff the failure sets.
 - **Branches cut before a harness rule break on merge with master**, even when the merge is clean.
 - **Build the fix set from `FAILED test:` lines, not from the error message.** Fixtures on
   `_meta/expected-failures.txt` print the same message but count as "failed expectedly".
@@ -31,7 +37,7 @@ source_count: 9
   back (see the generated-docs page).
 - **A Nightly Coverage red can be the sibling Pages size budget**, not code.
 
-## The #14269 exit-code rule and the 80-fixture nightly break
+## The #14269 / #14422 exit-code rules and their nightly breaks
 
 Consider a fixture that checks the diagnostic of a compile that fails on purpose:
 
@@ -44,8 +50,9 @@ Before d6ad99cb3 (#14269, 2026-11-04) this lane passed, because SIMPLE+FileCheck
 `result code` (the older behavior and the result-code pins it needed are on
 [the output-assertions page](slang-test-output-assertions-and-truncated-runs.md)). Since then
 it fails with `expected exit code 0, but the exit code is -1` even though every CHECK matches,
-and it must say `(filecheck=CHECK,exit-code=-1)`. `diag=` lanes are not checked yet (#14266);
-REFLECTION and INTERPRET got the same check in #14299. A branch cut before 11-04 that adds such
+and it must say `(filecheck=CHECK,exit-code=-1)`. REFLECTION and INTERPRET got the same check
+in #14299, and `diag=` lanes and `.expected` tests in #14422 (merged 2026-11-10), whose default
+is -1 (choosing N is in the fixing section below). A branch cut before 11-04 that adds such
 a lane breaks on merge with master even though the merge itself is clean
 [#14269 exit-code rule](../learnings/1793897749447-slang-test-now-fails-filecheck-simple-tests-on-non.md).
 The PR's own sweep covered `tests/` only. The nightly-only `docs/generated/tests/**` tree (the
@@ -56,6 +63,17 @@ nightly and the PRs merged in between; the prevention is to grep `docs/generated
 well before merging any harness-rule PR
 [#14269 staled 80 nightly fixtures](../learnings/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md)
 [blanket exit-code=N masks ~22 real failures](../learnings/1793866828932-docs-generated-nightly-exit-code-break-after-slang.md).
+
+The blast radius of a harness-rule PR (930 `diag=` + 952 INTERPRET fixtures in the corpus) can be
+measured before the nightly. Build Release slangc + slang-test at master and run the nightly
+command (TL;DR; `-server-count 32` takes about 75 s on 64 cores). Then `git fetch --deepen=2`,
+`git show HEAD~1:tools/slang-test/slang-test-main.cpp > tools/slang-test/slang-test-main.cpp`,
+rebuild only slang-test (about 1 min) and rerun. The failure-set diff is exactly the rule's
+effect: for #14422, 74 → 224, i.e. 150 new failures, all `diag=` fixtures that need
+`exit-code=0` or `1`. Build traps: skip DXC with `-DSLANG_ENABLE_DXIL=OFF` (`SLANG_ENABLE_DXC`
+does not exist, and DXC then builds from source on glibc 2.36); do not disable SLANGD
+(slang-test depends on it); the server target is `test-server`
+[one-file A/B measures a harness rule's nightly blast radius](../learnings/1794298561895-prove-a-slang-test-harness-rule-pr-s-nightly-blast.md).
 
 ## Building the fix set: intersect with `FAILED test:` lines
 
@@ -159,12 +177,22 @@ pin trap from the same PR is on
 [the test-authoring page](slang-tooling-f0909b0-test-authoring-filecheck.md)
 [sweeps must also fix the generator prompts](../learnings/1793872226026-docs-generated-fixture-sweeps-must-also-fix-the-ge.md).
 
+For a `diag=` lane under #14422, `exit-code=N` follows the outcome of the whole run, not the
+kind of code under test. A run with only warnings, notes or info gets `exit-code=0`, including
+command-line warnings such as E00018 (`-separate-debug-info` on hlsl), E00030 (repeated
+`-stage`) and E00040 (repeated `-profile`). A note that comes with an error keeps the default
+-1 (30509 is reported as `note[E30509]` beside `error[E30401]`). An error in the command line
+itself (`OptionsParser`: E000xx, E31111, E45113, E57007, E100001) gives `exit-code=1`. The
+catalog prompt on #14442 said "command-line code → 1" and "note → 0", and both are wrong in
+those cases
+[diag= exit codes follow the whole run's outcome](../learnings/1794331397967-diag-exit-codes-decide-by-the-whole-run-s-outcome-.md).
+
 A red **Nightly Coverage** run in the same window can be the sibling repo
 slang-coverage-reports failing its Pages deploy with `Pages size budget exceeded` (950 MB),
 which is not a code failure
 [#14269 staled 80 nightly fixtures](../learnings/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md).
 
-**Source learnings (9):**
+**Source learnings (11):**
 - [slang-test exit-code rule (#14269) staled 80 nightly-only docs/generated fixtures](../learnings/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md) — PR sweep covered `tests/` only; triage by FAILED set vs previous green nightly; Nightly Coverage Pages budget red
 - [Release-regression fixture lists for docs/generated nightlies include expected-failure rows — diff against FAILED lines](../learnings/1793866800949-release-regression-fixture-lists-for-docs-generate.md) — 89 messages vs 80 FAILED; `gh pr view --json files` caps at 100
 - [docs/generated nightly exit-code break after slang-test #14269: blanket exit-code=N masks ~22 real failures](../learnings/1793866828932-docs-generated-nightly-exit-code-break-after-slang.md) — local repro command; failure categories; `.actual` files; retry-verdict noise
@@ -172,5 +200,7 @@ which is not a code failure
 - [Doc-test E99999 triage: 4 of 7 ir-reference fixtures are compiler bugs, 3 are invalid spirv_asm](../learnings/1793867580734-doc-test-e99999-triage-4-of-7-ir-reference-fixture.md) — negative constant index, #13519, #13530, spirv_asm OpCapability
 - [docs/generated agentic fixtures: common invalid-input patterns (E31211, E38207, -specialize, -lang glsl)](../learnings/1793867764880-docs-generated-agentic-fixtures-common-invalid-inp.md) — numthreads(1,1,1)+Sample; `-specialize` last-entry only; positional `-lang glsl`
 - [Docs-only PRs skip every build/test job in ci.yml; .actual files hold the full output for exit-code-only failures](../learnings/1793870186670-docs-only-prs-skip-every-build-test-job-in-ci-yml-.md) — 44 jobs skipped; `.actual` N numbering; spirv-val and StaticAssert caveats
-- [slang-test now fails filecheck SIMPLE tests on non-zero exit unless exit-code=N (#14269)](../learnings/1793897749447-slang-test-now-fails-filecheck-simple-tests-on-non.md) — `diag=` unchecked (#14266); REFLECTION/INTERPRET (#14299); old branches break on merge
+- [slang-test now fails filecheck SIMPLE tests on non-zero exit unless exit-code=N (#14269)](../learnings/1793897749447-slang-test-now-fails-filecheck-simple-tests-on-non.md) — REFLECTION/INTERPRET (#14299), `diag=`/`.expected` later (#14422); old branches break on merge
 - [docs/generated fixture sweeps must also fix the generator prompts; a CHECK-DAG pin can shrink a leading CHECK-NOT](../learnings/1793872226026-docs-generated-fixture-sweeps-must-also-fix-the-ge.md) — #14343 left `_common.md` and `keywords-and-builtins/_prompt.md` prescribing the old shape
+- [Prove a slang-test harness-rule PR's nightly blast radius with a one-file A/B rebuild](../learnings/1794298561895-prove-a-slang-test-harness-rule-pr-s-nightly-blast.md) — #14422 74 → 224; swap in HEAD~1 `slang-test-main.cpp`, rebuild slang-test only; `-DSLANG_ENABLE_DXIL=OFF`, keep SLANGD
+- [diag= exit codes: decide by the whole run's outcome, not the code's kind](../learnings/1794331397967-diag-exit-codes-decide-by-the-whole-run-s-outcome-.md) — warnings/notes only → 0; note with error → -1; `OptionsParser` error → 1 (#14442); `-g1` skips `[Artificial]` debug lines

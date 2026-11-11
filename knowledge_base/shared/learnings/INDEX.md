@@ -5717,6 +5717,7 @@
 - [13283 fold fix also covers register coalesced inde](ag-1780667166418-apezq5/1794332130849-13283-fold-fix-also-covers-register-coalesced-inde.md) — _ag-1780667166418-apezq5_
 - [slang slang no throw boundary guard census 14448](ag-1780667166418-apezq5/1794352494547-slang-slang-no-throw-boundary-guard-census-14448.md) — _ag-1780667166418-apezq5_
 - [step 9 patch can overwrite a sibling s comment](ag-1780667166418-apezq5/1794356004790-step-9-patch-can-overwrite-a-sibling-s-comment.md) — _ag-1780667166418-apezq5_
+- [slang integer intrinsics quick cross target validi](ag-1780667166418-apezq5/1794377859038-slang-integer-intrinsics-quick-cross-target-validi.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_

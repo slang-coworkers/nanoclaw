@@ -3,7 +3,7 @@ title: "slangc CLI behavior: exit codes, crash semantics, output streams, and op
 type: concept
 group: slang-tooling
 tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths, e00070, entry-point, container-output, slang-module]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -27,7 +27,7 @@ inspection paths silently drop the CLI options you passed.
   seekable, so it never reproduces a seek bug.
   `.slang-module` without `-embed-downstream-ir`, host-callable `.zip`). Check the file exists.
 - **A probe matrix with the wrong `-entry` fails E38000 on both sides** and reads "no diff".
-- **`slangc -E` exits 0 even after an error or `#error`** (#14432): its early return precedes the error-count check (DeepWiki claims the reverse). An exit-code fix must also update the paired `SIMPLE(filecheck=)` line (`exit-code=-1`, #14269) and any `.expected` `result code = N` header.
+- **`slangc -E` exits 0 even after an error or `#error`** (#14432): its early return precedes the error-count check (DeepWiki claims the reverse). An exit-code fix must also update the paired `SIMPLE(filecheck=)` line (`exit-code=-1`, #14269) and any `.expected` `result code = N` header. **`-E -pass-through dxc|glslang` writes nothing, prints nothing and exits 0**; check preprocessing without `-pass-through`. The `-E` text is streamed before any error check, so prove output is preserved by byte-comparing stdout/stderr against master.
 - **A location-less diagnostic drops its span message**: E52004 prints no path, so output-file
   failures without a location use E00004.
 - **`head -N` on a compiler log can hide the ICE** (warnings print first). Grep outcome classes.
@@ -69,6 +69,8 @@ and trace the actual crash frame before writing a mechanism into a PR
 [SLANG_ASSERT does not always catch OOB](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md).
 
 **`slangc -E` exits 0 after a preprocessor error (#14432).** Under `-E` (PreprocessorOutput), `FrontEndCompileRequest::executeActionsInner` (`source/slang/slang-compile-request.cpp:827`) returns SLANG_OK before the sink error-count check, so `slangc -E` exits 0 even after an error or `#error`. DeepWiki states the opposite order (error check first), so read the local source before citing DeepWiki on early-return ordering. The precedent for a fix: gcc, clang and cpp `-E` exit 1 on preprocessor errors and still write the preprocessed output. A fix that changes a slangc exit code touches both directives of a paired test file, a line-1 `//DIAGNOSTIC_TEST:SIMPLE(diag=..)` and a line-2 `//TEST:SIMPLE(filecheck=..)`: since #14269 the filecheck line checks the exit code and expects 0 by default, so it needs `exit-code=-1` even when the issue names only the `diag=` line (rule details on [[wiki/concepts/slang-test-output-assertions-and-truncated-runs.md]]). `.expected`-file tests also pin a `result code = N` header, e.g. `tests/bugs/preproc-lex-failure-2.slang.expected` [-E exit-code fixes touch the filecheck line too](../learnings/1794279537629-slangc-e-exit-code-fixes-touch-the-filecheck-line-.md).
+
+**`-E` with `-pass-through` does nothing at all.** `slangc t.slang -E -pass-through dxc` (or `glslang`) writes no preprocessed text, prints no diagnostic and exits 0, even with an `#error` in the file; without `-E` the downstream compiler reports the error. `EndToEndCompileRequest::executeActionsInner` (`slang-end-to-end-request.cpp:216-222`) skips the front end in pass-through mode and then returns `SLANG_OK` at the `PreprocessorOutput` check (master 500e75be8, while reviewing #14438). For reviewing `-E` changes: `parseTranslationUnit` (`slang-compile-request.cpp:554`) streams the `-E` text to the std-output writer before any error check, so where the front end returns its error count decides only the exit code, never whether the text is written. Byte-compare stdout and stderr of the head binary against the master binary to prove the output is unchanged [-E with -pass-through silently does nothing](../learnings/1794315553684-slangc-e-with-pass-through-silently-does-nothing-e.md).
 
 ## Output paths and log slicing produce confident wrong readings
 
@@ -271,7 +273,7 @@ routing that bypasses the rich renderer), not "flip the column flag". A value-ta
 churn; changing the default would touch hundreds of `tests/**/*.slang` expected-output blocks
 [rich Rust-style default](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md) — both binaries fail E38000 → "no diff"; `-o /dev/null` + validation gives E00004, not a spirv-val failure
 - [slangc -lang applies only to inputs after it; slang-test SIMPLE puts the file path first](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md) — a `.slang` test with `-lang hlsl` is still parsed as Slang; use a `.hlsl` file (#10305, #13495)
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
@@ -290,3 +292,4 @@ churn; changing the default would touch hundreds of `tests/**/*.slang` expected-
 - [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — verified on top-of-tree; rich via `shouldEmitRichDiagnostics` with no flag; the classic path emits column only under LanguageServer + a bare-integer id; an MSVC-parseable single line is a distinct opt-in third style.
 - [slangc -o /dev/null fails with E00004 in the fixer container (slang#11782)](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md) — workflow docs suggest it for validation checks; EXIT=255 there is not a compile failure
 - [slangc -E exit-code fixes touch the filecheck line too; DeepWiki misreads the -E early return](../learnings/1794279537629-slangc-e-exit-code-fixes-touch-the-filecheck-line-.md) — #14432 `executeActionsInner` returns before the error check; paired diag=/filecheck lines need `exit-code=-1`; `.expected` result code
+- [slangc -E with -pass-through silently does nothing (exit 0, no output)](../learnings/1794315553684-slangc-e-with-pass-through-silently-does-nothing-e.md) — `executeActionsInner` skips the front end, returns OK at the PreprocessorOutput check; `-E` text streams before the error check (#14438)
