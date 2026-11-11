@@ -157,14 +157,7 @@ export interface GitHubPrReviewableEvent {
  * for the JSON response shape and ops log filtering.
  */
 export type DeliveryOutcome =
-  | 'local'
-  | 'forwarded'
-  | 'dropped'
-  | 'skipped'
-  | 'no-session'
-  | 'no-admin-group'
-  | 'parked'
-  | 'released';
+  'local' | 'forwarded' | 'dropped' | 'skipped' | 'no-session' | 'no-admin-group' | 'parked' | 'released';
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
@@ -419,8 +412,7 @@ async function deliverMappedPrEvent(args: {
       try {
         // Idempotency guard — see deliverToOrchestrator for rationale.
         const existing = db.prepare('SELECT 1 FROM messages_in WHERE id = ?').get(args.rowId) as
-          | { 1: number }
-          | undefined;
+          { 1: number } | undefined;
         if (existing) {
           log.info('github-webhook: duplicate delivery — already seen, skipping', {
             rowId: args.rowId,
