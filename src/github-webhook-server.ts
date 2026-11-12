@@ -27,6 +27,7 @@ import { getDb } from './db/connection.js';
 import { issueSessionExists } from './db/sessions.js';
 import { acceptWebhookDelivery, completeWebhookDelivery, failWebhookDelivery } from './db/webhook-inbox.js';
 import { readEnvFile } from './env.js';
+import { mentionsHandle } from './github-mention.js';
 import { log } from './log.js';
 import {
   TRUST_SIGNATURE_HEADER,
@@ -455,7 +456,7 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
       // A review whose body @-mentions the bot is first contact even on a PR
       // with no mapping yet — let deliverGitHubPrEvent fall back to the
       // orchestrator instead of dropping.
-      mentionsBot: reviewBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase()),
+      mentionsBot: mentionsHandle(reviewBody, GITHUB_WEBHOOK_BOT_MENTION),
       rawBody,
       eventType: String(eventType),
       deliveryId: deliveryId,
@@ -640,7 +641,7 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
 
   // Does this comment address the bot directly? Computed once and reused
   // by both the mention gate and the 👀-reaction decision below.
-  const mentionsBot = commentBody.toLowerCase().includes(GITHUB_WEBHOOK_BOT_MENTION.toLowerCase());
+  const mentionsBot = mentionsHandle(commentBody, GITHUB_WEBHOOK_BOT_MENTION);
 
   // Mention gate, with three ownership-based exemptions. The default is to
   // drop a comment that doesn't @-mention the bot (otherwise we'd react to
