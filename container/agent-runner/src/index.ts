@@ -59,6 +59,7 @@ import { assignConfiguredServer, resolvePluginServer } from './plugin-mcp.js';
 import type { McpServerConfig } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
 import { createStopHookRunner } from './stop-hooks.js';
+import { deliveryGateEnv } from './delivery-gate.js';
 import { renderGpuContextLine, runGpuProbe } from './gpu-probe.js';
 
 function log(msg: string): void {
@@ -149,6 +150,9 @@ async function main(): Promise<void> {
         // built-in server boots with no policy and (correctly, but uselessly)
         // denies everything but the transport floor.
         NANOCLAW_MCP_POLICY: process.env.NANOCLAW_MCP_POLICY || '',
+        // The send_message and send_file tools run the critique gate script,
+        // which reads its activation and knobs from the env (delivery-gate.ts).
+        ...deliveryGateEnv(process.env),
       },
     },
     codex: buildCodexMcpServer(process.env),

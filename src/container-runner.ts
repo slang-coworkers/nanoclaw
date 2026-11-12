@@ -2782,16 +2782,24 @@ export async function buildMounts(
         // gate-critique-on-deliver.sh refuses delivery markers
         // ([Fix Report]/[Resolution]/[Triage Resolution]/[Review Verdict]/[handoff])
         // and PR-create commands until /codex-critique has run at least once.
-        // Symmetric opt-in: the hook itself first-line checks
-        // /workspace/agent/.overlay-critique-gate and exits 0 if absent, so
-        // wiring it universally is safe — coworkers without the overlay
-        // see no gating at all.
-        if (!hasCmd('PreToolUse', 'gate-critique-on-deliver.sh')) {
-          settings.hooks.PreToolUse.push({
-            matcher: 'mcp__nanoclaw__send_message|Bash',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/gate-critique-on-deliver.sh', timeout: 5 }],
-          });
-        }
+        // Symmetric opt-in: the script first checks the gate's activation and
+        // exits 0 when it is off, so wiring it universally is safe.
+        //
+        // The hook covers Bash only. Every message door (the send_message and
+        // send_file tools, <message> blocks, the plain-text shortcut) runs the
+        // same script from the runner (container/agent-runner/src/delivery-gate.ts)
+        // for every provider. The script is not idempotent on the allow path
+        // (it consumes a one-shot admin bypass), so a send must run it once:
+        // an older entry whose matcher also names send_message is replaced,
+        // not kept beside the new one.
+        settings.hooks.PreToolUse = settings.hooks.PreToolUse.filter(
+          (h: { hooks?: { command?: string }[] }) =>
+            !h.hooks?.some((i: { command?: string }) => i.command?.includes('gate-critique-on-deliver.sh')),
+        );
+        settings.hooks.PreToolUse.push({
+          matcher: 'Bash',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/gate-critique-on-deliver.sh', timeout: 5 }],
+        });
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
         if (!hasCmd('PostToolUse', 'plan-tracker.sh')) {
           settings.hooks.PostToolUse.push({

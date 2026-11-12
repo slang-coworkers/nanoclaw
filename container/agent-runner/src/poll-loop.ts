@@ -121,6 +121,7 @@ import { classifyAndPrepend } from './intent-router-bridge.js';
 import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
 import type { StopHookRunner } from './stop-hooks.js';
+import { checkDeliveryGate } from './delivery-gate.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
 import type { ProviderRuntimeContract } from './provider-contracts/registry.js';
 
@@ -5284,26 +5285,6 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
   }
 }
 
-/**
- * Critique-gate scope-extender: the bash hook
- * (container/hooks/gate-critique-on-deliver.sh) is wired as a PreToolUse
- * matcher on `mcp__nanoclaw__send_message|Bash`, so it only catches
- * delivery-marker traffic that goes through those tools. The most common
- * delivery path — the agent emitting `<message to="X">[Fix Report]…</message>`
- * as plain text and letting `dispatchResultText` parse it — uses neither
- * tool, so the hook never fires and the gate is silently bypassed.
- *
- * This in-process check mirrors the bash hook's logic (same MARKER file,
- * same workflow-state.json, same delivery-marker regex) and runs at the
- * one chokepoint left for text-output dispatch.
- *
- * Returns null when the gate either doesn't apply or permits the body.
- * Returns a string (the explanation) when the gate refuses delivery —
- * the caller substitutes that explanation for the original body so the
- * destination sees a clear refusal note instead of the gated content.
- *
- * Paths overridable for tests via the optional opts.
- */
 // Anchored to line start (multiline): the chain protocol emits markers as
 // message/line prefixes, and unanchored matching treated a mid-sentence
 // MENTION of a marker as a delivery — burning a denial and one of the
@@ -5319,16 +5300,14 @@ function handleEvent(event: ProviderEvent, _routing: RoutingContext): void {
 const DEFAULT_DELIVERY_MARKERS = ['Resolution', 'handoff'];
 const DELIVERY_MARKER_RE = /^[ \t]*\[(Resolution|handoff)\]/m;
 
-// Critique-gate vocabulary: built-in defaults plus ADDITIVE extensions from
-// .critique-delivery-markers (materialized by the composer from the
-// coworker-type chain's delivery_markers declarations). Labels are
-// re-validated to a regex-metachar-free charset before splicing — and since
-// extensions can only add markers, tampering with the file can only widen
-// the gate, never narrow it. Both the critique gate AND the always-on
-// chain-routing gate resolve their vocabulary through this helper, so a
-// per-role delivery_markers extension is recognized identically by both —
-// otherwise moving a marker into per-role YAML would keep the critique gate
-// working while silently regressing routing for that role.
+// Delivery vocabulary of the chain-routing gate: built-in defaults plus
+// ADDITIVE extensions from .critique-delivery-markers (materialized by the
+// composer from the coworker-type chain's delivery_markers declarations).
+// Labels are re-validated to a regex-metachar-free charset before splicing —
+// and since extensions can only add markers, tampering with the file can only
+// widen the gate, never narrow it. gate-critique-on-deliver.sh reads the same
+// file with the same floor and charset, so a per-role delivery_markers
+// extension is recognized identically by both gates.
 function deliveryMarkerRe(markersPath: string): RegExp {
   const fs = require('fs') as typeof import('fs');
   let extra: string[] = [];
@@ -5349,7 +5328,7 @@ function deliveryMarkerRe(markersPath: string): RegExp {
 // the composer). Shared by both gates; overridable in tests via opts.
 const DEFAULT_DELIVERY_MARKERS_PATH = '/workspace/agent/.critique-delivery-markers';
 
-// Soft-cap shared by the in-process gates, mirroring the bash hooks
+// Soft-cap of the in-process routing gate, mirroring the bash hooks
 // (gate-critique-on-deliver.sh:73-89). After GATE_DENIAL_CAP refusals on a
 // single session the gate stops denying and yields — without this, a gate
 // whose precondition the agent can't satisfy (e.g. a workflow step that
@@ -5364,94 +5343,6 @@ const GATE_DENIAL_CAP = 3;
 // incrementing, so after GATE_DENIAL_CAP denials the counter stays pinned at
 // the cap and the gate yields without bumping further. Best-effort persistence
 // — a state-write failure never blocks delivery, it just disables the cap.
-/**
- * Merge keys into workflow-state.json. Used to consume/expire a bypass grant,
- * mirroring the bash hook's jq patch so both gate implementations leave the
- * same trail.
- */
-function patchGateState(statePath: string, patch: Record<string, unknown>): void {
-  const fs = require('fs') as typeof import('fs');
-  const path = require('path') as typeof import('path');
-  let state: Record<string, unknown> = {};
-  try {
-    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
-  } catch {
-    state = {};
-  }
-  Object.assign(state, patch);
-  try {
-    fs.mkdirSync(path.dirname(statePath), { recursive: true });
-    fs.writeFileSync(statePath, JSON.stringify(state));
-  } catch {
-    // Best-effort, as elsewhere in this file.
-  }
-}
-
-/**
- * Record an enforcement release into the escalation file — the session
- * bind-mount, which the host reads. Anything that ALLOWS a delivery with the
- * requirement unmet must leave a durable trace: this container runs --rm, so a
- * release logged only to stderr is a release nobody ever learns about.
- */
-/**
- * Record an enforcement release where the HOST can see it, in parity with
- * container/hooks/gate-critique-on-deliver.sh.
- *
- * Two sinks, one id. `critique-releases.jsonl` is append-only and always
- * written, because the escalation file can legitimately be GONE by the time we
- * get here: the host retires a settled request, and it does that between our
- * own two writes (the consumption patch above, then this stamp). The
- * escalation file is merged into when it exists, since it carries the
- * request's audit context. The host records under the shared event id exactly
- * once, so writing both never double-counts a release.
- *
- * It deliberately never CREATES the escalation file. Fabricating one with
- * `requested_at: 0` — what this did before — made the host read a real release
- * as a brand-new escalation and card a human for it, while the release itself
- * went unrecorded and its link to the original request was destroyed.
- *
- * @returns false when nothing was recorded; an invisible release is not a
- * release the caller may allow.
- */
-function stampFailedOpen(escPath: string, denialReason: string, why: string, grantId?: string | null): boolean {
-  const fs = require('fs') as typeof import('fs');
-  const path = require('path') as typeof import('path');
-  const nowIso = new Date().toISOString();
-  const eventId = `rel-${Date.now()}-${process.pid}-${Math.floor(Math.random() * 1e6)}`;
-  let recorded = false;
-
-  const journalPath =
-    process.env.CRITIQUE_RELEASE_JOURNAL ?? path.join(path.dirname(escPath), 'critique-releases.jsonl');
-  try {
-    fs.appendFileSync(
-      journalPath,
-      `${JSON.stringify({
-        event_id: eventId,
-        at: nowIso,
-        why,
-        reason: denialReason,
-        hit: 'text-output delivery',
-        grant_id: grantId ?? null,
-      })}\n`,
-    );
-    recorded = true;
-  } catch {
-    // Reported by the caller via the return value, not swallowed here.
-  }
-
-  try {
-    const esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as Record<string, unknown>;
-    esc.failed_open_at = nowIso;
-    esc.failed_open_why = why;
-    esc.failed_open_event_id = eventId;
-    fs.writeFileSync(escPath, JSON.stringify(esc));
-    recorded = true;
-  } catch {
-    // Absent or unreadable: the journal is the sink. Never fabricate one.
-  }
-  return recorded;
-}
-
 function gateShouldYield(statePath: string, key: string): boolean {
   const fs = require('fs') as typeof import('fs');
   let state: Record<string, unknown> = {};
@@ -5540,298 +5431,6 @@ export function checkRoutingGate(
       `Re-send the original body in a <message to="..." in_reply_to="...">...</message> block linked to the inbound message you are answering ` +
       `(thread_id is optional — the runtime derives it from in_reply_to). ` +
       `Do not describe the routing in prose; set the attribute on the tag. The original body was retained in the container scratchpad log only — it was not delivered to the destination.`,
-  };
-}
-
-export function checkCritiqueGate(
-  body: string,
-  opts: {
-    overlayMarkerPath?: string;
-    workflowStatePath?: string;
-    requiredStagesPath?: string;
-    deliveryMarkersPath?: string;
-  } = {},
-): { blocked: boolean; reason?: string } {
-  const fs = require('fs') as typeof import('fs');
-  const path = require('path') as typeof import('path');
-  // Path resolution mirrors the bash hook's two-stage override (env var
-  // wins over default), with an opts-arg layer on top for unit tests.
-  const markerPath =
-    opts.overlayMarkerPath ?? process.env.CRITIQUE_GATE_OVERLAY_PATH ?? '/workspace/agent/.overlay-critique-gate';
-  // Activation precedence: the host-injected CRITIQUE_GATE_ACTIVE env var is
-  // authoritative when set (the agent can't `rm` its way out — a child can't
-  // mutate the harness's inherited env). The marker file is the fallback for
-  // local mode / tests. opts.overlayMarkerPath (tests) forces file mode.
-  if (opts.overlayMarkerPath === undefined && process.env.CRITIQUE_GATE_ACTIVE !== undefined) {
-    if (process.env.CRITIQUE_GATE_ACTIVE !== '1') return { blocked: false };
-  } else if (!fs.existsSync(markerPath)) {
-    return { blocked: false };
-  }
-  const markerRe = deliveryMarkerRe(
-    opts.deliveryMarkersPath ?? path.join(path.dirname(markerPath), '.critique-delivery-markers'),
-  );
-  if (!markerRe.test(body)) return { blocked: false };
-  const statePath =
-    opts.workflowStatePath ?? process.env.CRITIQUE_GATE_STATE_PATH ?? '/workspace/.claude/workflow-state.json';
-
-  let state: {
-    critique_rounds?: number;
-    critique_stages?: Record<string, number>;
-    critique_verdicts?: Record<string, string>;
-    critique_gate_bypass_approved?: boolean;
-    critique_gate_bypass_rejected?: boolean;
-    // Grant envelope written by the host on an admin Approve. `grant_id` is the
-    // approving approval_id — the host's ledger is keyed on it, so consumption
-    // can be attributed to a specific grant rather than to a session.
-    critique_gate_bypass_grant_id?: string;
-    critique_gate_bypass_expires_at?: number; // epoch secs (shell arithmetic in the bash gate)
-    critique_gate_bypass_rejected_request?: number;
-    edits_since_critique?: number;
-    critique_attested?: Record<string, Record<string, string>>;
-  } = {};
-  try {
-    state = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as typeof state;
-  } catch {
-    state = {};
-  }
-
-  // Required-stages + verdict enforcement — full parity with
-  // gate-critique-on-deliver.sh. The composer materializes
-  // .critique-required-stages next to the overlay marker; when present (and
-  // non-empty) the gate requires every listed stage recorded AND, when
-  // PLAN_REVIEW / OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
-  // closed on a missing verdict unless CRITIQUE_VERDICT_STRICT=0. Without
-  // the file, the historical any-1-round check applies. Before this parity
-  // the text-output path (the most common delivery path) enforced only the
-  // count check, so a must-fix OUTPUT_REVIEW could ship via plain
-  // <message> emission while the tool path denied it.
-  // Required stages: env wins over file (same tamper-resistance as activation);
-  // opts.requiredStagesPath (tests) forces file mode.
-  const requiredPath = opts.requiredStagesPath ?? path.join(path.dirname(markerPath), '.critique-required-stages');
-  let required: string[] = [];
-  try {
-    const raw =
-      opts.requiredStagesPath === undefined && process.env.CRITIQUE_REQUIRED_STAGES !== undefined
-        ? process.env.CRITIQUE_REQUIRED_STAGES
-        : fs.readFileSync(requiredPath, 'utf-8');
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) required = parsed.filter((s): s is string => typeof s === 'string');
-  } catch {
-    required = [];
-  }
-
-  let denialReason = '';
-  if (required.length > 0) {
-    const stages = state.critique_stages ?? {};
-    const verdicts = state.critique_verdicts ?? {};
-    const missing = required.filter((s) => (stages[s] ?? 0) < 1);
-    const planVerdict = verdicts['PLAN_REVIEW'] ?? '';
-    if (missing.length > 0) {
-      denialReason = `required critique stages are missing: ${missing.join(', ')}`;
-    } else if (required.includes('PLAN_REVIEW') && planVerdict !== '' && planVerdict !== 'approve') {
-      denialReason = `PLAN_REVIEW last verdict is "${planVerdict}" (must be "approve") — re-run /codex-critique with STAGE: PLAN_REVIEW after fixing the plan`;
-    } else if (required.includes('PLAN_REVIEW') && planVerdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
-      denialReason =
-        'PLAN_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: PLAN_REVIEW';
-    } else if (required.includes('OUTPUT_REVIEW')) {
-      const verdict = verdicts['OUTPUT_REVIEW'] ?? '';
-      if (verdict !== '' && verdict !== 'approve') {
-        denialReason = `OUTPUT_REVIEW last verdict is "${verdict}" (must be "approve") — re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues`;
-      } else if (verdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
-        denialReason =
-          'OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: OUTPUT_REVIEW';
-      }
-    }
-    // Freshness: the OUTPUT_REVIEW approve must postdate the last mutation.
-    // track-edits.sh bumps edits_since_critique on every substantive edit and
-    // track-critique.sh zeroes it on every recorded round — a nonzero count
-    // means the approve covers code that has since changed. Mirrors the bash
-    // hook; CRITIQUE_FRESHNESS=0 disables.
-    if (denialReason === '' && required.includes('OUTPUT_REVIEW') && process.env.CRITIQUE_FRESHNESS !== '0') {
-      const edits = typeof state.edits_since_critique === 'number' ? state.edits_since_critique : 0;
-      if (edits > 0) {
-        denialReason = `${edits} edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state; re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
-      }
-    }
-    // Attested-hash binding: re-hash the artifacts the reviewer attested to
-    // (### Attested → critique_attested, recorded by track-critique.sh) —
-    // an approve whose reviewed artifacts have since changed does not ship.
-    // Mirrors the bash hook; CRITIQUE_ATTEST=0 disables,
-    // CRITIQUE_ATTEST_ROOT bounds verified paths (default /workspace).
-    if (denialReason === '' && required.includes('OUTPUT_REVIEW') && process.env.CRITIQUE_ATTEST !== '0') {
-      const attested = (state.critique_attested ?? {})['OUTPUT_REVIEW'] ?? {};
-      const attestRoot = process.env.CRITIQUE_ATTEST_ROOT ?? '/workspace';
-      const changed: string[] = [];
-      for (const [artifactPath, hash] of Object.entries(attested).slice(0, 20)) {
-        if (!artifactPath.startsWith(`${attestRoot}/`)) continue;
-        try {
-          const crypto = require('crypto') as typeof import('crypto');
-          const digest = crypto.createHash('sha256').update(fs.readFileSync(artifactPath)).digest('hex');
-          if (digest !== hash) changed.push(artifactPath);
-        } catch {
-          changed.push(`${artifactPath}(missing)`);
-        }
-      }
-      if (changed.length > 0) {
-        denialReason = `reviewed artifacts changed since the OUTPUT_REVIEW approve: ${changed.join(', ')} — re-run /codex-critique with STAGE: OUTPUT_REVIEW`;
-      }
-    }
-  } else {
-    const rounds = typeof state.critique_rounds === 'number' ? state.critique_rounds : 0;
-    if (rounds < 1) {
-      denialReason = `no /codex-critique round has been recorded for this session (critique_rounds=${rounds})`;
-    }
-  }
-  if (denialReason === '') return { blocked: false };
-
-  const marker = body.match(markerRe)?.[1] ?? '<delivery>';
-
-  // Denial cap → graduated escalation, in parity with the bash hook. At the
-  // cap the gate no longer silently fails open: it writes an escalation
-  // request file (the host sweep turns it into an admin approval card) and
-  // keeps denying until an admin approves the bypass, rejects it, or the
-  // request times out (backstop preserving the original anti-thrash
-  // contract). CRITIQUE_ESCALATION=0 restores the legacy fail-open cap.
-  if (gateShouldYield(statePath, 'critique_gate_denials')) {
-    const escPath =
-      process.env.CRITIQUE_ESCALATION_FILE ?? path.join(path.dirname(statePath), 'critique-escalation.json');
-    const nowS = Math.floor(Date.now() / 1000);
-    let requestedAt = 0;
-    try {
-      const esc = JSON.parse(fs.readFileSync(escPath, 'utf-8')) as { requested_at?: number };
-      requestedAt = typeof esc.requested_at === 'number' ? esc.requested_at : 0;
-    } catch {
-      requestedAt = 0;
-    }
-    const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
-
-    // The kill switch still fails open, but the release is now recorded where
-    // the HOST can see it: this container is --rm'd, so anything written only
-    // to stderr is unrecoverable once the session ends.
-    if (process.env.CRITIQUE_ESCALATION === '0') {
-      // The kill switch is an operator's explicit standing instruction to let
-      // deliveries through, so an unrecordable release does not convert it into
-      // a refusal the way the admin-bypass path below does. It is still said
-      // out loud rather than passing as success.
-      if (!stampFailedOpen(escPath, denialReason, 'CRITIQUE_ESCALATION=0 kill switch')) {
-        log(
-          `[critique-gate] kill-switch release could NOT be recorded in ${path.dirname(escPath)} — ` +
-            `the host will never learn the gate opened (${denialReason})`,
-        );
-      }
-      return { blocked: false };
-    }
-
-    // Admin bypass — ONE-SHOT and time-limited, in parity with the bash hook.
-    // This was a bare `=== true` with no expiry and no consumption, so a single
-    // approval stood THIS path open for the session's whole life even after the
-    // hook path was fixed — and this is the more common delivery path.
-    if (state.critique_gate_bypass_approved === true) {
-      const expiresAt = num(state.critique_gate_bypass_expires_at);
-      // A grant with no usable expiry is NOT an unlimited grant. Treating a
-      // missing or non-numeric value as "no expiry" would let a forged flag
-      // with no expiry at all defeat the TTL entirely — fail closed instead.
-      if (expiresAt <= 0 || nowS >= expiresAt) {
-        patchGateState(statePath, {
-          critique_gate_bypass_approved: false,
-          critique_gate_bypass_expired_at: nowS,
-        });
-        // Expired (or unusable) grant: fall through to the denial path below.
-      } else {
-        patchGateState(statePath, {
-          critique_gate_bypass_approved: false,
-          critique_gate_bypass_consumed_grant_id: state.critique_gate_bypass_grant_id ?? null,
-          critique_gate_bypass_consumed_at: nowS,
-        });
-        // The one-shot property depends on that write. If it did not land the
-        // grant is still `approved` and would be reusable on every subsequent
-        // delivery, so refuse rather than allow — a denied delivery is
-        // recoverable, a permanently reusable waiver is not.
-        let stillApproved = true;
-        try {
-          const after = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as {
-            critique_gate_bypass_approved?: boolean;
-          };
-          stillApproved = after.critique_gate_bypass_approved === true;
-        } catch {
-          stillApproved = true; // unreadable → assume the worst
-        }
-        if (stillApproved) {
-          return {
-            blocked: true,
-            reason:
-              `[critique-gate] REFUSED — the admin bypass could NOT be recorded as consumed, so allowing it ` +
-              `would leave a reusable waiver (${denialReason}).`,
-          };
-        }
-        // Same reasoning as the consumption check above, one step further on: a
-        // release nobody can see is worse than a denied delivery. The grant is
-        // already spent, so the host reports it as an ORPHANED release — which
-        // is exactly what it is.
-        if (
-          !stampFailedOpen(
-            escPath,
-            denialReason,
-            'admin bypass consumed (one-shot)',
-            state.critique_gate_bypass_grant_id ?? null,
-          )
-        ) {
-          return {
-            blocked: true,
-            reason:
-              `[critique-gate] REFUSED — the admin bypass was consumed but the release could NOT be recorded ` +
-              `anywhere the host can see it, so allowing it would open the gate with no durable trace (${denialReason}).`,
-          };
-        }
-        return { blocked: false };
-      }
-    }
-
-    // A rejection answers the request it was made about — not every later one.
-    // Unscoped, a single old "no" silently decided every subsequent delivery
-    // in the session and suppressed re-escalation with it.
-    if (
-      state.critique_gate_bypass_rejected === true &&
-      num(state.critique_gate_bypass_rejected_request) === requestedAt
-    ) {
-      return {
-        blocked: true,
-        reason:
-          `[critique-gate] REFUSED — an admin REJECTED the bypass request (${denialReason}). ` +
-          `Satisfy the critique requirement (/codex-critique) or report the blocker to your parent instead of delivering.`,
-      };
-    }
-
-    // NOTE: there is deliberately NO timeout fail-open here any more. It used
-    // to allow the delivery once CRITIQUE_ESCALATION_TIMEOUT_SECS elapsed,
-    // which meant an agent could satisfy the requirement by waiting.
-    if (requestedAt === 0) {
-      try {
-        fs.writeFileSync(
-          escPath,
-          JSON.stringify({
-            requested_at: nowS,
-            reason: denialReason,
-            hit: 'text-output delivery',
-            denials: GATE_DENIAL_CAP,
-          }),
-        );
-      } catch {
-        // Best-effort — an unwritable escalation file degrades to deny-only.
-      }
-    }
-    return {
-      blocked: true,
-      reason:
-        `[critique-gate] REFUSED — denial cap reached; a bypass request has been sent to an admin (${denialReason}). ` +
-        `Satisfy the requirement with /codex-critique or wait for the decision; do not retry the delivery in a tight loop.`,
-    };
-  }
-  return {
-    blocked: true,
-    reason:
-      `[critique-gate] REFUSED — your message contained a [${marker}] marker but ${denialReason}. ` +
-      `Run /codex-critique on the work first, then resend. The original delivery body was retained in the container scratchpad log only — it was not delivered to the destination.`,
   };
 }
 
@@ -6058,9 +5657,9 @@ export async function deliverMidTurnBlocks(
       gateRefusals.push(routingGate.reason!);
       continue;
     }
-    const gate = checkCritiqueGate(body);
+    const gate = await checkDeliveryGate(body);
     if (gate.blocked) {
-      log(`Critique-gate refused mid-turn delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
+      log(`Critique-gate refused mid-turn delivery to "${toName}": body contained a delivery marker`);
       postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
       gateRefusals.push(gate.reason!);
       continue;
@@ -6387,15 +5986,14 @@ export async function dispatchResultText(
       continue;
     }
 
-    // Critique-gate scope extension (#67): the bash PreToolUse hook only
-    // catches send_message/Bash invocations; this text-output path is
-    // where most delivery markers actually land. Same gate, same state,
-    // re-applied here. When gated, the body is withheld from the peer and the
-    // refusal is routed back to the SENDER (see the routing-gate block above) —
-    // delivering it to the peer mis-routed gate feedback into the chain.
-    const gate = checkCritiqueGate(body);
+    // The critique gate (delivery-gate.ts runs gate-critique-on-deliver.sh):
+    // this text-output path is where most delivery markers land. When gated,
+    // the body is withheld from the peer and the refusal is routed back to the
+    // SENDER (see the routing-gate block above) — delivering it to the peer
+    // mis-routed gate feedback into the chain.
+    const gate = await checkDeliveryGate(body);
     if (gate.blocked) {
-      log(`Critique-gate refused delivery to "${toName}": body contained delivery marker, critique_rounds=0`);
+      log(`Critique-gate refused delivery to "${toName}": body contained a delivery marker`);
       scratchpadParts.push(`[critique-gate refused delivery to "${toName}"] ${body}`);
       postOverlayEvent('critique-gate.refused', { destination: toName, reason: gate.reason });
       gateRefusals.push(gate.reason!);
@@ -6479,24 +6077,35 @@ export async function dispatchResultText(
     scratchpad &&
     !danglingOpen
   ) {
-    const internalChannel = routing.channelType === 'system';
-    if (routing.channelType && routing.platformId && !internalChannel) {
-      await writeMessageOut({
-        id: generateId(),
-        in_reply_to: routing.inReplyTo,
-        kind: 'chat',
-        platform_id: routing.platformId,
-        channel_type: routing.channelType,
-        thread_id: routing.threadId,
-        content: JSON.stringify({ text: scratchpad }),
-      });
-      return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks, undelivered: '' };
-    }
-    if (!internalChannel) {
-      const all = getAllDestinations();
-      if (all.length === 1) {
-        await sendToDestination(all[0], scratchpad, routing);
+    // The shortcut is a delivery door like a <message> block, so the same
+    // critique gate applies. A refused reply stays in the scratchpad, and the
+    // reason goes back to the sender as for a refused block.
+    const shortcutGate = await checkDeliveryGate(scratchpad);
+    if (shortcutGate.blocked) {
+      log('Critique-gate refused the plain-text reply: it contained a delivery marker');
+      postOverlayEvent('critique-gate.refused', { destination: '(plain-text reply)', reason: shortcutGate.reason });
+      gateRefusals.push(shortcutGate.reason!);
+      blocked++;
+    } else {
+      const internalChannel = routing.channelType === 'system';
+      if (routing.channelType && routing.platformId && !internalChannel) {
+        await writeMessageOut({
+          id: generateId(),
+          in_reply_to: routing.inReplyTo,
+          kind: 'chat',
+          platform_id: routing.platformId,
+          channel_type: routing.channelType,
+          thread_id: routing.threadId,
+          content: JSON.stringify({ text: scratchpad }),
+        });
         return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks, undelivered: '' };
+      }
+      if (!internalChannel) {
+        const all = getAllDestinations();
+        if (all.length === 1) {
+          await sendToDestination(all[0], scratchpad, routing);
+          return { sent: 1, hasUnwrapped: false, taskBlocks: [], resultBlocks, undelivered: '' };
+        }
       }
     }
   }
