@@ -78,4 +78,7 @@ They import OpenCode files, so delete them with the payload:
 - `container/agent-runner/src/providers/mcp-to-opencode.fork.test.ts`
 - `container/agent-runner/src/providers/opencode.timeouts.fork.test.ts`
 - `container/agent-runner/src/providers/opencode.nvidia.fork.test.ts`
+- `container/agent-runner/src/providers/opencode-hook-bridge.fork.test.ts`
+- `container/agent-runner/src/providers/opencode-hook-bridge.ts`, the plugin that runs the group's
+  hook gates for OpenCode; the payload's server start installs it
 - the OpenCode case in `container/agent-runner/src/memory/neutral-injection.test.ts`
