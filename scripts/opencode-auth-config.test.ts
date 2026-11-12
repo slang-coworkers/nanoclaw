@@ -5,9 +5,11 @@
 vi.mock('../setup/gateways/credential-store.js', async () => {
   const { createProviderCredentialConnection } =
     await import('../.claude/skills/add-onecli/scripts/provider-credentials.js');
-  const { createIronCredentialConnection, ironModelEndpoint } =
-    await import('../.claude/skills/add-iron-proxy/scripts/provider-credentials.js');
-  const { IronControlRequestError } = await import('../.claude/skills/add-iron-proxy/scripts/control.js');
+  // Not literal specifiers: this fork does not install the Iron gateway, so its
+  // skill scripts must stay out of the fork's typecheck program.
+  const iron = '../.claude/skills/add-iron-proxy/scripts';
+  const { createIronCredentialConnection, ironModelEndpoint } = await import(`${iron}/provider-credentials.js`);
+  const { IronControlRequestError } = await import(`${iron}/control.js`);
   const ironRequest = async (resource: string, method = 'GET', data?: any) => {
     if (fixture.failVault) throw new IronControlRequestError('Iron unavailable', 503);
     const [kind, action, namespace, id] = resource.split('/');
@@ -478,7 +480,8 @@ describe('OpenCode setup with Iron selected', () => {
     vi.stubEnv('ONECLI_URL', undefined);
     vi.stubEnv('ONECLI_API_KEY', undefined);
     // The real Iron adapter refuses to touch credentials before Iron Control is registered.
-    const { controlPaths } = await import('../.claude/skills/add-iron-proxy/scripts/control.js');
+    const iron = '../.claude/skills/add-iron-proxy/scripts';
+    const { controlPaths } = await import(`${iron}/control.js`);
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-iron-setup-'));
     roots.push(root);
     fs.mkdirSync(path.dirname(controlPaths(root).registration), { recursive: true });

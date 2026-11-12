@@ -142,7 +142,7 @@ describe('OpenCode through a gateway it has never heard of', () => {
   });
 
   it('hands ChatGPT sign-in to the gateway as the named profile and reuses a live login', async () => {
-    const signIn = vi.fn(async (_method: string, _root: string, vault: { save: (v: unknown) => Promise<void> }) => {
+    const signIn = vi.fn(async (_method: string, _root: string, vault: { save(v: unknown): Promise<void> }) => {
       await vault.save({ profile: 'chatgpt', accessToken: 'a', refreshToken: 'r', accountId: 'acct' });
     });
     await runOpenCodeChatGptAuth('device', { signIn });

@@ -22,7 +22,7 @@ vi.mock('@clack/prompts', () => ({
 }));
 vi.mock('child_process', () => ({ spawn: edge.spawn, spawnSync: edge.spawnSync }));
 vi.mock('os', async (original) => ({
-  default: { ...(await original<typeof import('os')>()).default, homedir: () => edge.nativeHome },
+  default: { ...(await original<{ default: typeof import('os') }>()).default, homedir: () => edge.nativeHome },
 }));
 
 import {
