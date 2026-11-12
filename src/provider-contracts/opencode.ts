@@ -2,14 +2,16 @@ import { readEnvFile } from '../env.js';
 import { CLAUDE_COMPATIBLE_HOST_SURFACES } from './claude.js';
 import { registerProviderHostContract } from './registry.js';
 
-const NATIVE_MODEL_DOMAINS = [
-  'api.openai.com',
-  'chatgpt.com',
-  'openrouter.ai',
-  'api.deepseek.com',
-  'generativelanguage.googleapis.com',
-  'api.anthropic.com',
-];
+// A model domain skips the gateway approval card for OpenCode groups, so this
+// fork exempts only the API the selected provider calls natively, not every
+// vendor OpenCode supports.
+const NATIVE_MODEL_DOMAINS: Record<string, readonly string[]> = {
+  openai: ['api.openai.com', 'chatgpt.com'],
+  openrouter: ['openrouter.ai'],
+  deepseek: ['api.deepseek.com'],
+  google: ['generativelanguage.googleapis.com'],
+  anthropic: ['api.anthropic.com'],
+};
 
 function configuredEndpoint(): string | undefined {
   const env = readEnvFile(['OPENCODE_BASE_URL', 'ANTHROPIC_BASE_URL']);
@@ -23,27 +25,34 @@ function openCodeEndpoint(): string | undefined {
   return process.env.OPENCODE_BASE_URL ?? readEnvFile(['OPENCODE_BASE_URL']).OPENCODE_BASE_URL;
 }
 
-/** Operator-owned endpoint settings are realized when the host starts. */
-export function openCodeModelDomains(endpoint = configuredEndpoint()): string[] {
-  const domains = [...NATIVE_MODEL_DOMAINS];
-  if (endpoint && endpoint !== 'native') {
-    try {
-      const url = new URL(endpoint);
-      if (
-        url.protocol === 'https:' &&
-        !url.port &&
-        !url.username &&
-        !url.password &&
-        !url.search &&
-        !url.hash &&
-        /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(url.hostname)
-      )
-        domains.push(url.hostname);
-    } catch {
-      /* Invalid endpoints are diagnosed by provider configuration. */
-    }
+// Same default as the runner's resolveOpenCodeInference.
+function selectedProvider(): string {
+  return process.env.OPENCODE_PROVIDER || readEnvFile(['OPENCODE_PROVIDER']).OPENCODE_PROVIDER || 'anthropic';
+}
+
+/**
+ * Operator-owned endpoint settings are realized when the host starts. A
+ * configured endpoint is the only model host; with none, the selected
+ * provider's own API is.
+ */
+export function openCodeModelDomains(endpoint = configuredEndpoint(), provider = selectedProvider()): string[] {
+  if (!endpoint || endpoint === 'native') return [...(NATIVE_MODEL_DOMAINS[provider] ?? [])];
+  try {
+    const url = new URL(endpoint);
+    if (
+      url.protocol === 'https:' &&
+      !url.port &&
+      !url.username &&
+      !url.password &&
+      !url.search &&
+      !url.hash &&
+      /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/.test(url.hostname)
+    )
+      return [url.hostname];
+  } catch {
+    /* Invalid endpoints are diagnosed by provider configuration. */
   }
-  return [...new Set(domains)];
+  return [];
 }
 
 /**

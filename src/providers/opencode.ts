@@ -23,6 +23,9 @@ const PASSTHROUGH_KEYS = [
   'OPENCODE_MODEL_CONTEXT_LIMIT',
   'OPENCODE_MODEL_OUTPUT_LIMIT',
   'OPENCODE_MODEL_INPUT_MODALITIES',
+  // Fork: the runner's start and MCP limits (opencode.timeouts.fork.test.ts).
+  'OPENCODE_SERVER_START_TIMEOUT_MS',
+  'OPENCODE_MCP_TIMEOUT_MS',
 ] as const;
 const AUTH_MODE_KEY = 'OPENCODE_AUTH_MODE';
 

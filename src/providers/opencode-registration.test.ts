@@ -133,20 +133,12 @@ describe('OpenCode host payload', () => {
 });
 
 describe('OpenCode model gateway destinations', () => {
-  it('declares native backends and only the configured custom HTTPS hostname', async () => {
+  // Fork divergence: only the configured endpoint, or the selected provider's
+  // own API, is a model domain (provider-contracts/opencode.fork.test.ts).
+  it('declares only the configured custom HTTPS hostname, or the native backend when there is none', async () => {
     const { openCodeModelDomains } = await import('../provider-contracts/opencode.js');
-    expect(openCodeModelDomains('https://models.example.test/v1')).toEqual(
-      expect.arrayContaining([
-        'chatgpt.com',
-        'api.openai.com',
-        'openrouter.ai',
-        'api.deepseek.com',
-        'generativelanguage.googleapis.com',
-        'api.anthropic.com',
-        'models.example.test',
-      ]),
-    );
-    expect(openCodeModelDomains('native')).not.toContain('models.example.test');
+    expect(openCodeModelDomains('https://models.example.test/v1', 'openai')).toEqual(['models.example.test']);
+    expect(openCodeModelDomains('native', 'openai')).not.toContain('models.example.test');
   });
   it.each([
     'http://models.example.test/v1',
