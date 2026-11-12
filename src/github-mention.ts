@@ -65,7 +65,7 @@ function stripCodeSpans(line: string): string {
   // Each maximal run of backticks: where it starts, its length as a closer,
   // and its length as an opener (one less when its first backtick is escaped).
   const runs: { start: number; end: number; openLen: number }[] = [];
-  for (let i = 0; i < line.length; ) {
+  for (let i = 0; i < line.length;) {
     if (line[i] !== '`') {
       i++;
       continue;
