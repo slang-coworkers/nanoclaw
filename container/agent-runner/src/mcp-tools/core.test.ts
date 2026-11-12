@@ -751,3 +751,65 @@ describe('send_message MCP tool — meta-ack audit', () => {
     expect((result.content[0] as { text: string }).text).not.toContain('META-ACK AUDIT');
   });
 });
+
+describe('send_message / send_file — critique delivery gate', () => {
+  // The tools run gate-critique-on-deliver.sh from the repo's container/hooks,
+  // as the image does from /app/hooks, so a marked delivery without a critique
+  // is refused for every provider, not only where a PreToolUse hook runs.
+  const GATE_ENV = ['OVERLAY_MARKER_DIR', 'WORKFLOW_STATE_FILE', 'NANOCLAW_HOOKS_DIR', 'CRITIQUE_GATE_ACTIVE'];
+  let saved: Record<string, string | undefined>;
+  let dir: string;
+  let state: string;
+
+  beforeEach(() => {
+    saved = Object.fromEntries(GATE_ENV.map((k) => [k, process.env[k]]));
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'core-gate-'));
+    state = path.join(dir, 'workflow-state.json');
+    process.env.OVERLAY_MARKER_DIR = dir;
+    process.env.WORKFLOW_STATE_FILE = state;
+    process.env.NANOCLAW_HOOKS_DIR = path.resolve(import.meta.dir, '..', '..', '..', 'hooks');
+    process.env.CRITIQUE_GATE_ACTIVE = '1';
+    fs.writeFileSync(state, JSON.stringify({ critique_rounds: 0 }));
+  });
+  afterEach(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('refuses a marked send_message with no critique, writes nothing, and counts the denial', async () => {
+    const result = (await sendMessage.handler({ to: 'peer', text: '[Resolution] PR #9 fixed.' })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain('CRITIQUE REQUIRED');
+    expect(getUndeliveredMessages()).toHaveLength(0);
+    expect(JSON.parse(fs.readFileSync(state, 'utf-8')).critique_gate_denials).toBe(1);
+  });
+
+  it('sends it once a critique round is recorded, and never gates a mid-sentence mention', async () => {
+    await sendMessage.handler({ to: 'peer', text: 'I will send the [Resolution] marker after the critique.' });
+    fs.writeFileSync(state, JSON.stringify({ critique_rounds: 1 }));
+    await sendMessage.handler({ to: 'peer', text: '[Resolution] PR #9 fixed.' });
+    expect(getUndeliveredMessages()).toHaveLength(2);
+  });
+
+  it('refuses a send_file whose file carries the marker', async () => {
+    const report = path.join(dir, 'report.md');
+    fs.writeFileSync(report, '[Resolution] PR #9 fixed.\n');
+    const result = (await sendFile.handler({ to: 'peer', path: report, text: 'report attached' })) as {
+      isError?: boolean;
+    };
+    expect(result.isError).toBe(true);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+  });
+
+  it('lets everything through when the host turned the gate off', async () => {
+    process.env.CRITIQUE_GATE_ACTIVE = '0';
+    await sendMessage.handler({ to: 'peer', text: '[Resolution] PR #9 fixed.' });
+    expect(getUndeliveredMessages()).toHaveLength(1);
+  });
+});

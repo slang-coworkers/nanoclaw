@@ -35,6 +35,7 @@ import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, st
 import { startHostInstanceLease, stopHostInstanceLease } from './host-instance.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { startWebhookInboxDrain, stopWebhookInboxDrain } from './webhook-inbox-drain.js';
+import { drainInputGate } from './modules/input-gate/index.js';
 import { startHostModules, stopHostModules } from './host-lifecycle.js';
 import { startGatewayApprovalCoordinator, stopGatewayApprovalCoordinator } from './gateway-approval-coordinator.js';
 import { startGatewayAvailabilityMonitor } from './gateway-availability.js';
@@ -542,6 +543,9 @@ async function shutdown(signal: string): Promise<void> {
         { name: 'mcp-stack', run: () => mcpStackHandle?.stop() },
         { name: 'dashboard-ingress', run: () => dashboardIngressHandle?.stop() },
         { name: 'github-webhook-server', run: () => githubWebhookHandle?.stop() },
+        // After the webhook server and inbox drain stop: no new deliveries, so
+        // the shadow decisions still in flight land before the DB closes.
+        { name: 'input-gate', run: () => drainInputGate() },
         { name: 'cli-server', run: () => stopCliServer() },
         { name: 'channel-adapters', run: () => teardownChannelAdapters() },
         { name: 'close-db', run: () => closeDb() },
