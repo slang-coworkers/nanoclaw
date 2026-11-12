@@ -25,6 +25,8 @@ describe('opencode serve start timeout', () => {
   it('takes OPENCODE_SERVER_START_TIMEOUT_MS and ignores an invalid value', () => {
     expect(serverStartTimeoutMs({ OPENCODE_SERVER_START_TIMEOUT_MS: '90000' })).toBe(90_000);
     expect(serverStartTimeoutMs({ OPENCODE_SERVER_START_TIMEOUT_MS: '90s' })).toBe(60_000);
+    // setTimeout fires at once for delays above 2^31-1 ms.
+    expect(serverStartTimeoutMs({ OPENCODE_SERVER_START_TIMEOUT_MS: '2147483648' })).toBe(60_000);
   });
 });
 
