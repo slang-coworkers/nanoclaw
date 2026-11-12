@@ -1,4 +1,5 @@
 import { initializeOpenCodeAuth } from './opencode-auth.js';
+import { installOpenCodeHookBridge } from './opencode-hook-bridge.js';
 import { spawn, type ChildProcess } from 'child_process';
 
 import { createOpencodeClient } from '@opencode-ai/sdk';
@@ -70,6 +71,8 @@ export function spawnOpencodeServer(
 ): Promise<{ url: string; proc: ChildProcess }> {
   return new Promise((resolve, reject) => {
     initializeOpenCodeAuth(process.env.XDG_DATA_HOME ?? '/opencode-xdg', process.env.OPENCODE_AUTH_MODE);
+    // Fork: run the group's Claude Code hooks (gates) for OpenCode tool calls.
+    installOpenCodeHookBridge();
     const hostname = '127.0.0.1';
     const port = 4096;
     const proc = spawn('opencode', ['serve', `--hostname=${hostname}`, `--port=${port}`], {
