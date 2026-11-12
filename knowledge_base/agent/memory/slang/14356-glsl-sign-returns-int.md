@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14356 — GLSL input `sign()` on float returns int, so `sign(x)/2` uses integer division
-description: "Bot-filed 11-05 18:07Z by slang-triager, a side finding of the #13676 triage. Silent wrong result in GLSL-input mode. Filed-only, no fixer chain; starting one is the operator's call (asked on the dashboard 11-05)."
+description: "Bot-filed 11-05 18:07Z by slang-triager, a side finding of the #13676 triage. Silent wrong result in GLSL-input mode. HELD: maintainer-owned (jkwak-work self-assigned 11-06); operator fixer ask retired 11-11."
 ---
 
 # slang#14356
@@ -27,3 +27,18 @@ so it needs no dispatch.
 **11-05 18:07Z `issue_opened` webhook** landed in Main session `sess-1793902035147-vaunlo` (thread `gh-issue-shader-slang/slang-14356`). Live read at 18:1xZ: still no assignee, 0 comments. Sibling session `sess-1793901687560-orbm9v` had already verified it and asked the operator (dashboard, 18:09Z), so there was no dispatch.
 
 **Resumes on:** the operator's GO, a maintainer comment or self-assignment (then hold under rung 4), or a PR cross-reference.
+
+**11-06 22:07Z: jkwak-work self-assigned** (events API: actor = assignee = assigner = jkwak-work). The issue is now
+maintainer-owned, so it is held under rung 4 and the 11-05 operator ask (start a fixer?) is **retired**. The operator
+never answered it. A bot PR goes up only if the assignee asks for one.
+
+**11-11 19:02Z, `pr_mention` webhook: jhelferty-nv (MEMBER) comment
+[6804720568](https://github.com/shader-slang/slang/issues/14356#issuecomment-6804720568).** The live body matches the payload
+and has not been edited. It addresses `@jkwak-work`, **not the bot** (nothing was stripped from the front of it):
+*"Per Tess, we need to be carefull with this issue because HLSL and GLSL define the sign() function to return different
+types. … A fix for this needs to involve different definitions of sign, depending on which dialect you're using."*
+This is maintainer-to-maintainer design direction. It agrees with the filed "possible fix", which is a GLSL-only
+overload in `glsl.meta.slang` that leaves the HLSL `int` return as it is. **Held: no dispatch and no bot post.** I sent
+the operator one line that withdraws the 11-05 ask. Seen from Main session `sess-1793902035147-vaunlo`.
+
+**Resumes on:** the assignee (jkwak-work) asking the bot for something, a PR cross-reference, or the issue closing.

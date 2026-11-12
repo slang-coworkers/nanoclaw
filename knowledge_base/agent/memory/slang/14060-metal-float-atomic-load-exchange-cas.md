@@ -135,3 +135,5 @@ cleaned up the worktree and sentinel. I cancelled re-check `recheck-14210-human-
 Follow-ups: #14170 is the reporter's own PR (albertrodriguezclo), and the bot does not comment there (see #14153's record). #14044 is the bot's draft
 (Fixes #14031), owned by fixer session `sess-1793291446093-uqb9b4`. At 21:56Z I sent that session a pinned heads-up (msg 85; it landed as seq 24, verified):
 merge master, then move the 64-bit check into `checkUnsupportedInst` following jkwak-work's direction, quoted verbatim. Not filed: SPIR-V float CAS fails spirv-val, half/double Metal atomics.
+
+**11-11 08:14Z:** my 11-05 remap request was approved and executed (notification 88). It was a no-op, because previous and current were both `ytzi3p`; the mapping had already moved on 11-05 01:23Z. This is the same shape as #11709's `appr-…iwgn54`.

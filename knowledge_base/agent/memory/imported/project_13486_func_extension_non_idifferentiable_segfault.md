@@ -46,3 +46,11 @@ The misc.md half is now fixed on master: lines 250/266 read "True for a builtin 
 `is-vector-folds-false.slang` is unchanged (dee8b6a6f2, 09-15). I paged all 174 files of #14241 to confirm it does not touch the test, and
 #13411 stays open (assignee's call, no bot post). This was reported to the dashboard (11-08). Next one-shot: `rechase-12249-13411-7f82`
 (11-11 09:00Z).
+
+**Status as of 11-11 09:00Z: #13411 is RESOLVED on master.** PR #14436 ("Refresh agentic tests against current compiler and docs",
+jvepsalainen-nv, 3199 files) MERGED 11-10 13:40Z as 4f66408b3d. It removed `is-vector-folds-false.slang` and added
+`is-vector-builtin-vector.slang`, which checks float→0, float2→1, int4→1, float2x2→0 on CPU. #14436 does not reference #13411, so the
+issue stays OPEN. Closing it is the assignee's call, and the bot does not post. `pulls/<n>/files` caps at 3000 entries. The hit fell
+inside that cap, and the misc.md commit history confirmed there were no other edits. #13486 and #13677 have not changed since 10-15.
+#13449 only lost its `Office-Sai` label (jkwak-work, 11-09), which is not news. This was reported to the dashboard (11-11). The chain now
+watches #13486 only. Next one-shot: `rechase-12249-13486-f63f` (11-14 09:00Z).

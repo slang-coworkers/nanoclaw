@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#9643 — overlapping push-constant ranges across vertex/fragment entry points (SPIR-V)
-description: Human-filed (petar-andrejic) 2026-01-16. Maintainers (jkwak-work, tangent-vector) ruled it a real design problem 02-27, schedule "Unplanned"; juliusikkala proposed allowing [vk::offset(N)] on EP params 08-13. Triaged 10-30 (cmt 6531861693, label `reproduced`, P3 enhancement); jkwak-work picked A (vk::offset on EP params) 20:09Z → slang-fixer dispatched.
+description: PARKED 11-11 on jkwak-work Q1/Q2 (PR #14108 ready, head 9b77f0de8); supervise-issues register, no timer. Human-filed (petar-andrejic) 2026-01-16. Maintainers (jkwak-work, tangent-vector) ruled it a real design problem 02-27, schedule "Unplanned"; juliusikkala proposed allowing [vk::offset(N)] on EP params 08-13. Triaged 10-30 (cmt 6531861693, label `reproduced`, P3 enhancement); jkwak-work picked A (vk::offset on EP params) 20:09Z → slang-fixer dispatched.
 resource: https://github.com/shader-slang/slang/issues/9643
 ---
 
@@ -55,3 +55,8 @@ resource: https://github.com/shader-slang/slang/issues/9643
   11-06 17:14Z (the fixer reports): CI failed on all platforms at `Generating fiddle/.fiddle.stamp`, because master #14051 added diagnostic 31166 (`unknown-builtin-name`), which collides with the PR's E31166. The fixer merged master (no force-push) and renumbered the vk::offset errors to 31167–31170. It is rebuilding, then it will test, push and re-dispatch CI. The new push will likely need falcor-ci approval again (a human click).
   Ready-flip no longer pending → drop #14108 from the weekly undraft list. Re-check 26da (11-11) still stands.
 - 11-06 17:29Z fixer pushed **9b77f0de8** (merged master, codes now E31167–E31170; 23 vk-offset variants + a 2871/2871 subset pass). Verified: PR comment 6691119200; CI runs 42261074725 (dispatch) and 42261085812 (PR) both `waiting` on 9b77f0de8; 42261085812 is waiting on the **falcor-ci** environment approval (human click). I told the operator.
+- **11-11 22:00Z final re-check 26da: Q1/Q2 still unanswered → still PARKED.** Checked on GitHub: since 11-06 17:28Z there are no comments, reviews or inline comments on #14108 or #9643. The only activity was jkwak-work's `Office-Tess` label churn on #9643 on 11-06 (it is now unlabeled). #9643 is assigned to jkwak-work and labelled `reproduced`.
+  The PR is ready for review, head 9b77f0de8, MERGEABLE, `pr: non-breaking`. Review is requested from jkwak-work and team `dev`; no review has been submitted.
+  CI: PR run 42261085812 has 43/44 jobs green. Its `falcor-build-approval-gate` is `waiting` on the falcor-ci environment (needs a human; the bot can't approve). Dispatch run 42261074725 yielded to priority CI (`wait-for-human-priority`/`check-ci` failed, 40 skipped); that is not a code failure.
+  The S1 + struct-field filings are still held on Q2. The fixer has nothing to do. Told orchestrator-dashboard (msg 5, thread gh-issue-shader-slang/slang-9643). I did not ping the maintainer.
+  **No further timer.** The chain rests on the /supervise-issues parked-chain register. When Q2 is answered, relay it verbatim to slang-fixer (sess-1793390998700-klhj49) and dispatch the S1 filing to slang-triager, following the triager rec above.

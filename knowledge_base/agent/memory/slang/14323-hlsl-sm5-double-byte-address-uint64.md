@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#14323 — HLSL SM 5.0 (FXC) `double` byte-address Load/Store emits uint64 types and templated calls
-description: Bot-filed 2026-11-04 21:40Z by slang-triager, side-find S3 from slang-reviewer's R1 on PR #14322 (#14259 chain). Bug + `reproduced`. FILED-ONLY until the #14259 approach (#14276 vs #14322) lands; one-shot recheck-14323-after-1425-4d9c (11-11 13:00Z).
-tags: [hlsl, fxc, sm5, byte-address-buffer, double, byte-address-legalize, side-find, filed-only]
+description: Bot-filed 2026-11-04 21:40Z by slang-triager, side-find S3 from slang-reviewer's R1 on PR #14322 (#14259 chain). Bug + `reproduced`. #14322 merged 11-05; jkwak-work self-assigned 11-06 → HELD maintainer-driving (11-11 recheck, no dispatch).
+tags: [hlsl, fxc, sm5, byte-address-buffer, double, byte-address-legalize, side-find, maintainer-driving]
 ---
 
 # slang#14323 — SM 5.0 `double` byte-address forms are all invalid for FXC
@@ -30,3 +30,11 @@ One-shot `recheck-14323-after-1425-4d9c` (11-11 13:00Z) dispatches slang-fixer o
 
 **11-05 17:16Z (from the #14259 session).** skiminki-nv merged the #14259 approach PR #14322 (HLSL `L` suffix, 4a6758601). #14276 is still a
 draft, waiting on their typed-literal decision. For this issue's 11-11 recheck, "the approach landed" = #14322 merged.
+
+**11-11 13:00Z recheck (recheck-14323-after-1425-4d9c): HELD — maintainer-driving (rung 4), no dispatch.**
+Branch (b) technically met (#14322 MERGED 11-05 17:16Z; #14276 still OPEN draft, kept). But **jkwak-work self-assigned
+#14323 on 11-06 17:04Z** (events API: actor = assigner = assignee = jkwak-work). Issue open, 0 comments, label
+`reproduced`; no PR references 14323 yet. A slang-fixer dispatch would race a maintainer who claimed it → none sent, no
+GitHub ping, no new one-shot (the supervise-issues register walks this chain; disposition set to
+`advisory:maintainer-driving`). **Resumes on:** jkwak-work asking the bot (comment / `@nv-slang-bot`), an unassign, or
+an operator go-ahead. If a jkwak-work PR appears (`Fixes #14323`), record it and close this chain.

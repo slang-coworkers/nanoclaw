@@ -1,7 +1,7 @@
 ---
 type: chain
-title: slang PR #13406 (#13339 Ref split) — review-round history, 2026-10-01 → 10-11
-description: Settled history of the ParameterPassingMode Ref-split PR #13406 that #11709 is held on — tangent-vector's round, jhelferty-nv's readonly rounds and reversal, the effective-mode settlement, round 3 + the GCC/FIDDLE split to #13570, and the 10-09 owner-budget/phantom-session/misrouted-webhook incident. Distilled 2026-10-13; live state is in [[slang/11709-groupshared-param-by-reference.md]].
+title: slang PR #13406 (#13339 Ref split) — review-round history, 2026-10-01 → 10-24
+description: Settled history of the ParameterPassingMode Ref-split PR #13406 (MERGED 10-22, 0bd71cd709) that #11709 was held on — tangent-vector's round, jhelferty-nv's readonly rounds and reversal, the effective-mode settlement, round 3 + the GCC/FIDDLE split to #13570, and the 10-09 owner-budget/phantom-session/misrouted-webhook incident. Distilled 2026-10-13; the #11709 outcome is in [[slang/11709-groupshared-param-by-reference.md]].
 tags: [slang, frontend, param-passing-mode, history]
 ---
 

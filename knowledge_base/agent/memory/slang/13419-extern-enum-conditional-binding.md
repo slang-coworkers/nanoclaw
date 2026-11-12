@@ -110,3 +110,10 @@ bot 10-08 comment, no linked PR, no bot ask, assignee pdeayton-nv. #13487 still 
 BEHIND, last updated 10-16. No operator reply on the PolynomialIntVal filing question (dashboard
 seq 509050–511352 scanned). No open issue covers the gap (#14095 is the unrelated WaveSize ordering bug).
 No GitHub post, no dashboard message. Next #13534 one-shot: `rechase-13534-1473` (2026-11-12, pages from seq 511352).
+
+**2026-11-11 re-chase (`…-1273`):** no change. #13487 is open, not a draft, head `53035c247` (last push
+10-16), BEHIND, updatedAt still 10-16. The head still has 0 runs and 0 check-runs (the master sanity
+check returned runs, so the API works). tangent-vector's 5 comments have 0 replies, and there are no
+PR or issue comments after 10-16. dshreiner-nv and jkwak-work are still requested. #13419 is open,
+last updated 10-08. **Dormant 26 days (>3 weeks)**, flagged on the dashboard (one line). Next one-shot:
+`rechase-13419-pr13487-2e8b` (2026-11-18).

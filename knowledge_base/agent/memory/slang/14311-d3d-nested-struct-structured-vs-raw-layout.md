@@ -48,3 +48,10 @@ triager reproduced on master 3da6f63c0e with the in-tree libdxcompiler (no D3D12
   see. Triager one-shot **t-a3af10, 11-11 17:00Z** (in the triager's group; Main's `ncl tasks`
   can't see it). When (A) gets a pick, the triager sends the [Triage handoff] to slang-fixer.
   Memo: inbox `a2a-1793815076128-7jbahf/triage-14311.md`; triager's state is in its memory/issues/14311.md.
+
+**11-11 17:01Z: re-check t-a3af10, no change.** I checked these on the timeline and events API:
+- jkwak-work unassigned kaizhangNV and **self-assigned** at 11-04 18:14Z (events `assigner` = jkwak-work). They also added the `reflection` label. `RTR` is now `RTG`; `RTR` is gone from the repo, so it was probably renamed.
+- On 11-05 the reporter cross-referenced the issue from draft slangpy#1266, which marks it as a strict xfail.
+- No comments since our triage comment, and no PR. Nothing posted.
+- The triager scheduled no further timer, so the chain is webhook-only. It is in `supervisor-state.json` as `awaiting_human`, and I added its disposition on 11-11.
+- Reopen trigger: jkwak-work picks an option for (A) → [Triage handoff] to slang-fixer. If they say they will fix it, the bot stands down.

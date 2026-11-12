@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13491: one try covers every throwing call in its operand"
-description: "Feature request from skiminki-nv (self-assigned), triaged 10-07 as feature + correctness bug, P2, and NO-GO until maintainers decide the design. PARKED on two maintainer decisions; skiminki-nv wants to wait for Yong. spec#63 (merged 10-14) documents the current narrow rule, which is not a decision. Next re-chase rechase-13491-try-covera-9ed5 runs 11-11 17:00Z."
+description: "Feature request from skiminki-nv (self-assigned), triaged 10-07 as feature + correctness bug, P2, and NO-GO until maintainers decide the design. PARKED on two maintainer decisions; skiminki-nv wants to wait for Yong. spec#63 (merged 10-14) documents the current narrow rule, which is not a decision. Next re-chase rechase-13491-try-covera-915e runs 11-18 17:00Z."
 ---
 
 # slang#13491: let one `try` cover every throwing call in its operand
@@ -52,3 +52,8 @@ holds a reverted prototype at `scratch-13491/prototype.diff`.
   10-08 01:18Z). No slang or spec item mentions 13491 or `try` coverage since 10-28. The only spec activity is
   skiminki-nv's spec#66 (name lookup, opened 10-30), which does not touch `try`. The Discord channel is still silent
   since 10-09 16:34Z, and Yong hasn't posted. Told dashboard and created `rechase-13491-try-covera-9ed5` for 11-11.
+- 2026-11-11 17:00Z re-chase: still parked. #13491, #13490 and #13492 have had no comments since 10-07/08 (last update
+  10-08 01:18Z). No slang item mentions 13491 since 11-04. The only new spec item is TareHimself's spec#67 (`invariant`
+  qualifier for position outputs, opened 11-10). It doesn't touch `try`, and spec#66 is unchanged since 11-04. The Discord
+  channel is still silent since 10-09 16:34Z, and Yong hasn't posted. Told dashboard and created
+  `rechase-13491-try-covera-915e` for 11-18.
