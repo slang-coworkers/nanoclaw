@@ -13,8 +13,8 @@ import {
   isRunnerCommand,
   GENERIC_FAILURE_NOTICE,
 } from './formatter.js';
+import { checkDeliveryGate } from './delivery-gate.js';
 import {
-  checkCritiqueGate,
   checkRoutingGate,
   classifyThrownBounce,
   dispatchResultText,
@@ -936,502 +936,6 @@ describe('new_session predicate (default-on: opt-out via new_session:false)', ()
   });
 });
 
-describe('checkCritiqueGate — text-output delivery-marker enforcement (#67)', () => {
-  // The bash hook (gate-critique-on-deliver.sh) catches send_message and
-  // gh-pr-create paths. This in-process check covers the text-output
-  // <message to=>...</message> path that bypasses the bash hook entirely.
-  // Logic must mirror the hook: same MARKER file, same workflow-state.json,
-  // same delivery-marker regex.
-
-  let tmp: string;
-  let markerPath: string;
-  let statePath: string;
-
-  beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'critique-gate-test-'));
-    markerPath = path.join(tmp, 'overlay-critique-gate');
-    statePath = path.join(tmp, 'workflow-state.json');
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmp, { recursive: true, force: true });
-  });
-
-  it('marker absent → not blocked (overlay opt-out)', () => {
-    const r = checkCritiqueGate('[Resolution] something', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(false);
-  });
-
-  it('CRITIQUE_GATE_ACTIVE env gates without a marker file (default path mode)', () => {
-    const saved = process.env.CRITIQUE_GATE_ACTIVE;
-    const savedOverlay = process.env.CRITIQUE_GATE_OVERLAY_PATH;
-    const savedState = process.env.CRITIQUE_GATE_STATE_PATH;
-    process.env.CRITIQUE_GATE_ACTIVE = '1';
-    // Point defaults at a nonexistent marker + empty state so only env drives it.
-    process.env.CRITIQUE_GATE_OVERLAY_PATH = path.join(tmp, 'nonexistent-marker');
-    process.env.CRITIQUE_GATE_STATE_PATH = path.join(tmp, 'nostate.json');
-    try {
-      // No opts → env-authoritative activation path.
-      const r = checkCritiqueGate('[Resolution] x');
-      expect(r.blocked).toBe(true);
-    } finally {
-      if (saved === undefined) delete process.env.CRITIQUE_GATE_ACTIVE;
-      else process.env.CRITIQUE_GATE_ACTIVE = saved;
-      if (savedOverlay === undefined) delete process.env.CRITIQUE_GATE_OVERLAY_PATH;
-      else process.env.CRITIQUE_GATE_OVERLAY_PATH = savedOverlay;
-      if (savedState === undefined) delete process.env.CRITIQUE_GATE_STATE_PATH;
-      else process.env.CRITIQUE_GATE_STATE_PATH = savedState;
-    }
-  });
-
-  it('marker present + no delivery marker in body → not blocked', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    const r = checkCritiqueGate('Just a chat response, no delivery marker.', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(false);
-  });
-
-  it('mid-sentence MENTION of a marker is not a delivery (anchored match)', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('I will send the [Resolution] once codex approves.', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(false);
-  });
-
-  it('marker at the start of a later line still gates', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('Summary first.\n[Resolution] PR #9 fixed', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(true);
-  });
-
-  it('a configured extra marker (.critique-delivery-markers) gates like a built-in', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const vocabPath = path.join(tmp, 'delivery-markers.json');
-    fs.writeFileSync(vocabPath, JSON.stringify({ message_markers: ['Weekly Report'] }));
-    const r = checkCritiqueGate('[Weekly Report] all green', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-      deliveryMarkersPath: vocabPath,
-    });
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('Weekly Report');
-  });
-
-  it('sanitizes regex metacharacters out of configured markers', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const vocabPath = path.join(tmp, 'delivery-markers.json');
-    fs.writeFileSync(vocabPath, JSON.stringify({ message_markers: ['.*'] }));
-    const r = checkCritiqueGate('[anything] not a marker', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-      deliveryMarkersPath: vocabPath,
-    });
-    expect(r.blocked).toBe(false);
-  });
-
-  it('marker present + [Resolution] + critique_rounds=0 → BLOCKED', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate('[Resolution] all done', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('critique_rounds=0');
-    expect(r.reason).toContain('Resolution');
-  });
-
-  it('marker present + [Resolution] + missing state file → BLOCKED (treats as 0)', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    const r = checkCritiqueGate('[Resolution] all done', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(true);
-  });
-
-  it('marker present + [Resolution] + critique_rounds=1 → not blocked', () => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
-    const r = checkCritiqueGate('[Resolution] all done', {
-      overlayMarkerPath: markerPath,
-      workflowStatePath: statePath,
-    });
-    expect(r.blocked).toBe(false);
-  });
-
-  it.each(['Resolution', 'handoff'])('recognizes [%s] as a delivery marker', (marker) => {
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = checkCritiqueGate(`[${marker}] body`, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
-    expect(r.blocked).toBe(true);
-  });
-});
-
-describe('checkCritiqueGate — required stages + verdict parity with the bash hook', () => {
-  // Before this parity the text-output path enforced only critique_rounds>=1,
-  // so a must-fix OUTPUT_REVIEW could ship via plain <message> emission while
-  // the tool path (gate-critique-on-deliver.sh) denied it.
-  let tmp: string;
-  let markerPath: string;
-  let statePath: string;
-  let requiredPath: string;
-  let savedStrict: string | undefined;
-
-  beforeEach(() => {
-    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'critique-parity-test-'));
-    markerPath = path.join(tmp, '.overlay-critique-gate');
-    statePath = path.join(tmp, 'workflow-state.json');
-    requiredPath = path.join(tmp, '.critique-required-stages');
-    fs.writeFileSync(markerPath, 'critique-gate\n');
-    savedStrict = process.env.CRITIQUE_VERDICT_STRICT;
-    delete process.env.CRITIQUE_VERDICT_STRICT;
-  });
-
-  afterEach(() => {
-    fs.rmSync(tmp, { recursive: true, force: true });
-    if (savedStrict === undefined) delete process.env.CRITIQUE_VERDICT_STRICT;
-    else process.env.CRITIQUE_VERDICT_STRICT = savedStrict;
-  });
-
-  function gate(body = '[Resolution] done') {
-    return checkCritiqueGate(body, { overlayMarkerPath: markerPath, workflowStatePath: statePath });
-  }
-
-  it('denies when a required stage has not run (rounds alone are not enough)', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({ critique_rounds: 2, critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1 } }),
-    );
-    const r = gate();
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('OUTPUT_REVIEW');
-    expect(r.reason).toContain('missing');
-  });
-
-  it('denies when OUTPUT_REVIEW last verdict is must-fix', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 1,
-        critique_stages: { OUTPUT_REVIEW: 1 },
-        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
-      }),
-    );
-    const r = gate();
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('must-fix');
-  });
-
-  it('passes when all stages ran and OUTPUT_REVIEW verdict is approve', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 3,
-        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
-        critique_verdicts: { PLAN_REVIEW: 'approve', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' },
-      }),
-    );
-    expect(gate().blocked).toBe(false);
-  });
-
-  it('fails closed when OUTPUT_REVIEW is required but no verdict was recorded', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1, critique_stages: { OUTPUT_REVIEW: 1 } }));
-    const r = gate();
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('no verdict was recorded');
-  });
-
-  it('blocks delivery when edits happened after the last critique (stale approve)', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 1,
-        critique_stages: { OUTPUT_REVIEW: 1 },
-        critique_verdicts: { OUTPUT_REVIEW: 'approve' },
-        edits_since_critique: 3,
-      }),
-    );
-    const r = gate();
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('edit(s) recorded since the last critique');
-  });
-
-  it('CRITIQUE_FRESHNESS=0 disables the staleness check', () => {
-    const saved = process.env.CRITIQUE_FRESHNESS;
-    process.env.CRITIQUE_FRESHNESS = '0';
-    try {
-      fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-      fs.writeFileSync(
-        statePath,
-        JSON.stringify({
-          critique_rounds: 1,
-          critique_stages: { OUTPUT_REVIEW: 1 },
-          critique_verdicts: { OUTPUT_REVIEW: 'approve' },
-          edits_since_critique: 3,
-        }),
-      );
-      expect(gate().blocked).toBe(false);
-    } finally {
-      if (saved === undefined) delete process.env.CRITIQUE_FRESHNESS;
-      else process.env.CRITIQUE_FRESHNESS = saved;
-    }
-  });
-
-  it('blocks delivery when an attested artifact changed after the approve', () => {
-    const savedRoot = process.env.CRITIQUE_ATTEST_ROOT;
-    process.env.CRITIQUE_ATTEST_ROOT = tmp;
-    try {
-      const crypto = require('crypto') as typeof import('crypto');
-      const artifact = path.join(tmp, 'report.md');
-      fs.writeFileSync(artifact, 'reviewed content\n');
-      const goodHash = crypto.createHash('sha256').update(fs.readFileSync(artifact)).digest('hex');
-      fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-      fs.writeFileSync(
-        statePath,
-        JSON.stringify({
-          critique_rounds: 1,
-          critique_stages: { OUTPUT_REVIEW: 1 },
-          critique_verdicts: { OUTPUT_REVIEW: 'approve' },
-          critique_attested: { OUTPUT_REVIEW: { [artifact]: goodHash } },
-        }),
-      );
-      expect(gate().blocked).toBe(false); // matching hash → ships
-      fs.appendFileSync(artifact, 'sneaky post-review edit\n');
-      const blocked = gate();
-      expect(blocked.blocked).toBe(true);
-      expect(blocked.reason).toContain('reviewed artifacts changed');
-    } finally {
-      if (savedRoot === undefined) delete process.env.CRITIQUE_ATTEST_ROOT;
-      else process.env.CRITIQUE_ATTEST_ROOT = savedRoot;
-    }
-  });
-
-  it('CRITIQUE_VERDICT_STRICT=0 restores the count-only fallthrough', () => {
-    process.env.CRITIQUE_VERDICT_STRICT = '0';
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1, critique_stages: { OUTPUT_REVIEW: 1 } }));
-    expect(gate().blocked).toBe(false);
-  });
-
-  describe('PLAN_REVIEW verdict (fixer path)', () => {
-    const FIXER = ['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW'];
-    const withVerdicts = (verdicts: Record<string, string>) => {
-      fs.writeFileSync(requiredPath, JSON.stringify(FIXER));
-      fs.writeFileSync(
-        statePath,
-        JSON.stringify({
-          critique_rounds: 3,
-          critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
-          critique_verdicts: verdicts,
-        }),
-      );
-    };
-
-    it('denies when PLAN_REVIEW last verdict is must-fix, even with OUTPUT_REVIEW approved', () => {
-      withVerdicts({ PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
-      const r = gate();
-      expect(r.blocked).toBe(true);
-      expect(r.reason).toContain('PLAN_REVIEW last verdict is "must-fix"');
-    });
-
-    it('fails closed on a missing PLAN_REVIEW verdict; CRITIQUE_VERDICT_STRICT=0 lets it through', () => {
-      withVerdicts({ CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
-      expect(gate().reason).toContain('PLAN_REVIEW ran but no verdict was recorded');
-      process.env.CRITIQUE_VERDICT_STRICT = '0';
-      withVerdicts({ CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
-      expect(gate().blocked).toBe(false);
-    });
-
-    it('does not gate a PLAN_REVIEW verdict the role does not require', () => {
-      fs.writeFileSync(requiredPath, JSON.stringify(['DECISION_REVIEW', 'OUTPUT_REVIEW']));
-      fs.writeFileSync(
-        statePath,
-        JSON.stringify({
-          critique_rounds: 3,
-          critique_stages: { PLAN_REVIEW: 1, DECISION_REVIEW: 1, OUTPUT_REVIEW: 1 },
-          critique_verdicts: { PLAN_REVIEW: 'must-fix', DECISION_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' },
-        }),
-      );
-      expect(gate().blocked).toBe(false);
-    });
-  });
-
-  it('keeps the legacy any-1-round check when no required-stages file exists', () => {
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
-    expect(gate().blocked).toBe(false);
-  });
-
-  it('empty required-stages list falls back to the legacy round check', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify([]));
-    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-    const r = gate();
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('critique_rounds=0');
-  });
-
-  it('at the denial cap, escalates to human approval instead of failing open', () => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 1,
-        critique_stages: { OUTPUT_REVIEW: 1 },
-        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
-      }),
-    );
-    expect(gate().blocked).toBe(true);
-    expect(gate().blocked).toBe(true);
-    expect(gate().blocked).toBe(true);
-    const fourth = gate(); // cap: graduated escalation, still denied
-    expect(fourth.blocked).toBe(true);
-    expect(fourth.reason).toContain('bypass request has been sent');
-    const esc = JSON.parse(fs.readFileSync(path.join(tmp, 'critique-escalation.json'), 'utf-8')) as {
-      requested_at: number;
-      reason: string;
-    };
-    expect(esc.requested_at).toBeGreaterThan(0);
-    expect(esc.reason).toContain('must-fix');
-  });
-
-  // Parity with the bash hook. Until this change, THIS path — the one the
-  // comment at the top of the describe calls out as bypassing the bash hook —
-  // still honoured a bare `bypass_approved: true` with no expiry and no
-  // consumption, and still failed open on a timeout, long after the hook had
-  // both removed.
-  const readState = (): Record<string, unknown> =>
-    JSON.parse(fs.readFileSync(statePath, 'utf-8')) as Record<string, unknown>;
-  const readEsc = (): Record<string, unknown> =>
-    JSON.parse(fs.readFileSync(path.join(tmp, 'critique-escalation.json'), 'utf-8')) as Record<string, unknown>;
-  const cappedState = (extra: Record<string, unknown> = {}): void => {
-    fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-    fs.writeFileSync(
-      statePath,
-      JSON.stringify({
-        critique_rounds: 1,
-        critique_stages: { OUTPUT_REVIEW: 1 },
-        critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
-        critique_gate_denials: 3,
-        ...extra,
-      }),
-    );
-  };
-
-  it('a bypass with NO expiry is not an unlimited bypass — it is refused', () => {
-    // Treating a missing expiry as "no expiry" would let a forged flag with no
-    // expiry at all defeat the TTL entirely.
-    cappedState({ critique_gate_bypass_approved: true });
-    expect(gate().blocked).toBe(true);
-    expect(readState().critique_gate_bypass_approved).toBe(false);
-  });
-
-  it('admin-approved bypass allows delivery ONCE, then consumes itself', () => {
-    cappedState({
-      critique_gate_bypass_approved: true,
-      critique_gate_bypass_grant_id: 'appr-1',
-      critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) + 3600,
-    });
-    expect(gate().blocked).toBe(false);
-    // Spent: flag cleared, consumption attributed to the granting approval.
-    expect(readState().critique_gate_bypass_approved).toBe(false);
-    expect(readState().critique_gate_bypass_consumed_grant_id).toBe('appr-1');
-    expect(readState().critique_gate_bypass_consumed_at).toBeGreaterThan(0);
-    // The release is recorded where the host can see it (container is --rm'd).
-    // No escalation file exists on this path, and the gate must not invent one
-    // with `requested_at: 0` — that fabrication is read by the host as a
-    // brand-new escalation and carded, while the real release goes unrecorded.
-    // The append-only journal is the sink that survives the file being gone.
-    expect(fs.existsSync(path.join(tmp, 'critique-escalation.json'))).toBe(false);
-    const journal = fs
-      .readFileSync(path.join(tmp, 'critique-releases.jsonl'), 'utf-8')
-      .split('\n')
-      .filter((l) => l.trim())
-      .map((l) => JSON.parse(l) as Record<string, unknown>);
-    expect(journal[0].grant_id).toBe('appr-1');
-    expect(journal[0].why).toBe('admin bypass consumed (one-shot)');
-    // A second delivery is denied — it is not a standing grant.
-    expect(gate().blocked).toBe(true);
-  });
-
-  it('an EXPIRED bypass does not allow delivery', () => {
-    cappedState({
-      critique_gate_bypass_approved: true,
-      critique_gate_bypass_expires_at: Math.floor(Date.now() / 1000) - 60,
-    });
-    expect(gate().blocked).toBe(true);
-    expect(readState().critique_gate_bypass_approved).toBe(false);
-  });
-
-  it('admin-rejected bypass keeps denying the request it answered', () => {
-    fs.writeFileSync(path.join(tmp, 'critique-escalation.json'), JSON.stringify({ requested_at: 5000, reason: 'x' }));
-    cappedState({ critique_gate_bypass_rejected: true, critique_gate_bypass_rejected_request: 5000 });
-    const r = gate();
-    expect(r.blocked).toBe(true);
-    expect(r.reason).toContain('REJECTED');
-  });
-
-  it('a rejection from an EARLIER escalation does not answer a new one', () => {
-    fs.writeFileSync(path.join(tmp, 'critique-escalation.json'), JSON.stringify({ requested_at: 9999, reason: 'x' }));
-    cappedState({ critique_gate_bypass_rejected: true, critique_gate_bypass_rejected_request: 5000 });
-    const r = gate();
-    expect(r.blocked).toBe(true); // enforcement still holds
-    expect(r.reason).not.toContain('REJECTED'); // but as a live escalation
-  });
-
-  it('NEVER times out to fail-open — an old, undecided escalation stays denied', () => {
-    // The enforcement regression test for this path: it previously allowed the
-    // delivery once CRITIQUE_ESCALATION_TIMEOUT_SECS elapsed, so an agent could
-    // satisfy the requirement by waiting.
-    cappedState();
-    fs.writeFileSync(
-      path.join(tmp, 'critique-escalation.json'),
-      JSON.stringify({ requested_at: Math.floor(Date.now() / 1000) - 86_400, reason: 'x' }),
-    );
-    expect(gate().blocked).toBe(true);
-    expect(readEsc().failed_open_at).toBeUndefined();
-  });
-
-  it('CRITIQUE_ESCALATION=0 restores the legacy fail-open cap', () => {
-    const saved = process.env.CRITIQUE_ESCALATION;
-    process.env.CRITIQUE_ESCALATION = '0';
-    try {
-      fs.writeFileSync(requiredPath, JSON.stringify(['OUTPUT_REVIEW']));
-      fs.writeFileSync(
-        statePath,
-        JSON.stringify({
-          critique_rounds: 1,
-          critique_stages: { OUTPUT_REVIEW: 1 },
-          critique_verdicts: { OUTPUT_REVIEW: 'must-fix' },
-          critique_gate_denials: 3,
-        }),
-      );
-      expect(gate().blocked).toBe(false);
-    } finally {
-      if (saved === undefined) delete process.env.CRITIQUE_ESCALATION;
-      else process.env.CRITIQUE_ESCALATION = saved;
-    }
-  });
-});
-
 describe('dispatchResultText — chain-routing check (always on, not an overlay)', () => {
   let tmp: string;
   let statePath: string;
@@ -1590,8 +1094,8 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
 
   it('checkRoutingGate unions a per-role delivery_markers extension', () => {
     // Step-2 part-1: routing must recognize the same per-role vocabulary the
-    // critique gate does (via deliveryMarkerRe), so moving a marker to YAML
-    // later won't regress routing.
+    // critique gate script does (.critique-delivery-markers), so moving a
+    // marker to YAML later won't regress routing.
     const vocab = path.join(tmp, 'routing-markers.json');
     fs.writeFileSync(vocab, JSON.stringify({ message_markers: ['Weekly Report'] }));
     // Extra marker, no in_reply_to → blocked.
@@ -1624,11 +1128,14 @@ describe('dispatchResultText — chain-routing check (always on, not an overlay)
   });
 });
 
+// The text-output doors run gate-critique-on-deliver.sh itself (delivery-gate.ts),
+// so these cases drive the real script from the repo's container/hooks.
 describe('dispatchResultText — critique-gate text-output integration (#67)', () => {
   let tmp: string;
   let markerPath: string;
   let statePath: string;
-  let originalOverlayCheck: string | undefined;
+  const GATE_ENV = ['OVERLAY_MARKER_DIR', 'WORKFLOW_STATE_FILE', 'NANOCLAW_HOOKS_DIR', 'CRITIQUE_GATE_ACTIVE'];
+  let savedEnv: Record<string, string | undefined>;
 
   function addDestination(name: string) {
     getInboundDb()
@@ -1643,26 +1150,26 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'critique-dispatch-test-'));
     markerPath = path.join(tmp, '.overlay-critique-gate');
     statePath = path.join(tmp, 'workflow-state.json');
-    // Override default paths via env so the in-process gate uses the
-    // test temp dir instead of /workspace/agent and /workspace/.claude
-    process.env.CRITIQUE_GATE_OVERLAY_PATH = markerPath;
-    process.env.CRITIQUE_GATE_STATE_PATH = statePath;
+    savedEnv = Object.fromEntries(GATE_ENV.map((k) => [k, process.env[k]]));
+    // The script reads the marker from OVERLAY_MARKER_DIR and the state from
+    // WORKFLOW_STATE_FILE, so the test temp dir stands in for /workspace.
+    process.env.OVERLAY_MARKER_DIR = tmp;
+    process.env.WORKFLOW_STATE_FILE = statePath;
+    process.env.NANOCLAW_HOOKS_DIR = path.resolve(import.meta.dir, '..', '..', 'hooks');
     // These cases drive the gate through its MARKER-FILE mode. CRITIQUE_GATE_ACTIVE
-    // is authoritative over the marker when set (checkCritiqueGate in poll-loop.ts),
-    // so a value inherited from the surrounding agent container — which really does
-    // export CRITIQUE_GATE_ACTIVE=0 — would short-circuit the gate to "not blocked"
-    // and quietly turn every assertion here green-by-absence. Drop it for the
-    // duration of the describe and restore it after.
-    originalOverlayCheck = process.env.CRITIQUE_GATE_ACTIVE;
+    // is authoritative over the marker when set, so a value inherited from the
+    // surrounding agent container — which really does export
+    // CRITIQUE_GATE_ACTIVE=0 — would short-circuit the gate to "not blocked"
+    // and quietly turn every assertion here green-by-absence.
     delete process.env.CRITIQUE_GATE_ACTIVE;
   });
 
   afterEach(() => {
     fs.rmSync(tmp, { recursive: true, force: true });
-    delete process.env.CRITIQUE_GATE_OVERLAY_PATH;
-    delete process.env.CRITIQUE_GATE_STATE_PATH;
-    if (originalOverlayCheck === undefined) delete process.env.CRITIQUE_GATE_ACTIVE;
-    else process.env.CRITIQUE_GATE_ACTIVE = originalOverlayCheck;
+    for (const [k, v] of Object.entries(savedEnv)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
   });
 
   const sourceRouting = {
@@ -1698,8 +1205,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     // The refusal goes back to the sender.
     expect(result.gateRefusals).toHaveLength(1);
     const refusal = result.gateRefusals![0];
-    expect(refusal).toContain('[critique-gate] REFUSED');
-    expect(refusal).toContain('Resolution');
+    expect(refusal).toContain('CRITIQUE REQUIRED');
     expect(refusal).toContain('/codex-critique');
     expect(refusal).not.toContain('please ship'); // original body NOT delivered
   });
@@ -1744,7 +1250,7 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(JSON.parse(out[0].content).text).toBe('passes through');
     // The gated block's refusal goes back to the sender.
     expect(result.gateRefusals).toHaveLength(1);
-    expect(result.gateRefusals![0]).toContain('[critique-gate] REFUSED');
+    expect(result.gateRefusals![0]).toContain('CRITIQUE REQUIRED');
   });
 
   it('gated block (with thread_id/in_reply_to overrides) delivers nothing to the peer', async () => {
@@ -1760,21 +1266,31 @@ describe('dispatchResultText — critique-gate text-output integration (#67)', (
     expect(result.sent).toBe(0);
     expect(getUndeliveredMessages()).toHaveLength(0);
     expect(result.gateRefusals).toHaveLength(1);
-    expect(result.gateRefusals![0]).toContain('[critique-gate] REFUSED');
+    expect(result.gateRefusals![0]).toContain('CRITIQUE REQUIRED');
   });
 
-  it('critique gate legacy soft-cap (CRITIQUE_ESCALATION=0) yields after 3 denials', () => {
+  it('a plain-text reply carrying a marker is gated like a block: withheld, refusal to the sender', async () => {
+    fs.writeFileSync(markerPath, 'critique-gate\n');
+    fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
+    const result = await dispatchResultText('[Resolution] all done — please ship', sourceRouting);
+    expect(result.sent).toBe(0);
+    expect(getUndeliveredMessages()).toHaveLength(0);
+    expect(result.gateRefusals?.[0]).toContain('CRITIQUE REQUIRED');
+    // Gated is not unwrapped: the refusal, not the wrap reminder, goes back.
+    expect(result.hasUnwrapped).toBe(false);
+  });
+
+  it('critique gate legacy soft-cap (CRITIQUE_ESCALATION=0) yields after 3 denials', async () => {
     const saved = process.env.CRITIQUE_ESCALATION;
     process.env.CRITIQUE_ESCALATION = '0';
     try {
       fs.writeFileSync(markerPath, 'critique-gate\n');
       fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 0 }));
-      const call = () =>
-        checkCritiqueGate('[Resolution] x', { overlayMarkerPath: markerPath, workflowStatePath: statePath }).blocked;
-      expect(call()).toBe(true); // denial 1
-      expect(call()).toBe(true); // denial 2
-      expect(call()).toBe(true); // denial 3
-      expect(call()).toBe(false); // legacy soft-cap: yields instead of thrashing
+      const call = async () => (await checkDeliveryGate('[Resolution] x')).blocked;
+      expect(await call()).toBe(true); // denial 1
+      expect(await call()).toBe(true); // denial 2
+      expect(await call()).toBe(true); // denial 3
+      expect(await call()).toBe(false); // legacy soft-cap: yields instead of thrashing
       const persisted = JSON.parse(fs.readFileSync(statePath, 'utf-8')) as { critique_gate_denials?: number };
       expect(persisted.critique_gate_denials).toBe(3);
     } finally {

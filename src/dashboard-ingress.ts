@@ -369,6 +369,7 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
       content?: unknown;
       thread_id?: unknown;
       parent_message?: unknown;
+      sender_id?: unknown;
     };
     try {
       parsed = JSON.parse(body);
@@ -428,6 +429,19 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
       };
     }
 
+    // sender_id: the Discord sidecar posts on behalf of a Discord user. Routing
+    // that as dashboard-admin (the owner) would hand every Discord user the
+    // owner's admin gates, so the sidecar names the user. Only a discord:<id>
+    // is accepted: it is the one principal this endpoint speaks for.
+    let senderId = 'dashboard-admin';
+    if (parsed.sender_id !== undefined && parsed.sender_id !== null) {
+      if (typeof parsed.sender_id !== 'string' || !/^discord:\d{5,25}$/.test(parsed.sender_id)) {
+        writeJson(res, 400, { error: 'sender_id must be discord:<numeric id>' });
+        return;
+      }
+      senderId = parsed.sender_id;
+    }
+
     if (!isAdapterReady()) {
       writeJson(res, 503, { error: 'Dashboard channel adapter not ready' });
       return;
@@ -441,7 +455,7 @@ export function startDashboardIngress(options: DashboardIngressOptions = {}): Da
         message: {
           id: generateMessageId(),
           kind: 'chat',
-          content: JSON.stringify({ text: content, sender: 'dashboard-admin', senderId: 'dashboard-admin' }),
+          content: JSON.stringify({ text: content, sender: senderId, senderId }),
           timestamp: new Date().toISOString(),
         },
         ...(parentMessage ? { parentMessage } : {}),

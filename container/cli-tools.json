@@ -21,5 +21,10 @@
   {
     "name": "@earendil-works/pi-coding-agent",
     "version": "0.84.2"
+  },
+  {
+    "name": "opencode-ai",
+    "version": "1.18.25",
+    "onlyBuilt": true
   }
 ]

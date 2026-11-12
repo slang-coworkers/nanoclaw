@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# PreToolUse hook (matcher: mcp__nanoclaw__send_message|Bash):
-# refuse delivery / handoff / PR-create operations until at least one
-# /codex-critique round has been recorded for this session.
+# Critique delivery gate: refuse delivery / handoff / PR-create operations
+# until at least one /codex-critique round has been recorded for this session.
+#
+# Two callers, one implementation:
+#   - the PreToolUse hook on Bash (matcher: Bash), for PR creation and comments;
+#   - the runner's delivery-gate.ts, for every message door: the send_message
+#     and send_file tools, <message> blocks and the plain-text shortcut. It
+#     passes tool_name mcp__nanoclaw__send_message or mcp__nanoclaw__send_file.
 #
 # Symmetric opt-in (Model A): only fires for coworkers whose overlays
 # include `critique-gate`. The composer materializes the marker file at
@@ -9,7 +14,7 @@
 # and exits 0 (no-op) when absent. Coworkers without the overlay can
 # still emit [Fix Report] etc. without enforcement — opt-in by design.
 #
-# Delivery markers (text-prefix on send_message):
+# Delivery markers (text-prefix on send_message / send_file text):
 #   [Fix Report] [Resolution] [Triage Resolution] [Review Verdict] [handoff]
 #   [Approval Decision] (PR-approver types; see delivery_markers in their yaml)
 # PR commands (Bash):
@@ -218,7 +223,7 @@ HIT=""
 EXPLAIN_HIT=""
 RR_HIT=""
 case "$TOOL" in
-  mcp__nanoclaw__send_message)
+  mcp__nanoclaw__send_message | mcp__nanoclaw__send_file)
     # Anchored to line start (the chain protocol emits markers as message /
     # line prefixes). Unanchored matching burned a denial — and one of the
     # session's 3 soft-cap strikes — every time an agent merely MENTIONED a
@@ -278,7 +283,7 @@ esac
 # mislabelling a WOULD_APPROVE as an abstain is decline to approve. Matched on
 # the decision token in the delivered message, anchored so a mid-sentence
 # mention of the word doesn't trip it. CRITIQUE_ABSTAIN_FASTPATH=0 disables.
-if [ "$TOOL" = "mcp__nanoclaw__send_message" ] && [ -z "$EXPLAIN_HIT" ] && [ -z "$RR_HIT" ] \
+if [ "$TOOL" != "Bash" ] && [ -z "$EXPLAIN_HIT" ] && [ -z "$RR_HIT" ] \
   && [ "${CRITIQUE_ABSTAIN_FASTPATH:-1}" != "0" ]; then
   if grep -qE '\b(ABSTAIN_POLICY|ABSTAIN_INFRA)\b' <<< "$TEXT" \
      && ! grep -qE '\b(WOULD_APPROVE|BLOCK)\b' <<< "$TEXT"; then

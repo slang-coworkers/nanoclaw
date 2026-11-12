@@ -181,11 +181,11 @@ describe('verified OpenCode turn completion', () => {
     expect(f.abort).not.toHaveBeenCalled();
   });
 
-  it('collects all text parts and assistant messages, excluding prior output and compaction summaries', async () => {
+  it('emits each assistant message as a text event and returns the final one, excluding prior output and compaction summaries', async () => {
     const f = fixture();
     const created = Date.now() + 1000;
     f.history.push({ info: { id: 'msg_old_user', role: 'user', time: { created } }, parts: [] });
-    const result = collect(f.run());
+    const result = collectTurn(f.run());
     await prompted(f);
     f.history.push(f.assistant('msg_old_assistant', ['old output'], { parentID: 'msg_old_user' }));
     const first = f.assistant('msg_first', ['<message to="a">one</message>', '<message to="b">two</message>']);
@@ -196,9 +196,13 @@ describe('verified OpenCode turn completion', () => {
     const final = f.assistant('msg_final', ['<message to="c">three</message>'], { parentID: replay });
     final.parts.push(first.parts[0]); // Repeated part ID is delivered once.
     f.complete(final);
-    expect(await result).toBe(
-      '<message to="a">one</message>\n\n<message to="b">two</message>\n\n<message to="c">three</message>',
-    );
+    const completed = await result;
+    expect(completed.events.filter((event) => event.type === 'text')).toEqual([
+      { type: 'text', text: '<message to="a">one</message>\n\n<message to="b">two</message>' },
+      { type: 'text', text: '<message to="c">three</message>' },
+    ]);
+    // The provider contract: the result carries the final assistant message only.
+    expect(completed.result.text).toBe('<message to="c">three</message>');
   });
 
   it('does not replay when the response belongs to an older assistant', async () => {
@@ -259,10 +263,11 @@ describe('verified OpenCode turn completion', () => {
       }),
     );
     const completed = await result;
-    expect(completed.result).toEqual({
-      text: '<message to="a">COMPLETED_STEP</message>',
-      isError: true,
-    });
+    // The completed step goes out as a text event; the failed turn's result has no text.
+    expect(completed.result).toEqual({ text: null, isError: true });
+    expect(completed.events.filter((event) => event.type === 'text')).toEqual([
+      { type: 'text', text: '<message to="a">COMPLETED_STEP</message>' },
+    ]);
     expect(completed.events.filter((event) => event.type === 'error')).toHaveLength(1);
     expect(completed.events).toContainEqual({
       type: 'error',
