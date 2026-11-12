@@ -49,6 +49,12 @@ export interface ContainerConfigRow {
   cli_scope: string; // 'disabled' | 'group' | 'global'
   timezone: string | null; // IANA id; NULL = follow the install-global timezone
   speed: ContainerSpeed | null; // NULL = install/provider default
+  /** Model policy (src/model-policy.ts). NULL = the install default for that role. */
+  small_model?: string | null;
+  router_model?: string | null;
+  critic_model?: string | null;
+  /** 'open' = open-weights models only; NULL or 'any' = no rule. */
+  weights?: string | null;
   /**
    * Session isolation tier ('container' | 'vm') — see SessionSpec.runtimeTier.
    * Optional on the TS type because the trunk schema does not carry the

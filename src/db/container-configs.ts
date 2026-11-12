@@ -12,6 +12,10 @@ const SCALAR_COLUMNS = new Set([
   'cli_scope',
   'timezone',
   'speed',
+  'small_model',
+  'router_model',
+  'critic_model',
+  'weights',
 ]);
 const JSON_COLUMNS = new Set(['skills', 'mcp_servers', 'packages_apt', 'packages_npm', 'additional_mounts']);
 
@@ -88,6 +92,10 @@ export async function updateContainerConfigScalars(
       | 'cli_scope'
       | 'timezone'
       | 'speed'
+      | 'small_model'
+      | 'router_model'
+      | 'critic_model'
+      | 'weights'
     >
   >,
 ): Promise<void> {

@@ -19,6 +19,7 @@ import {
 import { getMessageIdBySeq, getRoutingBySeq, hasOutboundToThread, writeMessageOut } from '../db/messages-out.js';
 import { getCurrentInReplyTo, getCurrentReplyRoute } from '../db/session-state.js';
 import { getSessionRouting, resolveDestinationThread } from '../db/session-routing.js';
+import { checkDeliveryGate, fileGateText } from '../delivery-gate.js';
 import { auditCompletionMarkers, auditMetaAck } from './gate-audit.js';
 import { registerTools } from './server.js';
 import type { McpToolDefinition } from './types.js';
@@ -340,6 +341,10 @@ export const sendMessage: McpToolDefinition = {
     const guard = checkPeerThreadGuard(routing, effectiveInReplyRow);
     if (!guard.ok) return err(guard.error);
 
+    // Argument and routing errors come first, so they never count as a gate denial.
+    const gate = await checkDeliveryGate(text, 'send_message');
+    if (gate.blocked) return err(gate.reason ?? 'Refused by the critique delivery gate.');
+
     const targetSessionId =
       typeof args.target_session_id === 'string' && args.target_session_id.trim() !== ''
         ? args.target_session_id.trim()
@@ -433,6 +438,9 @@ export const sendFile: McpToolDefinition = {
 
     const resolvedPath = path.isAbsolute(filePath) ? filePath : path.resolve('/workspace/agent', filePath);
     if (!fs.existsSync(resolvedPath)) return err(`File not found: ${filePath}`);
+
+    const gate = await checkDeliveryGate(fileGateText((args.text as string) || '', resolvedPath), 'send_file');
+    if (gate.blocked) return err(gate.reason ?? 'Refused by the critique delivery gate.');
 
     const targetSessionId =
       typeof args.target_session_id === 'string' && args.target_session_id.trim() !== ''

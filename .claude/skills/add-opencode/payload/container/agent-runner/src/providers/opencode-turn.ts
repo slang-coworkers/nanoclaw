@@ -177,7 +177,10 @@ export async function* executeOpenCodeTurn(options: {
   idleMs: number;
   prepare?(): void | Promise<void>;
   discard(): void;
-}): AsyncGenerator<{ type: 'activity' } | { type: 'error'; message: string; retryable: false }, OpenCodeTurnResult> {
+}): AsyncGenerator<
+  { type: 'activity' } | { type: 'text'; text: string } | { type: 'error'; message: string; retryable: false },
+  OpenCodeTurnResult
+> {
   const { client, pump, sessionId, signal } = options;
   const release = await acquireOpenCodeTurn(options.runtime, signal);
   const request = new AbortController();
@@ -266,7 +269,7 @@ export async function* executeOpenCodeTurn(options: {
     if (failure) throw failure;
     if (response?.error) throw openCodeError(response.error);
     if (!response?.data) throw new Error('OpenCode prompt returned no completed assistant');
-    const text = await reconcileOpenCodeTurn(
+    const turnText = await reconcileOpenCodeTurn(
       client,
       sessionId,
       messageId,
@@ -274,17 +277,23 @@ export async function* executeOpenCodeTurn(options: {
       new Set((prior.data ?? []).map((m) => m.info.id)),
       signal,
     );
+    // Each assistant message of the turn is one text event, as the Claude SDK
+    // emits them, and the result carries the final message only (the provider
+    // contract). The poll loop delivers <message> blocks from the text events,
+    // so a block from an earlier step still goes out, and the narration of the
+    // earlier steps never becomes the turn's answer.
+    for (const text of turnText.segments) yield { type: 'text', text };
     if (response.data.info.error) {
       const message = openCodeError(response.data.info.error).message;
       yield { type: 'error', message, retryable: false };
-      // One final result preserves completed earlier steps without duplicate
-      // exchange callbacks or an automatic retry of the failed turn. Diagnostics
-      // stay in the error event for logs: response bodies may contain message
-      // markup that must never be interpreted as a model-authored deliverable.
-      // Core supplies a fixed failure notice even when no model text survived.
-      return { text, isError: true };
+      // Completed earlier steps went out as text events above. The result has
+      // no text, so core sends its fixed failure notice and does not retry the
+      // failed turn. Diagnostics stay in the error event for logs: response
+      // bodies may contain message markup that must never be interpreted as a
+      // model-authored deliverable.
+      return { text: null, isError: true };
     }
-    return { text };
+    return { text: turnText.final };
   } finally {
     clearInterval(timer);
     unlisten();
@@ -310,7 +319,19 @@ export async function* executeOpenCodeTurn(options: {
   }
 }
 
-/** Read enough of the durable suffix to prove which prompt the response belongs to. */
+/** The text of one OpenCode turn, read back from durable history. */
+export interface OpenCodeTurnText {
+  /** The text of each assistant message of the turn, in history order. */
+  segments: string[];
+  /** The text of the message the prompt returned, which is the turn's answer; null when it has none. */
+  final: string | null;
+}
+
+/**
+ * Read enough of the durable suffix to prove which prompt the response belongs
+ * to, and return the turn's text: one segment per assistant message, and the
+ * final message's text on its own.
+ */
 export async function reconcileOpenCodeTurn(
   client: OpenCodeSessionClient,
   sessionId: string,
@@ -318,7 +339,7 @@ export async function reconcileOpenCodeTurn(
   result: OpenCodeMessage,
   priorIds: ReadonlySet<string>,
   signal: AbortSignal,
-): Promise<string | null> {
+): Promise<OpenCodeTurnText> {
   let messages: OpenCodeMessage[] = [];
   let marker: OpenCodeMessage | undefined;
   for (let limit = 100; limit <= 6400; limit *= 2) {
@@ -357,16 +378,21 @@ export async function reconcileOpenCodeTurn(
     throw new Error('OpenCode returned an assistant from another turn; refusing to replay');
   }
   const parts = new Set<string>();
-  const text: string[] = [];
+  const segments: string[] = [];
+  let final: string | null = null;
   for (const message of assistants) {
     // A recovered overflow record is not the outcome, and a summary is internal context.
     if (message.info.summary || message.info.error) continue;
     if (result.info.error && message.info.time.completed === undefined) continue;
+    const text: string[] = [];
     for (const part of message.parts) {
       if (part.type !== 'text' || part.ignored || !part.text || parts.has(part.id)) continue;
       parts.add(part.id);
       text.push(part.text);
     }
+    if (text.length === 0) continue;
+    segments.push(text.join('\n\n'));
+    if (message.info.id === result.info.id) final = segments[segments.length - 1];
   }
-  return text.join('\n\n') || null;
+  return { segments, final };
 }
