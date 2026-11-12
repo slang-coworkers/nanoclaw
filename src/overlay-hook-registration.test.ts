@@ -82,6 +82,27 @@ describe('overlay hook registration', () => {
     expect(count(hooks.Stop, 'gate-explain-on-stop.sh')).toBe(1);
   });
 
+  it('registers gate-critique-on-deliver.sh on Bash only, once, and replaces an older send_message matcher', async () => {
+    // The message doors run the script from the runner (delivery-gate.ts). A
+    // hook that also matched send_message would run it twice per send, and the
+    // script consumes a one-shot bypass on the allow path.
+    let hooks = await settingsAfterSpawn();
+    const gate = () =>
+      hooks.PreToolUse.filter((e) => e.hooks?.some((h) => h.command?.includes('gate-critique-on-deliver.sh')));
+    expect(gate()).toHaveLength(1);
+    expect(gate()[0].matcher).toBe('Bash');
+    // A group whose settings.json predates the move keeps the old matcher until a respawn rewrites it.
+    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> };
+    for (const e of settings.hooks.PreToolUse) {
+      if (e.hooks?.some((h) => h.command?.includes('gate-critique-on-deliver.sh')))
+        e.matcher = 'mcp__nanoclaw__send_message|Bash';
+    }
+    fs.writeFileSync(settingsFile, JSON.stringify(settings));
+    hooks = await settingsAfterSpawn();
+    expect(gate()).toHaveLength(1);
+    expect(gate()[0].matcher).toBe('Bash');
+  });
+
   it('registers gate-pr-description.sh as a PreToolUse Bash hook for every group, once', async () => {
     let hooks = await settingsAfterSpawn();
     expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);

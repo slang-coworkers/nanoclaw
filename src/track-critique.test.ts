@@ -115,6 +115,22 @@ describe('track-critique counts genuine critique calls', () => {
   });
 });
 
+describe('track-critique with OpenCode argument names', () => {
+  // OpenCode drops the hyphens from MCP argument names, so the reviewer block
+  // arrives as `developerinstructions`. Before this alias no OpenCode critique
+  // round was recorded, and the delivery gate could never pass.
+  it('records the round and the stage', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: ...', developerinstructions: REVIEWER_INSTRUCTIONS },
+      tool_response: 'ok',
+    });
+    const state = readState();
+    expect(state.critique_rounds).toBe(1);
+    expect((state as { critique_stages?: Record<string, unknown> }).critique_stages?.CODE_REVIEW).toBeTruthy();
+  });
+});
+
 describe('track-critique correctly skips Buddy calls', () => {
   it('does NOT increment when developer-instructions starts with "You are Buddy"', () => {
     run({

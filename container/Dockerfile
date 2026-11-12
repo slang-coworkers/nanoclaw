@@ -325,6 +325,18 @@ RUN mkdir -p /workspace/agent /workspace/shared /workspace/extra && \
     chown -R node:node /workspace && \
     chmod 777 /home/node
 
+# OpenCode installs @opencode-ai/plugin into its config directory before it
+# loads any plugin, and its server API does not answer until that install ends:
+# about 90 s with registry access, and never offline. The OpenCode hook bridge
+# (agent-runner/src/providers/opencode-hook-bridge.ts) is such a plugin, so the
+# image ships the package at the CLI's exact version, and the install that
+# OpenCode starts finds nothing to do. ~/.config is not a mount, so this copy is
+# what every container sees.
+RUN v="$(opencode --version)" && mkdir -p /home/node/.config/opencode && cd /home/node/.config/opencode \
+    && printf '{"dependencies":{"@opencode-ai/plugin":"%s"}}\n' "$v" > package.json \
+    && npm install --no-audit --no-fund --ignore-scripts \
+    && chown -R node:node /home/node/.config
+
 # Drop setuid-root from the binaries Debian ships (mount, su, passwd, ...). The
 # agent runs unprivileged and needs none of them.
 RUN find / -xdev -perm -4000 -type f -exec chmod u-s {} + || true

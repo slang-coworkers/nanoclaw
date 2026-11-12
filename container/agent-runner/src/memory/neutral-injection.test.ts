@@ -29,6 +29,7 @@ import { createProvider } from '../providers/factory.js';
 import { registerProviderMemorySessionHook } from '../provider-contracts/realize.js';
 import { CodexProvider } from '../providers/codex.js';
 import { MockProvider } from '../providers/mock.js';
+import { OpenCodeProvider } from '../providers/opencode.js';
 import { PiProvider } from '../providers/pi.js';
 import type { QueryInput } from '../providers/types.js';
 
@@ -50,6 +51,12 @@ describe('every provider without a session-start hook says so', () => {
     ['pi', () => new PiProvider()],
   ])('%s returns false from registerMemorySessionHook', (_name, make) => {
     expect(make().registerMemorySessionHook(MEMORY_SESSION_HOOK)).toBe(false);
+  });
+
+  // OpenCode has one: each turn it runs the hook and writes the output into
+  // its instructions file, so a false here would deliver memory twice.
+  it('opencode returns true, so the runner adds no system-prompt copy', () => {
+    expect(new OpenCodeProvider().registerMemorySessionHook(MEMORY_SESSION_HOOK)).toBe(true);
   });
 
   // Claude also returns false (2026-09-29): Claude Code clips hook stdout above
