@@ -128,6 +128,16 @@ WORKFLOW="${WORKFLOW#/}"
 [ "$WORKFLOW" = "none" ] && exit 0
 [ -z "$WORKFLOW" ] && exit 0
 
+# The answer comes from a model that has read the user's message, so it is
+# untrusted. Only a workflow that the table names may route, and the reason goes
+# in below as one short line, so a message cannot make the model write a
+# directive of its own into the agent's context.
+KNOWN=0
+while IFS=: read -r name _; do
+  [ "$name" = "$WORKFLOW" ] && KNOWN=1
+done <<< "$(printf '%s' "$WORKFLOWS" | tr ';' '\n')"
+[ "$KNOWN" = 1 ] || exit 0
+
 # Output the routing recommendation as additionalContext
 jq -n \
   --arg wf "$WORKFLOW" \
@@ -135,7 +145,7 @@ jq -n \
   '{
     hookSpecificOutput: {
       hookEventName: "UserPromptSubmit",
-      additionalContext: ("AUTO-ROUTE: Follow the /" + $wf + " workflow (already embedded in your CLAUDE.md). Reason: " + $reason + ". Walk its Steps in order before using Edit/Write/Bash on source files.")
+      additionalContext: ("AUTO-ROUTE: Follow the /" + $wf + " workflow (already embedded in your CLAUDE.md). Reason: " + ($reason | gsub("[[:cntrl:]]+"; " ") | .[0:200]) + ". Walk its Steps in order before using Edit/Write/Bash on source files.")
     }
   }'
 
