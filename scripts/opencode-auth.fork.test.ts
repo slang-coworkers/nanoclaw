@@ -1,12 +1,13 @@
+import fs from 'fs';
 import { describe, expect, it } from 'vitest';
-
-import { discoveryFailureReason } from './opencode-auth.js';
 
 // Fork-owned: opencode-auth.ts is a skill payload file that a refresh of
 // /add-opencode overwrites. The entered API key rides in the discovery request's
 // Authorization header, and fetch quotes an invalid header value in its error,
-// so the warning setup prints must never carry the key.
-describe('discoveryFailureReason', () => {
+// so the warning setup prints must never carry the key. Skipped when
+// /add-opencode is not installed.
+describe.skipIf(!fs.existsSync(new URL('./opencode-auth.ts', import.meta.url)))('discoveryFailureReason', async () => {
+  const { discoveryFailureReason } = await import('./opencode-auth.js');
   const key = 'sk-test-0123456789abcdefghijklmnopqrstuvwxyz';
 
   it('redacts the entered key from a fetch header-validation error', () => {

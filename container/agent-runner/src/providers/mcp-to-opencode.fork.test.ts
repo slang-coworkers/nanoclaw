@@ -1,11 +1,16 @@
 import { describe, it, expect } from 'bun:test';
+import fs from 'fs';
 
-import { mcpServersToOpenCodeConfig } from './mcp-to-opencode.js';
+const installed = fs.existsSync(new URL('./mcp-to-opencode.ts', import.meta.url));
+const { mcpServersToOpenCodeConfig } = installed
+  ? await import('./mcp-to-opencode.js')
+  : ({} as typeof import('./mcp-to-opencode.js'));
 
 // Fork-owned: mcp-to-opencode.ts is a skill payload file that a refresh of
 // /add-opencode overwrites. These cases guard the two fork adaptations in it,
-// so a refresh that drops them goes red here instead of silently.
-describe('mcpServersToOpenCodeConfig fork adaptations', () => {
+// so a refresh that drops them goes red here instead of silently. Skipped when
+// /add-opencode is not installed.
+describe.skipIf(!installed)('mcpServersToOpenCodeConfig fork adaptations', () => {
   // Fork contract (types.ts McpServerConfig.envInherit): a provider without
   // name indirection resolves the names from process.env.
   it('resolves envInherit names from process.env into the local environment', () => {

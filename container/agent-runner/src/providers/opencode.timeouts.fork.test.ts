@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it } from 'bun:test';
+import fs from 'fs';
 
-import { buildOpenCodeConfig } from './opencode-config.js';
-import { serverStartTimeoutMs } from './opencode.js';
+const installed = fs.existsSync(new URL('./opencode.ts', import.meta.url));
+const { buildOpenCodeConfig } = installed
+  ? await import('./opencode-config.js')
+  : ({} as typeof import('./opencode-config.js'));
+const { serverStartTimeoutMs } = installed ? await import('./opencode.js') : ({} as typeof import('./opencode.js'));
 
 // Fork-owned: both files are skill payload copies that a refresh of
 // /add-opencode overwrites. Measured on a loaded host: `opencode serve` took
 // 10-30 s to start (payload limit 10 s), and slang-mcp answered `initialize`
 // in ~33 s (OpenCode's connect limit 30 s). Both limits sit above those
-// numbers and stay configurable.
+// numbers and stay configurable. Skipped when /add-opencode is not installed.
 const MEASURED_SERVER_START_MS = 30_000;
 const MEASURED_MCP_INITIALIZE_MS = 33_000;
 
@@ -16,7 +20,7 @@ afterEach(() => {
   delete process.env.OPENCODE_MCP_TIMEOUT_MS;
 });
 
-describe('opencode serve start timeout', () => {
+describe.skipIf(!installed)('opencode serve start timeout', () => {
   it('defaults above the measured start time', () => {
     expect(serverStartTimeoutMs()).toBe(60_000);
     expect(serverStartTimeoutMs()).toBeGreaterThan(MEASURED_SERVER_START_MS);
@@ -28,7 +32,7 @@ describe('opencode serve start timeout', () => {
   });
 });
 
-describe('MCP server timeout', () => {
+describe.skipIf(!installed)('MCP server timeout', () => {
   const mcpServers = {
     local: { command: 'bun', args: ['server.ts'] },
     remote: { type: 'http' as const, url: 'http://host.docker.internal:8820/mcp/slang-mcp' },
