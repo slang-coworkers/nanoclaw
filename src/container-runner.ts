@@ -2808,18 +2808,18 @@ export async function buildMounts(
           });
         }
       }
+      // track-critique.sh records each successful codex call as a critique
+      // round. The codex MCP bridge runs it for every provider
+      // (container/agent-runner/src/critique-record.ts), so it is no longer a
+      // PostToolUse hook: it counts rounds, and a hook beside the bridge would
+      // count each round twice. An entry left by an older host is removed.
+      if (settings.hooks.PostToolUse) {
+        settings.hooks.PostToolUse = settings.hooks.PostToolUse.filter(
+          (h: { hooks?: { command?: string }[] }) =>
+            !h.hooks?.some((i: { command?: string }) => i.command?.includes('track-critique.sh')),
+        );
+      }
       if (hasCritique) {
-        // track-critique.sh — PostToolUse on every successful mcp__codex__codex
-        // call increments critique_rounds. Filters out buddy invocations by
-        // signature (the codex-CLI thread also used by buddy carries
-        // "You are Buddy" or "BATCH n (" prompts).
-        if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
-        if (!hasCmd('PostToolUse', 'track-critique.sh')) {
-          settings.hooks.PostToolUse.push({
-            matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/track-critique.sh', timeout: 5 }],
-          });
-        }
         // gate-explain-on-stop.sh — Stop hook: blocks the end of a turn (once;
         // stop_hook_active lets the next stop through) while a PR this session
         // created or pushed to has a description explaining an older head. Reads
