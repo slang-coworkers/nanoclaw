@@ -8,12 +8,9 @@ import {
   claudeToolInput,
   claudeToolName,
   claudeToolResponse,
-  hookOutcome,
   installOpenCodeHookBridge,
-  matcherSelects,
-  runHookEvent,
-  type HookSettings,
 } from './opencode-hook-bridge.js';
+import type { HookSettings } from '../settings-hooks.js';
 
 // Fork-owned. OpenCode never reads the Claude Code hook settings the host
 // writes, so without this bridge every gate (critique, plan, eval sandbox, PR
@@ -60,63 +57,6 @@ describe('tool names and inputs', () => {
       prompt: 'p',
       threadId: 't',
     });
-  });
-});
-
-describe('Claude Code hook semantics', () => {
-  it('selects tools the way a Claude Code matcher does', () => {
-    expect(matcherSelects('', 'Bash')).toBe(true);
-    expect(matcherSelects('*', 'Edit')).toBe(true);
-    expect(matcherSelects('mcp__nanoclaw__send_message|Bash', 'Bash')).toBe(true);
-    expect(matcherSelects('mcp__nanoclaw__send_message|Bash', 'Edit')).toBe(false);
-    expect(matcherSelects('Bash', 'BashOutput')).toBe(false);
-  });
-
-  it('blocks on exit 2 or a JSON deny, and not on other results', () => {
-    expect(hookOutcome(2, '', 'need a critique\n')).toEqual({ block: true, reason: 'need a critique' });
-    expect(
-      hookOutcome(
-        0,
-        JSON.stringify({ hookSpecificOutput: { permissionDecision: 'deny', permissionDecisionReason: 'no' } }),
-        '',
-      ),
-    ).toEqual({ block: true, reason: 'no' });
-    expect(hookOutcome(0, JSON.stringify({ decision: 'block', reason: 'stop' }), '')).toEqual({
-      block: true,
-      reason: 'stop',
-    });
-    expect(hookOutcome(0, 'plain text', '').block).toBe(false);
-    expect(hookOutcome(1, '', 'hook crashed').block).toBe(false);
-  });
-
-  it('runs only the hooks whose matcher selects the tool, and skips commands another path runs', async () => {
-    const marker = path.join(dir, 'ran');
-    const settings: HookSettings = {
-      PreToolUse: [
-        { matcher: 'Edit', hooks: [{ type: 'command', command: `touch ${marker}-edit` }] },
-        {
-          matcher: 'Bash',
-          hooks: [{ type: 'command', command: `grep -q deny-me && { echo refused >&2; exit 2; } || true` }],
-        },
-      ],
-      UserPromptSubmit: [
-        {
-          hooks: [
-            { command: `touch ${marker}-router # /app/hooks/intent-router.sh` },
-            { command: `touch ${marker}-reset` },
-          ],
-        },
-      ],
-    };
-    expect((await runHookEvent(settings, 'PreToolUse', 'Bash', { tool_input: { command: 'ls' } })).block).toBe(false);
-    expect(await runHookEvent(settings, 'PreToolUse', 'Bash', { tool_input: { command: 'deny-me' } })).toEqual({
-      block: true,
-      reason: 'refused',
-    });
-    expect(fs.existsSync(`${marker}-edit`)).toBe(false);
-    await runHookEvent(settings, 'UserPromptSubmit', '', { prompt: 'hi' }, /\/intent-router\.sh\b/);
-    expect(fs.existsSync(`${marker}-router`)).toBe(false);
-    expect(fs.existsSync(`${marker}-reset`)).toBe(true);
   });
 });
 

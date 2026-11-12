@@ -58,6 +58,7 @@ import { getProviderRuntimeContract, requireProviderName } from './providers/pro
 import { assignConfiguredServer, resolvePluginServer } from './plugin-mcp.js';
 import type { McpServerConfig } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
+import { createStopHookRunner } from './stop-hooks.js';
 import { renderGpuContextLine, runGpuProbe } from './gpu-probe.js';
 
 function log(msg: string): void {
@@ -310,6 +311,7 @@ async function main(): Promise<void> {
   try {
     await runPollLoop({
       provider,
+      stopHooks: createStopHookRunner(provider),
       providerContract: getProviderRuntimeContract(providerName),
       providerName,
       cwd: CWD,

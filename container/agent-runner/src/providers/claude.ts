@@ -760,6 +760,8 @@ const CLAUDE_CODE_AUTO_COMPACT_WINDOW = getAutoCompactWindow();
 const STALE_SESSION_RE = /no conversation found|ENOENT.*\.jsonl|session.*not found/i;
 
 export class ClaudeProvider implements AgentProvider {
+  // Fork: the SDK runs the settings.json Stop hooks itself (see stop-hooks.ts).
+  readonly runsSettingsStopHooks = true;
   private assistantName?: string;
   private mcp: ReturnType<typeof resolveClaudeMcpServers>;
   private inference: ReturnType<typeof resolveClaudeInference>;

@@ -17,6 +17,18 @@ export interface AgentProvider {
    * a contract or without a memory capability.
    */
   readonly emitsMidTurnText?: boolean;
+  /**
+   * True when the provider's own harness runs the Stop hooks of the group's
+   * settings.json (the Claude Agent SDK does). For every other provider the
+   * runner runs them at each turn result (stop-hooks.ts).
+   */
+  readonly runsSettingsStopHooks?: boolean;
+  /**
+   * True when the provider posts its own dashboard hook events (Codex, through
+   * codex-hooks.toml). The runner then skips the settings.json telemetry hook
+   * when it runs the Stop hooks, so the dashboard sees one Stop per turn.
+   */
+  readonly reportsHookTelemetry?: boolean;
 
   /**
    * Register shared memory through the provider's native session-start

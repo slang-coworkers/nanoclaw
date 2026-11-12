@@ -120,6 +120,7 @@ import { appendExchange } from './conversations.js';
 import { classifyAndPrepend } from './intent-router-bridge.js';
 import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
+import type { StopHookRunner } from './stop-hooks.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
 import type { ProviderRuntimeContract } from './provider-contracts/registry.js';
 
@@ -167,6 +168,9 @@ export function idleEndLimit(
 // the claim and the row is polled again, instead of being acked complete with
 // the error text as its run log. Bounded per row for the life of this runner.
 const TASK_BOUNCE_MAX_TRIES = 3;
+// Stop-hook continuations of one user message. gate-explain-on-stop.sh blocks
+// once (it honours stop_hook_active); the cap stops a hook that never does.
+const MAX_STOP_HOOK_ROUNDS = 3;
 const taskBounceCounts = new Map<string, number>();
 
 /**
@@ -3330,6 +3334,12 @@ function buildDestinationsPushNote(): string {
 
 export interface PollLoopConfig {
   provider: AgentProvider;
+  /**
+   * The Stop hook runner for a provider whose harness does not run the Stop
+   * hooks (stop-hooks.ts). The entrypoint builds it; tests that leave it out
+   * run no hooks, so they never read the developer's own settings.json.
+   */
+  stopHooks?: StopHookRunner | null;
   /** Declared provider runtime behavior. Contractless providers keep legacy defaults. */
   providerContract?: Pick<ProviderRuntimeContract, 'textDelivery' | 'commands'>;
   /**
@@ -3757,6 +3767,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         config.activePollIntervalMs,
         newSessionBatch,
         refreshDestinations,
+        config.stopHooks ?? null,
       );
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
       if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
@@ -4012,6 +4023,8 @@ export async function processQuery(
   activePollIntervalMs = ACTIVE_POLL_INTERVAL_MS,
   skipPersistContinuation = false,
   refreshDestinations: () => string | null = () => null,
+  /** Runs the settings.json Stop hooks at each result; null when the provider runs them itself. */
+  stopHooks: StopHookRunner | null = null,
 ): Promise<QueryResult> {
   // adoptTurn mutates routing in place; keep the caller's batch route intact.
   routing = { ...routing };
@@ -4096,11 +4109,18 @@ export async function processQuery(
   // push order (including retries) and advance at every result, mirroring
   // archivePrompts. An empty initial prompt (a pre-warmed query) starts idle.
   let answering = initialPrompt !== '';
+  // Stop-hook continuations behind the turn now answering: 0 for a user
+  // message, one more for each Stop block that pushed a continuation. Claude
+  // Code's `stop_hook_active` is `stopHookRounds > 0`, and MAX_STOP_HOOK_ROUNDS
+  // caps a hook that ignores it. Per queued turn, because a follow-up pushed
+  // earlier is answered before the continuation.
+  let stopHookRounds = 0;
   type QueuedTurn = {
     routing: RoutingContext;
     unwrappedNudged: boolean;
     taskBlockNudged: boolean;
     nudgedWindow?: SeqWindow;
+    stopHookRounds: number;
   };
   const queuedTurns: QueuedTurn[] = [];
   // On a wrap-nudge retry: the rows the nudged turn wrote. The turn boundary
@@ -4112,6 +4132,7 @@ export async function processQuery(
     unwrappedNudged = next.unwrappedNudged;
     taskBlockNudged = next.taskBlockNudged;
     nudgedWindow = next.nudgedWindow;
+    stopHookRounds = next.stopHookRounds;
     publishReplyRoute(routing);
     answering = true;
   };
@@ -4134,9 +4155,15 @@ export async function processQuery(
   };
   // A retry is another provider input, behind any follow-ups already pushed.
   // Preserve its original route, prompt and retry guards until it is answered.
-  const pushRetry = (prompt: string, archiveAgainst?: string, retryOf?: SeqWindow): void => {
+  const pushRetry = (prompt: string, archiveAgainst?: string, retryOf?: SeqWindow, stopBlocked = false): void => {
     pushQueryInput(prompt);
-    queuedTurns.push({ routing: { ...routing }, unwrappedNudged, taskBlockNudged, nudgedWindow: retryOf });
+    queuedTurns.push({
+      routing: { ...routing },
+      unwrappedNudged,
+      taskBlockNudged,
+      nudgedWindow: retryOf,
+      stopHookRounds: stopBlocked ? stopHookRounds + 1 : stopHookRounds,
+    });
     archivePrompts.push(archiveAgainst ?? archivePrompts[0] ?? initialPrompt);
   };
 
@@ -4498,6 +4525,7 @@ export async function processQuery(
           routing: extractRouting(keep),
           unwrappedNudged: false,
           taskBlockNudged: false,
+          stopHookRounds: 0,
         };
         if (answering) queuedTurns.push(next);
         else adoptTurn(next);
@@ -4944,6 +4972,35 @@ export async function processQuery(
             await finalizeSilentTurn(event.text);
           }
         }
+        // Stop hooks for a provider whose harness does not run them, at this
+        // turn end. A block continues the same turn as a correction, the way
+        // Claude Code feeds a Stop block back to the model, unless the query
+        // cannot take another input (it is ending, or its budget is spent).
+        let stopBlocked = false;
+        if (stopHooks && !bounced) {
+          const stop = await stopHooks({
+            sessionId: queryContinuation ?? initialContinuation ?? '',
+            stopHookActive: stopHookRounds > 0,
+            lastAssistantMessage: event.text,
+            failed: event.isError === true,
+          });
+          if (stop.block) {
+            const canContinue =
+              !endedForCommand &&
+              idleEndedAt === undefined &&
+              !costStopRequested &&
+              !budgetExhausted &&
+              stopHookRounds < MAX_STOP_HOOK_ROUNDS;
+            if (canContinue) {
+              stopBlocked = true;
+              pushCorrection(`<system>Stop hook feedback:\n${stop.reason}</system>`);
+            } else {
+              log(
+                `Stop hook blocked the turn end; not continued (round ${stopHookRounds}): ${stop.reason.slice(0, 200)}`,
+              );
+            }
+          }
+        }
         // `queuedCorrection` is the per-result "did THIS result queue a
         // correction?" the settle below reads.
         const queuedCorrection = corrections.length > 0;
@@ -4968,7 +5025,7 @@ export async function processQuery(
         // already pushed, carrying THIS turn's route so the correction is answered
         // into the same conversation it is correcting.
         if (queuedCorrection && !terminalCeilingStop)
-          pushRetry(corrections.join('\n\n'), correctionArchivePrompt, correctionWindow);
+          pushRetry(corrections.join('\n\n'), correctionArchivePrompt, correctionWindow, stopBlocked);
         if (terminalCeilingStop) {
           // Surface the withheld answer durably (same delivery mechanism as
           // finalizeSilentTurn), then ack the batch FAILED — NOT completed — so
