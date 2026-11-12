@@ -6,7 +6,7 @@ import { getProviderContainerConfig } from './provider-container-registry.js';
 // Fork-owned: src/providers/opencode.ts is a skill payload copy. The runner's
 // OpenCode timeouts (opencode.timeouts.fork.test.ts) are set on the host, so
 // the host adapter must pass them into the container.
-describe.skipIf(!getProviderContainerConfig('opencode'))('OpenCode host adapter', () => {
+describe('OpenCode host adapter', () => {
   it('passes the server-start and MCP timeouts through to the container', async () => {
     const contribution = await getProviderContainerConfig('opencode')!({
       sessionDir: '/tmp/opencode-fork-test/session',

@@ -13,15 +13,13 @@ const read = (p: string): string => readFileSync(join(root, p), 'utf8');
 describe('opencode image install', () => {
   const registered = /^import '\.\/opencode\.js';$/m.test(read('container/agent-runner/src/providers/index.ts'));
 
-  it.skipIf(!registered)(
-    'pins the opencode CLI in cli-tools.json at the exact SDK version when the provider is registered',
-    () => {
-      const tools = JSON.parse(read('container/cli-tools.json')) as Array<{ name: string; version: string }>;
-      const cli = tools.find((t) => t.name === 'opencode-ai');
-      const sdk = (JSON.parse(read('container/agent-runner/package.json')) as { dependencies: Record<string, string> })
-        .dependencies['@opencode-ai/sdk'];
-      expect(cli?.version).toMatch(/^\d+\.\d+\.\d+$/);
-      expect(sdk).toBe(cli?.version);
-    },
-  );
+  it('pins the opencode CLI in cli-tools.json at the exact SDK version when the provider is registered', () => {
+    expect(registered).toBe(true);
+    const tools = JSON.parse(read('container/cli-tools.json')) as Array<{ name: string; version: string }>;
+    const cli = tools.find((t) => t.name === 'opencode-ai');
+    const sdk = (JSON.parse(read('container/agent-runner/package.json')) as { dependencies: Record<string, string> })
+      .dependencies['@opencode-ai/sdk'];
+    expect(cli?.version).toMatch(/^\d+\.\d+\.\d+$/);
+    expect(sdk).toBe(cli?.version);
+  });
 });

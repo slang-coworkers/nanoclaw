@@ -29,6 +29,7 @@ import { createProvider } from '../providers/factory.js';
 import { registerProviderMemorySessionHook } from '../provider-contracts/realize.js';
 import { CodexProvider } from '../providers/codex.js';
 import { MockProvider } from '../providers/mock.js';
+import { OpenCodeProvider } from '../providers/opencode.js';
 import { PiProvider } from '../providers/pi.js';
 import type { QueryInput } from '../providers/types.js';
 
@@ -53,15 +54,10 @@ describe('every provider without a session-start hook says so', () => {
   });
 
   // OpenCode has one: each turn it runs the hook and writes the output into
-  // its instructions file, so a false here would deliver memory twice. Skipped
-  // when /add-opencode is not installed.
-  it.skipIf(!fs.existsSync(new URL('../providers/opencode.ts', import.meta.url)))(
-    'opencode returns true, so the runner adds no system-prompt copy',
-    async () => {
-      const { OpenCodeProvider } = await import('../providers/opencode.js');
-      expect(new OpenCodeProvider().registerMemorySessionHook(MEMORY_SESSION_HOOK)).toBe(true);
-    },
-  );
+  // its instructions file, so a false here would deliver memory twice.
+  it('opencode returns true, so the runner adds no system-prompt copy', () => {
+    expect(new OpenCodeProvider().registerMemorySessionHook(MEMORY_SESSION_HOOK)).toBe(true);
+  });
 
   // Claude also returns false (2026-09-29): Claude Code clips hook stdout above
   // ~10 KB to a 2 KB preview, so the section rides in the system prompt like
