@@ -231,6 +231,7 @@ export function buildCodexMcpServer(processEnv: NodeJS.ProcessEnv = process.env)
       ...codexGitGuardEnv(),
       CODEX_MCP_BRIDGE_OVERRIDES: JSON.stringify(overrides),
       ...(processEnv.CODEX_MODEL ? { CODEX_MODEL: processEnv.CODEX_MODEL } : {}),
+      ...(processEnv.NANOCLAW_CRITIC_MODEL ? { NANOCLAW_CRITIC_MODEL: processEnv.NANOCLAW_CRITIC_MODEL } : {}),
     },
     envInherit: [...CODEX_MCP_ENV_INHERIT],
   };
