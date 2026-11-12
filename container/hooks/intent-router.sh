@@ -1,10 +1,20 @@
 #!/bin/bash
 # UserPromptSubmit hook: classify user intent and recommend a workflow.
-# Uses a small/fast LLM call (Haiku) to read the user's message and the
-# available workflows, then outputs additionalContext with a routing
-# recommendation the agent sees at the top of its turn.
+# Uses a small/fast LLM call to read the user's message and the available
+# workflows, then outputs additionalContext with a routing recommendation the
+# agent sees at the top of its turn.
 #
-# Requires: ANTHROPIC_API_KEY or OneCLI proxy for API access.
+# Claude groups classify with Claude Haiku via $ANTHROPIC_BASE_URL. Non-Claude
+# groups (AGENT_PROVIDER=codex, opencode, ...) classify with an OpenAI model
+# ($INTENT_ROUTER_OPENAI_MODEL, default the luna model) via the same
+# OpenAI-compatible endpoint and gateway credential path the Codex provider
+# uses, so a group that runs off Claude makes no Claude call here either.
+# The default model id and the /chat/completions call assume the NVIDIA
+# inference endpoint (CODEX_BASE_URL's default). Another endpoint needs
+# INTENT_ROUTER_OPENAI_MODEL set to a model it serves that accepts
+# reasoning_effort "none", and must accept chat completions (a Responses-only
+# endpoint is not supported); otherwise routing is skipped, never broken.
+#
 # Falls back gracefully (no-op) if the API call fails.
 set -euo pipefail
 
@@ -52,29 +62,57 @@ $PROMPT
 
 Respond with ONLY the JSON object, no markdown, no explanation."
 
-# Use Haiku for speed — this should complete in <2s
-MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-5-5}"
-API_URL="${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"
-API_KEY="${ANTHROPIC_API_KEY:-}"
+PROVIDER="${AGENT_PROVIDER:-claude}"
 
-[ -z "$API_KEY" ] && exit 0
+if [ "$PROVIDER" = "claude" ]; then
+  # Use Haiku for speed — this should complete in <2s
+  MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-5-5}"
+  API_URL="${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"
+  API_KEY="${ANTHROPIC_API_KEY:-}"
 
-RESPONSE=$(curl -sf --max-time 5 \
-  "$API_URL/v1/messages" \
-  -H "Content-Type: application/json" \
-  -H "x-api-key: $API_KEY" \
-  -H "anthropic-version: 2023-06-01" \
-  -d "$(jq -n \
-    --arg model "$MODEL" \
-    --arg prompt "$CLASSIFY_PROMPT" \
-    '{model: $model, max_tokens: 100, messages: [{role: "user", content: $prompt}]}')" \
-  2>/dev/null) || exit 0
+  [ -z "$API_KEY" ] && exit 0
 
-# Extract the text response
-TEXT=$(echo "$RESPONSE" | jq -r '.content[0].text // empty' 2>/dev/null || true)
+  RESPONSE=$(curl -sf --max-time 5 \
+    "$API_URL/v1/messages" \
+    -H "Content-Type: application/json" \
+    -H "x-api-key: $API_KEY" \
+    -H "anthropic-version: 2023-06-01" \
+    -d "$(jq -n \
+      --arg model "$MODEL" \
+      --arg prompt "$CLASSIFY_PROMPT" \
+      '{model: $model, max_tokens: 100, messages: [{role: "user", content: $prompt}]}')" \
+    2>/dev/null) || exit 0
+
+  TEXT=$(echo "$RESPONSE" | jq -r '.content[0].text // empty' 2>/dev/null || true)
+else
+  # NVIDIA_API_KEY is the gateway sentinel the Codex provider also sends; the
+  # OneCLI proxy swaps in the real credential on the wire.
+  MODEL="${INTENT_ROUTER_OPENAI_MODEL:-openai/openai/gpt-6-luna}"
+  API_URL="${CODEX_BASE_URL:-https://inference-api.nvidia.com/v1}"
+  API_KEY="${NVIDIA_API_KEY:-}"
+
+  [ -z "$API_KEY" ] && exit 0
+
+  # Classification needs no reasoning, and reasoning only adds latency. A slow
+  # gateway call can still take about 7 s; 7.5 s keeps the hook under the
+  # bridge's 8 s for non-Claude groups (intent-router-bridge.ts), so it exits
+  # cleanly. max_completion_tokens leaves room for a model that reasons anyway.
+  RESPONSE=$(curl -sf --max-time 7.5 \
+    "${API_URL%/}/chat/completions" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $API_KEY" \
+    -d "$(jq -n \
+      --arg model "$MODEL" \
+      --arg prompt "$CLASSIFY_PROMPT" \
+      '{model: $model, max_completion_tokens: 300, reasoning_effort: "none", messages: [{role: "user", content: $prompt}]}')" \
+    2>/dev/null) || exit 0
+
+  TEXT=$(echo "$RESPONSE" | jq -r '.choices[0].message.content // empty' 2>/dev/null || true)
+fi
+
 [ -z "$TEXT" ] && exit 0
 
-# Haiku sometimes wraps the JSON in ```json ... ``` markdown fences. Strip them
+# The model sometimes wraps the JSON in ```json ... ``` markdown fences. Strip them
 # (and any leading/trailing whitespace) before parsing, so jq doesn't choke.
 TEXT=$(echo "$TEXT" | sed -E 's/^[[:space:]]*```(json)?[[:space:]]*//; s/```[[:space:]]*$//')
 
@@ -83,7 +121,7 @@ TEXT=$(echo "$TEXT" | sed -E 's/^[[:space:]]*```(json)?[[:space:]]*//; s/```[[:s
 WORKFLOW=$(echo "$TEXT" | jq -r '.workflow // "none"' 2>/dev/null || true)
 REASON=$(echo "$TEXT" | jq -r '.reason // empty' 2>/dev/null || true)
 
-# Strip a leading slash if Haiku returned `/plan` instead of `plan`,
+# Strip a leading slash if the model returned `/plan` instead of `plan`,
 # so the AUTO-ROUTE template doesn't end up with `Start with //plan`.
 WORKFLOW="${WORKFLOW#/}"
 
