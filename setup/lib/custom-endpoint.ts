@@ -51,6 +51,15 @@ export function endpointModelDefaults(baseUrl: string): Record<string, string> {
     CODEX_MODEL: 'azure/openai/gpt-6.1-sol',
     CODEX_MODEL_PROVIDER: 'nvinference',
     CODEX_BASE_URL: `${origin}/v1`,
+    // OpenCode reaches NVIDIA through its OpenAI-compatible provider. The first
+    // path segment names that provider; NVIDIA receives the rest as its model
+    // id, so both model families keep their full NVIDIA prefix. The small
+    // (title) model is luna, so an OpenCode group never needs a Claude model
+    // for housekeeping.
+    OPENCODE_PROVIDER: 'openai',
+    OPENCODE_BASE_URL: `${origin}/v1`,
+    OPENCODE_MODEL: 'openai/aws/anthropic/bedrock-claude-opus-5-5',
+    OPENCODE_SMALL_MODEL: 'openai/openai/openai/gpt-6-luna',
   };
 }
 

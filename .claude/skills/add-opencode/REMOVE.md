@@ -65,3 +65,20 @@ The host helper is removed with the payload. Remove `data/host-harness/opencode/
 only if this installation created it and the operator wants its private CLI
 removed. Preserve globally installed OpenCode, native credentials, configuration,
 and conversation history. Existing native OpenCode can still run in this checkout.
+
+## This fork (slang-coworkers)
+
+The fork keeps guard tests for its changes to the payload in fork-owned files.
+They import OpenCode files, so delete them with the payload:
+
+- `src/providers/opencode-cli-pin.test.ts`
+- `src/providers/opencode.fork.test.ts`
+- `src/provider-contracts/opencode.fork.test.ts`
+- `scripts/opencode-auth.fork.test.ts`
+- `container/agent-runner/src/providers/mcp-to-opencode.fork.test.ts`
+- `container/agent-runner/src/providers/opencode.timeouts.fork.test.ts`
+- `container/agent-runner/src/providers/opencode.nvidia.fork.test.ts`
+- `container/agent-runner/src/providers/opencode-hook-bridge.fork.test.ts`
+- `container/agent-runner/src/providers/opencode-hook-bridge.ts`, the plugin that runs the group's
+  hook gates for OpenCode; the payload's server start installs it
+- the OpenCode case in `container/agent-runner/src/memory/neutral-injection.test.ts`
