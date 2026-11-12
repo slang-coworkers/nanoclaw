@@ -1,13 +1,18 @@
 #!/usr/bin/env bash
 # Fetch Devin Review's analysis for a GitHub PR via agent-browser.
-# Output: <out>/devin-flags.md (extracted flag titles + Devin's narrative)
+# Output: <out>/devin-flags.md (Vulnerabilities + Bugs + Flags + Informational, the
+# commit the analysis covers, and Devin's narrative).
 #
 # Usage:
-#   devin-fetch.sh --url <devin-review-url> --out <run-dir> [--poll-seconds 45] [--max-minutes 20]
+#   devin-fetch.sh --url <github-pr-url-or-devin-url> --out <run-dir> [--poll-seconds 45] [--max-minutes 20]
 #
 # Returns 0 on success, 2 on auth-wall, 3 on timeout, 4 on browser-launch-failure
 # (transient infra — stale Chrome profile lock; retry later), 1 on any other error.
 # The workflow treats failure (2/3/4) as best-effort.
+#
+# The page logic matches shader-slang/slang-skills
+# skills/slang-pr-review-runner/scripts/devin-fetch.sh, which scrapes the same
+# Devin page; a Devin UI change needs the same fix in both copies.
 
 set -euo pipefail
 
@@ -31,7 +36,8 @@ done
 mkdir -p "$OUT"
 
 # Normalize URL. Accept either a GitHub PR URL
-# (https://github.com/<owner>/<repo>/pull/<n>) or an already-Devin URL
+# (https://github.com/<owner>/<repo>/pull/<n>) — which is what /slang-pr-review
+# Step 2 produces — or an already-Devin URL
 # (https://app.devin.ai/review/<owner>/<repo>/pull/<n>). If the input is GitHub,
 # rewrite to the Devin review form so agent-browser opens the right page.
 if [[ "$URL" =~ ^https?://github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
@@ -43,15 +49,16 @@ if [[ "$URL" =~ ^https?://github\.com/([^/]+)/([^/]+)/pull/([0-9]+) ]]; then
 fi
 
 # Launch the page — with a one-shot retry on transient Chrome-launch failure.
-# Chrome launches fine in this container WITHOUT a dbus session bus; a
-# "no DevToolsActivePort / no dbus" error is NOT a deterministic environment
-# failure. The real cause is TRANSIENT: a stale Chrome profile under
+# Chrome launches fine in this container WITHOUT a dbus session bus; the old
+# "no DevToolsActivePort / no dbus = deterministic environment failure" reading
+# was wrong. The real failure is TRANSIENT: a stale Chrome profile under
 # /tmp/agent-browser-* left holding SingletonLock or a half-written
-# DevToolsActivePort by a prior crash. agent-browser relaunches cleanly on the
-# next `open` once the stale profile is cleared, so on failure we close the
-# daemon, clear the profile dirs, and retry ONCE. A failure that survives the
-# retry is infra-transient (retry later) — exits 4. The `if err=$(...)` idiom
-# keeps `set -e` from killing us on a nonzero `open`.
+# DevToolsActivePort by a prior crash, or a cold-launch race. agent-browser
+# relaunches Chrome cleanly on the next `open` once the stale profile is cleared,
+# so on failure we close the daemon, clear the profile dirs, and retry ONCE. A
+# failure that survives the retry is infra-transient (retry later) — NOT
+# auth-wall, NOT timeout, NOT deterministic — and exits 4. The `if err=$(...)`
+# idiom keeps `set -e` from killing us on a nonzero `open`.
 LAUNCH_FAIL_RE='failed to launch chrome|chrome launch task failed|without writing DevToolsActivePort|SingletonLock'
 open_page() {
   local url="$1" err rc
@@ -80,7 +87,7 @@ sleep 5
 # substring, which fires false-positive on Devin's navbar "Sign in" link even
 # when the page is otherwise loading content normally. The `i` flag in JS regex
 # is case-insensitive; `\b` ensures whole-word match.
-if agent-browser eval 'const t=document.body.innerText; /\b(log in to (?:view|access)|sign in to (?:view|access)|authentication required|please (?:log|sign) in to (?:view|access|continue))\b/i.test(t)' 2>/dev/null | grep -qi true; then
+if agent-browser eval '(() => { const t=document.body.innerText; return /\b(log in to (?:view|access)|sign in to (?:view|access)|authentication required|please (?:log|sign) in to (?:view|access|continue))\b/i.test(t); })()' 2>/dev/null | grep -qi true; then
   echo "auth-wall: Devin requires login for this PR" > "$OUT/devin-error.txt"
   exit 2
 fi
@@ -88,48 +95,67 @@ fi
 # Poll until analysis is done. Devin's UI does NOT render a literal
 # "Analysis complete" string when finished — the in-progress state shows
 # "PR analysis in progress" and the done state shows the "Devin's AI
-# analysis" heading plus a flags summary ("N Flags", "1 Flag", or "No
-# flags") and/or the checks panel ("All checks passed"/"checks failed").
-# Treat absence-of-progress + presence-of-result as "done".
+# analysis" heading plus a Bugs/Flags summary ("N Bugs"/"N Flags"/"No
+# flags") and/or the checks panel ("All checks passed"/"checks failed"
+# /"Checks <pass>/<total>"). Treat absence-of-progress + presence-of-result
+# as "done". The Bugs/Flags split is a 2026 UI change — previously these
+# were a single "N Flags" toggle.
 DONE_EXPR='(() => {
   const t = document.body.innerText;
   // Still-streaming guard (DO NOT REGRESS): a half-rendered panel shows a
   // "Generating…"/"Generating..." placeholder and echoes the PR description
-  // back, with a flags summary ("No flags") possibly already visible. That is
-  // NOT a completed verdict — never treat it as done. See knowledge_base
-  // learnings on devin-fetch premature exit-0.
+  // back. That is NOT a finished verdict — never treat it as done. Guards the
+  // premature exit-0 incidents where a half-rendered page was folded in as
+  // "clean".
   if (/Generating\s*(\.{2,}|…)/i.test(t)) return false;
-  // Positive done-signals: the AI-analysis heading AND a flags/checks summary.
-  //
-  // The checks-panel alternative must require a SETTLED rail (passed === total).
-  // A partial counter like "Checks 12/22" means CI is still running, which says
-  // nothing about whether the review verdict has rendered — the verdict can
-  // still be behind an unclicked "View results". Accepting a partial counter as
-  // a done-signal is what produced the exit-0 false-cleans (observed on
-  // slang-rhi#815 at "Checks 12/22"; see the knowledge_base learnings on
-  // devin-fetch premature exit-0). Requiring equality keeps the July-10 fix
-  // that this alternative exists for — a settled "Checks 22/22" rail on a page
-  // whose "All checks passed" banner has not yet rendered still counts as done,
-  // so the false 30-min timeouts do not come back.
-  const heading = /Devin.s AI analysis/i.test(t);
-  const checksSettled = (() => {
-    const m = t.match(/Checks\s*(\d+)\s*\/\s*(\d+)/i);
-    return !!m && m[1] === m[2];
-  })();
-  const summary = /\b\d+\s+Flags?\b/.test(t) || /\bNo flags\b/i.test(t) || /All checks passed/i.test(t) || /checks? failed/i.test(t) || checksSettled;
+  // Positive done-signals: the analysis heading AND a bugs/flags/checks summary
+  // both present. Devin renamed the panel heading from the AI-analysis
+  // spelling to a plain analysis spelling on 2026-09-17; the old spelling alone
+  // made every run time out for three weeks (0 successes / 64 timeouts in Oct
+  // 2026), so both spellings are accepted and the commit walkthrough "Read
+  // explanation" buttons count as a heading too, a third independent signal in
+  // case the panel is renamed again. (No apostrophes here: this block is a
+  // single-quoted bash string.)
+  const heading = /Devin.s (AI )?analysis/i.test(t) || /Read explanation/.test(t);
+  // Transition card (2026-10 UI). The first anonymous visit to a PR starts the
+  // analysis on demand; when it finishes while this page is open, the sidebar
+  // shows "Analysis complete" plus a "View results" button instead of the
+  // per-category counts, and the counts never render on their own (observed
+  // 2026-10-13 on shader-slang/slang#13401: 30 minutes in that state, while a
+  // fresh load of the same page showed "0 Vulnerabilities / 0 Bugs / 1 Flag").
+  // Click the button once -- the marker lives on window, so it persists across
+  // polls of the same page -- and read the page again on the next poll.
+  // After a push, Devin keeps the earlier analysis on screen and adds a
+  // "New analysis N" header button that opens the newer one. Open it once per
+  // page load, like "View results" below, so the poll waits on the analysis of
+  // the newest commit and not on the earlier one.
+  const newBtn = Array.from(document.querySelectorAll("button, a")).find((b) => /^\s*New analysis\s*\d*\s*$/i.test(b.textContent || ""));
+  if (newBtn && !window.__devinFetchNewClicked) { window.__devinFetchNewClicked = true; newBtn.click(); return false; }
+  const viewBtn = Array.from(document.querySelectorAll("button, a")).find((b) => /^\s*View results\s*$/i.test(b.textContent || ""));
+  if (viewBtn && !window.__devinFetchViewClicked) { window.__devinFetchViewClicked = true; viewBtn.click(); return false; }
+  const counts = /\b\d+\s+(Bugs?|Flags?|Vulnerabilit(y|ies))\b/i.test(t) || /\bNo (bugs|flags|vulnerabilities)\b/i.test(t);
+  // A checks rail counts only when it is settled (passed equals total). A
+  // partial rail such as "Checks 12/22" means CI is still running, which says
+  // nothing about the verdict: the findings can still sit behind "View
+  // results", and accepting the partial rail gave exit-0 false cleans.
+  const rail = t.match(/Checks\s*(\d+)\s*\/\s*(\d+)/i);
+  const checks = /All checks passed/i.test(t) || /checks? failed/i.test(t) || (!!rail && rail[1] === rail[2]);
+  const summary = counts || checks || /Analysis complete/i.test(t);
   const done = heading && summary;
   // "PR analysis in progress" can LINGER transiently on a page that is otherwise
-  // fully rendered. Only let it veto when the positive done-signals are ABSENT —
-  // a transient in-progress substring must not block a clearly-complete page
-  // (which caused false timeouts). A genuine re-analysis keeps `done` false and
-  // correctly keeps polling.
+  // fully rendered (observed live: it flickers back after content is complete).
+  // Only let it veto when the positive done-signals are ABSENT — a transient
+  // in-progress substring must not block a clearly-complete page (which caused
+  // false 30-min timeouts → Reviewer-B skipped). While Devin is genuinely
+  // re-analysing a new head, `done` is false and this correctly keeps polling.
   if (/PR analysis in progress/i.test(t) && !done) return false;
   return done;
 })()'
 
-# Poll until DONE holds across TWO consecutive checks — a single positive poll
-# can catch a page mid-transition; a second confirming poll ensures the done
-# state is stable before we scrape. Costs ~one extra POLL interval on success.
+# Poll until DONE holds across TWO consecutive checks. A single positive poll can
+# catch a page mid-transition (in-progress flickers, panel still settling); a
+# second confirming poll one interval later ensures the done state is stable
+# before we scrape. Costs ~one extra POLL interval on success — acceptable.
 deadline=$(( $(date +%s) + MAX_MIN*60 ))
 stable=0
 while [ "$(date +%s)" -lt "$deadline" ]; do
@@ -142,66 +168,245 @@ while [ "$(date +%s)" -lt "$deadline" ]; do
   sleep "$POLL"
 done
 
-# Confirm a stable done state (else timeout)
+# Confirm a stable done state (else timeout). A timeout used to leave only this
+# one-line error, which is why a renamed heading went undiagnosed for weeks;
+# now the page text and the three done-signals are written beside it.
 if [ "$stable" -lt 2 ]; then
-  echo "timeout: Devin did not reach a stable done state within ${MAX_MIN}m" > "$OUT/devin-error.txt"
+  agent-browser eval 'document.body.innerText' > "$OUT/devin-page.txt" 2>/dev/null || true
+  SIGNALS=$(agent-browser eval '(() => { const t = document.body.innerText; return JSON.stringify({heading: /Devin.s (AI )?analysis/i.test(t) || /Read explanation/.test(t), summary: /\b\d+\s+(Bugs?|Flags?|Vulnerabilit(y|ies))\b/i.test(t) || /\bNo (bugs|flags|vulnerabilities)\b/i.test(t), analysis_complete: /Analysis complete/i.test(t), view_results: /View results/i.test(t), in_progress: /PR analysis in progress|Generating/i.test(t), chars: t.length}); })()' 2>/dev/null || echo '{"signals":"unavailable"}')
+  {
+    echo "timeout: Devin did not reach a stable done state within ${MAX_MIN}m"
+    echo "signals: ${SIGNALS}"
+    echo "page: devin-page.txt"
+  } > "$OUT/devin-error.txt"
   exit 3
 fi
 
-# Reveal the verdict if it is still collapsed. Devin can render the
-# "Devin's AI analysis" heading with the findings themselves behind a
-# "View results" button; scraping at that point captures the surrounding page
-# (PR description, CI rail) and yields an empty Flags section that reads as a
-# clean pass. Click it first, and give the panel a moment to render.
-if agent-browser eval '(() => {
-  const btn = Array.from(document.querySelectorAll("button, a")).find(
-    (b) => /^view results$/i.test((b.textContent || "").trim())
-  );
-  if (btn) { btn.click(); return true; }
-  return false;
-})()' 2>/dev/null | grep -qi true; then
-  echo ">>> devin-fetch: clicked 'View results' to reveal the verdict" >&2
-  sleep 3
+# Opens the newest analysis when Devin offers one (see DONE_EXPR); prints "clicked" or "none".
+NEWEST_EXPR='(() => { const b = Array.from(document.querySelectorAll("button, a")).find((e) => /^\s*New analysis\s*\d*\s*$/i.test(e.textContent || "")); if (!b) return "none"; b.click(); return "clicked"; })()'
+
+# The transition card can leave the per-category counts unrendered even once
+# the done-check has passed on "Analysis complete". The expansion step below
+# clicks the "N Bugs" / "N Flags" / "N Vulnerabilities" toggles, so the page has
+# to be in the finished layout first; a single reload of the same URL gets there
+# (a fresh load of a finished analysis renders the counts straight away).
+if agent-browser eval '(() => { const t = document.body.innerText; return /Analysis complete|View results/i.test(t) && !/\b\d+\s+(Bugs?|Flags?|Vulnerabilit(y|ies))\b/i.test(t); })()' 2>/dev/null | grep -qi true; then
+  echo ">>> devin-fetch: analysis finished while the page was open; reloading so the counts render" >&2
+  agent-browser reload >/dev/null 2>&1 || open_page "$URL"
+  sleep 8
+  # A reload shows the earlier analysis again when a newer one exists.
+  if agent-browser eval "$NEWEST_EXPR" 2>/dev/null | grep -q clicked; then sleep 8; fi
 fi
 
-# Expand the Flags panel. The button text is "<N> Flags" / "1 Flag" /
-# "No flags", so a literal "Flags" find-text match misses the count
-# prefix. Click the matching toggle directly.
-agent-browser eval '(() => {
-  const btn = Array.from(document.querySelectorAll("button")).find(
-    (b) => /^(\d+\s+Flags?|No flags)$/i.test((b.textContent || "").trim())
-  );
-  if (btn) { btn.click(); return true; }
-  return false;
-})()' >/dev/null 2>&1 || true
+# Expand the Bugs, Flags, and Informational panels. The 2026 UI splits Bugs and
+# Flags into two adjacent summary buttons ("N Bugs", "N Flags") instead of a
+# single combined toggle; it also has a THIRD finding category, "Informational",
+# whose findings render ONLY as button DOM nodes (not in document.body.innerText)
+# until clicked — clicking one surfaces its detail into innerText. Click every
+# summary toggle AND every Informational finding button so no panel is missed;
+# also accept the legacy combined "<N> Flags / 1 Flag / No flags" form.
+# SAFETY: never click a "Post to GitHub" (it posts a finding to the PR!) or
+# "Copy" button — those are siblings of each finding row.
+EXPAND_EXPR='(() => {
+  const btns = Array.from(document.querySelectorAll("button"));
+  let n = 0;
+  // Bugs/Flags summary toggles (2026 split + legacy combined form), plus the
+  // "N Vulnerabilities" toggle the 2026-10 UI added as a fourth category.
+  // The count buttons are accordion headers that toggle, and Devin opens some
+  // of them by default (a one-bug Bugs list, for example), so a blind click
+  // closes a list that is already open and its findings drop out of the page
+  // text. Click only the headers that report themselves closed.
+  btns.filter((b) => /^(\d+\s+(Bugs?|Flags?|Vulnerabilit(y|ies))|No (bugs|flags|vulnerabilities))$/i.test((b.textContent || "").trim()))
+      .filter((b) => b.getAttribute("aria-expanded") !== "true")
+      .forEach((b) => { b.click(); n++; });
+  // The narrative under the analysis heading is truncated behind a "Read more"
+  // toggle (the PR description has one too); expand them so the extractor sees
+  // the whole narrative rather than its first four bullets.
+  btns.filter((b) => /^Read more$/i.test((b.textContent || "").trim()))
+      .forEach((b) => { b.click(); n++; });
+  // Informational finding rows — expand to pull their detail into innerText.
+  btns.filter((b) => {
+    const t = (b.textContent || "").trim();
+    if (/^(Post to GitHub|Copy)$/i.test(t)) return false;
+    return /Informational/i.test(t);
+  }).forEach((b) => { b.click(); n++; });
+  return n;
+})()'
+agent-browser eval "$EXPAND_EXPR" >/dev/null 2>&1 || true
 sleep 2
 
-# Extract narrative + flags
-agent-browser eval 'document.body.innerText' 2>/dev/null > "$OUT/devin-page.txt"
+# Harvest the Informational findings straight from their button DOM nodes. Even
+# after expansion their titles/details are not reliably separable in the page's
+# innerText, so read the button textContent directly (same JSON-decode as the
+# page text below). Excludes the "Post to GitHub"/"Copy" siblings and short
+# labels. Feeds the extractor's Informational section; absence → empty file.
+agent-browser eval '(() => {
+  const seen = new Set(); const out = [];
+  Array.from(document.querySelectorAll("button")).forEach((b) => {
+    const t = (b.textContent || "").trim();
+    if (/Informational/i.test(t) && !/^(Post to GitHub|Copy)$/i.test(t) && t.length > 20 && !seen.has(t)) {
+      seen.add(t);
+      // The row text runs together as "<title>Informational<file:line> • Read".
+      // Split on the "Informational" badge to a readable "<title> — <file:line>",
+      // dropping the trailing " • Read"/" • Copy" affordance labels. Fall back to
+      // the raw text if the shape does not match.
+      const m = t.match(/^(.*?)Informational(.*?)(?:\s*[•·]\s*(?:Read|Copy).*)?$/i);
+      out.push(m ? (m[1].trim() + " — " + m[2].trim()).replace(/\s+—\s+$/, "") : t);
+    }
+  });
+  return out.join("\n\n---\n\n");
+})()' 2>/dev/null \
+  | python3 -c "import json,sys; raw=sys.stdin.read().strip(); print(json.loads(raw) if raw.startswith('\"') else raw)" \
+  > "$OUT/devin-informational.txt" || true
+
+# Extract narrative + flags. agent-browser eval emits a JSON-encoded string
+# (the body text wrapped in quotes with literal \n escapes), so decode it back
+# to a plain text file before parsing — otherwise newline-anchored regexes in
+# the section splitter never match.
+agent-browser eval 'document.body.innerText' 2>/dev/null \
+  | python3 -c "import json,sys; raw=sys.stdin.read().strip(); print(json.loads(raw) if raw.startswith('\"') else raw)" \
+  > "$OUT/devin-page.txt"
 agent-browser screenshot "$OUT/devin-screenshot.png" 2>/dev/null || true
 
-# Build a clean markdown extract: AI analysis + flag list
-python3 - "$OUT/devin-page.txt" > "$OUT/devin-flags.md" <<'PY'
+# Record which commit the analysis covers. The Commits tab lists the PR commits
+# newest first and marks the analysed commit "Current"; when that is not the
+# newest commit, the findings describe an earlier head and the review has to
+# say so. The tab replaces the main panel, so this step runs after the page
+# text above is saved. devin-commit-status.txt gets one line: "Analysis is up
+# to date (<sha>)", "Analysis is behind the head commit (analysed <sha>, head
+# <sha>)", or "unknown" when the tab or the marker is missing.
+COMMITS_TAB_EXPR='(() => { const tab = Array.from(document.querySelectorAll("button, [role=tab], a")).find((b) => /^\s*Commits\s*\d*\s*$/.test(b.textContent || "")); if (!tab) return "none"; tab.click(); return "clicked"; })()'
+FRESHNESS_EXPR='(() => {
+  const t = document.body.innerText;
+  const m = t.match(/\nCommits\s*\n\s*\d+\s*\n/);
+  if (!m) return "unknown";
+  const shas = [];
+  let current = "";
+  let seenCurrent = false;
+  for (const line of t.slice(m.index + m[0].length).split("\n").map((l) => l.trim())) {
+    if (/^Current$/i.test(line)) seenCurrent = true;
+    else if (/^[0-9a-f]{7,40}$/.test(line)) { shas.push(line); if (seenCurrent && !current) current = line; }
+  }
+  if (!current) return "unknown";
+  if (current === shas[0]) return "Analysis is up to date (" + current + ")";
+  return "Analysis is behind the head commit (analysed " + current + ", head " + shas[0] + ")";
+})()'
+if agent-browser eval "$COMMITS_TAB_EXPR" 2>/dev/null | grep -q clicked; then sleep 3; fi
+agent-browser eval "$FRESHNESS_EXPR" 2>/dev/null \
+  | python3 -c "import json,sys; raw=sys.stdin.read().strip(); print(json.loads(raw) if raw.startswith('\"') else (raw or 'unknown'))" \
+  > "$OUT/devin-commit-status.txt" || echo unknown > "$OUT/devin-commit-status.txt"
+
+# Build a clean markdown extract: commit-status freshness + analysis narrative + bugs + flags.
+# Splits the page text on the section headers Devin renders. The legacy
+# split was on "\n\s*\d+\s*Flags?\s*\n" which only matched the old combined
+# Flags toggle — the 2026 UI has separate "N Bugs" and "N Flags" lines, so
+# we walk both. The split is heuristic (Devin doesn't render machine-readable
+# section markers); it falls back to the full page text if the headers move.
+python3 - "$OUT/devin-page.txt" "$OUT/devin-commit-status.txt" "$OUT/devin-informational.txt" > "$OUT/devin-flags.md" <<'PY'
 import re, sys
+from pathlib import Path
+
 text = open(sys.argv[1]).read()
-# Heuristic: AI analysis = paragraph(s) before the Flags section
-parts = re.split(r'\n\s*\d+\s*Flags?\s*\n', text, maxsplit=1)
-analysis = parts[0].strip() if parts else text.strip()
-flags = parts[1].strip() if len(parts) > 1 else ''
-print('# Devin Review\n')
-print('## AI Analysis\n')
-print(analysis[:5000])
-print('\n## Flags\n')
-print(flags[:5000])
+status = ""
+if len(sys.argv) > 2:
+    p = Path(sys.argv[2])
+    if p.exists():
+        status = p.read_text().strip().strip('"')
+
+# Informational findings (2026 UI 3rd category) harvested from the button DOM
+# nodes — see the harvest step above. Not in the innerText header-split, so it
+# arrives via its own file rather than the HEADER_RE walk.
+informational = ""
+if len(sys.argv) > 3:
+    pi = Path(sys.argv[3])
+    if pi.exists():
+        informational = pi.read_text().strip().strip('"')
+
+# Section split. Headers we care about (in order they appear on the page):
+#   "Devin's analysis" / "Devin's AI analysis" - prose narrative (both spellings)
+#   "<N> Vulnerabilities" / "No vulnerabilities" - security list (2026-10 UI)
+#   "<N> Bugs" / "No bugs"  - bug list (2026 UI)
+#   "<N> Flags" / "No flags"- flag list (2026 UI; also legacy combined name)
+# Build a regex that captures section starts; walk matches to slice the body.
+HEADER_RE = re.compile(
+    r"\n\s*("
+    r"Devin.s (?:AI )?analysis"
+    r"|\d+\s+Vulnerabilit(?:y|ies)"
+    r"|No vulnerabilities"
+    r"|\d+\s+Bugs?"
+    r"|No bugs"
+    r"|\d+\s+Flags?"
+    r"|No flags"
+    # Leave the header's newline unconsumed (lookahead): the sidebar renders the
+    # category headers on consecutive lines ("0 Vulnerabilities" / "1 Bug" /
+    # "2 Flags"), and a trailing "\s*\n" ate the newline the next header needs,
+    # so every second header was skipped and its findings merged into the
+    # previous section (slang#13583's one Bug vanished that way).
+    r")[ \t]*(?=\n)",
+    re.IGNORECASE,
+)
+
+# The last finding section runs into the sidebar's remaining labels ("Checks",
+# "Reviewers", "Assignees", "Labels", and the "Commit status" button the
+# freshness step clicked); strip that trailing run so a one-line flag does not
+# come out with five navigation words appended.
+TRAIL_RE = re.compile(r"(?:\n\s*(?:Checks|Reviewers|Assignees|Labels|Commit status)\s*)+\s*$", re.IGNORECASE)
+
+# Find all header positions in the page text.
+heads = [(m.start(), m.end(), m.group(1)) for m in HEADER_RE.finditer(text)]
+sections = {}
+ZERO_RE = re.compile(r"^(0\s+(Bugs?|Flags?|Vulnerabilit(?:y|ies))|No (bugs|flags|vulnerabilities))$", re.IGNORECASE)
+for i, (s, e, name) in enumerate(heads):
+    end = heads[i + 1][0] if i + 1 < len(heads) else len(text)
+    body = TRAIL_RE.sub("", text[e:end]).strip()
+    key = name.lower()
+    # When the header itself indicates zero entries (e.g. "0 Bugs", "No flags"),
+    # the content after it is sidebar/nav junk — explicitly emit a sentinel
+    # so callers don't think the trailing labels are bug/flag bodies.
+    if ZERO_RE.match(name.strip()):
+        body = "(none reported)"
+    # Both heading spellings route here (the pre-2026-09-17 check for the
+    # literal "ai analysis" sent the renamed heading to the fallback below).
+    if "analysis" in key:
+        sections.setdefault("analysis", body)
+    elif "vulnerab" in key:
+        sections.setdefault("vulnerabilities", body)
+    elif "bug" in key:
+        sections.setdefault("bugs", body)
+    elif "flag" in key:
+        sections.setdefault("flags", body)
+
+# Fall back: if no analysis header found, use whatever's before the first
+# Bugs/Flags header, or the full text.
+if "analysis" not in sections:
+    if heads:
+        sections["analysis"] = text[: heads[0][0]].strip()
+    else:
+        sections["analysis"] = text.strip()
+
+print("# Devin Review\n")
+if status and status.lower() != "unknown":
+    print(f"_Commit status: **{status}**_\n")
+print("## AI Analysis\n")
+print(sections.get("analysis", "")[:5000])
+print("\n## Vulnerabilities\n")
+print(sections.get("vulnerabilities", "(none reported)")[:5000])
+print("\n## Bugs\n")
+print(sections.get("bugs", "(none reported)")[:5000])
+print("\n## Flags\n")
+print(sections.get("flags", "(none reported)")[:5000])
+print("\n## Informational\n")
+print((informational or "(none reported)")[:5000])
 PY
 
 # Body-integrity guard: require a terminal status AND a non-trivial body before
-# declaring success. A reachable page can pass the DONE poll with the panel
-# still streaming ("Generating…") — the AI-Analysis body is then just the PR
-# description echoed back with Bugs/Flags "(none reported)", which reads like a
-# clean pass but is an *incomplete* analysis. Also guard against a truly empty
-# scrape. Either case → inconclusive (exit 3, best-effort skip), never a silent
-# exit-0 "clean" that folds a half-rendered page into the verdict.
+# declaring success. A reachable page can pass the DONE poll while the panel is
+# still streaming ("Generating…"/"Generating...") — the AI-Analysis section is
+# then just the PR description echoed back with Bugs/Flags "(none reported)",
+# which reads like a clean pass but is an *incomplete* analysis. Also guard
+# against a truly empty scrape. Either case → inconclusive (exit 3, best-effort
+# skip), never a silent exit-0 "clean" that folds a half-rendered page into the
+# review. DEVIN_MIN_BYTES overrides the 200-byte floor.
 if grep -qE 'Generating[[:space:]]*(\.{2,}|…)' "$OUT/devin-flags.md" 2>/dev/null; then
   echo "inconclusive: Devin analysis still generating at scrape time" > "$OUT/devin-error.txt"
   echo ">>> devin-fetch: still generating at scrape time — inconclusive (exit 3)" >&2
