@@ -38,7 +38,7 @@ Review a PR in `slang-coworkers/nanoclaw`: drive `agent-browser` to Devin's revi
 
    ```bash
    RUN_DIR=$(mktemp -d /tmp/nanoclaw-pr-review-<N>.XXXXXX)
-   nanoclaw-pr-review-runner devin-fetch \
+   bash /app/skills/nanoclaw-pr-review-runner/scripts/devin-fetch.sh \
      --url "$PR_URL" \
      --out "$RUN_DIR" \
      --poll-seconds 45 \
@@ -49,7 +49,7 @@ Review a PR in `slang-coworkers/nanoclaw`: drive `agent-browser` to Devin's revi
 
    ```
    mcp__nanoclaw__send_file(to="parent", path="<RUN_DIR>/devin-flags.md")
-   mcp__nanoclaw__send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] slang-coworkers/nanoclaw#<N>\n\n- **Verdict:** <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES / SKIPPED>\n- **Devin status:** <success | auth-wall | timeout>\n- **Top flags:** <up to 3 flag titles, or 'no flags'>\n- **Severity:** <bug=N, gap=N, question=N> (or 'n/a' if skipped)\n- **Devin URL:** https://app.devin.ai/review/slang-coworkers/nanoclaw/pull/<N>")
+   mcp__nanoclaw__send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] slang-coworkers/nanoclaw#<N>\n\n- **Verdict:** <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES / SKIPPED>\n- **Devin status:** <success | auth-wall | timeout>\n- **Top flags:** <up to 3 flag titles, or 'no flags'>\n- **Severity:** <bug=N, gap=N, question=N> (or 'n/a' if skipped)\n- **Analysed commit:** <the line in <RUN_DIR>/devin-commit-status.txt>\n- **Devin URL:** https://app.devin.ai/review/slang-coworkers/nanoclaw/pull/<N>")
    ```
 
 ## Constraints
@@ -60,7 +60,8 @@ Review a PR in `slang-coworkers/nanoclaw`: drive `agent-browser` to Devin's revi
 
 ## Failure modes
 
-- **Brittle scraper:** `devin-fetch.sh` selectors are minimal; UI changes → exit 1; report and ask the operator to file an issue against `nanoclaw-pr-review-runner`.
+- **Brittle scraper:** `devin-fetch.sh` selectors are minimal; UI changes → exit 1 or 3; report and ask the operator to file an issue against `nanoclaw-pr-review-runner`.
+- **Earlier analysis:** when `devin-commit-status.txt` says "Analysis is behind the head commit", say in the verdict that the findings cover an earlier commit.
 - **Auth-wall (exit 2):** repo is private; Devin must be installed on the org. Repeated exit 2 = App installation expired.
 - **Timeout (exit 3) is not a failure:** large diffs (1000+ lines) may exceed 20 min; override with `--max-minutes 40` on request.
 - **Browser-launch failure (exit 4) is transient, not deterministic:** Chrome launches fine here without a dbus session bus; the error means a stale `/tmp/agent-browser-*` profile from a prior crash. The script clears it and retries once; a surviving failure means retry later — re-running usually succeeds.
