@@ -10,6 +10,8 @@ export interface DecideContext {
   lookups: GitHubLookups;
   eligibility: EligibilitySources;
   selfLogins?: ReadonlySet<string>;
+  /** Repos whose write permission counts for Check 1; null means every repo of the org. */
+  repos?: readonly string[] | null;
 }
 
 /**
@@ -17,12 +19,17 @@ export interface DecideContext {
  * (Claude access policy) asks whether that person is eligible now. Only a
  * request that starts work and passes both is admitted. Events no person sends
  * (CI, merges) inherit their chain and are never judged here.
+ *
+ * The bot's own logins are never judged. Another `Bot` account is judged only
+ * when its delivery starts work: routing starts work on any exact mention,
+ * whoever writes it, so a third-party App that quotes the handle in a comment
+ * must pass Check 1 like a person.
  */
 export async function decide(req: GateRequest, ctx: DecideContext): Promise<GateDecision> {
   if (SYSTEM_EVENTS.has(req.event) || !req.actor) {
     return { outcome: 'system_event', reason: null, tier: 'n/a', allowlist: null, eligibility: null };
   }
-  if (req.actor.type === 'Bot' || ctx.selfLogins?.has(req.actor.login)) {
+  if (ctx.selfLogins?.has(req.actor.login) || (req.actor.type === 'Bot' && !req.startsWork)) {
     return { outcome: 'bot', reason: null, tier: 'n/a', allowlist: null, eligibility: null };
   }
 
@@ -32,6 +39,7 @@ export async function decide(req: GateRequest, ctx: DecideContext): Promise<Gate
     roster: ctx.roster,
     lookups: ctx.lookups,
     prefilter: !req.startsWork,
+    repos: ctx.repos ?? null,
   });
   const tier = allowlist.allowlisted ? 'allowlisted' : 'external';
 
