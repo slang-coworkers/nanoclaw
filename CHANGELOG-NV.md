@@ -6,15 +6,44 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 754 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 306 |
-| `nv-slang` | slang project spine, skills, workflows | 212 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 130 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 106 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 770 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 307 |
+| `nv-slang` | slang project spine, skills, workflows | 215 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 131 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 108 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-12
+
+### nv-main (16 PRs)
+- **#2298** `test(input-gate): keep the box's .env out of the readGateSettings tests`
+- **#2299** `fix(intent-router): route only to a named workflow, one-line reason`
+- **#2297** `fix(github-mention): strip inline code spans in linear time`
+- **#2300** `feat(opencode): run the group's hook gates for OpenCode tool calls`
+- **#2301** `fix(input-gate): pin permission to protected repos, judge Bot mentions, cap gh lookups`
+- **#2302** `feat: per-group model policy, with an open-weights switch in ncl`
+- **#2303** `fix(opencode): emit each step as text and return the final message only`
+- **#2304** `feat(runner): run settings.json Stop hooks for providers that do not`
+- **#2305** `feat(gate): run the critique delivery gate at every message door`
+_+7 more: #2294, #2293, #2284, #2280, #2278, #2276, #2275_
+
+### nv-dashboard (1 PRs)
+- **#2286** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (3 PRs)
+- **#2287** `Sync nv-slang with upstream/main`
+- **#2277** `slang-mcp: channel allowlist on discord_read_messages`
+- **#2282** `slang-mcp: Discord summons post as discord:<user id>, not the owner`
+
+### nv-slangpy (1 PRs)
+- **#2288** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#2289** `Sync nv-nanoclaw with upstream/main`
+- **#2296** `fix(nanoclaw-pr-review-runner): sync the Devin scraper with the current Devin page`
 
 ## 📅 2026-11-11
 
