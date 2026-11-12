@@ -271,3 +271,12 @@ describe('container/hooks/codex-git-guard/gitconfig (GIT_CONFIG_SYSTEM)', () => 
     expect(listed).toHaveLength(Number(EXPECTED_GIT_CONFIG.GIT_CONFIG_COUNT));
   });
 });
+
+describe('codex MCP child env — critic model', () => {
+  it('passes the group critic model to the bridge when the host set one', async () => {
+    const { buildCodexMcpServer } = await import('./codex-mcp-server.js');
+    const env = buildCodexMcpServer({ HOME: '/home/node', PATH: '/bin', NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3' }).env!;
+    expect(env.NANOCLAW_CRITIC_MODEL).toBe('nvidia/moonshotai/kimi-k3');
+    expect(buildCodexMcpServer({ HOME: '/home/node', PATH: '/bin' }).env!.NANOCLAW_CRITIC_MODEL).toBeUndefined();
+  });
+});

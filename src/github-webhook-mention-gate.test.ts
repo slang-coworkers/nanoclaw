@@ -203,6 +203,27 @@ describe('issue_comment mention gate — ROUTE_ISSUES_TO exemption', () => {
     }
   });
 
+  it.each([
+    ['a longer login', `Hey ${BOT_MENTION}-x please take a look`],
+    ['a fenced code block', `Run:\n\n\`\`\`\n${BOT_MENTION} review\n\`\`\`\n`],
+    ['a quoted line', `> ${BOT_MENTION} please fix\n\nI agree with the above.`],
+  ])('drops an issue comment whose only mention is in %s', async (_label, text) => {
+    const srv = await startServer({ ROUTE_ISSUES_TO: '' });
+    try {
+      const body = issueCommentBody(text);
+      const res = await postWebhook(srv.port, body, {
+        'content-type': 'application/json',
+        'x-github-event': 'issue_comment',
+        'x-github-delivery': `d-word-${_label}`,
+        'x-hub-signature-256': sign(body),
+      });
+      expect(srv.deliverGitHubMention).not.toHaveBeenCalled();
+      expect(res.json).toMatchObject({ skipped: true, reason: 'bot not mentioned' });
+    } finally {
+      srv.close();
+    }
+  });
+
   // The own-bot guard must drop the bot's own comments before the mention gate
   // and the 👀-reaction path — under BOTH identities. The App posts as
   // `nv-slang-bot[bot]`; cross-fork work posts under the `nv-slang-bot` user
