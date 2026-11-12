@@ -6,3 +6,4 @@
 // the built-in default (setup/providers/registry.test.ts pins index 0).
 import './claude.js';
 import './codex.js';
+import './opencode.js';

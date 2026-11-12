@@ -17,7 +17,14 @@ import { spawn } from 'child_process';
 import { existsSync } from 'fs';
 
 const HOOK_PATH = '/app/hooks/intent-router.sh';
-const TIMEOUT_MS = 4000;
+/**
+ * How long the hook may run before the prompt goes on unrouted. Claude groups
+ * keep 4 s: Haiku answers in about 2 s. Non-Claude groups classify with luna
+ * through the gateway, which often passes 4 s, so they get 8 s.
+ */
+export function hookTimeoutMs(provider = process.env.AGENT_PROVIDER || 'claude'): number {
+  return provider === 'claude' ? 4000 : 8000;
+}
 
 function log(msg: string): void {
   console.error(`[intent-router-bridge] ${msg}`);
@@ -50,11 +57,12 @@ function runHook(prompt: string): Promise<string> {
     });
     let stdout = '';
     let stderr = '';
+    const timeoutMs = hookTimeoutMs();
     let timer: NodeJS.Timeout | null = setTimeout(() => {
       timer = null;
       child.kill('SIGTERM');
-      reject(new Error(`hook timed out after ${TIMEOUT_MS}ms`));
-    }, TIMEOUT_MS);
+      reject(new Error(`hook timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
 
     child.stdout.on('data', (b) => {
       stdout += b.toString();

@@ -4,6 +4,7 @@ import path from 'path';
 
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
+import { detectIssueClose } from '../issue-close.js';
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/container-state.js';
 import { BUILTIN_MCP_SERVER, isMcpToolAllowed, parseMcpPolicy, type McpPolicy } from '../mcp-policy.js';
 import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
@@ -630,39 +631,6 @@ export class MessageStream {
 }
 
 /**
- * Detect a Bash command that would CLOSE a GitHub issue. Closing a
- * contributor's issue (even a genuine duplicate of a maintainer-owned issue)
- * is a maintainer privilege — coworkers triage and comment, they do not close.
- * This is a deterministic backstop for the instruction-level guardrail: the
- * #11719 regression closed an issue as a duplicate after the prose guardrail
- * (scoped to "PRs", not issues) let it through and the orchestrator authorized
- * it. We block the command's *content* because the close rides inside a Bash
- * `gh` / GraphQL call, which the SDK's tool-name `disallowedTools` can't see.
- *
- * Covers the two paths observed in the wild:
- *   - REST:    gh issue close … / gh api … issues/<n> -f state=closed / state_reason=…
- *   - GraphQL: a `closeIssue(` mutation (used because REST state_reason 403s for the App token)
- *
- * Deliberately does NOT match `gh pr close` or `closePullRequest` — PR close is
- * a separate surface the fixer/reviewer legitimately use. Returns the matched
- * fragment (for the block message) or null.
- */
-export function detectIssueClose(command: string | undefined): string | null {
-  if (!command || typeof command !== 'string') return null;
-  // GraphQL mutation: closeIssue( … ). PR equivalent is closePullRequest, which
-  // won't match this because of the trailing `(` boundary after "Issue".
-  if (/\bcloseIssue\s*\(/i.test(command)) return 'GraphQL closeIssue mutation';
-  // REST via gh CLI: `gh issue close <n>` (allow flags/`-R` between).
-  if (/\bgh\s+issue\s+close\b/i.test(command)) return 'gh issue close';
-  // REST via gh api: a PATCH to issues/<n> that sets state=closed or any
-  // state_reason. Require an issues path so we don't catch PR endpoints.
-  if (/\bgh\s+api\b/i.test(command) && /\/issues\/\d+/i.test(command) && /\bstate(_reason)?=/i.test(command)) {
-    return 'gh api issues state change';
-  }
-  return null;
-}
-
-/**
  * PreToolUse hook: record the current tool + its declared timeout so the host
  * sweep can widen its stuck tolerance while Bash is running a long-declared
  * script. Defense-in-depth: if SDK_DISALLOWED_TOOLS slips through somehow,
@@ -792,6 +760,8 @@ const CLAUDE_CODE_AUTO_COMPACT_WINDOW = getAutoCompactWindow();
 const STALE_SESSION_RE = /no conversation found|ENOENT.*\.jsonl|session.*not found/i;
 
 export class ClaudeProvider implements AgentProvider {
+  // Fork: the SDK runs the settings.json Stop hooks itself (see stop-hooks.ts).
+  readonly runsSettingsStopHooks = true;
   private assistantName?: string;
   private mcp: ReturnType<typeof resolveClaudeMcpServers>;
   private inference: ReturnType<typeof resolveClaudeInference>;
@@ -1308,3 +1278,6 @@ registerProvider('claude', (opts, configuration) => {
   }
   return new ClaudeProvider(opts, configuration);
 });
+
+// Shared with the OpenCode hook bridge (providers/opencode-hook-bridge.ts).
+export { detectIssueClose };

@@ -15,6 +15,8 @@ import { DATA_DIR, DEFAULT_MODEL, FAST_MODE, GROUPS_DIR, TIMEZONE } from './conf
 import { getContainerConfig } from './db/container-configs.js';
 import { getCostCapPolicy } from './db/cost-cap-policy.js';
 import { getAgentGroup } from './db/agent-groups.js';
+import { containerJsonModel } from './model-policy.js';
+import { resolveProviderName } from './providers/provider-name.js';
 import { isValidTimezone } from './timezone.js';
 import { log } from './log.js';
 import { RESERVED_MCP_SERVER_NAMES } from './mcp-allowlist.js';
@@ -528,7 +530,18 @@ export async function configFromDb(row: ContainerConfigRow, group: AgentGroup): 
     maxMessagesPerPrompt: row.max_messages_per_prompt ?? undefined,
     // The group's own model wins; NANOCLAW_DEFAULT_MODEL fills in for groups
     // that have none. Both absent leaves the field out and the SDK decides.
-    model: row.model ?? (DEFAULT_MODEL || undefined),
+    // For a non-Claude group this is the model policy's main model (see
+    // containerJsonModel): the runner reads it before its own env setting.
+    model: containerJsonModel(
+      resolveProviderName({
+        override: undefined,
+        session: undefined,
+        group: group.agent_provider,
+        config: row.provider,
+      }),
+      row,
+      DEFAULT_MODEL,
+    ),
     effort: row.effort ?? undefined,
     // A cleared group value falls back to the install-wide default.
     ...speedFields(parseContainerSpeed(row.speed) ?? (FAST_MODE ? 'fast' : undefined)),
