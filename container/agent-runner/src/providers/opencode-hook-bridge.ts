@@ -288,14 +288,15 @@ export const NanoclawHookBridge = async () => {
       if (outcome.block) throw new Error(outcome.reason);
     },
     'tool.execute.after': async (
-      input: { tool: string; sessionID?: string },
+      input: { tool: string; sessionID?: string; args?: unknown },
       output: { args?: unknown; output?: unknown; content?: unknown },
     ) => {
       const toolName = claudeToolName(input.tool, servers);
+      // OpenCode 1.18 passes the arguments of a finished tool in `input`, not `output`.
       const outcome = await runHookEvent(settings(), 'PostToolUse', toolName, {
         session_id: input.sessionID ?? '',
         tool_name: toolName,
-        tool_input: claudeToolInput(toolName, output.args),
+        tool_input: claudeToolInput(toolName, input.args ?? output.args),
         tool_response: claudeToolResponse(toolName, output),
       });
       if (outcome.block && typeof output.output === 'string') output.output = `${output.output}\n\n${outcome.reason}`;

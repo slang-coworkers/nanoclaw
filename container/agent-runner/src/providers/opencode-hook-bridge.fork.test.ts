@@ -163,13 +163,16 @@ describe('the OpenCode plugin', () => {
     const hooks = await plugin({
       PostToolUse: [{ matcher: '', hooks: [{ command: `cat >> ${seen}; echo >> ${seen}` }] }],
     });
+    // OpenCode 1.18 passes a finished tool's arguments in `input`, not `output`.
+    // track-critique.sh reads the STAGE marker from them; without them no
+    // critique stage is recorded and the delivery gate can never pass.
     await hooks['tool.execute.after'](
-      { tool: 'bash' },
-      { args: { command: 'gh pr create' }, output: 'https://github.com/o/r/pull/9\n' },
+      { tool: 'bash', args: { command: 'gh pr create' } },
+      { output: 'https://github.com/o/r/pull/9\n' },
     );
     await hooks['tool.execute.after'](
-      { tool: 'codex_codex' },
-      { args: { prompt: 'STAGE: CODE_REVIEW' }, content: [{ type: 'text', text: '### Verdict\napprove' }] },
+      { tool: 'codex_codex', args: { prompt: 'STAGE: CODE_REVIEW' } },
+      { content: [{ type: 'text', text: '### Verdict\napprove' }] },
     );
     const [bash, codex] = fs
       .readFileSync(seen, 'utf-8')
@@ -177,8 +180,10 @@ describe('the OpenCode plugin', () => {
       .split('\n')
       .map((l) => JSON.parse(l));
     expect(bash.tool_name).toBe('Bash');
+    expect(bash.tool_input).toEqual({ command: 'gh pr create' });
     expect(bash.tool_response).toEqual({ stdout: 'https://github.com/o/r/pull/9\n', stderr: '' });
     expect(codex.tool_name).toBe('mcp__codex__codex');
+    expect(codex.tool_input).toEqual({ prompt: 'STAGE: CODE_REVIEW' });
     expect(JSON.parse(codex.tool_response)).toEqual({ content: '### Verdict\napprove' });
     expect(codex.hook_event_name).toBe('PostToolUse');
   });
@@ -232,7 +237,7 @@ describe('image guard', () => {
   // Without the plugin package in the image, OpenCode installs it at server start
   // and its API answers only after ~90 s (never offline), so a group's first turn
   // times out. Measured on lego: 99.5 s without the package, 11.5 s with it.
-  it('the agent image ships @opencode-ai/plugin at the CLI version in OpenCode\'s config directory', () => {
+  it("the agent image ships @opencode-ai/plugin at the CLI version in OpenCode's config directory", () => {
     const dockerfile = fs.readFileSync(path.join(import.meta.dir, '..', '..', '..', 'Dockerfile'), 'utf-8');
     expect(dockerfile).toContain('v="$(opencode --version)"');
     expect(dockerfile).toContain('"@opencode-ai/plugin":"%s"');
