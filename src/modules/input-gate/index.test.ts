@@ -1,3 +1,7 @@
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { closeDb, initTestDb } from '../../db/connection.js';
@@ -93,8 +97,19 @@ describe('observeGitHubDelivery', () => {
 
 describe('readGateSettings', () => {
   const saved = { ...process.env };
+  // readGateSettings also reads .env in the working directory. These tests run
+  // in an empty directory, so the .env of the box (where the gate may be on)
+  // cannot change their result.
+  let dir: string;
+  let cwd: { mockRestore(): void };
+  beforeEach(() => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), 'input-gate-env-'));
+    cwd = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+  });
   afterEach(() => {
     process.env = { ...saved };
+    cwd.mockRestore();
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   it('defaults to off, the default roster path and the shader-slang org', () => {
@@ -105,6 +120,12 @@ describe('readGateSettings', () => {
     expect(s.mode).toBe('off');
     expect(s.rosterPath.endsWith('data/input-gate-roster.json')).toBe(true);
     expect(s.org).toBe('shader-slang');
+  });
+
+  it('reads the mode from .env when the environment does not set it', () => {
+    delete process.env.NANOCLAW_INPUT_GATE;
+    fs.writeFileSync(path.join(dir, '.env'), 'NANOCLAW_INPUT_GATE=shadow\n');
+    expect(readGateSettings().mode).toBe('shadow');
   });
 
   it('only the exact value "shadow" turns it on', () => {
