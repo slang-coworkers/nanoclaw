@@ -8,7 +8,8 @@
  * code shows the handle without addressing the bot, and a quote repeats an
  * earlier request (GitHub's "Quote reply"), which must not start the work again.
  * Known limits: an inline code span that crosses a line break, and a 4-space
- * indented code block, still count as prose.
+ * indented code block, still count as prose. The whole check runs in time
+ * linear in the body length, because any GitHub user can send the body.
  */
 export function mentionsHandle(body: string, handle: string): boolean {
   const login = handle.trim().replace(/^@/, '');
@@ -41,9 +42,58 @@ function stripNonProse(body: string): string {
       continue;
     }
     if (/^\s{0,3}>/.test(line)) continue;
-    // An escaped backtick is literal text and never opens a span; an even run
-    // of backslashes escapes itself, so the backtick after it still does.
-    out.push(line.replace(/(?<!\\)(?:\\\\)*(`+)[\s\S]*?\1/g, ' '));
+    out.push(stripCodeSpans(line));
   }
   return out.join('\n');
+}
+
+/**
+ * Replace each inline code span in `line` with a space, in time linear in the
+ * line length. A span opens at a run of backticks and closes at the next run of
+ * exactly the same length (CommonMark); an opener with no such closer is
+ * literal text. An escaped backtick is literal and never opens a span; an even
+ * run of backslashes escapes itself, so the backtick after it still does.
+ *
+ * Consider `` `a`` @bot ``: the one-backtick opener has no one-backtick closer
+ * (`` `` `` is a different run), so the text stays prose and the mention counts,
+ * as GitHub renders it. A backtracking pattern such as `` (`+)[\s\S]*?\1 `` both
+ * closes on part of a longer run and takes quadratic time on a long run of
+ * backticks, which any commenter can send; this scanner visits each run once.
+ */
+function stripCodeSpans(line: string): string {
+  if (!line.includes('`')) return line;
+  // Each maximal run of backticks: where it starts, its length as a closer,
+  // and its length as an opener (one less when its first backtick is escaped).
+  const runs: { start: number; end: number; openLen: number }[] = [];
+  for (let i = 0; i < line.length; ) {
+    if (line[i] !== '`') {
+      i++;
+      continue;
+    }
+    let end = i;
+    while (end < line.length && line[end] === '`') end++;
+    let slashes = 0;
+    while (i - slashes - 1 >= 0 && line[i - slashes - 1] === '\\') slashes++;
+    runs.push({ start: i, end, openLen: end - i - (slashes % 2) });
+    i = end;
+  }
+  // For each run, the index of the next run whose length equals its opener
+  // length, found in one right-to-left pass.
+  const closer: (number | undefined)[] = new Array(runs.length);
+  const nearestByLen = new Map<number, number>();
+  for (let k = runs.length - 1; k >= 0; k--) {
+    if (runs[k].openLen > 0) closer[k] = nearestByLen.get(runs[k].openLen);
+    nearestByLen.set(runs[k].end - runs[k].start, k);
+  }
+  let result = '';
+  let copied = 0;
+  for (let k = 0; k < runs.length; k++) {
+    const c = closer[k];
+    if (c === undefined) continue;
+    const openStart = runs[k].end - runs[k].openLen;
+    result += line.slice(copied, openStart) + ' ';
+    copied = runs[c].end;
+    k = c;
+  }
+  return result + line.slice(copied);
 }
