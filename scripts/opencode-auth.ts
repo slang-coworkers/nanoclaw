@@ -56,6 +56,20 @@ function validHttpUrl(value: string): string | undefined {
 const LOCAL_PLACEHOLDER = 'http://host.docker.internal:8000/v1';
 const HTTPS_PLACEHOLDER = 'https://models.example.com/v1';
 
+/**
+ * Why model discovery failed, as setup prints it. fetch() hides the reason
+ * (e.g. "self-signed certificate") in its cause; a dual-stack failure nests it
+ * one level deeper, in an AggregateError. The entered key rides in the
+ * request's Authorization header and fetch quotes an invalid header value, so
+ * it is redacted before truncation: a cut must not leave part of it behind.
+ */
+export function discoveryFailureReason(error: unknown, key: string | undefined): string {
+  const cause = (error as { cause?: { message?: unknown; errors?: { message?: unknown }[] } })?.cause;
+  let reason = String(cause?.message || cause?.errors?.[0]?.message || (error as Error)?.message || '');
+  if (key) reason = reason.split(key).join('[redacted]');
+  return reason.replace(/\s+/g, ' ').slice(0, 200);
+}
+
 /** The selected gateway's reason it can never route this endpoint, checked while the operator can still correct it. */
 function gatewayEndpointError(store: ProviderCredentialStore, value: string): string | undefined {
   try {
@@ -388,12 +402,7 @@ export async function runOpenCodeAuthStep(options: { allowSkip?: boolean } = {})
           : (await discoverLocalModelIds(baseUrl, globalThis.fetch, pendingKey?.key)).map((id) => `${provider}/${id}`)
         : discoverRuntimeModels(provider, true, backend === 'chatgpt');
     } catch (error) {
-      // fetch() hides the reason (e.g. "self-signed certificate") in its cause; a
-      // dual-stack failure nests it one level deeper, in an AggregateError.
-      const cause = (error as { cause?: { message?: unknown; errors?: { message?: unknown }[] } })?.cause;
-      const reason = String(cause?.message || cause?.errors?.[0]?.message || (error as Error)?.message || '')
-        .replace(/\s+/g, ' ')
-        .slice(0, 200);
+      const reason = discoveryFailureReason(error, pendingKey?.key);
       p.log.warn(
         brandBody(
           `Could not list models${reason ? ` (${reason})` : ''}. Enter a model id manually; no built-in model list is substituted.`,
