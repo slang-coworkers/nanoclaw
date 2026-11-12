@@ -193,7 +193,10 @@ const DEFAULT_SERVER_START_TIMEOUT_MS = 60_000;
 
 export function serverStartTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
   const raw = env.OPENCODE_SERVER_START_TIMEOUT_MS?.trim();
-  return raw && /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : DEFAULT_SERVER_START_TIMEOUT_MS;
+  // setTimeout fires at once for delays above 2^31-1 ms.
+  return raw && /^\d+$/.test(raw) && Number(raw) > 0 && Number(raw) <= 2_147_483_647
+    ? Number(raw)
+    : DEFAULT_SERVER_START_TIMEOUT_MS;
 }
 
 const defaultSharedRuntimeDeps: OpenCodeSharedRuntimeDeps = {
