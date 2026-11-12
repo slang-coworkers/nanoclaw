@@ -359,6 +359,7 @@ describe('shared runtime recovery', () => {
         (exchange) => exchanges.push(exchange),
         'work',
         undefined,
+        true, // runPollLoop passes the OpenCode contract's mid-turn delivery
       );
       expect(exchanges).toHaveLength(1);
       expect(exchanges[0].result ?? '').not.toContain('backend failed');
@@ -370,12 +371,58 @@ describe('shared runtime recovery', () => {
         ...(partial ? ['Completed before failure.'] : []),
         "Sorry, something went wrong and I couldn't answer. Whoever runs this NanoClaw can look into it using the logs: https://docs.nanoclaw.dev/operate/troubleshooting#start-here",
       ]);
-      if (partial) expect(exchanges[0].result).toContain('Completed before failure.');
       expect(exchanges[0].status).toBe('error');
       expect(query.push).not.toHaveBeenCalled();
       expect(server.abort).not.toHaveBeenCalled();
     });
   }
+
+  async function chatTurn(onPrompt: (server: ReturnType<typeof fakeServer>, sid: string) => void) {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+         VALUES ('main', 'main', 'channel', 'discord', 'chan-1', NULL)`,
+      )
+      .run();
+    const server: ReturnType<typeof fakeServer> = fakeServer((sid) => onPrompt(server, sid));
+    installDeps([server]);
+    const query = newProvider().query({ prompt: 'work', cwd: CWD });
+    query.push = mock(query.push);
+    query.end();
+    const exchanges: ProviderExchange[] = [];
+    await processQuery(
+      query,
+      { platformId: 'chan-1', channelType: 'discord', threadId: null, inReplyTo: 'm1', taskRun: false },
+      ['m1'],
+      'opencode',
+      (exchange) => exchanges.push(exchange),
+      'work',
+      undefined,
+      true,
+    );
+    const sent = getUndeliveredMessages()
+      .filter((row) => row.kind === 'chat')
+      .map((row) => (JSON.parse(row.content) as { text: string }).text);
+    return { sent, exchanges, push: query.push as ReturnType<typeof mock> };
+  }
+
+  it('delivers the wrapped answer once and never sends the narration of earlier steps', async () => {
+    const turn = await chatTurn((server, sid) => {
+      server.push(assistantReply(sid, 'Review request for PR #1, following the review workflow.'));
+      server.reply(sid, '<message to="main">verdict</message>');
+    });
+    expect(turn.sent).toEqual(['verdict']);
+    expect(turn.exchanges).toHaveLength(1);
+    expect(turn.exchanges[0].result).toBe('<message to="main">verdict</message>');
+    expect(turn.push).not.toHaveBeenCalled();
+  });
+
+  it('answers a plain-text reply with one wrap reminder, as for Claude', async () => {
+    const turn = await chatTurn((server, sid) => server.reply(sid, 'The gate blocked it this time.'));
+    expect(turn.sent).toEqual([]);
+    expect(turn.push).toHaveBeenCalledTimes(1);
+    expect(String(turn.push.mock.calls[0][0])).toContain('not wrapped in <message to="name">');
+  });
 
   it('retries the spawn on the next query instead of caching the rejection', async () => {
     const server = fakeServer((sid) => server.reply(sid, 'back'));
