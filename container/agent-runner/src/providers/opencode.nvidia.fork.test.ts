@@ -1,20 +1,13 @@
 import { describe, expect, it } from 'bun:test';
-import fs from 'fs';
 
-const installed = fs.existsSync(new URL('./opencode-config.ts', import.meta.url));
-const { OPENCODE_CREDENTIAL_PLACEHOLDER } = installed
-  ? await import('./opencode-auth.js')
-  : ({} as typeof import('./opencode-auth.js'));
-const { buildOpenCodeConfig, buildOpenCodeServerEnv, resolveOpenCodePromptModel } = installed
-  ? await import('./opencode-config.js')
-  : ({} as typeof import('./opencode-config.js'));
+import { OPENCODE_CREDENTIAL_PLACEHOLDER } from './opencode-auth.js';
+import { buildOpenCodeConfig, buildOpenCodeServerEnv, resolveOpenCodePromptModel } from './opencode-config.js';
 
 // Fork-owned. On an NVIDIA install setup writes these OpenCode defaults
 // (setup/lib/custom-endpoint.ts). Every model call must then go to the NVIDIA
 // host, where the OneCLI gateway swaps the placeholder for the real key. A
 // second enabled provider, or a native base URL, would let OpenCode call a
-// vendor API directly (threat model P0-2). Skipped when /add-opencode is not
-// installed.
+// vendor API directly (threat model P0-2).
 const NVIDIA_ENV = {
   OPENCODE_PROVIDER: 'openai',
   OPENCODE_BASE_URL: 'https://inference-api.nvidia.com/v1',
@@ -45,7 +38,7 @@ function withEnv<T>(env: Record<string, string | undefined>, run: () => T): T {
 
 type Providers = Record<string, { npm?: string; options: Record<string, unknown> }>;
 
-describe.skipIf(!installed)('OpenCode on the NVIDIA defaults', () => {
+describe('OpenCode on the NVIDIA defaults', () => {
   for (const model of ['openai/aws/anthropic/bedrock-claude-opus-5-5', 'openai/openai/openai/gpt-6.1-sol']) {
     it(`sends ${model} only to the gateway-injected NVIDIA host`, () => {
       const config = withEnv(NVIDIA_ENV, () => buildOpenCodeConfig({ model }));

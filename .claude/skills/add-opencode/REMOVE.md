@@ -77,4 +77,5 @@ They import OpenCode files, so delete them with the payload:
 - `scripts/opencode-auth.fork.test.ts`
 - `container/agent-runner/src/providers/mcp-to-opencode.fork.test.ts`
 - `container/agent-runner/src/providers/opencode.timeouts.fork.test.ts`
+- `container/agent-runner/src/providers/opencode.nvidia.fork.test.ts`
 - the OpenCode case in `container/agent-runner/src/memory/neutral-injection.test.ts`
