@@ -1,0 +1,195 @@
+"""Tests for the read allowlist on discord_read_messages.
+
+The read tool returns every author's text, bots included, from any channel the
+bot can see, and it never passes the host router, so it needs its own channel
+gate. DISCORD_ALLOWED_READ_CHANNELS / DISCORD_ALLOWED_READ_FORUMS are shaped
+like the send allowlist: a listed channel, a listed forum, or a thread whose
+parent (forum or text channel) is listed. Unset means no restriction, so existing readers keep working until the
+operator sets the list. A failed parent lookup is refused.
+"""
+
+import os
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+from src.discord.discord import ReadMessagesArgs, read_messages
+
+ALLOWLIST_KEYS = ("DISCORD_ALLOWED_READ_CHANNELS", "DISCORD_ALLOWED_READ_FORUMS")
+
+
+def _env(**values):
+    env = {k: v for k, v in os.environ.items() if k not in ALLOWLIST_KEYS}
+    env.update(values)
+    return patch.dict(os.environ, env, clear=True)
+
+
+def _rest_ok():
+    return AsyncMock(return_value={"filtered": {"channel_id": "x", "messages": [], "total_count": 0}})
+
+
+@pytest.mark.asyncio
+async def test_unset_allowlist_reads_any_channel():
+    rest = _rest_ok()
+    with (
+        _env(),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock()) as parent,
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="111", limit=5))
+    assert "error" not in result
+    rest.assert_awaited_once_with("111", 5)
+    parent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_listed_channel_is_read_without_a_parent_lookup():
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS="111, 222"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock()) as parent,
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="222", limit=5))
+    assert "error" not in result
+    parent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_listed_forum_itself_is_read():
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_FORUMS="900"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock()) as parent,
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="900", limit=5))
+    assert "error" not in result
+    parent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_thread_inside_listed_forum_is_read():
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_FORUMS="900"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="900")),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="4242", limit=5))
+    assert "error" not in result
+    rest.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_thread_inside_listed_channel_is_read():
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS="111"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="111")),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="4242", limit=5))
+    assert "error" not in result
+
+
+@pytest.mark.asyncio
+async def test_unlisted_channel_is_refused_and_not_read():
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS="111"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="555")),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="4242", limit=5))
+    assert result == {"error": "Channel 4242 is not in the allowed read list"}
+    rest.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_failed_parent_lookup_is_refused():
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_FORUMS="900"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(side_effect=RuntimeError("403"))),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="4242", limit=5))
+    assert result == {"error": "Channel 4242 is not in the allowed read list"}
+    rest.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_onecli_placeholder_reads_as_unset():
+    # src/mcp-registry.ts fills every .env-vars name with "onecli-placeholder"
+    # when none is set in .env; that must read as unset, not as a list.
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS="onecli-placeholder", DISCORD_ALLOWED_READ_FORUMS="onecli-placeholder"),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock()) as parent,
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="111", limit=5))
+    assert "error" not in result
+    rest.assert_awaited_once()
+    parent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("value", ["111 222", "111;222", "<#111>", "abc", ","])
+async def test_a_set_list_with_no_valid_id_refuses_every_read(value):
+    # A typo must not turn the gate off: a set value that yields no ids
+    # refuses, it does not fall back to "unrestricted".
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS=value),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value="111")) as parent,
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="111", limit=5))
+    assert "error" in result
+    rest.assert_not_awaited()
+    parent.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("parent_id", "status", "allowed"),
+    [("900", 200, True), ("901", 200, False), (None, 200, False), ("900", 403, False)],
+)
+async def test_parent_lookup_through_rest_is_enforced(parent_id, status, allowed):
+    import httpx
+
+    response = httpx.Response(
+        status,
+        json={"parent_id": parent_id},
+        request=httpx.Request("GET", "https://discord.com/api/v10/channels/4242"),
+    )
+    http = AsyncMock()
+    http.get.return_value = response
+    rest = _rest_ok()
+    with (
+        _env(DISCORD_ALLOWED_READ_FORUMS="900"),
+        patch("src.discord.discord._get_discord_http_client", AsyncMock(return_value=http)),
+        patch("src.discord.discord.discord_rest_read_messages", rest),
+        patch("src.discord.discord.client", None),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="4242", limit=5))
+    assert ("error" not in result) == allowed
+    assert rest.await_count == int(allowed)
+    http.get.assert_awaited_once_with("https://discord.com/api/v10/channels/4242")
+
+
+@pytest.mark.asyncio
+async def test_refused_before_the_gateway_is_touched():
+    gateway = MagicMock()
+    gateway.is_ready.return_value = True
+    with (
+        _env(DISCORD_ALLOWED_READ_CHANNELS="111"),
+        patch("src.discord.discord._channel_parent_id", AsyncMock(return_value=None)),
+        patch("src.discord.discord.client", gateway),
+    ):
+        result = await read_messages(ReadMessagesArgs(channel_id="222", limit=5))
+    assert "error" in result
+    gateway.get_channel.assert_not_called()
+    gateway.fetch_channel.assert_not_called()
