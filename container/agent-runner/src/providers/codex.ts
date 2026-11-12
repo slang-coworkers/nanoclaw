@@ -237,6 +237,8 @@ function composeBaseInstructions(
 
 export class CodexProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
+  // Fork: codex-hooks.toml posts the dashboard events, Stop included (see stop-hooks.ts).
+  readonly reportsHookTelemetry = true;
 
   private readonly mcpServers: Record<string, McpServerConfig>;
   private readonly model: string;

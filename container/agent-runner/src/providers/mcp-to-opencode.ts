@@ -1,4 +1,5 @@
 import { resolveEnvInherit } from './codex-app-server.js';
+import { cwdWrappedArgv } from './cwd-shim.js';
 import type { McpServerConfig } from './types.js';
 
 /** OpenCode `mcp` entry shape (local stdio server). */
@@ -19,49 +20,37 @@ export type OpenCodeMcpRemote = {
 
 export type OpenCodeMcpEntry = OpenCodeMcpLocal | OpenCodeMcpRemote;
 
-/**
- * Map NanoClaw v2 MCP definitions into OpenCode config `mcp` field.
- *
- * Handles both stdio (`command`) and http (`url`) variants of the now-widened
- * `McpServerConfig` union. OpenCode's `remote` shape accepts static headers
- * directly; codex-only fields (`bearerTokenEnvVar`, `envHttpHeaders`,
- * `httpHeaders`) are translated into `headers` at best-effort.
- */
+/** Map NanoClaw MCP definitions into OpenCode's local/remote MCP config. */
 export function mcpServersToOpenCodeConfig(
   servers: Record<string, McpServerConfig> | undefined,
 ): Record<string, OpenCodeMcpEntry> {
   const out: Record<string, OpenCodeMcpEntry> = {};
   if (!servers) return out;
   for (const [name, cfg] of Object.entries(servers)) {
-    if ('url' in cfg) {
-      // http / remote
-      const headers: Record<string, string> = {
-        ...(cfg.headers ?? {}),
-        ...(cfg.httpHeaders ?? {}),
-      };
+    if (cfg.type === 'http') {
+      const headers: Record<string, string> = { ...(cfg.headers ?? {}), ...(cfg.httpHeaders ?? {}) };
       out[name] = {
         type: 'remote',
         url: cfg.url,
         ...(Object.keys(headers).length > 0 ? { headers } : {}),
         enabled: true,
       };
-    } else {
-      // stdio / local
-      // Resolve envInherit names against process.env before handing to
-      // opencode — opencode has no name-indirection and passes its config
-      // as-is via the OPENCODE_CONFIG_CONTENT env var to the opencode
-      // subprocess. Resolved values live only in the returned map; callers
-      // must not log or persist them to disk.
-      const mergedEnv = resolveEnvInherit(cfg, process.env, name);
-      out[name] = {
-        type: 'local',
-        // `args` is optional on McpServerConfig (a stdio server may take none);
-        // same guard cwd-shim.ts uses.
-        command: [cfg.command, ...(cfg.args ?? [])],
-        ...(Object.keys(mergedEnv).length > 0 ? { environment: mergedEnv } : {}),
-        enabled: true,
-      };
+      continue;
     }
+
+    // OpenCode's local entry is a bare argv array with no spawn-directory
+    // key, so a declared cwd goes through the shared cd-then-exec wrap —
+    // never silently launched in the wrong directory.
+    const args = cfg.args ?? [];
+    // OpenCode has no env-by-name indirection, so envInherit names resolve to
+    // values here.
+    const env = resolveEnvInherit(cfg, process.env, name);
+    out[name] = {
+      type: 'local',
+      command: cfg.cwd ? cwdWrappedArgv(cfg.cwd, cfg.command, args) : [cfg.command, ...args],
+      ...(Object.keys(env).length > 0 ? { environment: env } : {}),
+      enabled: true,
+    };
   }
   return out;
 }

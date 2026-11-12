@@ -62,6 +62,23 @@ afterEach(() => {
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
+describe('the send_file tool is a message door', () => {
+  // delivery-gate.ts runs this script for send_file with the caption and the
+  // file's text, so a report sent as a file is gated like a message.
+  it('a delivery marker in send_file text is refused until a critique round, then passes', () => {
+    activateOverlay();
+    const payload = {
+      tool_name: 'mcp__nanoclaw__send_file',
+      tool_input: { text: 'see file\n[Resolution] PR #9 fixed.' },
+    };
+    const denied = run(payload);
+    expect(denied.status).toBe(2);
+    expect(denied.stderr).toContain('CRITIQUE REQUIRED');
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
+    expect(run(payload).status).toBe(0);
+  });
+});
+
 describe('Model A: no-op when overlay marker absent', () => {
   it('marker absent → delivery message passes (would normally be gated)', () => {
     expect(fs.existsSync(markerFile)).toBe(false);

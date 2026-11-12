@@ -27,6 +27,13 @@ import { getSessionDriver } from '../../drivers/index.js';
 import { assertValidGroupFolder, groupFolderExistsOnDisk } from '../../group-folder.js';
 import { initGroupFilesystem } from '../../group-init.js';
 import { getProviderHostContract } from '../../provider-contracts/registry.js';
+import {
+  MODEL_ROLES,
+  isOpenWeightsRole,
+  modelPolicyViolations,
+  parseModelWeights,
+  resolveGroupModels,
+} from '../../model-policy.js';
 import { resolveProviderName } from '../../providers/provider-name.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
 import { templateApprovalDetail } from '../../templates/approval-detail.js';
@@ -673,10 +680,23 @@ registerResource({
           effectiveModel = process.env.CODEX_MODEL ?? 'openai/openai/gpt-6.1-sol';
         }
 
+        // Model policy: the model each role resolves to (src/model-policy.ts), the
+        // same resolution spawn applies, and whether each is open-weights.
+        const models = resolveGroupModels(agentProvider, row);
+        const policyProblems = modelPolicyViolations(models);
+
         return {
           ...presented,
           agent_provider: agentProvider,
           effective_model: effectiveModel,
+          models: Object.fromEntries(
+            MODEL_ROLES.map((role) => [
+              role,
+              { model: models[role] ?? null, open_weights: isOpenWeightsRole(models, role) },
+            ]),
+          ),
+          weights: models.weights,
+          ...(policyProblems.length > 0 ? { model_policy_problems: policyProblems } : {}),
         };
       },
     },
@@ -685,6 +705,8 @@ registerResource({
       description:
         'Update container config scalar fields. Changes are saved but do NOT take effect until you run `ncl groups restart`. ' +
         'Use --id <group-id> and any of: --provider, --model, --effort, --speed, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope, ' +
+        '--small-model, --router-model, --critic-model, --weights. ' +
+        '--weights open makes the group use open-weights models only: unset roles take the open defaults (GLM for the doer, GLM flash for the small model and router, Kimi for the critic), and a role set to a closed model is refused; --weights any (or "") removes the rule. The model flags take "" to clear back to the install default. ' +
         '--speed must be one of the speed tiers the group\'s provider declares (Claude: "standard", "fast"), or "" to follow the install default; a provider that declares none accepts only "". ' +
         '--timezone (IANA id like "Europe/Lisbon"; "" clears back to the install default; scheduled-task times follow it immediately, message display after restart).',
       handler: async (args) => {
@@ -705,6 +727,10 @@ registerResource({
             | 'max_messages_per_prompt'
             | 'cli_scope'
             | 'timezone'
+            | 'small_model'
+            | 'router_model'
+            | 'critic_model'
+            | 'weights'
           >
         > = {};
         if (args.provider !== undefined) updates.provider = args.provider as string;
@@ -738,6 +764,13 @@ registerResource({
           }
           updates.speed = speed || null;
         }
+        for (const key of ['small_model', 'router_model', 'critic_model'] as const) {
+          if (args[key] !== undefined) updates[key] = (args[key] as string) || null;
+        }
+        if (args.weights !== undefined) {
+          const weights = parseModelWeights(args.weights as string);
+          updates.weights = weights === 'any' ? null : weights;
+        }
         if (args.image_tag !== undefined) updates.image_tag = args.image_tag as string;
         if (args.assistant_name !== undefined) updates.assistant_name = args.assistant_name as string;
         if (args.max_messages_per_prompt !== undefined)
@@ -752,8 +785,29 @@ registerResource({
 
         if (Object.keys(updates).length === 0) {
           throw new Error(
-            'Nothing to update — provide at least one of: --provider, --model, --effort, --speed, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope, --timezone',
+            'Nothing to update — provide at least one of: --provider, --model, --effort, --speed, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope, --timezone, --small-model, --router-model, --critic-model, --weights',
           );
+        }
+
+        // Check the model policy the way spawn will, against the provider the
+        // group will run on, so a weights=open group that would call a closed
+        // model is refused here instead of failing at its next start.
+        const touchesModels = ['model', 'small_model', 'router_model', 'critic_model', 'weights', 'provider'].some(
+          (k) => k in updates,
+        );
+        if (touchesModels) {
+          const agentGroup = await getAgentGroup(id);
+          const provider = resolveProviderName({
+            override: updates.provider,
+            session: undefined,
+            group: agentGroup?.agent_provider,
+            config: row.provider,
+          });
+          if (provider === 'claude' && updates.router_model) {
+            throw new Error('A Claude group uses one setting for its small model and its router: use --small-model');
+          }
+          const problems = modelPolicyViolations(resolveGroupModels(provider, { ...row, ...updates }));
+          if (problems.length > 0) throw new Error(`Model policy: ${problems.join('; ')}`);
         }
 
         await updateContainerConfigScalars(id, updates);
