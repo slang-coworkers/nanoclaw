@@ -294,12 +294,22 @@ function inputWithDeveloperInstructions(prompt: string, dev?: string): string {
   return dev && dev.trim() ? `Developer instructions:\n${dev.trim()}\n\n${prompt}` : prompt;
 }
 
+/**
+ * The model a critique runs on: the group's critic model (NANOCLAW_CRITIC_MODEL,
+ * set per container by the host's model policy), else CODEX_MODEL. A Codex
+ * group's CODEX_MODEL is its doer model, so the critic needs its own setting to
+ * differ from it.
+ */
+export function criticModel(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  return env.NANOCLAW_CRITIC_MODEL || env.CODEX_MODEL || undefined;
+}
+
 export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: string; text: string }> {
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim()) throw new Error('codex: `prompt` is required');
   const overrides = [...runnerOverrides(), ...configToOverrides(args.config)];
   if (args.model) overrides.push(`model=${tomlBasicString(args.model)}`);
   const cwd = args.cwd || process.env.CODEX_MCP_CWD || process.cwd();
-  const model = args.model || process.env.CODEX_MODEL || undefined;
+  const model = args.model || criticModel();
   const server = await bootAppServer(overrides);
   let threadId: string;
   try {
@@ -348,7 +358,7 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
     const overrides = runnerOverrides();
     const server = await bootAppServer(overrides);
     const cwd = process.env.CODEX_MCP_CWD || process.cwd();
-    const model = process.env.CODEX_MODEL || undefined;
+    const model = criticModel();
     try {
       const resumed = await startOrResumeCodexThread(server, threadId, {
         cwd,

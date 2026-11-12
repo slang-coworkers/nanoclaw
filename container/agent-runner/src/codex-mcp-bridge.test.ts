@@ -12,6 +12,7 @@ import {
   CODEX_TOOL,
   canonicalToolArgs,
   configToOverrides,
+  criticModel,
 } from './codex-mcp-bridge.js';
 
 // The bridge must be a drop-in for codex 0.153.4's `codex mcp-server`: same two
@@ -84,6 +85,18 @@ describe('canonicalToolArgs', () => {
   it('maps codex-reply arguments too', () => {
     const replyProps = CODEX_REPLY_TOOL.inputSchema.properties as Record<string, unknown>;
     expect(canonicalToolArgs({ threadid: 't', prompt: 'p' }, replyProps)).toEqual({ threadId: 't', prompt: 'p' });
+  });
+});
+
+describe('criticModel', () => {
+  // The host's model policy sets NANOCLAW_CRITIC_MODEL per container. A Codex
+  // group's CODEX_MODEL is its doer model, so the critic must read its own.
+  it('prefers the group critic model, then CODEX_MODEL', () => {
+    expect(criticModel({ NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3', CODEX_MODEL: 'doer' })).toBe(
+      'nvidia/moonshotai/kimi-k3',
+    );
+    expect(criticModel({ CODEX_MODEL: 'openai/openai/gpt-6.1-sol' })).toBe('openai/openai/gpt-6.1-sol');
+    expect(criticModel({})).toBeUndefined();
   });
 });
 

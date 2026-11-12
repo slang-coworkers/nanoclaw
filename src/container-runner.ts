@@ -55,6 +55,7 @@ import {
   sanitizeStoredMcpServers,
 } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
+import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
@@ -3260,6 +3261,21 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
       contributedEnv[k] = env[k];
       delete env[k];
     }
+  }
+
+  // Model policy (src/model-policy.ts): each role of the group (doer, small,
+  // router, critic) gets its resolved model, and a weights=open group that
+  // would call a closed model does not start. The policy's keys go in one lane
+  // only: the provider's contribution (e.g. OPENCODE_SMALL_MODEL from the host
+  // .env) would otherwise win the collision and undo the group's setting.
+  const models = resolveGroupModels(input.provider ?? 'claude', (await getContainerConfig(agentGroup.id)) ?? {});
+  const policyProblems = modelPolicyViolations(models);
+  if (policyProblems.length > 0) {
+    throw new Error(`Model policy refuses to start group "${agentGroup.name}": ${policyProblems.join('; ')}`);
+  }
+  for (const [key, value] of Object.entries(modelPolicyEnv(models))) {
+    env[key] = value;
+    delete contributedEnv[key];
   }
 
   const hostUid = process.getuid?.();
