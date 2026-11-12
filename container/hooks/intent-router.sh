@@ -65,7 +65,8 @@ Respond with ONLY the JSON object, no markdown, no explanation."
 PROVIDER="${AGENT_PROVIDER:-claude}"
 
 if [ "$PROVIDER" = "claude" ]; then
-  # Use Haiku for speed — this should complete in <2s
+  # Use Haiku for speed — this should complete in <2s. The 5 s limit stays
+  # under the bridge's 8 s (intent-router-bridge.ts) and the hook's 8 s timeout.
   MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-5-5}"
   API_URL="${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"
   API_KEY="${ANTHROPIC_API_KEY:-}"
@@ -95,7 +96,7 @@ else
 
   # Classification needs no reasoning, and reasoning only adds latency. A slow
   # gateway call can still take about 7 s; 7.5 s keeps the hook under the
-  # bridge's 8 s for non-Claude groups (intent-router-bridge.ts), so it exits
+  # bridge's 8 s (intent-router-bridge.ts), so it exits
   # cleanly. max_completion_tokens leaves room for a model that reasons anyway.
   RESPONSE=$(curl -sf --max-time 7.5 \
     "${API_URL%/}/chat/completions" \
