@@ -55,6 +55,7 @@ import {
   sanitizeStoredMcpServers,
 } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
+import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
@@ -2781,16 +2782,24 @@ export async function buildMounts(
         // gate-critique-on-deliver.sh refuses delivery markers
         // ([Fix Report]/[Resolution]/[Triage Resolution]/[Review Verdict]/[handoff])
         // and PR-create commands until /codex-critique has run at least once.
-        // Symmetric opt-in: the hook itself first-line checks
-        // /workspace/agent/.overlay-critique-gate and exits 0 if absent, so
-        // wiring it universally is safe — coworkers without the overlay
-        // see no gating at all.
-        if (!hasCmd('PreToolUse', 'gate-critique-on-deliver.sh')) {
-          settings.hooks.PreToolUse.push({
-            matcher: 'mcp__nanoclaw__send_message|Bash',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/gate-critique-on-deliver.sh', timeout: 5 }],
-          });
-        }
+        // Symmetric opt-in: the script first checks the gate's activation and
+        // exits 0 when it is off, so wiring it universally is safe.
+        //
+        // The hook covers Bash only. Every message door (the send_message and
+        // send_file tools, <message> blocks, the plain-text shortcut) runs the
+        // same script from the runner (container/agent-runner/src/delivery-gate.ts)
+        // for every provider. The script is not idempotent on the allow path
+        // (it consumes a one-shot admin bypass), so a send must run it once:
+        // an older entry whose matcher also names send_message is replaced,
+        // not kept beside the new one.
+        settings.hooks.PreToolUse = settings.hooks.PreToolUse.filter(
+          (h: { hooks?: { command?: string }[] }) =>
+            !h.hooks?.some((i: { command?: string }) => i.command?.includes('gate-critique-on-deliver.sh')),
+        );
+        settings.hooks.PreToolUse.push({
+          matcher: 'Bash',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/gate-critique-on-deliver.sh', timeout: 5 }],
+        });
         if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
         if (!hasCmd('PostToolUse', 'plan-tracker.sh')) {
           settings.hooks.PostToolUse.push({
@@ -3262,6 +3271,21 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
     }
   }
 
+  // Model policy (src/model-policy.ts): each role of the group (doer, small,
+  // router, critic) gets its resolved model, and a weights=open group that
+  // would call a closed model does not start. The policy's keys go in one lane
+  // only: the provider's contribution (e.g. OPENCODE_SMALL_MODEL from the host
+  // .env) would otherwise win the collision and undo the group's setting.
+  const models = resolveGroupModels(input.provider ?? 'claude', (await getContainerConfig(agentGroup.id)) ?? {});
+  const policyProblems = modelPolicyViolations(models);
+  if (policyProblems.length > 0) {
+    throw new Error(`Model policy refuses to start group "${agentGroup.name}": ${policyProblems.join('; ')}`);
+  }
+  for (const [key, value] of Object.entries(modelPolicyEnv(models))) {
+    env[key] = value;
+    delete contributedEnv[key];
+  }
+
   const hostUid = process.getuid?.();
   const hostGid = process.getgid?.();
   // The spec contract (drivers/types.ts, `runAs`): the identity that must read
@@ -3553,6 +3577,8 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'CODEX_MODEL',
     'CODEX_MODEL_PROVIDER',
     'CODEX_REASONING_EFFORT',
+    // Model the intent-router hook uses in non-Claude groups (default in the hook).
+    'INTENT_ROUTER_OPENAI_MODEL',
     'PI_MODEL',
     'PI_PROVIDER',
     'PI_THINKING_LEVEL',

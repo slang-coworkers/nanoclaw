@@ -42,13 +42,53 @@ describe('mcpServersToOpenCodeConfig', () => {
     });
   });
 
-  it('omits environment when env is empty', () => {
+  it('preserves local defaults when args and env are omitted', () => {
     const mcp = mcpServersToOpenCodeConfig({
-      x: { command: 'true', args: [], env: {} },
+      x: { command: 'true' },
     });
     expect(mcp.x).toEqual({
       type: 'local',
       command: ['true'],
+      enabled: true,
+    });
+  });
+
+  it('wraps a cwd-declaring server in the cd-then-exec argv', () => {
+    const mcp = mcpServersToOpenCodeConfig({
+      probe: { command: './run.js', args: ['--flag'], cwd: '/workspace/agent/plugin-data/sdr' },
+    });
+    expect(mcp.probe).toEqual({
+      type: 'local',
+      command: ['/bin/sh', '-c', 'cd "$0" && exec "$@"', '/workspace/agent/plugin-data/sdr', './run.js', '--flag'],
+      enabled: true,
+    });
+  });
+
+  it('maps Streamable HTTP servers to remote entries', () => {
+    expect(
+      mcpServersToOpenCodeConfig({
+        docs: { type: 'http', url: 'https://mcp.example.com/mcp' },
+      }).docs,
+    ).toEqual({
+      type: 'remote',
+      url: 'https://mcp.example.com/mcp',
+      enabled: true,
+    });
+  });
+
+  it('passes remote headers through', () => {
+    expect(
+      mcpServersToOpenCodeConfig({
+        docs: {
+          type: 'http',
+          url: 'https://mcp.example.com/mcp',
+          headers: { 'X-Api-Version': '2024-06' },
+        },
+      }).docs,
+    ).toEqual({
+      type: 'remote',
+      url: 'https://mcp.example.com/mcp',
+      headers: { 'X-Api-Version': '2024-06' },
       enabled: true,
     });
   });

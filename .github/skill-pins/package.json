@@ -223,7 +223,8 @@
     "opencode-ai": {
       "version": "1.18.25",
       "sources": [
-        ".claude/skills/add-opencode/SKILL.md nc:json-merge when:opencode_core_ready=yes"
+        ".claude/skills/add-opencode/SKILL.md nc:json-merge when:opencode_core_ready=yes",
+        "container/cli-tools.json"
       ]
     },
     "pino": {

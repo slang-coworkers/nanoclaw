@@ -12,7 +12,10 @@ export const opencodeRuntimeContract: ProviderRuntimeContract = {
     memory: (hook) => ({ ...hook }),
     mcpServers: (servers) => mcpServersToOpenCodeConfig(servers),
   },
-  textDelivery: 'result',
+  // A turn emits one text event per assistant message (providers/opencode-turn.ts),
+  // as the Claude SDK does, so <message> blocks deliver from the text events and
+  // the result never sends content.
+  textDelivery: 'mid-turn-complete',
   commands: { formatting: 'xml' },
 };
 registerProviderContract('opencode', opencodeRuntimeContract);
