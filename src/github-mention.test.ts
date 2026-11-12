@@ -15,6 +15,8 @@ describe('mentionsHandle', () => {
     ['@nv-slang-bot.', 'followed by a full stop'],
     ['```x``` @nv-slang-bot please look', 'after an inline triple-backtick span'],
     ['\\`@nv-slang-bot\\` please review', 'between escaped (literal) backticks'],
+    ['`@nv-slang-bot`` please look', 'after a backtick with no closer of the same length'],
+    ['`code\\` @nv-slang-bot', 'after a code span that ends in a backslash'],
   ])('matches %j (%s)', (body) => {
     expect(mentionsHandle(body, BOT)).toBe(true);
   });
@@ -52,6 +54,17 @@ describe('mentionsHandle', () => {
   it('treats regex metacharacters in the handle literally', () => {
     expect(mentionsHandle('Hey @a.b', '@a.b')).toBe(true);
     expect(mentionsHandle('Hey @axb', '@a.b')).toBe(false);
+  });
+
+  it('takes linear time on a long run of backticks', () => {
+    // A backtracking span pattern needs about 20 s for this body; the scanner
+    // needs a few milliseconds, so the bound fails only on a regression.
+    // The run starts after text, so it is inline code and not a fence.
+    const run = '`'.repeat(256 * 1024);
+    const start = performance.now();
+    expect(mentionsHandle(`see ${run} @nv-slang-bot`, BOT)).toBe(true);
+    expect(mentionsHandle(`see ${run} @nv-slang-bot ${run}`, BOT)).toBe(false);
+    expect(performance.now() - start).toBeLessThan(500);
   });
 
   it('returns false for an empty handle', () => {
