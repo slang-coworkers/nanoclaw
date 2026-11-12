@@ -52,6 +52,7 @@ import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approv
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy.js';
 import { rowLabelForThread } from './row-label.js';
+import { coworkerModels, type CoworkerConfigRow, type CoworkerGroupRow } from './coworker-models.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import {
   costSourceMeta,
@@ -11369,6 +11370,35 @@ export async function handleRequest(
         execCommand: found ? `docker exec -it ${found} bash` : null,
       }),
     );
+    return;
+  }
+
+  // API: the models a coworker's next container runs, one per role, and
+  // whether each is open-weights (coworker-models.ts). Both detail panels
+  // render it as the model card.
+  if (req.method === 'GET' && /^\/api\/coworkers\/[^/]+\/models$/.test(url.pathname)) {
+    if (!requireAuth(req, res)) return;
+    const folder = safeDecode(url.pathname.replace('/api/coworkers/', '').replace('/models', ''));
+    if (!folder) {
+      res.writeHead(400);
+      res.end('{"error":"invalid folder"}');
+      return;
+    }
+    const group = db
+      ? (db.prepare('SELECT id, folder, agent_provider FROM agent_groups WHERE folder = ?').get(folder) as
+          | (CoworkerGroupRow & { id: string })
+          | undefined)
+      : undefined;
+    if (!group) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end('{"error":"coworker not found"}');
+      return;
+    }
+    const config = db!.prepare('SELECT * FROM container_configs WHERE agent_group_id = ?').get(group.id) as
+      | CoworkerConfigRow
+      | undefined;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(coworkerModels(group, config)));
     return;
   }
 

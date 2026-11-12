@@ -654,6 +654,15 @@
     }
     .mcp-tag.allowed { background: #10b98115; color: #6ee7b7; }
     .mcp-tag.blocked { background: #ef444410; color: #64748b; text-decoration: line-through; }
+    /* Model card: one row per role (doer, small, router, critic), with an open/closed weights badge. */
+    .model-card-head { color: var(--text-muted); margin-bottom: 2px; }
+    .model-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 8px; align-items: baseline; }
+    .model-card .role { color: var(--text-muted); }
+    .model-card .id { font-family: monospace; overflow-wrap: anywhere; }
+    .model-badge { padding: 0 5px; border-radius: 3px; font-size: 0.625rem; }
+    .model-badge.open { background: #10b98115; color: #6ee7b7; }
+    .model-badge.closed { background: #f59e0b15; color: #fcd34d; }
+    .model-problem { color: #fca5a5; margin-top: 2px; }
 
     /* Admin code block */
     .admin-code {
@@ -1045,6 +1054,7 @@
       <div class="field"><label>Status</label><div class="value" id="detail-status">-</div></div>
       <div class="field"><label>Last Activity</label><div class="value" id="detail-activity">-</div></div>
       <div class="field"><label>Live Tool</label><div class="value" id="detail-tool">-</div></div>
+      <div class="field"><label>Models</label><div class="value" id="detail-models" style="font-size:0.6875rem">-</div></div>
       <div class="field"><label>Active Children</label><div class="value" id="detail-subagents">-</div></div>
       <div class="field"><label>Sessions</label><div class="value" id="detail-session" style="font-size:0.6875rem">-</div></div>
       <div class="field"><label>Tasks</label><div class="value" id="detail-tasks-list" style="font-size:0.6875rem;max-height:100px;overflow-y:auto">-</div></div>
@@ -1204,6 +1214,10 @@
           <button class="memory-toggle-btn" id="cw-mcp-toggle">Expand</button>
         </div>
         <div class="value" id="cw-detail-mcp" style="font-size:0.6875rem;max-height:100px;overflow-y:auto;display:none;margin-top:4px">-</div>
+      </div>
+      <div class="cw-detail-section">
+        <div class="memory-header"><label>Models</label></div>
+        <div class="value" id="cw-detail-models" style="font-size:0.6875rem;margin-top:4px">-</div>
       </div>
       <div class="cw-detail-section">
         <div class="memory-header">

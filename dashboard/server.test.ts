@@ -759,6 +759,46 @@ describe('dashboard server', () => {
     expect(a.targetLabel).toBe('Deletes wiring: PerfHound → PerfHound (self-edge)');
   });
 
+  it('serves the model card of a coworker: one model per role, with open weights marked', async () => {
+    const saved = { OPENCODE_PROVIDER: process.env.OPENCODE_PROVIDER, CODEX_MODEL: process.env.CODEX_MODEL };
+    process.env.OPENCODE_PROVIDER = 'openai';
+    process.env.CODEX_MODEL = 'nvidia/moonshotai/kimi-k3';
+    try {
+      const db = createDashboardTestDb();
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS container_configs (
+          agent_group_id TEXT PRIMARY KEY, provider TEXT, model TEXT, small_model TEXT,
+          router_model TEXT, critic_model TEXT, weights TEXT
+        );
+      `);
+      const now = new Date().toISOString();
+      db.prepare(
+        `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, routing, created_at)
+         VALUES ('ag-models', 'Models', 'models-probe', 0, 'opencode', 'direct', ?)`,
+      ).run(now);
+      db.prepare(`INSERT INTO container_configs (agent_group_id, weights) VALUES ('ag-models', 'open')`).run();
+      db.close();
+      forceOpenDbForTests();
+
+      const res = await fetch(`${baseUrl}/api/coworkers/models-probe/models`);
+      expect(res.status).toBe(200);
+      const card = await res.json();
+      expect(card).toMatchObject({ folder: 'models-probe', provider: 'opencode', weights: 'open', problems: [] });
+      expect(card.roles.map((r: { role: string; openWeights: boolean }) => [r.role, r.openWeights])).toEqual([
+        ['main', true],
+        ['small', true],
+        ['router', true],
+        ['critic', true],
+      ]);
+      expect((await fetch(`${baseUrl}/api/coworkers/no-such-group/models`)).status).toBe(404);
+    } finally {
+      for (const [k, v] of Object.entries(saved)) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
   it('surfaces critique-gate identity (PR, session, class) instead of dropping it', async () => {
     const db = createDashboardTestDb();
     db.exec(`

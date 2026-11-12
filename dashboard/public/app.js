@@ -4637,6 +4637,54 @@ document.getElementById('detail-close').addEventListener('click', () => {
 });
 
 // --- Detail panel ---
+// Model card: the model each role of a coworker resolves to, from
+// GET /api/coworkers/:folder/models (dashboard/coworker-models.ts). Both detail
+// panels show it. A model changes only with a config update and a restart, so
+// each folder's answer is reused for 30 s across the panels' frequent re-renders.
+const MODEL_CARD_TTL_MS = 30_000;
+const MODEL_ROLE_LABELS = { main: 'Doer', small: 'Small', router: 'Router', critic: 'Critic' };
+const modelCardCache = new Map();
+
+async function fetchCoworkerModels(folder) {
+  const hit = modelCardCache.get(folder);
+  if (hit && Date.now() - hit.at < MODEL_CARD_TTL_MS) return hit.data;
+  const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/models`);
+  if (!res.ok) throw new Error(`models ${res.status}`);
+  const data = await res.json();
+  modelCardCache.set(folder, { at: Date.now(), data });
+  return data;
+}
+
+function renderModelCard(m) {
+  const head = `<div class="model-card-head">${esc(m.provider)}${m.weights === 'open' ? ' · open weights only' : ''}</div>`;
+  const rows = m.roles
+    .map((r) => {
+      const badge =
+        r.openWeights === null
+          ? '<span></span>'
+          : `<span class="model-badge ${r.openWeights ? 'open' : 'closed'}">${r.openWeights ? 'open' : 'closed'}</span>`;
+      return `<span class="role">${esc(MODEL_ROLE_LABELS[r.role] || r.role)}</span><span class="id">${esc(r.model || '-')}</span>${badge}`;
+    })
+    .join('');
+  const problems = (m.problems || []).map((p) => `<div class="model-problem">${esc(p)}</div>`).join('');
+  return `${head}<div class="model-card">${rows}</div>${problems}`;
+}
+
+/** Fill `el` with the model card of `folder`, unless the panel moved to another coworker meanwhile. */
+async function fillModelCard(el, folder) {
+  if (!el) return;
+  if (el.dataset.folder !== folder) {
+    el.dataset.folder = folder;
+    el.innerHTML = '<span style="color:var(--text-muted)">Loading...</span>';
+  }
+  try {
+    const m = await fetchCoworkerModels(folder);
+    if (el.dataset.folder === folder) el.innerHTML = renderModelCard(m);
+  } catch {
+    if (el.dataset.folder === folder) el.textContent = '(unavailable)';
+  }
+}
+
 async function showDetailPanel(cw) {
   setDetailPanelOpen(true);
   document.getElementById('detail-name').textContent = cw.name;
@@ -4644,6 +4692,7 @@ async function showDetailPanel(cw) {
   document.getElementById('detail-activity').textContent = cw.lastActivity ? timeAgo(cw.lastActivity) : 'Never';
   document.getElementById('detail-tool').textContent = cw.lastToolUse || '-';
   document.getElementById('detail-subagents').innerHTML = renderSubagentList(cw);
+  void fillModelCard(document.getElementById('detail-models'), cw.folder);
 
   // Tasks for this coworker
   const tasksEl = document.getElementById('detail-tasks-list');
@@ -10191,6 +10240,7 @@ async function updateCwDetail() {
   });
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
+  void fillModelCard(document.getElementById('cw-detail-models'), cw.folder);
 
   // MCP tools — show allowed (green) then blocked (struck-through). Hidden by default;
   // expand button toggles visibility so the panel isn't dominated by a long list.
