@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13973_builtin_call_constant_fold
-description: "slang#13973 (andy-slater, external, 10-28): max/min/abs/clamp on compile-time constants are not constant-folded (E39999 in array size / numthreads). Draft PR #13975 @a5ec653 (Approach A: [__constantFoldAs(op)] + Min/Max/Abs/Clamp BuiltinOperationKinds) PARKED 17:38Z on maintainer language design (jhelferty-nv per tangent-vector). Fan-out: #13988 (#13983) MERGED 11-02 e6718350f; drafts #13984 (#13978), #13991 (#13986), #13993 (#13985) parked on maintainer review since 10-28 22:41Z; #13989/#13990/#13994 filed-only. 4 operator decisions pending. 11-04 re-check: no activity; FINAL timer recheck-13975-design-fin-d0a9 11-11 14:00Z. Dated log in _history."
+description: "slang#13973 (andy-slater, external, 10-28): max/min/abs/clamp on compile-time constants are not constant-folded (E39999 in array size / numthreads). Draft PR #13975 @a5ec653 (Approach A: [__constantFoldAs(op)] + Min/Max/Abs/Clamp BuiltinOperationKinds) PARKED 17:38Z on maintainer language design (jhelferty-nv per tangent-vector). Fan-out: #13988 (#13983) MERGED 11-02 e6718350f; drafts #13984 (#13978), #13991 (#13986), #13993 (#13985) parked on maintainer review since 10-28 22:41Z; #13989/#13990/#13994 filed-only. 4 operator decisions pending. 11-04 + FINAL 11-11 re-checks: no activity; now on the task-hygiene parked register, no timers. Dated log in _history."
 ---
 
 # slang#13973: built-in calls on compile-time constants are not folded
@@ -40,8 +40,9 @@ own `gh-issue-shader-slang/slang-<n>` thread.
 (`abs(INT_MIN)` UB on CUDA/CPU/LLVM), #13994 (SPIRV-Tools CCP SIGFPE on vector int64 INT64_MIN / -1; `-O0` avoids it).
 **Merge order:** #13984 → #13991 → #13993 (#13993 also needs #13954). #13975 conflicts with #13984 (duplicate
 `_tryConvertIntegerValueToBaseType`) and overlaps the `abs` overloads that #13988 changed (merged as e6718350f), so #13975 must rebase over it when it un-parks.
-**Timer:** `recheck-13975-design-1ff4` fired 11-04 and found no activity (spirv-tools still b8c3b64b). The FINAL one-shot,
-`recheck-13975-design-fin-d0a9`, runs 11-11 14:00Z with the same scope. After it, the chain goes to the parked-chain register, with no more timers.
+**Timers: none.** `recheck-13975-design-1ff4` (11-04) and the FINAL `recheck-13975-design-fin-d0a9` (11-11) both found no activity
+(spirv-tools still b8c3b64b). Since 11-11 the chain is on the task-hygiene parked register (`parked["shader-slang/slang#13973"]`).
+It resumes only on a webhook (maintainer comment/review) or an operator "unpark".
 
 ## Pending decisions
 

@@ -10,6 +10,8 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [combined-review-14395-r1.md](combined-review-14395-r1.md) — slang-reviewer R1 combined review of PR #14395 (stage 1 of #14375), APPROVE_WITH_NITS (0 bugs / 6 gaps; Q1 vs+fs repro regression), 2026-11-07, 80 KB
 - [combined-review-14395-r2.md](combined-review-14395-r2.md) — slang-reviewer R2 combined review of PR #14395, APPROVE_WITH_NITS (0 bugs / 6 gaps), 2026-11-10, 82 KB
 - [combined-review-14395-r3.md](combined-review-14395-r3.md) — slang-reviewer R3 combined review of PR #14395 at 5447ca14b, REQUEST_CHANGES small (0 bugs / 8 gaps / 3 questions), 2026-11-10, 80 KB
+- [slangpy-1271-triage-memo.md](slangpy-1271-triage-memo.md) — slangpy-triager memo for slangpy#1271 (scalar vs float3 tensor perf gap; from_numpy vector dtype; default numthreads(32)), 2026-11-11
+- [triage-14451.md](triage-14451.md) — slang-triager memo for slang#14451 (integer mad emits GLSL.std.450 Fma / undefined *_fma on SPIR-V, GLSL, CUDA, CPU), 2026-11-11
 - [triage-14448.md](triage-14448.md) — slang-triager memo for slang#14448 (AbortCompilationException escapes getLayout/findAndCheckEntryPoint/getTargetHostCallable on E39997), 2026-11-10
 - [triage-14432.md](triage-14432.md) — slang-triager memo for slang#14432 (`slangc -E` exits 0 on preprocessor error), 2026-11-10
 - [triage-14394.md](triage-14394.md) — slang-triager memo for slang#14394 (Metal ParameterBlock → argument buffer), 2026-11-07
@@ -47,6 +49,7 @@ Verbatim coworker memos kept as `resource:` targets for chain records. The disti
 - [slangpy-1261-r2-review.md](slangpy-1261-r2-review.md) — slangpy-reviewer R2 review (APPROVE) of PR #1261, 2026-11-05
 - [slangpy-1264-r1-review.md](slangpy-1264-r1-review.md) — slangpy-reviewer R1 (APPROVE_WITH_NITS) of PR #1264 (#1260 cursor side PR), 2026-11-05
 - [slangpy-1263-r1-review.md](slangpy-1263-r1-review.md) — slangpy-reviewer R1 (REQUEST_CHANGES) of PR #1263 (#1262), 2026-11-05
+- [triage-14350.md](triage-14350.md) — slang-triager memo for slang#14350 (getSet order from lazy getUniqueID in the sort comparator; dup of #13474; rec A pre-assign IDs), 2026-11-11
 - [triage-14333.md](triage-14333.md) — slang-triager memo for slang#14333 (SV_Barycentrics first-only interpolation decoration read at two sites), 2026-11-05
 - [triage-14334.md](triage-14334.md) — slang-triager memo for slang#14334 (SPIR-V hull/domain patch Location mismatch, regressor #13078), 2026-11-05
 - [triage-14366.md](triage-14366.md) — slang-triager memo for slang#14366 (explicit patch-field Locations; front-end field Locations struct-relative in all stages; approaches A all-stage / B patch-only), 2026-11-06

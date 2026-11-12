@@ -74,6 +74,9 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   `/repositories/<id>/…`, which the gateway does not credential). The error JSON lands in stdout and the count stops at 100.
   Page by hand with `&per_page=100&page=N` and cross-check `total_count` (tick 317: 159 `waiting` runs, not 100).
 
+- **A `gh api … --jq` filter containing `pull_request!=null` is refused by a PreToolUse hook** ("Blocked by hook"; tick 339,
+  three calls lost). To tell an issue from a PR, use `gh pr view <n> -R <o>/<r> --json number,author,state,isDraft` (it errors on an issue).
+
 ## Worktree GC
 
 - **Build `wt-dirs.txt`** with `find /workspace/extra/ephemeral/prod-groups -maxdepth 3 -mindepth 3 -name .git -type f`

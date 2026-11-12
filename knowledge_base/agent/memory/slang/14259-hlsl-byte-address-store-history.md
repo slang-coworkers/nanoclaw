@@ -1,7 +1,7 @@
 ---
 type: chain-log
 title: slang#14259 — dated history (triage → four PRs)
-description: Dated readings of the #14259 chain from 11-03 triage through the 11-09 fourth PR #14416. Covers the maintainer redirects, the relays and corrections, and the side finds. Current state, the PR table and lessons live in the chain record. New dated entries append here.
+description: Dated readings of the #14259 chain from 11-03 triage through the 11-11 merge of #14416 and follow-ups #14456/#14458. Covers the maintainer redirects, the relays and corrections, and the side finds. Current state, the PR table and lessons live in the chain record. New dated entries append here.
 ---
 
 # slang#14259 — dated history
@@ -86,3 +86,42 @@ New dated entries go **here**, one bullet each. Condensed 2026-11-09 (OKF fold):
 - **~11:15Z DRAFT PR #14416** (head 6c2d639, 54 files), cmt 6738674373. See the record's PR table for its results and open question.
   At 11:19Z I told the triager that the vk lanes are not the DXC end-to-end check. By 11:24Z the PR body and the comment said the dx12/FXC
   lanes and the DXBC CHECKs are pending on Windows CI.
+
+## 11-09 → 11-11: #14416 through CI, merge, follow-ups #14456 / #14458
+
+Moved here from the chain record on 2026-11-11 (OKF fold, the record had regrown to 18.7 KB from dated appends).
+
+- **11-09 12:23Z [Triage Resolution] partial** on #14416 (head 029ff58, 56 files, draft). Peer R1 APPROVE_WITH_NITS, 0 bugs, nits applied;
+  54 docs/generated lanes in `expected-failures.txt`. Asked skiminki-nv: DXBC = "DXIL" at SM 5.1? #14416 or #14385? CI priority?
+  I decided the docs/generated regen issue is filed only at merge (no issue about an unmerged change).
+- **11-09 13:33Z** skiminki-nv answered (cmt 6741338648): DXBC yes ("if doable in a reasonable manner"), **#14416 chosen**, CI prioritized.
+  Relayed 13:34Z (in_reply_to=182): keep #14385/#14276 open until merge; treat Windows failures as real.
+- **11-09 14:59Z → 23:55Z, four FXC runs** (42626460801, 42640802392, 42683282272, 42696918574, 42712523888). dx12 SM 6.6 and SM 5.1 DXBC
+  CHECKs green; FXC accepts `NL`, `h`, `(1.0L / 0.0L)`; `0.1L*oneD` proves FXC types `L` as double. FXC mismatches, one at a time:
+  - `-0.0` sign lost (word 7), also in select form → skiminki-nv (cmt 6749121349) "downstream compiler issue", remove it. Fixer removed all three
+    SM 5.1 -0.0 stores (broader than asked, disclosed, cmt 6749238072), head b462124.
+  - `DBL_MAX * oneD` low word (word 13) → fixer removed the row by analogy (cmt 6751142817). Triager: **no further removals without the
+    maintainer's OK**; report each as a finding with a keep/remove question; collect all mismatches in one run.
+  - double NaN high word (word 22, `FFF02000`, inferred from FileCheck) → asked (PR cmt 6753215248); head 82bb5ba added 4 independent half
+    lanes, all of which passed. Status posted: PR cmt 6754721409, issue cmt 6754721673.
+- **11-10 09:08Z** skiminki-nv (cmt 6763431411): remove the NaN check with a comment. Head cb5434a skips words 21–22. Branch 9 behind master.
+- **11-11 08:19Z** skiminki-nv (cmt 6790842391, mention): summarize the test opens. Relayed with marker (in_reply_to=202), plus a master merge.
+  **08:23Z correction:** my relay said run 42789122903 "never ran"; in fact all test jobs succeeded and only `falcor-build-approval-gate` waited.
+- **11-11 09:07Z** summary posted (cmt 6791027544); master merged, no rebase (d98bcb0e2 + a602d642d). Regen count 55 lanes / 54 bundles (#14436).
+- **11-11 10:58Z** skiminki-nv (cmt 6794001555, mention): file a follow-up for the test opens. Sent to triager (in_reply_to=218); regen folded in.
+- **11-11 11:04Z #14456 filed** (Type=Testing; reply cmt 6794115626): §1 SM 5.1 FXC skips, §2 docs/generated regen.
+- **11-11 12:00Z** re-check `recheck-14259-approach-p-fd8e`: no row matched (CI green but `falcor-build-approval-gate`; blocked on review).
+  Next timer `recheck-14259-review-sta-a089` (11-16).
+- **11-11 12:01Z #14416 MERGED** by skiminki-nv (c66100b1e). Fixer [Fix] report drifted to Main; forwarded to triager 12:08Z. Fixer
+  proposal (cmt 6795341830): close #14385, keep #14276's C++/CUDA part, #13927 needs a rebase.
+- **11-11 12:08Z [Triage Resolution]:** HLSL part FIXED by #14322 + #14416.
+- **11-11 12:33Z** skiminki-nv edited #14456 (cmt 6795928409, no mention): §2 removed; generated tests wait for the maintainers' next
+  generation cycle. Relayed FYI to the triager (in_reply_to=4, pinned, its seq 124); no GitHub post.
+- **11-11 12:35Z** skiminki-nv CLOSED #14385 ("in favor of PR #14416 (merged)").
+- **11-11 12:56Z** skiminki-nv (cmt 6796414191, mention): keep #14276 for C++/CUDA; confirm the report is fixed; file an all-backend
+  RWByteAddressBuffer test follow-up and retarget #14276. Sent to triager (in_reply_to=256) with the marker.
+- **11-11 13:05Z #14458 filed** ("Test RWByteAddressBuffer loads and stores on all backends, and fix the bugs the tests find"; lists #14276
+  widths, #14283, #14157, #14282, #14323; related #14456/#14386). Triager sent fixer the #14276 retarget at 13:05:41Z (triager seq 131).
+  Verified 13:06Z: only my webhook session is on `gh-issue-shader-slang/slang-14458`.
+- **11-11 13:13Z** reported case confirmed fixed on master c66100b1e (fresh Release build): `.Store(0U,42.0L)` → DXC `rawBufferStore.f64`.
+  Reply cmt 6796775607. #14276 body now "Part of #14458" (was "Fixes #14259"), still draft @ 860cc7501.

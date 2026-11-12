@@ -63,3 +63,7 @@ fence PR #13792 (`286cdeee49`, 11-06) took 910 and set max = 39. Then #14360 (`a
 every draft still claiming 910 or v38/v39 must renumber at its next master merge: #13872, #14114, #13425 (conflicting
 now) and #13953. Before giving any of them a "merge master" go-ahead, have the fixer take the next free id after
 master's highest and set min = max to 41 (or whatever master's max + 1 is at that point).
+**11-11 09:03Z (per the #13425 re-chase; I have not re-checked):** master #14344 (`30f8633ac4`, Artificial decoration) took
+stable id **913** and set **min = max = 41**. Master's highest stable id is now 913. That also hits #13564, which claimed
+913/v39 on 11-05. Every draft that adds an IR op (#13872, #14114, #13425, #13564, #13953) must take an id above 913 and
+set min = max = 42 at its next master merge. `k_max` auto-merges silently, so bump it by hand.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14375 — entry points do not own the global varyings they use (prerequisite of #14335)"
-description: "Bot-filed 11-06 00:10Z by the #14334 chain (side find S1: a global `out : SV_Position` takes a varying Location, so VS/FS disagree). Became #14335's prerequisite when tangent-vector chose option C (11-06 21:07Z) and self-assigned it. Fixer n4rvnv (via triager j75jq7) posted the analysis 6696391551; tangent-vector steered stage 1 (22:40Z, 6697604956): module-membership ownership, staged PRs. Stage 1 is draft #14395 (11-07): R1-R3 reviewed and applied, @94bbcc178 on 11-10 with 'ready for a human reviewer' posted; waiting on tangent-vector (E30629 keep/drop) and a human review. Re-check recheck-14375-maint-qs-43b4 11-11 17:00Z."
+description: "Bot-filed 11-06 00:10Z by the #14334 chain (side find S1: a global `out : SV_Position` takes a varying Location, so VS/FS disagree). Became #14335's prerequisite when tangent-vector chose option C (11-06 21:07Z) and self-assigned it. Fixer n4rvnv (via triager j75jq7) posted the analysis 6696391551; tangent-vector steered stage 1 (22:40Z, 6697604956): module-membership ownership, staged PRs. Stage 1 is draft #14395 (11-07): R1-R3 reviewed and applied, @94bbcc178 on 11-10 with 'ready for a human reviewer' posted; waiting on tangent-vector (E30629 keep/drop) and a human review. Re-check recheck-14375-maint-qs-43b4 fired 11-11 (case a, record only); now webhook-only."
 tags: [spirv, glsl, varying-location, global-varyings, parameter-binding, prerequisite]
 ---
 
@@ -21,7 +21,7 @@ Same fixer session as #14335 (`sess-1793858928003-n4rvnv`), reached through tria
 | maintainer steer | tangent-vector [6697604956](https://github.com/shader-slang/slang/issues/14375#issuecomment-6697604956) (22:40Z); bot follow-up [6698074996](https://github.com/shader-slang/slang/issues/14375#issuecomment-6698074996) with 4 more questions. |
 | stage 1 | Draft **#14395** (`fix/issue-14375-stage1`, `pr: breaking change`, "Part of #14375"), head **94bbcc178**, pr-mapping → fixer `n4rvnv`. Peer reviews R1/R2 APPROVE_WITH_NITS, R3 REQUEST_CHANGES (small, E30629 scope), all applied. Diagnostics: W30628, E38049, E30629 (SPIR-V/GLSL/WGSL only), W38044. "Ready for a human reviewer" posted [6759534205](https://github.com/shader-slang/slang/issues/14375#issuecomment-6759534205). |
 | waiting on | tangent-vector: E30629 keep/drop, then a human review. Ready flip is the maintainers' (no operator ask). Stages 2 (explicit-Location two-phase binding) and 3 (IR `inout`) not started. |
-| timer | one-shot `recheck-14375-maint-qs-43b4`, 2026-11-11T17:00Z; its decision table covers the 22:40Z steer. Webhooks deliver replies to the fixer. |
+| timer | none. One-shot `recheck-14375-maint-qs-43b4` fired 11-11 17:00Z, case (a): record only. Webhooks deliver replies to the fixer. |
 
 ## The problem (fixer's analysis, 11-06 21:35Z)
 

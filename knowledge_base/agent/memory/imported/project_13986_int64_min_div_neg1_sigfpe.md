@@ -50,4 +50,9 @@ jhelferty-nv; the question has no @-mention, but the assignee is subscribed). #1
 and #13984 is still an OPEN draft. The fixer posted nothing and re-armed to 11-11 19:00Z. Nothing new for the operator (5 days
 with no maintainer reply). It is a candidate for the weekly list if it is still silent at the 11-11 re-check.
 
+**11-11 19:01Z fixer [Report] (verified live 11-11):** no change. The last #13986 comment is still 6639852932; #13991 is an OPEN
+draft @497b797, 0 reviews, MERGEABLE; #13984 is still an OPEN draft. The fixer posted nothing and re-armed to 11-13 19:00Z
+(t-1b008e, its claim). Silent 7 days, so Main added it to the **parked-on-maintainer section of the 11-16 weekly list**
+(decision for jhelferty-nv: diagnostic none/warn/error + 32-bit INT_MIN/-1). No dashboard ping before then.
+
 **Resume on:** fixer report via its parent edge (triager) → the #13973 Main's chain; maintainer reply on #13986/#13991.

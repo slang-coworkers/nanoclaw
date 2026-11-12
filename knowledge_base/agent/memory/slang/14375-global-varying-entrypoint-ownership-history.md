@@ -86,3 +86,9 @@ The doc fix adds a "Module-scope varyings" user-guide section. The 3 commits aft
 The visible correction is posted as [6759534205](https://github.com/shader-slang/slang/issues/14375#issuecomment-6759534205) and ends with "ready for a human reviewer"; 6755918550 and 6758120339 now open with correction notes. The fixer reports 11931/11934 (fp8); CI run 42759400774.
 **Ready-flip pending:** tangent-vector asked to be pinged when #14395 was ready (6758025498), and that is now done. The maintainers flip it; no operator ask. Waiting on tangent-vector: the E30629 keep/drop call, then a human review.
 The explanation HTML (r3b) went to Main as a file (/workspace/inbox/a2a-1794287356468-ncfocc/).
+
+**11-11 17:00Z — `recheck-14375-maint-qs-43b4` fired: case (a), record only, nothing posted** (checked live).
+tangent-vector answered (a)–(d) of 6696391551 at 11-06 22:40Z ([6697604956](https://github.com/shader-slang/slang/issues/14375#issuecomment-6697604956)): (a) keep the globals in program-scope reflection as compatibility data only; (b) no reachability, ownership is module membership; (c) no strong preference, stacked by default; (d) this work comes before #13892.
+The bot replied at 23:10Z (6698074996), and draft #14395 followed at 01:20Z 11-07. Since 11-06 21:41Z there are no comments, reviews or review comments on #14335.
+`gh pr list --head fix/issue-14375` returns `[]`, because stage 1 is on `fix/issue-14375-stage1` (#14395: draft, OPEN, @94bbcc178, last updated 11-10 05:07Z).
+Nobody has commented on #14375 or #14395 since the 11-10 05:07Z "ready for a human reviewer" post (≈36 h). The chain waits on tangent-vector's E30629 call and a human review. No timer is set; webhooks cover it.

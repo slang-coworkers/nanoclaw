@@ -110,3 +110,5 @@ slang-pr-approver is `paused=1`, so it was queued in `data/approver-pause-queue.
 at 00:36:34Z (verified). The fixer removed the worktree and the sentinel and edited the issue status comment to its final
 state. S1 is already filed as [#14439](14439-slangc-E-pass-through-exit-code.md) (still open, filed-only). The fixer's
 00:38Z report still lists S1 as unrouted; that line is stale, and no action is needed.
+
+**11-11 18:40Z.** The triager closed its side of the chain ([Triage Resolution]: fixed, nothing more posted, sentinel removed). Side finds #14439/#14440 are now sub-issues of umbrella [#14459](14459-remove-pass-through-mode-umbrella.md), which jhelferty-nv asked for on #14440. A sibling Main session handled that.

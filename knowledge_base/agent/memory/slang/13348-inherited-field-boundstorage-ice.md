@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13348 — inherited field through property/subscript BoundStorage → E99997 ICE
-description: Triaged + reproduced at 4c88395ea; three VarDecl-only BoundMember consumers reject InheritanceDecl. Self-assigned member kaizhangNV, NO-GO ratified 2026-09-30; still silent 2026-10-07, 10-14, 10-21, 10-28 and 11-04, re-chase rechase-13348-assignee-4622 (2026-11-11)
+description: Triaged + reproduced at 4c88395ea; three VarDecl-only BoundMember consumers reject InheritanceDecl. Self-assigned member kaizhangNV, NO-GO ratified 2026-09-30; still silent 2026-10-07, 10-14, 10-21, 10-28, 11-04 and 11-11, re-chase rechase-13348-assignee-9551 (2026-11-18)
 ---
 
 # slang#13348
@@ -23,7 +23,7 @@ Reporter kaizhangNV (MEMBER, `Dev Opened`, **self-assigned**), filed 2026-09-30T
 
 **NO-GO, ratified by Orchestrator 2026-09-30.** The reporter self-assigned it, so no fixer is dispatched. This matches #13048, #13337 and #13336. The triage comment offers a bot draft PR if anyone asks for one.
 
-**Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ slang-fixer on the canonical thread with the memo + Approach A), or the re-chase `rechase-13348-assignee-4622` (2026-11-11T09:00Z).
+**Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ slang-fixer on the canonical thread with the memo + Approach A), or the re-chase `rechase-13348-assignee-9551` (2026-11-18T09:00Z).
 
 ## Re-chase log
 
@@ -32,3 +32,4 @@ Reporter kaizhangNV (MEMBER, `Dev Opened`, **self-assigned**), filed 2026-09-30T
 - **2026-10-21 (`…-5d97`):** still silent. The issue is open and assigned to kaizhangNV, with no new comment or timeline event since 10-08. No PR, commit or cross-reference mentions #13348. kaizhangNV is active on unrelated PRs: #13712 (merged, a texture-format revert that touches `slang-lower-to-ir.cpp` but not BoundStorage), and #13717 and #13798 (open, both in `slang-check-*`). None of their bodies reference #13348, BoundStorage or InheritanceDecl. Re-armed as `…-a368`.
 - **2026-10-28 (`…-a368`):** still silent. The issue is open and assigned to kaizhangNV, with one comment (the bot triage) and no timeline event since 10-08. No PR or commit mentions #13348, "member flavor" or BoundStorage. kaizhangNV's one new PR, #13898 (merged 10-28, generic entry-point capabilities), touches `slang-lower-to-ir.cpp` only for the Shader64BitIndexing entry-point helper, not BoundStorage. Re-armed as `…-1007`.
 - **2026-11-04 (`…-1007`):** still silent. The issue is open and assigned to kaizhangNV, with one comment (the bot triage) and no timeline event since 10-08. No PR, commit or issue mentions #13348 or "unexpected member flavor". kaizhangNV's new PRs are #13987 (open, texture-format restore), #14051 (merged 11-04, portable ray-tracing API) and #14068 (merged, packed errors). #13987 and #14051 touch `slang-lower-to-ir.cpp`, but only in `ValLoweringVisitor` (:2920) and `lowerFrontEndEntryPointToIR` (:15325), not BoundStorage, and no body references the issue. Re-armed as `…-4622`.
+- **2026-11-11 (`…-4622`):** still silent. The issue is open and assigned to kaizhangNV, with one comment (the bot triage) and no timeline event since 10-08 (`updated_at` 10-08T01:18Z). No PR, commit or issue mentions #13348 or "unexpected member flavor". kaizhangNV opened no PR since 11-04; #13987 is still open and untouched since 10-30. Their only new item is issue #14423 (11-09, variadic-pack reflection), which is unrelated. Re-armed as `…-9551`.

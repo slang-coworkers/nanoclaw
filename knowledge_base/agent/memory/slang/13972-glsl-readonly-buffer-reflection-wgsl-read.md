@@ -30,3 +30,8 @@ tags: [slang, reflection, wgsl, slang-rhi, parked]
   also on v2026.20 and without `readonly`; the Slang-syntax twin is correct. **11-04 16:22Z: duplicate of
   [#14256](14256-glsl-local-size-lost-non-shader-entry-point.md)** (API-path `local_size_x` lost; fix = draft #14275). Not filed, not posted.
   Triager's build dirs `build-13972`, `build-13972-vk` in its slang-rhi clone are kept for re-runs until #13972 closes.
+- **11-11 re-check t-72709c (16:01Z):** still silent 7 days after the ping. Main verified: updated_at 11-04 16:15Z, last
+  comment is ours (6635682718), no cross-referenced PR, no commit to `slang-reflection-api.cpp` since 11-04. No GitHub post
+  (per 11-04 decision). **On the 11-16 operator weekly list** as "parked on maintainer design pick (released regression)".
+  No further one-shot timer; the chain resumes on a jkwak-work reply (triager sends `[Triage handoff]` to slang-fixer on
+  gh-issue-shader-slang/slang-13972), a fix or revert landing, or an operator instruction.
