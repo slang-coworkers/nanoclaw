@@ -6,7 +6,13 @@ import path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 
-import { CODEX_MCP_BRIDGE_OVERRIDES_ENV, CODEX_REPLY_TOOL, CODEX_TOOL, configToOverrides } from './codex-mcp-bridge.js';
+import {
+  CODEX_MCP_BRIDGE_OVERRIDES_ENV,
+  CODEX_REPLY_TOOL,
+  CODEX_TOOL,
+  canonicalToolArgs,
+  configToOverrides,
+} from './codex-mcp-bridge.js';
 
 // The bridge must be a drop-in for codex 0.153.4's `codex mcp-server`: same two
 // tools, same input schema, same result shape (text + structuredContent.threadId),
@@ -47,6 +53,38 @@ beforeAll(async () => {
 afterAll(async () => {
   await client?.close().catch(() => undefined);
   rmSync(binDir, { recursive: true, force: true });
+});
+
+describe('canonicalToolArgs', () => {
+  // OpenCode drops the hyphens from MCP argument names; before this mapping the
+  // bridge ignored `developerinstructions`, and OpenCode critiques ran without
+  // the reviewer block.
+  const props = CODEX_TOOL.inputSchema.properties as Record<string, unknown>;
+  it('maps the names OpenCode sends back to the schema names', () => {
+    expect(canonicalToolArgs({ prompt: 'p', developerinstructions: 'd', approvalpolicy: 'never' }, props)).toEqual({
+      prompt: 'p',
+      'developer-instructions': 'd',
+      'approval-policy': 'never',
+    });
+  });
+  it('keeps exact names and unknown keys', () => {
+    expect(canonicalToolArgs({ 'developer-instructions': 'd', extra: 1 }, props)).toEqual({
+      'developer-instructions': 'd',
+      extra: 1,
+    });
+  });
+  it('prefers the exact name when both spellings arrive', () => {
+    expect(canonicalToolArgs({ developerinstructions: 'x', 'developer-instructions': 'y' }, props)).toEqual({
+      'developer-instructions': 'y',
+    });
+    expect(canonicalToolArgs({ 'developer-instructions': 'y', developerinstructions: 'x' }, props)).toEqual({
+      'developer-instructions': 'y',
+    });
+  });
+  it('maps codex-reply arguments too', () => {
+    const replyProps = CODEX_REPLY_TOOL.inputSchema.properties as Record<string, unknown>;
+    expect(canonicalToolArgs({ threadid: 't', prompt: 'p' }, replyProps)).toEqual({ threadId: 't', prompt: 'p' });
+  });
 });
 
 describe('configToOverrides', () => {
