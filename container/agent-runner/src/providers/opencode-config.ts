@@ -11,6 +11,9 @@ export function buildOpenCodeServerEnv(
   environment: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
   return {
+    // With models.opencode.ai unreachable (egress lockdown) a cold OpenCode
+    // never ran a turn; with the fetch off it uses its bundled model snapshot.
+    OPENCODE_DISABLE_MODELS_FETCH: 'true',
     ...environment,
     OPENCODE_DISABLE_PROJECT_CONFIG: 'true',
     OPENCODE_CONFIG_CONTENT: JSON.stringify(config),
