@@ -187,8 +187,17 @@ export interface OpenCodeSharedRuntimeDeps {
   createQuestionClient(url: string): QuestionClient;
 }
 
+// `opencode serve` took 10-30 s to start on a loaded host, past the 10 s
+// default above, so the shared runtime waits longer.
+const DEFAULT_SERVER_START_TIMEOUT_MS = 60_000;
+
+export function serverStartTimeoutMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.OPENCODE_SERVER_START_TIMEOUT_MS?.trim();
+  return raw && /^\d+$/.test(raw) && Number(raw) > 0 ? Number(raw) : DEFAULT_SERVER_START_TIMEOUT_MS;
+}
+
 const defaultSharedRuntimeDeps: OpenCodeSharedRuntimeDeps = {
-  spawnServer: (config) => spawnOpencodeServer(config),
+  spawnServer: (config) => spawnOpencodeServer(config, serverStartTimeoutMs()),
   // OpenCode scopes sessions and tool execution by the directory carried by
   // the SDK client. The server process cwd is not sufficient: without this
   // option the SDK defaults requests to the server's launch directory.

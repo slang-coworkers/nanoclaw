@@ -194,6 +194,22 @@ export function resolveOpenCodeExecutionPolicy(): Record<string, unknown> {
   };
 }
 
+// Core's human-question tool waits up to five minutes. This request budget
+// leaves room for delivery/polling.
+const MCP_REQUEST_TIMEOUT_MS = 330_000;
+
+// OpenCode 1.18 reads one per-server `timeout` for both connecting and each
+// request. Without it, connecting gets 30 s, which a slow server misses
+// (slang-mcp answers initialize in ~33 s), so every server gets the request
+// budget for both.
+function withMcpTimeout(servers: Record<string, unknown>): Record<string, unknown> {
+  const timeout =
+    parseLimitEnv('OPENCODE_MCP_TIMEOUT_MS', process.env.OPENCODE_MCP_TIMEOUT_MS) ?? MCP_REQUEST_TIMEOUT_MS;
+  return Object.fromEntries(
+    Object.entries(servers).map(([name, server]) => [name, { timeout, ...(server as Record<string, unknown>) }]),
+  );
+}
+
 export function buildOpenCodeConfig(
   options: ProviderOptions,
   configuration?: ResolvedRuntimeConfiguration,
@@ -205,12 +221,15 @@ export function buildOpenCodeConfig(
   return {
     ...inference,
     permission: configuration ? configuration.executionPolicy : resolveOpenCodeExecutionPolicy(),
-    mcp: configuration ? configuration.mcpServers : mcpServersToOpenCodeConfig(options.mcpServers),
+    mcp: withMcpTimeout(
+      (configuration ? configuration.mcpServers : mcpServersToOpenCodeConfig(options.mcpServers)) as Record<
+        string,
+        unknown
+      >,
+    ),
     autoupdate: false,
     snapshot: false,
-    // Core's human-question tool waits up to five minutes. This request budget
-    // leaves room for delivery/polling; MCP connection startup keeps its own limit.
-    experimental: { mcp_timeout: 330_000 },
+    experimental: { mcp_timeout: MCP_REQUEST_TIMEOUT_MS },
     // The runner renders this file once per turn. Native steps, compaction
     // continuation and Task children reread it through the instructions pipeline.
     instructions: [`${AGENT_DIR}/CLAUDE.md`, `${AGENT_DIR}/CLAUDE.local.md`, openCodeInstructionsPath()],
