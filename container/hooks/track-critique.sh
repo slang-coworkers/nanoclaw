@@ -26,7 +26,8 @@ esac
 # verbatim TASK block; at 500 chars both were silently missed. `|| true`: a
 # field longer than the pipe buffer makes jq die of SIGPIPE when head exits,
 # which under pipefail would abort the hook.
-DEV_INST=$(echo "$INPUT" | jq -r '.tool_input."developer-instructions" // .tool_input.developer_instructions // empty' 2>/dev/null | head -c 2000 || true)
+# OpenCode drops the hyphens from MCP argument names (developerinstructions).
+DEV_INST=$(echo "$INPUT" | jq -r '.tool_input."developer-instructions" // .tool_input.developer_instructions // .tool_input.developerinstructions // empty' 2>/dev/null | head -c 2000 || true)
 PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null | head -c 16000 || true)
 # Herestrings, not `echo | grep -q`: under pipefail, grep -q's early exit can
 # SIGPIPE the echo (exit 141) and abort the whole hook mid-run — a rare,

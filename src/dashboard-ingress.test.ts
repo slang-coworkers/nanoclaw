@@ -177,6 +177,65 @@ describe('dashboard ingress', () => {
   });
 });
 
+describe('dashboard ingress — sender_id (Discord sidecar, #2274)', () => {
+  // The Discord sidecar posts on behalf of a Discord user. Without sender_id
+  // every post arrives as dashboard-admin, the owner, so a Discord user would
+  // pass the router's admin gates as the owner.
+  async function post(body: Record<string, unknown>) {
+    const routeInboundFn = vi.fn().mockResolvedValue(undefined);
+    const handle = startDashboardIngress({ host: '127.0.0.1', port: 0, isAdapterReady: () => true, routeInboundFn });
+    handles.push(handle);
+    await once(handle.server, 'listening');
+    const address = handle.server.address();
+    if (!address || typeof address === 'string') throw new Error('bind failed');
+    const res = await fetch(`http://127.0.0.1:${address.port}/api/dashboard/inbound`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ group: 'support', content: 'hello', ...body }),
+    });
+    return { res, routeInboundFn };
+  }
+
+  function senderOf(routeInboundFn: ReturnType<typeof vi.fn>) {
+    const content = JSON.parse(routeInboundFn.mock.calls[0][0].message.content);
+    return { sender: content.sender, senderId: content.senderId };
+  }
+
+  it('routes a discord:<id> sender_id as that sender instead of dashboard-admin', async () => {
+    const { res, routeInboundFn } = await post({ sender_id: 'discord:123456789012345678' });
+    expect(res.status).toBe(200);
+    expect(senderOf(routeInboundFn)).toEqual({
+      sender: 'discord:123456789012345678',
+      senderId: 'discord:123456789012345678',
+    });
+  });
+
+  it('keeps dashboard-admin when sender_id is absent or null', async () => {
+    for (const body of [{}, { sender_id: null }]) {
+      const { res, routeInboundFn } = await post(body);
+      expect(res.status).toBe(200);
+      expect(senderOf(routeInboundFn)).toEqual({ sender: 'dashboard-admin', senderId: 'dashboard-admin' });
+    }
+  });
+
+  it.each([
+    ['dashboard-admin'],
+    ['discord:'],
+    ['discord:abc'],
+    ['discord:1234'],
+    ['discord:12345678901234567890123456'],
+    ['slack:123456789'],
+    [' discord:123456789'],
+    ['discord:123456789\n'],
+    [123456789],
+  ])('rejects sender_id %j with 400 and routes nothing', async (senderId) => {
+    const { res, routeInboundFn } = await post({ sender_id: senderId });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: 'sender_id must be discord:<numeric id>' });
+    expect(routeInboundFn).not.toHaveBeenCalled();
+  });
+});
+
 describe('dashboard ingress — session-cost-ceiling (NanoClaw #1, "set ceiling v2")', () => {
   async function post(port: number, body: unknown) {
     return fetch(`http://127.0.0.1:${port}/api/dashboard/session-cost-ceiling`, {

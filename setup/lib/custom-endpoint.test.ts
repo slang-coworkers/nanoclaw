@@ -34,6 +34,10 @@ describe('endpointModelDefaults', () => {
       CODEX_MODEL: 'azure/openai/gpt-6.1-sol',
       CODEX_MODEL_PROVIDER: 'nvinference',
       CODEX_BASE_URL: 'https://inference-api.nvidia.com/v1',
+      OPENCODE_PROVIDER: 'openai',
+      OPENCODE_BASE_URL: 'https://inference-api.nvidia.com/v1',
+      OPENCODE_MODEL: 'openai/aws/anthropic/bedrock-claude-opus-5-5',
+      OPENCODE_SMALL_MODEL: 'openai/openai/openai/gpt-6-luna',
     });
   });
 
