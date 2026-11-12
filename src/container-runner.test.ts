@@ -1222,3 +1222,71 @@ describe('migrateStandingInstructions', () => {
     expect(fs.readdirSync(dir)).toEqual([]);
   });
 });
+
+describe('composeSessionSpec applies the per-group model policy', () => {
+  // src/model-policy.ts: spawn writes each role's model into the container env,
+  // in one lane only, and refuses a weights=open group that would call a closed model.
+  const saved = process.env.OPENCODE_PROVIDER;
+  afterEach(() => {
+    if (saved === undefined) delete process.env.OPENCODE_PROVIDER;
+    else process.env.OPENCODE_PROVIDER = saved;
+  });
+
+  async function seedGroup(id: string, provider: string | null, weights: string) {
+    const { createAgentGroup } = await import('./db/agent-groups.js');
+    const { ensureContainerConfig, updateContainerConfigScalars } = await import('./db/container-configs.js');
+    await createAgentGroup({
+      id,
+      name: id,
+      folder: id,
+      agent_provider: provider,
+      created_at: '2026-11-12T00:00:00.000Z',
+    });
+    await ensureContainerConfig(id, provider);
+    await updateContainerConfigScalars(id, { weights });
+  }
+
+  it('gives an open OpenCode group open models and overrides the provider lane', async () => {
+    process.env.OPENCODE_PROVIDER = 'openai';
+    await seedGroup('ag-policy-open', 'opencode', 'open');
+    const spec = await composeSessionSpec({
+      agentGroup: { ...agentGroup, id: 'ag-policy-open', folder: 'ag-policy-open', agent_provider: 'opencode' },
+      session,
+      containerName: 'nanoclaw-v2-policy-1700000000000',
+      mounts,
+      containerConfig,
+      mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
+      // The OpenCode provider contributes the install's small model; the group's policy must win.
+      contribution: { env: { OPENCODE_SMALL_MODEL: 'openai/openai/openai/gpt-6-luna' } } as never,
+      gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+      provider: 'opencode',
+      instanceId: 'test-instance-id',
+    });
+    const agent = spec.containers[0];
+    expect(agent.env).toMatchObject({
+      NANOCLAW_MODEL_WEIGHTS: 'open',
+      OPENCODE_MODEL: 'openai/nvidia/zai-org/glm-5.3',
+      OPENCODE_SMALL_MODEL: 'openai/nvidia/zai-org/glm-5.3-flash',
+      INTENT_ROUTER_OPENAI_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3',
+    });
+    expect(agent.contributedEnv?.OPENCODE_SMALL_MODEL).toBeUndefined();
+  });
+
+  it('refuses to start a Claude group set to open weights', async () => {
+    await seedGroup('ag-policy-claude', null, 'open');
+    await expect(
+      composeSessionSpec({
+        agentGroup: { ...agentGroup, id: 'ag-policy-claude', name: 'ag-policy-claude', folder: 'ag-policy-claude' },
+        session,
+        containerName: 'nanoclaw-v2-policy-claude-1700000000000',
+        mounts,
+        containerConfig,
+        mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
+        contribution: {} as never,
+        gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+        instanceId: 'test-instance-id',
+      }),
+    ).rejects.toThrow('Model policy refuses to start group "ag-policy-claude"');
+  });
+});

@@ -294,12 +294,22 @@ function inputWithDeveloperInstructions(prompt: string, dev?: string): string {
   return dev && dev.trim() ? `Developer instructions:\n${dev.trim()}\n\n${prompt}` : prompt;
 }
 
+/**
+ * The model a critique runs on: the group's critic model (NANOCLAW_CRITIC_MODEL,
+ * set per container by the host's model policy), else CODEX_MODEL. A Codex
+ * group's CODEX_MODEL is its doer model, so the critic needs its own setting to
+ * differ from it.
+ */
+export function criticModel(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  return env.NANOCLAW_CRITIC_MODEL || env.CODEX_MODEL || undefined;
+}
+
 export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: string; text: string }> {
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim()) throw new Error('codex: `prompt` is required');
   const overrides = [...runnerOverrides(), ...configToOverrides(args.config)];
   if (args.model) overrides.push(`model=${tomlBasicString(args.model)}`);
   const cwd = args.cwd || process.env.CODEX_MCP_CWD || process.cwd();
-  const model = args.model || process.env.CODEX_MODEL || undefined;
+  const model = args.model || criticModel();
   const server = await bootAppServer(overrides);
   let threadId: string;
   try {
@@ -348,7 +358,7 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
     const overrides = runnerOverrides();
     const server = await bootAppServer(overrides);
     const cwd = process.env.CODEX_MCP_CWD || process.cwd();
-    const model = process.env.CODEX_MODEL || undefined;
+    const model = criticModel();
     try {
       const resumed = await startOrResumeCodexThread(server, threadId, {
         cwd,
@@ -384,6 +394,28 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
   }
 }
 
+/**
+ * Return `args` with each key renamed to the schema property it names. MCP
+ * clients may rewrite property names: OpenCode drops the hyphens, so
+ * `developer-instructions` arrives as `developerinstructions`. The bridge read
+ * only the schema spelling, so every critique run from an OpenCode group lost
+ * its reviewer instructions. A key matches a property when both are equal
+ * after removing `-` and `_` and lowercasing; a key with no match is kept.
+ */
+export function canonicalToolArgs(
+  args: Record<string, unknown>,
+  properties: Readonly<Record<string, unknown>>,
+): Record<string, unknown> {
+  const fold = (key: string) => key.replace(/[-_]/g, '').toLowerCase();
+  const byFolded = new Map(Object.keys(properties).map((name) => [fold(name), name]));
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(args)) {
+    const canonical = key in properties ? key : (byFolded.get(fold(key)) ?? key);
+    if (!(canonical in out) || key === canonical) out[canonical] = value;
+  }
+  return out;
+}
+
 // ── MCP server ──────────────────────────────────────────────────────────────────────────────────
 
 export function createBridgeServer(): Server {
@@ -391,7 +423,11 @@ export function createBridgeServer(): Server {
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [CODEX_TOOL, CODEX_REPLY_TOOL] }));
   server.setRequestHandler(CallToolRequestSchema, async (req) => {
     const name = req.params.name;
-    const args = (req.params.arguments ?? {}) as Record<string, unknown>;
+    const raw = (req.params.arguments ?? {}) as Record<string, unknown>;
+    const args = canonicalToolArgs(
+      raw,
+      (name === 'codex-reply' ? CODEX_REPLY_TOOL : CODEX_TOOL).inputSchema.properties as Record<string, unknown>,
+    );
     try {
       const r =
         name === 'codex'
