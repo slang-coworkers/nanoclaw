@@ -43,7 +43,7 @@ export function mcpServersToOpenCodeConfig(
     // never silently launched in the wrong directory.
     const args = cfg.args ?? [];
     // OpenCode has no env-by-name indirection, so envInherit names resolve to
-    // values here. They live only in OPENCODE_CONFIG_CONTENT, never on disk.
+    // values here.
     const env = resolveEnvInherit(cfg, process.env, name);
     out[name] = {
       type: 'local',
