@@ -74,7 +74,7 @@ const issueOpened = JSON.stringify({
   },
 });
 
-const shadow = { mode: 'shadow' as const, rosterPath: '/nonexistent', org: 'shader-slang' };
+const shadow = { mode: 'shadow' as const, rosterPath: '/nonexistent', org: 'shader-slang', repos: null };
 const off = { ...shadow, mode: 'off' as const };
 const failingLookups = {
   repoPermission: async () => {

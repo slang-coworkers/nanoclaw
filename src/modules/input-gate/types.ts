@@ -40,6 +40,8 @@ export interface AllowlistResult {
     rosterHit: boolean;
     permission?: string;
     orgMember?: boolean;
+    /** False when the delivery's repo is not protected, so its permission was not asked. */
+    repoProtected?: boolean;
     lookupError?: 'permission' | 'org';
   };
 }

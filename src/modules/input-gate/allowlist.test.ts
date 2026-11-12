@@ -4,7 +4,7 @@ import path from 'path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { checkAllowlist, loadRoster, type GitHubLookups } from './allowlist.js';
+import { checkAllowlist, isProtectedRepo, loadRoster, type GitHubLookups } from './allowlist.js';
 import type { GateActor } from './types.js';
 
 const repo = 'shader-slang/slang';
@@ -105,10 +105,64 @@ describe('checkAllowlist (Check 1)', () => {
     expect(r).toMatchObject({ allowlisted: false, evidence: { lookupError: 'permission' } });
   });
 
+  it('a repo outside the org skips the permission lookup and keeps the org lookup', async () => {
+    const l = lookups('admin', false);
+    const r = await checkAllowlist(actor({ association: 'OWNER' }), {
+      repo: 'alice/fork',
+      org,
+      roster: new Set(),
+      lookups: l,
+    });
+    expect(r).toMatchObject({ allowlisted: false, evidence: { repoProtected: false } });
+    expect(r.evidence.permission).toBeUndefined();
+    expect(l.repoPermission).not.toHaveBeenCalled();
+    expect(l.orgMember).toHaveBeenCalledWith(org, 'alice');
+  });
+
+  it('an explicit repo list replaces the org rule', async () => {
+    const l = lookups('write', false);
+    const ctx = { org, roster: new Set<number>(), lookups: l, repos: ['slang-coworkers/nanoclaw'] };
+    expect(await checkAllowlist(actor({ association: 'MEMBER' }), { ...ctx, repo })).toMatchObject({
+      allowlisted: false,
+      evidence: { repoProtected: false },
+    });
+    expect(
+      await checkAllowlist(actor({ association: 'MEMBER' }), { ...ctx, repo: 'Slang-Coworkers/NanoClaw' }),
+    ).toMatchObject({ allowlisted: true, via: 'permission', evidence: { repoProtected: true } });
+  });
+
+  it('a Bot account is allowlisted by roster id only, with no lookup', async () => {
+    const l = lookups('write', true);
+    const bot = actor({ login: 'review-app[bot]', type: 'Bot', association: 'MEMBER' });
+    expect(await checkAllowlist(bot, { repo, org, roster: new Set(), lookups: l, prefilter: false })).toMatchObject({
+      allowlisted: false,
+      via: null,
+    });
+    expect(l.repoPermission).not.toHaveBeenCalled();
+    expect(l.orgMember).not.toHaveBeenCalled();
+    expect(await checkAllowlist({ ...bot, id: 9 }, { repo, org, roster: new Set([9]), lookups: l })).toMatchObject({
+      allowlisted: true,
+      via: 'roster',
+    });
+  });
+
   it('an org lookup failure alone is recorded as org', async () => {
     const l = lookups('read', new Error('timeout'));
     const r = await checkAllowlist(actor({ association: 'MEMBER' }), { repo, org, roster: new Set(), lookups: l });
     expect(r).toMatchObject({ allowlisted: false, evidence: { lookupError: 'org' } });
+  });
+});
+
+describe('isProtectedRepo', () => {
+  it('counts every repo of the org when no list is set, ignoring case', () => {
+    expect(isProtectedRepo('Shader-Slang/slang', 'shader-slang', null)).toBe(true);
+    expect(isProtectedRepo('shader-slang-fork/slang', 'shader-slang', null)).toBe(false);
+    expect(isProtectedRepo('', 'shader-slang', null)).toBe(false);
+  });
+
+  it('counts only the listed repos when a list is set', () => {
+    expect(isProtectedRepo('shader-slang/slang', 'shader-slang', ['shader-slang/slangpy'])).toBe(false);
+    expect(isProtectedRepo('shader-slang/slangpy', 'shader-slang', ['shader-slang/slangpy'])).toBe(true);
   });
 });
 

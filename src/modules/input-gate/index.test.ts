@@ -16,7 +16,12 @@ import {
 } from './index.js';
 import { listGateDecisions } from './store.js';
 
-const shadow: GateSettings = { mode: 'shadow', rosterPath: '/nonexistent/roster.json', org: 'shader-slang' };
+const shadow: GateSettings = {
+  mode: 'shadow',
+  rosterPath: '/nonexistent/roster.json',
+  org: 'shader-slang',
+  repos: null,
+};
 const lookups = { repoPermission: vi.fn(async () => 'read'), orgMember: vi.fn(async () => false) };
 
 const mention = JSON.stringify({
@@ -116,10 +121,17 @@ describe('readGateSettings', () => {
     delete process.env.NANOCLAW_INPUT_GATE;
     delete process.env.NANOCLAW_INPUT_GATE_ROSTER;
     delete process.env.NANOCLAW_INPUT_GATE_ORG;
+    delete process.env.NANOCLAW_INPUT_GATE_REPOS;
     const s = readGateSettings();
     expect(s.mode).toBe('off');
     expect(s.rosterPath.endsWith('data/input-gate-roster.json')).toBe(true);
     expect(s.org).toBe('shader-slang');
+    expect(s.repos).toBeNull();
+  });
+
+  it('reads the protected repo list, dropping blanks', () => {
+    process.env.NANOCLAW_INPUT_GATE_REPOS = ' shader-slang/slang, ,shader-slang/slangpy ';
+    expect(readGateSettings().repos).toEqual(['shader-slang/slang', 'shader-slang/slangpy']);
   });
 
   it('reads the mode from .env when the environment does not set it', () => {

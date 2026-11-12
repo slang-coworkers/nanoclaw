@@ -14,8 +14,14 @@ waits for it, and turning it on cannot change what any delivery does.
   mention).
 - **Check 1 (threat model): who is it?** An account is *allowlisted* when, in this order:
   1. its numeric GitHub id is in the maintainer roster;
-  2. its repo permission is `write` or above;
+  2. its repo permission is `write` or above, on a protected repo: every repo of the org,
+     or only the repos in `NANOCLAW_INPUT_GATE_REPOS` when that is set. Admin on a repo
+     the maintainers do not control (a personal repo with the App installed) proves
+     nothing;
   3. it is a member (public or private) of the org.
+
+  A `Bot` account is allowlisted by its roster id only. Repo permission and org
+  membership describe people, and GitHub's user APIs do not answer for App accounts.
 
   For deliveries that do not start work, `author_association` is a pre-filter: `NONE`,
   `CONTRIBUTOR`, `FIRST_TIMER`, `FIRST_TIME_CONTRIBUTOR` and `MANNEQUIN` are external
@@ -35,7 +41,7 @@ waits for it, and turning it on cannot change what any delivery does.
   | `not_eligible` | allowlisted but fails Check 2; `reason` names the input (`not_linked`, `entity_*`, `location_stale`, …) |
   | `external_blocked` | an exact mention by an account that fails Check 1; `reason` is `not_allowlisted` or `lookup_failed_*` |
   | `no_start` | a delivered issue, PR or non-mention comment; the tier is still recorded, to show whose work would stop being picked up. Deliveries routing already skips (no mention, the bot's own, filtered actions) are not judged |
-  | `bot` | a `Bot` account |
+  | `bot` | the bot's own logins, or a `Bot` account delivery that starts no work. Routing starts work on any exact mention, so a `Bot` account's mention is judged by Check 1 like a person's |
   | `system_event` | CI, merge or review-thread events, which inherit their chain |
 
 ## Turning shadow mode on
@@ -48,6 +54,7 @@ delivery:
 | `NANOCLAW_INPUT_GATE` | `off` | `shadow` turns on decide-and-log |
 | `NANOCLAW_INPUT_GATE_ROSTER` | `data/input-gate-roster.json` | the maintainer roster |
 | `NANOCLAW_INPUT_GATE_ORG` | `shader-slang` | the org whose members count as allowlisted |
+| `NANOCLAW_INPUT_GATE_REPOS` | every repo of the org | comma-separated repos whose write permission counts for Check 1 |
 
 The roster is a JSON array keyed on the numeric id, because logins can be renamed. Keep it
 out of public repos:
@@ -60,7 +67,8 @@ Lookups use the host's `gh` login: `repos/{repo}/collaborators/{login}/permissio
 GraphQL `user.organization` query. The GraphQL query sees private members only when that
 login can (an org member, or an App with members read); otherwise they read as
 non-members. Results are cached for ten minutes per login, and concurrent lookups for one
-login share one call.
+login share one call. At most four `gh` runs are in flight. When 64 more wait, a new
+lookup fails at once; a failed lookup never allowlists anyone.
 
 ## The decision log
 

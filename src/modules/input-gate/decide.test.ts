@@ -48,12 +48,45 @@ describe('decide (one gate, two checks)', () => {
     expect(c.lookups.repoPermission).not.toHaveBeenCalled();
   });
 
-  it('a Bot account is never judged as a person', async () => {
+  it('a Bot delivery that starts nothing is not judged', async () => {
+    const c = ctx();
     const d = await decide(
-      req({ actor: { id: 9, login: 'dependabot[bot]', type: 'Bot', association: 'NONE' } }),
-      ctx(),
+      req({
+        event: 'pr_reviewable',
+        startsWork: false,
+        actor: { id: 9, login: 'dependabot[bot]', type: 'Bot', association: 'NONE' },
+      }),
+      c,
     );
     expect(d.outcome).toBe('bot');
+    expect(c.lookups.repoPermission).not.toHaveBeenCalled();
+  });
+
+  it('a Bot mention must pass Check 1: routing starts work on it like on a person', async () => {
+    const c = ctx({}, { repoPermission: vi.fn(async () => 'write'), orgMember: vi.fn(async () => true) });
+    const reviewer = { id: 66, login: 'review-app[bot]', type: 'Bot', association: 'NONE' };
+    expect(await decide(req({ actor: reviewer }), c)).toMatchObject({
+      outcome: 'external_blocked',
+      reason: 'not_allowlisted',
+      tier: 'external',
+    });
+    expect(c.lookups.repoPermission).not.toHaveBeenCalled();
+    // An App the maintainers trust goes on the roster by its numeric id.
+    expect(await decide(req({ actor: { ...reviewer, id: 7 } }), c)).toMatchObject({
+      outcome: 'not_eligible',
+      tier: 'allowlisted',
+    });
+  });
+
+  it('write permission on a repo outside the org does not allowlist', async () => {
+    const c = ctx({}, { repoPermission: vi.fn(async () => 'admin') });
+    const owner = { id: 55, login: 'alice', type: 'User', association: 'OWNER' };
+    expect(await decide(req({ repo: 'alice/slang', actor: owner }), c)).toMatchObject({
+      outcome: 'external_blocked',
+      allowlist: { evidence: { repoProtected: false } },
+    });
+    expect(c.lookups.repoPermission).not.toHaveBeenCalled();
+    expect(c.lookups.orgMember).toHaveBeenCalledWith('shader-slang', 'alice');
   });
 
   it('an issue opened by a maintainer does not start work, but records the tier', async () => {

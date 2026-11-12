@@ -14,6 +14,8 @@
  *                               (default data/input-gate-roster.json)
  *   NANOCLAW_INPUT_GATE_ORG     org whose members count as allowlisted
  *                               (default shader-slang)
+ *   NANOCLAW_INPUT_GATE_REPOS   comma-separated repos whose write permission
+ *                               counts for Check 1 (default: every org repo)
  */
 import path from 'path';
 
@@ -27,12 +29,19 @@ import { gateRequestFromPayload } from './request.js';
 import { recordGateDecision } from './store.js';
 import type { GateDecision } from './types.js';
 
-const KEYS = ['NANOCLAW_INPUT_GATE', 'NANOCLAW_INPUT_GATE_ROSTER', 'NANOCLAW_INPUT_GATE_ORG'];
+const KEYS = [
+  'NANOCLAW_INPUT_GATE',
+  'NANOCLAW_INPUT_GATE_ROSTER',
+  'NANOCLAW_INPUT_GATE_ORG',
+  'NANOCLAW_INPUT_GATE_REPOS',
+];
 
 export interface GateSettings {
   mode: 'off' | 'shadow';
   rosterPath: string;
   org: string;
+  /** Repos whose write permission counts for Check 1; null means every repo of the org. */
+  repos: string[] | null;
 }
 
 export function readGateSettings(): GateSettings {
@@ -42,7 +51,17 @@ export function readGateSettings(): GateSettings {
     mode: val('NANOCLAW_INPUT_GATE').toLowerCase() === 'shadow' ? 'shadow' : 'off',
     rosterPath: path.resolve(val('NANOCLAW_INPUT_GATE_ROSTER') || 'data/input-gate-roster.json'),
     org: val('NANOCLAW_INPUT_GATE_ORG') || 'shader-slang',
+    repos: parseRepoList(val('NANOCLAW_INPUT_GATE_REPOS')),
   };
+}
+
+/** Parse a comma-separated `owner/name` list; empty means "not set". */
+function parseRepoList(value: string): string[] | null {
+  const repos = value
+    .split(',')
+    .map((r) => r.trim())
+    .filter(Boolean);
+  return repos.length > 0 ? repos : null;
 }
 
 export interface ObserveInput {
@@ -90,6 +109,7 @@ export async function observeGitHubDelivery(input: ObserveInput): Promise<GateDe
       lookups: deps.lookups,
       eligibility: deps.eligibility,
       selfLogins: input.selfLogins,
+      repos: settings.repos,
     });
     await recordGateDecision(req, decision, { mode: settings.mode, currentOutcome: input.currentOutcome });
     return decision;
