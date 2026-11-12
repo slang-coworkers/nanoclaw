@@ -26,41 +26,21 @@
  * (`createPreToolUseHook`), not a script, so the bridge runs the same
  * `detectIssueClose` before the hook scripts.
  *
- * Stop hooks need the runner, which owns the turn; they are not handled here.
+ * The hook semantics (matchers, block rules, the settings file) live in
+ * settings-hooks.ts. Stop hooks need the runner, which owns the turn, so the
+ * runner runs them (stop-hooks.ts); they are not handled here.
  * The intent router stays in the runner's bridge (`classifyAndPrepend`), which
  * already routes every non-Claude prompt, so its UserPromptSubmit entry is
  * skipped here to avoid classifying a message twice.
  */
-import { spawn } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { detectIssueClose } from '../issue-close.js';
+import { hookSettingsPath, readHookSettings, runHookEvent } from '../settings-hooks.js';
 
-export type HookEvent = 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit';
-
-export interface HookCommand {
-  type?: string;
-  command: string;
-  timeout?: number;
-}
-
-export interface HookMatcher {
-  matcher?: string;
-  hooks: HookCommand[];
-}
-
-export type HookSettings = Partial<Record<HookEvent, HookMatcher[]>>;
-
-export interface HookOutcome {
-  block: boolean;
-  reason: string;
-}
-
-const AGENT_DIR = '/workspace/agent';
-const DEFAULT_TIMEOUT_S = 60;
 const PLUGIN_FILE = 'nanoclaw-hook-bridge.js';
 
 // OpenCode's built-in tools and the Claude Code tool each one stands in for.
@@ -108,102 +88,6 @@ export function claudeToolInput(claudeName: string, args: unknown): Record<strin
   return Object.fromEntries(
     Object.entries(input).map(([key, value]) => [key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`), value]),
   );
-}
-
-/** True when a Claude Code hook matcher selects `toolName` ("" and "*" select every tool). */
-export function matcherSelects(matcher: string | undefined, toolName: string): boolean {
-  if (!matcher || matcher === '*') return true;
-  try {
-    return new RegExp(`^(?:${matcher})$`).test(toolName);
-  } catch {
-    return matcher === toolName;
-  }
-}
-
-/**
- * Read a hook result the way Claude Code does: exit 2 blocks with stderr as the
- * reason; exit 0 blocks only when stdout is a JSON decision to block or deny;
- * any other exit status is a non-blocking hook error.
- */
-export function hookOutcome(code: number | null, stdout: string, stderr: string): HookOutcome {
-  if (code === 2) return { block: true, reason: stderr.trim() || 'Blocked by a hook.' };
-  if (code !== 0) return { block: false, reason: '' };
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(stdout) as Record<string, unknown>;
-  } catch {
-    return { block: false, reason: '' };
-  }
-  const specific = (parsed.hookSpecificOutput ?? {}) as Record<string, unknown>;
-  if (parsed.decision === 'block' || specific.permissionDecision === 'deny' || parsed.continue === false) {
-    const reason = parsed.reason ?? specific.permissionDecisionReason ?? parsed.stopReason;
-    return { block: true, reason: typeof reason === 'string' && reason ? reason : 'Blocked by a hook.' };
-  }
-  return { block: false, reason: '' };
-}
-
-/** Run one hook command with `payload` on stdin; resolves even on failure or timeout. */
-export function runHookCommand(
-  hook: HookCommand,
-  payload: Record<string, unknown>,
-  env: NodeJS.ProcessEnv = process.env,
-): Promise<HookOutcome> {
-  return new Promise((resolve) => {
-    // The hooks run from the agent directory, as under Claude Code; outside a
-    // container (tests) that directory does not exist.
-    const cwd = fs.existsSync(AGENT_DIR) ? AGENT_DIR : undefined;
-    const child = spawn('/bin/sh', ['-c', hook.command], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
-    const timer = setTimeout(() => child.kill('SIGKILL'), (hook.timeout ?? DEFAULT_TIMEOUT_S) * 1000);
-    child.stdout.on('data', (b: Buffer) => (stdout += b.toString()));
-    child.stderr.on('data', (b: Buffer) => (stderr += b.toString()));
-    child.on('error', () => {
-      clearTimeout(timer);
-      resolve({ block: false, reason: '' });
-    });
-    child.on('close', (code) => {
-      clearTimeout(timer);
-      resolve(hookOutcome(code, stdout, stderr));
-    });
-    child.stdin.on('error', () => {
-      /* the hook may exit before reading its input */
-    });
-    child.stdin.end(JSON.stringify(payload));
-  });
-}
-
-/** Read the group's hook settings; a missing or unreadable file means no hooks. */
-export function readHookSettings(settingsPath: string): HookSettings {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as { hooks?: HookSettings };
-    return parsed.hooks ?? {};
-  } catch {
-    return {};
-  }
-}
-
-/**
- * Run every hook registered for `event` that selects `toolName`, in order, and
- * stop at the first block. `skip` drops commands that another path already runs.
- */
-export async function runHookEvent(
-  settings: HookSettings,
-  event: HookEvent,
-  toolName: string,
-  payload: Record<string, unknown>,
-  skip?: RegExp,
-): Promise<HookOutcome> {
-  for (const entry of settings[event] ?? []) {
-    if (event !== 'UserPromptSubmit' && !matcherSelects(entry.matcher, toolName)) continue;
-    for (const hook of entry.hooks ?? []) {
-      if (hook.type && hook.type !== 'command') continue;
-      if (skip?.test(hook.command)) continue;
-      const outcome = await runHookCommand(hook, { hook_event_name: event, cwd: AGENT_DIR, ...payload });
-      if (outcome.block) return outcome;
-    }
-  }
-  return { block: false, reason: '' };
 }
 
 /** The MCP server names in OpenCode's generated config (`OPENCODE_CONFIG_CONTENT`). */
@@ -263,8 +147,7 @@ function promptText(parts: unknown): string {
  * file OpenCode loads re-exports only this function (see installOpenCodeHookBridge).
  */
 export const NanoclawHookBridge = async () => {
-  const settingsPath =
-    process.env.NANOCLAW_HOOK_SETTINGS ?? path.join(process.env.HOME || os.homedir(), '.claude', 'settings.json');
+  const settingsPath = hookSettingsPath();
   const servers = mcpServerNames(process.env.OPENCODE_CONFIG_CONTENT);
   const settings = () => readHookSettings(settingsPath);
   return {
@@ -307,7 +190,7 @@ export const NanoclawHookBridge = async () => {
         'UserPromptSubmit',
         '',
         { session_id: input.sessionID ?? '', prompt: promptText(output.parts) },
-        ROUTER_HOOK,
+        { skip: ROUTER_HOOK },
       );
     },
   };
