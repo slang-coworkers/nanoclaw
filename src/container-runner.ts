@@ -347,6 +347,28 @@ async function releaseClaimQuietly(sessionId: string, incarnation: number): Prom
  * cost-ceiling-adjustment readiness check) must treat that as "nothing to
  * match against yet," not as a match.
  */
+/**
+ * Point groups/<folder>/.workflow-state.json at the state file of the session
+ * being spawned, so an operator (and the dashboard's Checks) reads the plan and
+ * critique state of the running task from the visible group folder. The link
+ * uses an absolute host path because only the host reads it; the container has
+ * the real file at /workspace/.claude/workflow-state.json.
+ *
+ * Every spawn re-points the link. Consider a group whose first session ran in
+ * May: a link that is only created when missing keeps pointing at that May
+ * session forever, and once its file is gone the link dangles, so every later
+ * session's state is invisible from the group folder.
+ */
+export function linkWorkflowState(groupDir: string, sessDir: string): void {
+  const linkPath = path.join(groupDir, '.workflow-state.json');
+  const targetPath = path.join(sessDir, '.claude', 'workflow-state.json');
+  const current = fs.lstatSync(linkPath, { throwIfNoEntry: false });
+  if (current?.isSymbolicLink() && fs.readlinkSync(linkPath) === targetPath) return;
+  // A stale regular file from an old run, or a link to another session.
+  if (current) fs.unlinkSync(linkPath);
+  fs.symlinkSync(targetPath, linkPath);
+}
+
 export function getActiveContainerInstanceId(sessionId: string): string | undefined {
   return activeContainers.get(sessionId)?.instanceId;
 }
@@ -2446,23 +2468,10 @@ export async function buildMounts(
   const mounts: VolumeMount[] = [];
   const scope = agentGroup.id;
 
-  // Convenience: drop a symlink at groups/<folder>/.workflow-state.json pointing
-  // at the per-session state file. Lets the user inspect plan/critique state from
-  // the visible group folder instead of digging into data/v2-sessions/.../sess-*/.claude/.
-  // The symlink uses an absolute host path because it's only ever read host-side
-  // (the container has the real file at /workspace/.claude/workflow-state.json).
   try {
-    const linkPath = path.join(groupDir, '.workflow-state.json');
-    const targetPath = path.join(sessDir, '.claude', 'workflow-state.json');
-    if (fs.existsSync(linkPath) && !fs.lstatSync(linkPath).isSymbolicLink()) {
-      // Stale regular file from a prior run — replace with symlink.
-      fs.unlinkSync(linkPath);
-    }
-    if (!fs.existsSync(linkPath)) {
-      fs.symlinkSync(targetPath, linkPath);
-    }
+    linkWorkflowState(groupDir, sessDir);
   } catch (err) {
-    log.debug('workflow-state symlink skipped', { folder: agentGroup.folder, err });
+    log.warn('workflow-state symlink not updated', { folder: agentGroup.folder, err });
   }
 
   // Session workspace: mailbox-selected state plus outbox and heartbeat files.
