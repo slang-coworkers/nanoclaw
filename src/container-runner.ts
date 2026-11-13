@@ -3581,6 +3581,8 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PI_MODEL',
     'PI_PROVIDER',
     'PI_THINKING_LEVEL',
+    // A custom OpenAI-compatible endpoint for pi (e.g. the NVIDIA gateway).
+    'PI_BASE_URL',
     // gate-pr-description.sh knobs (off switch + limits), read inside the container.
     'PR_DESCRIPTION_GATE',
     'PR_DESCRIPTION_MAX_CHARS',

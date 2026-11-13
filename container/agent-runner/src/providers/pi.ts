@@ -101,6 +101,41 @@ export function piExtensions(env: NodeJS.ProcessEnv = process.env): string[] {
   return extensions;
 }
 
+// The key pi sends to a custom endpoint. The real credential is injected on
+// the wire by the OneCLI proxy (by host), the same way OpenCode's is.
+export const PI_CREDENTIAL_PLACEHOLDER = 'ROUTED_VIA_ONECLI_PROXY';
+
+/**
+ * The models.json pi reads for a custom OpenAI-compatible endpoint, or null
+ * when pi should use its built-in provider. With `PI_BASE_URL` set, `provider`
+ * names a custom provider at that URL that serves `model`; for example
+ * PI_PROVIDER=nvidia, PI_BASE_URL=https://inference-api.nvidia.com/v1 and
+ * PI_MODEL=nvidia/zai-org/glm-5.3 (the model policy's open default) run pi on
+ * GLM through the NVIDIA gateway.
+ *
+ * The system prompt goes as a `system` message, not `developer`: the gateway's
+ * open models do not all accept the developer role.
+ */
+export function piModelsConfig(
+  provider: string,
+  model: string | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): Record<string, unknown> | null {
+  const baseUrl = env.PI_BASE_URL?.trim();
+  if (!baseUrl || !model) return null;
+  return {
+    providers: {
+      [provider]: {
+        baseUrl,
+        api: 'openai-completions',
+        apiKey: PI_CREDENTIAL_PLACEHOLDER,
+        compat: { supportsDeveloperRole: false },
+        models: [{ id: model }],
+      },
+    },
+  };
+}
+
 export class PiProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
 
@@ -146,6 +181,12 @@ export class PiProvider implements AgentProvider {
     if (this.thinkingLevel) settings.defaultThinkingLevel = this.thinkingLevel;
 
     fs.writeFileSync(path.join(paths.configDir, 'settings.json'), JSON.stringify(settings, null, 2));
+    // A custom endpoint (PI_BASE_URL) needs its provider and model declared;
+    // a stale file from an earlier config must not outlive the setting.
+    const models = piModelsConfig(this.provider, this.model);
+    const modelsFile = path.join(paths.configDir, 'models.json');
+    if (models) fs.writeFileSync(modelsFile, JSON.stringify(models, null, 2));
+    else fs.rmSync(modelsFile, { force: true });
     fs.writeFileSync(
       path.join(paths.configDir, 'mcp.json'),
       JSON.stringify({ mcpServers: mcpServersToPiConfig(this.mcpServers) }, null, 2),
