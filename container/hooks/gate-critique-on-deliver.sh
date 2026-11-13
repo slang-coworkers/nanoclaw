@@ -219,9 +219,22 @@ EOF
   fi
 fi
 
+# A verdict line: a labelled verdict ("- **Verdict:** APPROVE", "Decision:
+# must-fix", "### Verdict: REQUEST_CHANGES") or a verdict token alone on its
+# line ("LGTM", "**APPROVE**"). A mid-sentence mention, a quoted relay ("> ...")
+# and a heading such as "### Must fix" are not verdict lines.
+VERDICT_TOKENS='APPROVE_WITH_NITS|APPROVED|APPROVE|REQUEST_CHANGES|CHANGES_REQUESTED|MUST[-_ ]?FIX|LGTM'
+VERDICT_LABEL='^[[:space:]]*([-*+][[:space:]]+|[0-9]+[.)][[:space:]]+|#{1,6}[[:space:]]+)?(\*\*|__)?(review[[:space:]]+)?(verdict|decision)[[:space:]]*(\*\*|__)?[[:space:]]*(:|=|-|–|—)[[:space:]]*(\*\*|__|`)?[[:space:]]*'
+VERDICT_LABELED="${VERDICT_LABEL}(${VERDICT_TOKENS})([^[:alnum:]_]|\$)"
+VERDICT_BARE='^[[:space:]]*([-*+][[:space:]]+)?(\*\*|__|`)?('"$VERDICT_TOKENS"')[.!]?(\*\*|__|`)?[[:space:]]*[.!]?[[:space:]]*$'
+verdict_line() {
+  grep -qiE "$VERDICT_LABELED" <<< "$1" || grep -qiE "$VERDICT_BARE" <<< "$1"
+}
+
 HIT=""
 EXPLAIN_HIT=""
 RR_HIT=""
+VERDICT_HIT=""
 case "$TOOL" in
   mcp__nanoclaw__send_message | mcp__nanoclaw__send_file)
     # Anchored to line start (the chain protocol emits markers as message /
@@ -233,6 +246,24 @@ case "$TOOL" in
     # a silent gate bypass.
     if grep -qE "^[[:space:]]*\[($MSG_MARKERS)\]" <<< "$TEXT"; then
       HIT="delivery/handoff message"
+    fi
+    # A verdict sent without any marker. Leaving the marker out must not skip
+    # the critique: the requirement is about the verdict, and the marker is
+    # only how a delivery is detected. So a verdict line in a message with no
+    # bracketed marker counts as a hit, and the refusal asks for the marker as
+    # well. A message under another marker is left alone: the [Report] status
+    # format has its own **Verdict:** field. CRITIQUE_VERDICT_LINE_GATE=0
+    # disables the check; =shadow records would-be refusals in
+    # critique-verdict-line.jsonl next to the state file and refuses nothing.
+    if [ -z "$HIT" ] && [ "${CRITIQUE_VERDICT_LINE_GATE:-1}" != "0" ] \
+      && ! grep -qE '^[[:space:]]*\[[A-Za-z][A-Za-z0-9 _-]*\]' <<< "$TEXT" && verdict_line "$TEXT"; then
+      if [ "${CRITIQUE_VERDICT_LINE_GATE:-1}" = "shadow" ]; then
+        jq -nc --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg tool "$TOOL" --arg text "${TEXT:0:500}" \
+          '{at: $at, tool: $tool, text: $text}' >> "$(dirname "$STATE")/critique-verdict-line.jsonl" 2>/dev/null || true
+      else
+        HIT="verdict without its delivery marker"
+        VERDICT_HIT=1
+      fi
     fi
     # A fix report / review request presents the PR to a reviewer, who reads
     # its description first — so it waits until that describes the pushed head.
@@ -403,6 +434,12 @@ fi
 # critique first. Like the comment rule it leaves the denial counter alone: the
 # remedy is an upsert, not a critique round, and the escalation path (retracted
 # only by a new critique round) would card a human for nothing.
+# The markers a verdict may go under, for the refusal text: [Resolution], [handoff], ...
+MARKER_LIST="[${MSG_MARKERS//|/], [}]"
+if [ -n "$VERDICT_HIT" ] && [ -n "$DENIAL_REASON" ]; then
+  DENIAL_REASON="$DENIAL_REASON; also send the verdict under its delivery marker (one of $MARKER_LIST)"
+fi
+
 GATE_TITLE="CRITIQUE REQUIRED"
 REMEDY="Run /codex-critique for the stage named above"
 if [ -z "$DENIAL_REASON" ] && [ -n "$EXPLAIN_HIT" ]; then
@@ -492,6 +529,14 @@ review_request_problem() {
     }
   ' <<< "$body"
 }
+
+# The critique ran, but the verdict still has no marker. Downstream gates and
+# readers find a delivery by its marker, so the verdict goes out only under it.
+# Like the format checks, this refusal does not count toward the escalation.
+if [ -z "$DENIAL_REASON" ] && [ -n "$VERDICT_HIT" ]; then
+  echo "VERDICT WITHOUT ITS MARKER: this message carries a verdict line but does not start with a delivery marker. Resend it starting with its marker (one of $MARKER_LIST), for example [Review Verdict]; a status update goes under [Report]. This does not count toward the critique escalation (CRITIQUE_VERDICT_LINE_GATE=0 disables)." >&2
+  exit 2
+fi
 
 if [ -z "$DENIAL_REASON" ] && [ -n "$RR_HIT" ]; then
   RR_PROBLEM=$(review_request_problem "$TEXT")

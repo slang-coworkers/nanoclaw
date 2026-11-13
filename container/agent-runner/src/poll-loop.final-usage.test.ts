@@ -29,6 +29,9 @@ import { closeSessionDb, getInboundDb, getOutboundDb, initTestSessionDb } from '
 import { getClaudeBackstop, getCostCap, setContinuation } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H, processQuery, runPollLoop } from './poll-loop.js';
+
+/** A provider whose `usage` events carry each turn's spend (Claude, OpenCode, Pi). */
+const REPORTS_TURNS = { reportsTurnAccounting: true };
 import { MockProvider } from './providers/mock.js';
 import { __resetCodexCostMemo } from './codex-cost.js';
 import { createCostEventsTable, loadClaudeMessage, sumWindow } from './cost-events.js';
@@ -453,7 +456,7 @@ describe('durable dedup across a respawn (item 2)', () => {
 
   function respawn(): void {
     H.forgetChargedMessages(); // a new container: no in-memory state
-    H.initCostTracking('claude'); // reload spend + backstop from the DB
+    H.initCostTracking('claude', REPORTS_TURNS); // reload spend + backstop from the DB
   }
 
   it('a re-fired SubagentStop after a respawn tops up from the ledger row, never re-charges', () => {
@@ -526,7 +529,7 @@ describe('atomicity — failure injected at every statement boundary (items 1, 2
       H.recordMessageCost(ev);
       H.setFailPoint(undefined);
       H.setState({ seenMessageIds: [] }); // the crash: memory and the retry queue are gone
-      H.initCostTracking('claude');
+      H.initCostTracking('claude', REPORTS_TURNS);
       H.recordMessageCost(ev);
       H.recordMessageCost(ev);
       expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
@@ -670,7 +673,7 @@ describe('result accounting is settled before result handling (item 6)', () => {
 describe("round 3 — closing a segment settles it against its session's final cost-state", () => {
   function respawn(): void {
     H.forgetChargedMessages();
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
   }
 
   it('a process that died mid-call: the next query charges the final it never read (R3-2)', () => {
@@ -888,7 +891,8 @@ describe('round 4 — startup recovery and the segment-start gate', () => {
 
   /** A provider whose transcript holds the previous process's final cost-state. */
   function providerWithFinal(final: MUIn | null, onRotate: () => string | null) {
-    const provider = new MockProvider({}, () => 'ok') as MockProvider & {
+    // It stands in for a Claude session, whose usage events the cost cap meters.
+    const provider = Object.assign(new MockProvider({}, () => 'ok'), REPORTS_TURNS) as MockProvider & {
       readRestoredUsage?: (sid: string) => Record<string, unknown> | null;
       maybeRotateContinuation?: (c: string, cwd: string) => string | null;
     };

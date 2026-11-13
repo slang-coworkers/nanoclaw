@@ -58,7 +58,7 @@ export function createStopHookRunner(
         stop_hook_active: input.stopHookActive,
         last_assistant_message: input.lastAssistantMessage ?? '',
       },
-      { skip, all: true },
+      { skip },
     );
     return input.failed ? { block: false, reason: '' } : outcome;
   };

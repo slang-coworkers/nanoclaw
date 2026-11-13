@@ -220,133 +220,19 @@ export function killCodexAppServer(server: AppServer): void {
   }
 }
 
-// ── Workflow state (hook parity) ────────────────────────────────────────────
-// Claude SDK fires hooks (plan-gate, edit-counter, critique-tracker, etc.)
-// via settings.json PreToolUse/PostToolUse events. Codex has no hook system,
-// so we replicate the same enforcement by intercepting approval requests
-// (≈ PreToolUse) and completion notifications (≈ PostToolUse).
+// ── Auto-approval ─────────────────────────────────────────────────────────
+// The container sandbox is the security boundary, so every approval request is
+// accepted. The workflow gates (plan, critique, PR description, issue close) run
+// as Codex managed hooks from container/codex-hooks.toml, the same scripts that
+// Claude runs, so nothing here repeats them.
 
-const STATE_PATH = '/workspace/.claude/workflow-state.json';
-const PLAN_EDIT_LIMIT = 15;
-const CRITIQUE_EDIT_LIMIT = 3;
-
-// Bookkeeping-path classifier for track-edits / gate-plan tracking. Keep
-// in lockstep with container/hooks/track-edits.sh — the shell hook is the
-// authoritative allowlist for the Claude path; diverging here would cause
-// stale-plan/critique counters to fire on bookkeeping writes that the
-// shell hook would have let through (RC-M3).
-const BOOKKEEPING_DIRS = [
-  '/workspace/agent/plans/',
-  '/workspace/agent/reports/',
-  '/workspace/agent/critiques/',
-  '/workspace/agent/memory/',
-  '/workspace/agent/conversations/',
-  '/workspace/agent/fixes/',
-  '/workspace/agent/reviews/',
-  '/workspace/.claude/',
-];
-const BOOKKEEPING_FILES = ['/workspace/agent/CLAUDE.local.md'];
-
-interface WorkflowState {
-  task_id: string;
-  plan_written: boolean;
-  plan_stale: boolean;
-  edits_since_plan: number;
-  edits_since_critique: number;
-  critique_rounds: number;
-  critique_required: boolean;
-  last_activity: string;
-}
-
-function readState(): WorkflowState {
-  try {
-    if (fs.existsSync(STATE_PATH)) return JSON.parse(fs.readFileSync(STATE_PATH, 'utf-8'));
-  } catch { /* corrupt — reset */ }
-  const fresh: WorkflowState = {
-    task_id: `task-${Date.now()}`,
-    plan_written: false,
-    plan_stale: false,
-    edits_since_plan: 0,
-    edits_since_critique: 0,
-    critique_rounds: 0,
-    critique_required: false,
-    last_activity: new Date().toISOString(),
-  };
-  writeState(fresh);
-  return fresh;
-}
-
-function writeState(state: WorkflowState): void {
-  try {
-    fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
-    fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2));
-  } catch (err) {
-    log(`[hooks] Failed to write workflow state: ${err}`);
-  }
-}
-
-function isBookkeeping(filePath: string): boolean {
-  if (BOOKKEEPING_DIRS.some((d) => filePath.startsWith(d))) return true;
-  if (BOOKKEEPING_FILES.includes(filePath)) return true;
-  // Root-level .md / .json in /workspace/agent/ are notes, not source — the
-  // shell hook matches this with `DIR=$(dirname "$FILE")` + extension check.
-  const m = filePath.match(/^\/workspace\/agent\/([^/]+)$/);
-  if (m) {
-    const ext = m[1].split('.').pop() || '';
-    if (ext === 'md' || ext === 'json') return true;
-  }
-  return false;
-}
-
-export interface HookConfig {
-  hasPlan: boolean;
-  hasCritique: boolean;
-}
-
-// ── Auto-approval with workflow hooks ──────────────────────────────────────
-// The container sandbox is the security boundary. Inside it, we enforce
-// workflow discipline (plan gates, critique tracking, edit counting) before
-// approving file changes — mirroring the shell hooks Claude SDK fires.
-
-export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConfig): void {
-  const hasPlan = hookConfig?.hasPlan ?? (process.env.OVERLAY_HAS_PLAN === '1');
-  const hasCritique = hookConfig?.hasCritique ?? (process.env.OVERLAY_HAS_CRITIQUE === '1');
-
+export function attachCodexAutoApproval(server: AppServer): void {
   server.serverRequestHandlers.push((req) => {
     const method = req.method;
     log(`[approval] ${method}`);
 
     switch (method) {
-      case 'item/fileChange/requestApproval': {
-        const params = req.params as { path?: string } | undefined;
-        const filePath = params?.path || '';
-
-        if (!isBookkeeping(filePath)) {
-          const state = readState();
-
-          // Plan gate: block edits if no plan written (or plan stale)
-          if (hasPlan && !state.plan_written) {
-            log(`[hooks] Plan gate: blocking edit to ${filePath} — no plan written`);
-            sendCodexResponse(server, req.id, {
-              decision: 'reject',
-              reason: 'Write a plan to /workspace/agent/reports/ before editing source files.',
-            });
-            return;
-          }
-          if (hasPlan && state.plan_stale) {
-            log(`[hooks] Plan gate: blocking edit to ${filePath} — plan stale (${state.edits_since_plan} edits)`);
-            sendCodexResponse(server, req.id, {
-              decision: 'reject',
-              reason: `Plan is stale (${state.edits_since_plan} edits since last plan). Write an updated plan to /workspace/agent/reports/ before continuing.`,
-            });
-            return;
-          }
-
-        }
-
-        sendCodexResponse(server, req.id, { decision: 'accept' });
-        break;
-      }
+      case 'item/fileChange/requestApproval':
       case 'item/commandExecution/requestApproval':
         sendCodexResponse(server, req.id, { decision: 'accept' });
         break;
@@ -393,58 +279,6 @@ export function attachCodexAutoApproval(server: AppServer, hookConfig?: HookConf
         break;
     }
   });
-
-  // Post-completion hooks: track edits, plans, critiques via notifications
-  if (hasPlan || hasCritique) {
-    server.notificationHandlers.push((n: JsonRpcNotification) => {
-      if (n.method !== 'item/completed') return;
-      const item = n.params?.item as { type?: string; path?: string; text?: string } | undefined;
-      if (!item) return;
-
-      const state = readState();
-      state.last_activity = new Date().toISOString();
-
-      // File change completed — edit counter + plan/critique tracker
-      if (item.type === 'fileChange' || item.type === 'applyPatch') {
-        const filePath = item.path || '';
-
-        // Plan tracker: writing to reports/ (new canonical) or plans/ (legacy) sets plan_written
-        if (filePath.includes('/workspace/agent/reports/') || filePath.includes('/workspace/agent/plans/')) {
-          state.plan_written = true;
-          state.plan_stale = false;
-          state.edits_since_plan = 0;
-          log(`[hooks] Plan written: ${filePath}`);
-          writeState(state);
-          return;
-        }
-
-        // Edit counter: non-bookkeeping edits
-        if (!isBookkeeping(filePath)) {
-          state.edits_since_plan++;
-          state.edits_since_critique++;
-          if (hasPlan && state.edits_since_plan >= PLAN_EDIT_LIMIT) {
-            state.plan_stale = true;
-          }
-          if (hasCritique && state.edits_since_critique >= CRITIQUE_EDIT_LIMIT) {
-            state.critique_required = true;
-          }
-          writeState(state);
-        }
-      }
-
-      // MCP tool completed — critique round tracking
-      if (item.type === 'toolCall') {
-        const text = item.text || '';
-        if (text.includes('mcp__codex__codex')) {
-          state.critique_rounds++;
-          state.edits_since_critique = 0;
-          state.critique_required = false;
-          log(`[hooks] Critique round ${state.critique_rounds} completed`);
-          writeState(state);
-        }
-      }
-    });
-  }
 }
 
 // ── High-level helpers ──────────────────────────────────────────────────────

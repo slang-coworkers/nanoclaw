@@ -104,6 +104,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createCodexConfigOverrides, tomlBasicString } from './providers/codex-app-server.js';
 import type { McpServerConfig } from './providers/types.js';
+import { gateScriptEnv } from './delivery-gate.js';
 
 /** Container path of the refusing hooks (container/hooks is bind-mounted at /app/hooks). */
 export const CODEX_GIT_GUARD_HOOKS_PATH = '/app/hooks/codex-git-guard';
@@ -232,6 +233,9 @@ export function buildCodexMcpServer(processEnv: NodeJS.ProcessEnv = process.env)
       CODEX_MCP_BRIDGE_OVERRIDES: JSON.stringify(overrides),
       ...(processEnv.CODEX_MODEL ? { CODEX_MODEL: processEnv.CODEX_MODEL } : {}),
       ...(processEnv.NANOCLAW_CRITIC_MODEL ? { NANOCLAW_CRITIC_MODEL: processEnv.NANOCLAW_CRITIC_MODEL } : {}),
+      // The bridge records each critique round with track-critique.sh
+      // (critique-record.ts), which reads the gate's settings from the env.
+      ...gateScriptEnv(processEnv),
     },
     envInherit: [...CODEX_MCP_ENV_INHERIT],
   };
