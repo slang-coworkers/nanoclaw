@@ -6,15 +6,48 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 770 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 307 |
-| `nv-slang` | slang project spine, skills, workflows | 215 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 131 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 108 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 802 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 314 |
+| `nv-slang` | slang project spine, skills, workflows | 217 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 132 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 109 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-13
+
+### nv-main (32 PRs)
+- **#2339** `Charge the tokens of an OpenCode turn that fails after its prompt`
+- **#2340** `Refuse Pi's MCP script tool in an eval sandbox`
+- **#2342** `Show and set a group's overlay kill switch from the CLI`
+- **#2345** `Stop switching off every overlay of a Codex group`
+- **#2346** `Price a gateway usage bucket by its model's family across APIs`
+- **#2348** `Run PostToolUseFailure hooks for failed OpenCode tool calls`
+- **#2349** `` Anchor the delivery-gate overlays on a `return` step ``
+- **#2350** `Input gate: open-weights lane for Check 2 (shadow)`
+- **#2351** `Plan the move of every coworker to open-weights models`
+_+23 more: #2338, #2337, #2336, #2335, #2334, #2333, #2332, #2331, #2330, #2329, #2328, #2327, #2325, #2324, #2323, #2322, #2320, #2319, #2312, #2310, #2309, #2308, #2306_
+
+### nv-dashboard (7 PRs)
+- **#2314** `Sync nv-dashboard with upstream/main`
+- **#2307** `feat(dashboard): show each coworker's models in both detail panels`
+- **#2326** `Show operator checks in the dashboard`
+- **#2341** `Merge nv-main into nv-dashboard`
+- **#2343** `Show the overlay kill switch in the coworker Checks section`
+- **#2344** `Price open, router and Claude-via-OpenCode models in the dashboard`
+- **#2347** `Price open models on Anthropic-API gateway rows at their own rate`
+
+### nv-slang (2 PRs)
+- **#2315** `Sync nv-slang with upstream/main`
+- **#2321** `fix(slang-mcp): serve before the eager Discord init, and hold one Gateway per host`
+
+### nv-slangpy (1 PRs)
+- **#2316** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2317** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-12
 
