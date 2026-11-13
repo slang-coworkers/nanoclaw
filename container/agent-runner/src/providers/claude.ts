@@ -757,6 +757,7 @@ const STALE_SESSION_RE = /no conversation found|ENOENT.*\.jsonl|session.*not fou
 export class ClaudeProvider implements AgentProvider {
   // Fork: the SDK runs the settings.json Stop hooks itself (see stop-hooks.ts).
   readonly runsSettingsStopHooks = true;
+  readonly reportsTurnAccounting = true;
   private assistantName?: string;
   private mcp: ReturnType<typeof resolveClaudeMcpServers>;
   private inference: ReturnType<typeof resolveClaudeInference>;

@@ -38,11 +38,14 @@ import { closeSessionDb, initTestSessionDb, getOutboundDb } from './mailbox/sqli
 import { getCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H } from './poll-loop.js';
+
+/** A provider whose `usage` events carry each turn's spend (Claude, OpenCode, Pi). */
+const REPORTS_TURNS = { reportsTurnAccounting: true };
 import { __resetCodexCostMemo } from './codex-cost.js';
 import { priceUsage } from './pricing.js';
 import { categorizeMessage, isClearCommand } from './formatter.js';
 import type { RunnerConfig } from './config.js';
-import type { ProviderEvent } from './providers/types.js';
+import type { ProviderEvent, TurnModelTokens } from './providers/types.js';
 import type { MessageInRow } from './db/messages-in.js';
 
 const MODEL = 'claude-opus-4-8'; // input $5/Mtok
@@ -169,6 +172,43 @@ function ledgerRowsByGen(): Record<number, number> {
   for (const r of rows) out[r.g] = r.n;
   return out;
 }
+function ledgerProviders(): string[] {
+  const rows = getOutboundDb().prepare('SELECT DISTINCT provider FROM cost_events ORDER BY provider').all() as Array<{
+    provider: string;
+  }>;
+  return rows.map((r) => r.provider);
+}
+
+/** One model's turn totals, all zero unless given. */
+function tokens(model: string, t: Partial<Omit<TurnModelTokens, 'model'>> = {}): TurnModelTokens {
+  return {
+    model,
+    inputTokens: 0,
+    outputTokens: 0,
+    reasoningTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+    ...t,
+  };
+}
+
+/** The `usage` event of one OpenCode or Pi turn. */
+function turnUsage(rows: TurnModelTokens[]): Extract<ProviderEvent, { type: 'usage' }> {
+  return {
+    type: 'usage',
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
+    ephemeral1hInputTokens: 0,
+    ephemeral5mInputTokens: 0,
+    durationMs: 0,
+    totalCostUsd: 0,
+    numTurns: 1,
+    sessionId: null,
+    turnTokens: rows,
+  };
+}
 
 beforeEach(() => {
   initTestSessionDb();
@@ -199,16 +239,17 @@ afterEach(() => {
 });
 
 // ───────────────────────────────────────────────────────────────────────────
-// 1. Provider gating — claude & codex accrue; opencode & pi do NOT.
+// 1. Provider gating — every provider that reports its spend accrues.
 //    VERIFIED: initCostTracking's gate is
-//      costEnabled = costAllotmentUsd > 0 && (provider === 'claude' || 'codex')
-//    (poll-loop.ts). opencode/pi are a KNOWN, deliberate gap — they have no
-//    accounting source, so metering them would paint a false-green $0. We PIN it.
+//      costEnabled = costAllotmentUsd > 0 && (reportsTurnAccounting || provider === 'codex')
+//    (poll-loop.ts). Claude reports `modelUsage`, OpenCode and Pi report
+//    `turnTokens`, and codex spend comes from the rollout fold. A provider with
+//    no accounting source stays unmetered rather than paint a false-green $0.
 // ───────────────────────────────────────────────────────────────────────────
-describe('1. provider gating — claude & codex cost; opencode & pi do not', () => {
+describe('1. provider gating — claude, codex, opencode and pi cost', () => {
   it('claude: initCostTracking enables the cap and a message_usage accrues', () => {
     __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().costEnabled).toBe(true);
 
     H.recordMessageCost(mu('m1', MODEL));
@@ -241,26 +282,48 @@ describe('1. provider gating — claude & codex cost; opencode & pi do not', () 
     expect(H.getState().costSpentUsd).toBeCloseTo(5, 6); // 1M input @ $5/Mtok
   });
 
-  it('opencode: cap stays DISABLED — no accrual from a message OR a codex fold', () => {
+  it('opencode: a turn report accrues at its model rate, and so does the codex critic fold', () => {
+    __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
+    H.initCostTracking('opencode', REPORTS_TURNS);
+    expect(H.getState().costEnabled).toBe(true);
+
+    // 1M GLM 5.3 output tokens at $4.40/Mtok, one ledger row stamped with the provider.
+    H.recordTurnCost(turnUsage([tokens('nvidia/zai-org/glm-5.3', { outputTokens: 1_000_000 })]));
+    expect(H.getState().costSpentUsd).toBeCloseTo(4.4, 8);
+    expect(ledgerProviders()).toEqual(['opencode']);
+
+    // The codex critic's rollouts fold into the same counter.
+    writeRollout(D_TODAY, 'aaa', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
+    __resetCodexCostMemo();
+    H.foldCodexCost();
+    expect(H.getState().costSpentUsd).toBeCloseTo(4.4 + 5, 6);
+  });
+
+  it('pi: a model with no rate is charged at the highest open-model rate, never $0', () => {
+    __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
+    H.initCostTracking('pi', REPORTS_TURNS);
+    expect(H.getState().costEnabled).toBe(true);
+
+    // Kimi K3 is the highest open rate: $10.50/Mtok output.
+    H.recordTurnCost(turnUsage([tokens('nvidia/new-vendor/model-x', { outputTokens: 1_000_000 })]));
+    expect(H.getState().costSpentUsd).toBeCloseTo(10.5, 8);
+    expect(ledgerProviders()).toEqual(['pi']);
+  });
+
+  it('opencode on a Claude model prices at the Claude rate', () => {
+    __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
+    H.initCostTracking('opencode', REPORTS_TURNS);
+
+    H.recordTurnCost(turnUsage([tokens('aws/anthropic/bedrock-claude-opus-5-5', { inputTokens: 1_000_000 })]));
+    expect(H.getState().costSpentUsd).toBeCloseTo(4, 8);
+  });
+
+  it('a provider that reports no turn spend stays unmetered', () => {
     __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
     H.initCostTracking('opencode');
     expect(H.getState().costEnabled).toBe(false);
 
-    // Both accrual paths are inert while disabled.
-    H.recordMessageCost(mu('m1', MODEL));
-    writeRollout(D_TODAY, 'aaa', [{ ts: `${D_TODAY}T10:00:00.000Z`, input: 1_000_000 }]);
-    __resetCodexCostMemo();
-    H.foldCodexCost();
-
-    expect(H.getState().costSpentUsd).toBe(0);
-  });
-
-  it('pi: cap stays DISABLED — same known gap', () => {
-    __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
-    H.initCostTracking('pi');
-    expect(H.getState().costEnabled).toBe(false);
-
-    H.recordMessageCost(mu('m1', MODEL));
+    H.recordTurnCost(turnUsage([tokens('nvidia/zai-org/glm-5.3', { outputTokens: 1_000_000 })]));
     expect(H.getState().costSpentUsd).toBe(0);
   });
 });
@@ -301,7 +364,7 @@ describe('2. model switch — per-model pricing, not one blanket rate', () => {
 describe('3. restart — spend resumes, is not doubled, is not lost', () => {
   it('re-init from the persisted blob resumes at the persisted value; a re-fold does not re-charge', () => {
     __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 })); // ceiling off → never stops
-    H.initCostTracking('claude'); // fresh: creates cost_events, migration-baselines ledgerGen 0→1
+    H.initCostTracking('claude', REPORTS_TURNS); // fresh: creates cost_events, migration-baselines ledgerGen 0→1
     expect(H.getState().costEnabled).toBe(true);
 
     // Claude spend ($5) + a codex MCP call ($5). A Claude session owes no codex
@@ -333,7 +396,7 @@ describe('3. restart — spend resumes, is not doubled, is not lost', () => {
       costBudgetGen: 0,
       codexEventOwners: {},
     });
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().costSpentUsd).toBeCloseTo(10, 6); // resumes at persisted — NOT 0, NOT doubled
     expect(ledgerRowCount()).toBe(rowsBefore); // re-init adds no rows; the ledger is intact
 
@@ -367,7 +430,7 @@ describe('4a. /clear — window reset + ledger-epoch rotation, in the SAME sessi
   it('zeroes spend, increments ledgerGen; prior-gen rows persist and reconcile is per-gen', () => {
     __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
     const sidBefore = process.env.NANOCLAW_SESSION_ID; // session identity is never touched by /clear
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
 
     // Spend in the first (pre-clear) window.
     H.recordMessageCost(mu('pre1', MODEL));
@@ -419,7 +482,7 @@ describe('4b. /compact — no epoch change; the summary is ordinary costed spend
 
   it('a compaction-summary message is costed like any other; gen/counter are NOT reset', () => {
     __setConfigForTest(cfg({ costCapT2Usd: 1000, costCeilingT2Usd: 0 }));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     H.recordMessageCost(mu('turn1', MODEL)); // ordinary turn spend
     const spentBefore = H.getState().costSpentUsd;
     const genBefore = H.getState().ledgerGen;

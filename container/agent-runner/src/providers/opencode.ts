@@ -21,6 +21,7 @@ import type { ResolvedRuntimeConfiguration } from '../provider-contracts/registr
 import { getTaskSeriesId } from '../db/session-routing.js';
 import { getAllDestinations } from '../destinations.js';
 import { prepareOpenCodeMemory, type OpenCodeMemorySessionHook } from './opencode-memory.js';
+import { turnAccounting } from './turn-accounting.js';
 import {
   boundedOpenCodeCall,
   executeOpenCodeTurn,
@@ -559,6 +560,8 @@ function eventPump(runtime: OpenCodeRuntimeHandle): OpenCodeEventPump {
 
 export class OpenCodeProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
+  readonly reportsTurnAccounting = true;
+  readonly followUpEndsQuery = true;
   private memorySessionHook?: OpenCodeMemorySessionHook;
 
   constructor(
@@ -623,7 +626,8 @@ export class OpenCodeProvider implements AgentProvider {
             initialized = true;
             yield { type: 'init', continuation: sessionId };
           }
-          const result = yield* executeOpenCodeTurn({
+          const startedAt = Date.now();
+          const { tokens, ...result } = yield* executeOpenCodeTurn({
             runtime,
             client: runtime.client.session,
             pump,
@@ -648,7 +652,15 @@ export class OpenCodeProvider implements AgentProvider {
               runtime.streamRelease?.();
             },
           });
-          if (!abort.signal.aborted) yield { type: 'result', ...result };
+          if (!abort.signal.aborted) {
+            const accounting = turnAccounting(tokens, {
+              sessionId,
+              durationMs: Date.now() - startedAt,
+              isError: result.isError,
+            });
+            yield { type: 'result', ...result, accounting };
+            yield { type: 'usage', ...accounting };
+          }
         }
       } catch (error) {
         if (!abort.signal.aborted) throw error;

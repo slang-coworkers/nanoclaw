@@ -23,6 +23,7 @@ import path from 'path';
 
 import {
   CODEX_MODEL_PRICING,
+  DEFAULT_OPEN_MODEL_RATE,
   DEFAULT_CODEX_RATE,
   MISSING_DAY_KEY,
   __resetCodexCostMemo,
@@ -121,6 +122,13 @@ describe('codex rate table (anti-drift vs the ccusage-derived rates)', () => {
     'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 0.14e-6 },
     'glm-5.3-flash': { input: 0.15e-6, output: 0.5e-6, cacheRead: 0.03e-6 },
   };
+
+  it('charges an unknown OpenCode or Pi model at the highest open-model rate', () => {
+    for (const id of ['kimi-k3', 'glm-5.3', 'glm-5.3-flash']) {
+      expect(DEFAULT_OPEN_MODEL_RATE.input).toBeGreaterThanOrEqual(CODEX_MODEL_PRICING[id].input);
+      expect(DEFAULT_OPEN_MODEL_RATE.output).toBeGreaterThanOrEqual(CODEX_MODEL_PRICING[id].output);
+    }
+  });
 
   it('pins the published rate for every known model id', () => {
     // Both directions: an added model with no expectation here fails too, so a

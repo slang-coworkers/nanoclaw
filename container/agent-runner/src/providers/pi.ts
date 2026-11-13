@@ -26,6 +26,7 @@ import { fileURLToPath } from 'url';
 import { registerProvider } from './provider-registry.js';
 import { resolveClaudeImports } from './codex.js';
 import { mcpServersToPiConfig } from './mcp-to-pi.js';
+import { TurnTokenTally, turnAccounting } from './turn-accounting.js';
 import type {
   AgentProvider,
   AgentQuery,
@@ -138,6 +139,8 @@ export function piModelsConfig(
 
 export class PiProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
+  readonly reportsTurnAccounting = true;
+  readonly followUpEndsQuery = true;
 
   private readonly mcpServers: Record<string, McpServerConfig>;
   private readonly provider: string;
@@ -243,7 +246,7 @@ export class PiProvider implements AgentProvider {
           if (pending.length === 0 && ended) return;
 
           const text = pending.shift()!;
-          yield* runOneTurn(srv, text);
+          yield* runOneTurn(srv, text, self.model);
         }
       } finally {
         killPiRpc(srv);
@@ -285,10 +288,31 @@ function extractMessageText(message: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
-async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerator<ProviderEvent> {
+/** The usage pi-ai reports on an assistant message: input net of cache, output including reasoning. */
+interface PiUsage {
+  input?: number;
+  output?: number;
+  reasoning?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+}
+
+/**
+ * Run one prompt to its settle on a live pi process. `model` is the configured
+ * model, which a compaction call is charged as (its event names no model).
+ * Exported for tests.
+ */
+export async function* runOneTurn(
+  server: PiRpcServer,
+  inputText: string,
+  model?: string,
+): AsyncGenerator<ProviderEvent> {
   const turnState: { error: Error | null } = { error: null };
   let resultText: string | null = null;
   let settled = false;
+  const startedAt = Date.now();
+  // Every assistant message is one model call, billed whether it succeeded or not.
+  const tally = new TurnTokenTally();
 
   const buffer: ProviderEvent[] = [];
   let waker: (() => void) | null = null;
@@ -305,7 +329,18 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
       case 'message_end': {
         // pi emits message_end for user, tool-result AND assistant messages;
         // only assistant messages carry the answer.
-        const message = ev.message as { role?: string; stopReason?: string; errorMessage?: string } | undefined;
+        const message = ev.message as
+          { role?: string; stopReason?: string; errorMessage?: string; model?: string; usage?: PiUsage } | undefined;
+        if (message?.role === 'assistant' && message.usage) {
+          const u = message.usage;
+          tally.add(message.model, {
+            input: u.input,
+            output: u.output,
+            reasoning: u.reasoning,
+            cacheRead: u.cacheRead,
+            cacheWrite: u.cacheWrite,
+          });
+        }
         if (message?.role === 'assistant') {
           if (message.stopReason === 'error' || message.errorMessage) {
             // A failed assistant turn (empty content + errorMessage) must not be
@@ -315,6 +350,20 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
             // An empty final assistant message legitimately clears earlier text.
             resultText = extractMessageText(ev.message);
           }
+        }
+        break;
+      }
+      case 'compaction_end': {
+        // The summary is one more model call, reported only on this event.
+        const usage = (ev as { result?: { usage?: PiUsage } }).result?.usage;
+        if (usage) {
+          tally.add(model, {
+            input: usage.input,
+            output: usage.output,
+            reasoning: usage.reasoning,
+            cacheRead: usage.cacheRead,
+            cacheWrite: usage.cacheWrite,
+          });
         }
         break;
       }
@@ -333,7 +382,7 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
         break;
       default:
         // agent_start/end, turn_*, message_start/update, tool_execution_update/end,
-        // compaction_*, auto_retry_* — already counted as activity above.
+        // compaction_start, auto_retry_* — already counted as activity above.
         break;
     }
 
@@ -380,12 +429,17 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
 
     while (buffer.length > 0) yield buffer.shift()!;
 
+    const durationMs = Date.now() - startedAt;
     if (turnState.error) {
+      // The calls before the failure were billed: charge them before the error ends the turn.
+      yield { type: 'usage', ...turnAccounting(tally.rows(), { sessionId: null, durationMs, isError: true }) };
       yield { type: 'error', message: turnState.error.message, retryable: false };
       return;
     }
 
-    yield { type: 'result', text: resultText };
+    const accounting = turnAccounting(tally.rows(), { sessionId: null, durationMs });
+    yield { type: 'result', text: resultText, accounting };
+    yield { type: 'usage', ...accounting };
   } finally {
     clearTimeout(timer);
     const ei = server.eventHandlers.indexOf(handler);

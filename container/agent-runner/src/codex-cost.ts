@@ -127,6 +127,14 @@ export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
 };
 
 /**
+ * Rate for a model that an OpenCode or Pi group runs and the table does not
+ * name. It is the highest open-model rate (Kimi K3), so an unknown open model
+ * is never charged below any open model we know, and never at $0 (operator
+ * decision on #1302). The ledger flags the model so someone adds its rate.
+ */
+export const DEFAULT_OPEN_MODEL_RATE: CodexRate = CODEX_MODEL_PRICING['kimi-k3'];
+
+/**
  * Reduce a codex wire model id to its pricing key.
  *
  * Rollout `turn_context.payload.model` is the bare id (`gpt-5.6-sol`), but the
