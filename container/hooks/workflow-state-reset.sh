@@ -10,15 +10,16 @@
 # 4. Otherwise — follow-up message within same task → no reset
 set -euo pipefail
 
-# Subagents (CLAUDE_CODE_FORK_SUBAGENT=1) must not reset the parent's state.
-# They share /workspace/.claude/workflow-state.json with the parent and run
-# within the scope of the parent's already-approved plan.
-if [ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ]; then
-  exit 0
-fi
-
-STATE="/workspace/.claude/workflow-state.json"
+STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 INPUT=$(cat)
+
+# A subagent must not reset the parent's state: they share workflow-state.json,
+# and the subagent works within the parent's task. Claude Code marks a hook call
+# made inside a subagent with `agent_id`. (CLAUDE_CODE_FORK_SUBAGENT is a Claude
+# SDK feature switch the host forwards to every container, so keying on it
+# skipped every reset of an install that set it, and one task's critique
+# rounds then counted for the next task.)
+[ -n "$(echo "$INPUT" | jq -r '.agent_id // empty' 2>/dev/null)" ] && exit 0
 
 PROMPT=$(echo "$INPUT" | jq -r '.prompt // empty')
 [ -z "$PROMPT" ] && exit 0

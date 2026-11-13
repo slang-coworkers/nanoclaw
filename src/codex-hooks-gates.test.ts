@@ -40,14 +40,23 @@ function hookEntries(toml: string): HookEntry[] {
 const entries = hookEntries(fs.readFileSync(path.resolve('container', 'codex-hooks.toml'), 'utf-8'));
 
 describe('Codex managed hooks', () => {
-  it.each(['gate-critique-on-deliver.sh', 'gate-pr-description.sh', 'gate-eval-sandbox.sh'])(
-    'runs %s on Bash before the command, once',
-    (script) => {
-      const wired = entries.filter((e) => e.commands.some((c) => c === `bash /app/hooks/${script}`));
-      expect(wired).toHaveLength(1);
-      expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: 'Bash' });
-    },
-  );
+  it.each([
+    'gate-critique-on-deliver.sh',
+    'gate-pr-description.sh',
+    'gate-eval-sandbox.sh',
+    'gate-plan.sh',
+    'plan-tracker.sh',
+  ])('runs %s on Bash before the command, once', (script) => {
+    const wired = entries.filter((e) => e.commands.some((c) => c === `bash /app/hooks/${script}`));
+    expect(wired).toHaveLength(1);
+    expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: 'Bash' });
+  });
+
+  it('runs the issue-close backstop from the read-only runner mount on Bash, once', () => {
+    const wired = entries.filter((e) => e.commands.includes('bun /app/src/issue-close-hook.ts'));
+    expect(wired).toHaveLength(1);
+    expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: 'Bash' });
+  });
 
   it('keeps the dashboard hook on every PreToolUse call', () => {
     const dashboard = entries.find((e) => e.commands.some((c) => c.includes('codex-dashboard-hook.sh PreToolUse')));
