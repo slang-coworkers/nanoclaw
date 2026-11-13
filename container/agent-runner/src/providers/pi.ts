@@ -50,6 +50,8 @@ const TURN_TIMEOUT_MS = 5 * 60 * 1000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTEXT_EXTENSION_PATH = path.join(__dirname, 'pi-extensions', 'nanoclaw-context.ts');
+// Runs the group's Claude Code hooks (the Bash gates) on Pi's tool events.
+const HOOKS_EXTENSION_PATH = path.join(__dirname, 'pi-extensions', 'nanoclaw-hooks.ts');
 
 // ── System-prompt assembly (shared shape with codex.ts) ──────────────────────
 // pi doesn't expand `@-import` directives or auto-load CLAUDE.md / CLAUDE.local.md,
@@ -88,6 +90,17 @@ function resolvePaths(): PiRuntimePaths {
   };
 }
 
+/**
+ * The extensions pi loads (settings.json `extensions`): our context injector,
+ * the hook gates (pi-extensions/nanoclaw-hooks.ts), and the pi-mcp-adapter
+ * baked into the image at PI_MCP_ADAPTER_ENTRY, so NanoClaw's MCP tools reach pi.
+ */
+export function piExtensions(env: NodeJS.ProcessEnv = process.env): string[] {
+  const extensions = [CONTEXT_EXTENSION_PATH, HOOKS_EXTENSION_PATH];
+  if (env.PI_MCP_ADAPTER_ENTRY) extensions.push(env.PI_MCP_ADAPTER_ENTRY);
+  return extensions;
+}
+
 export class PiProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
 
@@ -123,13 +136,8 @@ export class PiProvider implements AgentProvider {
     fs.mkdirSync(paths.configDir, { recursive: true });
     fs.mkdirSync(paths.sessionDir, { recursive: true });
 
-    // Extensions: our context injector, plus the pi-mcp-adapter (baked into the
-    // image at PI_MCP_ADAPTER_ENTRY) so NanoClaw's MCP tools reach pi.
-    const extensions = [CONTEXT_EXTENSION_PATH];
-    const adapterEntry = process.env.PI_MCP_ADAPTER_ENTRY;
-    if (adapterEntry) extensions.push(adapterEntry);
     const settings: Record<string, unknown> = {
-      extensions,
+      extensions: piExtensions(),
       // Non-interactive: never block on a project-trust prompt.
       defaultProjectTrust: 'always',
     };

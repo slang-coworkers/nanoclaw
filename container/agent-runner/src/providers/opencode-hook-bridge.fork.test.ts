@@ -7,10 +7,9 @@ import {
   NanoclawHookBridge,
   claudeToolInput,
   claudeToolName,
-  claudeToolResponse,
   installOpenCodeHookBridge,
 } from './opencode-hook-bridge.js';
-import type { HookSettings } from '../settings-hooks.js';
+import { claudeToolResponse, type HookSettings } from '../settings-hooks.js';
 
 // Fork-owned. OpenCode never reads the Claude Code hook settings the host
 // writes, so without this bridge every gate (critique, plan, eval sandbox, PR

@@ -162,3 +162,31 @@ export async function runHookEvent(
   }
   return { block: false, reason: '' };
 }
+
+/** The text of a tool result: bash output, or the text blocks of an MCP result. */
+export function toolResultText(output: unknown): string {
+  const o = (output ?? {}) as Record<string, unknown>;
+  if (typeof o.output === 'string') return o.output;
+  const content = o.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string'
+          ? (part as { text: string }).text
+          : '',
+      )
+      .join('\n');
+  }
+  return '';
+}
+
+/**
+ * The hook `tool_response` for a finished tool. Claude Code hands Bash hooks
+ * `{stdout, stderr}` and MCP hooks the tool result, which `track-critique.sh`
+ * parses as a JSON string with a `content` field.
+ */
+export function claudeToolResponse(claudeName: string, output: unknown): unknown {
+  const text = toolResultText(output);
+  return claudeName === 'Bash' ? { stdout: text, stderr: '' } : JSON.stringify({ content: text });
+}

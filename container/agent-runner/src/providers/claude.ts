@@ -4,7 +4,7 @@ import path from 'path';
 
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
-import { detectIssueClose } from '../issue-close.js';
+import { detectIssueClose, issueCloseRefusal } from '../issue-close.js';
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/container-state.js';
 import { BUILTIN_MCP_SERVER, isMcpToolAllowed, parseMcpPolicy, type McpPolicy } from '../mcp-policy.js';
 import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
@@ -660,15 +660,10 @@ function createPreToolUseHook(policy: McpPolicy): HookCallback {
     // boundary regardless of what the model was told or authorized. Opt-out is a
     // per-group env flag (unset everywhere today) so a future maintainer-grade
     // group can be granted the capability via container config, not a code change.
-    if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
-      const match = detectIssueClose(i.tool_input?.command as string | undefined);
-      if (match) {
-        return {
-          decision: 'block',
-          stopReason:
-            `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
-            `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
-        } as unknown as ReturnType<HookCallback>;
+    if (toolName === 'Bash') {
+      const refusal = issueCloseRefusal(i.tool_input?.command as string | undefined);
+      if (refusal) {
+        return { decision: 'block', stopReason: refusal } as unknown as ReturnType<HookCallback>;
       }
     }
     // Bash exposes its timeout via the tool_input.timeout field (ms). Any other

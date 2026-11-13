@@ -38,8 +38,8 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { detectIssueClose } from '../issue-close.js';
-import { hookSettingsPath, readHookSettings, runHookEvent } from '../settings-hooks.js';
+import { issueCloseRefusal } from '../issue-close.js';
+import { claudeToolResponse, hookSettingsPath, readHookSettings, runHookEvent } from '../settings-hooks.js';
 
 const PLUGIN_FILE = 'nanoclaw-hook-bridge.js';
 
@@ -100,34 +100,6 @@ export function mcpServerNames(configContent: string | undefined): string[] {
   }
 }
 
-/** The text of a tool result: bash output, or the text blocks of an MCP result. */
-export function toolResultText(output: unknown): string {
-  const o = (output ?? {}) as Record<string, unknown>;
-  if (typeof o.output === 'string') return o.output;
-  const content = o.content;
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) =>
-        part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string'
-          ? (part as { text: string }).text
-          : '',
-      )
-      .join('\n');
-  }
-  return '';
-}
-
-/**
- * The hook `tool_response` for a finished tool. Claude Code hands Bash hooks
- * `{stdout, stderr}` and MCP hooks the tool result, which `track-critique.sh`
- * parses as a JSON string with a `content` field.
- */
-export function claudeToolResponse(claudeName: string, output: unknown): unknown {
-  const text = toolResultText(output);
-  return claudeName === 'Bash' ? { stdout: text, stderr: '' } : JSON.stringify({ content: text });
-}
-
 const ROUTER_HOOK = /\/intent-router\.sh\b/;
 
 /** The text of a chat message's parts (the user prompt). */
@@ -154,14 +126,9 @@ export const NanoclawHookBridge = async () => {
     'tool.execute.before': async (input: { tool: string; sessionID?: string }, output: { args?: unknown }) => {
       const toolName = claudeToolName(input.tool, servers);
       const toolInput = claudeToolInput(toolName, output.args);
-      if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
-        const match = detectIssueClose(toolInput.command as string | undefined);
-        if (match) {
-          throw new Error(
-            `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
-              `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
-          );
-        }
+      if (toolName === 'Bash') {
+        const refusal = issueCloseRefusal(toolInput.command as string | undefined);
+        if (refusal) throw new Error(refusal);
       }
       const outcome = await runHookEvent(settings(), 'PreToolUse', toolName, {
         session_id: input.sessionID ?? '',
