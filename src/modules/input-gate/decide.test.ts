@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { GitHubLookups } from './allowlist.js';
 import { decide, type DecideContext } from './decide.js';
 import { unconnectedSources, type EligibilitySources } from './eligibility.js';
+import type { OpenLane } from './open-lane.js';
 import type { GateRequest } from './types.js';
 
 function ctx(over: Partial<DecideContext> = {}, lookups?: Partial<GitHubLookups>): DecideContext {
@@ -149,5 +150,35 @@ describe('decide (one gate, two checks)', () => {
     );
     await decide(req({ startsWork: false }), ctx({ eligibility: { ...verified, identity } }));
     expect(identity).not.toHaveBeenCalled();
+  });
+
+  it('a person who fails Check 2 goes to a ready open-weights lane, keeping the Check 2 reason', async () => {
+    const openLane = async (): Promise<OpenLane> => ({ status: 'ready', folder: 'lane', agentGroupId: 'ag-lane' });
+    expect(await decide(req(), ctx({ openLane }))).toMatchObject({
+      outcome: 'open_lane',
+      reason: 'not_linked',
+      tier: 'allowlisted',
+    });
+  });
+
+  it('an unset or invalid lane leaves the person not eligible', async () => {
+    for (const lane of [
+      { status: 'unset' },
+      { status: 'invalid', folder: 'lane', problem: 'the group is not weights=open' },
+    ] satisfies OpenLane[]) {
+      expect(await decide(req(), ctx({ openLane: async () => lane }))).toMatchObject({
+        outcome: 'not_eligible',
+        reason: 'not_linked',
+      });
+    }
+  });
+
+  it('the lane is read only for a person who fails Check 2', async () => {
+    const openLane = vi.fn(async (): Promise<OpenLane> => ({ status: 'unset' }));
+    const stranger = { id: 55, login: 's', type: 'User', association: 'NONE' };
+    await decide(req({ actor: stranger }), ctx({ openLane }));
+    await decide(req({ startsWork: false }), ctx({ openLane }));
+    await decide(req(), ctx({ openLane, eligibility: verified }));
+    expect(openLane).not.toHaveBeenCalled();
   });
 });

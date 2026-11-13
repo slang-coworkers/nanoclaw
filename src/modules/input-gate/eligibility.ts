@@ -1,7 +1,11 @@
 import type { EligibilityResult, EvidenceState, GateActor } from './types.js';
 
 /**
- * Check 2 (Claude access policy): is this person eligible right now?
+ * Check 2 (closed-model access policy): is this person eligible right now?
+ *
+ * The rules come from the terms of closed-weights models (Claude, GPT), so the
+ * check applies to closed-model work only; a person who fails it may still have
+ * work done on open-weights models (see open-lane.ts).
  *
  * The policy needs a verified NVIDIA (Entra) identity linked to the GitHub
  * account, the employing entity from HR, and a current location from an
