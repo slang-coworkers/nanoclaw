@@ -33,6 +33,7 @@ const env = readEnvFile([
   'ONECLI_GATEWAY_CONTAINER',
   'ANTHROPIC_BASE_URL',
   'ONECLI_CONSOLE_URL',
+  'ONECLI_NEW_AGENT_SECRETS',
 ]);
 const onecliUrl = process.env.ONECLI_URL || env.ONECLI_URL;
 const onecliApiKey = process.env.ONECLI_API_KEY || env.ONECLI_API_KEY;
@@ -51,6 +52,7 @@ const ensuredAgents = new Set<string>();
 
 export function _resetEnsuredAgentsForTesting(): void {
   ensuredAgents.clear();
+  restrictionPending.clear();
 }
 const healthUrl = new URL('/v1/health', onecliUrl || 'https://api.onecli.sh').toString();
 const liveLeases = new Set<{ unavailable?: string; notify?: (reason: string) => void }>();
@@ -310,6 +312,82 @@ export async function grantProviderCredentials(
   return missing;
 }
 
+/**
+ * The secrets a new agent gets on a gateway with secret modes:
+ * `ONECLI_NEW_AGENT_SECRETS`, a comma-separated list of secret names. Null when
+ * unset, which leaves a new agent as the gateway makes it.
+ */
+export function newAgentSecretNames(
+  value = process.env.ONECLI_NEW_AGENT_SECRETS || env.ONECLI_NEW_AGENT_SECRETS,
+): string[] | null {
+  const names = (value ?? '')
+    .split(',')
+    .map((n) => n.trim())
+    .filter(Boolean);
+  return names.length > 0 ? names : null;
+}
+
+/**
+ * Give a new OneCLI agent only the install's base secrets. A gateway built on
+ * OneCLI 1.43 or older (such as onecli-cost) creates an agent in secret mode
+ * "all", so a new group could use every secret on the box: the model keys and
+ * every GitHub token. We attach the secrets named in ONECLI_NEW_AGENT_SECRETS
+ * (for example the inference key and the GitHub read tokens), then switch the
+ * agent to "selective". An unknown name is logged and skipped. A gateway
+ * without these routes (1.44 and newer, where an agent gets only its granted
+ * secrets) is left alone. Returns what happened.
+ */
+export async function restrictNewAgentSecrets(
+  identifier: string,
+  secretNames: readonly string[],
+  opts: ProviderGrantOptions,
+): Promise<'restricted' | 'unsupported'> {
+  const doFetch = opts.fetchImpl ?? fetch;
+  const base = opts.baseUrl.replace(/\/+$/, '');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (opts.apiKey) headers.Authorization = `Bearer ${opts.apiKey}`;
+  if (opts.projectId) headers['X-Project-Id'] = opts.projectId;
+  const request = (path: string, method = 'GET', body?: unknown) =>
+    doFetch(`${base}${path}`, {
+      method,
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  const list = async (res: Response, path: string): Promise<Array<Record<string, unknown>>> => {
+    if (!res.ok) throw new Error(`GET ${path} returned ${res.status}`);
+    const body = (await res.json()) as unknown;
+    const rows = Array.isArray(body) ? body : (body as { data?: unknown }).data;
+    if (!Array.isArray(rows)) throw new Error(`GET ${path} did not return a list`);
+    return rows as Array<Record<string, unknown>>;
+  };
+
+  const agentsRes = await request('/api/agents');
+  if (agentsRes.status === 404) return 'unsupported';
+  const agent = (await list(agentsRes, '/api/agents')).find((a) => a.identifier === identifier);
+  if (typeof agent?.id !== 'string') throw new Error(`OneCLI agent ${identifier} not found`);
+  const agentPath = `/api/agents/${encodeURIComponent(agent.id)}`;
+
+  const vault = await list(await request('/api/secrets'), '/api/secrets');
+  const byName = new Map(vault.map((s) => [s.name, s.id]));
+  const secretIds: string[] = [];
+  for (const name of secretNames) {
+    const id = byName.get(name);
+    if (typeof id === 'string') secretIds.push(id);
+    else log.warn('ONECLI_NEW_AGENT_SECRETS names a secret the vault does not have', { name });
+  }
+  // Attach first, then switch: the agent never runs selective with nothing attached.
+  const put = await request(`${agentPath}/secrets`, 'PUT', { secretIds });
+  if (!put.ok) throw new Error(`PUT ${agentPath}/secrets returned ${put.status}`);
+  const mode = await request(`${agentPath}/secret-mode`, 'PATCH', { mode: 'selective' });
+  if (!mode.ok) throw new Error(`PATCH ${agentPath}/secret-mode returned ${mode.status}`);
+  return 'restricted';
+}
+
+// A new agent whose restriction failed. ensureAgent reports `created` only
+// once, so the next setup retries the restriction for these identifiers.
+const restrictionPending = new Set<string>();
+
 // One in-flight agent setup per agent group and provider in this host process:
 // concurrent spawns share one ensureAgent call and one grants check.
 const agentSetup = new Map<string, Promise<void>>();
@@ -319,7 +397,23 @@ function ensureAgentReady(identifier: string, name: string, provider: string | u
   const inFlight = agentSetup.get(key);
   if (inFlight) return inFlight;
   const setup = (async () => {
-    await onecli.ensureAgent({ name, identifier });
+    const ensured = await onecli.ensureAgent({ name, identifier });
+    const secretNames = newAgentSecretNames();
+    if (secretNames && (ensured?.created || restrictionPending.has(identifier))) {
+      restrictionPending.add(identifier);
+      const outcome = await restrictNewAgentSecrets(identifier, secretNames, {
+        baseUrl: onecliUrl || 'https://api.onecli.sh',
+        apiKey: onecliApiKey,
+        projectId: process.env.ONECLI_PROJECT_ID,
+      });
+      restrictionPending.delete(identifier);
+      if (outcome === 'restricted') {
+        log.info('OneCLI agent restricted to the base secrets', {
+          agentGroupId: identifier,
+          secrets: secretNames.length,
+        });
+      }
+    }
     if (!provider) return;
     let attached: string[] | null;
     try {
