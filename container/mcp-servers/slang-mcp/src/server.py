@@ -65,6 +65,88 @@ from .slack import (  # noqa: E402
     reply_to_thread,
 )
 
+# The open lock file of the process that holds the host's eager Discord
+# Gateway connection; None in every other process.
+_gateway_lock_handle = None
+
+
+def acquire_discord_gateway_lock(path: str | None = None) -> bool:
+    """Take the host-wide lock for the eager Discord Gateway connection.
+
+    Returns True when this process may open the connection, False when another
+    slang-mcp process on the host holds it. The stdio gateway in front of this
+    server starts one process per MCP session, so without the lock every agent
+    session opened its own Gateway connection, and each live Discord event
+    reached the dashboard once per connection. The lock is a non-blocking flock,
+    released when the holder exits or calls release_discord_gateway_lock().
+    """
+    global _gateway_lock_handle
+    import fcntl
+    import tempfile
+
+    lock_path = path or os.environ.get("SLANG_MCP_DISCORD_LOCK") or os.path.join(
+        tempfile.gettempdir(), "slang-mcp-discord-gateway.lock"
+    )
+    handle = open(lock_path, "a+")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        handle.close()
+        return False
+    _gateway_lock_handle = handle
+    return True
+
+
+def release_discord_gateway_lock() -> None:
+    """Release the eager Gateway lock, so another process may take it."""
+    global _gateway_lock_handle
+    if _gateway_lock_handle is not None:
+        _gateway_lock_handle.close()
+        _gateway_lock_handle = None
+
+
+async def eager_discord_init() -> None:
+    """Pre-initialize the Discord Gateway client when DISCORD_EAGER_INIT=1.
+
+    Live event handlers (on_message, on_thread_create) then register at server
+    start instead of at the first discord_* tool call. Installs that run a
+    separate feedback_collector daemon (prod) leave the flag off, because that
+    daemon already holds the Gateway connection. Only the process that takes the
+    host-wide lock connects (acquire_discord_gateway_lock); a failed connection
+    gives the lock back. A failure never stops the server: REST tools still work
+    through the OneCLI proxy.
+    """
+    if os.environ.get("DISCORD_EAGER_INIT") != "1":
+        return
+    if not acquire_discord_gateway_lock():
+        console.print("[dim]Another slang-mcp process holds the Discord Gateway; this one connects on first use[/dim]")
+        return
+    try:
+        if await init_discord_client() is None:
+            release_discord_gateway_lock()
+    except Exception as e:
+        release_discord_gateway_lock()
+        console.print(
+            f"[yellow]Eager Discord client init failed: {e} — REST tools still work via OneCLI proxy[/yellow]"
+        )
+
+
+async def run_stdio(app, open_streams) -> None:
+    """Serve MCP on stdio, with the eager Discord init in the background.
+
+    The MCP handshake must not wait for Discord. init_discord_client() waits up
+    to 30 s for the Gateway, and each MCP session starts its own process, so
+    awaiting it first delayed every session's `initialize` by up to 30 s. Claude
+    Code gives up on a server after about 25 s, so Claude groups lost every
+    slang-mcp tool. The init runs beside the server and is cancelled when the
+    session ends.
+    """
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(eager_discord_init)
+        async with open_streams() as streams:
+            await app.run(streams[0], streams[1], app.create_initialization_options())
+        tg.cancel_scope.cancel()
+
 
 @click.command()
 @click.option("--port", default=8000, help="Port to listen on for SSE")
@@ -1129,40 +1211,7 @@ def main(port: int, transport: str) -> int:
             console.print("[green]Server running on stdio[/green]")
 
             async def arun():
-                # Optionally pre-initialize the Discord Gateway client so live
-                # event handlers (on_message, on_thread_create) register at
-                # server startup instead of waiting for the first discord_* tool
-                # call.
-                #
-                # OPT-IN via DISCORD_EAGER_INIT=1 (default off). Installs that
-                # already run a separate feedback_collector daemon (e.g.
-                # `nanoclaw-prod-discord-feedback.service` on prod) should
-                # leave this off — feedback_collector already holds the
-                # Gateway connection, and a second connection from slang-mcp
-                # for the same bot is wasteful (two duplicate event streams,
-                # two POSTs to the dashboard ingress for every user message).
-                #
-                # Lego does NOT run feedback_collector and benefits from
-                # eager init: live read events flow into the dashboard the
-                # instant slang-mcp starts, no first-tool-call wakeup needed.
-                #
-                # init_discord_client() is itself a no-op when
-                # DISCORD_BOT_TOKEN is unset — REST tools still work via the
-                # OneCLI proxy. Exceptions are caught defensively so a
-                # Discord init failure can't take the whole MCP server down.
-                if os.environ.get("DISCORD_EAGER_INIT") == "1":
-                    try:
-                        await init_discord_client()
-                    except Exception as e:
-                        console.print(
-                            f"[yellow]Eager Discord client init failed: {e} — "
-                            f"REST tools still work via OneCLI proxy[/yellow]"
-                        )
-
-                async with stdio_server() as streams:
-                    await app.run(
-                        streams[0], streams[1], app.create_initialization_options()
-                    )
+                await run_stdio(app, stdio_server)
 
             anyio.run(arun)
 
