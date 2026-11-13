@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# PreToolUse hook (matcher: Edit|Write|MultiEdit|NotebookEdit|Bash):
-# block source-code edits until a plan exists. Critique enforcement moved
+# PreToolUse hook (matcher: Edit|Write|MultiEdit|NotebookEdit|Bash; Codex: Bash):
+# block source-code edits until a plan exists. A Codex `apply_patch` call
+# arrives as Bash and is judged by the files it writes (lib/plan-paths.sh). Critique enforcement moved
 # to gate-critique-on-deliver.sh — this hook is now plan-only.
 #
 # Symmetric opt-in (Model A, mirrors gate-critique-on-deliver.sh): only
@@ -10,9 +11,11 @@
 # without the overlay (readers, triagers, reviewers, casual chat agents)
 # can still run Edit/Write/Bash without enforcement — opt-in by design.
 #
-# Subagents (CLAUDE_CODE_FORK_SUBAGENT=1) inherit the parent's plan; they
-# pass this gate. Their deliveries are still gated by gate-critique-on-deliver.sh
-# the same as the parent — that's where universal critique enforcement lives.
+# Subagents share the parent's workflow-state.json, so the parent's plan covers
+# them through the same check; they get no separate pass. (CLAUDE_CODE_FORK_SUBAGENT
+# is a Claude SDK feature switch the host forwards to every container, so it
+# never meant "this call comes from a subagent", and keying on it turned the
+# gate off for every group of an install that set it.)
 #
 # Stdin: JSON with tool_name, tool_input.file_path or tool_input.command.
 # Exit 0 = allow, exit 2 = deny (stderr shown to agent).
@@ -23,45 +26,40 @@ set -euo pipefail
 OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
 [ -f "$OVERLAY_DIR/.overlay-plan-gate" ] || exit 0
 
-# Subagents skip plan check
-[ "${CLAUDE_CODE_FORK_SUBAGENT:-0}" = "1" ] && exit 0
+# shellcheck source=lib/plan-paths.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/plan-paths.sh"
 
 INPUT=$(cat)
 TOOL=$(echo "$INPUT" | jq -r '.tool_name // empty')
 
-# --- Bash: heuristic write-pattern detection ---
+# --- Bash: a Codex patch by its files; anything else by write patterns ---
 if [ "$TOOL" = "Bash" ]; then
   CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
   [ -z "$CMD" ] && exit 0
-  IS_WRITE=false
-  if echo "$CMD" | grep -qP '(^|\s|\|)(>|>>)\s'; then
-    IS_WRITE=true
-  elif echo "$CMD" | grep -qP '\b(tee|sed\s+-i|patch\s|git\s+apply|git\s+am|dd\s)\b'; then
-    IS_WRITE=true
+  if is_apply_patch "$CMD"; then
+    HOOK_CWD=$(echo "$INPUT" | jq -r '.cwd // "/workspace/agent"')
+    NEEDS_PLAN=false
+    while IFS= read -r FILE; do
+      [ -n "$FILE" ] && ! plan_free_path "$FILE" && NEEDS_PLAN=true
+    done <<< "$(apply_patch_files "$CMD" "$HOOK_CWD")"
+    # A patch must be the whole command: the write patterns below cannot judge
+    # what else the command runs (a `python3 -c` write, say), so it needs a plan.
+    [ -n "$(apply_patch_remainder "$CMD")" ] && NEEDS_PLAN=true
+    [ "$NEEDS_PLAN" = "false" ] && exit 0
+  else
+    IS_WRITE=false
+    if echo "$CMD" | grep -qP '(^|\s|\|)(>|>>)\s'; then
+      IS_WRITE=true
+    elif echo "$CMD" | grep -qP '\b(tee|sed\s+-i|patch\s|git\s+apply|git\s+am|dd\s)\b'; then
+      IS_WRITE=true
+    fi
+    [ "$IS_WRITE" = "false" ] && exit 0
   fi
-  [ "$IS_WRITE" = "false" ] && exit 0
 else
   FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
   [ -z "$FILE" ] && exit 0
-
-  # Allowlist: workspace files that don't need a plan
-  case "$FILE" in
-    /workspace/agent/plans/*) exit 0 ;;
-    /workspace/agent/reports/*) exit 0 ;;
-    /workspace/agent/memory/*) exit 0 ;;
-    /workspace/agent/conversations/*) exit 0 ;;
-    /workspace/agent/fixes/*) exit 0 ;;
-    /workspace/agent/reviews/*) exit 0 ;;
-    /workspace/agent/critiques/*) exit 0 ;;
-    /workspace/agent/CLAUDE.local.md) exit 0 ;;
-    /workspace/.claude/*) exit 0 ;;
-  esac
-
-  DIR=$(dirname "$FILE")
-  EXT="${FILE##*.}"
-  if [ "$DIR" = "/workspace/agent" ] && { [ "$EXT" = "md" ] || [ "$EXT" = "json" ]; }; then
-    exit 0
-  fi
+  # Workspace files that don't need a plan (lib/plan-paths.sh)
+  plan_free_path "$FILE" && exit 0
 fi
 
 # OVERLAY_HAS_PLAN was used by the legacy plan-gate.sh to opt out of plan
@@ -73,7 +71,12 @@ HAS_PLAN="${OVERLAY_HAS_PLAN:-1}"
 
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 
-if [ ! -f "$STATE" ] || [ "$(jq -r '.plan_written // false' "$STATE" 2>/dev/null)" != "true" ]; then
+# A plan counts only while its file exists. Codex records a plan before the
+# patch that writes it runs (plan-tracker.sh), and it runs parallel tool calls:
+# a code patch in the same batch must not pass on a plan that is not written yet.
+PLAN_PATH=$(jq -r '.plan_path // empty' "$STATE" 2>/dev/null || true)
+if [ ! -f "$STATE" ] || [ "$(jq -r '.plan_written // false' "$STATE" 2>/dev/null)" != "true" ] \
+  || { [ -n "$PLAN_PATH" ] && [ ! -f "$PLAN_PATH" ]; }; then
   cat >&2 << 'EOF'
 PLAN REQUIRED: Write a plan before editing source code.
 
@@ -85,13 +88,7 @@ EOF
   exit 2
 fi
 
-# Plan staleness check stays — many edits since last plan-write means the
-# plan no longer reflects the work being done.
-PLAN_STALE=$(jq -r '.plan_stale // false' "$STATE" 2>/dev/null || echo false)
-if [ "$PLAN_STALE" = "true" ]; then
-  EDITS=$(jq -r '.edits_since_plan // 0' "$STATE" 2>/dev/null || echo 0)
-  echo "PLAN STALE: $EDITS edits since last plan. Refresh the plan in /workspace/agent/reports/ before continuing." >&2
-  exit 2
-fi
-
+# A written plan stays valid until the task state resets. Edits since the plan
+# are counted (track-edits.sh) for the dashboard only; the critique gate checks
+# the work at delivery instead.
 exit 0

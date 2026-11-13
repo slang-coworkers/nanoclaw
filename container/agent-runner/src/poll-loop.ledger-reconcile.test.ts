@@ -22,6 +22,9 @@ import { closeSessionDb, initTestSessionDb, getOutboundDb } from './mailbox/sqli
 import { setCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H } from './poll-loop.js';
+
+/** A provider whose `usage` events carry each turn's spend (Claude, OpenCode, Pi). */
+const REPORTS_TURNS = { reportsTurnAccounting: true };
 import { __resetCodexCostMemo } from './codex-cost.js';
 import { createCostEventsTable } from './cost-events.js';
 import { priceUsage } from './pricing.js';
@@ -240,7 +243,7 @@ describe('#65 finding 1 — window generation isolates the reconcile', () => {
       codexBaselinePending: false,
     });
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().costSpentUsd).toBeCloseTo(12, 8);
     expect(H.getState().ledgerBaselinePending).toBe(true); // first fold will sentinel pre-existing codex history
     expectReconciled();
@@ -263,13 +266,13 @@ describe('#65 finding 1 — window generation isolates the reconcile', () => {
     };
     setCostCap(persisted);
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().ledgerBaselineVersion).toBe(1); // marker recorded
     expectReconciled();
     const rowsAfterFirst = (getOutboundDb().prepare('SELECT COUNT(*) c FROM cost_events').get() as { c: number }).c;
 
     // Warm respawn: the persisted marker is present now, so migration is skipped.
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     const rowsAfterSecond = (getOutboundDb().prepare('SELECT COUNT(*) c FROM cost_events').get() as { c: number }).c;
     expect(rowsAfterSecond).toBe(rowsAfterFirst); // no second seed
     expect(H.getState().costSpentUsd).toBeCloseTo(9, 8);
@@ -302,7 +305,7 @@ describe('#65 finding 1 — window generation isolates the reconcile', () => {
       .run('stray:1', `${D_TODAY}T00:00:00.000Z`, 'claude', MODEL, 99, 1, 99, 0, `${D_TODAY}T00:00:00.000Z`);
 
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
 
     // Baseline fired despite the stray row: marker set, gen rotated to 1, $8 seeded
     // there. reconcile (gen 1) is exact — the $99 stray in gen 0 is NOT summed.

@@ -22,16 +22,22 @@ import type { Database } from 'bun:sqlite';
 // The ledger reuses the SHIPPED normalizers + codex default so its pricing keys
 // EXACTLY match the live counter (priceUsage / priceCodexEvent) — a separate,
 // weaker normalizer is what made findings 4/5 diverge.
-import { DEFAULT_CODEX_RATE, normalizeCodexModel } from './codex-cost.js';
+import { DEFAULT_CODEX_RATE, DEFAULT_OPEN_MODEL_RATE, normalizeCodexModel, type CodexRate } from './codex-cost.js';
 import { normalizeModel } from './pricing.js';
+
+/** The provider whose spend a ledger row records. */
+export type CostProvider = 'claude' | 'codex' | 'opencode' | 'pi';
 
 /** One billable unit's token breakdown + identity. Provider-agnostic. */
 export interface CostEvent {
-  /** Dedup identity → PK. Claude: `claude:<message.id>`. Codex: `codex:<relpath>#<call-id>`. */
+  /**
+   * Dedup identity → PK. Claude: `claude:<message.id>`. Codex: `codex:<relpath>#<call-id>`.
+   * OpenCode and Pi: `<provider>:<gen>:<session>:<seq>:<model>`, one row per model per turn.
+   */
   id: string;
   /** The event's OWN UTC timestamp (message/call time), ISO-8601 Z. Bucketed at READ time. */
   ts: string;
-  provider: 'claude' | 'codex';
+  provider: CostProvider;
   /** Wire model that served THIS unit — priced per-model against LiteLLM. */
   model: string;
   /** Non-cached input (net of cache) — matches ccusage `inputTokens`. */
@@ -97,30 +103,42 @@ export interface PricedEvent {
  * LiteLLM base using the stored 1h split. Codex rows carry no cache-write split,
  * so those terms are simply zero.
  */
+/**
+ * The RATE_TABLE key of an event's model. OpenCode and Pi reach Claude and open
+ * models through the same gateway, so their rows try the Claude key first and
+ * then the open-model key: an OpenCode group on `aws/anthropic/bedrock-claude-opus-5-5`
+ * prices as Opus, and one on `nvidia/zai-org/glm-5.3` as GLM 5.3.
+ */
+function rateKey(e: CostEvent): string {
+  if (e.provider === 'claude') return normalizeModel(e.model);
+  if (e.provider === 'codex') return normalizeCodexModel(e.model);
+  return normalizeModel(e.model) || normalizeCodexModel(e.model);
+}
+
 export function priceTokens(e: CostEvent, table: LiteLLMRateTable): PricedEvent {
   // Provider-aware, reusing the SHIPPED normalizers so a `-vN`/dated/`-latest`/
   // prefixed id keys into RATE_TABLE exactly as the live counter keys it
   // (finding 4). RATE_TABLE is keyed by MODEL_PRICING / CODEX_MODEL_PRICING ids —
   // precisely what these normalizers return.
-  const key = e.provider === 'codex' ? normalizeCodexModel(e.model) : normalizeModel(e.model);
+  const key = rateKey(e);
   let r = table[key];
   let unpriced = false;
   if (!r) {
     const billed = e.inputTokens + e.outputTokens + e.cacheReadTokens + e.cacheWriteTokens + e.cacheWrite5mTokens + e.cacheWrite1hTokens;
     if (billed === 0) return { usd: 0, unpriced: false }; // a zero-token event legitimately costs $0
-    if (e.provider === 'codex') {
-      // Match the counter: an unknown codex model prices at DEFAULT_CODEX_RATE
-      // (priceCodexEvent does the same), still flagged so the snapshot refreshes
-      // (finding 5). Claude unknown → $0, which is what priceUsage also returns.
-      r = {
-        input_cost_per_token: DEFAULT_CODEX_RATE.input,
-        output_cost_per_token: DEFAULT_CODEX_RATE.output,
-        cache_read_input_token_cost: DEFAULT_CODEX_RATE.cacheRead,
-      };
-      unpriced = true;
-    } else {
-      return { usd: 0, unpriced: true };
-    }
+    // Match the counter: an unknown codex model prices at DEFAULT_CODEX_RATE
+    // (priceCodexEvent does the same), and an unknown OpenCode or Pi model at
+    // the highest open-model rate; both are flagged so the snapshot refreshes
+    // (finding 5). Claude unknown → $0, which is what priceUsage also returns.
+    const fallback: CodexRate | null =
+      e.provider === 'codex' ? DEFAULT_CODEX_RATE : e.provider === 'claude' ? null : DEFAULT_OPEN_MODEL_RATE;
+    if (!fallback) return { usd: 0, unpriced: true };
+    r = {
+      input_cost_per_token: fallback.input,
+      output_cost_per_token: fallback.output,
+      cache_read_input_token_cost: fallback.cacheRead,
+    };
+    unpriced = true;
   }
   const cacheRead = r.cache_read_input_token_cost ?? 0;
   const cacheWriteBase = r.cache_creation_input_token_cost ?? 0;
@@ -413,7 +431,7 @@ function rowToEvent(row: Record<string, unknown>): CostEvent {
   return {
     id: String(row.id),
     ts: String(row.ts),
-    provider: row.provider as 'claude' | 'codex',
+    provider: row.provider as CostProvider,
     model: String(row.model),
     inputTokens: Number(row.input_tokens),
     cacheReadTokens: Number(row.cache_read_tokens),

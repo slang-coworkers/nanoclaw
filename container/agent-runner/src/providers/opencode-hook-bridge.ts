@@ -12,6 +12,7 @@
  *   OpenCode event                 Claude Code hook event
  *   tool.execute.before        ->  PreToolUse    (exit 2 or a deny decision blocks the tool)
  *   tool.execute.after         ->  PostToolUse   (a block reason is appended to the tool output)
+ *   event: a tool part in error ->  PostToolUseFailure (OpenCode skips tool.execute.after then)
  *   chat.message               ->  UserPromptSubmit (side effects only)
  *
  * Consider an OpenCode reviewer that calls the NanoClaw MCP tool to send
@@ -38,8 +39,8 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import { detectIssueClose } from '../issue-close.js';
-import { hookSettingsPath, readHookSettings, runHookEvent } from '../settings-hooks.js';
+import { issueCloseRefusal } from '../issue-close.js';
+import { claudeToolResponse, hookSettingsPath, readHookSettings, runHookEvent } from '../settings-hooks.js';
 
 const PLUGIN_FILE = 'nanoclaw-hook-bridge.js';
 
@@ -100,34 +101,6 @@ export function mcpServerNames(configContent: string | undefined): string[] {
   }
 }
 
-/** The text of a tool result: bash output, or the text blocks of an MCP result. */
-export function toolResultText(output: unknown): string {
-  const o = (output ?? {}) as Record<string, unknown>;
-  if (typeof o.output === 'string') return o.output;
-  const content = o.content;
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((part) =>
-        part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string'
-          ? (part as { text: string }).text
-          : '',
-      )
-      .join('\n');
-  }
-  return '';
-}
-
-/**
- * The hook `tool_response` for a finished tool. Claude Code hands Bash hooks
- * `{stdout, stderr}` and MCP hooks the tool result, which `track-critique.sh`
- * parses as a JSON string with a `content` field.
- */
-export function claudeToolResponse(claudeName: string, output: unknown): unknown {
-  const text = toolResultText(output);
-  return claudeName === 'Bash' ? { stdout: text, stderr: '' } : JSON.stringify({ content: text });
-}
-
 const ROUTER_HOOK = /\/intent-router\.sh\b/;
 
 /** The text of a chat message's parts (the user prompt). */
@@ -142,6 +115,37 @@ function promptText(parts: unknown): string {
     .join('\n');
 }
 
+/** A tool call that failed, read from an OpenCode `message.part.updated` event. */
+export interface FailedToolCall {
+  sessionID: string;
+  callID: string;
+  tool: string;
+  input: unknown;
+  error: string;
+}
+
+/** The failed tool call an OpenCode event reports, or null for any other event. */
+export function failedToolPart(event: { type?: string; properties?: Record<string, unknown> }): FailedToolCall | null {
+  if (event.type !== 'message.part.updated') return null;
+  const part = event.properties?.part as
+    | {
+        type?: string;
+        sessionID?: string;
+        callID?: string;
+        tool?: string;
+        state?: { status?: string; input?: unknown; error?: unknown };
+      }
+    | undefined;
+  if (part?.type !== 'tool' || part.state?.status !== 'error' || !part.callID || !part.tool) return null;
+  return {
+    sessionID: part.sessionID ?? '',
+    callID: part.callID,
+    tool: part.tool,
+    input: part.state.input,
+    error: typeof part.state.error === 'string' ? part.state.error : String(part.state.error ?? ''),
+  };
+}
+
 /**
  * The OpenCode plugin. OpenCode calls every export of a plugin module, so the
  * file OpenCode loads re-exports only this function (see installOpenCodeHookBridge).
@@ -150,18 +154,31 @@ export const NanoclawHookBridge = async () => {
   const settingsPath = hookSettingsPath();
   const servers = mcpServerNames(process.env.OPENCODE_CONFIG_CONTENT);
   const settings = () => readHookSettings(settingsPath);
+  // A failed tool part can update several times; run its failure hooks once.
+  const failedCalls = new Set<string>();
   return {
+    // OpenCode does not call tool.execute.after for a tool that throws, so a
+    // failed call reaches the hooks from the event stream instead, as Claude
+    // Code's PostToolUseFailure (the dashboard records it, as for Claude).
+    event: async ({ event }: { event: { type?: string; properties?: Record<string, unknown> } }) => {
+      const failure = failedToolPart(event);
+      if (!failure || failedCalls.has(failure.callID)) return;
+      failedCalls.add(failure.callID);
+      const toolName = claudeToolName(failure.tool, servers);
+      await runHookEvent(settings(), 'PostToolUseFailure', toolName, {
+        session_id: failure.sessionID,
+        tool_name: toolName,
+        tool_input: claudeToolInput(toolName, failure.input),
+        tool_use_id: failure.callID,
+        error: failure.error,
+      });
+    },
     'tool.execute.before': async (input: { tool: string; sessionID?: string }, output: { args?: unknown }) => {
       const toolName = claudeToolName(input.tool, servers);
       const toolInput = claudeToolInput(toolName, output.args);
-      if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
-        const match = detectIssueClose(toolInput.command as string | undefined);
-        if (match) {
-          throw new Error(
-            `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
-              `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
-          );
-        }
+      if (toolName === 'Bash') {
+        const refusal = issueCloseRefusal(toolInput.command as string | undefined);
+        if (refusal) throw new Error(refusal);
       }
       const outcome = await runHookEvent(settings(), 'PreToolUse', toolName, {
         session_id: input.sessionID ?? '',
