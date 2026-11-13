@@ -32,6 +32,9 @@ import { getUndeliveredMessages } from './db/messages-out.js';
 import { getCostCap, setCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H } from './poll-loop.js';
+
+/** A provider whose `usage` events carry each turn's spend (Claude, OpenCode, Pi). */
+const REPORTS_TURNS = { reportsTurnAccounting: true };
 import { __resetCodexCostMemo } from './codex-cost.js';
 import { priceUsage } from './pricing.js';
 import type { RunnerConfig } from './config.js';
@@ -813,7 +816,7 @@ describe('#1327 — persistence + respawn', () => {
       codexBaselinePending: false,
     });
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     const s = H.getState();
     expect(s.codexLedgerBaselinePending).toBe(false);
     expect(s.codexUsdCharged).toBeCloseTo(4, 8);
@@ -830,7 +833,7 @@ describe('#1327 — persistence + respawn', () => {
       ceilingUsd: 100,
     });
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().codexLedgerBaselinePending).toBe(true);
     // The inflated pre-fix spend is RETAINED, not rescaled.
     expect(H.getState().costSpentUsd).toBeCloseTo(166, 8);
@@ -851,7 +854,7 @@ describe('#1327 — persistence + respawn', () => {
       codexBaselinePending: true,
     });
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().codexLedgerBaselinePending).toBe(true);
   });
 });
@@ -876,7 +879,7 @@ describe('#1333 — native-codex sessions are metered (via the fold), safely', (
 
   it('does NOT change Claude behavior: a first-time Claude session still owes no baseline', () => {
     __setConfigForTest(cfg({ costCapT2Usd: 50, costCeilingT2Usd: 100 } as Partial<RunnerConfig>));
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
     expect(H.getState().costEnabled).toBe(true);
     expect(H.getState().codexLedgerBaselinePending).toBe(false);
   });

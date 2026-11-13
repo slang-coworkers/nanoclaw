@@ -17,7 +17,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-export type HookEvent = 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit' | 'Stop' | 'StopFailure';
+export type HookEvent =
+  'PreToolUse' | 'PostToolUse' | 'PostToolUseFailure' | 'UserPromptSubmit' | 'Stop' | 'StopFailure';
 
 export interface HookCommand {
   type?: string;
@@ -41,7 +42,7 @@ export const AGENT_DIR = '/workspace/agent';
 const DEFAULT_TIMEOUT_S = 60;
 
 // Claude Code applies matchers to tool events only; the other events run every entry.
-const TOOL_EVENTS: ReadonlySet<HookEvent> = new Set(['PreToolUse', 'PostToolUse']);
+const TOOL_EVENTS: ReadonlySet<HookEvent> = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
 
 /** True when a Claude Code hook matcher selects `toolName` ("" and "*" select every tool). */
 export function matcherSelects(matcher: string | undefined, toolName: string): boolean {
@@ -124,15 +125,16 @@ export function readHookSettings(settingsPath: string): HookSettings {
 export interface RunHookEventOptions {
   /** Drops commands that another path already runs. */
   skip?: RegExp;
-  /**
-   * Runs every selected hook at once and blocks when any of them blocks, as
-   * Claude Code does. Without it the hooks run in order and the first block
-   * stops the rest, which a tool gate wants: a denied call needs no later check.
-   */
-  all?: boolean;
 }
 
-/** Run the hooks registered for `event` that select `toolName`, with `payload` on stdin. */
+/**
+ * Run the hooks registered for `event` that select `toolName`, with `payload`
+ * on stdin. Every selected hook runs, at once, and the event blocks when any of
+ * them blocks, with the reasons joined: Claude Code runs hooks this way, and the
+ * hook scripts are written for it. Consider an OpenCode Write that the plan gate
+ * refuses: the dashboard telemetry hook registered after the gate still records
+ * the call, so a refused call shows on the dashboard as it does for Claude.
+ */
 export async function runHookEvent(
   settings: HookSettings,
   event: HookEvent,
@@ -150,15 +152,36 @@ export async function runHookEvent(
     }
   }
   const input = { hook_event_name: event, cwd: AGENT_DIR, ...payload };
-  if (options.all) {
-    const blocks = (await Promise.all(selected.map((hook) => runHookCommand(hook, input)))).filter((o) => o.block);
-    return blocks.length > 0
-      ? { block: true, reason: blocks.map((o) => o.reason).join('\n\n') }
-      : { block: false, reason: '' };
+  const blocks = (await Promise.all(selected.map((hook) => runHookCommand(hook, input)))).filter((o) => o.block);
+  return blocks.length > 0
+    ? { block: true, reason: blocks.map((o) => o.reason).join('\n\n') }
+    : { block: false, reason: '' };
+}
+
+/** The text of a tool result: bash output, or the text blocks of an MCP result. */
+export function toolResultText(output: unknown): string {
+  const o = (output ?? {}) as Record<string, unknown>;
+  if (typeof o.output === 'string') return o.output;
+  const content = o.content;
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((part) =>
+        part && typeof part === 'object' && typeof (part as { text?: unknown }).text === 'string'
+          ? (part as { text: string }).text
+          : '',
+      )
+      .join('\n');
   }
-  for (const hook of selected) {
-    const outcome = await runHookCommand(hook, input);
-    if (outcome.block) return outcome;
-  }
-  return { block: false, reason: '' };
+  return '';
+}
+
+/**
+ * The hook `tool_response` for a finished tool. Claude Code hands Bash hooks
+ * `{stdout, stderr}` and MCP hooks the tool result, which `track-critique.sh`
+ * parses as a JSON string with a `content` field.
+ */
+export function claudeToolResponse(claudeName: string, output: unknown): unknown {
+  const text = toolResultText(output);
+  return claudeName === 'Bash' ? { stdout: text, stderr: '' } : JSON.stringify({ content: text });
 }

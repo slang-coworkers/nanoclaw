@@ -82,7 +82,7 @@ describe('Stop events', () => {
     expect(fs.existsSync(marker)).toBe(true);
   });
 
-  it('with `all`, runs the telemetry hook even when the gate before it blocks, and joins the reasons', async () => {
+  it('runs the telemetry hook even when the gate before it blocks, and joins the reasons', async () => {
     const seen = path.join(dir, 'telemetry.json');
     const settings: HookSettings = {
       Stop: [
@@ -91,18 +91,33 @@ describe('Stop events', () => {
         { hooks: [{ command: `echo 'second gate' >&2; exit 2` }] },
       ],
     };
-    const outcome = await runHookEvent(
-      settings,
-      'Stop',
-      '',
-      { session_id: 's1', stop_hook_active: false },
-      { all: true },
-    );
+    const outcome = await runHookEvent(settings, 'Stop', '', { session_id: 's1', stop_hook_active: false });
     expect(outcome).toEqual({ block: true, reason: 'refresh the explanation\n\nsecond gate' });
     expect(JSON.parse(fs.readFileSync(seen, 'utf-8'))).toMatchObject({
       hook_event_name: 'Stop',
       session_id: 's1',
       stop_hook_active: false,
+    });
+  });
+});
+
+describe('tool events', () => {
+  it('a refused tool call still reaches the telemetry hook registered after the gate', async () => {
+    const seen = path.join(dir, 'pre-telemetry.json');
+    const settings: HookSettings = {
+      PreToolUse: [
+        { matcher: 'Write', hooks: [{ command: `echo 'PLAN REQUIRED' >&2; exit 2` }] },
+        { hooks: [{ command: `cat > ${seen}` }] },
+      ],
+    };
+    const outcome = await runHookEvent(settings, 'PreToolUse', 'Write', {
+      tool_name: 'Write',
+      tool_input: { file_path: '/workspace/agent/x.py' },
+    });
+    expect(outcome).toEqual({ block: true, reason: 'PLAN REQUIRED' });
+    expect(JSON.parse(fs.readFileSync(seen, 'utf-8'))).toMatchObject({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Write',
     });
   });
 });

@@ -18,13 +18,15 @@ import { existsSync } from 'fs';
 
 const HOOK_PATH = '/app/hooks/intent-router.sh';
 /**
- * How long the hook may run before the prompt goes on unrouted. Claude groups
- * keep 4 s: Haiku answers in about 2 s. Non-Claude groups classify with luna
- * through the gateway, which often passes 4 s, so they get 8 s.
+ * How long the hook may run before the prompt goes on unrouted: 8 s for every
+ * provider, the same timeout the host gives the script as a Claude Code
+ * UserPromptSubmit hook for the first prompt (src/container-runner.ts). The
+ * script's own HTTP limits (5 s for Haiku, 7.5 s through the gateway) fit
+ * inside it, so a slow answer still routes and the script exits on its own.
+ * A shorter budget for Claude (it was 4 s) killed the script while its 5 s
+ * Haiku call was still waiting: lego measured Haiku at up to 3.9 s.
  */
-export function hookTimeoutMs(provider = process.env.AGENT_PROVIDER || 'claude'): number {
-  return provider === 'claude' ? 4000 : 8000;
-}
+export const HOOK_TIMEOUT_MS = 8000;
 
 function log(msg: string): void {
   console.error(`[intent-router-bridge] ${msg}`);
@@ -57,7 +59,7 @@ function runHook(prompt: string): Promise<string> {
     });
     let stdout = '';
     let stderr = '';
-    const timeoutMs = hookTimeoutMs();
+    const timeoutMs = HOOK_TIMEOUT_MS;
     let timer: NodeJS.Timeout | null = setTimeout(() => {
       timer = null;
       child.kill('SIGTERM');

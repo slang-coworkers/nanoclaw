@@ -27,7 +27,7 @@ If all of the following are already present, skip to **Configuration**:
 - `src/providers/pi.ts`
 - `import './pi.js';` in **both** `container/agent-runner/src/providers/index.ts` and `src/providers/index.ts`
 - `@earendil-works/pi-coding-agent` entry in `container/cli-tools.json` (pinned to a version matured past the 3-day release-age gate), and the `/opt/pi-ext` adapter install (+ `PI_MCP_ADAPTER_ENTRY`) in `container/Dockerfile`
-- `PI_MODEL` / `PI_PROVIDER` / `PI_THINKING_LEVEL` in the container-runner env passthrough list
+- `PI_MODEL` / `PI_PROVIDER` / `PI_THINKING_LEVEL` / `PI_BASE_URL` in the container-runner env passthrough list
 
 ### Build
 
@@ -63,6 +63,14 @@ Set via host env (forwarded by the container-runner passthrough), defaulting to 
 PI_PROVIDER=anthropic          # or openai
 PI_MODEL=claude-opus-4-5       # optional; pi default otherwise
 PI_THINKING_LEVEL=high         # off|minimal|low|medium|high|xhigh|max
+```
+
+For an OpenAI-compatible gateway, such as the NVIDIA inference gateway, also set `PI_BASE_URL`. The runner then declares `PI_PROVIDER` as a custom provider at that URL, serving `PI_MODEL`, in pi's `models.json`. The OneCLI proxy injects the gateway credential by host, as for OpenCode:
+
+```env
+PI_PROVIDER=nvidia
+PI_BASE_URL=https://inference-api.nvidia.com/v1
+PI_MODEL=nvidia/zai-org/glm-5.3   # or per group: ncl groups config update --model / --weights open
 ```
 
 ### Per group / per session

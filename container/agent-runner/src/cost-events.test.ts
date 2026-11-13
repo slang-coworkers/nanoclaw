@@ -10,7 +10,7 @@ import { type CostEvent, createCostEventsTable, priceTokens, recordCostEvent, su
 import { RATE_TABLE, RATE_VERSION } from './cost-rate-table.js';
 import { claudeMessageToEvent, codexCallToEvent } from './cost-events-integration.js';
 import { priceUsage } from './pricing.js';
-import { priceCodexEvent, codexEventKey, type CodexUsageEvent } from './codex-cost.js';
+import { DEFAULT_OPEN_MODEL_RATE, priceCodexEvent, codexEventKey, type CodexUsageEvent } from './codex-cost.js';
 import type { ProviderEvent } from './providers/types.js';
 
 const NOW = '2026-08-28T12:00:00.000Z';
@@ -89,6 +89,23 @@ describe('integration mappers', () => {
     expect(unknownCodex.usd).toBeCloseTo(priceCodexEvent({ day: '2026-08-28', rawModel: 'future-codex', input: 1_000_000, cached: 0, output: 0 }), 10);
     expect(unknownCodex.usd).toBeGreaterThan(0);
     expect(unknownCodex.unpriced).toBe(true);
+  });
+
+  it('OpenCode and Pi rows price Claude and open models, and an unknown model at the highest open rate', () => {
+    // An OpenCode group on a Claude model through the gateway prices as that Claude model.
+    const opus = priceTokens(ev({ provider: 'opencode', model: 'aws/anthropic/bedrock-claude-opus-5-5', inputTokens: 1_000_000 }), RATE_TABLE);
+    expect(opus).toEqual({ usd: 4, unpriced: false });
+    // An open model prices at its gateway list rate, cache reads included.
+    const glm = priceTokens(
+      ev({ provider: 'pi', model: 'nvidia/zai-org/glm-5.3', inputTokens: 1_000_000, cacheReadTokens: 1_000_000, outputTokens: 1_000_000 }),
+      RATE_TABLE,
+    );
+    expect(glm.usd).toBeCloseTo(1.4 + 0.14 + 4.4, 10);
+    expect(glm.unpriced).toBe(false);
+    // An unknown model is never $0: it takes Kimi K3's rate and is flagged.
+    const unknown = priceTokens(ev({ provider: 'opencode', model: 'nvidia/new-vendor/model-x', outputTokens: 1_000_000 }), RATE_TABLE);
+    expect(unknown.usd).toBeCloseTo(DEFAULT_OPEN_MODEL_RATE.output * 1_000_000, 10);
+    expect(unknown.unpriced).toBe(true);
   });
 
   it('codexCallToEvent keys by the VERIFIED tuple identity and stores NET input', () => {
