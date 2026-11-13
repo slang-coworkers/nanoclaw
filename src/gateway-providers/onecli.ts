@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 import { normalizeGatewayApprovalSummary } from '../gateway-approval-summary.js';
 /** OneCLI typed configuration and supervised native approval adapter. */
 import { OneCLI, ApprovalClient, type ContainerConfig, type ApprovalRequest } from '@onecli-sh/sdk';
@@ -50,9 +53,10 @@ const onecli = new OneCLI({ url: onecliUrl, apiKey: onecliApiKey, timeout: ONECL
 // an agent deleted out-of-band is re-ensured by the next spawn.
 const ensuredAgents = new Set<string>();
 
+/** Tests: forget this process's memos, as a host restart does; the pending restrictions on disk stay. */
 export function _resetEnsuredAgentsForTesting(): void {
   ensuredAgents.clear();
-  restrictionPending.clear();
+  restrictionPending = null;
 }
 const healthUrl = new URL('/v1/health', onecliUrl || 'https://api.onecli.sh').toString();
 const liveLeases = new Set<{ unavailable?: string; notify?: (reason: string) => void }>();
@@ -384,9 +388,37 @@ export async function restrictNewAgentSecrets(
   return 'restricted';
 }
 
-// A new agent whose restriction failed. ensureAgent reports `created` only
-// once, so the next setup retries the restriction for these identifiers.
-const restrictionPending = new Set<string>();
+// A new agent whose restriction has not succeeded yet. ensureAgent reports
+// `created` only once, so the next setup retries the restriction for these
+// identifiers. The set lives in a file because a host restart between the failed
+// restriction and the retry would otherwise forget it, and the agent would keep
+// every secret ('all' mode) for good.
+const RESTRICTION_PENDING_FILE = 'onecli-restriction-pending.json';
+let restrictionPending: Set<string> | null = null;
+
+/** The identifiers whose restriction is pending, read from DATA_DIR once per process. */
+function pendingRestrictions(): Set<string> {
+  if (restrictionPending) return restrictionPending;
+  restrictionPending = new Set();
+  try {
+    const ids = JSON.parse(fs.readFileSync(path.join(DATA_DIR, RESTRICTION_PENDING_FILE), 'utf-8')) as unknown;
+    if (Array.isArray(ids)) for (const id of ids) if (typeof id === 'string') restrictionPending.add(id);
+  } catch {
+    /* no file yet: nothing pending */
+  }
+  return restrictionPending;
+}
+
+/** Add or remove a pending restriction and write the set back atomically. */
+function setRestrictionPending(identifier: string, pending: boolean): void {
+  const set = pendingRestrictions();
+  if (pending) set.add(identifier);
+  else set.delete(identifier);
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  const file = path.join(DATA_DIR, RESTRICTION_PENDING_FILE);
+  fs.writeFileSync(`${file}.tmp`, JSON.stringify([...set]));
+  fs.renameSync(`${file}.tmp`, file);
+}
 
 // One in-flight agent setup per agent group and provider in this host process:
 // concurrent spawns share one ensureAgent call and one grants check.
@@ -399,14 +431,14 @@ function ensureAgentReady(identifier: string, name: string, provider: string | u
   const setup = (async () => {
     const ensured = await onecli.ensureAgent({ name, identifier });
     const secretNames = newAgentSecretNames();
-    if (secretNames && (ensured?.created || restrictionPending.has(identifier))) {
-      restrictionPending.add(identifier);
+    if (secretNames && (ensured?.created || pendingRestrictions().has(identifier))) {
+      setRestrictionPending(identifier, true);
       const outcome = await restrictNewAgentSecrets(identifier, secretNames, {
         baseUrl: onecliUrl || 'https://api.onecli.sh',
         apiKey: onecliApiKey,
         projectId: process.env.ONECLI_PROJECT_ID,
       });
-      restrictionPending.delete(identifier);
+      setRestrictionPending(identifier, false);
       if (outcome === 'restricted') {
         log.info('OneCLI agent restricted to the base secrets', {
           agentGroupId: identifier,

@@ -817,6 +817,36 @@ describe('OneCLI gateway package', () => {
       expect(gateway.calls).toEqual(['GET /api/agents']);
     });
 
+    it('a failed restriction is retried after a host restart', async () => {
+      const saved = process.env.ONECLI_NEW_AGENT_SECRETS;
+      process.env.ONECLI_NEW_AGENT_SECRETS = 'Inference';
+      const gateway = modeGateway();
+      let failNext = true;
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+        if (failNext && String(url).endsWith('/secret-mode')) {
+          failNext = false;
+          return new Response('{}', { status: 503 });
+        }
+        return gateway.fetch(url, init);
+      });
+      try {
+        sdk.ensureAgent.mockResolvedValueOnce({ created: true });
+        const first = new AbortController();
+        await expect(provider.sessions.ensure(input('s1'), first.signal)).rejects.toThrow('secret-mode returned 503');
+        first.abort();
+        // The host restarts: the memos are gone, ensureAgent no longer says created.
+        _resetEnsuredAgentsForTesting();
+        const second = new AbortController();
+        await provider.sessions.ensure(input('s2'), second.signal);
+        second.abort();
+        expect(gateway.calls.filter((c) => c.startsWith('PATCH'))).toEqual(['PATCH /api/agents/oc-g1/secret-mode']);
+      } finally {
+        fetchMock.mockRestore();
+        if (saved === undefined) delete process.env.ONECLI_NEW_AGENT_SECRETS;
+        else process.env.ONECLI_NEW_AGENT_SECRETS = saved;
+      }
+    });
+
     it('a spawn restricts a NEW agent only, and retries a failed restriction on the next spawn', async () => {
       const saved = process.env.ONECLI_NEW_AGENT_SECRETS;
       process.env.ONECLI_NEW_AGENT_SECRETS = 'Inference';
