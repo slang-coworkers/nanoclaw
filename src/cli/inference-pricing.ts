@@ -61,6 +61,10 @@ export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
   'gpt-5.2-codex': { input: 1.75e-6, output: 1.4e-5, cacheRead: 1.75e-7 },
   'gpt-5.1-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
   'gpt-5-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
+  // Open-weights models on NVIDIA inference (gateway `/model/info` list rates).
+  'kimi-k3': { input: 2.1e-6, output: 1.05e-5, cacheRead: 2.1e-7 },
+  'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 1.4e-7 },
+  'glm-5.3-flash': { input: 1.5e-7, output: 5e-7, cacheRead: 3e-8 },
 };
 
 // Own-property membership: a plain object inherits truthy `constructor`/`toString`
@@ -95,7 +99,9 @@ export function normalizeModel(model: string | undefined): string {
 /**
  * Map a Codex/OpenAI wire id onto a `CODEX_MODEL_PRICING` key, or '' when
  * unknown. Only the last path segment names the model (`azure/openai/gpt-5.6-sol`);
- * dated snapshots, `-latest`, and Azure `-global` deployment suffixes are stripped.
+ * dated snapshots, `-latest`, Azure `-global` deployment suffixes and the region
+ * suffix of a Fireworks router id are stripped. The gateway body tap records Kimi
+ * by its upstream router id, `accounts/fireworks/routers/kimi-k3-us`.
  */
 export function normalizeCodexModel(model: string | undefined): string {
   if (!model) return '';
@@ -107,6 +113,7 @@ export function normalizeCodexModel(model: string | undefined): string {
     last.replace(/-global$/, ''),
     last.replace(/-\d{8}$/, '').replace(/-global$/, ''),
     last.replace(/-global$/, '').replace(/-\d{8}$/, ''),
+    last.replace(/-us$/, ''),
   ];
   for (const c of candidates) if (c && has(CODEX_MODEL_PRICING, c)) return c;
   return '';

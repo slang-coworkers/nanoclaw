@@ -116,6 +116,14 @@ export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
   'gpt-5.2-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
   'gpt-5.1-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
   'gpt-5-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+  // Open-weights models on NVIDIA inference: the list rates the gateway
+  // (LiteLLM) publishes at `/model/info`. The key is billed at a discount from
+  // these, so a cap that uses them can overcount a little but never undercounts.
+  // Without these rows a Codex group on Kimi fell to DEFAULT_CODEX_RATE ($5/$30),
+  // 2.4x to 2.9x its price, and the dashboard showed these models as $0.
+  'kimi-k3': { input: 2.1e-6, output: 10.5e-6, cacheRead: 0.21e-6 },
+  'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 0.14e-6 },
+  'glm-5.3-flash': { input: 0.15e-6, output: 0.5e-6, cacheRead: 0.03e-6 },
 };
 
 /**
