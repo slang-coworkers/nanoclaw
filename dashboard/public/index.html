@@ -1221,6 +1221,13 @@
       </div>
       <div class="cw-detail-section">
         <div class="memory-header">
+          <label>Checks</label>
+          <button class="memory-toggle-btn" id="cw-checks-refresh">Refresh</button>
+        </div>
+        <div class="value" id="cw-detail-checks" style="font-size:0.6875rem;margin-top:4px">-</div>
+      </div>
+      <div class="cw-detail-section">
+        <div class="memory-header">
           <label>Overlays</label>
           <button class="memory-toggle-btn" id="cw-overlay-toggle">Edit</button>
         </div>
@@ -1309,6 +1316,7 @@
       <button class="admin-pill" data-panel="admin-channels">Channels</button>
       <button class="admin-pill" data-panel="admin-config">Config</button>
       <button class="admin-pill" data-panel="admin-infra">Infra</button>
+      <button class="admin-pill" data-panel="admin-checks">Checks</button>
       <button class="admin-pill" data-panel="admin-funnel">Funnel</button>
     </div>
     <div class="admin-panels">
@@ -1386,6 +1394,10 @@
       <div id="admin-infra" class="admin-panel">
         <div class="admin-panel-header"><h3>Infrastructure</h3><button class="admin-refresh-btn" data-load="infra">Refresh</button></div>
         <div id="admin-infra-content" class="admin-panel-body"><div class="admin-loading">Loading...</div></div>
+      </div>
+      <div id="admin-checks" class="admin-panel">
+        <div class="admin-panel-header"><h3>Checks</h3><button class="admin-refresh-btn" data-load="checks">Refresh</button></div>
+        <div id="admin-checks-content" class="admin-panel-body"><div class="admin-loading">Loading...</div></div>
       </div>
       <div id="admin-funnel" class="admin-panel">
         <div class="admin-panel-header"><h3>Issue Funnel</h3><span id="funnel-stamp" style="font-size:9px;color:var(--text-muted);margin-left:8px"></span><button class="admin-refresh-btn" data-load="funnel">Refresh</button></div>
