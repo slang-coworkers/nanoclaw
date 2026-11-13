@@ -124,15 +124,16 @@ export function readHookSettings(settingsPath: string): HookSettings {
 export interface RunHookEventOptions {
   /** Drops commands that another path already runs. */
   skip?: RegExp;
-  /**
-   * Runs every selected hook at once and blocks when any of them blocks, as
-   * Claude Code does. Without it the hooks run in order and the first block
-   * stops the rest, which a tool gate wants: a denied call needs no later check.
-   */
-  all?: boolean;
 }
 
-/** Run the hooks registered for `event` that select `toolName`, with `payload` on stdin. */
+/**
+ * Run the hooks registered for `event` that select `toolName`, with `payload`
+ * on stdin. Every selected hook runs, at once, and the event blocks when any of
+ * them blocks, with the reasons joined: Claude Code runs hooks this way, and the
+ * hook scripts are written for it. Consider an OpenCode Write that the plan gate
+ * refuses: the dashboard telemetry hook registered after the gate still records
+ * the call, so a refused call shows on the dashboard as it does for Claude.
+ */
 export async function runHookEvent(
   settings: HookSettings,
   event: HookEvent,
@@ -150,17 +151,10 @@ export async function runHookEvent(
     }
   }
   const input = { hook_event_name: event, cwd: AGENT_DIR, ...payload };
-  if (options.all) {
-    const blocks = (await Promise.all(selected.map((hook) => runHookCommand(hook, input)))).filter((o) => o.block);
-    return blocks.length > 0
-      ? { block: true, reason: blocks.map((o) => o.reason).join('\n\n') }
-      : { block: false, reason: '' };
-  }
-  for (const hook of selected) {
-    const outcome = await runHookCommand(hook, input);
-    if (outcome.block) return outcome;
-  }
-  return { block: false, reason: '' };
+  const blocks = (await Promise.all(selected.map((hook) => runHookCommand(hook, input)))).filter((o) => o.block);
+  return blocks.length > 0
+    ? { block: true, reason: blocks.map((o) => o.reason).join('\n\n') }
+    : { block: false, reason: '' };
 }
 
 /** The text of a tool result: bash output, or the text blocks of an MCP result. */
