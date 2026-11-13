@@ -94,6 +94,34 @@ matcher = "Bash"
   command = "bash /app/hooks/gate-eval-sandbox.sh"
   timeout = 5
 
+# Plan gate. Codex reports a file edit (apply_patch) as a Bash call carrying the
+# patch, so both scripts read the files from it (hooks/lib/plan-paths.sh). Codex
+# sends no PostToolUse for a patch, so the plan is recorded at PreToolUse, and
+# only for a patch the gate cannot refuse. gate-plan.sh exits 0 unless the
+# group has the plan-gate overlay.
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-plan.sh"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/plan-tracker.sh"
+  timeout = 5
+
+# Issue-close backstop: the same check Claude, OpenCode and Pi run in process
+# (agent-runner/src/issue-close.ts), as a command from the read-only runner mount.
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bun /app/src/issue-close-hook.ts"
+  timeout = 5
+
 [[hooks.PostToolUse]]
   [[hooks.PostToolUse.hooks]]
   type = "command"
