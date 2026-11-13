@@ -70,9 +70,11 @@ allow_managed_hooks_only = true
 # Measured on lego with codex 0.160.0 (2026-11-13): `echo gh pr create` was
 # blocked before it ran. Each script scopes itself and exits 0 unless its gate is
 # on for the group (CRITIQUE_GATE_ACTIVE, EVAL_SANDBOX_ACTIVE, PR_DESCRIPTION_GATE),
-# so wiring them for every Codex group is safe. The eval sandbox also refuses two
-# MCP tools under Claude; Codex's names for MCP tools in hooks are not measured,
-# so only its Bash half is wired here.
+# so wiring them for every Codex group is safe. The eval sandbox also refuses
+# three MCP tools; its matcher is the one Claude groups get
+# (EVAL_SANDBOX_GATE_MATCHER in src/container-runner.ts, kept equal by
+# codex-hooks-gates.test.ts). The codex 0.160 binary names an MCP tool
+# `mcp__server__tool` for hooks; a live MCP call is not measured yet.
 [[hooks.PreToolUse]]
 matcher = "Bash"
   [[hooks.PreToolUse.hooks]]
@@ -88,7 +90,7 @@ matcher = "Bash"
   timeout = 5
 
 [[hooks.PreToolUse]]
-matcher = "Bash"
+matcher = "Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning"
   [[hooks.PreToolUse.hooks]]
   type = "command"
   command = "bash /app/hooks/gate-eval-sandbox.sh"
