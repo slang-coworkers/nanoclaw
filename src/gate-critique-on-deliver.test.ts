@@ -79,6 +79,73 @@ describe('the send_file tool is a message door', () => {
   });
 });
 
+describe('a verdict without its delivery marker', () => {
+  // An agent can leave the marker out and still deliver a verdict (seen live:
+  // "PR-review result ... - **Verdict:** APPROVE" with no [Review Verdict]).
+  const send = (text: string, env: Record<string, string> = {}) =>
+    run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text } }, env);
+
+  it.each([
+    '**Verdict:** APPROVE',
+    '**PR-review result: o/r#2233** (dry run)\n\n- **Verdict:** APPROVE (recommendation only)',
+    'Verdict: REQUEST_CHANGES',
+    '### Verdict: must-fix',
+    'Review verdict — APPROVE',
+    'Review of PR #12\n\n### Verdict\nmust-fix\n',
+    '**LGTM!**',
+    'Decision: approve',
+    'Verdict:APPROVED.',
+  ])('counts %j as a delivery: refused without a critique, and the refusal asks for the marker', (text) => {
+    activateOverlay();
+    const result = send(text);
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('CRITIQUE REQUIRED');
+    expect(result.stderr).toContain('also send the verdict under its delivery marker');
+  });
+
+  it.each([
+    'slang-reviewer R2 APPROVE_WITH_NITS with 0 bugs',
+    'I will send the verdict once codex approves.',
+    '**Must-fix:** none',
+    '### Must fix',
+    'Verdict: fixed',
+    'Status: approved by reviewer',
+    '> **Verdict:** APPROVE',
+    'Verdicts: APPROVE',
+    // The [Report] status format has its own Verdict field; it is under a marker.
+    '[Report] PR #9\n- **Status:** merged\n- **Verdict:** APPROVE',
+  ])('does not treat %j as a verdict line', (text) => {
+    activateOverlay();
+    expect(send(text).status).toBe(0);
+  });
+
+  it('after the critique, refuses the verdict until it carries its marker, without counting a denial', () => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
+    const result = send('- **Verdict:** APPROVE');
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('VERDICT WITHOUT ITS MARKER');
+    expect(result.stderr).toContain('[Resolution]');
+    expect(JSON.parse(fs.readFileSync(stateFile, 'utf-8')).critique_gate_denials).toBeUndefined();
+    expect(send('[Resolution] PR #9\n- **Verdict:** APPROVE').status).toBe(0);
+  });
+
+  it('CRITIQUE_VERDICT_LINE_GATE=0 turns the check off; =shadow records the line and refuses nothing', () => {
+    activateOverlay();
+    expect(send('**Verdict:** APPROVE', { CRITIQUE_VERDICT_LINE_GATE: '0' }).status).toBe(0);
+    expect(send('**Verdict:** APPROVE', { CRITIQUE_VERDICT_LINE_GATE: 'shadow' }).status).toBe(0);
+    const journal = path.join(path.dirname(stateFile), 'critique-verdict-line.jsonl');
+    expect(JSON.parse(fs.readFileSync(journal, 'utf-8').trim())).toMatchObject({
+      tool: 'mcp__nanoclaw__send_message',
+      text: '**Verdict:** APPROVE',
+    });
+  });
+
+  it('is off where the critique gate is off', () => {
+    expect(send('**Verdict:** APPROVE').status).toBe(0);
+  });
+});
+
 describe('Model A: no-op when overlay marker absent', () => {
   it('marker absent → delivery message passes (would normally be gated)', () => {
     expect(fs.existsSync(markerFile)).toBe(false);
