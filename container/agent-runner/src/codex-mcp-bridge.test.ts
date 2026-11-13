@@ -26,6 +26,7 @@ const FAKE = path.join(HERE, 'test-fixtures', 'fake-codex-app-server.ts');
 
 let binDir: string;
 let logFile: string;
+let recordFile: string;
 let client: Client;
 let transport: StdioClientTransport;
 
@@ -35,6 +36,9 @@ beforeAll(async () => {
   const shim = path.join(binDir, 'codex');
   writeFileSync(shim, `#!/bin/sh\nexec bun run ${FAKE} "$@"\n`);
   chmodSync(shim, 0o755);
+  // A recorder that keeps each payload, standing in for track-critique.sh.
+  recordFile = path.join(binDir, 'recorded.jsonl');
+  writeFileSync(path.join(binDir, 'track-critique.sh'), `cat >> ${recordFile}; echo >> ${recordFile}\n`);
   transport = new StdioClientTransport({
     command: 'bun',
     args: ['run', BRIDGE],
@@ -42,6 +46,8 @@ beforeAll(async () => {
       ...process.env,
       PATH: `${binDir}:${process.env.PATH ?? ''}`,
       FAKE_CODEX_LOG: logFile,
+      NANOCLAW_HOOKS_DIR: binDir,
+      CRITIQUE_GATE_ACTIVE: '1',
       CODEX_MODEL: 'openai/openai/gpt-test',
       [CODEX_MCP_BRIDGE_OVERRIDES_ENV]: JSON.stringify(['sandbox_mode=danger-full-access', 'features.hooks=true']),
     },
@@ -214,6 +220,20 @@ describe('codex MCP bridge over stdio', () => {
     // The client's resume falls through to a fresh thread only on recognised stale errors — which this is —
     // so the bridge starts a new thread and answers; the new id is reported.
     expect(r.content[0].text).toBe('VERDICT: approve');
+  });
+
+  it('records one critique round per successful call, and none for a failed one', async () => {
+    // The earlier calls in this file succeeded (codex, codex-reply) or failed
+    // (a stale thread, a missing prompt); only the successes were recorded.
+    const records = readFileSync(recordFile, 'utf8')
+      .trim()
+      .split('\n')
+      .map((l) => JSON.parse(l) as { tool_name: string; tool_input: { prompt?: string }; tool_response: string });
+    expect(records.length).toBeGreaterThanOrEqual(2);
+    expect(records[0]).toMatchObject({ tool_name: 'mcp__codex__codex', tool_input: { prompt: 'review this' } });
+    expect(JSON.parse(records[0].tool_response)).toEqual({ threadId: 'thread-1', content: 'VERDICT: approve' });
+    expect(records.some((r) => r.tool_name === 'mcp__codex__codex-reply')).toBe(true);
+    expect(records.every((r) => JSON.parse(r.tool_response).threadId)).toBe(true);
   });
 
   it('rejects a call without a prompt', async () => {

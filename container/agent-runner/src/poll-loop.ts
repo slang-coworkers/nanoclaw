@@ -66,11 +66,13 @@ import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
 import {
   createCostEventsTable,
   loadClaudeMessage,
+  priceTokens,
   recordClaudeRow,
   recordCostEvent,
   sumWindow,
   type ClaudeRowAccounting,
   type CostEvent,
+  type CostProvider,
 } from './cost-events.js';
 import {
   addVec,
@@ -122,7 +124,7 @@ import { stripHarnessTagArtifacts } from './harness-tag-strip.js';
 import { isUploadTraceCommand, uploadTrace } from './upload-trace.js';
 import type { StopHookRunner } from './stop-hooks.js';
 import { checkDeliveryGate } from './delivery-gate.js';
-import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
+import type { AgentProvider, AgentQuery, ProviderEvent, ProviderExchange, TurnModelTokens } from './providers/types.js';
 import type { ProviderRuntimeContract } from './provider-contracts/registry.js';
 
 const POLL_INTERVAL_MS = 1000;
@@ -212,6 +214,9 @@ const MAILBOX_FAILURE_STREAK_EXIT = 10;
 const WARN_FRACTION = 0.8;
 
 let costEnabled = false;
+// The provider whose spend this session meters; set in initCostTracking and
+// stamped on the ledger rows of per-turn token reports (OpenCode, Pi).
+let costProvider: CostProvider = 'claude';
 let costImmortal = false;
 // 'lifetime' for non-immortal, 'daily' for immortal.
 let costWindow: CostCapWindow = 'lifetime';
@@ -536,7 +541,10 @@ function publishCodexChild(): void {
  *  - daily (immortal): adopt persisted spend/escalation ONLY if the persisted
  *    dayKey is today's UTC day; a stale day starts fresh at 0.
  */
-function initCostTracking(providerName: string): void {
+function initCostTracking(
+  providerName: string,
+  provider: Pick<AgentProvider, 'reportsTurnAccounting'> | undefined = undefined,
+): void {
   // getConfig() throws if loadConfig() was never called — the case in poll-loop
   // integration tests that exercise the loop without scaffolding container.json.
   // Cost accounting is simply off there; production always loads config first.
@@ -551,16 +559,18 @@ function initCostTracking(providerName: string): void {
   costCeilingAllotmentUsd = cfg.costCeilingT2Usd && cfg.costCeilingT2Usd > 0 ? cfg.costCeilingT2Usd : 0;
   costImmortal = cfg.immortal === true;
   costWindow = costImmortal ? 'daily' : 'lifetime';
-  // Meter both Claude (usage events + codex fold) AND native codex (fold only —
-  // the codex provider emits no usage event, so its spend accrues from
-  // `foldCodexCost()` at the poll boundary AND at each `result` (codex's turn
-  // boundary), where the ceiling hard-stop then ends the stream; the
-  // costStopRequested gate keeps subsequent polls quiesced — the honest
-  // turn-granular bound). #1333: a codex-primary group previously had NO cap at
-  // all. Still gated on a configured cap (`costAllotmentUsd > 0`), so a
-  // codex-primary group WITHOUT a cap stays unmetered exactly as before — this
-  // only turns enforcement on where a cap is actually set.
-  costEnabled = costAllotmentUsd > 0 && (providerName === 'claude' || providerName === 'codex');
+  // Meter every provider whose spend reaches us. A provider that reports each
+  // turn in its `usage` event (`reportsTurnAccounting`: Claude's `modelUsage`,
+  // OpenCode's and Pi's `turnTokens`) is charged at the turn boundary, where the
+  // ceiling hard stop then ends the stream. Native codex emits no usage event:
+  // its spend accrues from `foldCodexCost()` at the poll boundary AND at each
+  // `result` (codex's turn boundary). Every metered group also folds the codex
+  // critic's rollouts. Still gated on a configured cap (`costAllotmentUsd > 0`),
+  // so a group WITHOUT a cap stays unmetered; this only turns enforcement on
+  // where a cap is actually set.
+  costProvider =
+    providerName === 'codex' || providerName === 'opencode' || providerName === 'pi' ? providerName : 'claude';
+  costEnabled = costAllotmentUsd > 0 && (provider?.reportsTurnAccounting === true || providerName === 'codex');
   if (!costEnabled) return;
 
   // #65 dual-run: create the durable ledger table once per session. Best-effort.
@@ -1846,6 +1856,10 @@ function reconcileLedger(): { ledgerUsd: number; counterUsd: number; delta: numb
  */
 function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
   if (!costEnabled) return;
+  if (event.turnTokens) {
+    settleTurnTokens(event.turnTokens);
+    return;
+  }
   if (event.modelUsage && Object.keys(event.modelUsage).length > 0) {
     settleClaudeTurn(event);
     return;
@@ -1912,6 +1926,54 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   // rows behind them; record the exact charge as an adjustment so the reconcile
   // matches. No-op when nothing was charged.
   recordLedgerAdjustment(delta);
+}
+
+/**
+ * Charge one turn of a provider that reports each turn's own tokens (OpenCode,
+ * Pi). Each model's totals become one ledger row, priced by the ledger's
+ * `priceTokens`, and the counter is charged the same dollars in the same
+ * transaction, so the ledger and the counter reconcile to the cent.
+ *
+ * Consider a Pi turn on `nvidia/zai-org/glm-5.3` that read 30k cached tokens,
+ * sent 800 new ones and wrote 100: one `pi:` row prices them at the GLM 5.3
+ * rates. A model the rate table does not know prices at the highest open-model
+ * rate and is logged, so a rename never buys spend at $0.
+ */
+function settleTurnTokens(tokens: readonly TurnModelTokens[]): void {
+  resetTurnAccountingState();
+  const billed = tokens.filter((t) => t.inputTokens + t.outputTokens + t.cacheReadTokens + t.cacheWriteTokens > 0);
+  if (billed.length === 0) return;
+  runCostEvent('turn', undefined, () => {
+    const now = ledgerNow();
+    for (const t of billed) {
+      const event = turnTokensToEvent(
+        `${costProvider}:${ledgerGen}:${process.env.NANOCLAW_SESSION_ID || ''}:${nextLedgerSeq()}`,
+        t,
+        now,
+      );
+      const priced = priceTokens(event, RATE_TABLE);
+      if (priced.unpriced) log(`Cost: no rate for ${t.model}; charged at the highest open-model rate`);
+      recordCostEvent(getOutboundDb(), event, RATE_VERSION, RATE_TABLE, now, ledgerGen);
+      applyCostDelta(priced.usd);
+    }
+  });
+}
+
+/** One model's turn totals as a ledger row of the metered provider. */
+function turnTokensToEvent(id: string, t: TurnModelTokens, ts: string): CostEvent {
+  return {
+    id,
+    ts,
+    provider: costProvider,
+    model: t.model,
+    inputTokens: t.inputTokens,
+    cacheReadTokens: t.cacheReadTokens,
+    cacheWriteTokens: t.cacheWriteTokens,
+    cacheWrite5mTokens: 0,
+    cacheWrite1hTokens: 0,
+    outputTokens: t.outputTokens,
+    reasoningTokens: t.reasoningTokens,
+  };
 }
 
 /**
@@ -3400,13 +3462,13 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   let continuation: string | undefined = migrateLegacyContinuation(config.providerName);
 
   // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
-  // and publish the current cap state for the dashboard. Provider name gates
-  // enablement — Claude (usage events + codex fold) and native codex (rollout
-  // fold at the poll and result boundaries) are metered; any other provider has
-  // no accounting source and stays disabled. Loaded BEFORE the rotation below:
-  // the previous process's open Claude segment is settled from its transcript,
-  // which rotation may delete.
-  initCostTracking(config.providerName);
+  // and publish the current cap state for the dashboard. The provider gates
+  // enablement — one that reports each turn's spend (`reportsTurnAccounting`)
+  // and native codex (rollout fold at the poll and result boundaries) are
+  // metered; any other provider has no accounting source and stays disabled.
+  // Loaded BEFORE the rotation below: the previous process's open Claude
+  // segment is settled from its transcript, which rotation may delete.
+  initCostTracking(config.providerName, config.provider);
   const accountingClosed =
     config.providerName !== 'claude' ||
     closeClaudeSegmentAtStartup(config.provider.readRestoredUsage?.bind(config.provider));
@@ -3769,6 +3831,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         newSessionBatch,
         refreshDestinations,
         config.stopHooks ?? null,
+        config.provider.followUpEndsQuery === true,
       );
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
       if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
@@ -4026,6 +4089,8 @@ export async function processQuery(
   refreshDestinations: () => string | null = () => null,
   /** Runs the settings.json Stop hooks at each result; null when the provider runs them itself. */
   stopHooks: StopHookRunner | null = null,
+  /** The provider's `followUpEndsQuery`: a follow-up ends the query instead of joining it. */
+  followUpEndsQuery = false,
 ): Promise<QueryResult> {
   // adoptTurn mutates routing in place; keep the caller's batch route intact.
   routing = { ...routing };
@@ -4463,19 +4528,19 @@ export async function processQuery(
         // Accumulated context must not engage a warm query by itself.
         if (!newMessages.some((m) => m.trigger === 1)) return;
 
-        // Native-codex follow-up (#1360 review, BLOCKER): never push external
-        // work into an in-flight codex query. A codex turn can cross the ceiling
-        // and hard-stop at its `result` boundary (the settle below), whose
-        // `break` finalizes the async generator and kills the codex app-server —
-        // tearing down any pushed-but-undrained turn. If we had already pushed
-        // this follow-up AND markCompleted'd it (just below), that message would
-        // be acked with no answer. Leave the rows PENDING (do not markProcessing)
-        // and end the query; the outer poll re-claims them after the turn-boundary
-        // settle — held by the cost-stop gate if the ceiling was crossed, or run
-        // in a fresh query if it was not.
-        if (providerName === 'codex') {
+        // A follow-up for a provider that ends its query on one (#1360 review,
+        // BLOCKER; Codex, OpenCode, Pi): never push external work into its
+        // in-flight query. A turn can cross the ceiling and hard-stop at its
+        // boundary (Codex at `result`, OpenCode and Pi at `usage`), which ends
+        // the query and drops any pushed-but-undrained turn. If we had already
+        // pushed this follow-up AND markCompleted'd it (just below), that message
+        // would be acked with no answer. Leave the rows PENDING (do not
+        // markProcessing) and end the query; the outer poll re-claims them after
+        // the turn-boundary settle — held by the cost-stop gate if the ceiling
+        // was crossed, or run in a fresh query if it was not.
+        if (followUpEndsQuery) {
           log(
-            'Codex follow-up arrived — ending the active query so it is re-claimed after the turn-boundary cost settle',
+            `${providerName} follow-up arrived — ending the active query so it is re-claimed after the turn-boundary cost settle`,
           );
           endedForCommand = true;
           query.end();

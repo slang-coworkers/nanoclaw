@@ -1,7 +1,9 @@
 /**
  * Host input gate for GitHub deliveries — "one gate, two checks" (threat model
  * §5 P0-1). Check 1 asks whether the actor is on the allowlist; Check 2 asks
- * whether that person is eligible for Claude work now. See docs/input-gate.md.
+ * whether that person is eligible for closed-model work now. A person who
+ * passes Check 1 and fails Check 2 goes to the open-weights lane when one is
+ * configured and ready. See docs/input-gate.md.
  *
  * This module only runs in SHADOW mode: it decides and logs, and blocks
  * nothing. Routing never waits for it and never sees its result, so the log
@@ -16,6 +18,10 @@
  *                               (default shader-slang)
  *   NANOCLAW_INPUT_GATE_REPOS   comma-separated repos whose write permission
  *                               counts for Check 1 (default: every org repo)
+ *   NANOCLAW_INPUT_GATE_OPEN_LANE
+ *                               folder of the open-weights lane group (default:
+ *                               none, so a person who fails Check 2 is not
+ *                               eligible)
  */
 import path from 'path';
 
@@ -25,6 +31,7 @@ import { loadRoster, type GitHubLookups } from './allowlist.js';
 import { decide } from './decide.js';
 import { unconnectedSources, type EligibilitySources } from './eligibility.js';
 import { ghLookups } from './github-lookups.js';
+import { resolveOpenLane, type OpenLane } from './open-lane.js';
 import { gateRequestFromPayload } from './request.js';
 import { recordGateDecision } from './store.js';
 import type { GateDecision } from './types.js';
@@ -34,6 +41,7 @@ const KEYS = [
   'NANOCLAW_INPUT_GATE_ROSTER',
   'NANOCLAW_INPUT_GATE_ORG',
   'NANOCLAW_INPUT_GATE_REPOS',
+  'NANOCLAW_INPUT_GATE_OPEN_LANE',
 ];
 
 export interface GateSettings {
@@ -42,6 +50,8 @@ export interface GateSettings {
   org: string;
   /** Repos whose write permission counts for Check 1; null means every repo of the org. */
   repos: string[] | null;
+  /** Agent group folder of the open-weights lane; null means no lane. */
+  openLane: string | null;
 }
 
 export function readGateSettings(): GateSettings {
@@ -52,6 +62,7 @@ export function readGateSettings(): GateSettings {
     rosterPath: path.resolve(val('NANOCLAW_INPUT_GATE_ROSTER') || 'data/input-gate-roster.json'),
     org: val('NANOCLAW_INPUT_GATE_ORG') || 'shader-slang',
     repos: parseRepoList(val('NANOCLAW_INPUT_GATE_REPOS')),
+    openLane: val('NANOCLAW_INPUT_GATE_OPEN_LANE') || null,
   };
 }
 
@@ -110,6 +121,7 @@ export async function observeGitHubDelivery(input: ObserveInput): Promise<GateDe
       eligibility: deps.eligibility,
       selfLogins: input.selfLogins,
       repos: settings.repos,
+      openLane: async () => warnIfInvalid(await resolveOpenLane(settings.openLane)),
     });
     await recordGateDecision(req, decision, { mode: settings.mode, currentOutcome: input.currentOutcome });
     return decision;
@@ -121,6 +133,25 @@ export async function observeGitHubDelivery(input: ObserveInput): Promise<GateDe
     });
     return null;
   }
+}
+
+const warnedLanes = new Set<string>();
+
+/**
+ * Return `lane` unchanged, and warn once per folder and problem when it cannot
+ * take work. An invalid lane leaves the person `not_eligible`, which is the
+ * safe answer, but the operator configured a lane and must learn why it is
+ * unused.
+ */
+function warnIfInvalid(lane: OpenLane): OpenLane {
+  if (lane.status === 'invalid') {
+    const key = `${lane.folder}\n${lane.problem}`;
+    if (!warnedLanes.has(key)) {
+      warnedLanes.add(key);
+      log.warn('input-gate: the open-weights lane cannot take work', { folder: lane.folder, problem: lane.problem });
+    }
+  }
+  return lane;
 }
 
 const pending = new Set<Promise<unknown>>();

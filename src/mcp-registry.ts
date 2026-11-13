@@ -233,10 +233,7 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
         },
       );
 
-      proc.stderr?.on('data', (data: Buffer) => {
-        const msg = data.toString().trim();
-        if (msg) log.debug('MCP server stderr', { server: def.name, msg });
-      });
+      logServerStderr(proc, def.name, 'MCP server stderr');
 
       proc.on('error', (err) => {
         log.error('MCP server failed to start', { server: def.name, err });
@@ -274,10 +271,7 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
         { stdio: ['ignore', 'pipe', 'pipe'] },
       );
 
-      proc.stderr?.on('data', (data: Buffer) => {
-        const msg = data.toString().trim();
-        if (msg) log.debug('Remote MCP server stderr', { server: def.name, msg });
-      });
+      logServerStderr(proc, def.name, 'Remote MCP server stderr');
       proc.on('error', (err) => {
         log.error('Remote MCP server proxy failed to start', { server: def.name, err });
       });
@@ -315,6 +309,60 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
 }
 
 /** Get all alive server names. */
+// A stderr line that reports a failure: a Python ERROR/CRITICAL record, a
+// traceback, an exception name, or words such as "failed" and "unauthorized".
+const STDERR_ERROR_RE =
+  /\b(error|critical|fatal|failed|failure|unauthorized|forbidden|traceback)\b|\b\w+(Error|Exception|Failure):/i;
+/** Error lines one server may log at warn level per minute; the rest stay at debug. */
+export const STDERR_WARN_PER_MINUTE = 20;
+const stderrWarnBudget = new Map<string, { windowStart: number; count: number }>();
+
+/**
+ * Return the level for one stderr line of an MCP server. A line that reports a
+ * failure is a warning, so a server that cannot reach its backend shows in the
+ * logs: consider slang-mcp printing "Eager Discord client init failed: 401
+ * Unauthorized", which at debug level no operator ever saw. Everything else
+ * stays at debug, because a gateway can write a line per request. Each server
+ * gets STDERR_WARN_PER_MINUTE warnings a minute, so a server that fails every
+ * call cannot flood the log.
+ */
+export function mcpStderrLevel(server: string, line: string, now = Date.now()): 'warn' | 'debug' {
+  if (!STDERR_ERROR_RE.test(line)) return 'debug';
+  let budget = stderrWarnBudget.get(server);
+  if (!budget || now - budget.windowStart >= 60_000) {
+    budget = { windowStart: now, count: 0 };
+    stderrWarnBudget.set(server, budget);
+  }
+  if (budget.count >= STDERR_WARN_PER_MINUTE) return 'debug';
+  budget.count++;
+  return 'warn';
+}
+
+/**
+ * Log an MCP server's stderr line by line, each at its own level. A chunk can
+ * end mid-line, so the unfinished tail waits for the next chunk (or the end of
+ * the stream): a word such as "Unauthorized" split across two chunks still
+ * classifies as one line.
+ */
+export function logServerStderr(proc: ChildProcess, server: string, label: string): void {
+  let tail = '';
+  const emit = (raw: string): void => {
+    const msg = raw.trim();
+    if (!msg) return;
+    if (mcpStderrLevel(server, msg) === 'warn') log.warn(label, { server, msg });
+    else log.debug(label, { server, msg });
+  };
+  proc.stderr?.on('data', (data: Buffer) => {
+    const lines = (tail + data.toString()).split('\n');
+    tail = lines.pop() ?? '';
+    for (const line of lines) emit(line);
+  });
+  proc.stderr?.on('end', () => {
+    emit(tail);
+    tail = '';
+  });
+}
+
 export function getRunningServerNames(): string[] {
   return [...servers.entries()].filter(([, s]) => s.alive).map(([name]) => name);
 }
@@ -484,10 +532,7 @@ export async function restartServer(name: string): Promise<void> {
     throw new Error(`Server "${name}" has unknown type: ${def.type}`);
   }
 
-  proc.stderr?.on('data', (data: Buffer) => {
-    const msg = data.toString().trim();
-    if (msg) log.debug('MCP server stderr', { server: name, msg });
-  });
+  logServerStderr(proc, name, 'MCP server stderr');
   proc.on('error', (err) => {
     const entry = servers.get(name);
     if (entry) entry.alive = false;

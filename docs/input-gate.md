@@ -1,8 +1,9 @@
 # Input gate: one gate, two checks
 
 The host input gate decides, for every routed GitHub delivery, whether it may start
-Claude work. It is the threat model's §5 P0-1 control ("two-path framing at the router")
-merged with the Claude access policy. Tracking issue: slang-coworkers/nanoclaw#2274.
+work, and on which models. It is the threat model's §5 P0-1 control ("two-path framing at
+the router") merged with the closed-model access policy. Tracking issue:
+slang-coworkers/nanoclaw#2274.
 
 **Status: shadow mode only.** The gate decides and logs. It blocks nothing, routing never
 waits for it, and turning it on cannot change what any delivery does.
@@ -28,17 +29,28 @@ waits for it, and turning it on cannot change what any delivery does.
   with no lookup. A mention always runs the lookups, because GitHub may report a private
   org member as `CONTRIBUTOR` or `NONE`. A failed lookup counts as not allowlisted and is
   recorded.
-- **Check 2 (Claude access policy): is this person eligible now?**
+- **Check 2 (closed-model access policy): is this person eligible now?**
   - It needs three inputs: a linked NVIDIA (Entra) identity, the employing entity, and a
     current location.
-  - None of these sources is connected yet, so every person is `not_eligible` with reason
+  - These rules come from the terms of closed-weights models (Claude, GPT). Open-weights
+    models (GLM, Kimi, DeepSeek on NVIDIA inference) carry no such terms, so Check 2
+    applies to closed-model work only.
+  - None of these sources is connected yet, so every person fails Check 2 with reason
     `not_linked`. That is the honest answer.
+- **The open-weights lane.** A person who passes Check 1 and fails Check 2 goes to one
+  configured coworker, the lane (`NANOCLAW_INPUT_GATE_OPEN_LANE`). The lane is *ready*
+  only when its group is `weights=open` and every role (doer, small, router, critic)
+  resolves to an open-weights model, as spawn resolves them (`src/model-policy.ts`).
+  Spawn refuses a `weights=open` group that would call a closed model, so a ready lane
+  cannot run one. With no lane, or a lane that is not ready, the person is
+  `not_eligible`, and the host logs once why the lane is not ready.
 - **Outcomes**, one per delivery:
 
   | Outcome | Meaning |
   |---|---|
-  | `admitted` | allowlisted and eligible: may direct Claude work |
-  | `not_eligible` | allowlisted but fails Check 2; `reason` names the input (`not_linked`, `entity_*`, `location_stale`, …) |
+  | `admitted` | allowlisted and eligible: may direct closed-model work |
+  | `open_lane` | allowlisted, fails Check 2, and the lane is ready: the work goes to the lane, on open-weights models only; `reason` is the Check 2 reason |
+  | `not_eligible` | allowlisted, fails Check 2, and no lane is ready; `reason` names the input (`not_linked`, `entity_*`, `location_stale`, …) |
   | `external_blocked` | an exact mention by an account that fails Check 1; `reason` is `not_allowlisted` or `lookup_failed_*` |
   | `no_start` | a delivered issue, PR or non-mention comment; the tier is still recorded, to show whose work would stop being picked up. Deliveries routing already skips (no mention, the bot's own, filtered actions) are not judged |
   | `bot` | the bot's own logins, or a `Bot` account delivery that starts no work. Routing starts work on any exact mention, so a `Bot` account's mention is judged by Check 1 like a person's |
@@ -55,6 +67,7 @@ delivery:
 | `NANOCLAW_INPUT_GATE_ROSTER` | `data/input-gate-roster.json` | the maintainer roster |
 | `NANOCLAW_INPUT_GATE_ORG` | `shader-slang` | the org whose members count as allowlisted |
 | `NANOCLAW_INPUT_GATE_REPOS` | every repo of the org | comma-separated repos whose write permission counts for Check 1 |
+| `NANOCLAW_INPUT_GATE_OPEN_LANE` | none | agent group folder of the open-weights lane; make the group with `ncl groups config update --id <group> --weights open` |
 
 The roster is a JSON array keyed on the numeric id, because logins can be renamed. Keep it
 out of public repos:
@@ -102,11 +115,16 @@ These wait on the Entra app registration, the HR and location source approvals, 
 decisions:
 
 - **Enforcement:** stopping `external_blocked`, `not_eligible` and `no_start` deliveries
-  before routing. `no_start` also holds non-mention replies that continue a chain (a
+  before routing, and sending `open_lane` deliveries to the lane in place of the normal
+  route. `no_start` also holds non-mention replies that continue a chain (a
   review reply on a bot-owned PR, an answer on an issue the bot asked about). Stopping
   those would cut the review loop, so enforcement must tell them apart (`event =
   'comment'`, `starts_work = 0`, `current_outcome = 'local'`).
-- **Carrying the person down the chain**, with a recheck before every Claude call.
+- **Keeping a lane thread on open weights.** The lane hands work to other coworkers
+  like any coworker does. A thread that started in the lane may go only to groups that
+  run open-weights models only. The check belongs in the agent-to-agent route guard,
+  keyed on the thread, as `gh_thread_origin` is.
+- **Carrying the person down the chain**, with a recheck before every closed-model call.
 - **The "verify to continue" reply.**
 - **The Entra, HR and location adapters for Check 2.**
 

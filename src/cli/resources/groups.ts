@@ -36,6 +36,7 @@ import {
 } from '../../model-policy.js';
 import { resolveProviderName } from '../../providers/provider-name.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
+import { decideCoworkerType } from '../../templates/coworker-type.js';
 import { templateApprovalDetail } from '../../templates/approval-detail.js';
 import {
   formatRestampResult,
@@ -143,6 +144,14 @@ registerResource({
       enum: ['0', '1'],
       description:
         'Operator kill switch: 1 pauses the group (host refuses to spawn ANY container for it, at the wakeContainer choke point that every wake path honours — router, agent-to-agent, host-sweep, task fires); 0 resumes. Inbound messages keep accumulating while paused, so resuming loses no work. Effective immediately — no restart needed, since the gate is on the next spawn.',
+      updatable: true,
+    },
+    {
+      name: 'disable_overlays',
+      type: 'number',
+      enum: ['0', '1'],
+      description:
+        'Overlay kill switch: 1 turns off every overlay of the group (the dashboard overlay selection, the gates they mark such as plan-gate and critique-gate, and their CLAUDE.md sections), whatever the overlays column says; 0 applies them. Takes effect at the next spawn, so restart the group after a change.',
       updatable: true,
     },
   ],
@@ -351,8 +360,9 @@ registerResource({
         'Without --template, use --folder <slug> (required) and --name <display name>; with --template the ' +
         "folder derives from the agent name (--name overrides the template's own). " +
         'Optional --timezone <IANA id> sets the group timezone (template task schedules fire in it); like --name, it applies only when a group is created — both are ignored on the in-place update of an existing group. ' +
-        "Optional --coworker-type <type> composes the stamped agent as that lego type, overriding the template's own " +
-        'declared default; pass --coworker-type "" to stamp untyped regardless of what the template asks for. A type ' +
+        "Optional --coworker-type <type> composes the agent as that lego type: for a template it overrides the template's own " +
+        'declared default, and pass --coworker-type "" to stamp untyped regardless of what the template asks for; for a bare ' +
+        "create it sets the new group's type, and an existing group with another type is refused (the type is set only at create). A type " +
         'that does not resolve here fails the create, and a flat type (e.g. main) is refused.',
       handler: async (args) => {
         const timezone = parseTimezoneFlag(args.timezone) ?? undefined;
@@ -408,10 +418,26 @@ registerResource({
         // grammar refuses at every spawn.
         assertValidGroupFolder(folder);
         const name = (args.name as string) ?? folder;
+        // --coworker-type on a bare create sets the group's lego type, checked as
+        // for a template (decideCoworkerType) before any state exists: an unknown
+        // or flat type fails the create. The bare path used to drop the flag and
+        // create an untyped group without a word.
+        const typeDecision =
+          args.coworker_type === undefined
+            ? null
+            : decideCoworkerType({ projectRoot: process.cwd(), explicit: String(args.coworker_type).trim() || null });
         // Idempotent on --folder (upstream): a reused group is re-provisioned,
         // not duplicated.
         const existing = await getAgentGroupByFolder(folder);
         if (existing) {
+          // The type is set only at create, and `groups update` cannot change
+          // it, so a different type on a reused folder is refused, not ignored.
+          if (typeDecision && (existing.coworker_type ?? null) !== typeDecision.coworkerType) {
+            throw new Error(
+              `group '${folder}' already exists with coworker type ${JSON.stringify(existing.coworker_type ?? null)}; ` +
+                '--coworker-type applies only when a group is created',
+            );
+          }
           await initGroupFilesystem(existing); // ensure a reused group is fully configured too (idempotent; also repairs a missing workspace folder)
           return existing;
         }
@@ -436,7 +462,7 @@ registerResource({
           is_admin: 0,
           agent_provider: null,
           container_config: null,
-          coworker_type: null,
+          coworker_type: typeDecision?.coworkerType ?? null,
           allowed_mcp_tools: null,
           overlays: null,
           routing: 'direct',

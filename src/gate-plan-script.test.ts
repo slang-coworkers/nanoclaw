@@ -53,13 +53,22 @@ afterEach(() => {
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
-describe('Subagent fork passes through', () => {
-  it('subagent + no plan + Edit → exit 0', () => {
+describe('the Claude SDK fork switch does not open the gate', () => {
+  // CLAUDE_CODE_FORK_SUBAGENT is forwarded to every container of an install
+  // that sets it; it never marked a subagent call. A subagent shares the
+  // parent's state file, so the parent's plan covers it through the same check.
+  it('CLAUDE_CODE_FORK_SUBAGENT=1 + no plan + Edit → still refused', () => {
     fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
     const r = run(
       { tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } },
       { CLAUDE_CODE_FORK_SUBAGENT: '1', OVERLAY_HAS_PLAN: '1' },
     );
+    expect(r.status).toBe(2);
+  });
+
+  it("a subagent call (agent_id) passes on the parent's plan", () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true }));
+    const r = run({ agent_id: 'sub-1', tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
     expect(r.status).toBe(0);
   });
 });
@@ -84,11 +93,10 @@ describe('Plan-required gate', () => {
     expect(r.status).toBe(0);
   });
 
-  it('plan-stale flag fires denial', () => {
-    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, plan_stale: true, edits_since_plan: 17 }));
+  it('a written plan stays valid however many edits follow it', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, edits_since_plan: 40 }));
     const r = run({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain('PLAN STALE');
+    expect(r.status).toBe(0);
   });
 });
 
@@ -177,9 +185,79 @@ describe('Marker absent → no-op (opt-in via plan-gate overlay)', () => {
     expect(r.status).toBe(0);
   });
 
-  it('no marker + plan_stale=true → exit 0 (would normally deny)', () => {
-    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, plan_stale: true }));
+  it('no marker + plan_written=false + Edit → exit 0 (would normally deny)', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
     const r = run({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
     expect(r.status).toBe(0);
+  });
+});
+
+describe('Codex apply_patch (reported as a Bash call carrying the patch)', () => {
+  const patch = (...lines: string[]) =>
+    ["apply_patch <<'EOF'", '*** Begin Patch', ...lines, '*** End Patch', 'EOF'].join('\n');
+  const codex = (command: string) => ({
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Bash',
+    cwd: '/workspace/agent',
+    turn_id: 't1',
+    tool_input: { command },
+  });
+
+  it('a patch to source code with no plan is refused', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const r = run(codex(patch('*** Update File: src/foo.ts', '@@', '-a', '+b')));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('PLAN REQUIRED');
+  });
+
+  it('a patch that only writes the plan passes', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    expect(run(codex(patch('*** Add File: reports/fix-plan.md', '+PLAN'))).status).toBe(0);
+  });
+
+  it('a notes patch followed by another command is refused until a plan exists', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const compound = `${patch('*** Add File: reports/notes.md', '+notes')}\npython3 -c "open('src/x.py','w').write('x')"`;
+    const r = run(codex(compound));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('PLAN REQUIRED');
+  });
+
+  it('the quoted-argument form of a notes patch passes', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const quoted = ["apply_patch '*** Begin Patch", '*** Add File: reports/notes.md', '+notes', "*** End Patch'"].join(
+      '\n',
+    );
+    expect(run(codex(quoted)).status).toBe(0);
+  });
+
+  it('a patch that writes the plan and code together is refused until a plan exists', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const both = patch('*** Add File: reports/fix-plan.md', '+PLAN', '*** Update File: src/foo.ts', '@@', '-a', '+b');
+    expect(run(codex(both)).status).toBe(2);
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true }));
+    expect(run(codex(both)).status).toBe(0);
+  });
+
+  it('judges a file by its absolute path, including a move target', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    expect(run(codex(patch('*** Update File: /tmp/elsewhere/notes.txt', '@@', '-a', '+b'))).status).toBe(2);
+    expect(run(codex(patch('*** Update File: reports/a.md', '*** Move to: src/a.ts', '@@', '-a', '+b'))).status).toBe(
+      2,
+    );
+  });
+
+  it('a recorded plan whose file does not exist yet does not open the gate (parallel patches)', () => {
+    const planFile = path.join(tmpRoot, 'reports-plan.md');
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, plan_path: planFile }));
+    const code = codex(patch('*** Update File: src/foo.ts', '@@', '-a', '+b'));
+    expect(run(code).status).toBe(2);
+    fs.writeFileSync(planFile, 'PLAN\n');
+    expect(run(code).status).toBe(0);
+  });
+
+  it('is off without the plan-gate overlay', () => {
+    fs.rmSync(markerFile);
+    expect(run(codex(patch('*** Update File: src/foo.ts', '@@', '-a', '+b'))).status).toBe(0);
   });
 });

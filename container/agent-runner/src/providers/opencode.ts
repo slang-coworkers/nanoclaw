@@ -21,9 +21,11 @@ import type { ResolvedRuntimeConfiguration } from '../provider-contracts/registr
 import { getTaskSeriesId } from '../db/session-routing.js';
 import { getAllDestinations } from '../destinations.js';
 import { prepareOpenCodeMemory, type OpenCodeMemorySessionHook } from './opencode-memory.js';
+import { turnAccounting } from './turn-accounting.js';
 import {
   boundedOpenCodeCall,
   executeOpenCodeTurn,
+  failedTurnTokensOf,
   OpenCodeEventPump,
   type OpenCodeSessionClient,
 } from './opencode-turn.js';
@@ -559,6 +561,8 @@ function eventPump(runtime: OpenCodeRuntimeHandle): OpenCodeEventPump {
 
 export class OpenCodeProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
+  readonly reportsTurnAccounting = true;
+  readonly followUpEndsQuery = true;
   private memorySessionHook?: OpenCodeMemorySessionHook;
 
   constructor(
@@ -590,6 +594,7 @@ export class OpenCodeProvider implements AgentProvider {
     async function* gen(): AsyncGenerator<ProviderEvent> {
       let sessionId = input.continuation;
       let initialized = false;
+      let startedAt = Date.now();
       try {
         const runtime = self.runtime
           ? await self.runtime.getRuntime(self.options, input.cwd)
@@ -623,7 +628,8 @@ export class OpenCodeProvider implements AgentProvider {
             initialized = true;
             yield { type: 'init', continuation: sessionId };
           }
-          const result = yield* executeOpenCodeTurn({
+          startedAt = Date.now();
+          const { tokens, ...result } = yield* executeOpenCodeTurn({
             runtime,
             client: runtime.client.session,
             pump,
@@ -648,9 +654,29 @@ export class OpenCodeProvider implements AgentProvider {
               runtime.streamRelease?.();
             },
           });
-          if (!abort.signal.aborted) yield { type: 'result', ...result };
+          if (!abort.signal.aborted) {
+            const accounting = turnAccounting(tokens, {
+              sessionId,
+              durationMs: Date.now() - startedAt,
+              isError: result.isError,
+            });
+            yield { type: 'result', ...result, accounting };
+            yield { type: 'usage', ...accounting };
+          }
         }
       } catch (error) {
+        // A failed turn's calls were billed: charge them before the error ends the query.
+        const billed = failedTurnTokensOf(error);
+        if (billed) {
+          yield {
+            type: 'usage',
+            ...turnAccounting(billed, {
+              sessionId: sessionId ?? null,
+              durationMs: Date.now() - startedAt,
+              isError: true,
+            }),
+          };
+        }
         if (!abort.signal.aborted) throw error;
       } finally {
         abort.abort();

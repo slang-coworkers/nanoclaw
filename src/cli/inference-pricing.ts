@@ -61,6 +61,18 @@ export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
   'gpt-5.2-codex': { input: 1.75e-6, output: 1.4e-5, cacheRead: 1.75e-7 },
   'gpt-5.1-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
   'gpt-5-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
+  // Open-weights models on NVIDIA inference (gateway `/model/info` list rates).
+  'kimi-k3': { input: 2.1e-6, output: 1.05e-5, cacheRead: 2.1e-7 },
+  'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 1.4e-7 },
+  'glm-5.3-flash': { input: 1.5e-7, output: 5e-7, cacheRead: 3e-8 },
+  'deepseek-v4.1-flash-1017': { input: 2.4e-7, output: 9.6e-7, cacheRead: 5.6e-9 },
+  'llama-3.1-8b-instruct': { input: 0, output: 0, cacheRead: 0 },
+  'gpt-oss-20b': { input: 0, output: 0, cacheRead: 0 },
+  // Router and test models (gateway `/model/info` list rates).
+  'gpt-6-luna': { input: 1e-7, output: 5e-7, cacheRead: 1e-8 },
+  'gpt-5-mini': { input: 2.5e-7, output: 2e-6, cacheRead: 2.5e-8 },
+  'gpt-5-nano': { input: 5e-8, output: 4e-7, cacheRead: 5e-9 },
+  'gpt-4o-mini': { input: 1.5e-7, output: 6e-7, cacheRead: 7.5e-8 },
 };
 
 // Own-property membership: a plain object inherits truthy `constructor`/`toString`
@@ -95,7 +107,9 @@ export function normalizeModel(model: string | undefined): string {
 /**
  * Map a Codex/OpenAI wire id onto a `CODEX_MODEL_PRICING` key, or '' when
  * unknown. Only the last path segment names the model (`azure/openai/gpt-5.6-sol`);
- * dated snapshots, `-latest`, and Azure `-global` deployment suffixes are stripped.
+ * dated snapshots, `-latest`, Azure `-global` deployment suffixes and the region
+ * suffix of a Fireworks router id are stripped. The gateway body tap records Kimi
+ * by its upstream router id, `accounts/fireworks/routers/kimi-k3-us`.
  */
 export function normalizeCodexModel(model: string | undefined): string {
   if (!model) return '';
@@ -107,6 +121,7 @@ export function normalizeCodexModel(model: string | undefined): string {
     last.replace(/-global$/, ''),
     last.replace(/-\d{8}$/, '').replace(/-global$/, ''),
     last.replace(/-global$/, '').replace(/-\d{8}$/, ''),
+    last.replace(/-us$/, ''),
   ];
   for (const c of candidates) if (c && has(CODEX_MODEL_PRICING, c)) return c;
   return '';
@@ -157,13 +172,37 @@ export function priceCodexTokens(model: string | undefined, t: CodexTokenTotals)
 
 /**
  * Price one aggregated usage bucket by the API family the OneCLI body tap
- * recorded (`usage_api`). Returns null (UNKNOWN) for an unrecognised API or an
- * unpriced model — never $0.
+ * recorded (`usage_api`), at the rate of the model's own family. The API and
+ * the model family can differ: an OpenCode group reaches Claude models through
+ * the OpenAI-compatible API, and the router tests call open models through the
+ * Anthropic one. So each API tries its own table first and the other one next,
+ * converting the token shape (OpenAI input includes the cached tokens;
+ * Anthropic input does not, and cache writes bill at the input rate there).
+ * Returns null (UNKNOWN) for an unrecognised API or an unpriced model — never $0.
  */
 export function priceUsageBucket(usageApi: string, model: string | undefined, t: ClaudeTokenTotals): number | null {
-  if (usageApi.startsWith('anthropic_')) return priceClaudeTokens(model, t);
+  if (usageApi.startsWith('anthropic_')) {
+    return (
+      priceClaudeTokens(model, t) ??
+      priceCodexTokens(model, {
+        input: t.input + t.cacheRead + t.cacheCreateFlat + t.cacheCreate5m + t.cacheCreate1h,
+        cacheRead: t.cacheRead,
+        output: t.output,
+      })
+    );
+  }
   if (usageApi.startsWith('openai_')) {
-    return priceCodexTokens(model, { input: t.input, cacheRead: t.cacheRead, output: t.output });
+    return (
+      priceCodexTokens(model, { input: t.input, cacheRead: t.cacheRead, output: t.output }) ??
+      priceClaudeTokens(model, {
+        input: Math.max(0, t.input - t.cacheRead),
+        output: t.output,
+        cacheRead: t.cacheRead,
+        cacheCreateFlat: 0,
+        cacheCreate5m: 0,
+        cacheCreate1h: 0,
+      })
+    );
   }
   return null;
 }
