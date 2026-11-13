@@ -35,6 +35,9 @@ import { getUndeliveredMessages } from './db/messages-out.js';
 import { getCostCap, setCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H } from './poll-loop.js';
+
+/** A provider whose `usage` events carry each turn's spend (Claude, OpenCode, Pi). */
+const REPORTS_TURNS = { reportsTurnAccounting: true };
 import type { RunnerConfig } from './config.js';
 import type { MessageInRow } from './db/messages-in.js';
 import type { ProviderEvent } from './providers/types.js';
@@ -324,7 +327,7 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
     // Ceiling newly enabled / lowered to $50 — the session already exceeds it.
     __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
 
     const s = H.getState();
     expect(s.costSpentUsd).toBeCloseTo(60);
@@ -343,7 +346,7 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
     });
     __setConfigForTest(cfg({ immortal: true, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
 
     expect(H.getState().costSpentUsd).toBeCloseTo(60);
     expect(H.getState().costStopRequested).toBe(false);
@@ -356,7 +359,7 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
     setCostCap({ capUsd: 10, spentUsd: 90, ceilingUsd: 100, status: 'ok', immortal: false, window: 'lifetime' });
     __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
 
     const s = H.getState();
     expect(s.costCeilingUsd).toBeCloseTo(100); // adopted the raised value, not re-derived from cfg
@@ -367,13 +370,13 @@ describe('two-tier cost cap — initCostTracking derives stop from spend-vs-ceil
     setCostCap({ capUsd: 10, spentUsd: 5, status: 'ok', immortal: false, window: 'lifetime' });
     __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
-    H.initCostTracking('claude');
+    H.initCostTracking('claude', REPORTS_TURNS);
 
     expect(H.getState().costCeilingUsd).toBeCloseTo(50);
   });
 });
 
-describe('two-tier cost cap — a provider with no accounting source (e.g. OpenCode) never accrues', () => {
+describe('two-tier cost cap — OpenCode and Pi turn reports', () => {
   it('a provider without an accounting source leaves the cap disabled — no accrual, no escalation', () => {
     __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
 
@@ -384,6 +387,40 @@ describe('two-tier cost cap — a provider with no accounting source (e.g. OpenC
 
     expect(H.getState().costSpentUsd).toBe(0);
     expect(escalations()).toHaveLength(0);
+  });
+
+  it('a turn report past the ceiling escalates and requests the hard stop', () => {
+    __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
+    H.initCostTracking('pi', REPORTS_TURNS);
+
+    // 12M GLM 5.3 output tokens at $4.40/Mtok = $52.80, past the $50 ceiling.
+    H.recordTurnCost({
+      ...usage(0),
+      turnTokens: [
+        {
+          model: 'nvidia/zai-org/glm-5.3',
+          inputTokens: 0,
+          outputTokens: 12_000_000,
+          reasoningTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 0,
+        },
+      ],
+    });
+
+    expect(H.getState().costSpentUsd).toBeCloseTo(52.8, 6);
+    expect(H.getState().costCeilingHardStop).toBe(true);
+    expect(H.getState().costStopRequested).toBe(true);
+    expect(escalations('ceiling')).toHaveLength(1);
+  });
+
+  it('an empty turn report charges nothing', () => {
+    __setConfigForTest(cfg({ immortal: false, costCapT2Usd: 10, costCeilingT2Usd: 50 }));
+    H.initCostTracking('opencode', REPORTS_TURNS);
+
+    H.recordTurnCost({ ...usage(5), turnTokens: [] });
+
+    expect(H.getState().costSpentUsd).toBe(0);
   });
 });
 

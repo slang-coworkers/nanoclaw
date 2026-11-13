@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # PreToolUse hook (matcher: Bash|mcp__slang-mcp__discord_send_message|
-# mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning):
+# mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning|McpScript):
 # keep an evaluation copy of a
 # coworker from writing anywhere but the evaluation fork.
 #
@@ -64,6 +64,12 @@ case "$TOOL" in
     # production coworkers through the wiki; one that names the task's pull request
     # or what its reviewers asked for hands the answer key to the next repeat.
     deny "append_learning: an evaluation copy keeps its discoveries in its own answer, never in the shared learnings"
+    ;;
+  McpScript)
+    # Pi's mcpScript runs JavaScript that can call any MCP tool, so this gate
+    # cannot see which tools it calls. Single calls through the mcp tool reach
+    # the gate under their own names (mcp__<server>__<tool>) and are judged there.
+    deny "an MCP script: it can call any MCP tool unchecked; make each MCP call on its own with the mcp tool"
     ;;
   Bash) ;;
   *) exit 0 ;;

@@ -550,7 +550,10 @@ describe('set_ceiling — a mid-query lower ends the active provider stream imme
     // (see providers/mock.ts) — it only ever ends via push()/end()/abort(). If
     // the mid-query override does not call query.end(), this test times out
     // waiting for a receipt that never comes — the timeout IS the negative case.
-    const provider = new MockProvider({}, () => '<message to="discord-test">first reply</message>');
+    const provider = Object.assign(
+      new MockProvider({}, () => '<message to="discord-test">first reply</message>'),
+      { reportsTurnAccounting: true },
+    );
     const controller = new AbortController();
     const loop = runPollLoop({
       provider,
