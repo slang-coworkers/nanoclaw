@@ -4,8 +4,11 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createAgentGroup } from '../../db/agent-groups.js';
 import { closeDb, initTestDb } from '../../db/connection.js';
+import { ensureContainerConfig, updateContainerConfigScalars } from '../../db/container-configs.js';
 import { runMigrations } from '../../db/migrations/index.js';
+import { log } from '../../log.js';
 import {
   drainInputGate,
   observeGitHubDelivery,
@@ -21,6 +24,7 @@ const shadow: GateSettings = {
   rosterPath: '/nonexistent/roster.json',
   org: 'shader-slang',
   repos: null,
+  openLane: null,
 };
 const lookups = { repoPermission: vi.fn(async () => 'read'), orgMember: vi.fn(async () => false) };
 
@@ -84,6 +88,34 @@ describe('observeGitHubDelivery', () => {
     expect(await listGateDecisions()).toHaveLength(0);
   });
 
+  it('records open_lane for an allowlisted person who fails Check 2 when the lane is ready', async () => {
+    await createAgentGroup({ id: 'ag-lane', name: 'lane', folder: 'lane', agent_provider: 'opencode', created_at: '' });
+    await ensureContainerConfig('ag-lane', 'opencode');
+    await updateContainerConfigScalars('ag-lane', { weights: 'open' });
+    const member = { repoPermission: vi.fn(async () => 'read'), orgMember: vi.fn(async () => true) };
+    setInputGateDepsForTest({ settings: () => ({ ...shadow, openLane: 'lane' }), lookups: member });
+    expect(await observe()).toMatchObject({ outcome: 'open_lane', reason: 'not_linked', tier: 'allowlisted' });
+    expect(await listGateDecisions()).toMatchObject([{ outcome: 'open_lane', reason: 'not_linked' }]);
+  });
+
+  it('an invalid lane keeps the person not eligible and warns once', async () => {
+    const warn = vi.spyOn(log, 'warn');
+    const member = { repoPermission: vi.fn(async () => 'read'), orgMember: vi.fn(async () => true) };
+    setInputGateDepsForTest({ settings: () => ({ ...shadow, openLane: 'no-such-lane' }), lookups: member });
+    expect(await observe({ deliveryId: 'd-a' })).toMatchObject({ outcome: 'not_eligible' });
+    expect(await observe({ deliveryId: 'd-b' })).toMatchObject({ outcome: 'not_eligible' });
+    const laneWarnings = warn.mock.calls.filter(
+      ([msg]) => msg === 'input-gate: the open-weights lane cannot take work',
+    );
+    expect(laneWarnings).toEqual([
+      [
+        'input-gate: the open-weights lane cannot take work',
+        { folder: 'no-such-lane', problem: 'no agent group has this folder' },
+      ],
+    ]);
+    warn.mockRestore();
+  });
+
   it('never rejects: malformed JSON resolves to null', async () => {
     setInputGateDepsForTest({ settings: () => shadow, lookups });
     await expect(observe({ rawBody: '{not json' })).resolves.toBeNull();
@@ -122,11 +154,18 @@ describe('readGateSettings', () => {
     delete process.env.NANOCLAW_INPUT_GATE_ROSTER;
     delete process.env.NANOCLAW_INPUT_GATE_ORG;
     delete process.env.NANOCLAW_INPUT_GATE_REPOS;
+    delete process.env.NANOCLAW_INPUT_GATE_OPEN_LANE;
     const s = readGateSettings();
     expect(s.mode).toBe('off');
     expect(s.rosterPath.endsWith('data/input-gate-roster.json')).toBe(true);
     expect(s.org).toBe('shader-slang');
     expect(s.repos).toBeNull();
+    expect(s.openLane).toBeNull();
+  });
+
+  it('reads the open-weights lane folder', () => {
+    process.env.NANOCLAW_INPUT_GATE_OPEN_LANE = ' slang-open-lane ';
+    expect(readGateSettings().openLane).toBe('slang-open-lane');
   });
 
   it('reads the protected repo list, dropping blanks', () => {
