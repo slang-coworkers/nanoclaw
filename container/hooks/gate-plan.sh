@@ -42,6 +42,9 @@ if [ "$TOOL" = "Bash" ]; then
     while IFS= read -r FILE; do
       [ -n "$FILE" ] && ! plan_free_path "$FILE" && NEEDS_PLAN=true
     done <<< "$(apply_patch_files "$CMD" "$HOOK_CWD")"
+    # A patch must be the whole command: the write patterns below cannot judge
+    # what else the command runs (a `python3 -c` write, say), so it needs a plan.
+    [ -n "$(apply_patch_remainder "$CMD")" ] && NEEDS_PLAN=true
     [ "$NEEDS_PLAN" = "false" ] && exit 0
   else
     IS_WRITE=false

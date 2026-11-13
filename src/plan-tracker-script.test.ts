@@ -48,6 +48,16 @@ describe('plan-tracker.sh', () => {
     expect(read().plan_written).toBeUndefined();
   });
 
+  it('does not record a patch that runs another command too', () => {
+    run(codex(`${patch('*** Add File: reports/fix-plan.md', '+PLAN')}\necho done > /tmp/x`));
+    expect(read().plan_written).toBeUndefined();
+  });
+
+  it('does not record a patch that only deletes a report', () => {
+    run(codex(patch('*** Delete File: reports/old-plan.md')));
+    expect(read().plan_written).toBeUndefined();
+  });
+
   it('ignores other Bash commands and other files', () => {
     run(codex('cat > reports/plan.md <<EOF\nPLAN\nEOF'));
     run({ tool_name: 'Write', tool_input: { file_path: '/workspace/agent/src/foo.ts' } });

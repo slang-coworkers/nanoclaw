@@ -19,12 +19,18 @@ FILE=""
 if [ "$(echo "$INPUT" | jq -r '.tool_name // empty')" = "Bash" ]; then
   CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
   is_apply_patch "$CMD" || exit 0
+  # Only a pure patch earns plan credit: a command that runs more than its
+  # patch is one the gate makes wait for a plan, so it cannot record one.
+  [ -n "$(apply_patch_remainder "$CMD")" ] && exit 0
   HOOK_CWD=$(echo "$INPUT" | jq -r '.cwd // "/workspace/agent"')
   while IFS= read -r F; do
     [ -z "$F" ] && continue
     plan_free_path "$F" || exit 0
-    case "$F" in /workspace/agent/reports/* | /workspace/agent/plans/*) [ -z "$FILE" ] && FILE="$F" ;; esac
   done <<< "$(apply_patch_files "$CMD" "$HOOK_CWD")"
+  # The plan is a file the patch adds or updates; deleting a report is no plan.
+  while IFS= read -r F; do
+    case "$F" in /workspace/agent/reports/* | /workspace/agent/plans/*) [ -z "$FILE" ] && FILE="$F" ;; esac
+  done <<< "$(apply_patch_files "$CMD" "$HOOK_CWD" written)"
 else
   FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
 fi

@@ -215,6 +215,22 @@ describe('Codex apply_patch (reported as a Bash call carrying the patch)', () =>
     expect(run(codex(patch('*** Add File: reports/fix-plan.md', '+PLAN'))).status).toBe(0);
   });
 
+  it('a notes patch followed by another command is refused until a plan exists', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const compound = `${patch('*** Add File: reports/notes.md', '+notes')}\npython3 -c "open('src/x.py','w').write('x')"`;
+    const r = run(codex(compound));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('PLAN REQUIRED');
+  });
+
+  it('the quoted-argument form of a notes patch passes', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
+    const quoted = ["apply_patch '*** Begin Patch", '*** Add File: reports/notes.md', '+notes', "*** End Patch'"].join(
+      '\n',
+    );
+    expect(run(codex(quoted)).status).toBe(0);
+  });
+
   it('a patch that writes the plan and code together is refused until a plan exists', () => {
     fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
     const both = patch('*** Add File: reports/fix-plan.md', '+PLAN', '*** Update File: src/foo.ts', '@@', '-a', '+b');
