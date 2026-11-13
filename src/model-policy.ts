@@ -56,6 +56,29 @@ export interface ResolvedModels {
 
 type Env = Readonly<Record<string, string | undefined>>;
 
+/**
+ * The install settings the policy reads. The host receives the whole .env
+ * through systemd, so spawn sees them all; a tool that resolves models outside
+ * the host (scripts/open-weights-plan.ts) reads these keys from .env so that it
+ * resolves what spawn would. A test keeps the list equal to the keys read here.
+ */
+export const MODEL_POLICY_ENV_KEYS = [
+  'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+  'ANTHROPIC_MODEL',
+  'CODEX_MODEL',
+  'INTENT_ROUTER_OPENAI_MODEL',
+  'NANOCLAW_DEFAULT_MODEL',
+  'NANOCLAW_OPEN_CRITIC_MODEL',
+  'NANOCLAW_OPEN_MODEL',
+  'NANOCLAW_OPEN_ROUTER_MODEL',
+  'NANOCLAW_OPEN_SMALL_MODEL',
+  'NANOCLAW_OPEN_WEIGHTS_PREFIXES',
+  'OPENCODE_MODEL',
+  'OPENCODE_PROVIDER',
+  'OPENCODE_SMALL_MODEL',
+  'PI_MODEL',
+] as const;
+
 // The fork's open-weights defaults on NVIDIA inference (operator decision,
 // 2026-11-12): GLM for the doer, GLM flash for the small model and the router,
 // Kimi for the critic.
@@ -148,7 +171,8 @@ function installDefault(provider: string, role: ModelRole, env: Env): string | u
   }
 }
 
-const ROW_COLUMN: Record<ModelRole, keyof ModelPolicyRow> = {
+/** The container_configs column that holds each role's own model. */
+export const MODEL_ROLE_COLUMNS: Record<ModelRole, 'model' | 'small_model' | 'router_model' | 'critic_model'> = {
   main: 'model',
   small: 'small_model',
   router: 'router_model',
@@ -166,7 +190,7 @@ export function resolveGroupModels(provider: string, row: ModelPolicyRow, env: E
   const weights = parseModelWeights(row.weights);
   const resolved: ResolvedModels = { provider, weights };
   for (const role of MODEL_ROLES) {
-    const own = row[ROW_COLUMN[role]];
+    const own = row[MODEL_ROLE_COLUMNS[role]];
     let id = typeof own === 'string' && own ? own : undefined;
     if (!id && weights === 'open') id = env[OPEN_DEFAULTS[role].env] || OPEN_DEFAULTS[role].id;
     if (!id) id = installDefault(provider, role, env);

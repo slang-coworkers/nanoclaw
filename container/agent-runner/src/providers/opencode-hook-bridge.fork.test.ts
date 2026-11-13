@@ -5,12 +5,12 @@ import path from 'path';
 
 import {
   NanoclawHookBridge,
+  failedToolPart,
   claudeToolInput,
   claudeToolName,
-  claudeToolResponse,
   installOpenCodeHookBridge,
 } from './opencode-hook-bridge.js';
-import type { HookSettings } from '../settings-hooks.js';
+import { claudeToolResponse, type HookSettings } from '../settings-hooks.js';
 
 // Fork-owned. OpenCode never reads the Claude Code hook settings the host
 // writes, so without this bridge every gate (critique, plan, eval sandbox, PR
@@ -60,6 +60,32 @@ describe('tool names and inputs', () => {
   });
 });
 
+describe('failed tool parts', () => {
+  it('reads a failed tool call from a part update and ignores everything else', () => {
+    const part = (status: string) => ({
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          type: 'tool',
+          sessionID: 's',
+          callID: 'c',
+          tool: 'bash',
+          state: { status, input: { command: 'x' }, error: 'boom' },
+        },
+      },
+    });
+    expect(failedToolPart(part('error'))).toEqual({
+      sessionID: 's',
+      callID: 'c',
+      tool: 'bash',
+      input: { command: 'x' },
+      error: 'boom',
+    });
+    expect(failedToolPart(part('completed'))).toBeNull();
+    expect(failedToolPart({ type: 'session.idle', properties: {} })).toBeNull();
+  });
+});
+
 describe('the OpenCode plugin', () => {
   async function plugin(settings: HookSettings) {
     const file = path.join(dir, 'settings.json');
@@ -87,6 +113,37 @@ describe('the OpenCode plugin', () => {
       { tool: 'nanoclaw_send_message', sessionID: 's1' },
       { args: { text: '[Report] x' } },
     );
+  });
+
+  it('runs PostToolUseFailure hooks once for a tool part that failed', async () => {
+    const seen = path.join(dir, 'failure.jsonl');
+    const hooks = await plugin({
+      PostToolUseFailure: [{ matcher: 'Read', hooks: [{ command: `cat >> ${seen}; echo >> ${seen}` }] }],
+    });
+    const failed = {
+      type: 'message.part.updated',
+      properties: {
+        part: {
+          type: 'tool',
+          sessionID: 's1',
+          callID: 'call-1',
+          tool: 'read',
+          state: { status: 'error', input: { filePath: '/nope.txt' }, error: 'File not found' },
+        },
+      },
+    };
+    await hooks.event({ event: failed });
+    await hooks.event({ event: failed }); // the part updates again: no second run
+    await hooks.event({ event: { type: 'session.idle', properties: {} } });
+    const lines = fs.readFileSync(seen, 'utf-8').trim().split('\n').filter(Boolean);
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0])).toMatchObject({
+      hook_event_name: 'PostToolUseFailure',
+      session_id: 's1',
+      tool_name: 'Read',
+      tool_use_id: 'call-1',
+      error: 'File not found',
+    });
   });
 
   it('blocks an issue close before any hook runs, unless the group allows it', async () => {
