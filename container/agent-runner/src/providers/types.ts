@@ -29,6 +29,20 @@ export interface AgentProvider {
    * when it runs the Stop hooks, so the dashboard sees one Stop per turn.
    */
   readonly reportsHookTelemetry?: boolean;
+  /**
+   * True when the provider's `usage` events carry the spend of every turn:
+   * `modelUsage` for Claude, `turnTokens` for OpenCode and Pi. The cost cap
+   * meters these providers, and Codex, whose spend the runner reads from its
+   * rollout files.
+   */
+  readonly reportsTurnAccounting?: boolean;
+  /**
+   * True when a message that arrives during a turn ends the running query
+   * instead of joining it. The poll loop re-claims the message after the
+   * turn's cost settle, so a hard stop at the turn boundary cannot leave it
+   * acknowledged with no answer (Codex, OpenCode, Pi).
+   */
+  readonly followUpEndsQuery?: boolean;
 
   /**
    * Register shared memory through the provider's native session-start
@@ -179,6 +193,22 @@ export interface UsageAccountingModel {
   cacheReadInputTokens?: number;
   cacheCreationInputTokens?: number;
   costUSD?: number;
+}
+
+/**
+ * One model's token totals for ONE turn, from a provider that reports each
+ * turn's own usage (OpenCode, Pi). Input is net of cache and output includes
+ * reasoning, the convention of the cost ledger's `CostEvent`.
+ */
+export interface TurnModelTokens {
+  /** The model that served the calls, as the provider names it (`nvidia/zai-org/glm-5.3`). */
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  /** Informational: already inside `outputTokens`. */
+  reasoningTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
 }
 
 /** Per-turn accounting payload — the `usage` event's fields, also attached to `result`. */
@@ -341,6 +371,13 @@ export type ProviderEvent =
        * none. The token fields above are main-loop-only and per turn.
        */
       modelUsage?: Record<string, UsageAccountingModel>;
+      /**
+       * This turn's own per-model token totals, from a provider that reports
+       * per turn rather than cumulatively (OpenCode, Pi). The poll loop prices
+       * and charges them (`settleTurnTokens`). Present, possibly empty, on every
+       * turn of such a provider, so the turn-boundary hard stop always runs.
+       */
+      turnTokens?: TurnModelTokens[];
       /** The turn's `result` was an error (e.g. `error_max_budget_usd`, a crash). */
       isError?: boolean;
     }

@@ -4,7 +4,6 @@ import path from 'path';
 import { AnchoredDir } from './anchored-dir.js';
 import { resolveMirroredSkillScope } from './claude-composer.js';
 import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
-import { getDb } from './db/connection.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
@@ -366,22 +365,10 @@ export async function initGroupFilesystem(
   // (they are simply no longer mounted) so a rollback needs no restore, and
   // deleting an agent's files is not this function's call to make.
 
-  // 4. Codex provider: symlinks + disable overlays (hooks not supported)
-  // Codex CLI doesn't execute settings.json hooks, so overlay enforcement
-  // (plan-gate, critique-gate, edit-counter) is completely inoperative.
-  // Set disable_overlays=1 so the composer doesn't render gate markers that
-  // the agent can't enforce, and create symlinks for native discovery.
+  // 4. Codex provider: symlinks for native discovery. Its overlays stay on:
+  // Codex runs the gate scripts as managed hooks (container/codex-hooks.toml),
+  // so the plan, critique and eval-sandbox gates work as on other backends.
   if (group.agent_provider === 'codex') {
-    if (group.disable_overlays !== 1) {
-      try {
-        // Goes through the async central-DB driver rather than a private
-        // better-sqlite3 handle: `updateAgentGroup` does not expose this column.
-        await getDb().run('UPDATE agent_groups SET disable_overlays = 1 WHERE id = ?', group.id);
-        initialized.push('disable_overlays=1 (codex: hooks unsupported)');
-      } catch {
-        /* non-critical — overlays just render uselessly */
-      }
-    }
     const agentsMdLink = path.join(groupDir, 'AGENTS.md');
     if (!fs.existsSync(agentsMdLink)) {
       try {

@@ -62,6 +62,8 @@ import {
   _resetEnsuredAgentsForTesting,
   contributionFromConfig,
   grantProviderCredentials,
+  newAgentSecretNames,
+  restrictNewAgentSecrets,
   HEALTH_FAILURES_BEFORE_UNAVAILABLE,
   HEALTH_PROBE_INTERVAL_MS,
   withProviderEnv,
@@ -748,6 +750,138 @@ describe('OneCLI gateway package', () => {
       for (const c of signals) c.abort();
       fetchMock.mockRestore();
     }
+  });
+
+  describe('a new agent on a gateway with secret modes (1.43 and older)', () => {
+    // Such a gateway creates an agent in mode "all": a new group could use
+    // every secret on the box. ONECLI_NEW_AGENT_SECRETS names the base set.
+    function modeGateway(opts: { agentsStatus?: number } = {}) {
+      const calls: string[] = [];
+      const bodies: Record<string, unknown> = {};
+      const json = (body: unknown, status = 200) =>
+        new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+      const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+        const { pathname } = new URL(String(url));
+        const method = init?.method ?? 'GET';
+        calls.push(`${method} ${pathname}`);
+        if (init?.body) bodies[`${method} ${pathname}`] = JSON.parse(String(init.body));
+        if (pathname === '/api/agents')
+          return opts.agentsStatus
+            ? json({ error: 'not found' }, opts.agentsStatus)
+            : json([{ id: 'oc-g1', identifier: 'g1', secretMode: 'all' }]);
+        if (pathname === '/api/secrets')
+          return json([
+            { id: 'sec-inference', name: 'Inference' },
+            { id: 'sec-gh-read', name: 'GitHub (read)' },
+            { id: 'sec-gh-push', name: 'GitHub (push)' },
+          ]);
+        if (method === 'PUT' || method === 'PATCH') return json({});
+        return json({ error: 'unexpected' }, 500);
+      }) as typeof fetch;
+      return { calls, bodies, fetch: fetchImpl };
+    }
+
+    it('reads the base set from ONECLI_NEW_AGENT_SECRETS; unset means no change', () => {
+      expect(newAgentSecretNames(' Inference, GitHub (read) ,')).toEqual(['Inference', 'GitHub (read)']);
+      expect(newAgentSecretNames('')).toBeNull();
+      expect(newAgentSecretNames(undefined)).toBeNull();
+    });
+
+    it('attaches the named secrets, then switches the agent to selective', async () => {
+      const gateway = modeGateway();
+      await expect(
+        restrictNewAgentSecrets('g1', ['Inference', 'GitHub (read)', 'Missing'], {
+          baseUrl: 'http://gw.test',
+          fetchImpl: gateway.fetch,
+        }),
+      ).resolves.toBe('restricted');
+      expect(gateway.calls).toEqual([
+        'GET /api/agents',
+        'GET /api/secrets',
+        'PUT /api/agents/oc-g1/secrets',
+        'PATCH /api/agents/oc-g1/secret-mode',
+      ]);
+      expect(gateway.bodies['PUT /api/agents/oc-g1/secrets']).toEqual({ secretIds: ['sec-inference', 'sec-gh-read'] });
+      expect(gateway.bodies['PATCH /api/agents/oc-g1/secret-mode']).toEqual({ mode: 'selective' });
+      expect(vi.mocked(log.warn)).toHaveBeenCalledWith(
+        'ONECLI_NEW_AGENT_SECRETS names a secret the vault does not have',
+        { name: 'Missing' },
+      );
+    });
+
+    it('leaves a gateway without these routes alone (1.44 and newer grant per agent)', async () => {
+      const gateway = modeGateway({ agentsStatus: 404 });
+      await expect(
+        restrictNewAgentSecrets('g1', ['Inference'], { baseUrl: 'http://gw.test', fetchImpl: gateway.fetch }),
+      ).resolves.toBe('unsupported');
+      expect(gateway.calls).toEqual(['GET /api/agents']);
+    });
+
+    it('a failed restriction is retried after a host restart', async () => {
+      const saved = process.env.ONECLI_NEW_AGENT_SECRETS;
+      process.env.ONECLI_NEW_AGENT_SECRETS = 'Inference';
+      const gateway = modeGateway();
+      let failNext = true;
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+        if (failNext && String(url).endsWith('/secret-mode')) {
+          failNext = false;
+          return new Response('{}', { status: 503 });
+        }
+        return gateway.fetch(url, init);
+      });
+      try {
+        sdk.ensureAgent.mockResolvedValueOnce({ created: true });
+        const first = new AbortController();
+        await expect(provider.sessions.ensure(input('s1'), first.signal)).rejects.toThrow('secret-mode returned 503');
+        first.abort();
+        // The host restarts: the memos are gone, ensureAgent no longer says created.
+        _resetEnsuredAgentsForTesting();
+        const second = new AbortController();
+        await provider.sessions.ensure(input('s2'), second.signal);
+        second.abort();
+        expect(gateway.calls.filter((c) => c.startsWith('PATCH'))).toEqual(['PATCH /api/agents/oc-g1/secret-mode']);
+      } finally {
+        fetchMock.mockRestore();
+        if (saved === undefined) delete process.env.ONECLI_NEW_AGENT_SECRETS;
+        else process.env.ONECLI_NEW_AGENT_SECRETS = saved;
+      }
+    });
+
+    it('a spawn restricts a NEW agent only, and retries a failed restriction on the next spawn', async () => {
+      const saved = process.env.ONECLI_NEW_AGENT_SECRETS;
+      process.env.ONECLI_NEW_AGENT_SECRETS = 'Inference';
+      const gateway = modeGateway();
+      let failNext = true;
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (url, init) => {
+        if (failNext && String(url).endsWith('/secret-mode')) {
+          failNext = false;
+          return new Response('{}', { status: 503 });
+        }
+        return gateway.fetch(url, init);
+      });
+      try {
+        sdk.ensureAgent.mockResolvedValueOnce({ created: true });
+        const first = new AbortController();
+        await expect(provider.sessions.ensure(input('s1'), first.signal)).rejects.toThrow('secret-mode returned 503');
+        first.abort();
+        // ensureAgent says created only once; the pending restriction is retried anyway.
+        const second = new AbortController();
+        await provider.sessions.ensure(input('s2'), second.signal);
+        second.abort();
+        expect(gateway.calls.filter((c) => c.startsWith('PATCH'))).toEqual(['PATCH /api/agents/oc-g1/secret-mode']);
+        // An existing agent (created: false, nothing pending) is never touched.
+        _resetEnsuredAgentsForTesting();
+        gateway.calls.length = 0;
+        const third = new AbortController();
+        await provider.sessions.ensure(input('s3'), third.signal);
+        third.abort();
+        expect(gateway.calls).toEqual([]);
+      } finally {
+        fetchMock.mockRestore();
+        if (saved === undefined) delete process.env.ONECLI_NEW_AGENT_SECRETS;
+        else process.env.ONECLI_NEW_AGENT_SECRETS = saved;
+      }
+    });
   });
 
   describe('ChatGPT login stand-in', () => {

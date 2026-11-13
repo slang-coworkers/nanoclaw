@@ -1361,6 +1361,57 @@ it('does not push accumulated-only follow-ups into an active query', async () =>
   expect(getPendingMessages().map((m) => m.id)).toEqual(['m1']);
 });
 
+describe('a follow-up during a turn', () => {
+  /** Run one query that receives a triggering follow-up mid-turn; report what the loop did with it. */
+  async function followUp(followUpEndsQuery: boolean) {
+    const pushes: string[] = [];
+    let ended = false;
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 'sess-1' };
+      insertMessage('m2', 'chat', { sender: 'A', text: 'one more thing' });
+      for (let i = 0; i < 60 && !ended && pushes.length === 0; i++) await new Promise((r) => setTimeout(r, 25));
+    }
+    const query: AgentQuery = {
+      push: (m) => pushes.push(m),
+      end: () => {
+        ended = true;
+      },
+      events: events(),
+      abort: () => {},
+    };
+    await processQuery(
+      query,
+      ERR_ROUTING,
+      [],
+      followUpEndsQuery ? 'opencode' : 'claude',
+      undefined,
+      'prompt',
+      undefined,
+      false,
+      undefined,
+      25,
+      false,
+      () => null,
+      null,
+      followUpEndsQuery,
+    );
+    return { pushes, ended, pending: getPendingMessages().map((m) => m.id) };
+  }
+
+  it('ends the query and leaves the message pending when the provider ends its query on a follow-up', async () => {
+    const r = await followUp(true);
+    expect(r.ended).toBe(true);
+    expect(r.pushes).toHaveLength(0);
+    expect(r.pending).toEqual(['m2']);
+  });
+
+  it('joins the running query otherwise', async () => {
+    const r = await followUp(false);
+    expect(r.pushes).toHaveLength(1);
+    expect(r.pending).toEqual([]);
+  });
+});
+
 describe('error result with no <message> envelope', () => {
   it('delivers a safe failure notice to the triggering channel and does not nudge', async () => {
     const budgetText = 'Spending limit reached. Add your own key at https://example.com/keys';
