@@ -124,6 +124,16 @@ export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
   'kimi-k3': { input: 2.1e-6, output: 10.5e-6, cacheRead: 0.21e-6 },
   'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 0.14e-6 },
   'glm-5.3-flash': { input: 0.15e-6, output: 0.5e-6, cacheRead: 0.03e-6 },
+  'deepseek-v4.1-flash-1017': { input: 0.24e-6, output: 0.96e-6, cacheRead: 0.0056e-6 },
+  // The gateway lists these two NVIDIA-hosted models at $0.
+  'llama-3.1-8b-instruct': { input: 0, output: 0, cacheRead: 0 },
+  'gpt-oss-20b': { input: 0, output: 0, cacheRead: 0 },
+  // Small OpenAI models the intent router and the model tests call (gateway
+  // `/model/info` list rates). `gpt-6-luna` is the router's own default.
+  'gpt-6-luna': { input: 0.1e-6, output: 0.5e-6, cacheRead: 0.01e-6 },
+  'gpt-5-mini': { input: 0.25e-6, output: 2e-6, cacheRead: 0.025e-6 },
+  'gpt-5-nano': { input: 0.05e-6, output: 0.4e-6, cacheRead: 0.005e-6 },
+  'gpt-4o-mini': { input: 0.15e-6, output: 0.6e-6, cacheRead: 0.075e-6 },
 };
 
 /**
