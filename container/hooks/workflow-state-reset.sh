@@ -33,7 +33,7 @@ do_reset() {
   jq -n \
     --arg id "$TASK_ID" \
     --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    '{task_id: $id, plan_written: false, plan_path: null, plan_stale: false, edits_since_plan: 0, critique_required: false, critique_rounds: 0, critique_round_at_flag: 0, edits_since_critique: 0, started_at: $ts, last_activity_at: $ts}' \
+    '{task_id: $id, plan_written: false, plan_path: null, edits_since_plan: 0, critique_required: false, critique_rounds: 0, critique_round_at_flag: 0, edits_since_critique: 0, started_at: $ts, last_activity_at: $ts}' \
     > "$STATE"
   exit 0
 }
