@@ -64,6 +64,11 @@ describe('checksCardHtml', () => {
     expect(html).toContain('none in the last hour');
   });
 
+  it('says when the overlay kill switch is on', () => {
+    const html = render({ hooks: [], overlays: [], overlaysDisabled: true, workflow: null, hookEventsLastHour: {} });
+    expect(html).toContain('switched off for this group');
+  });
+
   it('escapes what it shows', () => {
     const html = render({
       hooks: [{ event: 'PreToolUse', matcher: '<b>', script: 'gate-<x>.sh' }],

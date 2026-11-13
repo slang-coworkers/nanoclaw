@@ -4703,7 +4703,11 @@ function checksCardHtml(c) {
         .join('')
     : `<div>${muted('No gate hooks')}</div>`;
   const others = hooks.length - gates.length;
-  const overlays = (c.overlays || []).length ? (c.overlays || []).map(esc).join(', ') : muted('none');
+  const overlays = c.overlaysDisabled
+    ? '<span style="color:var(--yellow)">switched off for this group (disable_overlays = 1)</span>'
+    : (c.overlays || []).length
+      ? (c.overlays || []).map(esc).join(', ')
+      : muted('none');
   const w = c.workflow;
   const task = !w
     ? muted('No task state')
