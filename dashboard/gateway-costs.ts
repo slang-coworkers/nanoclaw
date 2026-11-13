@@ -256,6 +256,25 @@ export function priceGatewayRow(r: GatewayAggRow): PricedRow {
     const uncached = Math.max(0, r.input - cached);
     const key = normalizeGatewayCodexModel(r.model);
     const rate = key ? CODEX_MODEL_PRICING[key] : undefined;
+    if (!rate) {
+      // An OpenCode or Pi group reaches Claude models through the gateway's
+      // OpenAI-compatible API too (`aws/anthropic/bedrock-claude-opus-5-5`):
+      // price those at the Claude rate, as the runner's ledger does.
+      const claudeKey = normalizeGatewayClaudeModel(r.model);
+      const claudeRate = claudeKey ? MODEL_PRICING[claudeKey] : undefined;
+      if (claudeRate) {
+        return {
+          provider: 'claude',
+          modelKey: claudeKey,
+          usd: uncached * claudeRate.input + cached * claudeRate.cacheRead + r.output * claudeRate.output,
+          inputTokens: uncached,
+          outputTokens: r.output,
+          cacheReadTokens: cached,
+          cacheCreationTokens: 0,
+          totalTokens: r.input + r.output,
+        };
+      }
+    }
     const usd = rate ? uncached * rate.input + cached * rate.cacheRead + r.output * rate.output : null;
     return {
       provider: 'codex',
