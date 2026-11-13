@@ -62,6 +62,26 @@ afterEach(() => {
   fs.rmSync(tmpRoot, { recursive: true, force: true });
 });
 
+describe('a Codex PreToolUse payload', () => {
+  // Codex runs this script from its managed hook file with the Claude Code
+  // payload plus its own fields (turn_id, permission_mode, model).
+  it('blocks gh pr create without a critique, as for Claude', () => {
+    activateOverlay();
+    const result = run({
+      session_id: '01a1d2a4',
+      turn_id: '01a1d2a4-b8fb',
+      hook_event_name: 'PreToolUse',
+      permission_mode: 'bypassPermissions',
+      model: 'nvidia/moonshotai/kimi-k3',
+      tool_name: 'Bash',
+      tool_use_id: 'call_1',
+      tool_input: { command: 'gh pr create --title "Fix" --body-file /tmp/body.md' },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('CRITIQUE REQUIRED');
+  });
+});
+
 describe('the send_file tool is a message door', () => {
   // delivery-gate.ts runs this script for send_file with the caption and the
   // file's text, so a report sent as a file is gated like a message.
