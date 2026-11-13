@@ -116,6 +116,10 @@ describe('codex rate table (anti-drift vs the ccusage-derived rates)', () => {
     'gpt-5.2-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
     'gpt-5.1-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
     'gpt-5-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+    // NVIDIA inference list rates (gateway `/model/info`).
+    'kimi-k3': { input: 2.1e-6, output: 10.5e-6, cacheRead: 0.21e-6 },
+    'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 0.14e-6 },
+    'glm-5.3-flash': { input: 0.15e-6, output: 0.5e-6, cacheRead: 0.03e-6 },
   };
 
   it('pins the published rate for every known model id', () => {
@@ -169,13 +173,13 @@ describe('normalizeCodexModel', () => {
   // If you change one normalizer copy, change both and keep these green on both.
   it('resolves EVERY known model across bare / prefix / dated / -latest / mixed-case forms', () => {
     for (const base of Object.keys(CODEX_MODEL_PRICING)) {
-      expect(normalizeCodexModel(base)).toBe(base);                              // bare
-      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base);           // provider prefix
-      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base);          // doubled prefix
-      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base);               // dated snapshot
-      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base);  // prefix + dated
-      expect(normalizeCodexModel(`${base}-latest`)).toBe(base);                 // -latest alias
-      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base);       // case + whitespace
+      expect(normalizeCodexModel(base)).toBe(base); // bare
+      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base); // provider prefix
+      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base); // doubled prefix
+      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base); // dated snapshot
+      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base); // prefix + dated
+      expect(normalizeCodexModel(`${base}-latest`)).toBe(base); // -latest alias
+      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base); // case + whitespace
     }
   });
 
@@ -207,7 +211,11 @@ describe('normalizeCodexModel', () => {
     expect(normalizeCodexModel('__proto__-latest')).toBe('');
     expect(normalizeCodexModel('toString')).toBe('');
     // …and pricing such an id falls to DEFAULT, never NaN.
-    expect(Number.isFinite(priceCodexEvent({ day: '2026-08-28', rawModel: 'constructor-20260101', input: 1_000, cached: 0, output: 0 }))).toBe(true);
+    expect(
+      Number.isFinite(
+        priceCodexEvent({ day: '2026-08-28', rawModel: 'constructor-20260101', input: 1_000, cached: 0, output: 0 }),
+      ),
+    ).toBe(true);
   });
 });
 
