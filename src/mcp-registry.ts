@@ -233,7 +233,7 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
         },
       );
 
-      proc.stderr?.on('data', (data: Buffer) => logServerStderr(def.name, data, 'MCP server stderr'));
+      logServerStderr(proc, def.name, 'MCP server stderr');
 
       proc.on('error', (err) => {
         log.error('MCP server failed to start', { server: def.name, err });
@@ -271,7 +271,7 @@ export async function startMcpServers(baseInternalPort: number): Promise<{
         { stdio: ['ignore', 'pipe', 'pipe'] },
       );
 
-      proc.stderr?.on('data', (data: Buffer) => logServerStderr(def.name, data, 'Remote MCP server stderr'));
+      logServerStderr(proc, def.name, 'Remote MCP server stderr');
       proc.on('error', (err) => {
         log.error('Remote MCP server proxy failed to start', { server: def.name, err });
       });
@@ -338,14 +338,29 @@ export function mcpStderrLevel(server: string, line: string, now = Date.now()): 
   return 'warn';
 }
 
-/** Log a chunk of an MCP server's stderr, line by line, at the level of each line. */
-function logServerStderr(server: string, data: Buffer, label: string): void {
-  for (const raw of data.toString().split('\n')) {
+/**
+ * Log an MCP server's stderr line by line, each at its own level. A chunk can
+ * end mid-line, so the unfinished tail waits for the next chunk (or the end of
+ * the stream): a word such as "Unauthorized" split across two chunks still
+ * classifies as one line.
+ */
+export function logServerStderr(proc: ChildProcess, server: string, label: string): void {
+  let tail = '';
+  const emit = (raw: string): void => {
     const msg = raw.trim();
-    if (!msg) continue;
+    if (!msg) return;
     if (mcpStderrLevel(server, msg) === 'warn') log.warn(label, { server, msg });
     else log.debug(label, { server, msg });
-  }
+  };
+  proc.stderr?.on('data', (data: Buffer) => {
+    const lines = (tail + data.toString()).split('\n');
+    tail = lines.pop() ?? '';
+    for (const line of lines) emit(line);
+  });
+  proc.stderr?.on('end', () => {
+    emit(tail);
+    tail = '';
+  });
 }
 
 export function getRunningServerNames(): string[] {
@@ -517,7 +532,7 @@ export async function restartServer(name: string): Promise<void> {
     throw new Error(`Server "${name}" has unknown type: ${def.type}`);
   }
 
-  proc.stderr?.on('data', (data: Buffer) => logServerStderr(name, data, 'MCP server stderr'));
+  logServerStderr(proc, name, 'MCP server stderr');
   proc.on('error', (err) => {
     const entry = servers.get(name);
     if (entry) entry.alive = false;
