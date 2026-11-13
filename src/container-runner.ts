@@ -2854,8 +2854,7 @@ export async function buildMounts(
   // because squash merges copy it into git log; the explanation lives in the
   // explanation comment. Registered for every Claude-surface group, outside the
   // dashboard block above so DASHBOARD_PORT=0 cannot switch it off. Codex groups
-  // (container/codex-hooks.toml) do not get it yet: their PreToolUse deny path
-  // is not exercised anywhere in this repo.
+  // run it from their managed hook file (container/codex-hooks.toml).
   if (defaultSurfaces) ensurePrDescriptionGate(settingsFile);
   // gate-eval-sandbox.sh: an evaluation copy of a coworker (overlay `eval-sandbox`)
   // may write only to the evaluation fork. Self-scoped by the overlay marker, so

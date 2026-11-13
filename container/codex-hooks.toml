@@ -64,6 +64,36 @@ allow_managed_hooks_only = true
   command = "bash /app/hooks/codex-dashboard-hook.sh PreToolUse"
   timeout = 5
 
+# ---- Bash gates: the scripts Claude Code runs as PreToolUse hooks -------------
+# Codex sends the Claude Code payload (tool_name "Bash", tool_input.command), and
+# a hook's exit 2 blocks the command and shows the model the script's reason.
+# Measured on lego with codex 0.160.0 (2026-11-13): `echo gh pr create` was
+# blocked before it ran. Each script scopes itself and exits 0 unless its gate is
+# on for the group (CRITIQUE_GATE_ACTIVE, EVAL_SANDBOX_ACTIVE, PR_DESCRIPTION_GATE),
+# so wiring them for every Codex group is safe. The eval sandbox also refuses two
+# MCP tools under Claude; Codex's names for MCP tools in hooks are not measured,
+# so only its Bash half is wired here.
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-critique-on-deliver.sh"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-pr-description.sh"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-eval-sandbox.sh"
+  timeout = 5
+
 [[hooks.PostToolUse]]
   [[hooks.PostToolUse.hooks]]
   type = "command"
