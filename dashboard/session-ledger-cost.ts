@@ -22,7 +22,9 @@
  *     TOKENS at the current MODEL_PRICING (the runner's pricing.ts is a verbatim
  *     copy of session-costs.ts), 1h cache write = 2x input, then add the row's
  *     stored `adjustment_usd`. Unknown model with billed tokens → $0 + unpriced.
- *   - Codex rows: keep `priced_usd` (it already includes `adjustment_usd`).
+ *   - Codex, OpenCode and Pi rows: keep `priced_usd` (it already includes
+ *     `adjustment_usd`). The runner priced them at write time from the same
+ *     rate tables; OpenCode and Pi rows are each turn's tokens of one model.
  *
  * EXACT-ONLY (no accounting regression). Ledger rows written before the exact
  * Claude accounting (PR #2013, runner COST_ACCOUNTING_VERSION 3) kept each
@@ -102,6 +104,12 @@ export function priceLedgerRow(row: LedgerRow): PricedLedgerRow {
       unpriced: billed !== 0 && !normalizeCodexModel(row.model),
     };
   }
+  if (isTurnTokenRow(row)) {
+    // An OpenCode or Pi group can run a Claude or an open model through the
+    // gateway; the runner tries the Claude rate first, then the open-model rate.
+    const named = normalizeModel(row.model) || normalizeCodexModel(row.model);
+    return { usd: n(row.priced_usd), tokens, unpriced: tokens !== 0 && !named };
+  }
   const adjustment = n(row.adjustment_usd);
   const rate = MODEL_PRICING[normalizeModel(row.model)];
   if (!rate) {
@@ -118,6 +126,11 @@ export function priceLedgerRow(row: LedgerRow): PricedLedgerRow {
     (hasSplit ? cw5 * rate.cacheCreate + cw1h * (rate.input * 2) : cwFlat * rate.cacheCreate) +
     adjustment;
   return { usd, tokens, unpriced: false };
+}
+
+/** True for a row of an OpenCode or Pi turn: one model's tokens for that turn, priced by the runner. */
+function isTurnTokenRow(row: LedgerRow): boolean {
+  return row.provider === 'opencode' || row.provider === 'pi';
 }
 
 /** Day bucket key `YYYYMMDD` from the row's own UTC `ts` (the shape server.ts's isoDayKey uses). */
@@ -163,7 +176,8 @@ export function isMigrationBaseRow(id: string): boolean {
 export function isExactRow(row: LedgerRow): boolean {
   const id = String(row.id);
   if (isMigrationBaseRow(id)) return false;
-  if (row.provider === 'codex' || id.startsWith('adj:') || id.includes(':residual:')) return true;
+  if (row.provider === 'codex' || isTurnTokenRow(row) || id.startsWith('adj:') || id.includes(':residual:'))
+    return true;
   return row.acct_seg !== null && row.acct_seg !== undefined;
 }
 
@@ -197,6 +211,7 @@ export function foldLedgerRows(input: Iterable<LedgerRow>, hasAcctColumn = true)
     const key = ledgerDayKey(row.ts);
     const d = out.days.get(key) || { cost: 0, claudeUsd: 0, codexUsd: 0, tokens: 0 };
     d.cost += p.usd;
+    // `claudeUsd` is the session's own model spend, which for OpenCode and Pi is their model's.
     if (row.provider === 'codex') d.codexUsd += p.usd;
     else d.claudeUsd += p.usd;
     d.tokens += p.tokens;
