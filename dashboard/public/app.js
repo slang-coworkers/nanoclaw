@@ -4685,6 +4685,61 @@ async function fillModelCard(el, folder) {
   }
 }
 
+// Checks section: the operator checks of one coworker, from
+// GET /api/coworkers/:folder/checks (dashboard/coworker-checks.ts). They load
+// when the panel shows a new coworker and on Refresh, not on every re-render,
+// because they read files and the hook-events table.
+const GATE_HOOK_RE = /^(gate-|issue-close|plan-tracker)/;
+
+/** Render the Checks section of one coworker: gate hooks, opt-in overlays, task state and recent hook events. */
+function checksCardHtml(c) {
+  const muted = (t) => `<span style="color:var(--text-muted)">${esc(t)}</span>`;
+  const hooks = c.hooks || [];
+  const gates = hooks.filter((h) => GATE_HOOK_RE.test(h.script));
+  const source = c.hookSource === 'codex-image' ? 'the Codex hook file in the image' : 'settings.json';
+  const gateRows = gates.length
+    ? gates
+        .map((h) => `<div><code>${esc(h.script)}</code> ${muted(h.event + (h.matcher ? ' · ' + h.matcher : ''))}</div>`)
+        .join('')
+    : `<div>${muted('No gate hooks')}</div>`;
+  const others = hooks.length - gates.length;
+  const overlays = (c.overlays || []).length ? (c.overlays || []).map(esc).join(', ') : muted('none');
+  const w = c.workflow;
+  const task = !w
+    ? muted('No task state')
+    : `${w.planWritten ? `plan written${w.planPath ? ` (<code>${esc(w.planPath.split('/').pop())}</code>)` : ''}` : 'no plan'} · critique rounds ${w.critiqueRounds} · edits since plan ${w.editsSincePlan}`;
+  const events = Object.entries(c.hookEventsLastHour || {}).sort((a, b) => b[1] - a[1]);
+  const eventLine = events.length
+    ? events.map(([e, n]) => `${esc(e)} ${n}`).join(' · ')
+    : muted('none in the last hour');
+  return `<div class="model-card-head">Gate hooks, from ${esc(source)}${others > 0 ? ` · ${others} other hooks` : ''}</div>
+    ${gateRows}
+    <div style="margin-top:4px"><b>Overlays</b> ${overlays}</div>
+    <div><b>Task</b> ${task}</div>
+    <div><b>Hook events</b> ${eventLine}</div>`;
+}
+
+/** Fill `el` with the Checks of `folder` when the coworker changes, or always when `force` is set (Refresh). */
+async function fillChecksCard(el, folder, force = false) {
+  if (!el) return;
+  if (!force && el.dataset.folder === folder) return;
+  el.dataset.folder = folder;
+  el.innerHTML = '<span style="color:var(--text-muted)">Loading...</span>';
+  try {
+    const res = await fetch(`/api/coworkers/${encodeURIComponent(folder)}/checks`);
+    if (!res.ok) throw new Error(`checks ${res.status}`);
+    const c = await res.json();
+    if (el.dataset.folder === folder) el.innerHTML = checksCardHtml(c);
+  } catch {
+    if (el.dataset.folder === folder) el.textContent = '(unavailable)';
+  }
+}
+
+document.getElementById('cw-checks-refresh')?.addEventListener('click', () => {
+  const el = document.getElementById('cw-detail-checks');
+  if (el && el.dataset.folder) void fillChecksCard(el, el.dataset.folder, true);
+});
+
 async function showDetailPanel(cw) {
   setDetailPanelOpen(true);
   document.getElementById('detail-name').textContent = cw.name;
@@ -6266,6 +6321,7 @@ function loadAdminPanel(name) {
     channels: loadAdminChannels,
     config: loadAdminConfig,
     infra: loadAdminInfra,
+    checks: loadAdminChecks,
     funnel: loadFunnel,
   };
   if (loaders[name]) loaders[name]();
@@ -10241,6 +10297,7 @@ async function updateCwDetail() {
   document.getElementById('cw-detail-status').textContent = cw.status;
   document.getElementById('cw-detail-tasks').textContent = String(cw.taskCount);
   void fillModelCard(document.getElementById('cw-detail-models'), cw.folder);
+  void fillChecksCard(document.getElementById('cw-detail-checks'), cw.folder);
 
   // MCP tools — show allowed (green) then blocked (struck-through). Hidden by default;
   // expand button toggles visibility so the panel isn't dominated by a long list.
@@ -11670,6 +11727,113 @@ document.addEventListener('visibilitychange', () => {
 });
 
 // --- Infrastructure Panel ---
+// --- Checks ---
+// Fleet checks from GET /api/checks (dashboard/coworker-checks.ts). They load
+// when the pill opens and on Refresh.
+async function loadAdminChecks() {
+  const el = document.getElementById('admin-checks-content');
+  el.innerHTML = '<div class="admin-loading">Loading...</div>';
+  try {
+    const res = await fetch('/api/checks');
+    if (!res.ok) throw new Error('fetch failed');
+    const d = await res.json();
+    adminState.loaded.add('checks');
+    el.innerHTML = adminChecksHtml(d);
+  } catch {
+    el.innerHTML = '<div class="admin-empty">Failed to load checks</div>';
+  }
+}
+
+/**
+ * Render the fleet checks: model-policy problems, OneCLI secret modes,
+ * input-gate decisions in the last day and unpriced models. A source that
+ * failed shows its error in its own table.
+ */
+function adminChecksHtml(d) {
+  const color = (bad, warn) => (bad ? 'var(--red)' : warn ? 'var(--yellow)' : 'var(--green)');
+  const problems = d.policyProblems || [];
+  const onecliRows = d.onecli && Array.isArray(d.onecli.rows) ? d.onecli.rows : null;
+  const notSelective = onecliRows ? onecliRows.filter((r) => r.mode !== 'selective') : [];
+  const gateRows = d.inputGate && Array.isArray(d.inputGate.rows) ? d.inputGate.rows : null;
+  const gateTotal = gateRows ? gateRows.reduce((s, r) => s + r.n, 0) : 0;
+  const unpriced = d.unpricedModels || [];
+  const card = (num, label, c) =>
+    `<div class="admin-stat-card"><div class="num" style="color:${c}">${num}</div><div class="label">${esc(label)}</div></div>`;
+  let html = `<div class="admin-stat-grid">
+    ${card(problems.length, 'Model-policy problems', color(problems.length > 0, false))}
+    ${card(onecliRows ? `${onecliRows.length - notSelective.length}/${onecliRows.length}` : '?', 'OneCLI selective', color(!onecliRows, notSelective.length > 0))}
+    ${card(gateRows ? gateTotal : '?', 'Input-gate decisions (24 h)', color(!gateRows, false))}
+    ${card(unpriced.length, 'Unpriced models', color(false, unpriced.length > 0))}
+  </div>`;
+  const table = (title, head, rows, empty) =>
+    `<h4 style="font-size:11px;margin:14px 0 6px">${esc(title)}</h4><table class="admin-table"><tr>${head
+      .map((h) => `<th>${esc(h)}</th>`)
+      .join('')}</tr>${rows.length ? rows.join('') : `<tr><td colspan="${head.length}" style="color:var(--text-muted)">${esc(empty)}</td></tr>`}</table>`;
+  html += table(
+    'Model-policy problems',
+    ['Coworker', 'Problem'],
+    problems.flatMap((p) => p.problems.map((x) => `<tr><td>${esc(p.folder)}</td><td>${esc(x)}</td></tr>`)),
+    'None: every open-weights group resolves to open models.',
+  );
+  html += onecliRows
+    ? table(
+        'OneCLI groups not in selective mode',
+        ['Coworker', 'Secret mode'],
+        notSelective.map((r) => `<tr><td>${esc(r.folder)}</td><td>${esc(r.mode)}</td></tr>`),
+        'None: every group gets only its own secrets.',
+      )
+    : table('OneCLI secret modes', ['Error'], [`<tr><td style="color:var(--red)">${esc(d.onecli?.error || 'unavailable')}</td></tr>`], '');
+  html += gateRows
+    ? table(
+        'Input-gate decisions, last 24 h',
+        ['Mode', 'Outcome', 'Count'],
+        gateRows.map((r) => `<tr><td>${esc(r.mode)}</td><td>${esc(r.outcome)}</td><td>${r.n}</td></tr>`),
+        'No decisions in the last 24 h.',
+      )
+    : table('Input-gate decisions', ['Error'], [`<tr><td style="color:var(--red)">${esc(d.inputGate?.error || 'unavailable')}</td></tr>`], '');
+  html += table(
+    'Unpriced models (tokens counted, cost unknown)',
+    ['Model'],
+    unpriced.map((m) => `<tr><td><code>${esc(m)}</code></td></tr>`),
+    'None.',
+  );
+  html += `<p style="font-size:9px;color:var(--text-muted);margin-top:8px">Checked ${esc(d.checkedAt || '')}. ${d.groupCount ?? 0} groups.</p>`;
+  return html;
+}
+
+// MCP handshake: GET /api/infrastructure/mcp-handshake times an MCP initialize on
+// each local MCP server. Infra fetches it after its main view, so a slow server
+// does not hold up the page.
+async function loadMcpHandshake() {
+  adminState.mcpHandshake = null;
+  const fill = () => {
+    const el = document.getElementById('infra-mcp-handshake');
+    if (el) el.innerHTML = mcpHandshakeHtml(adminState.mcpHandshake);
+  };
+  try {
+    const res = await fetch('/api/infrastructure/mcp-handshake');
+    if (!res.ok) throw new Error(`handshake ${res.status}`);
+    adminState.mcpHandshake = await res.json();
+  } catch (err) {
+    adminState.mcpHandshake = { error: String(err && err.message ? err.message : err), servers: [] };
+  }
+  fill();
+}
+
+/** Render the MCP handshake table: one row per local server, with its initialize time. */
+function mcpHandshakeHtml(h) {
+  if (!h) return '<span style="color:var(--text-muted);font-size:10px">Measuring MCP handshake...</span>';
+  if (h.error) return `<span style="color:var(--red);font-size:10px">MCP handshake check failed: ${esc(h.error)}</span>`;
+  const rows = (h.servers || []).map((s) => {
+    const c = !s.ok ? 'var(--red)' : s.ms < 2000 ? 'var(--green)' : s.ms < 10000 ? 'var(--yellow)' : 'var(--red)';
+    const time = s.ms === null ? '-' : `${(s.ms / 1000).toFixed(1)} s`;
+    return `<tr><td>${esc(s.name)}</td><td style="color:${c}">${time}</td><td>${s.ok ? 'ok' : esc(s.error || 'failed')}</td></tr>`;
+  });
+  return `<table class="admin-table"><tr><th>Server</th><th>Initialize</th><th>Result</th></tr>${
+    rows.length ? rows.join('') : '<tr><td colspan="3" style="color:var(--text-muted)">No running local servers</td></tr>'
+  }</table>`;
+}
+
 async function loadAdminInfra() {
   const el = document.getElementById('admin-infra-content');
   el.innerHTML = '<div class="admin-loading">Loading...</div>';
@@ -11679,6 +11843,7 @@ async function loadAdminInfra() {
     adminState.infra = await res.json();
     adminState.loaded.add('infra');
     renderAdminInfra();
+    void loadMcpHandshake();
   } catch {
     el.innerHTML = '<div class="admin-empty">Failed to load infrastructure status</div>';
   }
@@ -11833,6 +11998,9 @@ function renderAdminInfra() {
       ${localServers}${remoteServers}
       ${!localServers && !remoteServers ? '<tr><td colspan="4" style="color:var(--text-muted)">No servers</td></tr>' : ''}
     </table>
+
+    <h4 style="font-size:11px;margin:14px 0 6px">MCP Handshake</h4>
+    <div id="infra-mcp-handshake">${mcpHandshakeHtml(adminState.mcpHandshake)}</div>
 
     <h4 style="font-size:11px;margin:14px 0 6px">Import Remote MCP Servers</h4>
     <p style="font-size:9px;color:var(--text-dim);margin:0 0 6px">Paste your mcpServers JSON config (from Cursor, Claude, etc.) to register remote servers.</p>

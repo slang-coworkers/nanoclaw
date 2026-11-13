@@ -53,6 +53,15 @@ import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './
 import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy.js';
 import { rowLabelForThread } from './row-label.js';
 import { coworkerModels, type CoworkerConfigRow, type CoworkerGroupRow } from './coworker-models.js';
+import {
+  codexHookEntries,
+  mcpHandshake,
+  overlayMarkers,
+  secretModes,
+  settingsHookEntries,
+  workflowSummary,
+  type GroupChecks,
+} from './coworker-checks.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import {
   costSourceMeta,
@@ -4850,6 +4859,17 @@ function getTypeColors(): Record<string, string> {
 let _mcpAllTools: string[] = [];
 
 /** Read the MCP management token from the runtime file written by the auth proxy. */
+/** The MCP auth proxy port: MCP_PROXY_PORT from .env, else the process env, else 8808. */
+function getMcpProxyPort(): string {
+  try {
+    const match = readFileSync(join(resolve('.'), '.env'), 'utf-8').match(/^MCP_PROXY_PORT=(\d+)/m);
+    if (match) return match[1];
+  } catch {
+    /* use the process env or the default */
+  }
+  return process.env.MCP_PROXY_PORT || '8808';
+}
+
 function getMcpManagementToken(): string | null {
   try {
     return readFileSync(getMcpManagementTokenPath(), 'utf-8').trim();
@@ -6182,6 +6202,156 @@ const MIME_TYPES: Record<string, string> = {
  * If DASHBOARD_SECRET is set, requires Authorization: Bearer <secret> header.
  * Hook events from containers are exempt (they use their own auth path).
  */
+/** Read and parse a JSON file, or null when it is missing or not JSON. */
+function readJsonOrNull(path: string): unknown {
+  try {
+    return JSON.parse(readFileSync(path, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
+
+const HOUR_MS = 3_600_000;
+
+/**
+ * Gather the operator checks of one coworker from its files and the
+ * hook_events table. A Codex group's hooks come from the hook file its image
+ * carries (container/codex-hooks.toml); every other provider reads the group's
+ * settings.json.
+ */
+function groupChecks(group: CoworkerGroupRow & { id: string }): GroupChecks {
+  const config = db?.prepare('SELECT * FROM container_configs WHERE agent_group_id = ?').get(group.id) as
+    CoworkerConfigRow | undefined;
+  const provider = coworkerModels(group, config).provider;
+  const groupDir = join(getGroupsDir(), group.folder);
+  let hooks;
+  let hookSource: GroupChecks['hookSource'];
+  if (provider === 'codex') {
+    hookSource = 'codex-image';
+    let toml = '';
+    try {
+      toml = readFileSync(join(getProjectRoot(), 'container', 'codex-hooks.toml'), 'utf-8');
+    } catch {
+      /* no hook file: no hooks */
+    }
+    hooks = codexHookEntries(toml);
+  } else {
+    hookSource = 'settings';
+    hooks = settingsHookEntries(
+      readJsonOrNull(join(getDataDir(), 'v2-sessions', group.id, '.claude-shared', 'settings.json')),
+    );
+  }
+  let names: string[] = [];
+  try {
+    names = readdirSync(groupDir);
+  } catch {
+    /* no group dir yet */
+  }
+  const hookEventsLastHour: Record<string, number> = {};
+  const heDb = getHookEventsDb();
+  if (heDb) {
+    try {
+      const rows = heDb
+        .prepare(
+          'SELECT event, count(*) AS n FROM hook_events WHERE group_folder = ? AND timestamp >= ? GROUP BY event',
+        )
+        .all(group.folder, Date.now() - HOUR_MS) as { event: string; n: number }[];
+      for (const r of rows) hookEventsLastHour[r.event] = r.n;
+    } catch {
+      /* hook_events table absent in degraded fixtures */
+    }
+  }
+  return {
+    folder: group.folder,
+    provider,
+    hookSource,
+    hooks,
+    overlays: overlayMarkers(names),
+    workflow: workflowSummary(readJsonOrNull(join(groupDir, '.workflow-state.json'))),
+    hookEventsLastHour,
+  };
+}
+
+/**
+ * Gather the fleet checks: model-policy problems, the OneCLI secret mode of
+ * each group, input-gate decisions in the last day, and the models the cost
+ * feed cannot price. A failing source reports its error and the rest still
+ * render.
+ */
+async function fleetChecks() {
+  const groups = db
+    ? (db.prepare('SELECT id, folder, agent_provider FROM agent_groups ORDER BY folder').all() as (CoworkerGroupRow & {
+        id: string;
+      })[])
+    : [];
+  const policyProblems = groups.flatMap((g) => {
+    const config = db!.prepare('SELECT * FROM container_configs WHERE agent_group_id = ?').get(g.id) as
+      CoworkerConfigRow | undefined;
+    const problems = coworkerModels(g, config).problems;
+    return problems.length ? [{ folder: g.folder, problems }] : [];
+  });
+
+  let onecli: { rows: ReturnType<typeof secretModes> } | { error: string };
+  try {
+    const base = (process.env.ONECLI_URL || 'http://localhost:10256').replace(/\/+$/, '');
+    const headers: Record<string, string> = {};
+    if (process.env.ONECLI_API_KEY) headers.Authorization = `Bearer ${process.env.ONECLI_API_KEY}`;
+    const r = await fetch(`${base}/api/agents`, { headers, signal: AbortSignal.timeout(3000) });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const body = (await r.json()) as unknown;
+    const rows = Array.isArray(body) ? body : (body as { data?: unknown })?.data;
+    if (!Array.isArray(rows)) throw new Error('not a list');
+    onecli = { rows: secretModes(rows as Record<string, unknown>[], groups) };
+  } catch (err) {
+    onecli = { error: String((err as Error)?.message || err) };
+  }
+
+  let inputGate: { rows: { mode: string; outcome: string; n: number }[] } | { error: string };
+  try {
+    const since = new Date(Date.now() - 24 * HOUR_MS).toISOString();
+    inputGate = {
+      rows: db
+        ? (db
+            .prepare(
+              'SELECT mode, outcome, count(*) AS n FROM input_gate_decisions WHERE created_at >= ? GROUP BY mode, outcome ORDER BY n DESC',
+            )
+            .all(since) as { mode: string; outcome: string; n: number }[])
+        : [],
+    };
+  } catch (err) {
+    inputGate = { error: String((err as Error)?.message || err) };
+  }
+
+  return {
+    checkedAt: new Date().toISOString(),
+    groupCount: groups.length,
+    policyProblems,
+    onecli,
+    inputGate,
+    unpricedModels: gatewayCostMeta().unpricedModels,
+  };
+}
+
+/** Time an MCP initialize on every running local MCP server the auth proxy lists. */
+async function mcpHandshakes() {
+  const token = getMcpManagementToken();
+  try {
+    const r = await fetch(`http://127.0.0.1:${getMcpProxyPort()}/servers`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!r.ok) throw new Error(`proxy HTTP ${r.status}`);
+    const { servers } = (await r.json()) as { servers?: { name: string; port: number | null; status: string }[] };
+    const running = (servers || []).filter((s) => s.status === 'running' && typeof s.port === 'number');
+    return {
+      checkedAt: new Date().toISOString(),
+      servers: await Promise.all(running.map((s) => mcpHandshake(s.name, s.port as number))),
+    };
+  } catch (err) {
+    return { checkedAt: new Date().toISOString(), error: String((err as Error)?.message || err), servers: [] };
+  }
+}
+
 function requireAuth(req: import('http').IncomingMessage, res: import('http').ServerResponse): boolean {
   const secret = getDashboardSecret();
   if (!secret) return true; // no secret configured → open (localhost-only by default)
@@ -11402,6 +11572,38 @@ export async function handleRequest(
     return;
   }
 
+  // API: operator checks of one coworker (coworker-checks.ts). The Coworkers
+  // detail loads them when it opens and on Refresh.
+  if (req.method === 'GET' && /^\/api\/coworkers\/[^/]+\/checks$/.test(url.pathname)) {
+    if (!requireAuth(req, res)) return;
+    const folder = safeDecode(url.pathname.replace('/api/coworkers/', '').replace('/checks', ''));
+    if (!folder) {
+      res.writeHead(400);
+      res.end('{"error":"invalid folder"}');
+      return;
+    }
+    const group = db
+      ? (db.prepare('SELECT id, folder, agent_provider FROM agent_groups WHERE folder = ?').get(folder) as
+          (CoworkerGroupRow & { id: string }) | undefined)
+      : undefined;
+    if (!group) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end('{"error":"coworker not found"}');
+      return;
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(groupChecks(group)));
+    return;
+  }
+
+  // API: fleet checks for Admin › Checks (coworker-checks.ts).
+  if (req.method === 'GET' && url.pathname === '/api/checks') {
+    if (!requireAuth(req, res)) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(await fleetChecks()));
+    return;
+  }
+
   // API: execute command in container.
   // Guarded by requireAuth (not strict): open on localhost when no
   // DASHBOARD_SECRET is set, secret-gated otherwise. Mirrors every other
@@ -13576,20 +13778,22 @@ export async function handleRequest(
   }
 
   // API: infrastructure health — MCP proxy, auth, network, OneCLI
+  // API: time an MCP initialize on each local MCP server. Infra loads it after
+  // its main view, so a slow server does not hold up the page.
+  if (req.method === 'GET' && url.pathname === '/api/infrastructure/mcp-handshake') {
+    if (!requireAuth(req, res)) return;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(await mcpHandshakes()));
+    return;
+  }
+
   if (req.method === 'GET' && url.pathname === '/api/infrastructure') {
     if (!requireAuth(req, res)) return;
     const checks: Record<string, any> = {};
 
-    // MCP auth proxy reachable?
-    // Read MCP port from .env or process env (dashboard runs as a separate process)
-    let mcpPort = process.env.MCP_PROXY_PORT || '8808';
-    try {
-      const envContent = readFileSync(join(resolve('.'), '.env'), 'utf-8');
-      const match = envContent.match(/^MCP_PROXY_PORT=(\d+)/m);
-      if (match) mcpPort = match[1];
-    } catch {
-      /* use default */
-    }
+    // MCP auth proxy reachable? (The dashboard runs as a separate process, so
+    // the port comes from .env.)
+    const mcpPort = getMcpProxyPort();
     const mcpToken = getMcpManagementToken();
     const mcpHeaders: Record<string, string> = {};
     if (mcpToken) mcpHeaders['Authorization'] = `Bearer ${mcpToken}`;
