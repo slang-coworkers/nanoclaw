@@ -146,6 +146,14 @@ registerResource({
         'Operator kill switch: 1 pauses the group (host refuses to spawn ANY container for it, at the wakeContainer choke point that every wake path honours — router, agent-to-agent, host-sweep, task fires); 0 resumes. Inbound messages keep accumulating while paused, so resuming loses no work. Effective immediately — no restart needed, since the gate is on the next spawn.',
       updatable: true,
     },
+    {
+      name: 'disable_overlays',
+      type: 'number',
+      enum: ['0', '1'],
+      description:
+        'Overlay kill switch: 1 turns off every overlay of the group (the dashboard overlay selection, the gates they mark such as plan-gate and critique-gate, and their CLAUDE.md sections), whatever the overlays column says; 0 applies them. Takes effect at the next spawn, so restart the group after a change.',
+      updatable: true,
+    },
   ],
   // `create` and `delete` are custom (below): create needs a `--template`
   // branch, and the generic create inserts a bare agent_groups row but never
