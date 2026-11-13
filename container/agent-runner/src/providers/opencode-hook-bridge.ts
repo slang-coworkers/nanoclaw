@@ -12,6 +12,7 @@
  *   OpenCode event                 Claude Code hook event
  *   tool.execute.before        ->  PreToolUse    (exit 2 or a deny decision blocks the tool)
  *   tool.execute.after         ->  PostToolUse   (a block reason is appended to the tool output)
+ *   event: a tool part in error ->  PostToolUseFailure (OpenCode skips tool.execute.after then)
  *   chat.message               ->  UserPromptSubmit (side effects only)
  *
  * Consider an OpenCode reviewer that calls the NanoClaw MCP tool to send
@@ -114,6 +115,37 @@ function promptText(parts: unknown): string {
     .join('\n');
 }
 
+/** A tool call that failed, read from an OpenCode `message.part.updated` event. */
+export interface FailedToolCall {
+  sessionID: string;
+  callID: string;
+  tool: string;
+  input: unknown;
+  error: string;
+}
+
+/** The failed tool call an OpenCode event reports, or null for any other event. */
+export function failedToolPart(event: { type?: string; properties?: Record<string, unknown> }): FailedToolCall | null {
+  if (event.type !== 'message.part.updated') return null;
+  const part = event.properties?.part as
+    | {
+        type?: string;
+        sessionID?: string;
+        callID?: string;
+        tool?: string;
+        state?: { status?: string; input?: unknown; error?: unknown };
+      }
+    | undefined;
+  if (part?.type !== 'tool' || part.state?.status !== 'error' || !part.callID || !part.tool) return null;
+  return {
+    sessionID: part.sessionID ?? '',
+    callID: part.callID,
+    tool: part.tool,
+    input: part.state.input,
+    error: typeof part.state.error === 'string' ? part.state.error : String(part.state.error ?? ''),
+  };
+}
+
 /**
  * The OpenCode plugin. OpenCode calls every export of a plugin module, so the
  * file OpenCode loads re-exports only this function (see installOpenCodeHookBridge).
@@ -122,7 +154,25 @@ export const NanoclawHookBridge = async () => {
   const settingsPath = hookSettingsPath();
   const servers = mcpServerNames(process.env.OPENCODE_CONFIG_CONTENT);
   const settings = () => readHookSettings(settingsPath);
+  // A failed tool part can update several times; run its failure hooks once.
+  const failedCalls = new Set<string>();
   return {
+    // OpenCode does not call tool.execute.after for a tool that throws, so a
+    // failed call reaches the hooks from the event stream instead, as Claude
+    // Code's PostToolUseFailure (the dashboard records it, as for Claude).
+    event: async ({ event }: { event: { type?: string; properties?: Record<string, unknown> } }) => {
+      const failure = failedToolPart(event);
+      if (!failure || failedCalls.has(failure.callID)) return;
+      failedCalls.add(failure.callID);
+      const toolName = claudeToolName(failure.tool, servers);
+      await runHookEvent(settings(), 'PostToolUseFailure', toolName, {
+        session_id: failure.sessionID,
+        tool_name: toolName,
+        tool_input: claudeToolInput(toolName, failure.input),
+        tool_use_id: failure.callID,
+        error: failure.error,
+      });
+    },
     'tool.execute.before': async (input: { tool: string; sessionID?: string }, output: { args?: unknown }) => {
       const toolName = claudeToolName(input.tool, servers);
       const toolInput = claudeToolInput(toolName, output.args);

@@ -17,7 +17,8 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-export type HookEvent = 'PreToolUse' | 'PostToolUse' | 'UserPromptSubmit' | 'Stop' | 'StopFailure';
+export type HookEvent =
+  'PreToolUse' | 'PostToolUse' | 'PostToolUseFailure' | 'UserPromptSubmit' | 'Stop' | 'StopFailure';
 
 export interface HookCommand {
   type?: string;
@@ -41,7 +42,7 @@ export const AGENT_DIR = '/workspace/agent';
 const DEFAULT_TIMEOUT_S = 60;
 
 // Claude Code applies matchers to tool events only; the other events run every entry.
-const TOOL_EVENTS: ReadonlySet<HookEvent> = new Set(['PreToolUse', 'PostToolUse']);
+const TOOL_EVENTS: ReadonlySet<HookEvent> = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
 
 /** True when a Claude Code hook matcher selects `toolName` ("" and "*" select every tool). */
 export function matcherSelects(matcher: string | undefined, toolName: string): boolean {
