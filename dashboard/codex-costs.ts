@@ -150,6 +150,15 @@ export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
   'kimi-k3': { input: 2.1e-6, output: 1.05e-5, cacheRead: 2.1e-7 },
   'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 1.4e-7 },
   'glm-5.3-flash': { input: 1.5e-7, output: 5e-7, cacheRead: 3e-8 },
+  'deepseek-v4.1-flash-1017': { input: 2.4e-7, output: 9.6e-7, cacheRead: 5.6e-9 },
+  // The gateway lists these two NVIDIA-hosted models at $0.
+  'llama-3.1-8b-instruct': { input: 0, output: 0, cacheRead: 0 },
+  'gpt-oss-20b': { input: 0, output: 0, cacheRead: 0 },
+  // Router and test models (gateway `/model/info` list rates).
+  'gpt-6-luna': { input: 1e-7, output: 5e-7, cacheRead: 1e-8 },
+  'gpt-5-mini': { input: 2.5e-7, output: 2e-6, cacheRead: 2.5e-8 },
+  'gpt-5-nano': { input: 5e-8, output: 4e-7, cacheRead: 5e-9 },
+  'gpt-4o-mini': { input: 1.5e-7, output: 6e-7, cacheRead: 7.5e-8 },
 };
 
 /**
