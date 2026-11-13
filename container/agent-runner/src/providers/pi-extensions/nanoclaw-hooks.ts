@@ -33,6 +33,8 @@
  * types are declared locally, as in nanoclaw-context.ts, because pi is an
  * image CLI and not an agent-runner dependency.
  */
+import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 import { issueCloseRefusal } from '../../issue-close.js';
@@ -101,6 +103,64 @@ export function claudeToolInput(tool: string, input: unknown, cwd: string): Reco
   return out;
 }
 
+/** The MCP server names of this Pi group, from the mcp.json the runner writes (pi.ts). */
+export function piMcpServers(env: NodeJS.ProcessEnv = process.env): string[] {
+  const dir = env.PI_CODING_AGENT_DIR || path.join(os.homedir(), '.pi', 'agent');
+  try {
+    const config = JSON.parse(fs.readFileSync(path.join(dir, 'mcp.json'), 'utf-8')) as { mcpServers?: object };
+    return Object.keys(config.mcpServers ?? {});
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Return the Claude Code name and input of a Pi MCP call, or null for any other
+ * tool. pi-mcp-adapter names an MCP tool `<server>_<tool>` and, unless direct
+ * tools are switched on, calls it through its one `mcp` proxy tool: `tool`
+ * carries that name, `server` may name the server, and `args` holds the
+ * arguments as an object or a JSON string. Consider an eval-sandbox Pi group
+ * that calls `mcp {tool: "slang-mcp_discord_send_message", args: {…}}`: the
+ * hooks see `mcp__slang-mcp__discord_send_message` with those arguments, so
+ * the sandbox's MCP matcher selects the call as it does under Claude.
+ */
+export function claudeMcpCall(
+  tool: string,
+  input: Record<string, unknown>,
+  servers: readonly string[],
+): { name: string; input: Record<string, unknown> } | null {
+  let full = tool;
+  let args: unknown = input;
+  let named: string | undefined;
+  if (tool === 'mcp') {
+    // The proxy's status, search, describe and connect forms call no tool.
+    if (typeof input.tool !== 'string' || !input.tool) return null;
+    full = input.tool;
+    args = input.args;
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch {
+        args = { raw: args };
+      }
+    }
+    if (typeof input.server === 'string' && input.server) named = input.server;
+  }
+  const asInput = (value: unknown) =>
+    value && typeof value === 'object' && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
+  if (named) {
+    const own = full.startsWith(`${named}_`) ? full.slice(named.length + 1) : full;
+    return { name: `mcp__${named}__${own}`, input: asInput(args) };
+  }
+  // The longest server name first, so `slang-mcp-x_tool` is not read as `slang-mcp`.
+  for (const server of [...servers].sort((a, b) => b.length - a.length)) {
+    if (full.startsWith(`${server}_`)) {
+      return { name: `mcp__${server}__${full.slice(server.length + 1)}`, input: asInput(args) };
+    }
+  }
+  return null;
+}
+
 function sessionId(ctx: ExtensionContext): string {
   try {
     return ctx.sessionManager?.getSessionId() ?? '';
@@ -111,10 +171,16 @@ function sessionId(ctx: ExtensionContext): string {
 
 export default function nanoclawHooks(pi: ExtensionAPI): void {
   const settings = () => readHookSettings(hookSettingsPath());
+  const servers = piMcpServers();
+  /** The Claude Code name and input of a Pi tool call: an MCP call, else a built-in tool. */
+  const claudeCall = (event: ToolCallEvent, cwd: string) =>
+    claudeMcpCall(event.toolName, event.input, servers) ?? {
+      name: claudeToolName(event.toolName),
+      input: claudeToolInput(event.toolName, event.input, cwd),
+    };
 
   pi.on('tool_call', async (event, ctx) => {
-    const toolName = claudeToolName(event.toolName);
-    const toolInput = claudeToolInput(event.toolName, event.input, ctx.cwd);
+    const { name: toolName, input: toolInput } = claudeCall(event, ctx.cwd);
     if (toolName === 'Bash') {
       const refusal = issueCloseRefusal(toolInput.command as string | undefined);
       if (refusal) return { block: true, reason: refusal };
@@ -129,11 +195,11 @@ export default function nanoclawHooks(pi: ExtensionAPI): void {
   });
 
   pi.on('tool_result', async (event, ctx) => {
-    const toolName = claudeToolName(event.toolName);
+    const { name: toolName, input: toolInput } = claudeCall(event, ctx.cwd);
     await runHookEvent(settings(), 'PostToolUse', toolName, {
       session_id: sessionId(ctx),
       tool_name: toolName,
-      tool_input: claudeToolInput(event.toolName, event.input, ctx.cwd),
+      tool_input: toolInput,
       tool_response: claudeToolResponse(toolName, { content: event.content }),
       tool_use_id: event.toolCallId,
     });

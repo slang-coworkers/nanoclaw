@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import nanoclawHooks, { claudeToolInput, claudeToolName } from './nanoclaw-hooks.js';
+import nanoclawHooks, { claudeMcpCall, claudeToolInput, claudeToolName, piMcpServers } from './nanoclaw-hooks.js';
 import { piExtensions } from '../pi.js';
 
 // Fork-owned. Pi never reads the Claude Code hook settings the host writes, so
@@ -29,6 +29,7 @@ beforeEach(() => {
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true });
   delete process.env.NANOCLAW_HOOK_SETTINGS;
+  delete process.env.PI_CODING_AGENT_DIR;
   delete process.env.NANOCLAW_ALLOW_ISSUE_CLOSE;
 });
 
@@ -59,6 +60,65 @@ describe('Pi tools as Claude Code tools', () => {
     const two = claudeToolInput('edit', { path: '/x', edits: [{ oldText: 'a' }, { oldText: 'c' }] }, '/w');
     expect(two.old_string).toBeUndefined();
     expect(claudeToolInput('bash', { command: 'ls' }, '/w')).toEqual({ command: 'ls' });
+  });
+});
+
+describe('Pi MCP calls as Claude Code MCP tools', () => {
+  const servers = ['slang-mcp', 'slang-mcp-pr', 'nanoclaw'];
+
+  it('maps a proxy call to mcp__<server>__<tool>, with its args as the input', () => {
+    expect(
+      claudeMcpCall('mcp', { tool: 'slang-mcp_discord_send_message', args: { channel: 'c', content: 'hi' } }, servers),
+    ).toEqual({ name: 'mcp__slang-mcp__discord_send_message', input: { channel: 'c', content: 'hi' } });
+    expect(
+      claudeMcpCall('mcp', { tool: 'append_learning', server: 'nanoclaw', args: '{"text":"x"}' }, servers),
+    ).toEqual({
+      name: 'mcp__nanoclaw__append_learning',
+      input: { text: 'x' },
+    });
+  });
+
+  it('prefers the longest server name, and maps a direct tool too', () => {
+    expect(claudeMcpCall('mcp', { tool: 'slang-mcp-pr_search' }, servers)?.name).toBe('mcp__slang-mcp-pr__search');
+    expect(claudeMcpCall('slang-mcp_github_create_or_update_file', { path: 'a' }, servers)).toEqual({
+      name: 'mcp__slang-mcp__github_create_or_update_file',
+      input: { path: 'a' },
+    });
+  });
+
+  it('leaves built-in tools and the proxy forms that call no tool alone', () => {
+    expect(claudeMcpCall('bash', { command: 'ls' }, servers)).toBeNull();
+    expect(claudeMcpCall('mcp', { search: 'discord' }, servers)).toBeNull();
+    expect(claudeMcpCall('mcp', { tool: 'unknown_tool' }, servers)).toBeNull();
+  });
+
+  it('reads the server names from the mcp.json the runner writes', () => {
+    fs.writeFileSync(path.join(dir, 'mcp.json'), JSON.stringify({ mcpServers: { 'slang-mcp': {}, nanoclaw: {} } }));
+    expect(piMcpServers({ PI_CODING_AGENT_DIR: dir })).toEqual(['slang-mcp', 'nanoclaw']);
+    expect(piMcpServers({ PI_CODING_AGENT_DIR: path.join(dir, 'missing') })).toEqual([]);
+  });
+
+  it('lets an MCP matcher refuse a proxy call, as the eval sandbox does', async () => {
+    fs.writeFileSync(path.join(dir, 'mcp.json'), JSON.stringify({ mcpServers: { 'slang-mcp': {} } }));
+    process.env.PI_CODING_AGENT_DIR = dir;
+    load({
+      PreToolUse: [
+        {
+          matcher: 'mcp__slang-mcp__discord_send_message',
+          hooks: [{ command: `echo 'EVAL SANDBOX: no Discord sends' >&2; exit 2` }],
+        },
+      ],
+    });
+    expect(
+      await handlers.tool_call(
+        {
+          toolCallId: 't1',
+          toolName: 'mcp',
+          input: { tool: 'slang-mcp_discord_send_message', args: { content: 'x' } },
+        },
+        ctx,
+      ),
+    ).toEqual({ block: true, reason: 'EVAL SANDBOX: no Discord sends' });
   });
 });
 
