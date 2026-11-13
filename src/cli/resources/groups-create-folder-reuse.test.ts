@@ -54,12 +54,12 @@ afterEach(async () => {
   fs.rmSync(TEST_ROOT, { recursive: true, force: true });
 });
 
-async function create(folder: string) {
+async function create(folder: string, extra: Record<string, unknown> = {}) {
   return dispatch(
     {
       id: `req-create-${folder}-${Math.random().toString(36).slice(2, 8)}`,
       command: 'groups-create',
-      args: { folder },
+      args: { folder, ...extra },
     },
     { caller: 'host' },
   );
@@ -119,5 +119,39 @@ describe('groups-create — folder-reuse refusal (A4)', () => {
     const second = await create('steady');
     expect(second.ok).toBe(true);
     expect((second as { ok: true; data: { id: string } }).data.id).toBe(firstId);
+  });
+});
+
+describe('groups-create --coworker-type on a bare create', () => {
+  // The flag used to be read on the --template path only, so a bare create
+  // dropped it and made an untyped group without a word.
+  const typeOf = async (folder: string) =>
+    (
+      await getDb().get<{ coworker_type: string | null }>(
+        'SELECT coworker_type FROM agent_groups WHERE folder = ?',
+        folder,
+      )
+    )?.coworker_type;
+
+  it('stamps the type on the new group', async () => {
+    const resp = await create('typed', { coworker_type: 'base-common' });
+    expect(resp.ok).toBe(true);
+    expect(await typeOf('typed')).toBe('base-common');
+  });
+
+  it('refuses a type that does not resolve, before any row or folder exists', async () => {
+    const resp = await create('bad-type', { coworker_type: 'no-such-type' });
+    expect(resp.ok).toBe(false);
+    expect(await typeOf('bad-type')).toBeUndefined();
+    expect(fs.existsSync(path.join(GROUPS_DIR, 'bad-type'))).toBe(false);
+  });
+
+  it('refuses a different type on an existing folder, and accepts the same one', async () => {
+    expect((await create('kept', { coworker_type: 'base-common' })).ok).toBe(true);
+    const other = await create('kept', { coworker_type: '' });
+    expect(other.ok).toBe(false);
+    expect(JSON.stringify(other)).toContain('applies only when a group is created');
+    expect((await create('kept', { coworker_type: 'base-common' })).ok).toBe(true);
+    expect(await typeOf('kept')).toBe('base-common');
   });
 });
