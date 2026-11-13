@@ -2347,10 +2347,11 @@ export function ensurePrDescriptionGate(settingsFile: string): void {
 }
 
 export const EVAL_SANDBOX_GATE_CMD = 'bash /app/hooks/gate-eval-sandbox.sh';
-// The hook refuses the two MCP tools by name and classifies Bash commands; the
-// matcher lists exactly those so unrelated tool calls never spawn it.
+// The hook refuses three MCP tools and Pi's MCP script tool by name and
+// classifies Bash commands; the matcher lists exactly those so unrelated tool
+// calls never spawn it. `McpScript` is Pi's `mcpScript` (pi-extensions/nanoclaw-hooks.ts).
 export const EVAL_SANDBOX_GATE_MATCHER =
-  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning';
+  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning|McpScript';
 
 /**
  * Register gate-eval-sandbox.sh as a PreToolUse hook in a group's settings.json.

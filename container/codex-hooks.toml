@@ -90,7 +90,7 @@ matcher = "Bash"
   timeout = 5
 
 [[hooks.PreToolUse]]
-matcher = "Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning"
+matcher = "Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning|McpScript"
   [[hooks.PreToolUse.hooks]]
   type = "command"
   command = "bash /app/hooks/gate-eval-sandbox.sh"
