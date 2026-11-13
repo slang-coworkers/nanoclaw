@@ -25,6 +25,7 @@ import { turnAccounting } from './turn-accounting.js';
 import {
   boundedOpenCodeCall,
   executeOpenCodeTurn,
+  failedTurnTokensOf,
   OpenCodeEventPump,
   type OpenCodeSessionClient,
 } from './opencode-turn.js';
@@ -593,6 +594,7 @@ export class OpenCodeProvider implements AgentProvider {
     async function* gen(): AsyncGenerator<ProviderEvent> {
       let sessionId = input.continuation;
       let initialized = false;
+      let startedAt = Date.now();
       try {
         const runtime = self.runtime
           ? await self.runtime.getRuntime(self.options, input.cwd)
@@ -626,7 +628,7 @@ export class OpenCodeProvider implements AgentProvider {
             initialized = true;
             yield { type: 'init', continuation: sessionId };
           }
-          const startedAt = Date.now();
+          startedAt = Date.now();
           const { tokens, ...result } = yield* executeOpenCodeTurn({
             runtime,
             client: runtime.client.session,
@@ -663,6 +665,18 @@ export class OpenCodeProvider implements AgentProvider {
           }
         }
       } catch (error) {
+        // A failed turn's calls were billed: charge them before the error ends the query.
+        const billed = failedTurnTokensOf(error);
+        if (billed) {
+          yield {
+            type: 'usage',
+            ...turnAccounting(billed, {
+              sessionId: sessionId ?? null,
+              durationMs: Date.now() - startedAt,
+              isError: true,
+            }),
+          };
+        }
         if (!abort.signal.aborted) throw error;
       } finally {
         abort.abort();

@@ -244,6 +244,7 @@ export async function* executeOpenCodeTurn(options: {
     },
     Math.min(5000, options.silenceMs, options.idleMs),
   );
+  let turnStartedAt: number | undefined;
   try {
     if (signal.aborted) cancelled();
     await boundedOpenCodeCall(() => pump.ready, signal);
@@ -257,7 +258,7 @@ export async function* executeOpenCodeTurn(options: {
     await options.prepare?.();
     if (failure) throw failure;
     const messageId = createOpenCodeMessageId();
-    const turnStartedAt = Date.now();
+    turnStartedAt = Date.now();
     let response: Awaited<ReturnType<OpenCodeSessionClient['prompt']>> | undefined;
     let finished = false;
     started = true;
@@ -320,6 +321,15 @@ export async function* executeOpenCodeTurn(options: {
       return { text: null, isError: true, tokens };
     }
     return { text: turnText.final, tokens };
+  } catch (error) {
+    // The calls made before the failure were billed. Read their tokens back and
+    // hand them on with the error, so the provider charges them before it
+    // rethrows (a timeout or a dropped stream would otherwise cost nothing).
+    if (started && turnStartedAt !== undefined && error instanceof Error) {
+      const tokens = await failedTurnTokens(client, pump, sessionId, turnStartedAt).catch(() => []);
+      if (tokens.length > 0) Object.assign(error, { turnTokens: tokens });
+    }
+    throw error;
   } finally {
     clearInterval(timer);
     unlisten();
@@ -371,6 +381,52 @@ export function addOpenCodeTokens(tally: TurnTokenTally, message: OpenCodeMessag
   });
 }
 
+/** The billed tokens a failed turn carries (`executeOpenCodeTurn` attaches them), if any. */
+export function failedTurnTokensOf(error: unknown): TurnModelTokens[] | undefined {
+  const tokens = (error as { turnTokens?: unknown } | null)?.turnTokens;
+  return Array.isArray(tokens) ? (tokens as TurnModelTokens[]) : undefined;
+}
+
+/**
+ * The tokens of a turn that failed after its prompt: every assistant message
+ * created since the turn started, in the session and in the subagent sessions
+ * active since then. The turn's own signal may be the one that failed, so the
+ * reads get their own bound.
+ */
+async function failedTurnTokens(
+  client: OpenCodeSessionClient,
+  pump: OpenCodeEventPump,
+  sessionId: string,
+  since: number,
+): Promise<TurnModelTokens[]> {
+  const signal = AbortSignal.timeout(10_000);
+  const tally = new TurnTokenTally();
+  for (const message of await sessionMessages(client, sessionId, signal)) {
+    if (message.info.time.created >= since) addOpenCodeTokens(tally, message);
+  }
+  await addSubagentTokens(client, pump, sessionId, since, tally, signal);
+  return tally.rows();
+}
+
+/** Every message of one session, read in growing pages up to 6400. */
+async function sessionMessages(
+  client: OpenCodeSessionClient,
+  sessionId: string,
+  signal: AbortSignal,
+): Promise<OpenCodeMessage[]> {
+  let messages: OpenCodeMessage[] = [];
+  for (let limit = 100; limit <= 6400; limit *= 2) {
+    const response = await boundedOpenCodeCall(
+      (signal) => client.messages({ path: { id: sessionId }, query: { limit }, signal }),
+      signal,
+    );
+    if (response.error) throw openCodeError(response.error);
+    messages = response.data ?? [];
+    if (messages.length < limit) break;
+  }
+  return messages;
+}
+
 /**
  * Add the tokens of the subagent sessions that ran during a turn. OpenCode runs
  * a task in a child session, whose messages the parent's history does not hold.
@@ -388,17 +444,9 @@ async function addSubagentTokens(
 ): Promise<void> {
   for (const child of pump.activeDescendants(sessionId, since)) {
     try {
-      let messages: OpenCodeMessage[] = [];
-      for (let limit = 100; limit <= 6400; limit *= 2) {
-        const response = await boundedOpenCodeCall(
-          (signal) => client.messages({ path: { id: child }, query: { limit }, signal }),
-          signal,
-        );
-        if (response.error) throw openCodeError(response.error);
-        messages = response.data ?? [];
-        if (messages.length < limit) break;
+      for (const message of await sessionMessages(client, child, signal)) {
+        if (message.info.time.created >= since) addOpenCodeTokens(tally, message);
       }
-      for (const message of messages) if (message.info.time.created >= since) addOpenCodeTokens(tally, message);
     } catch {
       /* the parent's own tokens still count */
     }

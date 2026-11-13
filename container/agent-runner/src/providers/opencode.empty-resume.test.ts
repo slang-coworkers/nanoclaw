@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, mock } from 'bun:test';
 import {
   executeOpenCodeTurn,
+  failedTurnTokensOf,
   OpenCodeEventPump,
   createOpenCodeMessageId,
   type OpenCodeEvent,
@@ -460,6 +461,32 @@ describe('turn tokens', () => {
         reasoningTokens: 0,
         cacheReadTokens: 0,
         cacheWriteTokens: 100,
+      },
+    ]);
+  });
+
+  it('a turn that fails after its prompt carries the tokens billed so far on its error', async () => {
+    const f = fixture();
+    const turn = collectTurn(f.run());
+    await prompted(f);
+    f.history.push(
+      f.assistant('msg_step', ['step'], { modelID: 'nvidia/zai-org/glm-5.3', ...used(500, 20, 10, 9000) }),
+    );
+    f.request.reject(new Error('socket hang up'));
+    const error = await turn.then(
+      () => null,
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain('socket hang up');
+    expect(failedTurnTokensOf(error)).toEqual([
+      {
+        model: 'nvidia/zai-org/glm-5.3',
+        inputTokens: 500,
+        outputTokens: 30,
+        reasoningTokens: 10,
+        cacheReadTokens: 9000,
+        cacheWriteTokens: 0,
       },
     ]);
   });
