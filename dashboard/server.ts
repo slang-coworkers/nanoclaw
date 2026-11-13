@@ -6219,7 +6219,7 @@ const HOUR_MS = 3_600_000;
  * carries (container/codex-hooks.toml); every other provider reads the group's
  * settings.json.
  */
-function groupChecks(group: CoworkerGroupRow & { id: string }): GroupChecks {
+function groupChecks(group: CoworkerGroupRow & { id: string; disable_overlays?: number | null }): GroupChecks {
   const config = db?.prepare('SELECT * FROM container_configs WHERE agent_group_id = ?').get(group.id) as
     CoworkerConfigRow | undefined;
   const provider = coworkerModels(group, config).provider;
@@ -6267,6 +6267,7 @@ function groupChecks(group: CoworkerGroupRow & { id: string }): GroupChecks {
     hookSource,
     hooks,
     overlays: overlayMarkers(names),
+    overlaysDisabled: group.disable_overlays === 1,
     workflow: workflowSummary(readJsonOrNull(join(groupDir, '.workflow-state.json'))),
     hookEventsLastHour,
   };
@@ -11583,8 +11584,9 @@ export async function handleRequest(
       return;
     }
     const group = db
-      ? (db.prepare('SELECT id, folder, agent_provider FROM agent_groups WHERE folder = ?').get(folder) as
-          (CoworkerGroupRow & { id: string }) | undefined)
+      ? (db
+          .prepare('SELECT id, folder, agent_provider, disable_overlays FROM agent_groups WHERE folder = ?')
+          .get(folder) as (CoworkerGroupRow & { id: string; disable_overlays?: number | null }) | undefined)
       : undefined;
     if (!group) {
       res.writeHead(404, { 'Content-Type': 'application/json' });

@@ -137,6 +137,11 @@ export interface GroupChecks {
   hookSource: 'settings' | 'codex-image';
   hooks: HookEntry[];
   overlays: string[];
+  /**
+   * The group's overlay kill switch (agent_groups.disable_overlays) is on: no
+   * overlay applies, whatever the dashboard selection says.
+   */
+  overlaysDisabled: boolean;
   workflow: WorkflowSummary | null;
   /** Hook events recorded for the group in the last hour, by event name. */
   hookEventsLastHour: Record<string, number>;
