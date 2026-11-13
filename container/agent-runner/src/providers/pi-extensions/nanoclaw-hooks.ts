@@ -75,9 +75,16 @@ const BUILTIN_TOOLS: Record<string, string> = {
   ls: 'LS',
 };
 
+// Pi tools with no Claude Code counterpart, under the names the hook matchers
+// use. pi-mcp-adapter's mcpScript runs JavaScript that can call any MCP tool,
+// so the eval sandbox refuses it as a whole (gate-eval-sandbox.sh).
+const PI_ONLY_TOOLS: Record<string, string> = {
+  mcpScript: 'McpScript',
+};
+
 /** Return the Claude Code name of a Pi tool; any other tool keeps its name. */
 export function claudeToolName(tool: string): string {
-  return BUILTIN_TOOLS[tool] ?? tool;
+  return BUILTIN_TOOLS[tool] ?? PI_ONLY_TOOLS[tool] ?? tool;
 }
 
 /**

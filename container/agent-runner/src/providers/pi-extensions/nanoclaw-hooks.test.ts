@@ -98,6 +98,16 @@ describe('Pi MCP calls as Claude Code MCP tools', () => {
     expect(piMcpServers({ PI_CODING_AGENT_DIR: path.join(dir, 'missing') })).toEqual([]);
   });
 
+  it('names the MCP script tool McpScript, so the eval sandbox can refuse it', async () => {
+    expect(claudeToolName('mcpScript')).toBe('McpScript');
+    load({
+      PreToolUse: [{ matcher: 'McpScript', hooks: [{ command: `echo 'EVAL SANDBOX: no MCP scripts' >&2; exit 2` }] }],
+    });
+    expect(
+      await handlers.tool_call({ toolCallId: 't1', toolName: 'mcpScript', input: { code: 'emit(1)' } }, ctx),
+    ).toEqual({ block: true, reason: 'EVAL SANDBOX: no MCP scripts' });
+  });
+
   it('lets an MCP matcher refuse a proxy call, as the eval sandbox does', async () => {
     fs.writeFileSync(path.join(dir, 'mcp.json'), JSON.stringify({ mcpServers: { 'slang-mcp': {} } }));
     process.env.PI_CODING_AGENT_DIR = dir;
