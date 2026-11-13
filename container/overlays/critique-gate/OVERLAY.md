@@ -9,7 +9,7 @@ applies-to:
   start: false
 insert-before:
   - { step: draft-pr, aliases: [ship] }
-  - { step: report, aliases: [forward-up, deliver, handoff] }
+  - { step: report, aliases: [forward-up, deliver, handoff, return] }
   - { step: forward, aliases: [] }
 insert-after: []
 uses:

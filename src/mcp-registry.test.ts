@@ -303,3 +303,46 @@ describe('mcp-registry — stdio server detection', () => {
     handle.stop();
   });
 });
+
+describe('mcp-registry — stderr levels', () => {
+  it('raises a failure line to warn and keeps other lines at debug', async () => {
+    const { mcpStderrLevel } = await import('./mcp-registry.js');
+    expect(mcpStderrLevel('lvl-a', 'Eager Discord client init failed: 401 Unauthorized', 0)).toBe('warn');
+    expect(mcpStderrLevel('lvl-a', 'discord.errors.LoginFailure: Improper token has been passed.', 0)).toBe('warn');
+    expect(mcpStderrLevel('lvl-a', 'Traceback (most recent call last):', 0)).toBe('warn');
+    expect(mcpStderrLevel('lvl-a', '[supergateway] POST /mcp', 0)).toBe('debug');
+    expect(mcpStderrLevel('lvl-a', 'Listening on 127.0.0.1:8920', 0)).toBe('debug');
+  });
+
+  it('caps warnings per server per minute', async () => {
+    const { mcpStderrLevel, STDERR_WARN_PER_MINUTE } = await import('./mcp-registry.js');
+    const levels = Array.from({ length: STDERR_WARN_PER_MINUTE + 3 }, () =>
+      mcpStderrLevel('lvl-b', 'request failed', 1_000),
+    );
+    expect(levels.filter((l) => l === 'warn')).toHaveLength(STDERR_WARN_PER_MINUTE);
+    // Another server has its own budget, and a new minute restores this one.
+    expect(mcpStderrLevel('lvl-c', 'request failed', 1_000)).toBe('warn');
+    expect(mcpStderrLevel('lvl-b', 'request failed', 61_000)).toBe('warn');
+  });
+});
+
+describe('mcp-registry — stderr lines across chunks', () => {
+  it('joins a line split across chunks before it classifies it, and flushes the tail at the end', async () => {
+    const { logServerStderr } = await import('./mcp-registry.js');
+    const { log } = await import('./log.js');
+    const warn = vi.spyOn(log, 'warn').mockImplementation(() => undefined);
+    const debug = vi.spyOn(log, 'debug').mockImplementation(() => undefined);
+    const stderr = new EventEmitter();
+    logServerStderr({ stderr } as unknown as import('child_process').ChildProcess, 'split-srv', 'MCP server stderr');
+    stderr.emit('data', Buffer.from('Eager Discord client init failed: 401 Unau'));
+    expect(warn).not.toHaveBeenCalled();
+    stderr.emit('data', Buffer.from('thorized\nlistening on 8920\nfinal failed li'));
+    stderr.emit('data', Buffer.from('ne'));
+    stderr.emit('end');
+    const warned = warn.mock.calls.map((c) => (c[1] as { msg: string }).msg);
+    expect(warned).toEqual(['Eager Discord client init failed: 401 Unauthorized', 'final failed line']);
+    expect(debug.mock.calls.map((c) => (c[1] as { msg: string }).msg)).toContain('listening on 8920');
+    warn.mockRestore();
+    debug.mockRestore();
+  });
+});
