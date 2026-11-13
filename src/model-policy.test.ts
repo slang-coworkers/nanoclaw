@@ -1,6 +1,10 @@
+import fs from 'fs';
+import path from 'path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
+  MODEL_POLICY_ENV_KEYS,
   containerJsonModel,
   isOpenWeightsModel,
   isOpenWeightsRole,
@@ -167,5 +171,17 @@ describe('container env', () => {
       NANOCLAW_CRITIC_MODEL: ENV.CODEX_MODEL,
       ANTHROPIC_DEFAULT_HAIKU_MODEL: 'aws/anthropic/x',
     });
+  });
+});
+
+describe('MODEL_POLICY_ENV_KEYS', () => {
+  it('names every install setting the policy reads, and nothing else', () => {
+    const source = fs.readFileSync(path.join(process.cwd(), 'src', 'model-policy.ts'), 'utf8');
+    // Reads are `env.KEY` (not an assignment) and the OPEN_DEFAULTS `env: 'KEY'` entries.
+    const reads = new Set([
+      ...[...source.matchAll(/env\.([A-Z][A-Z0-9_]*)\b(?!\s*=[^=])/g)].map((m) => m[1]),
+      ...[...source.matchAll(/env: '([A-Z][A-Z0-9_]*)'/g)].map((m) => m[1]),
+    ]);
+    expect([...reads].sort()).toEqual([...MODEL_POLICY_ENV_KEYS].sort());
   });
 });
