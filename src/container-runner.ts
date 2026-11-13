@@ -347,6 +347,28 @@ async function releaseClaimQuietly(sessionId: string, incarnation: number): Prom
  * cost-ceiling-adjustment readiness check) must treat that as "nothing to
  * match against yet," not as a match.
  */
+/**
+ * Point groups/<folder>/.workflow-state.json at the state file of the session
+ * being spawned, so an operator (and the dashboard's Checks) reads the plan and
+ * critique state of the running task from the visible group folder. The link
+ * uses an absolute host path because only the host reads it; the container has
+ * the real file at /workspace/.claude/workflow-state.json.
+ *
+ * Every spawn re-points the link. Consider a group whose first session ran in
+ * May: a link that is only created when missing keeps pointing at that May
+ * session forever, and once its file is gone the link dangles, so every later
+ * session's state is invisible from the group folder.
+ */
+export function linkWorkflowState(groupDir: string, sessDir: string): void {
+  const linkPath = path.join(groupDir, '.workflow-state.json');
+  const targetPath = path.join(sessDir, '.claude', 'workflow-state.json');
+  const current = fs.lstatSync(linkPath, { throwIfNoEntry: false });
+  if (current?.isSymbolicLink() && fs.readlinkSync(linkPath) === targetPath) return;
+  // A stale regular file from an old run, or a link to another session.
+  if (current) fs.unlinkSync(linkPath);
+  fs.symlinkSync(targetPath, linkPath);
+}
+
 export function getActiveContainerInstanceId(sessionId: string): string | undefined {
   return activeContainers.get(sessionId)?.instanceId;
 }
@@ -2325,10 +2347,11 @@ export function ensurePrDescriptionGate(settingsFile: string): void {
 }
 
 export const EVAL_SANDBOX_GATE_CMD = 'bash /app/hooks/gate-eval-sandbox.sh';
-// The hook refuses the two MCP tools by name and classifies Bash commands; the
-// matcher lists exactly those so unrelated tool calls never spawn it.
+// The hook refuses three MCP tools and Pi's MCP script tool by name and
+// classifies Bash commands; the matcher lists exactly those so unrelated tool
+// calls never spawn it. `McpScript` is Pi's `mcpScript` (pi-extensions/nanoclaw-hooks.ts).
 export const EVAL_SANDBOX_GATE_MATCHER =
-  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning';
+  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning|McpScript';
 
 /**
  * Register gate-eval-sandbox.sh as a PreToolUse hook in a group's settings.json.
@@ -2446,23 +2469,10 @@ export async function buildMounts(
   const mounts: VolumeMount[] = [];
   const scope = agentGroup.id;
 
-  // Convenience: drop a symlink at groups/<folder>/.workflow-state.json pointing
-  // at the per-session state file. Lets the user inspect plan/critique state from
-  // the visible group folder instead of digging into data/v2-sessions/.../sess-*/.claude/.
-  // The symlink uses an absolute host path because it's only ever read host-side
-  // (the container has the real file at /workspace/.claude/workflow-state.json).
   try {
-    const linkPath = path.join(groupDir, '.workflow-state.json');
-    const targetPath = path.join(sessDir, '.claude', 'workflow-state.json');
-    if (fs.existsSync(linkPath) && !fs.lstatSync(linkPath).isSymbolicLink()) {
-      // Stale regular file from a prior run — replace with symlink.
-      fs.unlinkSync(linkPath);
-    }
-    if (!fs.existsSync(linkPath)) {
-      fs.symlinkSync(targetPath, linkPath);
-    }
+    linkWorkflowState(groupDir, sessDir);
   } catch (err) {
-    log.debug('workflow-state symlink skipped', { folder: agentGroup.folder, err });
+    log.warn('workflow-state symlink not updated', { folder: agentGroup.folder, err });
   }
 
   // Session workspace: mailbox-selected state plus outbox and heartbeat files.
@@ -2808,18 +2818,18 @@ export async function buildMounts(
           });
         }
       }
+      // track-critique.sh records each successful codex call as a critique
+      // round. The codex MCP bridge runs it for every provider
+      // (container/agent-runner/src/critique-record.ts), so it is no longer a
+      // PostToolUse hook: it counts rounds, and a hook beside the bridge would
+      // count each round twice. An entry left by an older host is removed.
+      if (settings.hooks.PostToolUse) {
+        settings.hooks.PostToolUse = settings.hooks.PostToolUse.filter(
+          (h: { hooks?: { command?: string }[] }) =>
+            !h.hooks?.some((i: { command?: string }) => i.command?.includes('track-critique.sh')),
+        );
+      }
       if (hasCritique) {
-        // track-critique.sh — PostToolUse on every successful mcp__codex__codex
-        // call increments critique_rounds. Filters out buddy invocations by
-        // signature (the codex-CLI thread also used by buddy carries
-        // "You are Buddy" or "BATCH n (" prompts).
-        if (!settings.hooks.PostToolUse) settings.hooks.PostToolUse = [];
-        if (!hasCmd('PostToolUse', 'track-critique.sh')) {
-          settings.hooks.PostToolUse.push({
-            matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
-            hooks: [{ type: 'command', command: 'bash /app/hooks/track-critique.sh', timeout: 5 }],
-          });
-        }
         // gate-explain-on-stop.sh — Stop hook: blocks the end of a turn (once;
         // stop_hook_active lets the next stop through) while a PR this session
         // created or pushed to has a description explaining an older head. Reads
@@ -2854,8 +2864,7 @@ export async function buildMounts(
   // because squash merges copy it into git log; the explanation lives in the
   // explanation comment. Registered for every Claude-surface group, outside the
   // dashboard block above so DASHBOARD_PORT=0 cannot switch it off. Codex groups
-  // (container/codex-hooks.toml) do not get it yet: their PreToolUse deny path
-  // is not exercised anywhere in this repo.
+  // run it from their managed hook file (container/codex-hooks.toml).
   if (defaultSurfaces) ensurePrDescriptionGate(settingsFile);
   // gate-eval-sandbox.sh: an evaluation copy of a coworker (overlay `eval-sandbox`)
   // may write only to the evaluation fork. Self-scoped by the overlay marker, so
@@ -3582,6 +3591,8 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PI_MODEL',
     'PI_PROVIDER',
     'PI_THINKING_LEVEL',
+    // A custom OpenAI-compatible endpoint for pi (e.g. the NVIDIA gateway).
+    'PI_BASE_URL',
     // gate-pr-description.sh knobs (off switch + limits), read inside the container.
     'PR_DESCRIPTION_GATE',
     'PR_DESCRIPTION_MAX_CHARS',

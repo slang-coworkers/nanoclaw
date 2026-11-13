@@ -1,5 +1,6 @@
-// Fork-owned. Shared by the Claude provider (createPreToolUseHook) and the
-// OpenCode hook bridge, so every provider blocks an issue close the same way.
+// Fork-owned. Shared by the Claude provider (createPreToolUseHook), the
+// OpenCode hook bridge and the Pi hooks extension, so every provider blocks an
+// issue close the same way.
 
 /**
  * Detect a Bash command that would CLOSE a GitHub issue. Closing a
@@ -32,4 +33,20 @@ export function detectIssueClose(command: string | undefined): string | null {
     return 'gh api issues state change';
   }
   return null;
+}
+
+/**
+ * The refusal for a Bash command that would close a GitHub issue, or null when
+ * the command closes none or the group may close issues. The opt-out is the
+ * per-group env flag NANOCLAW_ALLOW_ISSUE_CLOSE=1 (unset everywhere today), so
+ * a maintainer-grade group can get the capability through container config.
+ */
+export function issueCloseRefusal(command: string | undefined, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (env.NANOCLAW_ALLOW_ISSUE_CLOSE === '1') return null;
+  const match = detectIssueClose(command);
+  if (!match) return null;
+  return (
+    `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
+    `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`
+  );
 }

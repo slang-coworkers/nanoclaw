@@ -26,6 +26,7 @@ import { fileURLToPath } from 'url';
 import { registerProvider } from './provider-registry.js';
 import { resolveClaudeImports } from './codex.js';
 import { mcpServersToPiConfig } from './mcp-to-pi.js';
+import { TurnTokenTally, turnAccounting } from './turn-accounting.js';
 import type {
   AgentProvider,
   AgentQuery,
@@ -50,6 +51,8 @@ const TURN_TIMEOUT_MS = 5 * 60 * 1000;
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTEXT_EXTENSION_PATH = path.join(__dirname, 'pi-extensions', 'nanoclaw-context.ts');
+// Runs the group's Claude Code hooks (the Bash gates) on Pi's tool events.
+const HOOKS_EXTENSION_PATH = path.join(__dirname, 'pi-extensions', 'nanoclaw-hooks.ts');
 
 // ── System-prompt assembly (shared shape with codex.ts) ──────────────────────
 // pi doesn't expand `@-import` directives or auto-load CLAUDE.md / CLAUDE.local.md,
@@ -88,8 +91,56 @@ function resolvePaths(): PiRuntimePaths {
   };
 }
 
+/**
+ * The extensions pi loads (settings.json `extensions`): our context injector,
+ * the hook gates (pi-extensions/nanoclaw-hooks.ts), and the pi-mcp-adapter
+ * baked into the image at PI_MCP_ADAPTER_ENTRY, so NanoClaw's MCP tools reach pi.
+ */
+export function piExtensions(env: NodeJS.ProcessEnv = process.env): string[] {
+  const extensions = [CONTEXT_EXTENSION_PATH, HOOKS_EXTENSION_PATH];
+  if (env.PI_MCP_ADAPTER_ENTRY) extensions.push(env.PI_MCP_ADAPTER_ENTRY);
+  return extensions;
+}
+
+// The key pi sends to a custom endpoint. The real credential is injected on
+// the wire by the OneCLI proxy (by host), the same way OpenCode's is.
+export const PI_CREDENTIAL_PLACEHOLDER = 'ROUTED_VIA_ONECLI_PROXY';
+
+/**
+ * The models.json pi reads for a custom OpenAI-compatible endpoint, or null
+ * when pi should use its built-in provider. With `PI_BASE_URL` set, `provider`
+ * names a custom provider at that URL that serves `model`; for example
+ * PI_PROVIDER=nvidia, PI_BASE_URL=https://inference-api.nvidia.com/v1 and
+ * PI_MODEL=nvidia/zai-org/glm-5.3 (the model policy's open default) run pi on
+ * GLM through the NVIDIA gateway.
+ *
+ * The system prompt goes as a `system` message, not `developer`: the gateway's
+ * open models do not all accept the developer role.
+ */
+export function piModelsConfig(
+  provider: string,
+  model: string | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): Record<string, unknown> | null {
+  const baseUrl = env.PI_BASE_URL?.trim();
+  if (!baseUrl || !model) return null;
+  return {
+    providers: {
+      [provider]: {
+        baseUrl,
+        api: 'openai-completions',
+        apiKey: PI_CREDENTIAL_PLACEHOLDER,
+        compat: { supportsDeveloperRole: false },
+        models: [{ id: model }],
+      },
+    },
+  };
+}
+
 export class PiProvider implements AgentProvider {
   readonly supportsNativeSlashCommands = false;
+  readonly reportsTurnAccounting = true;
+  readonly followUpEndsQuery = true;
 
   private readonly mcpServers: Record<string, McpServerConfig>;
   private readonly provider: string;
@@ -123,13 +174,8 @@ export class PiProvider implements AgentProvider {
     fs.mkdirSync(paths.configDir, { recursive: true });
     fs.mkdirSync(paths.sessionDir, { recursive: true });
 
-    // Extensions: our context injector, plus the pi-mcp-adapter (baked into the
-    // image at PI_MCP_ADAPTER_ENTRY) so NanoClaw's MCP tools reach pi.
-    const extensions = [CONTEXT_EXTENSION_PATH];
-    const adapterEntry = process.env.PI_MCP_ADAPTER_ENTRY;
-    if (adapterEntry) extensions.push(adapterEntry);
     const settings: Record<string, unknown> = {
-      extensions,
+      extensions: piExtensions(),
       // Non-interactive: never block on a project-trust prompt.
       defaultProjectTrust: 'always',
     };
@@ -138,6 +184,12 @@ export class PiProvider implements AgentProvider {
     if (this.thinkingLevel) settings.defaultThinkingLevel = this.thinkingLevel;
 
     fs.writeFileSync(path.join(paths.configDir, 'settings.json'), JSON.stringify(settings, null, 2));
+    // A custom endpoint (PI_BASE_URL) needs its provider and model declared;
+    // a stale file from an earlier config must not outlive the setting.
+    const models = piModelsConfig(this.provider, this.model);
+    const modelsFile = path.join(paths.configDir, 'models.json');
+    if (models) fs.writeFileSync(modelsFile, JSON.stringify(models, null, 2));
+    else fs.rmSync(modelsFile, { force: true });
     fs.writeFileSync(
       path.join(paths.configDir, 'mcp.json'),
       JSON.stringify({ mcpServers: mcpServersToPiConfig(this.mcpServers) }, null, 2),
@@ -194,7 +246,7 @@ export class PiProvider implements AgentProvider {
           if (pending.length === 0 && ended) return;
 
           const text = pending.shift()!;
-          yield* runOneTurn(srv, text);
+          yield* runOneTurn(srv, text, self.model);
         }
       } finally {
         killPiRpc(srv);
@@ -236,10 +288,31 @@ function extractMessageText(message: unknown): string | null {
   return text.length > 0 ? text : null;
 }
 
-async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerator<ProviderEvent> {
+/** The usage pi-ai reports on an assistant message: input net of cache, output including reasoning. */
+interface PiUsage {
+  input?: number;
+  output?: number;
+  reasoning?: number;
+  cacheRead?: number;
+  cacheWrite?: number;
+}
+
+/**
+ * Run one prompt to its settle on a live pi process. `model` is the configured
+ * model, which a compaction call is charged as (its event names no model).
+ * Exported for tests.
+ */
+export async function* runOneTurn(
+  server: PiRpcServer,
+  inputText: string,
+  model?: string,
+): AsyncGenerator<ProviderEvent> {
   const turnState: { error: Error | null } = { error: null };
   let resultText: string | null = null;
   let settled = false;
+  const startedAt = Date.now();
+  // Every assistant message is one model call, billed whether it succeeded or not.
+  const tally = new TurnTokenTally();
 
   const buffer: ProviderEvent[] = [];
   let waker: (() => void) | null = null;
@@ -256,7 +329,18 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
       case 'message_end': {
         // pi emits message_end for user, tool-result AND assistant messages;
         // only assistant messages carry the answer.
-        const message = ev.message as { role?: string; stopReason?: string; errorMessage?: string } | undefined;
+        const message = ev.message as
+          { role?: string; stopReason?: string; errorMessage?: string; model?: string; usage?: PiUsage } | undefined;
+        if (message?.role === 'assistant' && message.usage) {
+          const u = message.usage;
+          tally.add(message.model, {
+            input: u.input,
+            output: u.output,
+            reasoning: u.reasoning,
+            cacheRead: u.cacheRead,
+            cacheWrite: u.cacheWrite,
+          });
+        }
         if (message?.role === 'assistant') {
           if (message.stopReason === 'error' || message.errorMessage) {
             // A failed assistant turn (empty content + errorMessage) must not be
@@ -266,6 +350,20 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
             // An empty final assistant message legitimately clears earlier text.
             resultText = extractMessageText(ev.message);
           }
+        }
+        break;
+      }
+      case 'compaction_end': {
+        // The summary is one more model call, reported only on this event.
+        const usage = (ev as { result?: { usage?: PiUsage } }).result?.usage;
+        if (usage) {
+          tally.add(model, {
+            input: usage.input,
+            output: usage.output,
+            reasoning: usage.reasoning,
+            cacheRead: usage.cacheRead,
+            cacheWrite: usage.cacheWrite,
+          });
         }
         break;
       }
@@ -284,7 +382,7 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
         break;
       default:
         // agent_start/end, turn_*, message_start/update, tool_execution_update/end,
-        // compaction_*, auto_retry_* — already counted as activity above.
+        // compaction_start, auto_retry_* — already counted as activity above.
         break;
     }
 
@@ -331,12 +429,17 @@ async function* runOneTurn(server: PiRpcServer, inputText: string): AsyncGenerat
 
     while (buffer.length > 0) yield buffer.shift()!;
 
+    const durationMs = Date.now() - startedAt;
     if (turnState.error) {
+      // The calls before the failure were billed: charge them before the error ends the turn.
+      yield { type: 'usage', ...turnAccounting(tally.rows(), { sessionId: null, durationMs, isError: true }) };
       yield { type: 'error', message: turnState.error.message, retryable: false };
       return;
     }
 
-    yield { type: 'result', text: resultText };
+    const accounting = turnAccounting(tally.rows(), { sessionId: null, durationMs });
+    yield { type: 'result', text: resultText, accounting };
+    yield { type: 'usage', ...accounting };
   } finally {
     clearTimeout(timer);
     const ei = server.eventHandlers.indexOf(handler);

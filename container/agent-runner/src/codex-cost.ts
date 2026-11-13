@@ -116,7 +116,33 @@ export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
   'gpt-5.2-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
   'gpt-5.1-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
   'gpt-5-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+  // Open-weights models on NVIDIA inference: the list rates the gateway
+  // (LiteLLM) publishes at `/model/info`. The key is billed at a discount from
+  // these, so a cap that uses them can overcount a little but never undercounts.
+  // Without these rows a Codex group on Kimi fell to DEFAULT_CODEX_RATE ($5/$30),
+  // 2.4x to 2.9x its price, and the dashboard showed these models as $0.
+  'kimi-k3': { input: 2.1e-6, output: 10.5e-6, cacheRead: 0.21e-6 },
+  'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 0.14e-6 },
+  'glm-5.3-flash': { input: 0.15e-6, output: 0.5e-6, cacheRead: 0.03e-6 },
+  'deepseek-v4.1-flash-1017': { input: 0.24e-6, output: 0.96e-6, cacheRead: 0.0056e-6 },
+  // The gateway lists these two NVIDIA-hosted models at $0.
+  'llama-3.1-8b-instruct': { input: 0, output: 0, cacheRead: 0 },
+  'gpt-oss-20b': { input: 0, output: 0, cacheRead: 0 },
+  // Small OpenAI models the intent router and the model tests call (gateway
+  // `/model/info` list rates). `gpt-6-luna` is the router's own default.
+  'gpt-6-luna': { input: 0.1e-6, output: 0.5e-6, cacheRead: 0.01e-6 },
+  'gpt-5-mini': { input: 0.25e-6, output: 2e-6, cacheRead: 0.025e-6 },
+  'gpt-5-nano': { input: 0.05e-6, output: 0.4e-6, cacheRead: 0.005e-6 },
+  'gpt-4o-mini': { input: 0.15e-6, output: 0.6e-6, cacheRead: 0.075e-6 },
 };
+
+/**
+ * Rate for a model that an OpenCode or Pi group runs and the table does not
+ * name. It is the highest open-model rate (Kimi K3), so an unknown open model
+ * is never charged below any open model we know, and never at $0 (operator
+ * decision on #1302). The ledger flags the model so someone adds its rate.
+ */
+export const DEFAULT_OPEN_MODEL_RATE: CodexRate = CODEX_MODEL_PRICING['kimi-k3'];
 
 /**
  * Reduce a codex wire model id to its pricing key.
