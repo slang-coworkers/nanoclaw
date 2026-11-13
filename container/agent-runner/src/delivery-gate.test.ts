@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { checkDeliveryGate, deliveryGateEnv, fileGateText } from './delivery-gate.js';
+import { checkDeliveryGate, gateScriptEnv, fileGateText } from './delivery-gate.js';
 
 // Fork-owned. The critique gate script runs at every message door; these pin
 // the runner side: what text the gate sees for a file, which env reaches the
@@ -36,10 +36,10 @@ describe('fileGateText', () => {
   });
 });
 
-describe('deliveryGateEnv', () => {
+describe('gateScriptEnv', () => {
   it('forwards the settings the script reads, including an explicit CRITIQUE_GATE_ACTIVE=0, and nothing else', () => {
     expect(
-      deliveryGateEnv({
+      gateScriptEnv({
         CRITIQUE_GATE_ACTIVE: '0',
         CRITIQUE_REQUIRED_STAGES: '["OUTPUT_REVIEW"]',
         EXPLAIN_DIFF_GATE: '1',

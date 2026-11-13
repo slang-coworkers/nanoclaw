@@ -73,7 +73,6 @@ const count = (entries: HookEntry[] | undefined, script: string): number =>
 describe('overlay hook registration', () => {
   it('registers gate-explain-on-stop.sh as a Stop hook next to the critique hooks, once', async () => {
     let hooks = await settingsAfterSpawn();
-    expect(count(hooks.PostToolUse, 'track-critique.sh')).toBe(1);
     expect(count(hooks.Stop, 'gate-explain-on-stop.sh')).toBe(1);
     const entry = hooks.Stop.find((e) => e.hooks?.some((h) => h.command?.includes('gate-explain-on-stop.sh')));
     expect(entry?.hooks?.[0].command).toBe('bash /app/hooks/gate-explain-on-stop.sh');
@@ -101,6 +100,25 @@ describe('overlay hook registration', () => {
     hooks = await settingsAfterSpawn();
     expect(gate()).toHaveLength(1);
     expect(gate()[0].matcher).toBe('Bash');
+  });
+
+  it('registers no critique recorder hook, and removes one an older host left', async () => {
+    // The codex MCP bridge records each critique round for every provider
+    // (critique-record.ts). The recorder counts rounds, so a hook beside the
+    // bridge would count each round twice.
+    let hooks = await settingsAfterSpawn();
+    expect(count(hooks.PostToolUse, 'track-critique.sh')).toBe(0);
+    const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> };
+    settings.hooks.PostToolUse = [
+      ...(settings.hooks.PostToolUse ?? []),
+      {
+        matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
+        hooks: [{ command: 'bash /app/hooks/track-critique.sh' }],
+      },
+    ];
+    fs.writeFileSync(settingsFile, JSON.stringify(settings));
+    hooks = await settingsAfterSpawn();
+    expect(count(hooks.PostToolUse, 'track-critique.sh')).toBe(0);
   });
 
   it('registers gate-pr-description.sh as a PreToolUse Bash hook for every group, once', async () => {

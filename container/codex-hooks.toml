@@ -64,6 +64,66 @@ allow_managed_hooks_only = true
   command = "bash /app/hooks/codex-dashboard-hook.sh PreToolUse"
   timeout = 5
 
+# ---- Bash gates: the scripts Claude Code runs as PreToolUse hooks -------------
+# Codex sends the Claude Code payload (tool_name "Bash", tool_input.command), and
+# a hook's exit 2 blocks the command and shows the model the script's reason.
+# Measured on lego with codex 0.160.0 (2026-11-13): `echo gh pr create` was
+# blocked before it ran. Each script scopes itself and exits 0 unless its gate is
+# on for the group (CRITIQUE_GATE_ACTIVE, EVAL_SANDBOX_ACTIVE, PR_DESCRIPTION_GATE),
+# so wiring them for every Codex group is safe. The eval sandbox also refuses
+# three MCP tools; its matcher is the one Claude groups get
+# (EVAL_SANDBOX_GATE_MATCHER in src/container-runner.ts, kept equal by
+# codex-hooks-gates.test.ts). The codex 0.160 binary names an MCP tool
+# `mcp__server__tool` for hooks; a live MCP call is not measured yet.
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-critique-on-deliver.sh"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-pr-description.sh"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+matcher = "Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file|mcp__nanoclaw__append_learning|McpScript"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-eval-sandbox.sh"
+  timeout = 5
+
+# Plan gate. Codex reports a file edit (apply_patch) as a Bash call carrying the
+# patch, so both scripts read the files from it (hooks/lib/plan-paths.sh). Codex
+# sends no PostToolUse for a patch, so the plan is recorded at PreToolUse, and
+# only for a patch the gate cannot refuse. gate-plan.sh exits 0 unless the
+# group has the plan-gate overlay.
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-plan.sh"
+  timeout = 5
+
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/plan-tracker.sh"
+  timeout = 5
+
+# Issue-close backstop: the same check Claude, OpenCode and Pi run in process
+# (agent-runner/src/issue-close.ts), as a command from the read-only runner mount.
+[[hooks.PreToolUse]]
+matcher = "Bash"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bun /app/src/issue-close-hook.ts"
+  timeout = 5
+
 [[hooks.PostToolUse]]
   [[hooks.PostToolUse.hooks]]
   type = "command"

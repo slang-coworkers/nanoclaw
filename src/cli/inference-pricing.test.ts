@@ -55,6 +55,9 @@ describe('rate-table parity with the container copies', () => {
       'gpt-5.6-luna-20260101',
       'gpt-5.6-latest',
       'gpt-5.3-codex',
+      'nvidia/moonshotai/kimi-k3',
+      'nvidia/zai-org/glm-5.3',
+      'openai/nvidia/zai-org/glm-5.3-flash',
       'nope',
       '',
     ];
@@ -69,6 +72,10 @@ describe('body-reported model ids (what the OneCLI tap records as usage_model)',
     expect(normalizeModel('claude-sonnet-5')).toBe('claude-sonnet-5');
     expect(normalizeCodexModel('gpt-5.6-sol-global')).toBe('gpt-5.6-sol');
     expect(normalizeCodexModel('gpt-5.6-sol-global-20260101')).toBe('gpt-5.6-sol');
+  });
+  it('maps the Fireworks router id that serves Kimi onto kimi-k3', () => {
+    expect(normalizeCodexModel('accounts/fireworks/routers/kimi-k3-us')).toBe('kimi-k3');
+    expect(normalizeCodexModel('nvidia/zai-org/glm-5.3')).toBe('glm-5.3');
   });
   it('never resolves prototype names or unknown models', () => {
     expect(normalizeModel('constructor')).toBe('');
@@ -115,5 +122,13 @@ describe('pricing math', () => {
       1.2,
       9,
     );
+  });
+  it('prices the NVIDIA open models above $0', () => {
+    expect(
+      priceUsageBucket('openai_chat_completions_v1', 'nvidia/zai-org/glm-5.3', { ...zero, output: 1_000_000 }),
+    ).toBeCloseTo(4.4, 9);
+    expect(
+      priceUsageBucket('openai_responses_v1', 'accounts/fireworks/routers/kimi-k3-us', { ...zero, input: 1_000_000 }),
+    ).toBeCloseTo(2.1, 9);
   });
 });

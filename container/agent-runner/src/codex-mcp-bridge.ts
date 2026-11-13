@@ -43,6 +43,7 @@ import {
   type JsonRpcNotification,
   type ThreadParams,
 } from './providers/codex-app-server.js';
+import { recordCritiqueRound } from './critique-record.js';
 
 function log(msg: string): void {
   console.error(`[codex-mcp-bridge] ${msg}`);
@@ -436,6 +437,9 @@ export function createBridgeServer(): Server {
             ? await handleCodexReply(args as unknown as CodexReplyArgs)
             : null;
       if (!r) return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] };
+      // One critique round per successful call, recorded before the answer so
+      // the agent's next delivery sees it (critique-record.ts).
+      await recordCritiqueRound(name as 'codex' | 'codex-reply', args, r);
       // Same shape codex's own server returned: the agent's final message as text, and the
       // thread id in structured content so `codex-reply` can continue the conversation.
       return {

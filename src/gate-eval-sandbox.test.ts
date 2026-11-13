@@ -123,6 +123,17 @@ describe.skipIf(!hasJq)('MCP tools that reach humans or write files', () => {
     expect(r.stderr).toContain('shared learnings');
   });
 
+  it("refuses Pi's MCP script tool outright: it can call any MCP tool unchecked", () => {
+    activate();
+    const r = run({
+      tool_name: 'McpScript',
+      tool_input: { code: "await tools['slang-mcp_discord_send_message']({ content: 'hi' })" },
+    });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('MCP script');
+    // A single call through the mcp tool reaches the gate under its own name instead.
+  });
+
   it('lets the two tools through when the gate is inactive', () => {
     expect(run({ tool_name: 'mcp__slang-mcp__discord_send_message', tool_input: { content: 'hi' } }).status).toBe(0);
   });
