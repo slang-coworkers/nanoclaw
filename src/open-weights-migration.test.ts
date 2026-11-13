@@ -50,6 +50,18 @@ describe('planGroupMigration', () => {
     }
   });
 
+  it('keeps a model that is already open, instead of the open default', () => {
+    const env = { ...ENV, CODEX_MODEL: 'nvidia/moonshotai/kimi-k3' };
+    const plan = planGroupMigration(input({ provider: 'codex' }), env);
+    expect(plan).toMatchObject({ status: 'migrate', keptRoles: ['main'], clearedRoles: [] });
+    // The critic also comes from CODEX_MODEL, and the open default is the same Kimi: nothing to keep.
+    expect(plan.after.critic).toBe('nvidia/moonshotai/kimi-k3');
+    expect(plan.after.main).toBe('nvidia/moonshotai/kimi-k3');
+    expect(plan.commands[0]).toBe(
+      'ncl groups config update --id ag-1 --weights open --model nvidia/moonshotai/kimi-k3',
+    );
+  });
+
   it('leaves a group that is already open alone', () => {
     const plan = planGroupMigration(input({ provider: 'opencode', config: { weights: 'open' } }), ENV);
     expect(plan).toMatchObject({ status: 'already-open', commands: [], closedRolesBefore: [] });

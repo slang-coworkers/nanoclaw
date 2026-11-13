@@ -14,6 +14,12 @@
  * it and the open default (GLM) applies. Codex, OpenCode and Pi groups keep
  * their provider; a column that already names an open model stays.
  *
+ * The move changes only what must change. `weights=open` gives an unset role
+ * the open default ahead of the install's own setting, so a Codex group that
+ * runs Kimi through `CODEX_MODEL` would switch to GLM. When a role already
+ * resolves to an open model, the plan writes that model into the role's
+ * column, and the group keeps it.
+ *
  * A session can pin its own provider, and the pin outranks the group's. A
  * session pinned to another provider would not start once its group is
  * `weights=open` on the target provider, so the plan reports it as a blocker.
@@ -67,6 +73,8 @@ export interface GroupMigrationPlan {
   providerChange: string | null;
   /** Roles whose own column names a closed model and is cleared to the open default. */
   clearedRoles: ModelRole[];
+  /** Roles already on an open model that `weights=open` would change; the plan sets them to that model. */
+  keptRoles: ModelRole[];
   /** Why the group cannot move as planned: policy problems and pinned sessions. */
   blockers: string[];
   commands: string[];
@@ -87,6 +95,10 @@ export function planGroupMigration(input: MigrationGroupInput, env: Env = proces
   });
   const afterRow: ModelPolicyRow = { ...input.config, weights: 'open' };
   for (const role of clearedRoles) afterRow[MODEL_ROLE_COLUMNS[role]] = null;
+  const defaults = resolveGroupModels(target, afterRow, env);
+  const keptRoles =
+    target === input.provider ? MODEL_ROLES.filter((role) => keepsOpenModel(before, defaults, role, env)) : [];
+  for (const role of keptRoles) afterRow[MODEL_ROLE_COLUMNS[role]] = before[role];
   const after = resolveGroupModels(target, afterRow, env);
 
   const blockers = [
@@ -96,13 +108,14 @@ export function planGroupMigration(input: MigrationGroupInput, env: Env = proces
       .map((s) => `session ${s.id} pins provider ${s.provider}: close it or clear its pin before the restart`),
   ];
   const providerChange = target !== input.provider ? target : null;
-  const unchanged = before.weights === 'open' && !providerChange && clearedRoles.length === 0;
+  const unchanged = before.weights === 'open' && !providerChange && clearedRoles.length === 0 && keptRoles.length === 0;
 
   const commands: string[] = [];
   if (!unchanged && blockers.length === 0) {
     if (providerChange) commands.push(`ncl groups update --id ${input.id} --agent-provider ${providerChange}`);
     const clears = clearedRoles.map((role) => ` ${ROLE_FLAGS[role]} ""`).join('');
-    commands.push(`ncl groups config update --id ${input.id} --weights open${clears}`);
+    const keeps = keptRoles.map((role) => ` ${ROLE_FLAGS[role]} ${before[role]}`).join('');
+    commands.push(`ncl groups config update --id ${input.id} --weights open${clears}${keeps}`);
     commands.push(`ncl groups restart --id ${input.id}`);
   }
   return {
@@ -114,9 +127,19 @@ export function planGroupMigration(input: MigrationGroupInput, env: Env = proces
     closedRolesBefore,
     providerChange,
     clearedRoles,
+    keptRoles,
     blockers,
     commands,
   };
+}
+
+/**
+ * True when `role` resolves to an open model today, and `weights=open` alone
+ * would replace it with another one. The role has no column of its own (a
+ * column value would survive), so its model comes from the install setting.
+ */
+function keepsOpenModel(before: ResolvedModels, defaults: ResolvedModels, role: ModelRole, env: Env): boolean {
+  return isOpenWeightsRole(before, role, env) === true && before[role] !== defaults[role];
 }
 
 /** Read every agent group, its container config and its pinned active sessions from the central DB. */
