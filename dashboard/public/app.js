@@ -12163,6 +12163,19 @@ function costSourceCaptionHtml(cs, days) {
   );
 }
 
+/**
+ * Return the Cost cell of one "By Model" row. A model the rate table cannot
+ * price shows "no rate" in place of a figure: its tokens are real, and $0.00
+ * would read as free use. `unpricedModels` is the cost feed's own list
+ * (`costSource.unpricedModels`).
+ */
+function modelCostCellHtml(model, cost, unpricedModels) {
+  if (Array.isArray(unpricedModels) && unpricedModels.includes(model)) {
+    return '<td style="color:var(--text-muted)" title="No rate in the rate table: tokens counted, cost unknown">no rate</td>';
+  }
+  return `<td style="color:#10B981">${fmtUsd(cost)}</td>`;
+}
+
 function renderMetricsTokens(el, data) {
   // The cost CLI is a locked dependency and is never installed at read time, so
   // "cannot resolve it" is a real state the panel has to show. Rendering the
@@ -12244,7 +12257,7 @@ function renderMetricsTokens(el, data) {
     html += `<h4 style="margin:16px 0 8px;color:#94A3B8">By Model</h4>
     <table class="admin-table"><thead><tr><th>Model</th><th>Cost</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Create</th></tr></thead><tbody>`;
     for (const [model, m] of models.sort((a, b) => b[1].cost - a[1].cost)) {
-      html += `<tr><td><code>${esc(model)}</code></td><td style="color:#10B981">${fmtUsd(m.cost)}</td><td>${fmtNum(m.inputTokens)}</td><td>${fmtNum(m.outputTokens)}</td><td>${fmtNum(m.cacheReadTokens)}</td><td>${fmtNum(m.cacheCreationTokens)}</td></tr>`;
+      html += `<tr><td><code>${esc(model)}</code></td>${modelCostCellHtml(model, m.cost, data.costSource && data.costSource.unpricedModels)}<td>${fmtNum(m.inputTokens)}</td><td>${fmtNum(m.outputTokens)}</td><td>${fmtNum(m.cacheReadTokens)}</td><td>${fmtNum(m.cacheCreationTokens)}</td></tr>`;
     }
     html += '</tbody></table>';
   }

@@ -104,7 +104,11 @@ export function normalizeGatewayClaudeModel(model: string | undefined): string {
   return normalizeModel(m);
 }
 
-/** Codex pricing key for a gateway `usage_model` (Azure `-global` deployment suffix stripped). */
+/**
+ * Codex pricing key for a gateway `usage_model`. An Azure `-global` deployment
+ * suffix and the region suffix of a Fireworks router id are stripped: the body
+ * tap records Kimi by the router that serves it, `accounts/fireworks/routers/kimi-k3-us`.
+ */
 export function normalizeGatewayCodexModel(model: string | undefined): string {
   if (!model) return '';
   const direct = normalizeCodexModel(model);
@@ -112,7 +116,8 @@ export function normalizeGatewayCodexModel(model: string | undefined): string {
   const last = model.trim().toLowerCase().split('/').pop() || '';
   return (
     normalizeCodexModel(last.replace(/-global$/, '')) ||
-    normalizeCodexModel(last.replace(/-\d{8}$/, '').replace(/-global$/, ''))
+    normalizeCodexModel(last.replace(/-\d{8}$/, '').replace(/-global$/, '')) ||
+    normalizeCodexModel(last.replace(/-us$/, ''))
   );
 }
 

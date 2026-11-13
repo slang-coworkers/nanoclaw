@@ -144,6 +144,12 @@ export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
   'gpt-5.2-codex': { input: 1.75e-6, output: 1.4e-5, cacheRead: 1.75e-7 },
   'gpt-5.1-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
   'gpt-5-codex': { input: 1.25e-6, output: 1e-5, cacheRead: 1.25e-7 },
+  // Open-weights models on NVIDIA inference: the list rates the gateway
+  // (LiteLLM) publishes at `/model/info`. OpenCode and Pi call them over chat
+  // completions, so their usage arrives OpenAI-shaped and is priced here.
+  'kimi-k3': { input: 2.1e-6, output: 1.05e-5, cacheRead: 2.1e-7 },
+  'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 1.4e-7 },
+  'glm-5.3-flash': { input: 1.5e-7, output: 5e-7, cacheRead: 3e-8 },
 };
 
 /**

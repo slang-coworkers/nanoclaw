@@ -124,6 +124,8 @@ describe('pricing', () => {
     expect(normalizeGatewayCodexModel('gpt-5.6-sol-global')).toBe('gpt-5.6-sol');
     expect(normalizeGatewayCodexModel('azure/openai/gpt-6.1-sol')).toBe('gpt-6.1-sol');
     expect(normalizeGatewayCodexModel('constructor')).toBe('');
+    expect(normalizeGatewayCodexModel('accounts/fireworks/routers/kimi-k3-us')).toBe('kimi-k3');
+    expect(normalizeGatewayCodexModel('nvidia/zai-org/glm-5.3')).toBe('glm-5.3');
   });
 
   it('prices OpenAI usage with input INCLUSIVE of cached tokens, net of cache in the token columns', () => {
