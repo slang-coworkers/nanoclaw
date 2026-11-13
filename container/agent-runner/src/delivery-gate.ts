@@ -85,8 +85,9 @@ export function fileGateText(caption: string, filePath: string): string {
   }
 }
 
-// The settings the script reads. The NanoClaw MCP server is spawned with a
-// literal env, so these are forwarded by name (index.ts).
+// The settings the gate scripts read (the delivery gate here, the critique
+// recorder in critique-record.ts). The NanoClaw and codex MCP servers are
+// spawned with a literal env, so these are forwarded by name.
 const GATE_ENV_PREFIXES = ['CRITIQUE_', 'EXPLAIN_DIFF_'];
 const GATE_ENV_KEYS = [
   'REVIEW_REQUEST_GATE',
@@ -98,11 +99,11 @@ const GATE_ENV_KEYS = [
 ];
 
 /**
- * The part of `env` the gate script reads, for the MCP server's literal env.
+ * The part of `env` the gate scripts read, for an MCP server's literal env.
  * `CRITIQUE_GATE_ACTIVE=0` is copied too: the host's value is authoritative,
  * and without it the script falls back to a marker file the agent can delete.
  */
-export function deliveryGateEnv(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
+export function gateScriptEnv(env: NodeJS.ProcessEnv = process.env): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [key, value] of Object.entries(env)) {
     if (value === undefined) continue;

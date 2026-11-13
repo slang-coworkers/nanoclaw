@@ -23,6 +23,7 @@ import path from 'path';
 
 import {
   CODEX_MODEL_PRICING,
+  DEFAULT_OPEN_MODEL_RATE,
   DEFAULT_CODEX_RATE,
   MISSING_DAY_KEY,
   __resetCodexCostMemo,
@@ -116,7 +117,26 @@ describe('codex rate table (anti-drift vs the ccusage-derived rates)', () => {
     'gpt-5.2-codex': { input: 1.75e-6, output: 14e-6, cacheRead: 0.175e-6 },
     'gpt-5.1-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
     'gpt-5-codex': { input: 1.25e-6, output: 10e-6, cacheRead: 0.125e-6 },
+    // NVIDIA inference list rates (gateway `/model/info`).
+    'kimi-k3': { input: 2.1e-6, output: 10.5e-6, cacheRead: 0.21e-6 },
+    'glm-5.3': { input: 1.4e-6, output: 4.4e-6, cacheRead: 0.14e-6 },
+    'glm-5.3-flash': { input: 0.15e-6, output: 0.5e-6, cacheRead: 0.03e-6 },
+    'deepseek-v4.1-flash-1017': { input: 0.24e-6, output: 0.96e-6, cacheRead: 0.0056e-6 },
+    'llama-3.1-8b-instruct': { input: 0, output: 0, cacheRead: 0 },
+    'gpt-oss-20b': { input: 0, output: 0, cacheRead: 0 },
+    // Router and test models (gateway `/model/info`).
+    'gpt-6-luna': { input: 0.1e-6, output: 0.5e-6, cacheRead: 0.01e-6 },
+    'gpt-5-mini': { input: 0.25e-6, output: 2e-6, cacheRead: 0.025e-6 },
+    'gpt-5-nano': { input: 0.05e-6, output: 0.4e-6, cacheRead: 0.005e-6 },
+    'gpt-4o-mini': { input: 0.15e-6, output: 0.6e-6, cacheRead: 0.075e-6 },
   };
+
+  it('charges an unknown OpenCode or Pi model at the highest open-model rate', () => {
+    for (const id of ['kimi-k3', 'glm-5.3', 'glm-5.3-flash', 'deepseek-v4.1-flash-1017', 'llama-3.1-8b-instruct', 'gpt-oss-20b']) {
+      expect(DEFAULT_OPEN_MODEL_RATE.input).toBeGreaterThanOrEqual(CODEX_MODEL_PRICING[id].input);
+      expect(DEFAULT_OPEN_MODEL_RATE.output).toBeGreaterThanOrEqual(CODEX_MODEL_PRICING[id].output);
+    }
+  });
 
   it('pins the published rate for every known model id', () => {
     // Both directions: an added model with no expectation here fails too, so a
@@ -169,13 +189,13 @@ describe('normalizeCodexModel', () => {
   // If you change one normalizer copy, change both and keep these green on both.
   it('resolves EVERY known model across bare / prefix / dated / -latest / mixed-case forms', () => {
     for (const base of Object.keys(CODEX_MODEL_PRICING)) {
-      expect(normalizeCodexModel(base)).toBe(base);                              // bare
-      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base);           // provider prefix
-      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base);          // doubled prefix
-      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base);               // dated snapshot
-      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base);  // prefix + dated
-      expect(normalizeCodexModel(`${base}-latest`)).toBe(base);                 // -latest alias
-      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base);       // case + whitespace
+      expect(normalizeCodexModel(base)).toBe(base); // bare
+      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base); // provider prefix
+      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base); // doubled prefix
+      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base); // dated snapshot
+      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base); // prefix + dated
+      expect(normalizeCodexModel(`${base}-latest`)).toBe(base); // -latest alias
+      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base); // case + whitespace
     }
   });
 
@@ -207,7 +227,11 @@ describe('normalizeCodexModel', () => {
     expect(normalizeCodexModel('__proto__-latest')).toBe('');
     expect(normalizeCodexModel('toString')).toBe('');
     // …and pricing such an id falls to DEFAULT, never NaN.
-    expect(Number.isFinite(priceCodexEvent({ day: '2026-08-28', rawModel: 'constructor-20260101', input: 1_000, cached: 0, output: 0 }))).toBe(true);
+    expect(
+      Number.isFinite(
+        priceCodexEvent({ day: '2026-08-28', rawModel: 'constructor-20260101', input: 1_000, cached: 0, output: 0 }),
+      ),
+    ).toBe(true);
   });
 });
 
