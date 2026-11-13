@@ -123,6 +123,26 @@ describe('pricing math', () => {
       9,
     );
   });
+  it("prices by the model's family whichever API carried the call", () => {
+    // An open model through the Anthropic API (the router tests): input excludes the cache.
+    expect(
+      priceUsageBucket('anthropic_messages_v1', 'nvidia/zai-org/glm-5.3', {
+        ...zero,
+        input: 1_000_000,
+        cacheRead: 1_000_000,
+      }),
+    ).toBeCloseTo(1.4 + 0.14, 9);
+    // A Claude model through the OpenAI API (OpenCode on Opus): input includes the cache.
+    expect(
+      priceUsageBucket('openai_chat_completions_v1', 'aws/anthropic/bedrock-claude-opus-5-5', {
+        ...zero,
+        input: 2_000_000,
+        cacheRead: 1_000_000,
+      }),
+    ).toBeCloseTo(4 + 0.2, 9);
+    expect(priceUsageBucket('anthropic_messages_v1', 'nvidia/new/model', { ...zero, input: 5 })).toBeNull();
+  });
+
   it('prices the NVIDIA open models above $0', () => {
     expect(
       priceUsageBucket('openai_chat_completions_v1', 'nvidia/zai-org/glm-5.3', { ...zero, output: 1_000_000 }),

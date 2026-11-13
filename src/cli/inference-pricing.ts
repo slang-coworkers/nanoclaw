@@ -172,13 +172,37 @@ export function priceCodexTokens(model: string | undefined, t: CodexTokenTotals)
 
 /**
  * Price one aggregated usage bucket by the API family the OneCLI body tap
- * recorded (`usage_api`). Returns null (UNKNOWN) for an unrecognised API or an
- * unpriced model — never $0.
+ * recorded (`usage_api`), at the rate of the model's own family. The API and
+ * the model family can differ: an OpenCode group reaches Claude models through
+ * the OpenAI-compatible API, and the router tests call open models through the
+ * Anthropic one. So each API tries its own table first and the other one next,
+ * converting the token shape (OpenAI input includes the cached tokens;
+ * Anthropic input does not, and cache writes bill at the input rate there).
+ * Returns null (UNKNOWN) for an unrecognised API or an unpriced model — never $0.
  */
 export function priceUsageBucket(usageApi: string, model: string | undefined, t: ClaudeTokenTotals): number | null {
-  if (usageApi.startsWith('anthropic_')) return priceClaudeTokens(model, t);
+  if (usageApi.startsWith('anthropic_')) {
+    return (
+      priceClaudeTokens(model, t) ??
+      priceCodexTokens(model, {
+        input: t.input + t.cacheRead + t.cacheCreateFlat + t.cacheCreate5m + t.cacheCreate1h,
+        cacheRead: t.cacheRead,
+        output: t.output,
+      })
+    );
+  }
   if (usageApi.startsWith('openai_')) {
-    return priceCodexTokens(model, { input: t.input, cacheRead: t.cacheRead, output: t.output });
+    return (
+      priceCodexTokens(model, { input: t.input, cacheRead: t.cacheRead, output: t.output }) ??
+      priceClaudeTokens(model, {
+        input: Math.max(0, t.input - t.cacheRead),
+        output: t.output,
+        cacheRead: t.cacheRead,
+        cacheCreateFlat: 0,
+        cacheCreate5m: 0,
+        cacheCreate1h: 0,
+      })
+    );
   }
   return null;
 }

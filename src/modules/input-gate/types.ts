@@ -46,10 +46,10 @@ export interface AllowlistResult {
   };
 }
 
-/** Evidence state for one Claude-policy input. */
+/** Evidence state for one input of the closed-model access policy. */
 export type EvidenceState = 'verified' | 'unknown' | 'expired' | 'conflicting' | 'denied';
 
-/** Check 2 (Claude access policy): is this person eligible now? */
+/** Check 2 (closed-model access policy): is this person eligible now? */
 export interface EligibilityResult {
   eligible: boolean;
   identity: EvidenceState;
@@ -58,7 +58,8 @@ export interface EligibilityResult {
   reason: string | null;
 }
 
-export type GateOutcome = 'admitted' | 'not_eligible' | 'external_blocked' | 'no_start' | 'bot' | 'system_event';
+export type GateOutcome =
+  'admitted' | 'open_lane' | 'not_eligible' | 'external_blocked' | 'no_start' | 'bot' | 'system_event';
 
 export interface GateDecision {
   outcome: GateOutcome;
