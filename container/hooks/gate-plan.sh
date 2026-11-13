@@ -85,13 +85,7 @@ EOF
   exit 2
 fi
 
-# Plan staleness check stays — many edits since last plan-write means the
-# plan no longer reflects the work being done.
-PLAN_STALE=$(jq -r '.plan_stale // false' "$STATE" 2>/dev/null || echo false)
-if [ "$PLAN_STALE" = "true" ]; then
-  EDITS=$(jq -r '.edits_since_plan // 0' "$STATE" 2>/dev/null || echo 0)
-  echo "PLAN STALE: $EDITS edits since last plan. Refresh the plan in /workspace/agent/reports/ before continuing." >&2
-  exit 2
-fi
-
+# A written plan stays valid until the task state resets. Edits since the plan
+# are counted (track-edits.sh) for the dashboard only; the critique gate checks
+# the work at delivery instead.
 exit 0

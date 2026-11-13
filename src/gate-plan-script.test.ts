@@ -93,11 +93,10 @@ describe('Plan-required gate', () => {
     expect(r.status).toBe(0);
   });
 
-  it('plan-stale flag fires denial', () => {
-    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, plan_stale: true, edits_since_plan: 17 }));
+  it('a written plan stays valid however many edits follow it', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, edits_since_plan: 40 }));
     const r = run({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
-    expect(r.status).toBe(2);
-    expect(r.stderr).toContain('PLAN STALE');
+    expect(r.status).toBe(0);
   });
 });
 
@@ -186,8 +185,8 @@ describe('Marker absent → no-op (opt-in via plan-gate overlay)', () => {
     expect(r.status).toBe(0);
   });
 
-  it('no marker + plan_stale=true → exit 0 (would normally deny)', () => {
-    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: true, plan_stale: true }));
+  it('no marker + plan_written=false + Edit → exit 0 (would normally deny)', () => {
+    fs.writeFileSync(stateFile, JSON.stringify({ plan_written: false }));
     const r = run({ tool_name: 'Edit', tool_input: { file_path: '/workspace/src/foo.ts' } });
     expect(r.status).toBe(0);
   });
