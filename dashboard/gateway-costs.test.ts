@@ -128,6 +128,38 @@ describe('pricing', () => {
     expect(normalizeGatewayCodexModel('nvidia/zai-org/glm-5.3')).toBe('glm-5.3');
   });
 
+  it('prices an open model reached through the Anthropic API at its own rate', () => {
+    const p = priceGatewayRow({
+      groupId: 'ag-x',
+      day: '2026-11-13',
+      usageApi: 'anthropic_messages_v1',
+      model: 'nvidia/zai-org/glm-5.3',
+      calls: 1,
+      input: 1_000_000,
+      output: 0,
+      cacheRead: 1_000_000,
+      cacheCreateFlat: 0,
+      cacheCreate5m: 0,
+      cacheCreate1h: 0,
+    });
+    expect(p.modelKey).toBe('glm-5.3');
+    expect(p.usd).toBeCloseTo(1.4 + 0.14, 9);
+    const free = priceGatewayRow({
+      groupId: 'ag-x',
+      day: '2026-11-13',
+      usageApi: 'anthropic_messages_v1',
+      model: 'nvidia/meta/llama-3.1-8b-instruct',
+      calls: 1,
+      input: 10,
+      output: 0,
+      cacheRead: 0,
+      cacheCreateFlat: 0,
+      cacheCreate5m: 0,
+      cacheCreate1h: 0,
+    });
+    expect(free.usd).toBe(0);
+  });
+
   it('prices a Claude model reached through the OpenAI-compatible API at the Claude rate', () => {
     const p = priceGatewayRow({
       groupId: 'ag-x',

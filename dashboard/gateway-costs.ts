@@ -232,6 +232,28 @@ export function priceGatewayRow(r: GatewayAggRow): PricedRow {
     const cacheCreationTokens = r.cacheCreateFlat + r.cacheCreate5m + r.cacheCreate1h;
     const key = normalizeGatewayClaudeModel(r.model);
     const rate = key ? MODEL_PRICING[key] : undefined;
+    if (!rate) {
+      // The router tests call open models through the Anthropic API
+      // (`nvidia/meta/llama-3.1-8b-instruct`): price those at their own rate.
+      // Anthropic input excludes the cache, and a cache write bills as input.
+      const openKey = normalizeGatewayCodexModel(r.model);
+      const openRate = openKey ? CODEX_MODEL_PRICING[openKey] : undefined;
+      if (openRate) {
+        return {
+          provider: 'codex',
+          modelKey: openKey,
+          usd:
+            (r.input + cacheCreationTokens) * openRate.input +
+            r.cacheRead * openRate.cacheRead +
+            r.output * openRate.output,
+          inputTokens: r.input,
+          outputTokens: r.output,
+          cacheReadTokens: r.cacheRead,
+          cacheCreationTokens,
+          totalTokens: r.input + r.output + r.cacheRead + cacheCreationTokens,
+        };
+      }
+    }
     const usd = rate
       ? r.input * rate.input +
         r.output * rate.output +
