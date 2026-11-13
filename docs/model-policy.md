@@ -42,3 +42,21 @@ ncl groups restart --id <group-id>
 - A Claude group cannot use `--weights open`, because its SDK and its router call Claude models. Switch it to OpenCode first.
 - OpenCode needs its provider prefix on model ids (`openai/nvidia/zai-org/glm-5.3`). The policy adds the prefix to a bare id.
 - Changes take effect at the next container start (`ncl groups restart`).
+
+## Moving every coworker to open weights
+
+`scripts/open-weights-plan.ts` prints the plan that moves every group of one install to open-weights models. It reads; it changes nothing. Run it from the install's root, so it reads that install's `.env` and database:
+
+```bash
+pnpm exec tsx scripts/open-weights-plan.ts
+```
+
+For each group the plan:
+
+- switches a Claude group to OpenCode, which runs open models and Claude models through the gateway. Codex, OpenCode and Pi groups keep their provider;
+- sets `--weights open`;
+- clears a role whose own model is closed, so the open default applies;
+- keeps a role that already runs an open model. `--weights open` alone would replace a model that comes from the install setting (for example Kimi through `CODEX_MODEL`) with the open default, so the plan sets the role to its current model;
+- names an active session that pins another provider as a blocker. The pin outranks the group, so that session would not start after the move.
+
+It prints the `ncl` commands for each group, ending with `ncl groups restart`.
