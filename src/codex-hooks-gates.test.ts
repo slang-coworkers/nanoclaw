@@ -3,6 +3,8 @@ import path from 'path';
 
 import { describe, expect, it } from 'vitest';
 
+import { EVAL_SANDBOX_GATE_MATCHER } from './container-runner.js';
+
 // Codex runs hooks only from its managed hook file (container/codex-hooks.toml,
 // installed as /etc/codex/requirements.toml). The Bash gates Claude Code runs as
 // PreToolUse hooks must be wired there too, or a Codex group can create a PR or
@@ -40,16 +42,19 @@ function hookEntries(toml: string): HookEntry[] {
 const entries = hookEntries(fs.readFileSync(path.resolve('container', 'codex-hooks.toml'), 'utf-8'));
 
 describe('Codex managed hooks', () => {
-  it.each([
-    'gate-critique-on-deliver.sh',
-    'gate-pr-description.sh',
-    'gate-eval-sandbox.sh',
-    'gate-plan.sh',
-    'plan-tracker.sh',
-  ])('runs %s on Bash before the command, once', (script) => {
-    const wired = entries.filter((e) => e.commands.some((c) => c === `bash /app/hooks/${script}`));
+  it.each(['gate-critique-on-deliver.sh', 'gate-pr-description.sh', 'gate-plan.sh', 'plan-tracker.sh'])(
+    'runs %s on Bash before the command, once',
+    (script) => {
+      const wired = entries.filter((e) => e.commands.some((c) => c === `bash /app/hooks/${script}`));
+      expect(wired).toHaveLength(1);
+      expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: 'Bash' });
+    },
+  );
+
+  it('runs the eval sandbox on Bash and its MCP tools, with the matcher Claude groups get', () => {
+    const wired = entries.filter((e) => e.commands.includes('bash /app/hooks/gate-eval-sandbox.sh'));
     expect(wired).toHaveLength(1);
-    expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: 'Bash' });
+    expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: EVAL_SANDBOX_GATE_MATCHER });
   });
 
   it('runs the issue-close backstop from the read-only runner mount on Bash, once', () => {
