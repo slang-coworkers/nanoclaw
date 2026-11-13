@@ -52,6 +52,8 @@ function fixture() {
   };
   cleanups.push(close);
   const history: OpenCodeMessage[] = [];
+  // Subagent sessions' histories, by session id.
+  const children: Record<string, OpenCodeMessage[]> = {};
   let request = deferred<{ data?: OpenCodeMessage; error?: unknown }>();
   let marker = '';
   const prompts: Parameters<OpenCodeSessionClient['prompt']>[0][] = [];
@@ -69,7 +71,9 @@ function fixture() {
       request = deferred();
       return request.promise;
     },
-    messages: async (params) => ({ data: history.slice(-params.query.limit) }),
+    messages: async (params) => ({
+      data: (params.path.id === 'ses_test' ? history : (children[params.path.id] ?? [])).slice(-params.query.limit),
+    }),
     abort,
   };
   const discard = mock(close);
@@ -101,6 +105,7 @@ function fixture() {
   return {
     run,
     history,
+    children,
     emit,
     client,
     abort,
@@ -264,7 +269,7 @@ describe('verified OpenCode turn completion', () => {
     );
     const completed = await result;
     // The completed step goes out as a text event; the failed turn's result has no text.
-    expect(completed.result).toEqual({ text: null, isError: true });
+    expect(completed.result).toEqual({ text: null, isError: true, tokens: [] });
     expect(completed.events.filter((event) => event.type === 'text')).toEqual([
       { type: 'text', text: '<message to="a">COMPLETED_STEP</message>' },
     ]);
@@ -409,5 +414,97 @@ describe('verified OpenCode turn completion', () => {
       await Bun.sleep(10);
     }
     expect((await rejected)?.message).toContain('no activity');
+  });
+});
+
+describe('turn tokens', () => {
+  const used = (input: number, output: number, reasoning: number, read: number, write = 0) => ({
+    tokens: { input, output, reasoning, cache: { read, write } },
+  });
+
+  it('sums every billed assistant message of the turn by model, reasoning inside output', async () => {
+    const f = fixture();
+    f.history.push({ info: { id: 'msg_prior_user', role: 'user', time: { created: Date.now() - 5000 } }, parts: [] });
+    f.history.push(
+      f.assistant('msg_prior', ['PRIOR'], { parentID: 'msg_prior_user', modelID: 'm', ...used(9, 9, 9, 9) }),
+    );
+    const turn = collectTurn(f.run());
+    await prompted(f);
+    f.history.push(
+      f.assistant('msg_step', ['step'], { modelID: 'nvidia/zai-org/glm-5.3', ...used(800, 50, 40, 30_000) }),
+    );
+    f.history.push(
+      f.assistant('msg_summary', ['summary'], {
+        summary: true,
+        modelID: 'nvidia/zai-org/glm-5.3-flash',
+        ...used(1000, 200, 0, 0, 100),
+      }),
+    );
+    f.complete(
+      f.assistant('msg_answer', ['answer'], { modelID: 'nvidia/zai-org/glm-5.3', ...used(100, 10, 5, 31_000) }),
+    );
+    const { result } = await turn;
+    expect(result.tokens).toEqual([
+      {
+        model: 'nvidia/zai-org/glm-5.3',
+        inputTokens: 900,
+        outputTokens: 105,
+        reasoningTokens: 45,
+        cacheReadTokens: 61_000,
+        cacheWriteTokens: 0,
+      },
+      {
+        model: 'nvidia/zai-org/glm-5.3-flash',
+        inputTokens: 1000,
+        outputTokens: 200,
+        reasoningTokens: 0,
+        cacheReadTokens: 0,
+        cacheWriteTokens: 100,
+      },
+    ]);
+  });
+
+  it('counts a subagent session active during the turn, from the turn start on', async () => {
+    const f = fixture();
+    const turn = collectTurn(f.run());
+    await prompted(f);
+    const now = Date.now();
+    f.children.ses_child = [
+      {
+        info: {
+          id: 'msg_old',
+          role: 'assistant',
+          modelID: 'nvidia/zai-org/glm-5.3',
+          time: { created: now - 60_000 },
+          ...used(5, 5, 0, 5),
+        },
+        parts: [],
+      },
+      {
+        info: {
+          id: 'msg_new',
+          role: 'assistant',
+          modelID: 'nvidia/zai-org/glm-5.3',
+          time: { created: now + 1 },
+          ...used(70, 7, 0, 700),
+        },
+        parts: [],
+      },
+    ];
+    f.emit({ type: 'session.created', properties: { info: { id: 'ses_child', parentID: 'ses_test' } } });
+    f.emit({ type: 'message.updated', properties: { info: { sessionID: 'ses_child' } } });
+    await Bun.sleep(5);
+    f.complete(f.assistant('msg_answer', ['answer'], { modelID: 'nvidia/zai-org/glm-5.3', ...used(100, 10, 0, 1000) }));
+    const { result } = await turn;
+    expect(result.tokens).toEqual([
+      {
+        model: 'nvidia/zai-org/glm-5.3',
+        inputTokens: 170,
+        outputTokens: 17,
+        reasoningTokens: 0,
+        cacheReadTokens: 1700,
+        cacheWriteTokens: 0,
+      },
+    ]);
   });
 });

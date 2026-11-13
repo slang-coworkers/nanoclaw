@@ -1,5 +1,8 @@
 import { randomBytes } from 'crypto';
 
+import { TurnTokenTally } from './turn-accounting.js';
+import type { TurnModelTokens } from './types.js';
+
 export interface OpenCodeEvent {
   type: string;
   properties: Record<string, unknown>;
@@ -13,6 +16,10 @@ export interface OpenCodeMessage {
     summary?: boolean;
     error?: unknown;
     time: { created: number; completed?: number };
+    /** The model that served an assistant message. */
+    modelID?: string;
+    /** An assistant message's tokens: input net of cache, and output WITHOUT reasoning. */
+    tokens?: { input?: number; output?: number; reasoning?: number; cache?: { read?: number; write?: number } };
   };
   parts: Array<{ id: string; type: string; text?: string; ignored?: boolean }>;
 }
@@ -20,6 +27,8 @@ export interface OpenCodeMessage {
 export interface OpenCodeTurnResult {
   text: string | null;
   isError?: boolean;
+  /** The turn's tokens by model, subagent sessions included. */
+  tokens: TurnModelTokens[];
 }
 
 /** The configured model as OpenCode's prompt API names it. */
@@ -50,6 +59,7 @@ export class OpenCodeEventPump {
   failure?: Error;
   private listeners = new Set<(event?: OpenCodeEvent) => void>();
   private parents = new Map<string, string | undefined>();
+  private lastSeen = new Map<string, number>();
 
   constructor(stream: AsyncGenerator<OpenCodeEvent, void, void>, onEvent: (event: OpenCodeEvent) => void) {
     let connected!: () => void;
@@ -69,6 +79,10 @@ export class OpenCodeEventPump {
             const info = event.properties.info as { id?: string; parentID?: string } | undefined;
             if (info?.id) this.parents.set(info.id, info.parentID);
           }
+          const record = (event.properties.info ?? event.properties.part ?? event.properties) as {
+            sessionID?: string;
+          };
+          if (record.sessionID) this.lastSeen.set(record.sessionID, this.lastEventAt);
           onEvent(event);
           for (const listener of this.listeners) listener(event);
         }
@@ -86,6 +100,13 @@ export class OpenCodeEventPump {
   listen(listener: (event?: OpenCodeEvent) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  /** The subagent sessions under `ancestor` (at any depth) that had an event at or after `since`. */
+  activeDescendants(ancestor: string, since: number): string[] {
+    return [...this.lastSeen]
+      .filter(([id, at]) => at >= since && id !== ancestor && this.belongsTo(id, ancestor))
+      .map(([id]) => id);
   }
 
   belongsTo(sessionId: string | undefined, ancestor: string): boolean {
@@ -236,6 +257,7 @@ export async function* executeOpenCodeTurn(options: {
     await options.prepare?.();
     if (failure) throw failure;
     const messageId = createOpenCodeMessageId();
+    const turnStartedAt = Date.now();
     let response: Awaited<ReturnType<OpenCodeSessionClient['prompt']>> | undefined;
     let finished = false;
     started = true;
@@ -283,6 +305,10 @@ export async function* executeOpenCodeTurn(options: {
     // so a block from an earlier step still goes out, and the narration of the
     // earlier steps never becomes the turn's answer.
     for (const text of turnText.segments) yield { type: 'text', text };
+    const tally = new TurnTokenTally();
+    for (const message of turnText.assistants) addOpenCodeTokens(tally, message);
+    await addSubagentTokens(client, pump, sessionId, turnStartedAt, tally, signal);
+    const tokens = tally.rows();
     if (response.data.info.error) {
       const message = openCodeError(response.data.info.error).message;
       yield { type: 'error', message, retryable: false };
@@ -291,9 +317,9 @@ export async function* executeOpenCodeTurn(options: {
       // failed turn. Diagnostics stay in the error event for logs: response
       // bodies may contain message markup that must never be interpreted as a
       // model-authored deliverable.
-      return { text: null, isError: true };
+      return { text: null, isError: true, tokens };
     }
-    return { text: turnText.final };
+    return { text: turnText.final, tokens };
   } finally {
     clearInterval(timer);
     unlisten();
@@ -325,6 +351,58 @@ export interface OpenCodeTurnText {
   segments: string[];
   /** The text of the message the prompt returned, which is the turn's answer; null when it has none. */
   final: string | null;
+  /** Every assistant message of the turn, summaries and failed steps included: each one was billed. */
+  assistants: OpenCodeMessage[];
+}
+
+/**
+ * Add one assistant message's tokens to a turn tally. OpenCode reports
+ * reasoning beside output, not inside it, and both bill at the output rate.
+ */
+export function addOpenCodeTokens(tally: TurnTokenTally, message: OpenCodeMessage): void {
+  const t = message.info.tokens;
+  if (message.info.role !== 'assistant' || !t) return;
+  tally.add(message.info.modelID, {
+    input: t.input,
+    output: (t.output ?? 0) + (t.reasoning ?? 0),
+    reasoning: t.reasoning,
+    cacheRead: t.cache?.read,
+    cacheWrite: t.cache?.write,
+  });
+}
+
+/**
+ * Add the tokens of the subagent sessions that ran during a turn. OpenCode runs
+ * a task in a child session, whose messages the parent's history does not hold.
+ * A child counts when it had an event since the turn started, and only its
+ * messages from that time on count, so a resumed task is not charged twice.
+ * A failed read loses that child's tokens but not the turn's answer.
+ */
+async function addSubagentTokens(
+  client: OpenCodeSessionClient,
+  pump: OpenCodeEventPump,
+  sessionId: string,
+  since: number,
+  tally: TurnTokenTally,
+  signal: AbortSignal,
+): Promise<void> {
+  for (const child of pump.activeDescendants(sessionId, since)) {
+    try {
+      let messages: OpenCodeMessage[] = [];
+      for (let limit = 100; limit <= 6400; limit *= 2) {
+        const response = await boundedOpenCodeCall(
+          (signal) => client.messages({ path: { id: child }, query: { limit }, signal }),
+          signal,
+        );
+        if (response.error) throw openCodeError(response.error);
+        messages = response.data ?? [];
+        if (messages.length < limit) break;
+      }
+      for (const message of messages) if (message.info.time.created >= since) addOpenCodeTokens(tally, message);
+    } catch {
+      /* the parent's own tokens still count */
+    }
+  }
 }
 
 /**
@@ -394,5 +472,5 @@ export async function reconcileOpenCodeTurn(
     segments.push(text.join('\n\n'));
     if (message.info.id === result.info.id) final = segments[segments.length - 1];
   }
-  return { segments, final };
+  return { segments, final, assistants };
 }

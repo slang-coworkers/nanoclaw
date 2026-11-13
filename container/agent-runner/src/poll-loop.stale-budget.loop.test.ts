@@ -20,6 +20,8 @@ type Script = (q: { ended: () => boolean; pushes: string[] }) => AsyncGenerator<
 
 /** A provider whose Nth query runs scripts[N], recording each query's input and pushes. */
 class ScriptedProvider implements AgentProvider {
+  // It stands in for a Claude session, whose usage events the cost cap meters.
+  readonly reportsTurnAccounting = true;
   inputs: QueryInput[] = [];
   createdAt: number[] = [];
   pushes: string[][] = [];
