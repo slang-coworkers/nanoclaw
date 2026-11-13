@@ -124,6 +124,27 @@ describe('pricing', () => {
     expect(normalizeGatewayCodexModel('gpt-5.6-sol-global')).toBe('gpt-5.6-sol');
     expect(normalizeGatewayCodexModel('azure/openai/gpt-6.1-sol')).toBe('gpt-6.1-sol');
     expect(normalizeGatewayCodexModel('constructor')).toBe('');
+    expect(normalizeGatewayCodexModel('accounts/fireworks/routers/kimi-k3-us')).toBe('kimi-k3');
+    expect(normalizeGatewayCodexModel('nvidia/zai-org/glm-5.3')).toBe('glm-5.3');
+  });
+
+  it('prices a Claude model reached through the OpenAI-compatible API at the Claude rate', () => {
+    const p = priceGatewayRow({
+      groupId: 'ag-x',
+      day: '2026-11-13',
+      usageApi: 'openai_chat_completions_v1',
+      model: 'aws/anthropic/bedrock-claude-opus-5-5',
+      calls: 1,
+      input: 1_000_000,
+      output: 0,
+      cacheRead: 0,
+      cacheCreateFlat: 0,
+      cacheCreate5m: 0,
+      cacheCreate1h: 0,
+    });
+    expect(p.provider).toBe('claude');
+    expect(p.modelKey).toBe('claude-opus-5-5');
+    expect(p.usd).toBeCloseTo(4, 9);
   });
 
   it('prices OpenAI usage with input INCLUSIVE of cached tokens, net of cache in the token columns', () => {

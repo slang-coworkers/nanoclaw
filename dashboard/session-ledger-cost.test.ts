@@ -516,3 +516,46 @@ describe('GET /api/sessions — ledger is primary, transcript is the fallback, n
     expect(after.costSource).toBe('ledger');
   });
 });
+
+describe('OpenCode and Pi ledger rows', () => {
+  it('keep the dollars the runner charged, count as exact, and land in the session model bucket', () => {
+    const out = foldLedgerRows([
+      row({
+        id: 'opencode:1:sess:1:nvidia/zai-org/glm-5.3',
+        provider: 'opencode',
+        model: 'nvidia/zai-org/glm-5.3',
+        output_tokens: 1_000_000,
+        priced_usd: 4.4,
+        acct_seg: null,
+      }),
+      row({
+        id: 'pi:1:sess:2:nvidia/zai-org/glm-5.3',
+        provider: 'pi',
+        model: 'nvidia/zai-org/glm-5.3',
+        input_tokens: 1_000_000,
+        priced_usd: 1.4,
+        acct_seg: null,
+      }),
+    ]);
+    expect(out.exact).toBe(true);
+    expect(out.unpriced).toBe(false);
+    const day = [...out.days.values()][0];
+    expect(day.cost).toBeCloseTo(5.8, 10);
+    expect(day.claudeUsd).toBeCloseTo(5.8, 10);
+    expect(day.codexUsd).toBe(0);
+  });
+
+  it('flag a model neither rate table names', () => {
+    const p = priceLedgerRow(
+      row({
+        id: 'pi:1:sess:3:nvidia/new/model',
+        provider: 'pi',
+        model: 'nvidia/new/model',
+        output_tokens: 10,
+        priced_usd: 0.0001,
+      }),
+    );
+    expect(p.unpriced).toBe(true);
+    expect(p.usd).toBeCloseTo(0.0001, 12);
+  });
+});
