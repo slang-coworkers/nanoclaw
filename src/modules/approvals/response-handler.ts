@@ -11,7 +11,8 @@
  *      via finalizeReject.
  *
  * The response handler is registered via core's `registerResponseHandler`;
- * core iterates handlers and the first one to return `true` claims the response.
+ * core offers a click to each handler in turn, and the first to return an
+ * outcome owns it.
  */
 import { requestWake } from '../../request-wake.js';
 import {
@@ -20,7 +21,7 @@ import {
   getSession,
   transitionPendingApprovalStatus,
 } from '../../db/sessions.js';
-import type { ResponsePayload } from '../../response-registry.js';
+import type { ResponseOutcome, ResponsePayload } from '../../response-registry.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import type { PendingApproval } from '../../types.js';
@@ -53,7 +54,7 @@ function fireAndForgetWake(session: Parameters<typeof requestWake>[0], approvalI
   });
 }
 
-export async function handleApprovalsResponse(payload: ResponsePayload): Promise<boolean> {
+export async function handleApprovalsResponse(payload: ResponsePayload): Promise<ResponseOutcome | false> {
   const approval = await getPendingApproval(payload.questionId);
   if (!approval) return false;
 
@@ -64,43 +65,45 @@ export async function handleApprovalsResponse(payload: ResponsePayload): Promise
       userId: payload.userId,
       channelType: payload.channelType,
     });
-    return true;
+    return 'refused';
   }
 
-  await handleRegisteredApproval(approval, payload.value, namespacedUserId(payload) ?? '');
-  return true;
+  return handleRegisteredApproval(approval, payload.value, namespacedUserId(payload) ?? '', payload.accepted);
 }
 
 async function handleRegisteredApproval(
   approval: PendingApproval,
   selectedOption: string,
   userId: string,
-): Promise<void> {
+  accepted?: () => void,
+): Promise<ResponseOutcome> {
+  // The session that asked is gone: so is the request.
   if (!approval.session_id) {
     await deletePendingApproval(approval.approval_id);
-    return;
+    return 'closed';
   }
   const session = await getSession(approval.session_id);
   if (!session) {
     await deletePendingApproval(approval.approval_id);
-    return;
+    return 'closed';
   }
 
   // "Reject with reason…" — hold the row and capture the admin's next DM
   // instead of finalizing now. The agent is notified exactly once: after the
   // reason arrives, or after the sweep's timeout if the admin ghosts.
   if (selectedOption === REJECT_WITH_REASON_VALUE) {
-    await armReasonCapture(approval, session, userId);
-    return;
+    return (await armReasonCapture(approval, session, userId, accepted)) ? 'accepted' : 'ignored';
   }
 
-  // Plain Reject (or any other non-approve value) — instant fast path.
-  if (selectedOption.toLowerCase() !== 'approve') {
-    await finalizeReject(approval, session, userId);
-    return;
+  // Plain Reject (or any other non-approve value) — instant fast path. Only from
+  // 'pending': a card click must not cut short a reason the admin is typing.
+  if (selectedOption !== 'approve') {
+    return (await finalizeReject(approval, session, userId, { from: 'pending', accepted })) ? 'accepted' : 'ignored';
   }
 
-  if (!(await transitionPendingApprovalStatus(approval.approval_id, 'pending', 'approved'))) return;
+  if (!(await transitionPendingApprovalStatus(approval.approval_id, 'pending', 'approved'))) return 'ignored';
+  // The decision is recorded: the card can show it while the action runs.
+  accepted?.();
 
   // Approved — dispatch to the module that registered for this action.
   const notify = (text: string): Promise<void> =>
@@ -127,7 +130,7 @@ async function handleRegisteredApproval(
     await deletePendingApproval(approval.approval_id);
     await notifyApprovalResolved({ approval, session, outcome: 'approve', userId });
     fireAndForgetWake(session, approval.approval_id); // fork override (nv): AP03
-    return;
+    return 'accepted';
   }
 
   const payload = JSON.parse(approval.payload);
@@ -144,6 +147,7 @@ async function handleRegisteredApproval(
   await deletePendingApproval(approval.approval_id);
   await notifyApprovalResolved({ approval, session, outcome: 'approve', userId });
   fireAndForgetWake(session, approval.approval_id); // fork override (nv): AP03
+  return 'accepted';
 }
 
 export function namespacedUserId(payload: ResponsePayload): string | null {

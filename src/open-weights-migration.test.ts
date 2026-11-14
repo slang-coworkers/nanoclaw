@@ -4,13 +4,23 @@ import { createAgentGroup } from './db/agent-groups.js';
 import { closeDb, getDb, initTestDb } from './db/connection.js';
 import { ensureContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { runMigrations } from './db/migrations/index.js';
+import { CONTAINER_IMAGE_BASE } from './config.js';
 import { loadMigrationInputs, planGroupMigration, type MigrationGroupInput } from './open-weights-migration.js';
 
 // A fixed install env, so the host's own .env cannot change what the plan resolves.
 const ENV = { ANTHROPIC_MODEL: 'claude-opus-5-5', ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5' };
 
 function input(over: Partial<MigrationGroupInput>): MigrationGroupInput {
-  return { id: 'ag-1', folder: 'g', provider: 'claude', config: {}, pinnedSessions: [], ...over };
+  return {
+    id: 'ag-1',
+    folder: 'g',
+    provider: 'claude',
+    config: {},
+    pinnedSessions: [],
+    imageTag: null,
+    imageBase: 'nanoclaw-agent-test',
+    ...over,
+  };
 }
 
 describe('planGroupMigration', () => {
@@ -82,6 +92,38 @@ describe('planGroupMigration', () => {
   });
 });
 
+describe('planGroupMigration with a pinned image', () => {
+  it('rebuilds the derived image of a group that changes provider', () => {
+    const plan = planGroupMigration(input({ imageTag: 'nanoclaw-agent-test:ag-1' }), ENV);
+    expect(plan).toMatchObject({ status: 'migrate', rebuildsImage: true, blockers: [] });
+    expect(plan.commands.at(-1)).toBe('ncl groups restart --id ag-1 --rebuild');
+  });
+
+  it('does not rebuild when the provider stays, or when the group runs the base image', () => {
+    const kept = planGroupMigration(input({ provider: 'codex', imageTag: 'nanoclaw-agent-test:ag-1' }), ENV);
+    expect(kept).toMatchObject({ rebuildsImage: false, blockers: [] });
+    expect(kept.commands.at(-1)).toBe('ncl groups restart --id ag-1');
+    const base = planGroupMigration(input({ imageTag: null }), ENV);
+    expect(base.rebuildsImage).toBe(false);
+    expect(base.commands.at(-1)).toBe('ncl groups restart --id ag-1');
+  });
+
+  it('blocks a provider change on an image this install does not build', () => {
+    const plan = planGroupMigration(input({ imageTag: 'registry.example/custom:1' }), ENV);
+    expect(plan.status).toBe('blocked');
+    expect(plan.rebuildsImage).toBe(false);
+    expect(plan.blockers).toHaveLength(1);
+    expect(plan.blockers[0]).toContain('registry.example/custom:1');
+    expect(plan.blockers[0]).toContain('opencode runtime');
+    expect(plan.commands).toEqual([]);
+  });
+
+  it("does not treat another group's derived image as this group's own", () => {
+    const plan = planGroupMigration(input({ imageTag: 'nanoclaw-agent-test:ag-2' }), ENV);
+    expect(plan.status).toBe('blocked');
+  });
+});
+
 describe('loadMigrationInputs', () => {
   beforeEach(async () => {
     await runMigrations(await initTestDb());
@@ -96,7 +138,10 @@ describe('loadMigrationInputs', () => {
     await ensureContainerConfig('ag-a', 'pi');
     await createAgentGroup({ id: 'ag-b', name: 'b', folder: 'b', agent_provider: 'codex', created_at: at });
     await ensureContainerConfig('ag-b', 'claude');
-    await updateContainerConfigScalars('ag-b', { critic_model: 'openai/openai/gpt-6.1-sol' });
+    await updateContainerConfigScalars('ag-b', {
+      critic_model: 'openai/openai/gpt-6.1-sol',
+      image_tag: `${CONTAINER_IMAGE_BASE}:ag-b`,
+    });
     for (const [id, status, pin] of [
       ['s-1', 'active', 'claude'],
       ['s-2', 'closed', 'claude'],
@@ -111,11 +156,13 @@ describe('loadMigrationInputs', () => {
       );
     }
     const inputs = await loadMigrationInputs();
-    expect(inputs.find((i) => i.id === 'ag-a')).toMatchObject({ provider: 'pi', pinnedSessions: [] });
+    expect(inputs.find((i) => i.id === 'ag-a')).toMatchObject({ provider: 'pi', pinnedSessions: [], imageTag: null });
     expect(inputs.find((i) => i.id === 'ag-b')).toMatchObject({
       provider: 'codex',
       config: { critic_model: 'openai/openai/gpt-6.1-sol' },
       pinnedSessions: [{ id: 's-1', provider: 'claude' }],
+      imageTag: `${CONTAINER_IMAGE_BASE}:ag-b`,
+      imageBase: CONTAINER_IMAGE_BASE,
     });
   });
 });

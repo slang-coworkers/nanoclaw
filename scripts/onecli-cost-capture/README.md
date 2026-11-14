@@ -31,8 +31,8 @@ docker build -f docker/Dockerfile -t onecli-cost:latest .   # Rust build; ~10-15
 Point the OneCLI compose `onecli` service at `image: onecli-cost:latest` and add:
 
 ```yaml
-    environment:
-      ONECLI_CAPTURE_RESPONSE_HEADERS: x-litellm-response-cost-original,x-litellm-call-id,x-litellm-model-id,x-litellm-key-spend
+environment:
+  ONECLI_CAPTURE_RESPONSE_HEADERS: x-litellm-response-cost-original,x-litellm-call-id,x-litellm-model-id,x-litellm-key-spend
 ```
 
 Then `docker compose up -d onecli`. **Health-check + auto-rollback recommended** (verify the container is Up + the API answers 200, else restore the stock image).
@@ -72,7 +72,7 @@ non-streamed rows carry the real cost, streamed rows carry `0.0` while `x-litell
 The token usage IS in the body — in the final SSE event(s).
 
 **What it does.** `apps/gateway/src/gateway/usage_tap.rs` (new, shared) + `hooks.rs`: the response body
-stream is wrapped in a pass-through that *observes* each chunk (bytes forwarded unchanged, never buffered
+stream is wrapped in a pass-through that _observes_ each chunk (bytes forwarded unchanged, never buffered
 whole, never delayed), keeps only a small typed usage snapshot, and emits the telemetry event once the
 body has ended (or the client disconnected), so the end-of-stream usage lands in `extra_data`.
 `telemetry.rs`: `update_batch` (approved requests) now MERGES captured data instead of dropping it.
@@ -88,17 +88,17 @@ without `:port`, or `*`). Unset = the header-only behaviour above.
 
 **Keys written to `request_logs.extra_data` (flat, beside the captured headers):**
 
-| key | meaning |
-|---|---|
-| `usage_source` | `sse` \| `json` \| `none` \| `unavailable-compressed` \| `unavailable-oversize` \| `unavailable-parse` \| `unsupported-content-type` |
-| `usage_api` | `anthropic_messages_v1` \| `openai_responses_v1` \| `openai_chat_completions_v1` |
-| `usage_model` | model id reported IN the body (keep litellm's `x-litellm-model-id` header separate) |
-| `usage_input_tokens`, `usage_output_tokens` | **OpenAI input INCLUDES cached tokens; Anthropic input EXCLUDES cache read/creation** |
-| `usage_cache_read_input_tokens` | Anthropic `cache_read_input_tokens` / OpenAI `cached_tokens` |
-| `usage_cache_creation_input_tokens` | Anthropic aggregate; `usage_cache_creation_{5m,1h}_input_tokens` are its breakdown (never sum both) |
-| `usage_reasoning_output_tokens`, `usage_total_tokens` | OpenAI |
-| `usage_complete` | a terminal usage event was seen (false = client disconnected mid-stream) |
-| `usage_body_ms`, `usage_observed_at_ms`, `usage_parse_errors` | diagnostics |
+| key                                                           | meaning                                                                                                                              |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `usage_source`                                                | `sse` \| `json` \| `none` \| `unavailable-compressed` \| `unavailable-oversize` \| `unavailable-parse` \| `unsupported-content-type` |
+| `usage_api`                                                   | `anthropic_messages_v1` \| `openai_responses_v1` \| `openai_chat_completions_v1`                                                     |
+| `usage_model`                                                 | model id reported IN the body (keep litellm's `x-litellm-model-id` header separate)                                                  |
+| `usage_input_tokens`, `usage_output_tokens`                   | **OpenAI input INCLUDES cached tokens; Anthropic input EXCLUDES cache read/creation**                                                |
+| `usage_cache_read_input_tokens`                               | Anthropic `cache_read_input_tokens` / OpenAI `cached_tokens`                                                                         |
+| `usage_cache_creation_input_tokens`                           | Anthropic aggregate; `usage_cache_creation_{5m,1h}_input_tokens` are its breakdown (never sum both)                                  |
+| `usage_reasoning_output_tokens`, `usage_total_tokens`         | OpenAI                                                                                                                               |
+| `usage_complete`                                              | a terminal usage event was seen (false = client disconnected mid-stream)                                                             |
+| `usage_body_ms`, `usage_observed_at_ms`, `usage_parse_errors` | diagnostics                                                                                                                          |
 
 **Build (both patches, in order):**
 
@@ -172,3 +172,38 @@ carry `usage_source` = `json` with the token counts.
 API and push-probe 200 from a coworker container; oracle call `7bc32ef2-…` captured with
 `usage_input_tokens: 14`, `usage_output_tokens: 4`, cost header `0.000136`; `ncl cost-cap coworkers`
 unchanged. Prod (`onecli-cost:v2`, 1.41.0) not yet swapped.
+
+## Model rule (`onecli-cost:v4`)
+
+`gateway-model-rule-v1.42.0.patch` applies on top of `gateway-body-usage-tap-v1.42.0.patch` and the header capture. It lets a gateway rule read the `model` of a request body. The nanoclaw open sessions use it to refuse closed models (see `docs/session-privilege.md`).
+
+What it changes:
+
+- `apps/gateway/src/condition_match.rs` evaluates `body` conditions with the operators `in` and `not_in`. The value is a comma-separated list of globs, and `*` matches any run of characters. The matcher reads POST, PUT and PATCH bodies up to 32 MiB. A body that repeats the key, in any ASCII case, counts as unreadable.
+- `apps/gateway/src/policy_engine/enforce.rs` asks the matcher whether a v2 rule needs the body. Before, the v2 engine never buffered a body.
+- `packages/api/src/validations/policy-rule.ts` accepts the two new operators.
+
+`not_in` holds when the field is missing, is not a string, or matches no glob. A block rule with `not_in` therefore fails closed. A condition the matcher does not understand holds, as every condition did before this patch.
+
+Build and test:
+
+```bash
+cd onecli-src   # v1.42.0 with the two patches above applied
+git apply /path/to/gateway-model-rule-v1.42.0.patch
+docker run --rm -v "$PWD/apps/gateway":/build -w /build rust:1-alpine sh -c \
+  'apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static && cargo test --release'
+docker build -f docker/Dockerfile -t onecli-cost:v4 .   # about 20 minutes with a cold cache
+```
+
+A rule is written through the v2 policy API, and it ends with a publish:
+
+```bash
+curl -X POST "$ONECLI/v1/policy/rules" -H 'Content-Type: application/json' -d '{
+  "name": "open-models-only", "action": "block",
+  "identities": [{"type": "agent", "id": "<agent id>"}],
+  "targets": [{"kind": "network", "hostPattern": "inference-api.nvidia.com", "method": "POST"}],
+  "conditions": [{"target": "body", "key": "model", "operator": "not_in", "value": "nvidia/zai-org/*,openai/nvidia/zai-org/*"}]}'
+curl -X POST "$ONECLI/v1/policy/publish" -H 'Content-Type: application/json' -d '{}'
+```
+
+Nanoclaw writes this rule itself for each open agent. Verified on lego 2026-11-14 with a proxy test: a closed model and a body without a model are refused for the agent with the rule, and an open model passes. The same closed model passes for an agent without the rule.
