@@ -19,6 +19,8 @@ import {
   updateProviderCredentials,
 } from './onecli-provider-credentials.js';
 import { readEnvFile } from '../env.js';
+import { openWeightsModelGlobs } from '../model-policy.js';
+import { ensureOpenModelRule } from './onecli-model-rule.js';
 import { log } from '../log.js';
 
 import {
@@ -35,6 +37,8 @@ const env = readEnvFile([
   'ONECLI_API_KEY',
   'ONECLI_GATEWAY_CONTAINER',
   'ANTHROPIC_BASE_URL',
+  'OPENCODE_BASE_URL',
+  'CODEX_BASE_URL',
   'ONECLI_CONSOLE_URL',
   'ONECLI_NEW_AGENT_SECRETS',
 ]);
@@ -42,6 +46,28 @@ const onecliUrl = process.env.ONECLI_URL || env.ONECLI_URL;
 const onecliApiKey = process.env.ONECLI_API_KEY || env.ONECLI_API_KEY;
 const gatewayContainer = process.env.ONECLI_GATEWAY_CONTAINER || env.ONECLI_GATEWAY_CONTAINER || 'onecli';
 const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL || env.ANTHROPIC_BASE_URL;
+
+/** The inference hosts this install sends model requests to: the host of each base URL it sets. */
+function inferenceHosts(): string[] {
+  const urls = (['ANTHROPIC_BASE_URL', 'OPENCODE_BASE_URL', 'CODEX_BASE_URL'] as const).map(
+    (key) => process.env[key] || env[key],
+  );
+  const hosts = urls.flatMap((url) => {
+    try {
+      return url ? [new URL(url).hostname] : [];
+    } catch {
+      return [];
+    }
+  });
+  return [...new Set(hosts)];
+}
+
+// The open-models-only rule is checked at most this often per agent, so a busy sweep does not
+// repeat its reads at every spawn. A rule deleted out of band comes back within this time.
+const MODEL_RULE_RECHECK_MS = 5 * 60_000;
+const modelRuleCheckedAt = new Map<string, number>();
+// Publishing makes the whole project draft live, so the rule writes of all agents run one at a time.
+const MODEL_RULE_LOCK = 'open-models-only rules';
 // fork delta (nv): the SDK's default timeout is not tunable, and a slow or
 // wedged vault turned every spawn into a long hang with no operator lever.
 const ONECLI_TIMEOUT_MS = Number(process.env.ONECLI_TIMEOUT_MS) > 0 ? Number(process.env.ONECLI_TIMEOUT_MS) : 30_000;
@@ -92,6 +118,7 @@ export function agentGroupIdOfIdentifier(identifier: string): string {
 /** Tests: forget this process's memos, as a host restart does; the pending restrictions on disk stay. */
 export function _resetEnsuredAgentsForTesting(): void {
   ensuredAgents.clear();
+  modelRuleCheckedAt.clear();
   restrictionPending = null;
 }
 const healthUrl = new URL('/v1/health', onecliUrl || 'https://api.onecli.sh').toString();
@@ -651,6 +678,30 @@ async function ensureSession(input: GatewaySessionInput, signal: AbortSignal): P
   };
   const ensuredKey = `${identifier}\0${input.provider ?? ''}`;
   await ensure(groupId, input.groupName);
+  if (input.openModelsOnly && !closed) {
+    const checkedAt = modelRuleCheckedAt.get(identifier);
+    if (checkedAt === undefined || Date.now() - checkedAt > MODEL_RULE_RECHECK_MS) {
+      try {
+        const outcome = await serialized(MODEL_RULE_LOCK, () =>
+          ensureOpenModelRule(identifier, inferenceHosts(), openWeightsModelGlobs(), {
+            baseUrl: onecliUrl || 'https://api.onecli.sh',
+            apiKey: onecliApiKey,
+            projectId: process.env.ONECLI_PROJECT_ID,
+          }),
+        );
+        if (outcome === 'unsupported') throw new Error('the gateway has no policy API');
+        if (outcome === 'installed') log.info('OneCLI open-models-only rule installed', { agentGroupId: groupId });
+        modelRuleCheckedAt.set(identifier, Date.now());
+      } catch (err) {
+        modelRuleCheckedAt.delete(identifier);
+        throw new Error(
+          `OneCLI: could not install the open-models-only rule for agent group ${groupId} ` +
+            `(${(err as Error).message}); the next spawn retries`,
+          { cause: err },
+        );
+      }
+    }
+  }
   if (closed) {
     await ensure(identifier, `${input.groupName} (closed)`);
     // The closed agent holds whatever the group's agent holds, so closed sessions keep the

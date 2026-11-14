@@ -39,6 +39,12 @@ export interface GatewaySessionInput {
    */
   privilege?: 'open' | 'closed';
   /**
+   * True when the gateway must refuse closed models from this session's identity. It is set only
+   * while session privilege is enforced, for an open session. A gateway that cannot hold the
+   * boundary fails the spawn rather than start the session without it.
+   */
+  openModelsOnly?: boolean;
+  /**
    * The agent provider a new runtime runs, by provider name; absent when adopting.
    * Gateways that grant model credentials per agent key on it.
    */
