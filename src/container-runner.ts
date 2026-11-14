@@ -1389,6 +1389,7 @@ async function spawnContainer(session: Session): Promise<void> {
     groupName: agentGroup.name,
     provider,
     privilege: privilegeEnforced() ? sessionPrivilegeOf(session) : 'open',
+    openModelsOnly: privilegeEnforced() && sessionPrivilegeOf(session) === 'open',
     containerName,
     capabilities: driver.capabilities(),
   });

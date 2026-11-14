@@ -39,6 +39,9 @@ vi.mock('@onecli-sh/sdk', () => ({
   },
 }));
 // Per run, so parallel runs never share one data directory.
+const modelRule = vi.hoisted(() => ({ ensure: vi.fn(async (): Promise<string> => 'installed') }));
+vi.mock('./onecli-model-rule.js', () => ({ ensureOpenModelRule: modelRule.ensure }));
+
 const { ADAPTER_DATA } = vi.hoisted(() => ({
   ADAPTER_DATA: `/tmp/nanoclaw-onecli-adapter-${process.pid}-${Date.now()}`,
 }));
@@ -1554,3 +1557,104 @@ function statefulGateway(opts: { vault: string[]; failPuts?: number }) {
     },
   };
 }
+
+describe('open sessions are held to open models while privilege is enforced', () => {
+  const openInput = (group: string, enforced: boolean): GatewaySessionInput => ({
+    ...groupInput(group),
+    privilege: 'open',
+    openModelsOnly: enforced,
+  });
+  const run = async (input: GatewaySessionInput) => {
+    const world = statefulGateway({ vault: ['sec-model'] });
+    sdk.ensureAgent.mockImplementation(world.ensureAgent);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      return await provider.sessions.ensure(input, controller.signal);
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  };
+  let savedBase: string | undefined;
+  beforeEach(() => {
+    savedBase = process.env.ANTHROPIC_BASE_URL;
+    process.env.ANTHROPIC_BASE_URL = 'https://inference.example.test/anthropic';
+    modelRule.ensure.mockClear();
+    modelRule.ensure.mockImplementation(async () => 'installed');
+    writeRecord(ADAPTER_DATA, { claude: ['sec-model'] });
+  });
+  afterEach(() => {
+    if (savedBase === undefined) delete process.env.ANTHROPIC_BASE_URL;
+    else process.env.ANTHROPIC_BASE_URL = savedBase;
+  });
+
+  it('installs the rule for the group agent, naming the inference host and the open models', async () => {
+    await run(openInput('g1', true));
+    expect(modelRule.ensure).toHaveBeenCalledTimes(1);
+    const [identifier, hosts, globs] = modelRule.ensure.mock.calls[0] as unknown as [string, string[], string[]];
+    expect(identifier).toBe('g1');
+    expect(hosts).toEqual(['inference.example.test']);
+    expect(globs).toContain('nvidia/zai-org/*');
+  });
+
+  it('installs nothing while privilege is not enforced, and nothing for a closed session', async () => {
+    await run(openInput('g1', false));
+    _resetEnsuredAgentsForTesting();
+    await run({ ...groupInput('g1'), privilege: 'closed', openModelsOnly: false });
+    expect(modelRule.ensure).not.toHaveBeenCalled();
+  });
+
+  it('checks the rule again only after a while, not at every spawn', async () => {
+    vi.useFakeTimers();
+    await run(openInput('g1', true));
+    await run(openInput('g1', true));
+    expect(modelRule.ensure).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(6 * 60_000);
+    await run(openInput('g1', true));
+    expect(modelRule.ensure).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails the spawn when the rule cannot be installed, and the next spawn tries again', async () => {
+    modelRule.ensure.mockRejectedValueOnce(new Error('POST /v1/policy/rules returned 422'));
+    await expect(run(openInput('g1', true))).rejects.toThrow(
+      /could not install the open-models-only rule for agent group g1 .*422.*the next spawn retries/,
+    );
+    await run(openInput('g1', true));
+    expect(modelRule.ensure).toHaveBeenCalledTimes(2);
+  });
+
+  it('writes the rules of different agents one at a time, because a publish makes the whole draft live', async () => {
+    let running = 0;
+    let most = 0;
+    modelRule.ensure.mockImplementation(async () => {
+      running += 1;
+      most = Math.max(most, running);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      running -= 1;
+      return 'installed';
+    });
+    const world = statefulGateway({ vault: ['sec-model'] });
+    sdk.ensureAgent.mockImplementation(world.ensureAgent);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      await Promise.all([
+        provider.sessions.ensure({ ...openInput('g1', true) }, controller.signal),
+        provider.sessions.ensure({ ...openInput('g2', true) }, controller.signal),
+      ]);
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+    expect(modelRule.ensure).toHaveBeenCalledTimes(2);
+    expect(most).toBe(1);
+  });
+
+  it('fails the spawn on a gateway without a policy API, rather than run without the boundary', async () => {
+    modelRule.ensure.mockResolvedValueOnce('unsupported');
+    await expect(run(openInput('g1', true))).rejects.toThrow(/the gateway has no policy API/);
+  });
+});
