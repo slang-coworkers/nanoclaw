@@ -57,6 +57,7 @@ import { prMappingExists } from './modules/pr-mapping/store.js';
 import { deleteParked, parkReviewable } from './modules/pending-reviewable/store.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { inboundDbPath } from './mailbox/sqlite/paths.js';
+import type { SessionPrivilege } from './modules/session-privilege/index.js';
 import { initSessionFolder } from './session-manager.js';
 import type { AgentGroup, Session } from './types.js';
 
@@ -74,6 +75,12 @@ export interface GitHubMentionEvent {
   eventType?: string;
   /** GitHub delivery id, propagated to peer on forward (idempotency tag). */
   deliveryId?: string;
+  /**
+   * The privilege of the account that triggered the event (src/modules/session-privilege):
+   * `closed` for an approved person, `open` for any other person. Absent for an
+   * automated sender, whose event follows the session that already exists.
+   */
+  privilege?: SessionPrivilege;
 }
 
 /**
@@ -105,6 +112,12 @@ export interface GitHubPrEvent {
    * solely on the mapping row.
    */
   mentionsBot?: boolean;
+  /**
+   * The privilege of the account that triggered the event (src/modules/session-privilege):
+   * `closed` for an approved person, `open` for any other person. Absent for an
+   * automated sender, whose event follows the session that already exists.
+   */
+  privilege?: SessionPrivilege;
 }
 
 export interface GitHubIssueOpenedEvent {
@@ -123,6 +136,12 @@ export interface GitHubIssueOpenedEvent {
   deliveryId?: string;
   /** True when this delivery is an `issues.labeled` event that added the bot-ok label, handing a newcomer-labeled issue to the bot. */
   botOkLabeled?: boolean;
+  /**
+   * The privilege of the account that triggered the event (src/modules/session-privilege):
+   * `closed` for an approved person, `open` for any other person. Absent for an
+   * automated sender, whose event follows the session that already exists.
+   */
+  privilege?: SessionPrivilege;
 }
 
 /**
@@ -150,6 +169,12 @@ export interface GitHubPrReviewableEvent {
   /** PR head sha. Required to park under the CI gate (the head CI must pass on)
    * and to key the parked row's debounce. Empty when unknown (gate skipped). */
   headSha?: string;
+  /**
+   * The privilege of the account that triggered the event (src/modules/session-privilege):
+   * `closed` for an approved person, `open` for any other person. Absent for an
+   * automated sender, whose event follows the session that already exists.
+   */
+  privilege?: SessionPrivilege;
 }
 
 /**
@@ -194,6 +219,7 @@ async function deliverToOrchestrator(args: {
   mintPerThread?: boolean;
   displayTitle?: string;
   origin?: { kind: 'issue' | 'pr'; author: string };
+  privilege?: SessionPrivilege;
 }): Promise<DeliveryOutcome> {
   const group: AgentGroup | undefined = await getAdminAgentGroup();
   if (!group) {
@@ -223,18 +249,21 @@ async function deliverToAgentGroup(
     mintPerThread?: boolean;
     displayTitle?: string;
     origin?: { kind: 'issue' | 'pr'; author: string };
+    privilege?: SessionPrivilege;
   },
 ): Promise<DeliveryOutcome> {
   let session: Session | undefined;
   let minted = false;
+  // A thread holds one session per privilege. An event with no privilege (an
+  // automated sender) finds whichever session exists, and mints an open one.
   if (args.mintPerThread && args.threadId) {
-    session = await findSessionByAgentThread(group.id, args.threadId);
+    session = await findSessionByAgentThread(group.id, args.threadId, args.privilege);
     if (!session) {
-      session = await mintOrchestratorSession(group.id, args.threadId);
+      session = await mintOrchestratorSession(group.id, args.threadId, args.privilege ?? 'open');
       minted = true;
     }
   } else {
-    session = await findSessionByAgentGroup(group.id);
+    session = await findSessionByAgentGroup(group.id, args.privilege);
   }
 
   if (!session) {
@@ -317,7 +346,11 @@ async function deliverToAgentGroup(
  * row stays empty; the agent's outbound messages route by their explicit
  * `<message to=...>` destinations, not by the session's default channel.
  */
-async function mintOrchestratorSession(agentGroupId: string, threadId: string): Promise<Session> {
+async function mintOrchestratorSession(
+  agentGroupId: string,
+  threadId: string,
+  privilege: SessionPrivilege,
+): Promise<Session> {
   const id = `sess-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const session: Session = {
     id,
@@ -328,6 +361,7 @@ async function mintOrchestratorSession(agentGroupId: string, threadId: string): 
     title_source: null,
     title_updated_at: null,
     agent_provider: null,
+    privilege,
     status: 'active',
     container_status: 'stopped',
     last_active: null,
@@ -358,6 +392,7 @@ async function deliverMappedPrEvent(args: {
   rawBody?: string;
   eventType?: string;
   deliveryId?: string;
+  privilege?: SessionPrivilege;
 }): Promise<DeliveryOutcome | null> {
   try {
     const centralDb = getDb();
@@ -406,6 +441,24 @@ async function deliverMappedPrEvent(args: {
 
     // Local owner — deliver to the mapped session.
     const mappedSession = await getSession(mapping.session_id);
+    // A session never mixes privileges. Consider a PR whose owner session is closed
+    // (an approved maintainer started it) and a comment from someone who is not
+    // approved: it must not reach that session. It goes to the open session of the
+    // same coworker on the same thread, created if needed. An automated sender has
+    // no privilege and follows the owner session.
+    if (mappedSession && args.privilege && (mappedSession.privilege ?? 'open') !== args.privilege) {
+      const group = await getAgentGroup(mapping.agent_group_id);
+      if (!group || !mapping.thread_id) return 'dropped';
+      return await deliverToAgentGroup(group, {
+        repo: args.repo,
+        issueNumber: args.prNumber,
+        rowId: args.rowId,
+        threadId: mapping.thread_id,
+        eventContent: args.eventContent,
+        mintPerThread: true,
+        privilege: args.privilege,
+      });
+    }
     if (mappedSession) {
       const dbPath = inboundDbPath(mapping.agent_group_id, mapping.session_id);
       const db = openInboundDb(dbPath);
@@ -519,6 +572,7 @@ export async function deliverGitHubMention(event: GitHubMentionEvent): Promise<D
     rawBody: event.rawBody,
     eventType: event.eventType,
     deliveryId: event.deliveryId,
+    privilege: event.privilege,
   });
   if (mapped) return mapped;
 
@@ -546,6 +600,7 @@ export async function deliverGitHubMention(event: GitHubMentionEvent): Promise<D
     eventContent,
     mintPerThread: true,
     displayTitle: `${event.repo} #${event.issueNumber}`,
+    privilege: event.privilege,
   });
 }
 
@@ -645,6 +700,7 @@ export async function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): P
       ? `${event.repo} #${event.issueNumber}: ${event.title}`
       : `${event.repo} #${event.issueNumber}`,
     origin: { kind: 'issue', author: event.author },
+    privilege: event.privilege,
   });
 }
 
@@ -753,6 +809,7 @@ export async function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent):
     mintPerThread: true,
     displayTitle: event.title ? `${event.repo} #${event.prNumber}: ${event.title}` : `${event.repo} #${event.prNumber}`,
     origin: { kind: 'pr', author: event.author },
+    privilege: event.privilege,
   });
 }
 
@@ -965,6 +1022,7 @@ export async function deliverGitHubPrEvent(event: GitHubPrEvent): Promise<Delive
     rawBody: event.rawBody,
     eventType: event.eventType,
     deliveryId: event.deliveryId,
+    privilege: event.privilege,
   });
   if (mapped) return mapped;
 
@@ -1002,6 +1060,7 @@ export async function deliverGitHubPrEvent(event: GitHubPrEvent): Promise<Delive
       eventContent,
       mintPerThread: true,
       displayTitle: `${event.repo} #${event.prNumber}`,
+      privilege: event.privilege,
     });
   }
 

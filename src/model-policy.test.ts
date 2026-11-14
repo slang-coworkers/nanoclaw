@@ -7,6 +7,7 @@ import {
   MODEL_POLICY_ENV_KEYS,
   containerJsonModel,
   isOpenWeightsModel,
+  openWeightsModelGlobs,
   isOpenWeightsRole,
   modelPolicyEnv,
   modelPolicyViolations,
@@ -171,6 +172,38 @@ describe('container env', () => {
       NANOCLAW_CRITIC_MODEL: ENV.CODEX_MODEL,
       ANTHROPIC_DEFAULT_HAIKU_MODEL: 'aws/anthropic/x',
     });
+  });
+});
+
+describe('openWeightsModelGlobs', () => {
+  const globMatch = (glob: string, id: string) =>
+    new RegExp(
+      `^${glob
+        .split('*')
+        .map((p) => p.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+        .join('.*')}$`,
+    ).test(id);
+  const allowed = (id: string, env = {}) => openWeightsModelGlobs(env).some((g) => globMatch(g, id));
+
+  it('lets through exactly the models isOpenWeightsModel accepts, with or without the openai alias', () => {
+    for (const id of ['nvidia/zai-org/glm-5.3', 'nvidia/moonshotai/kimi-k3', 'openai/nvidia/zai-org/glm-5.3']) {
+      expect(allowed(id)).toBe(true);
+    }
+    for (const id of ['aws/anthropic/bedrock-claude-opus-5-5', 'openai/openai/gpt-6-luna', 'nvidia/unknown/x', '']) {
+      expect(allowed(id)).toBe(false);
+    }
+  });
+
+  it('refuses a prefix with a wildcard, because isOpenWeightsModel reads prefixes literally', () => {
+    expect(() => openWeightsModelGlobs({ NANOCLAW_OPEN_WEIGHTS_PREFIXES: 'nvidia/*' })).toThrow(
+      /must not contain "\*"/,
+    );
+  });
+
+  it('follows the install list of open families', () => {
+    const env = { NANOCLAW_OPEN_WEIGHTS_PREFIXES: 'nvidia/acme/' };
+    expect(openWeightsModelGlobs(env)).toEqual(['nvidia/acme/*', 'openai/nvidia/acme/*']);
+    expect(allowed('nvidia/zai-org/glm-5.3', env)).toBe(false);
   });
 });
 
