@@ -39,6 +39,12 @@ An **open** session never writes into a **closed** one: a person who is not appr
 
 The same rule holds for cross-session context. The echo fan-out copies each message into the hot sibling sessions of the same conversation, and backfill seeds a waking session from its siblings. Both skip a closed target when the words come from an open session, so an unapproved person's message never lands in a closed session as ambient context.
 
+## The OneCLI agent
+
+With `enforce`, a closed session uses its own OneCLI agent, `<group id>:closed`, and an open session keeps the group's agent. The container cannot change its agent identity, so the gateway can hold the two to different rules. Spawn creates the closed agent on first use and, on every closed spawn, gives it the secrets the group's agent holds, so closed sessions keep the tool secrets the operator granted to the group. On a gateway built on OneCLI 1.43 or older (such as onecli-cost), the closed agent gets exactly the secret list and mode of the group's agent, so a secret the operator revokes from the group is also revoked for closed sessions. On a newer gateway, spawn only adds grants. An approval request from the closed agent routes to the group.
+
+This split is the base of the credential boundary. It does not yet stop an open container from calling a closed model: today both agents hold the same inference key. The rule that does is next (see below).
+
 ## Turning it off again
 
 With `NANOCLAW_SESSION_PRIVILEGE` unset, nothing changes on an install that never enforced it. On an install that did, the closed sessions stay in the database with their privilege. New messages go to open sessions, and an open session still cannot write into a closed one, so a closed session stays closed until it ends.
@@ -52,7 +58,7 @@ With `enforce`, spawn resolves the group's models for the session's privilege (`
 
 ## Not covered yet
 
-- **The credential.** One NVIDIA inference key serves open and closed models, so a container that names a closed model by hand still reaches it. The planned boundary is in OneCLI: open sessions use the agent `<group>`, closed sessions use `<group>:closed`, and the proxy refuses a closed model for an open agent.
+- **The model rule.** One NVIDIA inference key serves open and closed models, so a container that names a closed model by hand still reaches it. The planned boundary is a rule in the OneCLI gateway: it reads the `model` of a request to the inference host and refuses a closed model for the open agent. The gateway's condition matcher is a stub in the open-source build, so this needs a gateway change and a new image. The other route is a second inference key limited to open models, granted to the open agent only.
 - **Check 2 sources and the location check.** Today the operator's list decides. The input gate's Check 2 and the location check come later, on the closed path.
 - **A parked PR that is released** (`releaseParkedReviewable`) and the learning delivery to approver sessions look up sessions without a privilege.
 - **`mention-sticky` engagement** counts a session of either privilege as "active", so a thread an approved person started keeps listening for everyone.

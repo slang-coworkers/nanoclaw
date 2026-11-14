@@ -56,7 +56,7 @@ import {
 } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
-import { rowForPrivilege, sessionPrivilegeOf } from './modules/session-privilege/index.js';
+import { privilegeEnforced, rowForPrivilege, sessionPrivilegeOf } from './modules/session-privilege/index.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
@@ -1388,6 +1388,7 @@ async function spawnContainer(session: Session): Promise<void> {
     runtimeIdentity: gatewayRuntimeIdentity(gatewayKey),
     groupName: agentGroup.name,
     provider,
+    privilege: privilegeEnforced() ? sessionPrivilegeOf(session) : 'open',
     containerName,
     capabilities: driver.capabilities(),
   });
