@@ -68,11 +68,11 @@ function serialized<T>(key: string, fn: () => Promise<T>): Promise<T> {
 }
 
 /** Suffix of the OneCLI identifier of the agent that the closed sessions of a group use. */
-export const CLOSED_AGENT_SUFFIX = ':closed';
+export const CLOSED_AGENT_SUFFIX = '-closed';
 
 /**
  * The OneCLI agent identifier a session uses: the agent group id, or
- * `<group id>:closed` for a closed session. The container cannot change its
+ * `<group id>-closed` for a closed session. The container cannot change its
  * agent identity, which is why the gateway can hold closed and open sessions
  * of one group to different rules.
  */
@@ -636,7 +636,7 @@ function ensureAgentReady(identifier: string, name: string, provider: string | u
 async function ensureSession(input: GatewaySessionInput, signal: AbortSignal): Promise<GatewaySessionLease> {
   // The OneCLI agent identifier is the agent group id — stable across sessions
   // and reversible via getAgentGroup() for approval routing. A closed session
-  // (src/modules/session-privilege) uses `<group id>:closed` instead, so the
+  // (src/modules/session-privilege) uses `<group id>-closed` instead, so the
   // gateway can hold it to different rules than the group's open sessions.
   // Memoized per identifier and provider (fork delta, above): a provider switch
   // is a new key, so its model credential is still granted on the next spawn.

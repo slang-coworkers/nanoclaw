@@ -1148,25 +1148,25 @@ describe('closed sessions use their own OneCLI agent', () => {
     privilege: 'closed',
   });
 
-  it('names the agent of a closed session <group>:closed, and maps either identifier back to the group', () => {
-    expect(agentIdentifierFor('g1', 'closed')).toBe('g1:closed');
+  it('names the agent of a closed session <group>-closed, and maps either identifier back to the group', () => {
+    expect(agentIdentifierFor('g1', 'closed')).toBe('g1-closed');
     expect(agentIdentifierFor('g1', 'open')).toBe('g1');
     expect(agentIdentifierFor('g1', undefined)).toBe('g1');
-    expect(agentGroupIdOfIdentifier('g1:closed')).toBe('g1');
+    expect(agentGroupIdOfIdentifier('g1-closed')).toBe('g1');
     expect(agentGroupIdOfIdentifier('g1')).toBe('g1');
   });
 
   it('copies the grants of the group agent to its closed agent, adding only what is missing', async () => {
     const world = statefulGateway({ vault: ['sec-model', 'sec-github'] });
     await world.ensureAgent({ identifier: 'g1' });
-    await world.ensureAgent({ identifier: 'g1:closed' });
+    await world.ensureAgent({ identifier: 'g1-closed' });
     await fetchGrant(world, 'g1', 'sec-model');
     await fetchGrant(world, 'g1', 'sec-github');
-    await fetchGrant(world, 'g1:closed', 'sec-model');
+    await fetchGrant(world, 'g1-closed', 'sec-model');
     const opts = { baseUrl: 'http://gw.test', fetchImpl: world.fetch };
-    await expect(copyAgentGrants('g1', 'g1:closed', opts)).resolves.toEqual(['sec-github']);
-    expect(world.held('g1:closed')).toEqual(['sec-github', 'sec-model']);
-    await expect(copyAgentGrants('g1', 'g1:closed', opts)).resolves.toEqual([]);
+    await expect(copyAgentGrants('g1', 'g1-closed', opts)).resolves.toEqual(['sec-github']);
+    expect(world.held('g1-closed')).toEqual(['sec-github', 'sec-model']);
+    await expect(copyAgentGrants('g1', 'g1-closed', opts)).resolves.toEqual([]);
     // The group's own agent is never changed.
     expect(world.held('g1')).toEqual(['sec-github', 'sec-model']);
   });
@@ -1175,8 +1175,8 @@ describe('closed sessions use their own OneCLI agent', () => {
     const noGrants = fakeGateway({ grantsStatus: 404, grantsBody: { error: { message: 'Unrecognized request URL' } } });
     const opts = (fetchImpl: typeof fetch) => ({ baseUrl: 'http://gw.test', fetchImpl });
     await expect(copyAgentGrants('g1', 'g1', opts(noGrants.fetch))).resolves.toBeNull();
-    await expect(copyAgentGrants('g1', 'g1:closed', opts(fakeGateway().fetch))).rejects.toThrow(
-      /OneCLI agent g1:closed not found/,
+    await expect(copyAgentGrants('g1', 'g1-closed', opts(fakeGateway().fetch))).rejects.toThrow(
+      /OneCLI agent g1-closed not found/,
     );
   });
 
@@ -1194,10 +1194,10 @@ describe('closed sessions use their own OneCLI agent', () => {
       sdk.getContainerConfig.mockClear();
 
       await provider.sessions.ensure(closedInput('g1'), controller.signal);
-      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toEqual(['g1:closed']);
+      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toEqual(['g1-closed']);
       expect(sdk.ensureAgent.mock.calls[0]![0].name).toBe('g1 (closed)');
-      expect(world.held('g1:closed')).toEqual(['sec-github', 'sec-model']);
-      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1:closed' });
+      expect(world.held('g1-closed')).toEqual(['sec-github', 'sec-model']);
+      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1-closed' });
     } finally {
       controller.abort();
       fetchMock.mockRestore();
@@ -1215,7 +1215,7 @@ describe('closed sessions use their own OneCLI agent', () => {
       await provider.sessions.ensure({ ...groupInput('g1'), privilege: 'open' }, controller.signal);
       expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toEqual(['g1']);
       expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1' });
-      expect(world.held('g1:closed')).toEqual([]);
+      expect(world.held('g1-closed')).toEqual([]);
     } finally {
       controller.abort();
       fetchMock.mockRestore();
@@ -1226,37 +1226,37 @@ describe('closed sessions use their own OneCLI agent', () => {
   it('on a legacy gateway, mirrors the secrets and mode of the group agent, and follows a revocation', async () => {
     const world = legacyGateway({
       g1: { secrets: ['sec-model', 'sec-github'], mode: 'selective' },
-      'g1:closed': { secrets: ['sec-model', 'sec-old'], mode: 'all' },
+      'g1-closed': { secrets: ['sec-model', 'sec-old'], mode: 'all' },
     });
     const opts = { baseUrl: 'http://gw.test', fetchImpl: world.fetch };
-    await expect(mirrorAgentSecrets('g1', 'g1:closed', opts)).resolves.toBe('mirrored');
-    expect(world.agent('g1:closed')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
+    await expect(mirrorAgentSecrets('g1', 'g1-closed', opts)).resolves.toBe('mirrored');
+    expect(world.agent('g1-closed')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
     expect(world.agent('g1')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
 
     // The operator revokes a secret from the group's agent: the closed agent loses it at the next spawn.
     world.revoke('g1', 'sec-github');
-    await mirrorAgentSecrets('g1', 'g1:closed', opts);
-    expect(world.agent('g1:closed').secrets).toEqual(['sec-model']);
+    await mirrorAgentSecrets('g1', 'g1-closed', opts);
+    expect(world.agent('g1-closed').secrets).toEqual(['sec-model']);
   });
 
   it('on a legacy gateway, an agent that runs every secret stays on every secret in its closed agent', async () => {
     const world = legacyGateway({
       g1: { secrets: ['sec-model'], mode: 'all' },
-      'g1:closed': { secrets: [], mode: 'selective' },
+      'g1-closed': { secrets: [], mode: 'selective' },
     });
-    await mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch });
-    expect(world.agent('g1:closed')).toEqual({ secrets: ['sec-model'], mode: 'all' });
+    await mirrorAgentSecrets('g1', 'g1-closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch });
+    expect(world.agent('g1-closed')).toEqual({ secrets: ['sec-model'], mode: 'all' });
   });
 
   it('reports a gateway without the legacy routes as unsupported, and fails on a missing agent', async () => {
     const none = (async () => new Response('{}', { status: 404 })) as unknown as typeof fetch;
-    await expect(mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: none })).resolves.toBe(
+    await expect(mirrorAgentSecrets('g1', 'g1-closed', { baseUrl: 'http://gw.test', fetchImpl: none })).resolves.toBe(
       'unsupported',
     );
     const world = legacyGateway({ g1: { secrets: [], mode: 'selective' } });
     await expect(
-      mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
-    ).rejects.toThrow(/OneCLI agent g1:closed not found/);
+      mirrorAgentSecrets('g1', 'g1-closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
+    ).rejects.toThrow(/OneCLI agent g1-closed not found/);
   });
 
   it('a closed spawn on a legacy gateway gives the closed agent the secrets of the group agent', async () => {
@@ -1269,8 +1269,8 @@ describe('closed sessions use their own OneCLI agent', () => {
     const controller = new AbortController();
     try {
       await provider.sessions.ensure(closedInput('g1'), controller.signal);
-      expect(world.agent('g1:closed')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
-      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1:closed' });
+      expect(world.agent('g1-closed')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
+      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1-closed' });
     } finally {
       controller.abort();
       fetchMock.mockRestore();
@@ -1282,32 +1282,32 @@ describe('closed sessions use their own OneCLI agent', () => {
     const opts = (world: ReturnType<typeof legacyGateway>) => ({ baseUrl: 'http://gw.test', fetchImpl: world.fetch });
     const ok = legacyGateway({
       g1: { secrets: ['sec-a'], mode: 'all' },
-      'g1:closed': { secrets: [], mode: 'selective' },
+      'g1-closed': { secrets: [], mode: 'selective' },
     });
-    await mirrorAgentSecrets('g1', 'g1:closed', opts(ok));
+    await mirrorAgentSecrets('g1', 'g1-closed', opts(ok));
     expect(ok.events).toEqual([
-      'mode g1:closed selective',
-      'put g1:closed start',
-      'put g1:closed end',
-      'mode g1:closed all',
+      'mode g1-closed selective',
+      'put g1-closed start',
+      'put g1-closed end',
+      'mode g1-closed all',
     ]);
 
     // The group's agent is selective now; the closed agent was left on every secret. The list write fails.
     const failing = legacyGateway(
-      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1:closed': { secrets: ['sec-old'], mode: 'all' } },
+      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1-closed': { secrets: ['sec-old'], mode: 'all' } },
       { failPut: true },
     );
-    await expect(mirrorAgentSecrets('g1', 'g1:closed', opts(failing))).rejects.toThrow(/returned 503/);
-    expect(failing.agent('g1:closed').mode).toBe('selective');
+    await expect(mirrorAgentSecrets('g1', 'g1-closed', opts(failing))).rejects.toThrow(/returned 503/);
+    expect(failing.agent('g1-closed').mode).toBe('selective');
   });
 
   it('fails when the group agent changed its mode while its secrets were read', async () => {
     const world = legacyGateway(
-      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1:closed': { secrets: [], mode: 'selective' } },
+      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1-closed': { secrets: [], mode: 'selective' } },
       { flipModeOnSecretsRead: 'g1' },
     );
     await expect(
-      mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
+      mirrorAgentSecrets('g1', 'g1-closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
     ).rejects.toThrow(/secret mode of g1 changed/);
     expect(world.events).toEqual([]);
   });
@@ -1327,7 +1327,7 @@ describe('closed sessions use their own OneCLI agent', () => {
         provider.sessions.ensure(closedInput('g1'), second.signal),
       ]);
       const puts = world.events.filter((e) => e.startsWith('put '));
-      expect(puts).toEqual(['put g1:closed start', 'put g1:closed end', 'put g1:closed start', 'put g1:closed end']);
+      expect(puts).toEqual(['put g1-closed start', 'put g1-closed end', 'put g1-closed start', 'put g1-closed end']);
     } finally {
       first.abort();
       second.abort();
@@ -1346,14 +1346,14 @@ describe('closed sessions use their own OneCLI agent', () => {
     const controller = new AbortController();
     try {
       await provider.sessions.ensure(closedInput('g1'), controller.signal);
-      world.remove('g1:closed');
+      world.remove('g1-closed');
       sdk.ensureAgent.mockClear();
       await expect(provider.sessions.ensure(closedInput('g1'), controller.signal)).rejects.toThrow(
         /could not copy the secrets.*the next spawn retries/,
       );
       await provider.sessions.ensure(closedInput('g1'), controller.signal);
-      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toContain('g1:closed');
-      expect(world.agent('g1:closed').secrets).toEqual(['sec-model']);
+      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toContain('g1-closed');
+      expect(world.agent('g1-closed').secrets).toEqual(['sec-model']);
     } finally {
       controller.abort();
       fetchMock.mockRestore();
@@ -1362,7 +1362,7 @@ describe('closed sessions use their own OneCLI agent', () => {
   });
 
   it('refuses a group id that already ends with the closed-agent suffix', () => {
-    expect(() => agentIdentifierFor('g1:closed', 'open')).toThrow(/ends with :closed/);
+    expect(() => agentIdentifierFor('g1-closed', 'open')).toThrow(/ends with -closed/);
   });
 
   it('routes an approval from the closed agent to the group', async () => {
@@ -1379,7 +1379,7 @@ describe('closed sessions use their own OneCLI agent', () => {
         method: 'POST',
         host: 'api.example.test',
         path: '/resource',
-        agent: { name: 'g1 (closed)', externalId: 'g1:closed' },
+        agent: { name: 'g1 (closed)', externalId: 'g1-closed' },
       });
       expect(owns).toHaveBeenCalledWith('g1');
       expect(decide).toHaveBeenCalledWith(expect.objectContaining({ agentGroupId: 'g1' }));
