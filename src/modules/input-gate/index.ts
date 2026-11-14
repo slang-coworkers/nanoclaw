@@ -18,6 +18,10 @@
  *                               (default shader-slang)
  *   NANOCLAW_INPUT_GATE_REPOS   comma-separated repos whose write permission
  *                               counts for Check 1 (default: every org repo)
+ *   NANOCLAW_INPUT_GATE_ELIGIBILITY
+ *                               path to the Check 2 evidence file the operator keeps
+ *                               (default data/input-gate-eligibility.json; a missing
+ *                               file leaves every person unknown)
  *   NANOCLAW_INPUT_GATE_OPEN_LANE
  *                               folder of the open-weights lane group (default:
  *                               none, so a person who fails Check 2 is not
@@ -29,7 +33,8 @@ import { readEnvFile } from '../../env.js';
 import { log } from '../../log.js';
 import { loadRoster, type GitHubLookups } from './allowlist.js';
 import { decide } from './decide.js';
-import { unconnectedSources, type EligibilitySources } from './eligibility.js';
+import type { EligibilitySources } from './eligibility.js';
+import { fileEligibilitySources } from './eligibility-file.js';
 import { ghLookups } from './github-lookups.js';
 import { resolveOpenLane, type OpenLane } from './open-lane.js';
 import { gateRequestFromPayload } from './request.js';
@@ -39,6 +44,7 @@ import type { GateDecision } from './types.js';
 const KEYS = [
   'NANOCLAW_INPUT_GATE',
   'NANOCLAW_INPUT_GATE_ROSTER',
+  'NANOCLAW_INPUT_GATE_ELIGIBILITY',
   'NANOCLAW_INPUT_GATE_ORG',
   'NANOCLAW_INPUT_GATE_REPOS',
   'NANOCLAW_INPUT_GATE_OPEN_LANE',
@@ -47,6 +53,8 @@ const KEYS = [
 export interface GateSettings {
   mode: 'off' | 'shadow';
   rosterPath: string;
+  /** The Check 2 evidence file (default data/input-gate-eligibility.json); the sources it stands in for are not connected yet. */
+  eligibilityPath?: string;
   org: string;
   /** Repos whose write permission counts for Check 1; null means every repo of the org. */
   repos: string[] | null;
@@ -60,6 +68,7 @@ export function readGateSettings(): GateSettings {
   return {
     mode: val('NANOCLAW_INPUT_GATE').toLowerCase() === 'shadow' ? 'shadow' : 'off',
     rosterPath: path.resolve(val('NANOCLAW_INPUT_GATE_ROSTER') || 'data/input-gate-roster.json'),
+    eligibilityPath: path.resolve(val('NANOCLAW_INPUT_GATE_ELIGIBILITY') || 'data/input-gate-eligibility.json'),
     org: val('NANOCLAW_INPUT_GATE_ORG') || 'shader-slang',
     repos: parseRepoList(val('NANOCLAW_INPUT_GATE_REPOS')),
     openLane: val('NANOCLAW_INPUT_GATE_OPEN_LANE') || null,
@@ -89,16 +98,15 @@ export interface ObserveInput {
 interface Deps {
   settings: () => GateSettings;
   lookups: GitHubLookups;
-  eligibility: EligibilitySources;
+  /** Replaces the evidence file; tests only. */
+  eligibility?: EligibilitySources;
 }
 
-let deps: Deps = { settings: readGateSettings, lookups: ghLookups(), eligibility: unconnectedSources };
+let deps: Deps = { settings: readGateSettings, lookups: ghLookups() };
 
 /** Test seam: replace the settings reader, GitHub lookups or eligibility sources. */
 export function setInputGateDepsForTest(next: Partial<Deps> | null): void {
-  deps = next
-    ? { ...deps, ...next }
-    : { settings: readGateSettings, lookups: ghLookups(), eligibility: unconnectedSources };
+  deps = next ? { ...deps, ...next } : { settings: readGateSettings, lookups: ghLookups() };
 }
 
 /**
@@ -118,7 +126,9 @@ export async function observeGitHubDelivery(input: ObserveInput): Promise<GateDe
       org: settings.org,
       roster: loadRoster(settings.rosterPath),
       lookups: deps.lookups,
-      eligibility: deps.eligibility,
+      eligibility:
+        deps.eligibility ??
+        fileEligibilitySources(settings.eligibilityPath ?? path.resolve('data/input-gate-eligibility.json')),
       selfLogins: input.selfLogins,
       repos: settings.repos,
       openLane: async () => warnIfInvalid(await resolveOpenLane(settings.openLane)),

@@ -35,8 +35,9 @@ waits for it, and turning it on cannot change what any delivery does.
   - These rules come from the terms of closed-weights models (Claude, GPT). Open-weights
     models (GLM, Kimi, DeepSeek on NVIDIA inference) carry no such terms, so Check 2
     applies to closed-model work only.
-  - None of these sources is connected yet, so every person fails Check 2 with reason
-    `not_linked`. That is the honest answer.
+  - None of these sources is connected yet. Until they are, the operator keeps an evidence
+    file that stands in for them (see "The Check 2 evidence file"). Without that file, every
+    person fails Check 2 with reason `not_linked`. That is the honest answer.
 - **The open-weights lane.** A person who passes Check 1 and fails Check 2 goes to one
   configured coworker, the lane (`NANOCLAW_INPUT_GATE_OPEN_LANE`). The lane is *ready*
   only when its group is `weights=open` and every role (doer, small, router, critic)
@@ -67,6 +68,7 @@ delivery:
 | `NANOCLAW_INPUT_GATE_ROSTER` | `data/input-gate-roster.json` | the maintainer roster |
 | `NANOCLAW_INPUT_GATE_ORG` | `shader-slang` | the org whose members count as allowlisted |
 | `NANOCLAW_INPUT_GATE_REPOS` | every repo of the org | comma-separated repos whose write permission counts for Check 1 |
+| `NANOCLAW_INPUT_GATE_ELIGIBILITY` | `data/input-gate-eligibility.json` | the Check 2 evidence file; a missing file leaves every person `not_linked` |
 | `NANOCLAW_INPUT_GATE_OPEN_LANE` | none | agent group folder of the open-weights lane; make the group with `ncl groups config update --id <group> --weights open` |
 
 The roster is a JSON array keyed on the numeric id, because logins can be renamed. Keep it
@@ -75,6 +77,36 @@ out of public repos:
 ```json
 [{ "github_id": 12345678, "login": "maintainer-a" }]
 ```
+
+## The Check 2 evidence file
+
+The Entra, HR and location adapters need approvals that are still open. Until they exist,
+the operator keeps a JSON file with the same three inputs. It sits behind the same
+`EligibilitySources` seam, so an adapter replaces it with no change to the gate. Keep it
+out of public repos:
+
+```json
+{
+  "locationMaxAgeHours": 24,
+  "people": {
+    "github:12345678": {
+      "identity": "verified",
+      "entity": "verified",
+      "location": { "state": "verified", "checkedAt": "2026-11-14T10:00:00Z" }
+    }
+  }
+}
+```
+
+- A key is `github:` and the numeric id, because logins can be renamed.
+- A state is `verified`, `unknown`, `expired`, `conflicting` or `denied`. Any other value counts as `unknown`.
+- A `verified` location older than 24 hours counts as `expired`, and the reason is `location_stale`. The file may shorten the window with `locationMaxAgeHours`, never lengthen it. A longer or invalid value makes the gate ignore the file, with one warning.
+- A `checkedAt` is an ISO 8601 timestamp with an explicit zone, such as `2026-11-14T10:00:00Z`. A bare date, a time without a zone, a day that does not exist, and a time in the future count as `unknown`.
+- An id must be a positive integer. Any other id counts as `unknown`.
+- A person who is not in the file, an account without an id, and a file that is missing or malformed all count as `unknown`.
+- The gate reads the file at each decision, so an edit takes effect at once. It takes one snapshot per decision, so a change during a decision cannot mix two versions. A malformed file logs one warning.
+
+The file records evidence that the operator checked by hand. The gate stores only the states, as before.
 
 Lookups use the host's `gh` login: `repos/{repo}/collaborators/{login}/permission` and a
 GraphQL `user.organization` query. The GraphQL query sees private members only when that
@@ -126,6 +158,6 @@ decisions:
   keyed on the thread, as `gh_thread_origin` is.
 - **Carrying the person down the chain**, with a recheck before every closed-model call.
 - **The "verify to continue" reply.**
-- **The Entra, HR and location adapters for Check 2.**
+- **The Entra, HR and location adapters for Check 2.** The evidence file covers them until they exist.
 
 Open: Q1 (roster contents and regions), Q5 (the recheck choice), Q8 (retention).
