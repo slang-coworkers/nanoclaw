@@ -1,3 +1,4 @@
+import type { SessionPrivilege } from '../modules/session-privilege/index.js';
 import type { PendingApproval, PendingQuestion, Session } from '../types.js';
 import { getDb, hasTable } from './connection.js';
 
@@ -12,11 +13,11 @@ export async function createSession(session: Session): Promise<void> {
   await getDb().run(
     `INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id,
                              display_title, title_source, title_updated_at,
-                             agent_provider, status, container_status, last_active, created_at)
+                             agent_provider, privilege, status, container_status, last_active, created_at)
        VALUES (@id, @agent_group_id, @messaging_group_id, @thread_id,
                @display_title, @title_source, @title_updated_at,
-               @agent_provider, @status, @container_status, @last_active, @created_at)`,
-    { display_title: null, title_source: null, title_updated_at: null, ...session },
+               @agent_provider, @privilege, @status, @container_status, @last_active, @created_at)`,
+    { display_title: null, title_source: null, title_updated_at: null, privilege: 'open', ...session },
   );
 }
 
@@ -50,19 +51,34 @@ export async function getSession(id: string): Promise<Session | undefined> {
   return getDb().get<Session>('SELECT * FROM sessions WHERE id = ?', id);
 }
 
-export async function findSession(messagingGroupId: string, threadId: string | null): Promise<Session | undefined> {
+/**
+ * The SQL fragment and parameter list that restrict a session lookup to one
+ * privilege. A lookup that names no privilege matches sessions of either one.
+ */
+function privilegeClause(privilege: SessionPrivilege | undefined): { sql: string; params: string[] } {
+  return privilege ? { sql: ' AND privilege = ?', params: [privilege] } : { sql: '', params: [] };
+}
+
+export async function findSession(
+  messagingGroupId: string,
+  threadId: string | null,
+  privilege?: SessionPrivilege,
+): Promise<Session | undefined> {
+  const p = privilegeClause(privilege);
   if (threadId) {
     return getDb().get<Session>(
-      'SELECT * FROM sessions WHERE messaging_group_id = ? AND thread_id = ? AND status = ?',
+      `SELECT * FROM sessions WHERE messaging_group_id = ? AND thread_id = ? AND status = ?${p.sql}`,
       messagingGroupId,
       threadId,
       'active',
+      ...p.params,
     );
   }
   return getDb().get<Session>(
-    'SELECT * FROM sessions WHERE messaging_group_id = ? AND thread_id IS NULL AND status = ?',
+    `SELECT * FROM sessions WHERE messaging_group_id = ? AND thread_id IS NULL AND status = ?${p.sql}`,
     messagingGroupId,
     'active',
+    ...p.params,
   );
 }
 
@@ -76,32 +92,42 @@ export async function findSessionForAgent(
   agentGroupId: string,
   messagingGroupId: string,
   threadId: string | null,
+  privilege?: SessionPrivilege,
 ): Promise<Session | undefined> {
+  const p = privilegeClause(privilege);
   if (threadId) {
     return getDb().get<Session>(
-      "SELECT * FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND thread_id = ? AND status = 'active'",
+      `SELECT * FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND thread_id = ? AND status = 'active'${p.sql}`,
       agentGroupId,
       messagingGroupId,
       threadId,
+      ...p.params,
     );
   }
   return getDb().get<Session>(
-    "SELECT * FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND thread_id IS NULL AND status = 'active'",
+    `SELECT * FROM sessions WHERE agent_group_id = ? AND messaging_group_id = ? AND thread_id IS NULL AND status = 'active'${p.sql}`,
     agentGroupId,
     messagingGroupId,
+    ...p.params,
   );
 }
 
 /** Find an active session for an agent + thread, ignoring messaging group. */
-export async function findSessionByAgentThread(agentGroupId: string, threadId: string): Promise<Session | undefined> {
+export async function findSessionByAgentThread(
+  agentGroupId: string,
+  threadId: string,
+  privilege?: SessionPrivilege,
+): Promise<Session | undefined> {
+  const p = privilegeClause(privilege);
   return getDb().get<Session>(
     // created_at ASC picks the earliest (canonical) session for a thread; id ASC
     // is a deterministic tie-break so a created_at collision can't make the
     // canonical choice nondeterministic (the gh-issue/pr collapse in
     // resolveSession depends on a stable winner).
-    "SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active' ORDER BY created_at ASC, id ASC LIMIT 1",
+    `SELECT * FROM sessions WHERE agent_group_id = ? AND thread_id = ? AND status = 'active'${p.sql} ORDER BY created_at ASC, id ASC LIMIT 1`,
     agentGroupId,
     threadId,
+    ...p.params,
   );
 }
 
@@ -126,15 +152,20 @@ export async function issueSessionExists(repo: string, issueNumber: number): Pro
 }
 
 /** Find an active session scoped to an agent group (ignoring messaging group). */
-export async function findSessionByAgentGroup(agentGroupId: string): Promise<Session | undefined> {
+export async function findSessionByAgentGroup(
+  agentGroupId: string,
+  privilege?: SessionPrivilege,
+): Promise<Session | undefined> {
+  const p = privilegeClause(privilege);
   return getDb().get<Session>(
     `SELECT * FROM sessions
        WHERE agent_group_id = ?
          AND status = 'active'
-         AND NOT (messaging_group_id IS NULL AND thread_id IS NOT NULL AND thread_id LIKE 'system:%')
+         AND NOT (messaging_group_id IS NULL AND thread_id IS NOT NULL AND thread_id LIKE 'system:%')${p.sql}
        ORDER BY created_at DESC
        LIMIT 1`,
     agentGroupId,
+    ...p.params,
   );
 }
 

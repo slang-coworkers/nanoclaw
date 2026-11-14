@@ -25,6 +25,7 @@ import { isTaskThread } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { withExistingMailboxSession, withMailboxSession } from '../../session-manager.js';
 import type { AgentGroup, MessagingGroup, Session } from '../../types.js';
+import { mayDeliverInto } from '../session-privilege/index.js';
 import {
   ECHO_CHANNEL_TIMELINE_SURFACE,
   ECHO_CHANNEL_TYPE,
@@ -140,7 +141,11 @@ export async function backfillSession(
     if (!options.created && selectHotSessions(candidates, mg.id, now).some((s) => s.id === session.id)) return;
     // Sources: the hot set of the OTHER sessions — exactly what a live fan
     // from any of them would have reached.
-    const sources = selectEchoTargets(candidates, session.id, mg.id, now);
+    // A session never mixes privileges: a closed session is not seeded with the
+    // words of an open sibling, whose senders are not approved for closed models.
+    const sources = selectEchoTargets(candidates, session.id, mg.id, now).filter((sibling) =>
+      mayDeliverInto(sibling, session),
+    );
     if (sources.length === 0) return;
 
     // Catch-up floor: the newest point in the conversation the session already

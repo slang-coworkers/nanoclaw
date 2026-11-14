@@ -14,6 +14,7 @@ vi.mock('../../config.js', async () => {
 });
 
 import { closeDb, createAgentGroup, initTestDb, runMigrations } from '../../db/index.js';
+import { getDb } from '../../db/connection.js';
 import { createMessagingGroup } from '../../db/messaging-groups.js';
 import { createSession, getSession, updateSession } from '../../db/sessions.js';
 import { createDestination } from '../agent-to-agent/db/agent-destinations.js';
@@ -451,6 +452,34 @@ describe('fanInboundMessage', () => {
     });
     expect(written).toBe(0);
     expect(readEchoRows('s-dm')).toHaveLength(0);
+  });
+});
+
+describe('session privilege', () => {
+  const closed = (s: Session): Session => ({ ...s, privilege: 'closed' });
+  const message = (src: Session) => ({
+    session: src,
+    mg: DM_MG,
+    messageId: 'msg-priv:ag-1',
+    kind: 'chat',
+    channelType: 'slack',
+    content: chatContent('please look at this'),
+    timestamp: NOW,
+  });
+
+  it("does not echo an open session's message into a closed sibling thread", async () => {
+    await getDb().run("UPDATE sessions SET privilege = 'closed' WHERE id = 's-dm-t2'");
+    expect(await fanInboundMessage(message(SRC_DM))).toBe(0);
+    expect(readEchoRows('s-dm-t2')).toHaveLength(0);
+  });
+
+  it("echoes a closed session's message into an open sibling, and between two closed siblings", async () => {
+    expect(await fanInboundMessage(message(closed(SRC_DM)))).toBe(1);
+    expect(readEchoRows('s-dm-t2')).toHaveLength(1);
+
+    await getDb().run("UPDATE sessions SET privilege = 'closed' WHERE id = 's-dm-t2'");
+    expect(await fanInboundMessage({ ...message(closed(SRC_DM)), messageId: 'msg-priv2:ag-1' })).toBe(1);
+    expect(readEchoRows('s-dm-t2')).toHaveLength(2);
   });
 });
 

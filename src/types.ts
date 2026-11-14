@@ -147,6 +147,8 @@ export interface Session {
   title_source?: 'auto' | 'manual' | 'heuristic' | null;
   title_updated_at?: string | null;
   agent_provider: string | null;
+  /** `open` sessions run open-weights models only; `closed` ones may run closed models. Fixed for the session's life. */
+  privilege?: 'open' | 'closed';
   status: 'active' | 'closed';
   container_status: 'running' | 'idle' | 'stopped';
   last_active: string | null;

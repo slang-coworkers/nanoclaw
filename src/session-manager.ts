@@ -14,6 +14,7 @@ import { DATA_DIR } from './config.js';
 import { getSourceFor as getA2aSourceFor } from './db/a2a-session-sources.js';
 import { getMessagingGroup } from './db/messaging-groups.js';
 import { isUniqueViolation } from './db/errors.js';
+import type { SessionPrivilege } from './modules/session-privilege/index.js';
 import {
   bindUnboundSession,
   createSession,
@@ -103,9 +104,10 @@ function sessionCreationKey(
   messagingGroupId: string | null,
   threadId: string | null,
   sessionMode: 'shared' | 'per-thread' | 'agent-shared',
+  privilege: SessionPrivilege,
 ): string {
-  if (sessionMode === 'agent-shared') return `agent\0${agentGroupId}`;
-  return `route\0${agentGroupId}\0${messagingGroupId ?? ''}\0${sessionMode === 'shared' ? '' : (threadId ?? '')}`;
+  if (sessionMode === 'agent-shared') return `agent\0${agentGroupId}\0${privilege}`;
+  return `route\0${agentGroupId}\0${messagingGroupId ?? ''}\0${sessionMode === 'shared' ? '' : (threadId ?? '')}\0${privilege}`;
 }
 
 /**
@@ -116,14 +118,19 @@ function sessionCreationKey(
  * - 'per-thread': one session per (messaging group, thread)
  * - 'agent-shared': one session per agent group — all messaging groups
  *   wired with this mode share a single session (e.g. GitHub + Slack)
+ *
+ * A session has one privilege for its whole life (src/modules/session-privilege),
+ * so every lookup below matches on it, and the session created here gets it. The
+ * same thread can hold an open and a closed session of one agent group.
  */
 export async function resolveSession(
   agentGroupId: string,
   messagingGroupId: string | null,
   threadId: string | null,
   sessionMode: 'shared' | 'per-thread' | 'agent-shared',
+  privilege: SessionPrivilege = 'open',
 ): Promise<{ session: Session; created: boolean }> {
-  const key = sessionCreationKey(agentGroupId, messagingGroupId, threadId, sessionMode);
+  const key = sessionCreationKey(agentGroupId, messagingGroupId, threadId, sessionMode, privilege);
   return withSessionCreationLock(key, async () => {
     // Canonical GitHub issue/PR chains: exactly one real conversation per
     // (agent, gh-issue/pr thread) globally. Collapse all a2a senders + the
@@ -156,7 +163,7 @@ export async function resolveSession(
     // not per-session — each inbound row still records who sent it, so the merged
     // session routes every reply home to the right peer.
     if (sessionMode !== 'shared' && sessionMode !== 'agent-shared' && threadId && /^gh-(issue|pr)-/.test(threadId)) {
-      const canonical = await findSessionByAgentThread(agentGroupId, threadId);
+      const canonical = await findSessionByAgentThread(agentGroupId, threadId, privilege);
       if (canonical) {
         return { session: canonical, created: false };
       }
@@ -164,7 +171,7 @@ export async function resolveSession(
 
     // agent-shared: single session per agent group, regardless of messaging group
     if (sessionMode === 'agent-shared') {
-      const existing = await findSessionByAgentGroup(agentGroupId);
+      const existing = await findSessionByAgentGroup(agentGroupId, privilege);
       if (existing) {
         // A session kept without a chat (its chat was deleted) takes the chat that
         // resumes it; cards and questions route only to the bound chat.
@@ -186,7 +193,7 @@ export async function resolveSession(
       const lookupThreadId = sessionMode === 'shared' ? null : threadId;
       // Scope lookup by agent_group_id so fan-out to multiple agents in the
       // same chat doesn't accidentally deliver to the wrong agent's session.
-      const existing = await findSessionForAgent(agentGroupId, messagingGroupId, lookupThreadId);
+      const existing = await findSessionForAgent(agentGroupId, messagingGroupId, lookupThreadId, privilege);
       if (existing) {
         return { session: existing, created: false };
       }
@@ -196,7 +203,7 @@ export async function resolveSession(
       if (lookupThreadId) {
         const mg = await getMessagingGroup(messagingGroupId);
         if (mg && mg.channel_type === 'dashboard') {
-          const crossChannel = await findSessionByAgentThread(agentGroupId, lookupThreadId);
+          const crossChannel = await findSessionByAgentThread(agentGroupId, lookupThreadId, privilege);
           if (crossChannel) {
             return { session: crossChannel, created: false };
           }
@@ -215,6 +222,7 @@ export async function resolveSession(
       title_source: null,
       title_updated_at: null,
       agent_provider: null,
+      privilege,
       status: 'active',
       container_status: 'stopped',
       last_active: null,
@@ -227,9 +235,9 @@ export async function resolveSession(
       if (!isUniqueViolation(error)) throw error;
       const existing =
         sessionMode === 'agent-shared'
-          ? await findSessionByAgentGroup(agentGroupId)
+          ? await findSessionByAgentGroup(agentGroupId, privilege)
           : messagingGroupId
-            ? await findSessionForAgent(agentGroupId, messagingGroupId, lookupThreadId)
+            ? await findSessionForAgent(agentGroupId, messagingGroupId, lookupThreadId, privilege)
             : undefined;
       if (!existing) throw error;
       return { session: existing, created: false };

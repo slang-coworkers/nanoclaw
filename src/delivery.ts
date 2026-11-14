@@ -31,6 +31,7 @@ import { runGuarded, type DeliveryGuardSpec, type GuardedDeliveryHandler } from 
 import { isUnguarded, unguarded, type Unguarded } from './guard/index.js';
 import { mapConcurrent } from './concurrency.js';
 import { fanOutboundMessage } from './modules/cross-session-context/index.js';
+import { sessionPrivilegeOf } from './modules/session-privilege/index.js';
 import { pickApprover, pickApprovalDelivery } from './modules/approvals/primitive.js';
 import { getEpisode as getCostEpisode } from './db/cost-escalation-episodes.js';
 import { ingestCostEscalation, requestCostDecisionCard } from './modules/cost-approval/index.js';
@@ -906,6 +907,7 @@ async function deliverMessage(
             mg.id,
             crossThreadId,
             crossThreadId ? 'per-thread' : 'shared',
+            sessionPrivilegeOf(session),
           );
           const crossId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
           const forwardedContent = msg.content;

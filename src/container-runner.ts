@@ -56,6 +56,7 @@ import {
 } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
+import { rowForPrivilege, sessionPrivilegeOf } from './modules/session-privilege/index.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
@@ -3285,7 +3286,10 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
   // would call a closed model does not start. The policy's keys go in one lane
   // only: the provider's contribution (e.g. OPENCODE_SMALL_MODEL from the host
   // .env) would otherwise win the collision and undo the group's setting.
-  const models = resolveGroupModels(input.provider ?? 'claude', (await getContainerConfig(agentGroup.id)) ?? {});
+  const models = resolveGroupModels(
+    input.provider ?? 'claude',
+    rowForPrivilege((await getContainerConfig(agentGroup.id)) ?? {}, sessionPrivilegeOf(session)),
+  );
   const policyProblems = modelPolicyViolations(models);
   if (policyProblems.length > 0) {
     throw new Error(`Model policy refuses to start group "${agentGroup.name}": ${policyProblems.join('; ')}`);
