@@ -247,6 +247,30 @@ describe('backfillSession — new session', () => {
   });
 });
 
+describe('backfillSession — session privilege', () => {
+  const asPrivilege = (session: unknown, privilege: 'open' | 'closed') =>
+    ({ ...(session as object), privilege }) as never;
+
+  it('does not seed a closed session with the words of an open sibling', async () => {
+    recentSessions = [{ ...sess('sess-old', 'mg-dm', null), privilege: 'open' } as never];
+    topLevelSession = recentSessions[0];
+    await backfillSession(AG, asPrivilege(NEW_SESSION, 'closed'), DM_MG, { created: true, now: NOW });
+    expect(written).toHaveLength(0);
+    expect(opened).toEqual([]);
+  });
+
+  it('seeds a closed session from a closed sibling, and an open session from a closed one', async () => {
+    recentSessions = [{ ...sess('sess-old', 'mg-dm', null), privilege: 'closed' } as never];
+    topLevelSession = recentSessions[0];
+    await backfillSession(AG, asPrivilege(NEW_SESSION, 'closed'), DM_MG, { created: true, now: NOW });
+    expect(texts()).toEqual(['hello there', 'Hey Alex! I am Pete… tour?']);
+
+    written.length = 0;
+    await backfillSession(AG, asPrivilege(NEW_SESSION, 'open'), DM_MG, { created: true, now: NOW });
+    expect(texts()).toEqual(['hello there', 'Hey Alex! I am Pete… tour?']);
+  });
+});
+
 describe('backfillSession — existing session', () => {
   it('leaves a hot session alone: one central lookup, no mailbox traffic', async () => {
     recentSessions = [sess('sess-old', 'mg-dm', null), { ...(COLD_SESSION as object), status: 'active' } as never];

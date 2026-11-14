@@ -29,11 +29,19 @@ Before `enforce`, move every group to open weights (`scripts/open-weights-plan.t
 | A delegation from one coworker to another | The privilege of the sending session. |
 | A scheduled task, a system session | `open`. |
 
+The privilege belongs to the account that triggered the event, not to the author of the words it carries. Consider an outsider who opens an issue, and an approved maintainer who then adds the `bot-ok` label. The label event hands the issue to the bot, and the maintainer is the sender, so the issue goes to a closed session. The maintainer has chosen to direct the coworker. Closed-model access follows who directs the model, as in the input gate, and the newcomer rules decide whose issues the bot may read at all.
+
 When a PR is owned by a session of one privilege and a comment arrives from a sender of the other, the comment goes to a session of the sender's privilege on the same thread, created if needed. It never reaches the owner session.
 
 ## What a session may write into
 
 An **open** session never writes into a **closed** one: a person who is not approved would direct a closed model through the open session. A closed session may write into an open one, because the open session only reads the closed model's output, as the public thread already does. A reply or a `target_session_id` that names a closed session from an open one is refused, and the sender is told. A fresh delegation is not refused, because it gets a session of the sender's privilege.
+
+The same rule holds for cross-session context. The echo fan-out copies each message into the hot sibling sessions of the same conversation, and backfill seeds a waking session from its siblings. Both skip a closed target when the words come from an open session, so an unapproved person's message never lands in a closed session as ambient context.
+
+## Turning it off again
+
+With `NANOCLAW_SESSION_PRIVILEGE` unset, nothing changes on an install that never enforced it. On an install that did, the closed sessions stay in the database with their privilege. New messages go to open sessions, and an open session still cannot write into a closed one, so a closed session stays closed until it ends.
 
 ## What spawn does
 
