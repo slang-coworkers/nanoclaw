@@ -33,7 +33,8 @@ try {
   const plans = (await loadMigrationInputs()).map((input) => planGroupMigration(input, env));
   const count = (status: string) => plans.filter((p) => p.status === status).length;
   console.log(
-    `${plans.length} groups: ${count('migrate')} to migrate, ${count('already-open')} already open, ${count('blocked')} blocked\n`,
+    `${plans.length} groups: ${count('migrate')} to migrate, ${count('already-open')} already open, ${count('blocked')} blocked` +
+      `, ${plans.filter((p) => p.rebuildsImage).length} rebuild their image\n`,
   );
   console.log('| Group | Status | Provider | Today | After |');
   console.log('|---|---|---|---|---|');
