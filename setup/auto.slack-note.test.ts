@@ -41,7 +41,11 @@ beforeEach(() => {
   vi.stubEnv('NANOCLAW_BOOTSTRAPPED', '1');
   vi.stubEnv('NANOCLAW_AGENT_PROVIDER', 'claude');
   vi.stubEnv('NANOCLAW_TEMPLATE_PATH', '');
-  vi.stubEnv('NANOCLAW_SKIP', 'environment,container,gateway,auth,mounts,service,cli-agent,timezone,channel');
+  // `projects` is fork-only and unmocked: it shells `git ls-remote origin` for
+  // the nv-* project branches, which exist here, then blocks on an interactive
+  // multiselect the @clack mock below does not implement. Upstream omits it
+  // because a stock install has no project branches and the step no-ops.
+  vi.stubEnv('NANOCLAW_SKIP', 'environment,projects,container,gateway,auth,mounts,service,cli-agent,timezone,channel');
 });
 afterEach(() => {
   vi.restoreAllMocks();
