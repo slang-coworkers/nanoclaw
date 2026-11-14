@@ -29,6 +29,7 @@ import { acceptWebhookDelivery, completeWebhookDelivery, failWebhookDelivery } f
 import { readEnvFile } from './env.js';
 import { mentionsHandle } from './github-mention.js';
 import { scheduleGitHubObservation } from './modules/input-gate/index.js';
+import { privilegeForGitHubSender } from './modules/session-privilege/index.js';
 import { log } from './log.js';
 import {
   TRUST_SIGNATURE_HEADER,
@@ -285,6 +286,12 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
   const repository = payload.repository as Record<string, unknown> | undefined;
   const repoFullName = typeof repository?.full_name === 'string' ? repository.full_name : '';
 
+  // The privilege the sender's session needs (src/modules/session-privilege). Only
+  // events that carry a person's words pass it on: an issue, a ready PR, a review
+  // and a mention. State events (merged, closed, CI failed, a thread resolved) follow
+  // the session that owns the PR, so a merge does not wake a second session.
+  const privilege = privilegeForGitHubSender(payload);
+
   // Owner filter (both trust paths): a delivery for a repo owner this
   // install does not serve is acknowledged and dropped here, before any
   // routing, mapping lookup, forwarding, or reaction can happen.
@@ -339,6 +346,7 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
       eventType: String(eventType),
       deliveryId: deliveryId,
       botOkLabeled,
+      privilege,
     });
     return { status: 200, body: { ok: true, outcome } };
   }
@@ -385,6 +393,7 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
         eventType: String(eventType),
         deliveryId: deliveryId,
         headSha: typeof reviewableHead.sha === 'string' ? reviewableHead.sha : '',
+        privilege,
       });
       return { status: 200, body: { ok: true, outcome } };
     }
@@ -479,6 +488,7 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
       rawBody,
       eventType: String(eventType),
       deliveryId: deliveryId,
+      privilege,
     });
     return { status: 200, body: { ok: true, outcome } };
   }
@@ -731,6 +741,7 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
     rawBody,
     eventType: String(eventType),
     deliveryId: deliveryId,
+    privilege,
   });
 
   // 👀 ack — only on comments the bot is actually going to work on, i.e.
