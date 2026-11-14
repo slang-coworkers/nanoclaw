@@ -30,6 +30,7 @@ import {
 } from './db/messaging-groups.js';
 import { findSessionForAgent } from './db/sessions.js';
 import { backfillSession, fanInboundMessage } from './modules/cross-session-context/index.js';
+import { privilegeForSender } from './modules/session-privilege/index.js';
 import { startTypingRefresh, stopTypingRefresh } from './modules/typing/index.js';
 import { log } from './log.js';
 import { resolveSession, withExistingMailboxSession, writeSessionMessage } from './session-manager.js';
@@ -615,11 +616,15 @@ async function deliverToAgent(
     }
   }
 
+  // The sender's privilege picks the session: an approved person gets a closed
+  // session of this agent, anyone else an open one, so a thread can hold both
+  // and neither session ever mixes the two (src/modules/session-privilege).
   const { session, created } = await resolveSession(
     agent.agent_group_id,
     mg.id,
     effectiveThreadId,
     effectiveSessionMode,
+    privilegeForSender(userId),
   );
 
   // Seed the new per-thread session with the parent message (if the caller

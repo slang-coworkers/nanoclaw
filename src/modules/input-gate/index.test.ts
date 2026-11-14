@@ -98,6 +98,55 @@ describe('observeGitHubDelivery', () => {
     expect(await listGateDecisions()).toMatchObject([{ outcome: 'open_lane', reason: 'not_linked' }]);
   });
 
+  describe('the evidence file for Check 2', () => {
+    const member = { repoPermission: vi.fn(async () => 'read'), orgMember: vi.fn(async () => true) };
+    const evidence = (people: unknown) => {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gate-elig-'));
+      const file = path.join(dir, 'eligibility.json');
+      fs.writeFileSync(file, JSON.stringify({ people }));
+      return { dir, file };
+    };
+    const verified = {
+      identity: 'verified',
+      entity: 'verified',
+      location: { state: 'verified', checkedAt: new Date().toISOString() },
+    };
+
+    it('admits an allowlisted person whose evidence in the file is verified and fresh', async () => {
+      const { dir, file } = evidence({ 'github:55': verified });
+      try {
+        setInputGateDepsForTest({ settings: () => ({ ...shadow, eligibilityPath: file }), lookups: member });
+        expect(await observe()).toMatchObject({ outcome: 'admitted', tier: 'allowlisted', reason: null });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('records location_stale for an allowlisted person whose location is too old', async () => {
+      const old = {
+        ...verified,
+        location: { state: 'verified', checkedAt: new Date(Date.now() - 30 * 3_600_000).toISOString() },
+      };
+      const { dir, file } = evidence({ 'github:55': old });
+      try {
+        setInputGateDepsForTest({ settings: () => ({ ...shadow, eligibilityPath: file }), lookups: member });
+        expect(await observe()).toMatchObject({ outcome: 'not_eligible', reason: 'location_stale' });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('leaves a person who is not in the file not_linked, as before', async () => {
+      const { dir, file } = evidence({ 'github:999': verified });
+      try {
+        setInputGateDepsForTest({ settings: () => ({ ...shadow, eligibilityPath: file }), lookups: member });
+        expect(await observe()).toMatchObject({ outcome: 'not_eligible', reason: 'not_linked' });
+      } finally {
+        fs.rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
   it('an invalid lane keeps the person not eligible and warns once', async () => {
     const warn = vi.spyOn(log, 'warn');
     const member = { repoPermission: vi.fn(async () => 'read'), orgMember: vi.fn(async () => true) };
@@ -161,6 +210,14 @@ describe('readGateSettings', () => {
     expect(s.org).toBe('shader-slang');
     expect(s.repos).toBeNull();
     expect(s.openLane).toBeNull();
+  });
+
+  it('reads the evidence file path, with a default under data/', () => {
+    delete process.env.NANOCLAW_INPUT_GATE_ELIGIBILITY;
+    expect(readGateSettings().eligibilityPath?.endsWith('data/input-gate-eligibility.json')).toBe(true);
+    process.env.NANOCLAW_INPUT_GATE_ELIGIBILITY = '/srv/gate/eligibility.json';
+    expect(readGateSettings().eligibilityPath).toBe('/srv/gate/eligibility.json');
+    delete process.env.NANOCLAW_INPUT_GATE_ELIGIBILITY;
   });
 
   it('reads the open-weights lane folder', () => {
