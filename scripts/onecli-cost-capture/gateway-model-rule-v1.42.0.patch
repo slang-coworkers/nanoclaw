@@ -1,0 +1,406 @@
+diff --git a/apps/gateway/src/condition_match.rs b/apps/gateway/src/condition_match.rs
+index 4e03fbd..7e948d8 100644
+--- a/apps/gateway/src/condition_match.rs
++++ b/apps/gateway/src/condition_match.rs
+@@ -1,18 +1,337 @@
+ use crate::policy::PolicyRule;
++use http_body_util::BodyExt;
++use hyper::body::Body as _;
+ 
+-/// OSS stub: no condition matching, no body buffering.
+-pub(crate) fn needs_body_buffer(_rules: &[PolicyRule]) -> bool {
+-    false
++// Body-condition matcher for the legacy policy rules.
++//
++// A rule's `conditions` column holds a JSON array of conditions, and the rule applies to a request
++// only when every condition holds. We support one target and two operators, because the coworker
++// deployment uses them to keep closed models away from the open agent:
++//
++//   {"target": "body", "key": "model", "operator": "not_in", "value": "nvidia/*,openai/nvidia/*"}
++//
++// `target = "body"` reads the JSON request body and `key` is a dotted path into it. The value is
++// a comma-separated list of globs (a JSON array of strings also works), where `*` matches any run
++// of characters, because model ids contain `/`. The web API keeps `value` a string, so a list
++// travels as one comma-separated string. `in` holds when
++// the field is present and matches a glob. `not_in` holds when the field is missing, is not a
++// string, or matches no glob, so a block rule with `not_in` fails closed: a request whose model we
++// cannot read is refused rather than let through.
++// A body whose top-level object repeats the first segment of `key`, in any ASCII case, counts as
++// unreadable, because another JSON parser on the way could read a different copy.
++//
++// A condition we do not understand (another target, another operator, a malformed value) holds, as
++// every condition did before this matcher existed. The decision cannot depend on the rule's action,
++// because the v2 engine matches every rule through a throwaway rule whose action is always `Allow`.
++// A rule that must not be skipped therefore uses `not_in` on a block rule, which holds when the
++// field is unreadable, and an allow rule that must not widen uses `in`.
++
++/// The largest request body we buffer to read a condition. A larger body, or one of unknown length,
++/// streams through unread, and the body conditions then see no body.
++const MAX_BUFFERED_BODY: usize = 32 * 1024 * 1024;
++
++/// A request body that carries JSON-sized data: the methods that can have a body.
++fn method_has_body(method: &str) -> bool {
++    matches!(
++        method.to_ascii_uppercase().as_str(),
++        "POST" | "PUT" | "PATCH"
++    )
+ }
+ 
+-pub(crate) fn matches(_rule: &PolicyRule, _body: Option<&[u8]>) -> bool {
+-    true
++/// The conditions of a rule as a list, or `None` when the rule has no conditions.
++fn condition_list(rule: &PolicyRule) -> Option<&Vec<serde_json::Value>> {
++    rule.conditions_raw
++        .as_ref()
++        .and_then(|v| v.as_array())
++        .filter(|a| !a.is_empty())
+ }
+ 
++fn is_body_condition(cond: &serde_json::Value) -> bool {
++    cond.get("target").and_then(|t| t.as_str()) == Some("body")
++}
++
++/// Whether any rule has a condition on the request body, so the gateway must buffer the body.
++pub(crate) fn needs_body_buffer(rules: &[PolicyRule]) -> bool {
++    rules
++        .iter()
++        .filter_map(condition_list)
++        .any(|list| list.iter().any(is_body_condition))
++}
++
++/// Whether the conditions of `rule` hold for a request with the given body.
++///
++/// A rule with no conditions holds, as it did before this matcher existed.
++pub(crate) fn matches(rule: &PolicyRule, body: Option<&[u8]>) -> bool {
++    let Some(list) = condition_list(rule) else {
++        return true;
++    };
++    list.iter().all(|cond| eval(cond, body).unwrap_or(true))
++}
++
++/// Evaluate one condition. Returns `None` when the condition is not one we understand.
++fn eval(cond: &serde_json::Value, body: Option<&[u8]>) -> Option<bool> {
++    if !is_body_condition(cond) {
++        return None;
++    }
++    let key = cond.get("key")?.as_str()?;
++    let operator = cond.get("operator")?.as_str()?;
++    let globs: Vec<&str> = match cond.get("value")? {
++        serde_json::Value::String(s) => s
++            .split(',')
++            .map(str::trim)
++            .filter(|g| !g.is_empty())
++            .collect(),
++        serde_json::Value::Array(items) => items
++            .iter()
++            .map(|v| v.as_str())
++            .collect::<Option<Vec<_>>>()?,
++        _ => return None,
++    };
++    let field = body_field(body, key);
++    let listed = field
++        .as_deref()
++        .is_some_and(|f| globs.iter().any(|g| glob_match(g, f)));
++    match operator {
++        "in" => Some(listed),
++        "not_in" => Some(!listed),
++        _ => None,
++    }
++}
++
++/// Whether the top-level object of `body` holds the key `name` more than once, spelled with any
++/// ASCII case, or is not an object at all. A JSON parser may keep the first, the last or a
++/// case-folded copy of such a key, so another parser in the path could read a different value than
++/// we do. We treat that body as unreadable instead of choosing one.
++fn top_level_key_is_ambiguous(body: &[u8], name: &str) -> bool {
++    use serde::de::{Deserializer, IgnoredAny, MapAccess, Visitor};
++    struct Counter<'a>(&'a str);
++    impl<'de> Visitor<'de> for Counter<'_> {
++        type Value = bool;
++        fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
++            f.write_str("a JSON object")
++        }
++        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<bool, A::Error> {
++            let mut seen = 0usize;
++            while let Some(key) = map.next_key::<String>()? {
++                if key.eq_ignore_ascii_case(self.0) {
++                    seen += 1;
++                }
++                map.next_value::<IgnoredAny>()?;
++            }
++            Ok(seen > 1)
++        }
++    }
++    let mut de = serde_json::Deserializer::from_slice(body);
++    de.deserialize_map(Counter(name)).unwrap_or(true)
++}
++
++/// The string at dotted path `key` of the JSON body, or `None` when the body is missing, is not
++/// JSON, repeats the first segment of `key` in its top-level object, or holds no string there.
++fn body_field(body: Option<&[u8]>, key: &str) -> Option<String> {
++    let body = body?;
++    if top_level_key_is_ambiguous(body, key.split('.').next().unwrap_or(key)) {
++        return None;
++    }
++    let mut node: serde_json::Value = serde_json::from_slice(body).ok()?;
++    for part in key.split('.') {
++        node = node.get_mut(part)?.take();
++    }
++    match node {
++        serde_json::Value::String(s) => Some(s),
++        _ => None,
++    }
++}
++
++/// Glob match where `*` matches any run of characters, including `/` and none.
++fn glob_match(pattern: &str, text: &str) -> bool {
++    let (p, t) = (pattern.as_bytes(), text.as_bytes());
++    let (mut pi, mut ti) = (0, 0);
++    let (mut star, mut mark) = (None, 0);
++    while ti < t.len() {
++        if pi < p.len() && p[pi] == b'*' {
++            star = Some(pi);
++            mark = ti;
++            pi += 1;
++        } else if pi < p.len() && p[pi] == t[ti] {
++            pi += 1;
++            ti += 1;
++        } else if let Some(s) = star {
++            pi = s + 1;
++            mark += 1;
++            ti = mark;
++        } else {
++            return false;
++        }
++    }
++    p[pi..].iter().all(|&c| c == b'*')
++}
++
++/// Read the request body into memory when it can carry a model field, so the conditions can see it,
++/// and forward the same bytes. A bodyless method, a large body or a body of unknown length streams
++/// through untouched and the conditions see no body.
+ pub(crate) async fn prepare_body(
+     body: hyper::body::Incoming,
+-    _method: &str,
++    method: &str,
+     _url: &str,
+ ) -> anyhow::Result<(Option<Vec<u8>>, reqwest::Body)> {
+-    Ok((None, reqwest::Body::wrap(body)))
++    let small_enough = body
++        .size_hint()
++        .upper()
++        .is_some_and(|n| n <= MAX_BUFFERED_BODY as u64);
++    if !method_has_body(method) || !small_enough {
++        return Ok((None, reqwest::Body::wrap(body)));
++    }
++    let bytes = body.collect().await?.to_bytes();
++    Ok((Some(bytes.to_vec()), reqwest::Body::from(bytes)))
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++    use crate::policy::PolicyAction;
++    use serde_json::json;
++
++    fn rule(action: PolicyAction, conditions: Option<serde_json::Value>) -> PolicyRule {
++        PolicyRule {
++            name: "r".into(),
++            path_pattern: "/v1/*".into(),
++            method: Some("POST".into()),
++            action,
++            conditions_raw: conditions,
++        }
++    }
++
++    fn open_only() -> serde_json::Value {
++        json!([{"target": "body", "key": "model", "operator": "not_in",
++                "value": "nvidia/*, openai/nvidia/*"}])
++    }
++
++    #[test]
++    fn list_value_works_as_string_and_as_array() {
++        let as_array = json!([{"target": "body", "key": "model", "operator": "not_in",
++                               "value": ["nvidia/*", "openai/nvidia/*"]}]);
++        let body = br#"{"model":"openai/nvidia/glm"}"#;
++        assert!(!matches(&rule(PolicyAction::Block, Some(open_only())), Some(body)));
++        assert!(!matches(&rule(PolicyAction::Block, Some(as_array)), Some(body)));
++    }
++
++    #[test]
++    fn glob_star_matches_slashes_and_nothing() {
++        assert!(glob_match("nvidia/*", "nvidia/zai-org/glm-5.3"));
++        assert!(glob_match("nvidia/*", "nvidia/"));
++        assert!(glob_match("*", ""));
++        assert!(glob_match("a*c*e", "abcde"));
++        assert!(!glob_match("nvidia/*", "aws/anthropic/claude"));
++        assert!(!glob_match("glm", "glm-5"));
++    }
++
++    #[test]
++    fn open_model_passes_the_block_rule() {
++        let r = rule(PolicyAction::Block, Some(open_only()));
++        let body = br#"{"model":"nvidia/zai-org/glm-5.3","messages":[]}"#;
++        assert!(!matches(&r, Some(body)));
++    }
++
++    #[test]
++    fn closed_model_hits_the_block_rule() {
++        let r = rule(PolicyAction::Block, Some(open_only()));
++        let body = br#"{"model":"aws/anthropic/bedrock-claude-opus-5-5","messages":[]}"#;
++        assert!(matches(&r, Some(body)));
++    }
++
++    #[test]
++    fn unreadable_model_hits_the_block_rule() {
++        let r = rule(PolicyAction::Block, Some(open_only()));
++        assert!(matches(&r, None));
++        assert!(matches(&r, Some(b"not json")));
++        assert!(matches(&r, Some(br#"{"messages":[]}"#)));
++        assert!(matches(&r, Some(br#"{"model":7}"#)));
++    }
++
++    #[test]
++    fn a_repeated_model_key_is_unreadable_so_the_block_rule_holds() {
++        let r = rule(PolicyAction::Block, Some(open_only()));
++        for body in [
++            // The last copy is open and the first is closed, or the other way round.
++            &br#"{"model":"aws/anthropic/claude","model":"nvidia/zai-org/glm-5.3"}"#[..],
++            &br#"{"model":"nvidia/zai-org/glm-5.3","model":"aws/anthropic/claude"}"#[..],
++            // A case variant, and a key spelled with a unicode escape.
++            &br#"{"model":"nvidia/zai-org/glm-5.3","MODEL":"aws/anthropic/claude"}"#[..],
++            &br#"{"model":"nvidia/zai-org/glm-5.3","mod\u0065l":"aws/anthropic/claude"}"#[..],
++            // Not an object.
++            &br#"["nvidia/zai-org/glm-5.3"]"#[..],
++        ] {
++            assert!(matches(&r, Some(body)), "{}", String::from_utf8_lossy(body));
++        }
++        // One copy of the key, even next to other keys, still reads normally.
++        let ok = br#"{"messages":[{"model":"x"}],"model":"nvidia/zai-org/glm-5.3"}"#;
++        assert!(!matches(&r, Some(ok)));
++    }
++
++    #[test]
++    fn in_operator_needs_a_listed_model() {
++        let cond = json!([{"target": "body", "key": "model", "operator": "in", "value": "gpt-*"}]);
++        let r = rule(PolicyAction::Block, Some(cond));
++        assert!(matches(&r, Some(br#"{"model":"gpt-5"}"#)));
++        assert!(!matches(&r, Some(br#"{"model":"glm-5"}"#)));
++        assert!(!matches(&r, None));
++    }
++
++    #[test]
++    fn dotted_key_reads_nested_field() {
++        let cond = json!([{"target": "body", "key": "request.model", "operator": "in", "value": ["a"]}]);
++        let r = rule(PolicyAction::Block, Some(cond));
++        assert!(matches(&r, Some(br#"{"request":{"model":"a"}}"#)));
++        assert!(!matches(&r, Some(br#"{"request":{"model":"b"}}"#)));
++    }
++
++    #[test]
++    fn every_condition_must_hold() {
++        let cond = json!([
++            {"target": "body", "key": "model", "operator": "in", "value": ["a"]},
++            {"target": "body", "key": "stream", "operator": "in", "value": ["yes"]}
++        ]);
++        let r = rule(PolicyAction::Block, Some(cond));
++        assert!(!matches(&r, Some(br#"{"model":"a"}"#)));
++    }
++
++    #[test]
++    fn rule_without_conditions_holds() {
++        assert!(matches(&rule(PolicyAction::Block, None), None));
++        assert!(matches(&rule(PolicyAction::Block, Some(json!([]))), None));
++        assert!(matches(&rule(PolicyAction::Block, Some(json!(null))), None));
++    }
++
++    #[test]
++    fn unknown_condition_holds_for_every_action() {
++        let unknown = json!([{"target": "header", "key": "x", "operator": "in", "value": ["y"]}]);
++        let bad_op = json!([{"target": "body", "key": "model", "operator": "regex", "value": ["x"]}]);
++        let no_key = json!([{"target": "body", "operator": "contains", "value": "x"}]);
++        let bad_value = json!([{"target": "body", "key": "model", "operator": "in", "value": 5}]);
++        for cond in [unknown, bad_op, no_key, bad_value] {
++            for action in [PolicyAction::Block, PolicyAction::Allow] {
++                assert!(matches(&rule(action, Some(cond.clone())), None));
++            }
++        }
++    }
++
++    #[test]
++    fn only_body_conditions_ask_for_the_body() {
++        let body_rule = rule(PolicyAction::Block, Some(open_only()));
++        let header_rule = rule(
++            PolicyAction::Block,
++            Some(json!([{"target": "header", "key": "x", "operator": "in", "value": ["y"]}])),
++        );
++        assert!(needs_body_buffer(&[header_rule.clone(), body_rule]));
++        assert!(!needs_body_buffer(&[header_rule]));
++        assert!(!needs_body_buffer(&[rule(PolicyAction::Block, None)]));
++    }
++
++    #[test]
++    fn only_methods_with_a_body_are_buffered() {
++        assert!(method_has_body("post"));
++        assert!(method_has_body("PUT"));
++        assert!(!method_has_body("GET"));
++        assert!(!method_has_body("CONNECT"));
++    }
+ }
+diff --git a/apps/gateway/src/policy_engine/enforce.rs b/apps/gateway/src/policy_engine/enforce.rs
+index be43b1f..40e96c7 100644
+--- a/apps/gateway/src/policy_engine/enforce.rs
++++ b/apps/gateway/src/policy_engine/enforce.rs
+@@ -27,7 +27,7 @@ use crate::db::{
+     AvailableApps, ConnectionProviders, PolicyRuleV2Row, PolicyV2Rules, SecretHosts,
+ };
+ use crate::gateway::{strip_port, ProxyContext};
+-use crate::policy::{check_rate_limit, MatchedRule, PolicyDecision};
++use crate::policy::{check_rate_limit, MatchedRule, PolicyAction, PolicyDecision, PolicyRule};
+ 
+ use super::assemble::assemble;
+ use super::evaluate::evaluate_outcome;
+@@ -47,11 +47,24 @@ fn enforce_v2_enabled() -> bool {
+     )
+ }
+ 
+-/// `false` always: OSS's `condition_match` arm cannot buffer bodies and never
+-/// evaluates conditions (they match vacuously, exactly like the legacy OSS
+-/// gateway), so there is nothing to buffer for.
+-pub(crate) fn needs_body_buffer(_v2: &PolicyV2Rules) -> bool {
+-    false
++/// Whether any loaded rule has a condition on the request body, so the gateway buffers the body
++/// before the decision. The `condition_match` arm decides which conditions read the body; we hand it
++/// each rule's conditions as a legacy rule, because it works on that shape in both editions.
++pub(crate) fn needs_body_buffer(v2: &PolicyV2Rules) -> bool {
++    let conditioned: Vec<PolicyRule> = v2
++        .org
++        .iter()
++        .chain(v2.project.iter())
++        .filter(|r| r.conditions.is_some())
++        .map(|r| PolicyRule {
++            name: r.name.clone(),
++            path_pattern: String::new(),
++            method: None,
++            action: PolicyAction::Block,
++            conditions_raw: r.conditions.clone(),
++        })
++        .collect();
++    crate::condition_match::needs_body_buffer(&conditioned)
+ }
+ 
+ /// Equipment rows are excluded: they are injection-only (dropped by the
+diff --git a/packages/api/src/validations/policy-rule.ts b/packages/api/src/validations/policy-rule.ts
+index a4030f2..f5cbd72 100644
+--- a/packages/api/src/validations/policy-rule.ts
++++ b/packages/api/src/validations/policy-rule.ts
+@@ -5,7 +5,8 @@ export type PolicyMode = z.infer<typeof policyModeSchema>;
+ 
+ export const ruleConditionSchema = z.object({
+   target: z.enum(["body"]),
+-  operator: z.enum(["contains"]),
++  // "in" and "not_in" test the JSON field at `key` against a comma-separated list of globs.
++  operator: z.enum(["contains", "in", "not_in"]),
+   value: z.string().min(1).max(1000),
+   key: z.string().max(500).optional(),
+ });

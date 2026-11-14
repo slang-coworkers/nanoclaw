@@ -33,6 +33,18 @@ export interface GatewaySessionInput {
   /** The agent group's display name, for gateways that register an agent identity. */
   groupName: string;
   /**
+   * The session's privilege (src/modules/session-privilege). A gateway that keeps one
+   * identity per agent group gives a closed session its own identity, so the gateway can
+   * hold closed and open sessions of one group to different rules. Absent counts as open.
+   */
+  privilege?: 'open' | 'closed';
+  /**
+   * True when the gateway must refuse closed models from this session's identity. It is set only
+   * while session privilege is enforced, for an open session. A gateway that cannot hold the
+   * boundary fails the spawn rather than start the session without it.
+   */
+  openModelsOnly?: boolean;
+  /**
    * The agent provider a new runtime runs, by provider name; absent when adopting.
    * Gateways that grant model credentials per agent key on it.
    */
@@ -93,6 +105,8 @@ export interface GatewayApprovalRequest {
     resource: string;
     reason: string;
     details?: { label: string; value: string }[];
+    /** Details left out after the sixth; the card shows the count. */
+    omittedDetails?: number;
   };
   /** Policy-selected, privacy-reviewed fields. Rejected if oversized; never silently truncated. */
   displayFields?: Array<
