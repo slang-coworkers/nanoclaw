@@ -57,6 +57,7 @@ For each group the plan:
 - sets `--weights open`;
 - clears a role whose own model is closed, so the open default applies;
 - keeps a role that already runs an open model. `--weights open` alone would replace a model that comes from the install setting (for example Kimi through `CODEX_MODEL`) with the open default, so the plan sets the role to its current model;
-- names an active session that pins another provider as a blocker. The pin outranks the group, so that session would not start after the move.
+- names an active session that pins another provider as a blocker. The pin outranks the group, so that session would not start after the move;
+- rebuilds the image of a group that pins one this install derived for it (`<image base>:<group id>`, built when the group installed packages). That image can predate the new provider's runtime: an image built before OpenCode has no `opencode` binary, and the container fails at start with `Executable not found in $PATH: "opencode"`. The restart of such a group carries `--rebuild`. A pin on any other image blocks a provider change, because nothing here builds it.
 
 It prints the `ncl` commands for each group, ending with `ncl groups restart`.
