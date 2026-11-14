@@ -33,6 +33,12 @@ export interface GatewaySessionInput {
   /** The agent group's display name, for gateways that register an agent identity. */
   groupName: string;
   /**
+   * The session's privilege (src/modules/session-privilege). A gateway that keeps one
+   * identity per agent group gives a closed session its own identity, so the gateway can
+   * hold closed and open sessions of one group to different rules. Absent counts as open.
+   */
+  privilege?: 'open' | 'closed';
+  /**
    * The agent provider a new runtime runs, by provider name; absent when adopting.
    * Gateways that grant model credentials per agent key on it.
    */

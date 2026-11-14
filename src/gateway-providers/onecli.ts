@@ -53,6 +53,42 @@ const onecli = new OneCLI({ url: onecliUrl, apiKey: onecliApiKey, timeout: ONECL
 // an agent deleted out-of-band is re-ensured by the next spawn.
 const ensuredAgents = new Set<string>();
 
+// Closed spawns of one group mirror its secrets one at a time in this process: two
+// mirrors that interleave their writes could combine the lists and modes of two reads.
+const mirrorTails = new Map<string, Promise<unknown>>();
+
+function serialized<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const run = (mirrorTails.get(key) ?? Promise.resolve()).then(fn, fn);
+  const tail = run.catch(() => undefined);
+  mirrorTails.set(key, tail);
+  void tail.then(() => {
+    if (mirrorTails.get(key) === tail) mirrorTails.delete(key);
+  });
+  return run;
+}
+
+/** Suffix of the OneCLI identifier of the agent that the closed sessions of a group use. */
+export const CLOSED_AGENT_SUFFIX = ':closed';
+
+/**
+ * The OneCLI agent identifier a session uses: the agent group id, or
+ * `<group id>:closed` for a closed session. The container cannot change its
+ * agent identity, which is why the gateway can hold closed and open sessions
+ * of one group to different rules.
+ */
+export function agentIdentifierFor(agentGroupId: string, privilege: 'open' | 'closed' | undefined): string {
+  // A group id that already ends in the suffix would share an identity with the closed agent of another group.
+  if (agentGroupId.endsWith(CLOSED_AGENT_SUFFIX)) {
+    throw new Error(`agent group id ${agentGroupId} ends with ${CLOSED_AGENT_SUFFIX}, which names a closed agent`);
+  }
+  return privilege === 'closed' ? `${agentGroupId}${CLOSED_AGENT_SUFFIX}` : agentGroupId;
+}
+
+/** The agent group id behind a OneCLI agent identifier of either privilege. */
+export function agentGroupIdOfIdentifier(identifier: string): string {
+  return identifier.endsWith(CLOSED_AGENT_SUFFIX) ? identifier.slice(0, -CLOSED_AGENT_SUFFIX.length) : identifier;
+}
+
 /** Tests: forget this process's memos, as a host restart does; the pending restrictions on disk stay. */
 export function _resetEnsuredAgentsForTesting(): void {
   ensuredAgents.clear();
@@ -332,6 +368,130 @@ export function newAgentSecretNames(
 }
 
 /**
+ * Give the agent `toIdentifier` every secret the agent `fromIdentifier` holds,
+ * so a closed session of a group keeps the tool secrets the operator granted to
+ * the group (a GitHub token, say). Only adds, and runs on every closed spawn, so
+ * a grant the operator adds later reaches the next closed session. It does not
+ * remove a grant the group's agent has lost. Returns the ids attached, or null on
+ * a gateway without grants (1.43 and older); `mirrorAgentSecrets` serves those.
+ */
+export async function copyAgentGrants(
+  fromIdentifier: string,
+  toIdentifier: string,
+  opts: ProviderGrantOptions,
+): Promise<string[] | null> {
+  const doFetch = opts.fetchImpl ?? fetch;
+  const base = opts.baseUrl.replace(/\/+$/, '');
+  const headers: Record<string, string> = {};
+  if (opts.apiKey) headers.Authorization = `Bearer ${opts.apiKey}`;
+  if (opts.projectId) headers['X-Project-Id'] = opts.projectId;
+  const request = (path: string, method = 'GET') =>
+    doFetch(`${base}${path}`, { method, headers, signal: AbortSignal.timeout(10_000) });
+  const agents = await request('/v1/agents');
+  if (agents.status === 404) return null;
+  if (!agents.ok) throw new Error(`GET /v1/agents returned ${agents.status}`);
+  const body = (await agents.json()) as unknown;
+  const rows = (Array.isArray(body) ? body : (body as { data?: unknown }).data) as Array<Record<string, unknown>>;
+  const idOf = (identifier: string) => {
+    const agent = rows.find((a) => a.identifier === identifier);
+    if (typeof agent?.id !== 'string') throw new Error(`OneCLI agent ${identifier} not found`);
+    return `/v1/agents/${encodeURIComponent(agent.id)}`;
+  };
+  const from = idOf(fromIdentifier);
+  const to = idOf(toIdentifier);
+  const secretsOf = async (agentPath: string): Promise<Set<unknown> | null> => {
+    const res = await request(`${agentPath}/grants`);
+    if (res.status === 404 && (await isUnknownRoute(res))) return null;
+    if (!res.ok) throw new Error(`GET ${agentPath}/grants returned ${res.status}`);
+    const secrets = ((await res.json()) as { secrets?: unknown }).secrets;
+    if (!Array.isArray(secrets)) throw new Error(`GET ${agentPath}/grants did not return a secrets list`);
+    return new Set(secrets.map((g) => (g as { secretId?: unknown }).secretId));
+  };
+  const source = await secretsOf(from);
+  if (source === null) return null;
+  const held = (await secretsOf(to)) ?? new Set();
+  const missing = [...source].filter((id): id is string => typeof id === 'string' && !held.has(id));
+  for (const id of missing) {
+    const res = await request(`${to}/grants/secrets/${encodeURIComponent(id)}`, 'PUT');
+    if (!res.ok) throw new Error(`attaching secret ${id} returned ${res.status}`);
+  }
+  return missing;
+}
+
+/**
+ * Make the secrets of the agent `toIdentifier` exactly the secrets of the agent
+ * `fromIdentifier`, on a gateway built on OneCLI 1.43 or older (such as
+ * onecli-cost). There an agent has one list of secrets and a mode, `all` or
+ * `selective`. A closed session uses the closed agent of its group, so the closed
+ * agent follows the group's agent, including a secret the operator revokes from
+ * the group: it is removed from the closed agent too.
+ *
+ * The writes go from narrow to wide, so a failure part-way never leaves the closed
+ * agent with more than the group's agent: the mode becomes `selective` first, then
+ * the list is set, and the mode becomes `all` last, only when the group's agent
+ * runs every secret. The group's agent is read twice, around its list, and the
+ * mirror fails when its mode changed in between, so the closed agent never gets
+ * the list of one state with the mode of another. Returns `unsupported` on a
+ * gateway without these routes.
+ */
+export async function mirrorAgentSecrets(
+  fromIdentifier: string,
+  toIdentifier: string,
+  opts: ProviderGrantOptions,
+): Promise<'mirrored' | 'unsupported'> {
+  const doFetch = opts.fetchImpl ?? fetch;
+  const base = opts.baseUrl.replace(/\/+$/, '');
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (opts.apiKey) headers.Authorization = `Bearer ${opts.apiKey}`;
+  if (opts.projectId) headers['X-Project-Id'] = opts.projectId;
+  const request = (path: string, method = 'GET', body?: unknown) =>
+    doFetch(`${base}${path}`, {
+      method,
+      headers,
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  const agents = await request('/api/agents');
+  if (agents.status === 404) return 'unsupported';
+  if (!agents.ok) throw new Error(`GET /api/agents returned ${agents.status}`);
+  const listed = (await agents.json()) as unknown;
+  const rows = (Array.isArray(listed) ? listed : (listed as { data?: unknown }).data) as Array<Record<string, unknown>>;
+  const find = (identifier: string) => {
+    const agent = rows.find((a) => a.identifier === identifier);
+    if (typeof agent?.id !== 'string') throw new Error(`OneCLI agent ${identifier} not found`);
+    return agent;
+  };
+  const from = find(fromIdentifier);
+  const to = find(toIdentifier);
+  const fromPath = `/api/agents/${encodeURIComponent(from.id as string)}`;
+  const toPath = `/api/agents/${encodeURIComponent(to.id as string)}`;
+  const held = await request(`${fromPath}/secrets`);
+  if (!held.ok) throw new Error(`GET ${fromPath}/secrets returned ${held.status}`);
+  const secretIds = (await held.json()) as unknown;
+  if (!Array.isArray(secretIds) || !secretIds.every((id) => typeof id === 'string')) {
+    throw new Error(`GET ${fromPath}/secrets did not return a list of ids`);
+  }
+  const again = await request('/api/agents');
+  if (!again.ok) throw new Error(`GET /api/agents returned ${again.status}`);
+  const relisted = (await again.json()) as unknown;
+  const rereadRows = (Array.isArray(relisted) ? relisted : (relisted as { data?: unknown }).data) as Array<
+    Record<string, unknown>
+  >;
+  if (rereadRows.find((a) => a.identifier === fromIdentifier)?.secretMode !== from.secretMode) {
+    throw new Error(`the secret mode of ${fromIdentifier} changed while its secrets were read`);
+  }
+  const patchMode = async (mode: 'all' | 'selective') => {
+    const res = await request(`${toPath}/secret-mode`, 'PATCH', { mode });
+    if (!res.ok) throw new Error(`PATCH ${toPath}/secret-mode returned ${res.status}`);
+  };
+  await patchMode('selective');
+  const put = await request(`${toPath}/secrets`, 'PUT', { secretIds });
+  if (!put.ok) throw new Error(`PUT ${toPath}/secrets returned ${put.status}`);
+  if (from.secretMode === 'all') await patchMode('all');
+  return 'mirrored';
+}
+
+/**
  * Give a new OneCLI agent only the install's base secrets. A gateway built on
  * OneCLI 1.43 or older (such as onecli-cost) creates an agent in secret mode
  * "all", so a new group could use every secret on the box: the model keys and
@@ -474,18 +634,58 @@ function ensureAgentReady(identifier: string, name: string, provider: string | u
 }
 
 async function ensureSession(input: GatewaySessionInput, signal: AbortSignal): Promise<GatewaySessionLease> {
-  // The OneCLI agent identifier is always the agent group id — stable across
-  // sessions and reversible via getAgentGroup() for approval routing.
-  // Memoized per group and provider (fork delta, above): a provider switch is a
-  // new key, so its model credential is still granted on the next spawn.
-  const ensuredKey = `${input.key.agentGroupId}\0${input.provider ?? ''}`;
-  if (!ensuredAgents.has(ensuredKey)) {
-    await ensureAgentReady(input.key.agentGroupId, input.groupName, input.provider);
-    ensuredAgents.add(ensuredKey);
+  // The OneCLI agent identifier is the agent group id — stable across sessions
+  // and reversible via getAgentGroup() for approval routing. A closed session
+  // (src/modules/session-privilege) uses `<group id>:closed` instead, so the
+  // gateway can hold it to different rules than the group's open sessions.
+  // Memoized per identifier and provider (fork delta, above): a provider switch
+  // is a new key, so its model credential is still granted on the next spawn.
+  const groupId = input.key.agentGroupId;
+  const identifier = agentIdentifierFor(groupId, input.privilege);
+  const closed = identifier !== groupId;
+  const ensure = async (id: string, name: string) => {
+    const key = `${id}\0${input.provider ?? ''}`;
+    if (ensuredAgents.has(key)) return;
+    await ensureAgentReady(id, name, input.provider);
+    ensuredAgents.add(key);
+  };
+  const ensuredKey = `${identifier}\0${input.provider ?? ''}`;
+  await ensure(groupId, input.groupName);
+  if (closed) {
+    await ensure(identifier, `${input.groupName} (closed)`);
+    // The closed agent holds whatever the group's agent holds, so closed sessions keep the
+    // tool secrets the operator granted to the group.
+    try {
+      const gatewayOpts = {
+        baseUrl: onecliUrl || 'https://api.onecli.sh',
+        apiKey: onecliApiKey,
+        projectId: process.env.ONECLI_PROJECT_ID,
+      };
+      await serialized(identifier, async () => {
+        const copied = await copyAgentGrants(groupId, identifier, gatewayOpts);
+        if (copied?.length)
+          log.info('OneCLI closed agent grants copied', { agentGroupId: groupId, secrets: copied.length });
+        if (copied !== null) return;
+        if ((await mirrorAgentSecrets(groupId, identifier, gatewayOpts)) === 'unsupported') {
+          log.warn('OneCLI has no per-agent secret routes; the closed agent holds what a new agent gets', {
+            agentGroupId: groupId,
+          });
+        }
+      });
+    } catch (err) {
+      // Forget the setup of both agents, so the next spawn ensures them again: an agent deleted
+      // out of band would otherwise fail every closed spawn until the host restarts.
+      ensuredAgents.delete(`${groupId}\0${input.provider ?? ''}`);
+      ensuredAgents.delete(ensuredKey);
+      throw new Error(
+        `OneCLI: could not copy the secrets of agent group ${groupId} to its closed agent (${(err as Error).message}); the next spawn retries`,
+        { cause: err },
+      );
+    }
   }
   let config;
   try {
-    config = await onecli.getContainerConfig({ agent: input.key.agentGroupId });
+    config = await onecli.getContainerConfig({ agent: identifier });
   } catch (err) {
     // The memo is an optimization, never a cache of truth: if the agent record
     // turns out to be gone, forget it so the next spawn re-ensures rather than
@@ -494,7 +694,7 @@ async function ensureSession(input: GatewaySessionInput, signal: AbortSignal): P
     throw err;
   }
   const accountId = await stubAccountId(config);
-  log.info('OneCLI gateway applied', { agentGroupId: input.key.agentGroupId, sessionId: input.key.sessionId });
+  log.info('OneCLI gateway applied', { agentGroupId: groupId, sessionId: input.key.sessionId, closed });
   return {
     ...monitorLease(signal),
     contribution: {
@@ -537,7 +737,7 @@ async function subscribeApprovals(
       // pinned SDK callback submits no decision and leaves the request pending.
       // Keep this outside the deny-on-translation-error block, even for stale
       // requests: this copy has no authority over another copy's requests.
-      if (!(await scope.ownsAgentGroup(request.agent?.externalId ?? ''))) {
+      if (!(await scope.ownsAgentGroup(agentGroupIdOfIdentifier(request.agent?.externalId ?? '')))) {
         throw new Error('OneCLI approval belongs to another installation');
       }
       if (signal.aborted || Date.parse(request.createdAt) < subscribedAt) return 'deny';
@@ -559,7 +759,7 @@ function toGatewayApprovalRequest(request: ApprovalRequest): GatewayApprovalRequ
     id: request.id,
     trigger: 'policy',
     destination: { host: request.host, method: request.method },
-    agentGroupId: request.agent.externalId ?? '',
+    agentGroupId: agentGroupIdOfIdentifier(request.agent.externalId ?? ''),
     createdAt: request.createdAt,
     expiresAt: request.expiresAt,
     summary: normalizeGatewayApprovalSummary(

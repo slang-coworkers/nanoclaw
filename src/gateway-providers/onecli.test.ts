@@ -60,7 +60,11 @@ vi.mock('../env.js', () => ({
 
 import {
   _resetEnsuredAgentsForTesting,
+  agentGroupIdOfIdentifier,
+  agentIdentifierFor,
   contributionFromConfig,
+  copyAgentGrants,
+  mirrorAgentSecrets,
   grantProviderCredentials,
   newAgentSecretNames,
   restrictNewAgentSecrets,
@@ -1136,6 +1140,324 @@ function writeRecord(dataDir: string, providers: Record<string, string[]>, match
 
 function readRecord(dataDir: string): unknown {
   return JSON.parse(fs.readFileSync(path.join(dataDir, 'onecli', 'provider-credentials.json'), 'utf8'));
+}
+
+describe('closed sessions use their own OneCLI agent', () => {
+  const closedInput = (group: string, provider = 'claude'): GatewaySessionInput => ({
+    ...groupInput(group, provider),
+    privilege: 'closed',
+  });
+
+  it('names the agent of a closed session <group>:closed, and maps either identifier back to the group', () => {
+    expect(agentIdentifierFor('g1', 'closed')).toBe('g1:closed');
+    expect(agentIdentifierFor('g1', 'open')).toBe('g1');
+    expect(agentIdentifierFor('g1', undefined)).toBe('g1');
+    expect(agentGroupIdOfIdentifier('g1:closed')).toBe('g1');
+    expect(agentGroupIdOfIdentifier('g1')).toBe('g1');
+  });
+
+  it('copies the grants of the group agent to its closed agent, adding only what is missing', async () => {
+    const world = statefulGateway({ vault: ['sec-model', 'sec-github'] });
+    await world.ensureAgent({ identifier: 'g1' });
+    await world.ensureAgent({ identifier: 'g1:closed' });
+    await fetchGrant(world, 'g1', 'sec-model');
+    await fetchGrant(world, 'g1', 'sec-github');
+    await fetchGrant(world, 'g1:closed', 'sec-model');
+    const opts = { baseUrl: 'http://gw.test', fetchImpl: world.fetch };
+    await expect(copyAgentGrants('g1', 'g1:closed', opts)).resolves.toEqual(['sec-github']);
+    expect(world.held('g1:closed')).toEqual(['sec-github', 'sec-model']);
+    await expect(copyAgentGrants('g1', 'g1:closed', opts)).resolves.toEqual([]);
+    // The group's own agent is never changed.
+    expect(world.held('g1')).toEqual(['sec-github', 'sec-model']);
+  });
+
+  it('returns null on a gateway without grants, and fails when an agent is missing', async () => {
+    const noGrants = fakeGateway({ grantsStatus: 404, grantsBody: { error: { message: 'Unrecognized request URL' } } });
+    const opts = (fetchImpl: typeof fetch) => ({ baseUrl: 'http://gw.test', fetchImpl });
+    await expect(copyAgentGrants('g1', 'g1', opts(noGrants.fetch))).resolves.toBeNull();
+    await expect(copyAgentGrants('g1', 'g1:closed', opts(fakeGateway().fetch))).rejects.toThrow(
+      /OneCLI agent g1:closed not found/,
+    );
+  });
+
+  it('a closed spawn ensures both agents, copies the group grants, and asks for the closed agent config', async () => {
+    writeRecord(ADAPTER_DATA, { claude: ['sec-model'] });
+    const world = statefulGateway({ vault: ['sec-model', 'sec-github'] });
+    sdk.ensureAgent.mockImplementation(world.ensureAgent);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      // The operator granted a tool secret to the group's agent.
+      await provider.sessions.ensure(groupInput('g1'), controller.signal);
+      await fetchGrant(world, 'g1', 'sec-github');
+      sdk.ensureAgent.mockClear();
+      sdk.getContainerConfig.mockClear();
+
+      await provider.sessions.ensure(closedInput('g1'), controller.signal);
+      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toEqual(['g1:closed']);
+      expect(sdk.ensureAgent.mock.calls[0]![0].name).toBe('g1 (closed)');
+      expect(world.held('g1:closed')).toEqual(['sec-github', 'sec-model']);
+      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1:closed' });
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('an open spawn never touches a closed agent', async () => {
+    writeRecord(ADAPTER_DATA, { claude: ['sec-model'] });
+    const world = statefulGateway({ vault: ['sec-model'] });
+    sdk.ensureAgent.mockImplementation(world.ensureAgent);
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      await provider.sessions.ensure({ ...groupInput('g1'), privilege: 'open' }, controller.signal);
+      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toEqual(['g1']);
+      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1' });
+      expect(world.held('g1:closed')).toEqual([]);
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('on a legacy gateway, mirrors the secrets and mode of the group agent, and follows a revocation', async () => {
+    const world = legacyGateway({
+      g1: { secrets: ['sec-model', 'sec-github'], mode: 'selective' },
+      'g1:closed': { secrets: ['sec-model', 'sec-old'], mode: 'all' },
+    });
+    const opts = { baseUrl: 'http://gw.test', fetchImpl: world.fetch };
+    await expect(mirrorAgentSecrets('g1', 'g1:closed', opts)).resolves.toBe('mirrored');
+    expect(world.agent('g1:closed')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
+    expect(world.agent('g1')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
+
+    // The operator revokes a secret from the group's agent: the closed agent loses it at the next spawn.
+    world.revoke('g1', 'sec-github');
+    await mirrorAgentSecrets('g1', 'g1:closed', opts);
+    expect(world.agent('g1:closed').secrets).toEqual(['sec-model']);
+  });
+
+  it('on a legacy gateway, an agent that runs every secret stays on every secret in its closed agent', async () => {
+    const world = legacyGateway({
+      g1: { secrets: ['sec-model'], mode: 'all' },
+      'g1:closed': { secrets: [], mode: 'selective' },
+    });
+    await mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch });
+    expect(world.agent('g1:closed')).toEqual({ secrets: ['sec-model'], mode: 'all' });
+  });
+
+  it('reports a gateway without the legacy routes as unsupported, and fails on a missing agent', async () => {
+    const none = (async () => new Response('{}', { status: 404 })) as unknown as typeof fetch;
+    await expect(mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: none })).resolves.toBe(
+      'unsupported',
+    );
+    const world = legacyGateway({ g1: { secrets: [], mode: 'selective' } });
+    await expect(
+      mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
+    ).rejects.toThrow(/OneCLI agent g1:closed not found/);
+  });
+
+  it('a closed spawn on a legacy gateway gives the closed agent the secrets of the group agent', async () => {
+    const world = legacyGateway({ g1: { secrets: ['sec-model', 'sec-github'], mode: 'selective' } });
+    sdk.ensureAgent.mockImplementation(async ({ identifier }: { name: string; identifier: string }) => {
+      world.ensure(identifier);
+      return { created: false };
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      await provider.sessions.ensure(closedInput('g1'), controller.signal);
+      expect(world.agent('g1:closed')).toEqual({ secrets: ['sec-github', 'sec-model'], mode: 'selective' });
+      expect(sdk.getContainerConfig).toHaveBeenCalledWith({ agent: 'g1:closed' });
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('narrows before it widens: the mode becomes selective first, and a failed list write leaves the closed agent selective', async () => {
+    const opts = (world: ReturnType<typeof legacyGateway>) => ({ baseUrl: 'http://gw.test', fetchImpl: world.fetch });
+    const ok = legacyGateway({
+      g1: { secrets: ['sec-a'], mode: 'all' },
+      'g1:closed': { secrets: [], mode: 'selective' },
+    });
+    await mirrorAgentSecrets('g1', 'g1:closed', opts(ok));
+    expect(ok.events).toEqual([
+      'mode g1:closed selective',
+      'put g1:closed start',
+      'put g1:closed end',
+      'mode g1:closed all',
+    ]);
+
+    // The group's agent is selective now; the closed agent was left on every secret. The list write fails.
+    const failing = legacyGateway(
+      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1:closed': { secrets: ['sec-old'], mode: 'all' } },
+      { failPut: true },
+    );
+    await expect(mirrorAgentSecrets('g1', 'g1:closed', opts(failing))).rejects.toThrow(/returned 503/);
+    expect(failing.agent('g1:closed').mode).toBe('selective');
+  });
+
+  it('fails when the group agent changed its mode while its secrets were read', async () => {
+    const world = legacyGateway(
+      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1:closed': { secrets: [], mode: 'selective' } },
+      { flipModeOnSecretsRead: 'g1' },
+    );
+    await expect(
+      mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
+    ).rejects.toThrow(/secret mode of g1 changed/);
+    expect(world.events).toEqual([]);
+  });
+
+  it('two closed spawns of one group mirror one after the other', async () => {
+    const world = legacyGateway({ g1: { secrets: ['sec-model'], mode: 'selective' } }, { putDelayMs: 15 });
+    sdk.ensureAgent.mockImplementation(async ({ identifier }: { name: string; identifier: string }) => {
+      world.ensure(identifier);
+      return { created: false };
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const first = new AbortController();
+    const second = new AbortController();
+    try {
+      await Promise.all([
+        provider.sessions.ensure(closedInput('g1'), first.signal),
+        provider.sessions.ensure(closedInput('g1'), second.signal),
+      ]);
+      const puts = world.events.filter((e) => e.startsWith('put '));
+      expect(puts).toEqual(['put g1:closed start', 'put g1:closed end', 'put g1:closed start', 'put g1:closed end']);
+    } finally {
+      first.abort();
+      second.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('a closed agent deleted out of band is ensured again by the next spawn', async () => {
+    const world = legacyGateway({ g1: { secrets: ['sec-model'], mode: 'selective' } });
+    sdk.ensureAgent.mockImplementation(async ({ identifier }: { name: string; identifier: string }) => {
+      world.ensure(identifier);
+      return { created: false };
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      await provider.sessions.ensure(closedInput('g1'), controller.signal);
+      world.remove('g1:closed');
+      sdk.ensureAgent.mockClear();
+      await expect(provider.sessions.ensure(closedInput('g1'), controller.signal)).rejects.toThrow(
+        /could not copy the secrets.*the next spawn retries/,
+      );
+      await provider.sessions.ensure(closedInput('g1'), controller.signal);
+      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toContain('g1:closed');
+      expect(world.agent('g1:closed').secrets).toEqual(['sec-model']);
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('refuses a group id that already ends with the closed-agent suffix', () => {
+    expect(() => agentIdentifierFor('g1:closed', 'open')).toThrow(/ends with :closed/);
+  });
+
+  it('routes an approval from the closed agent to the group', async () => {
+    const controller = new AbortController();
+    const decide = vi.fn(async () => 'approve' as const);
+    const owns = vi.fn(async (id: string) => id === 'g1');
+    const running = provider.approvals.subscribe(decide, controller.signal, undefined, { ownsAgentGroup: owns });
+    try {
+      await vi.waitFor(() => expect(sdk.manualApproval).toBeTypeOf('function'));
+      await sdk.manualApproval!({
+        id: 'req-closed',
+        createdAt: new Date(Date.now() + 1000).toISOString(),
+        expiresAt: new Date(Date.now() + 30000).toISOString(),
+        method: 'POST',
+        host: 'api.example.test',
+        path: '/resource',
+        agent: { name: 'g1 (closed)', externalId: 'g1:closed' },
+      });
+      expect(owns).toHaveBeenCalledWith('g1');
+      expect(decide).toHaveBeenCalledWith(expect.objectContaining({ agentGroupId: 'g1' }));
+    } finally {
+      controller.abort();
+      await running;
+    }
+  });
+});
+
+/**
+ * A gateway built on OneCLI 1.42: it lists agents under /v1 and /api, but has no grants route, and an
+ * agent's secrets are one list under /api/agents/<id>/secrets with a mode, `all` or `selective`.
+ */
+function legacyGateway(
+  initial: Record<string, { secrets: string[]; mode: 'all' | 'selective' }>,
+  opts: { failPut?: boolean; putDelayMs?: number; flipModeOnSecretsRead?: string } = {},
+) {
+  const agents = new Map<string, { id: string; identifier: string; secrets: Set<string>; mode: string }>();
+  const events: string[] = [];
+  const add = (identifier: string, secrets: string[] = [], mode = 'selective') =>
+    agents.set(`oc-${identifier}`, { id: `oc-${identifier}`, identifier, secrets: new Set(secrets), mode });
+  for (const [identifier, a] of Object.entries(initial)) add(identifier, a.secrets, a.mode);
+  const json = (body: unknown, status = 200) =>
+    new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  const fetchImpl = (async (url: string | URL | Request, init?: RequestInit) => {
+    const { pathname } = new URL(String(url));
+    const method = init?.method ?? 'GET';
+    const list = () => [...agents.values()].map((a) => ({ id: a.id, identifier: a.identifier, secretMode: a.mode }));
+    if (pathname === '/v1/agents' || pathname === '/api/agents') return json(list());
+    if (pathname === '/api/secrets' || pathname === '/v1/secrets') return json([]);
+    const m = /^\/(?:api|v1)\/agents\/([^/]+)\/(grants|secrets|secret-mode)$/.exec(pathname);
+    const agent = m ? agents.get(decodeURIComponent(m[1]!)) : undefined;
+    if (!m || !agent) return json({ error: { message: 'Agent not found.' } }, 404);
+    if (m[2] === 'grants')
+      return json({ error: { type: 'invalid_request_error', message: 'Unrecognized request URL' } }, 404);
+    if (m[2] === 'secrets' && method === 'GET') {
+      const reply = json([...agent.secrets]);
+      // The operator widens the group's agent right after its list was read.
+      if (opts.flipModeOnSecretsRead === agent.identifier) agent.mode = 'all';
+      return reply;
+    }
+    if (m[2] === 'secrets' && method === 'PUT') {
+      events.push(`put ${agent.identifier} start`);
+      if (opts.putDelayMs) await new Promise((r) => setTimeout(r, opts.putDelayMs));
+      if (opts.failPut) {
+        events.push(`put ${agent.identifier} failed`);
+        return json({ error: 'unavailable' }, 503);
+      }
+      agent.secrets = new Set((JSON.parse(String(init?.body)) as { secretIds: string[] }).secretIds);
+      events.push(`put ${agent.identifier} end`);
+      return json({});
+    }
+    if (m[2] === 'secret-mode' && method === 'PATCH') {
+      agent.mode = (JSON.parse(String(init?.body)) as { mode: string }).mode;
+      events.push(`mode ${agent.identifier} ${agent.mode}`);
+      return json({});
+    }
+    return json({ error: 'unexpected' }, 500);
+  }) as typeof fetch;
+  return {
+    fetch: fetchImpl,
+    events,
+    ensure: (identifier: string) => {
+      if (!agents.has(`oc-${identifier}`)) add(identifier);
+    },
+    remove: (identifier: string) => agents.delete(`oc-${identifier}`),
+    agent: (identifier: string) => {
+      const a = agents.get(`oc-${identifier}`)!;
+      return { secrets: [...a.secrets].sort(), mode: a.mode };
+    },
+    revoke: (identifier: string, secretId: string) => agents.get(`oc-${identifier}`)!.secrets.delete(secretId),
+  };
+}
+
+/** Attach a secret to the agent of `identifier`, through the same gateway route the adapter uses. */
+async function fetchGrant(world: ReturnType<typeof statefulGateway>, identifier: string, secretId: string) {
+  await world.fetch(`http://gw.test/v1/agents/oc-${identifier}/grants/secrets/${secretId}`, { method: 'PUT' });
 }
 
 function fakeGateway(
