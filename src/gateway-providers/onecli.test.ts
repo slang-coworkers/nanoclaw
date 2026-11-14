@@ -1278,6 +1278,93 @@ describe('closed sessions use their own OneCLI agent', () => {
     }
   });
 
+  it('narrows before it widens: the mode becomes selective first, and a failed list write leaves the closed agent selective', async () => {
+    const opts = (world: ReturnType<typeof legacyGateway>) => ({ baseUrl: 'http://gw.test', fetchImpl: world.fetch });
+    const ok = legacyGateway({
+      g1: { secrets: ['sec-a'], mode: 'all' },
+      'g1:closed': { secrets: [], mode: 'selective' },
+    });
+    await mirrorAgentSecrets('g1', 'g1:closed', opts(ok));
+    expect(ok.events).toEqual([
+      'mode g1:closed selective',
+      'put g1:closed start',
+      'put g1:closed end',
+      'mode g1:closed all',
+    ]);
+
+    // The group's agent is selective now; the closed agent was left on every secret. The list write fails.
+    const failing = legacyGateway(
+      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1:closed': { secrets: ['sec-old'], mode: 'all' } },
+      { failPut: true },
+    );
+    await expect(mirrorAgentSecrets('g1', 'g1:closed', opts(failing))).rejects.toThrow(/returned 503/);
+    expect(failing.agent('g1:closed').mode).toBe('selective');
+  });
+
+  it('fails when the group agent changed its mode while its secrets were read', async () => {
+    const world = legacyGateway(
+      { g1: { secrets: ['sec-a'], mode: 'selective' }, 'g1:closed': { secrets: [], mode: 'selective' } },
+      { flipModeOnSecretsRead: 'g1' },
+    );
+    await expect(
+      mirrorAgentSecrets('g1', 'g1:closed', { baseUrl: 'http://gw.test', fetchImpl: world.fetch }),
+    ).rejects.toThrow(/secret mode of g1 changed/);
+    expect(world.events).toEqual([]);
+  });
+
+  it('two closed spawns of one group mirror one after the other', async () => {
+    const world = legacyGateway({ g1: { secrets: ['sec-model'], mode: 'selective' } }, { putDelayMs: 15 });
+    sdk.ensureAgent.mockImplementation(async ({ identifier }: { name: string; identifier: string }) => {
+      world.ensure(identifier);
+      return { created: false };
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const first = new AbortController();
+    const second = new AbortController();
+    try {
+      await Promise.all([
+        provider.sessions.ensure(closedInput('g1'), first.signal),
+        provider.sessions.ensure(closedInput('g1'), second.signal),
+      ]);
+      const puts = world.events.filter((e) => e.startsWith('put '));
+      expect(puts).toEqual(['put g1:closed start', 'put g1:closed end', 'put g1:closed start', 'put g1:closed end']);
+    } finally {
+      first.abort();
+      second.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('a closed agent deleted out of band is ensured again by the next spawn', async () => {
+    const world = legacyGateway({ g1: { secrets: ['sec-model'], mode: 'selective' } });
+    sdk.ensureAgent.mockImplementation(async ({ identifier }: { name: string; identifier: string }) => {
+      world.ensure(identifier);
+      return { created: false };
+    });
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(world.fetch);
+    const controller = new AbortController();
+    try {
+      await provider.sessions.ensure(closedInput('g1'), controller.signal);
+      world.remove('g1:closed');
+      sdk.ensureAgent.mockClear();
+      await expect(provider.sessions.ensure(closedInput('g1'), controller.signal)).rejects.toThrow(
+        /could not copy the secrets.*the next spawn retries/,
+      );
+      await provider.sessions.ensure(closedInput('g1'), controller.signal);
+      expect(sdk.ensureAgent.mock.calls.map(([c]) => c.identifier)).toContain('g1:closed');
+      expect(world.agent('g1:closed').secrets).toEqual(['sec-model']);
+    } finally {
+      controller.abort();
+      fetchMock.mockRestore();
+      sdk.ensureAgent.mockImplementation(async (_input: { name: string; identifier: string }) => ({ created: false }));
+    }
+  });
+
+  it('refuses a group id that already ends with the closed-agent suffix', () => {
+    expect(() => agentIdentifierFor('g1:closed', 'open')).toThrow(/ends with :closed/);
+  });
+
   it('routes an approval from the closed agent to the group', async () => {
     const controller = new AbortController();
     const decide = vi.fn(async () => 'approve' as const);
@@ -1307,8 +1394,12 @@ describe('closed sessions use their own OneCLI agent', () => {
  * A gateway built on OneCLI 1.42: it lists agents under /v1 and /api, but has no grants route, and an
  * agent's secrets are one list under /api/agents/<id>/secrets with a mode, `all` or `selective`.
  */
-function legacyGateway(initial: Record<string, { secrets: string[]; mode: 'all' | 'selective' }>) {
+function legacyGateway(
+  initial: Record<string, { secrets: string[]; mode: 'all' | 'selective' }>,
+  opts: { failPut?: boolean; putDelayMs?: number; flipModeOnSecretsRead?: string } = {},
+) {
   const agents = new Map<string, { id: string; identifier: string; secrets: Set<string>; mode: string }>();
+  const events: string[] = [];
   const add = (identifier: string, secrets: string[] = [], mode = 'selective') =>
     agents.set(`oc-${identifier}`, { id: `oc-${identifier}`, identifier, secrets: new Set(secrets), mode });
   for (const [identifier, a] of Object.entries(initial)) add(identifier, a.secrets, a.mode);
@@ -1325,22 +1416,37 @@ function legacyGateway(initial: Record<string, { secrets: string[]; mode: 'all' 
     if (!m || !agent) return json({ error: { message: 'Agent not found.' } }, 404);
     if (m[2] === 'grants')
       return json({ error: { type: 'invalid_request_error', message: 'Unrecognized request URL' } }, 404);
-    if (m[2] === 'secrets' && method === 'GET') return json([...agent.secrets]);
+    if (m[2] === 'secrets' && method === 'GET') {
+      const reply = json([...agent.secrets]);
+      // The operator widens the group's agent right after its list was read.
+      if (opts.flipModeOnSecretsRead === agent.identifier) agent.mode = 'all';
+      return reply;
+    }
     if (m[2] === 'secrets' && method === 'PUT') {
+      events.push(`put ${agent.identifier} start`);
+      if (opts.putDelayMs) await new Promise((r) => setTimeout(r, opts.putDelayMs));
+      if (opts.failPut) {
+        events.push(`put ${agent.identifier} failed`);
+        return json({ error: 'unavailable' }, 503);
+      }
       agent.secrets = new Set((JSON.parse(String(init?.body)) as { secretIds: string[] }).secretIds);
+      events.push(`put ${agent.identifier} end`);
       return json({});
     }
     if (m[2] === 'secret-mode' && method === 'PATCH') {
       agent.mode = (JSON.parse(String(init?.body)) as { mode: string }).mode;
+      events.push(`mode ${agent.identifier} ${agent.mode}`);
       return json({});
     }
     return json({ error: 'unexpected' }, 500);
   }) as typeof fetch;
   return {
     fetch: fetchImpl,
+    events,
     ensure: (identifier: string) => {
       if (!agents.has(`oc-${identifier}`)) add(identifier);
     },
+    remove: (identifier: string) => agents.delete(`oc-${identifier}`),
     agent: (identifier: string) => {
       const a = agents.get(`oc-${identifier}`)!;
       return { secrets: [...a.secrets].sort(), mode: a.mode };

@@ -53,6 +53,20 @@ const onecli = new OneCLI({ url: onecliUrl, apiKey: onecliApiKey, timeout: ONECL
 // an agent deleted out-of-band is re-ensured by the next spawn.
 const ensuredAgents = new Set<string>();
 
+// Closed spawns of one group mirror its secrets one at a time in this process: two
+// mirrors that interleave their writes could combine the lists and modes of two reads.
+const mirrorTails = new Map<string, Promise<unknown>>();
+
+function serialized<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const run = (mirrorTails.get(key) ?? Promise.resolve()).then(fn, fn);
+  const tail = run.catch(() => undefined);
+  mirrorTails.set(key, tail);
+  void tail.then(() => {
+    if (mirrorTails.get(key) === tail) mirrorTails.delete(key);
+  });
+  return run;
+}
+
 /** Suffix of the OneCLI identifier of the agent that the closed sessions of a group use. */
 export const CLOSED_AGENT_SUFFIX = ':closed';
 
@@ -63,6 +77,10 @@ export const CLOSED_AGENT_SUFFIX = ':closed';
  * of one group to different rules.
  */
 export function agentIdentifierFor(agentGroupId: string, privilege: 'open' | 'closed' | undefined): string {
+  // A group id that already ends in the suffix would share an identity with the closed agent of another group.
+  if (agentGroupId.endsWith(CLOSED_AGENT_SUFFIX)) {
+    throw new Error(`agent group id ${agentGroupId} ends with ${CLOSED_AGENT_SUFFIX}, which names a closed agent`);
+  }
   return privilege === 'closed' ? `${agentGroupId}${CLOSED_AGENT_SUFFIX}` : agentGroupId;
 }
 
@@ -406,9 +424,15 @@ export async function copyAgentGrants(
  * onecli-cost). There an agent has one list of secrets and a mode, `all` or
  * `selective`. A closed session uses the closed agent of its group, so the closed
  * agent follows the group's agent, including a secret the operator revokes from
- * the group: it is removed from the closed agent too. The list is set first and
- * the mode second, so the closed agent never runs selective with nothing attached.
- * Returns `unsupported` on a gateway without these routes.
+ * the group: it is removed from the closed agent too.
+ *
+ * The writes go from narrow to wide, so a failure part-way never leaves the closed
+ * agent with more than the group's agent: the mode becomes `selective` first, then
+ * the list is set, and the mode becomes `all` last, only when the group's agent
+ * runs every secret. The group's agent is read twice, around its list, and the
+ * mirror fails when its mode changed in between, so the closed agent never gets
+ * the list of one state with the mode of another. Returns `unsupported` on a
+ * gateway without these routes.
  */
 export async function mirrorAgentSecrets(
   fromIdentifier: string,
@@ -447,12 +471,23 @@ export async function mirrorAgentSecrets(
   if (!Array.isArray(secretIds) || !secretIds.every((id) => typeof id === 'string')) {
     throw new Error(`GET ${fromPath}/secrets did not return a list of ids`);
   }
+  const again = await request('/api/agents');
+  if (!again.ok) throw new Error(`GET /api/agents returned ${again.status}`);
+  const relisted = (await again.json()) as unknown;
+  const rereadRows = (Array.isArray(relisted) ? relisted : (relisted as { data?: unknown }).data) as Array<
+    Record<string, unknown>
+  >;
+  if (rereadRows.find((a) => a.identifier === fromIdentifier)?.secretMode !== from.secretMode) {
+    throw new Error(`the secret mode of ${fromIdentifier} changed while its secrets were read`);
+  }
+  const patchMode = async (mode: 'all' | 'selective') => {
+    const res = await request(`${toPath}/secret-mode`, 'PATCH', { mode });
+    if (!res.ok) throw new Error(`PATCH ${toPath}/secret-mode returned ${res.status}`);
+  };
+  await patchMode('selective');
   const put = await request(`${toPath}/secrets`, 'PUT', { secretIds });
   if (!put.ok) throw new Error(`PUT ${toPath}/secrets returned ${put.status}`);
-  const mode = await request(`${toPath}/secret-mode`, 'PATCH', {
-    mode: from.secretMode === 'all' ? 'all' : 'selective',
-  });
-  if (!mode.ok) throw new Error(`PATCH ${toPath}/secret-mode returned ${mode.status}`);
+  if (from.secretMode === 'all') await patchMode('all');
   return 'mirrored';
 }
 
@@ -626,13 +661,24 @@ async function ensureSession(input: GatewaySessionInput, signal: AbortSignal): P
         apiKey: onecliApiKey,
         projectId: process.env.ONECLI_PROJECT_ID,
       };
-      const copied = await copyAgentGrants(groupId, identifier, gatewayOpts);
-      if (copied === null) await mirrorAgentSecrets(groupId, identifier, gatewayOpts);
-      if (copied?.length)
-        log.info('OneCLI closed agent grants copied', { agentGroupId: groupId, secrets: copied.length });
+      await serialized(identifier, async () => {
+        const copied = await copyAgentGrants(groupId, identifier, gatewayOpts);
+        if (copied?.length)
+          log.info('OneCLI closed agent grants copied', { agentGroupId: groupId, secrets: copied.length });
+        if (copied !== null) return;
+        if ((await mirrorAgentSecrets(groupId, identifier, gatewayOpts)) === 'unsupported') {
+          log.warn('OneCLI has no per-agent secret routes; the closed agent holds what a new agent gets', {
+            agentGroupId: groupId,
+          });
+        }
+      });
     } catch (err) {
+      // Forget the setup of both agents, so the next spawn ensures them again: an agent deleted
+      // out of band would otherwise fail every closed spawn until the host restarts.
+      ensuredAgents.delete(`${groupId}\0${input.provider ?? ''}`);
+      ensuredAgents.delete(ensuredKey);
       throw new Error(
-        `OneCLI: could not copy the grants of agent group ${groupId} to its closed agent (${(err as Error).message}); the next spawn retries`,
+        `OneCLI: could not copy the secrets of agent group ${groupId} to its closed agent (${(err as Error).message}); the next spawn retries`,
         { cause: err },
       );
     }
