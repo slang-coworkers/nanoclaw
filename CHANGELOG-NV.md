@@ -6,15 +6,38 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 802 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 314 |
-| `nv-slang` | slang project spine, skills, workflows | 217 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 132 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 109 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 809 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 315 |
+| `nv-slang` | slang project spine, skills, workflows | 218 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 133 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 110 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-14
+
+### nv-main (7 PRs)
+- **#2353** `Sync nv-main with upstream/main`
+- **#2360** `Rebuild pinned group images when the migration plan changes a provider`
+- **#2361** `Give every session one privilege, open or closed, for its whole life`
+- **#2362** `Give closed sessions their own OneCLI agent`
+- **#2363** `Name the closed OneCLI agent <group id>-closed`
+- **#2364** `Hold open sessions to open models with a OneCLI rule`
+- **#2365** `Read Check 2 evidence from an operator-kept file`
+
+### nv-dashboard (1 PR)
+- **#2355** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PR)
+- **#2356** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PR)
+- **#2357** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PR)
+- **#2358** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-13
 
