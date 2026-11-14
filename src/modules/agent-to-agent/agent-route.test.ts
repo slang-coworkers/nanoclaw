@@ -2858,3 +2858,91 @@ describe('forwardAttachedFiles — file-forwarding security guard', () => {
     expect(fs.existsSync(path.join(sessionDir('ag-tgt', 'sess-tgt'), 'inbox', 'fwd-root', 'secret.txt'))).toBe(false);
   });
 });
+
+// =============================================================
+// Session privilege (src/modules/session-privilege): a session is open or
+// closed for its whole life. A delegation gets a session of the sender's
+// privilege, and an open session never writes into a closed one.
+// =============================================================
+describe('routeAgentMessage — session privilege', () => {
+  let tempDir: string;
+  beforeEach(async () => {
+    tempDir = await setupTempDb();
+  });
+  afterEach(async () => {
+    await closeDb();
+    process.chdir(realCwd);
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  async function seedRecipientSession(id: string, privilege: 'open' | 'closed'): Promise<Session> {
+    const s: Session = {
+      id,
+      agent_group_id: 'ag-recipient',
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      privilege,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: now(),
+    };
+    await createSession(s);
+    initSessionFolder('ag-recipient', id);
+    return s;
+  }
+
+  async function inboxCount(agentGroupId: string, sessionId: string): Promise<number> {
+    const Database = (await import('better-sqlite3')).default;
+    const { inboundDbPath } = await import('../../mailbox/sqlite/paths.js');
+    const db = new Database(inboundDbPath(agentGroupId, sessionId), { readonly: true });
+    try {
+      return (db.prepare('SELECT COUNT(*) AS n FROM messages_in').get() as { n: number }).n;
+    } finally {
+      db.close();
+    }
+  }
+
+  const message = (id: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    platform_id: 'ag-recipient',
+    thread_id: 'work',
+    content: JSON.stringify({ text: 'please look' }),
+    ...extra,
+  });
+
+  it('refuses an open session that pins a closed recipient session', async () => {
+    const { senderSession } = await seedPair();
+    const closed = await seedRecipientSession('sess-closed', 'closed');
+
+    await routeAgentMessage(message('out-open-to-closed', { target_session_id: closed.id }), senderSession);
+
+    expect(await inboxCount('ag-recipient', closed.id)).toBe(0);
+  });
+
+  it('lets a closed session write into an open recipient session', async () => {
+    const { senderSession } = await seedPair();
+    await getDb().run("UPDATE sessions SET privilege = 'closed' WHERE id = ?", senderSession.id);
+    const open = await seedRecipientSession('sess-open', 'open');
+
+    await routeAgentMessage(message('out-closed-to-open', { target_session_id: open.id }), {
+      ...senderSession,
+      privilege: 'closed',
+    });
+
+    expect(await inboxCount('ag-recipient', open.id)).toBe(1);
+  });
+
+  it('starts the recipient session of a fresh delegation with the sender privilege', async () => {
+    const { senderSession } = await seedPair();
+    await routeAgentMessage(message('out-fresh-open'), senderSession);
+    await routeAgentMessage(message('out-fresh-closed'), { ...senderSession, privilege: 'closed' });
+
+    const recipients = await getDb().all<{ privilege: string; thread_id: string }>(
+      "SELECT privilege, thread_id FROM sessions WHERE agent_group_id = 'ag-recipient' ORDER BY privilege",
+    );
+    expect(recipients.map((r) => r.privilege)).toEqual(['closed', 'open']);
+    expect(new Set(recipients.map((r) => r.thread_id))).toEqual(new Set(['work']));
+  });
+});

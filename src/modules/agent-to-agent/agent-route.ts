@@ -39,6 +39,7 @@ import { GuardDenyError, guard } from '../../guard/index.js';
 import type { PendingApproval, Session } from '../../types.js';
 import { readSessionCostCapStatus } from '../../cli/session-cost-cap.js';
 import { notifyAgent, requestApproval } from '../approvals/index.js';
+import { mayDeliverInto, sessionPrivilegeOf } from '../session-privilege/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
 import { A2A_MESSAGE_GATE_ACTION, ITEM_OWNER_DENY_PREFIX, a2aSend } from './guard.js';
 import { findItemOwnerConflict } from './item-ownership.js';
@@ -459,6 +460,17 @@ async function deliverAncestorReply(
     return;
   }
 
+  // A session never mixes privileges: an open session cannot write into a closed
+  // ancestor. See src/modules/session-privilege.
+  if (!mayDeliverInto(session, ancestorSession)) {
+    log.warn('a2a ancestor reply dropped: an open session cannot write into a closed one', {
+      msgId: msg.id,
+      sessionId: session.id,
+      ancestorSessionId: ancestorSession.id,
+    });
+    return;
+  }
+
   const a2aReplyId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const forwardedReplyContent = forwardFileAttachments(
     msg,
@@ -843,6 +855,7 @@ export async function performAgentRoute(
       a2aMgId,
       threadId,
       threadId ? 'per-thread' : 'shared',
+      sessionPrivilegeOf(session),
     ));
 
     // L2 same-session guard — the host-side last line of defense against
@@ -876,6 +889,24 @@ export async function performAgentRoute(
       sourceAgentGroupId: session.agent_group_id,
       sourceThreadId: threadId,
     });
+  }
+
+  // A fresh delegation gets a session of the sender's privilege. A reply, or a
+  // message pinned to a session by id, can still name a session of another
+  // privilege, and an open session must not write into a closed one.
+  if (!mayDeliverInto(session, targetSession)) {
+    log.warn('a2a message dropped: an open session cannot write into a closed one', {
+      msgId: msg.id,
+      sessionId: session.id,
+      targetSessionId: targetSession.id,
+      targetAgentGroupId,
+    });
+    await notifyAgent(
+      session,
+      `Your message to session ${targetSession.id} was not delivered: that session may use closed models, ` +
+        'and this session may not. Send it without naming that session, and it goes to a session of your own privilege.',
+    );
+    return true;
   }
 
   const a2aMsgId = `a2a-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
