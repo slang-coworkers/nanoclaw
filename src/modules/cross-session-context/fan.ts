@@ -42,6 +42,7 @@ import {
 import { findSessionForAgent, getRecentConversationSessions, isTaskThread } from '../../db/sessions.js';
 import { log } from '../../log.js';
 import { withExistingMailboxSession } from '../../session-manager.js';
+import { mayDeliverInto, sessionPrivilegeOf, type SessionPrivilege } from '../session-privilege/index.js';
 import type { AgentGroup, MessagingGroup, Session } from '../../types.js';
 import {
   ECHO_CHANNEL_TYPE,
@@ -203,6 +204,8 @@ function parseContent(raw: string): { text: string; sender: string | null; sende
 interface EchoFanInput {
   agentGroupId: string;
   sourceSessionId: string;
+  /** Privilege of the source session. An echo never reaches a closed session from an open one. */
+  sourcePrivilege: SessionPrivilege;
   /** Messaging group of the conversation the message appeared in — the ONLY
    *  conversation whose sessions are targets. */
   sourceMessagingGroupId: string | null;
@@ -250,7 +253,12 @@ async function writeEcho(input: EchoFanInput, targetSessionId: string, content: 
 async function fanEcho(input: EchoFanInput): Promise<number> {
   if (input.sourceMessagingGroupId === null) return 0;
   const candidates = await loadHotCandidates(input.agentGroupId, input.sourceMessagingGroupId);
-  const targets = selectEchoTargets(candidates, input.sourceSessionId, input.sourceMessagingGroupId);
+  // A session never mixes privileges: an echo copies a person's words into the
+  // target's context, so an open session's words do not reach a closed sibling.
+  const source = { privilege: input.sourcePrivilege };
+  const targets = selectEchoTargets(candidates, input.sourceSessionId, input.sourceMessagingGroupId).filter((t) =>
+    mayDeliverInto(source, t),
+  );
   if (targets.length === 0) return 0;
 
   const content = JSON.stringify({
@@ -335,6 +343,7 @@ async function fanInbound(args: Parameters<typeof fanInboundMessage>[0]): Promis
     return await fanEcho({
       agentGroupId: session.agent_group_id,
       sourceSessionId: session.id,
+      sourcePrivilege: sessionPrivilegeOf(session),
       sourceMessagingGroupId: mg.id,
       origMessageId: args.messageId,
       timestamp: args.timestamp,
@@ -405,6 +414,7 @@ async function fanOutbound(
     return await fanEcho({
       agentGroupId: session.agent_group_id,
       sourceSessionId: session.id,
+      sourcePrivilege: sessionPrivilegeOf(session),
       sourceMessagingGroupId: mg.id,
       origMessageId: msg.id,
       timestamp: new Date().toISOString(),
