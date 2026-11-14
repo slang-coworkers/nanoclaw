@@ -136,14 +136,31 @@ function endpointModelId(provider: string, role: ModelRole, id: string, env: Env
   return id;
 }
 
-/** True when `id` (an endpoint model id) belongs to an open-weights family. */
-export function isOpenWeightsModel(id: string, env: Env = process.env): boolean {
+/** The model id prefixes of open-weights families: the install's own list, else the built-in one. */
+function openWeightsPrefixes(env: Env): readonly string[] {
   const configured = (env.NANOCLAW_OPEN_WEIGHTS_PREFIXES ?? '')
     .split(',')
     .map((p) => p.trim())
     .filter(Boolean);
-  const prefixes = configured.length > 0 ? configured : OPEN_WEIGHTS_PREFIXES;
-  return prefixes.some((p) => id.startsWith(p));
+  return configured.length > 0 ? configured : OPEN_WEIGHTS_PREFIXES;
+}
+
+/** True when `id` (an endpoint model id) belongs to an open-weights family. */
+export function isOpenWeightsModel(id: string, env: Env = process.env): boolean {
+  return openWeightsPrefixes(env).some((p) => id.startsWith(p));
+}
+
+/**
+ * The open-weights model ids as globs (`*` matches any run of characters), for a gateway rule
+ * that refuses every other model. Each prefix appears twice: as the endpoint knows the model,
+ * and behind the `openai/` provider alias that some clients put in front of it.
+ */
+export function openWeightsModelGlobs(env: Env = process.env): string[] {
+  const prefixes = openWeightsPrefixes(env);
+  // isOpenWeightsModel reads a prefix literally, so a `*` in it must not become a wildcard here.
+  const bad = prefixes.find((p) => p.includes('*'));
+  if (bad) throw new Error(`NANOCLAW_OPEN_WEIGHTS_PREFIXES entry "${bad}" must not contain "*"`);
+  return prefixes.flatMap((p) => [`${p}*`, `openai/${p}*`]);
 }
 
 /** The install's own setting for one role of one provider. */
