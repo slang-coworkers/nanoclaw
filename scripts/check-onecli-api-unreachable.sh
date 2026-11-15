@@ -29,7 +29,9 @@ fi
 PORT=${PORT:-10256}
 GW=$(docker network inspect "$NET" --format '{{range .IPAM.Config}}{{.Gateway}} {{end}}' 2>/dev/null | awk '{print $1}')
 
-urls="http://host.docker.internal:$PORT/v1/health ${GW:+http://$GW:$PORT/v1/health} ${CHECK_URLS:-}"
+# Port 10254 is where the API listens inside the gateway container. A session reaches it there when the
+# gateway is attached to the session network, as with egress lockdown.
+urls="http://host.docker.internal:$PORT/v1/health ${GW:+http://$GW:$PORT/v1/health} http://host.docker.internal:10254/v1/health ${CHECK_URLS:-}"
 reached=0
 
 # probe <label> <shell command run in the container that prints a code or a word>
