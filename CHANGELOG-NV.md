@@ -6,15 +6,36 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 809 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 315 |
-| `nv-slang` | slang project spine, skills, workflows | 218 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 133 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 110 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 814 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 316 |
+| `nv-slang` | slang project spine, skills, workflows | 219 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 134 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 111 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-15
+
+### nv-main (5 PRs)
+- **#2367** `Sync nv-main with upstream/main`
+- **#2374** `Sync nv-main with upstream/main`
+- **#2375** `Model rule: match every view of the path, query rule, management API check`
+- **#2376** `Session privilege: optional Check 2 on the closed path`
+- **#2377** `OpenCode trace: record model requests, replies and events`
+
+### nv-dashboard (1 PRs)
+- **#2369** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#2370** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2371** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2372** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-14
 
