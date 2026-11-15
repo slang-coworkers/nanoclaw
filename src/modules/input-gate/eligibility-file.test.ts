@@ -7,7 +7,7 @@ vi.mock('../../log.js', () => ({ log: { info: vi.fn(), warn: vi.fn(), error: vi.
 
 import { log } from '../../log.js';
 import { checkEligibility } from './eligibility.js';
-import { fileEligibilitySources } from './eligibility-file.js';
+import { eligibilityOfKey, fileEligibilitySources } from './eligibility-file.js';
 import type { GateActor } from './types.js';
 
 const NOW = Date.parse('2026-11-14T12:00:00Z');
@@ -178,5 +178,40 @@ describe('file eligibility sources', () => {
     expect(await check(1)).toMatchObject({ eligible: true });
     write({ people: { 'github:1': person({ identity: 'denied' }) } });
     expect(await check(1)).toMatchObject({ eligible: false, reason: 'identity_denied' });
+  });
+
+  it('reads one person by namespaced id at once, for any namespace, with the same verdict as the sources', () => {
+    write({ people: { 'github:1234': person(), 'slack:U012AB3CD': person({ entity: 'denied' }) } });
+    expect(eligibilityOfKey(file, 'github:1234', () => NOW)).toEqual({
+      eligible: true,
+      identity: 'verified',
+      entity: 'verified',
+      location: 'verified',
+      reason: null,
+    });
+    expect(eligibilityOfKey(file, 'slack:U012AB3CD', () => NOW)).toMatchObject({
+      eligible: false,
+      reason: 'entity_denied',
+    });
+    expect(eligibilityOfKey(file, 'slack:UNKNOWN', () => NOW)).toMatchObject({ eligible: false, reason: 'not_linked' });
+  });
+
+  it('blocks a key of an odd shape, even when the file holds that key', () => {
+    const keys = [
+      'github:NaN',
+      'github:01',
+      'github:1.5',
+      'github:-1',
+      'github:9007199254740993',
+      'github:',
+      'plain',
+      '',
+    ];
+    write({ people: Object.fromEntries(keys.map((k) => [k, person()])) });
+    for (const key of keys)
+      expect(
+        eligibilityOfKey(file, key, () => NOW),
+        key,
+      ).toMatchObject({ eligible: false });
   });
 });
