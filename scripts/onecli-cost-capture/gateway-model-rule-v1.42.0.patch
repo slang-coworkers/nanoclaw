@@ -1,8 +1,8 @@
 diff --git a/apps/gateway/src/condition_match.rs b/apps/gateway/src/condition_match.rs
-index 4e03fbd..7e948d8 100644
+index 4e03fbd..f98aed1 100644
 --- a/apps/gateway/src/condition_match.rs
 +++ b/apps/gateway/src/condition_match.rs
-@@ -1,18 +1,337 @@
+@@ -1,18 +1,649 @@
  use crate::policy::PolicyRule;
 +use http_body_util::BodyExt;
 +use hyper::body::Body as _;
@@ -28,6 +28,13 @@ index 4e03fbd..7e948d8 100644
 +// A body whose top-level object repeats the first segment of `key`, in any ASCII case, counts as
 +// unreadable, because another JSON parser on the way could read a different copy.
 +//
++// `target = "query"` reads a parameter of the URL's query string, and `key` is its name. Names match in
++// any ASCII case and both the percent-decoded forms count, because the server behind the gateway may
++// decode once or twice. A query parameter is optional, unlike the model of a request body, so the
++// condition holds only when the parameter is there: `not_in` holds when some copy of it matches no
++// glob, and `in` when every copy matches one. A WebSocket handshake carries its model this way
++// (`/v1/realtime?model=...`), and the gateway decides it as a GET with no body.
++//
 +// A condition we do not understand (another target, another operator, a malformed value) holds, as
 +// every condition did before this matcher existed. The decision cannot depend on the rule's action,
 +// because the v2 engine matches every rule through a throwaway rule whose action is always `Allow`.
@@ -44,18 +51,16 @@ index 4e03fbd..7e948d8 100644
 +        method.to_ascii_uppercase().as_str(),
 +        "POST" | "PUT" | "PATCH"
 +    )
- }
- 
--pub(crate) fn matches(_rule: &PolicyRule, _body: Option<&[u8]>) -> bool {
--    true
++}
++
 +/// The conditions of a rule as a list, or `None` when the rule has no conditions.
 +fn condition_list(rule: &PolicyRule) -> Option<&Vec<serde_json::Value>> {
 +    rule.conditions_raw
 +        .as_ref()
 +        .and_then(|v| v.as_array())
 +        .filter(|a| !a.is_empty())
- }
- 
++}
++
 +fn is_body_condition(cond: &serde_json::Value) -> bool {
 +    cond.get("target").and_then(|t| t.as_str()) == Some("body")
 +}
@@ -71,32 +76,52 @@ index 4e03fbd..7e948d8 100644
 +/// Whether the conditions of `rule` hold for a request with the given body.
 +///
 +/// A rule with no conditions holds, as it did before this matcher existed.
-+pub(crate) fn matches(rule: &PolicyRule, body: Option<&[u8]>) -> bool {
++///
++/// `path` is the request path with its query string, as the gateway received it.
++pub(crate) fn matches_at(rule: &PolicyRule, body: Option<&[u8]>, path: &str) -> bool {
 +    let Some(list) = condition_list(rule) else {
 +        return true;
 +    };
-+    list.iter().all(|cond| eval(cond, body).unwrap_or(true))
++    list.iter().all(|cond| eval(cond, body, path).unwrap_or(true))
++}
++
++/// `matches_at` for a request with no query string.
++#[cfg(test)]
++pub(crate) fn matches(rule: &PolicyRule, body: Option<&[u8]>) -> bool {
++    matches_at(rule, body, "")
 +}
 +
 +/// Evaluate one condition. Returns `None` when the condition is not one we understand.
-+fn eval(cond: &serde_json::Value, body: Option<&[u8]>) -> Option<bool> {
-+    if !is_body_condition(cond) {
-+        return None;
++fn eval(cond: &serde_json::Value, body: Option<&[u8]>, path: &str) -> Option<bool> {
++    match cond.get("target").and_then(|t| t.as_str()) {
++        Some("body") => eval_body(cond, body),
++        Some("query") => eval_query(cond, path),
++        _ => None,
 +    }
-+    let key = cond.get("key")?.as_str()?;
-+    let operator = cond.get("operator")?.as_str()?;
-+    let globs: Vec<&str> = match cond.get("value")? {
-+        serde_json::Value::String(s) => s
-+            .split(',')
-+            .map(str::trim)
-+            .filter(|g| !g.is_empty())
-+            .collect(),
++}
++
++/// The globs of a condition's `value`, or `None` when the value is malformed.
++fn condition_globs(cond: &serde_json::Value) -> Option<Vec<&str>> {
++    match cond.get("value")? {
++        serde_json::Value::String(s) => Some(
++            s.split(',')
++                .map(str::trim)
++                .filter(|g| !g.is_empty())
++                .collect(),
++        ),
 +        serde_json::Value::Array(items) => items
 +            .iter()
 +            .map(|v| v.as_str())
-+            .collect::<Option<Vec<_>>>()?,
-+        _ => return None,
-+    };
++            .collect::<Option<Vec<_>>>(),
++        _ => None,
++    }
++}
++
++/// Evaluate a condition on the JSON request body.
++fn eval_body(cond: &serde_json::Value, body: Option<&[u8]>) -> Option<bool> {
++    let key = cond.get("key")?.as_str()?;
++    let operator = cond.get("operator")?.as_str()?;
++    let globs = condition_globs(cond)?;
 +    let field = body_field(body, key);
 +    let listed = field
 +        .as_deref()
@@ -106,6 +131,156 @@ index 4e03fbd..7e948d8 100644
 +        "not_in" => Some(!listed),
 +        _ => None,
 +    }
++}
++
++/// Evaluate a condition on the query string of the request path.
++fn eval_query(cond: &serde_json::Value, path: &str) -> Option<bool> {
++    let key = cond.get("key")?.as_str()?;
++    let operator = cond.get("operator")?.as_str()?;
++    let globs = condition_globs(cond)?;
++    let values = query_values(path, key);
++    let unlisted = values
++        .iter()
++        .any(|v| !globs.iter().any(|g| glob_match(g, v)));
++    match operator {
++        "in" => Some(!values.is_empty() && !unlisted),
++        "not_in" => Some(unlisted),
++        _ => None,
++    }
++}
++
++/// Every value of the query parameter `name`, in each decoded form a server might read: decoded once
++/// and decoded until it no longer changes. A name matches in any ASCII case, in either form.
++fn query_values(path: &str, name: &str) -> Vec<String> {
++    let Some((_, query)) = path.split_once('?') else {
++        return Vec::new();
++    };
++    let query = query.split('#').next().unwrap_or(query);
++    let mut values = Vec::new();
++    for pair in query.split(['&', ';']) {
++        let (raw_name, raw_value) = pair.split_once('=').unwrap_or((pair, ""));
++        if decoded_forms(raw_name)
++            .iter()
++            .any(|n| n.eq_ignore_ascii_case(name))
++        {
++            values.extend(decoded_forms(raw_value));
++        }
++    }
++    values
++}
++
++/// A form-encoded string decoded once and decoded until stable: `+` is a space, and `%xx` is a byte.
++fn decoded_forms(raw: &str) -> Vec<String> {
++    let once = percent_decode(&raw.replace('+', " "));
++    let full = percent_decode_fully(&once);
++    if once == full {
++        vec![once]
++    } else {
++        vec![once, full]
++    }
++}
++
++fn hex_value(b: u8) -> Option<u8> {
++    (b as char).to_digit(16).map(|d| d as u8)
++}
++
++/// Decode every well-formed `%xx` once; a malformed escape stays as it is.
++fn percent_decode(s: &str) -> String {
++    let b = s.as_bytes();
++    let mut out = Vec::with_capacity(b.len());
++    let mut i = 0;
++    while i < b.len() {
++        if b[i] == b'%' && i + 2 < b.len() {
++            if let (Some(h), Some(l)) = (hex_value(b[i + 1]), hex_value(b[i + 2])) {
++                out.push(h * 16 + l);
++                i += 3;
++                continue;
++            }
++        }
++        out.push(b[i]);
++        i += 1;
++    }
++    String::from_utf8_lossy(&out).into_owned()
++}
++
++/// Decode until the text stops changing, at most four times, because a proxy in front of the server
++/// may decode once more before the server does.
++fn percent_decode_fully(s: &str) -> String {
++    let mut current = s.to_string();
++    for _ in 0..4 {
++        let next = percent_decode(&current);
++        if next == current {
++            break;
++        }
++        current = next;
++    }
++    current
++}
++
++/// Split a request path into its path and its query string.
++fn split_query(raw: &str) -> (&str, Option<&str>) {
++    match raw.split_once('?') {
++        Some((p, q)) => (p, Some(q)),
++        None => (raw, None),
++    }
++}
++
++/// The path as an origin server routes it once it has decoded the path text it holds: empty and `.`
++/// segments dropped, `..` resolved, a trailing slash kept, and the query string kept at the end.
++fn clean_path(decoded: &str, query: Option<&str>) -> String {
++    let mut segments: Vec<&str> = Vec::new();
++    for segment in decoded.split('/') {
++        match segment {
++            "" | "." => {}
++            ".." => {
++                segments.pop();
++            }
++            other => segments.push(other),
++        }
++    }
++    let mut out = format!("/{}", segments.join("/"));
++    if decoded.ends_with('/') && !segments.is_empty() {
++        out.push('/');
++    }
++    if let Some(q) = query {
++        out.push('?');
++        out.push_str(q);
++    }
++    out
+ }
+ 
+-pub(crate) fn matches(_rule: &PolicyRule, _body: Option<&[u8]>) -> bool {
+-    true
++/// The path with every `%xx` decoded until the text stops changing, then cleaned.
++#[cfg(test)]
++pub(crate) fn canonical_path(raw: &str) -> String {
++    let (path, query) = split_query(raw);
++    clean_path(&percent_decode_fully(path), query)
+ }
+ 
++/// The views of a request path that a rule must meet: the path as sent, decoded once, and decoded
++/// until stable, each cleaned. A rule on `/model/*` holds when any view meets it.
++///
++/// The server behind the gateway decodes and cleans the path before it routes, and we do not know how
++/// many times it decodes. `/%6Dodel/info`, `/model%2Finfo`, `//model/info`, `/./model/info` and
++/// `/v1/../model/info` all reach `/model/info`, and each is one view of that route. One decoding is not
++/// enough, and neither is a full decoding: `/model/%252e%252e/invoke` decodes to `/invoke` after the
++/// full decoding, but a server that decodes once routes it to `/model/<id>/invoke` with the id
++/// `%2e%2e`. A block rule must hold for every route the server might take, so it holds for each view.
++pub(crate) fn path_views(raw: &str) -> Vec<String> {
++    let (path, query) = split_query(raw);
++    let mut views: Vec<String> = Vec::new();
++    for form in [
++        path.to_string(),
++        percent_decode(path),
++        percent_decode_fully(path),
++    ] {
++        let view = clean_path(&form, query);
++        if !views.contains(&view) {
++            views.push(view);
++        }
++    }
++    views
 +}
 +
 +/// Whether the top-level object of `body` holds the key `name` more than once, spelled with any
@@ -339,6 +514,143 @@ index 4e03fbd..7e948d8 100644
 +        assert!(!needs_body_buffer(&[rule(PolicyAction::Block, None)]));
 +    }
 +
++    fn query_rule(operator: &str) -> PolicyRule {
++        rule(
++            PolicyAction::Block,
++            Some(json!([{"target": "query", "key": "model", "operator": operator,
++                         "value": "nvidia/*, openai/nvidia/*"}])),
++        )
++    }
++
++    #[test]
++    fn query_not_in_holds_for_a_closed_model_and_not_for_an_open_one_or_none() {
++        let r = query_rule("not_in");
++        let at = |path: &str| matches_at(&r, None, path);
++        assert!(at("/v1/realtime?model=aws/anthropic/claude"));
++        assert!(!at("/v1/realtime?model=nvidia/zai-org/glm-5.3"));
++        // No model parameter: the request names no model through the URL, so the rule does not apply.
++        assert!(!at("/v1/models"));
++        assert!(!at("/v1/models?limit=3"));
++        assert!(!at("/v1/realtime"));
++    }
++
++    #[test]
++    fn query_values_are_read_in_every_form_a_server_might_read() {
++        let r = query_rule("not_in");
++        let at = |path: &str| matches_at(&r, None, path);
++        // A name in another case, an encoded name, a repeated name, either order.
++        assert!(at("/x?Model=aws/anthropic/claude"));
++        assert!(at("/x?%6Dodel=aws/anthropic/claude"));
++        assert!(at("/x?model=nvidia/a&model=aws/anthropic/claude"));
++        assert!(at("/x?model=aws/anthropic/claude&model=nvidia/a"));
++        assert!(at("/x?model=nvidia/a;model=aws/anthropic/claude"));
++        // An encoded open model reads as the open model; an encoded closed one stays closed.
++        assert!(!at("/x?model=nvidia%2Fzai-org%2Fglm-5.3"));
++        assert!(at("/x?model=aws%2Fanthropic%2Fclaude"));
++        assert!(at("/x?model=aws%252Fanthropic%252Fclaude"));
++        // A model that is only open after a second decoding is not trusted.
++        assert!(at("/x?model=nvidia%252Fa"));
++        // Another parameter is not the model, and a fragment is not part of the query.
++        assert!(!at("/x?other=aws/anthropic/claude&model=nvidia/a"));
++        assert!(!at("/x?model=nvidia/a#model=aws/anthropic/claude"));
++        // An empty value is a value, and it is not open.
++        assert!(at("/x?model="));
++        assert!(at("/x?model"));
++    }
++
++    #[test]
++    fn query_in_holds_only_when_every_copy_is_listed() {
++        let r = query_rule("in");
++        assert!(matches_at(&r, None, "/x?model=nvidia/a"));
++        assert!(!matches_at(&r, None, "/x?model=nvidia/a&model=aws/b"));
++        assert!(!matches_at(&r, None, "/x"));
++    }
++
++    #[test]
++    fn a_query_condition_does_not_ask_for_the_body() {
++        let r = query_rule("not_in");
++        assert!(!needs_body_buffer(&[r]));
++    }
++
++    #[test]
++    fn canonical_path_is_one_spelling_of_each_route() {
++        for raw in [
++            "/model/info",
++            "/%6Dodel/info",
++            "/%6dodel/info",
++            "/model%2Finfo",
++            "/model%2finfo",
++            "//model/info",
++            "///model//info",
++            "/./model/info",
++            "/model/./info",
++            "/v1/../model/info",
++            "/a/b/../../model/info",
++            "/%256Dodel/info",
++            "/%25256Dodel/info",
++            "/%2e/model/info",
++            "/v1/%2e%2e/model/info",
++        ] {
++            assert_eq!(canonical_path(raw), "/model/info", "{raw}");
++        }
++        // The query string stays as it is, a trailing slash stays, and `..` cannot leave the root.
++        assert_eq!(canonical_path("/%6Dodel/info?model=a%2Fb"), "/model/info?model=a%2Fb");
++        assert_eq!(canonical_path("/model/"), "/model/");
++        assert_eq!(canonical_path("/../../model"), "/model");
++        assert_eq!(canonical_path(""), "/");
++        assert_eq!(canonical_path("/"), "/");
++        // A malformed escape stays, and a different route stays different.
++        assert_eq!(canonical_path("/a%zzb"), "/a%zzb");
++        assert_eq!(canonical_path("/models/info"), "/models/info");
++        assert_eq!(canonical_path("/Model/info"), "/Model/info");
++    }
++
++    #[test]
++    fn path_views_cover_one_decoding_and_a_full_decoding() {
++        let views = path_views("/model/%252e%252e/invoke");
++        assert!(views.contains(&"/model/%2e%2e/invoke".to_string()), "{views:?}");
++        assert!(views.contains(&"/invoke".to_string()), "{views:?}");
++        // A plain path has one view, and the query string rides along on each view.
++        assert_eq!(path_views("/model/info"), vec!["/model/info".to_string()]);
++        assert_eq!(
++            path_views("/%6Dodel/info?model=a"),
++            vec!["/%6Dodel/info?model=a".to_string(), "/model/info?model=a".to_string()]
++        );
++    }
++
++    #[test]
++    fn a_route_rule_holds_for_every_spelling_of_the_route() {
++        let block = PolicyRule {
++            name: "routes".into(),
++            path_pattern: "/model/*".into(),
++            method: None,
++            action: PolicyAction::Block,
++            conditions_raw: None,
++        };
++        let hits = |p: &str| crate::policy::matches_request(&block, "GET", p, None);
++        for p in [
++            "/model/info",
++            "/%6Dodel/info",
++            "/model%2Finfo",
++            "//model/info",
++            "/./model/info",
++            "/v1/../model/info",
++            "/model/info?x=1",
++            "/%256Dodel/new",
++            // A server that decodes once routes these to /model/<id>/invoke with an odd id, and a full
++            // decoding would resolve the `..` and lose the route.
++            "/model/%252e%252e/invoke",
++            "/model/%2e%2e/invoke",
++            "/%2e%2e/model/info",
++            "/model/%252e%252e%252finvoke",
++        ] {
++            assert!(hits(p), "{p}");
++        }
++        for p in ["/models/info", "/v1/model/info", "/v1/messages", "/Model/info"] {
++            assert!(!hits(p), "{p}");
++        }
++    }
++
 +    #[test]
 +    fn only_methods_with_a_body_are_buffered() {
 +        assert!(method_has_body("post"));
@@ -346,6 +658,41 @@ index 4e03fbd..7e948d8 100644
 +        assert!(!method_has_body("GET"));
 +        assert!(!method_has_body("CONNECT"));
 +    }
+ }
+diff --git a/apps/gateway/src/policy.rs b/apps/gateway/src/policy.rs
+index df9899e..de79999 100644
+--- a/apps/gateway/src/policy.rs
++++ b/apps/gateway/src/policy.rs
+@@ -234,12 +234,16 @@ pub(crate) fn matches_request(
+     path: &str,
+     body: Option<&[u8]>,
+ ) -> bool {
+-    let direct = path_matches(path, &rule.path_pattern)
++    // The rule meets every view of the path that the server behind the gateway might route: as sent,
++    // decoded once and decoded until stable, each with empty and dot segments resolved.
++    // `/%6Dodel/info` and `//model/info` must meet a rule on `/model/*`.
++    let views = crate::condition_match::path_views(path);
++    let direct = views.iter().any(|v| path_matches(v, &rule.path_pattern))
+         && rule
+             .method
+             .as_ref()
+             .is_none_or(|m| m.eq_ignore_ascii_case(method))
+-        && crate::condition_match::matches(rule, body);
++        && crate::condition_match::matches_at(rule, body, path);
+     if direct {
+         return true;
+     }
+@@ -248,9 +252,9 @@ pub(crate) fn matches_request(
+     // block the discovery so the push fails with a clear policy error.
+     if rule.path_pattern.ends_with("/git-receive-pack")
+         && method.eq_ignore_ascii_case("GET")
+-        && is_git_push_discovery(path)
++        && views.iter().any(|v| is_git_push_discovery(v))
+     {
+-        return crate::condition_match::matches(rule, body);
++        return crate::condition_match::matches_at(rule, body, path);
+     }
+     false
  }
 diff --git a/apps/gateway/src/policy_engine/enforce.rs b/apps/gateway/src/policy_engine/enforce.rs
 index be43b1f..40e96c7 100644
@@ -391,14 +738,17 @@ index be43b1f..40e96c7 100644
  
  /// Equipment rows are excluded: they are injection-only (dropped by the
 diff --git a/packages/api/src/validations/policy-rule.ts b/packages/api/src/validations/policy-rule.ts
-index a4030f2..f5cbd72 100644
+index a4030f2..58ca4f4 100644
 --- a/packages/api/src/validations/policy-rule.ts
 +++ b/packages/api/src/validations/policy-rule.ts
-@@ -5,7 +5,8 @@ export type PolicyMode = z.infer<typeof policyModeSchema>;
+@@ -4,8 +4,10 @@ export const policyModeSchema = z.enum(["allow", "deny"]);
+ export type PolicyMode = z.infer<typeof policyModeSchema>;
  
  export const ruleConditionSchema = z.object({
-   target: z.enum(["body"]),
+-  target: z.enum(["body"]),
 -  operator: z.enum(["contains"]),
++  // "body" reads a JSON field of the request body; "query" reads a parameter of the URL query string.
++  target: z.enum(["body", "query"]),
 +  // "in" and "not_in" test the JSON field at `key` against a comma-separated list of globs.
 +  operator: z.enum(["contains", "in", "not_in"]),
    value: z.string().min(1).max(1000),
