@@ -18,6 +18,8 @@ container/base-image.test.ts
 container/dockerfile.test.ts
 container/build.sh
 container/pull.sh
+# Upstream #4380 round: test of container/pull.sh.
+container/pull.test.ts
 # Upstream #4139 (hardened image per release): siblings of pull.sh / versions.json.
 container/release-image.sh
 container/Dockerfile.derived
