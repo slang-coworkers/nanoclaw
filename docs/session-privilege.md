@@ -9,10 +9,12 @@ A session never mixes the two. A message goes to the session of its sender's pri
 
 ## Turning it on
 
-| Setting                          | Meaning                                                                                                                                                                     |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `NANOCLAW_SESSION_PRIVILEGE`     | `off` (default) or `enforce`. With `off`, every message asks for an open session, every session is open, and spawn ignores the privilege, so the install behaves as before. |
-| `NANOCLAW_CLOSED_MODEL_APPROVED` | Path to the approved list. Default `data/closed-model-approved.json`.                                                                                                       |
+| Setting                           | Meaning                                                                                                                                                                     |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NANOCLAW_SESSION_PRIVILEGE`      | `off` (default) or `enforce`. With `off`, every message asks for an open session, every session is open, and spawn ignores the privilege, so the install behaves as before. |
+| `NANOCLAW_CLOSED_MODEL_CHECK2`    | `off` (default), `require` or `only`. Whether Check 2 also decides who gets a closed session. See "Check 2 on the closed path".                                             |
+| `NANOCLAW_INPUT_GATE_ELIGIBILITY` | Path to the evidence file of the input gate. Default `data/input-gate-eligibility.json`.                                                                                    |
+| `NANOCLAW_CLOSED_MODEL_APPROVED`  | Path to the approved list. Default `data/closed-model-approved.json`.                                                                                                       |
 
 The approved list is a JSON array of namespaced user ids: `slack:U012AB3CD`, `discord:80351110224678912`, and `github:<numeric id>` for a GitHub account. A GitHub entry uses the numeric id, because a login can be renamed or reused. The operator keeps this file. It stands in for the closed-model eligibility check (Check 2 of the input gate) until that check has its identity sources. A missing or unreadable file is an empty list, so nobody gets a closed session by accident.
 
@@ -32,6 +34,18 @@ Before `enforce`, move every group to open weights (`scripts/open-weights-plan.t
 The privilege belongs to the account that triggered the event, not to the author of the words it carries. Consider an outsider who opens an issue, and an approved maintainer who then adds the `bot-ok` label. The label event hands the issue to the bot, and the maintainer is the sender, so the issue goes to a closed session. The maintainer has chosen to direct the coworker. Closed-model access follows who directs the model, as in the input gate, and the newcomer rules decide whose issues the bot may read at all.
 
 When a PR is owned by a session of one privilege and a comment arrives from a sender of the other, the comment goes to a session of the sender's privilege on the same thread, created if needed. It never reaches the owner session.
+
+## Check 2 on the closed path
+
+`NANOCLAW_CLOSED_MODEL_CHECK2` lets the input gate's Check 2 decide who gets a closed session. Check 2 needs a verified identity, a verified employing entity, and a location that was checked within 24 hours. The operator's evidence file holds this data until the real sources exist (see `docs/input-gate.md`).
+
+- `off`: the approved list decides alone, and the evidence file is not read.
+- `require`: a person gets a closed session only when they are on the approved list and Check 2 finds them eligible.
+- `only`: Check 2 decides alone, and the approved list is not read.
+
+A value that the install does not know counts as `require`.
+
+The evidence file names a person by their namespaced id, for example `github:1234` or `slack:U012AB3CD`. A person who is not in the file, or whose id has an odd shape, is not eligible. Consider an approved maintainer whose location was last checked 30 hours ago. Their next message asks for an open session, and the closed session no longer receives their messages. The closed session does not stop, because a session keeps its privilege for its whole life. When the operator records a fresh location, the next message of the maintainer asks for a closed session again. The decision reads the file at each message, so an edit takes effect at once.
 
 ## What a session may write into
 
@@ -83,6 +97,6 @@ Bind the API to the loopback address of the host, and point `ONECLI_URL` at that
 ## Not covered yet
 
 - **Traffic the model rule does not see.** The rules cover the hosts of the three base URLs. A request that names its model where no rule reads it is outside them, and so is another host that accepts the same inference key. A container that calls another host with its own key is outside the rules too. A WebSocket frame after the handshake is not read.
-- **Check 2 sources and the location check.** Today the operator's list decides. The input gate's Check 2 and the location check come later, on the closed path.
+- **Real Check 2 sources.** The location check on the closed path reads the operator's evidence file. The Entra, HR and location adapters replace the file when their approvals land.
 - **A parked PR that is released** (`releaseParkedReviewable`) and the learning delivery to approver sessions look up sessions without a privilege.
 - **`mention-sticky` engagement** counts a session of either privilege as "active", so a thread an approved person started keeps listening for everyone.
