@@ -22,6 +22,7 @@ import { getTaskSeriesId } from '../db/session-routing.js';
 import { getAllDestinations } from '../destinations.js';
 import { prepareOpenCodeMemory, type OpenCodeMemorySessionHook } from './opencode-memory.js';
 import { turnAccounting } from './turn-accounting.js';
+import { applyOpenCodeTrace, recordOpenCodeEvent, stopOpenCodeTraceProxies } from './opencode-trace.js';
 import {
   boundedOpenCodeCall,
   executeOpenCodeTurn,
@@ -252,7 +253,8 @@ async function ensureSharedRuntime(
     if (sharedRuntime) {
       destroySharedRuntime();
     }
-    const { url, proc } = await deps.spawnServer(config);
+    // The key above names the config as built; the proxy address is added only for the server we spawn.
+    const { url, proc } = await deps.spawnServer(await applyOpenCodeTrace(config));
 
     let runtime: SharedRuntime;
     // Owns the SSE subscription and its retry loop. Teardown closes the
@@ -358,6 +360,8 @@ export function destroySharedRuntime(): void {
     sharedConfigKey = null;
   }
   sharedInit = null;
+  // The next server gets a fresh recording proxy; this one would otherwise stay bound for the container's life.
+  stopOpenCodeTraceProxies();
 }
 
 /**
@@ -538,6 +542,7 @@ function eventPump(runtime: OpenCodeRuntimeHandle): OpenCodeEventPump {
   let pump = runtimePumps.get(runtime);
   if (!pump) {
     pump = new OpenCodeEventPump(runtime.stream, (event) => {
+      recordOpenCodeEvent(event);
       if (event.type === 'question.asked') {
         void handleQuestionAsked(runtime.questionClient, event.properties);
       }
