@@ -1,8 +1,8 @@
 import fs from 'fs';
 
 import { log } from '../../log.js';
-import type { EligibilitySources } from './eligibility.js';
-import type { EvidenceState, GateActor } from './types.js';
+import { evaluateEligibility, type EligibilitySources } from './eligibility.js';
+import type { EligibilityResult, EvidenceState, GateActor } from './types.js';
 
 /**
  * Check 2 evidence from a file the operator keeps, until the Entra, HR and location adapters
@@ -129,13 +129,21 @@ interface Snapshot {
   location: EvidenceState;
 }
 
-/** The evidence of one person in one reading of the file. */
-function snapshotOf(filePath: string, actor: GateActor, nowMs: number): Snapshot {
+/**
+ * The file key of a GitHub actor, or null for an account without a usable id. An id is a positive safe
+ * integer: NaN, a fraction or a string would otherwise build a key that matches a file entry.
+ */
+function githubKey(actor: GateActor): string | null {
+  if (typeof actor.id !== 'number' || !Number.isSafeInteger(actor.id) || actor.id <= 0) return null;
+  return `github:${actor.id}`;
+}
+
+/** The evidence of one person, named by file key, in one reading of the file. */
+function snapshotOf(filePath: string, key: string | null, nowMs: number): Snapshot {
   const unknown: Snapshot = { identity: 'unknown', entity: 'unknown', location: 'unknown' };
-  // An id is a positive safe integer. NaN, a fraction or a string would otherwise build a key that matches a file entry.
-  if (typeof actor.id !== 'number' || !Number.isSafeInteger(actor.id) || actor.id <= 0) return unknown;
+  if (key === null) return unknown;
   const evidence = readEvidence(filePath);
-  const person = evidence?.people.get(`github:${actor.id}`);
+  const person = evidence?.people.get(key);
   if (!evidence || !person) return unknown;
   const location = person.location as { state?: unknown; checkedAt?: unknown } | undefined;
   let locationState: EvidenceState = 'unknown';
@@ -160,7 +168,7 @@ export function fileEligibilitySources(filePath: string, now: () => number = Dat
   const snapshot = (actor: GateActor): Snapshot => {
     let found = snapshots.get(actor);
     if (!found) {
-      found = snapshotOf(filePath, actor, now());
+      found = snapshotOf(filePath, githubKey(actor), now());
       snapshots.set(actor, found);
     }
     return found;
@@ -170,4 +178,16 @@ export function fileEligibilitySources(filePath: string, now: () => number = Dat
     entity: async (actor) => snapshot(actor).entity,
     location: async (actor) => snapshot(actor).location,
   };
+}
+
+/**
+ * Check 2 for one person, named by namespaced id (`github:1234`, `slack:U012AB3CD`), read from the
+ * operator's file at once. The session-privilege module uses it on the closed path. An id of another
+ * shape, a `github:` id that is not a positive safe integer, a person who is not in the file and a file
+ * that cannot be read all give a verdict that blocks.
+ */
+export function eligibilityOfKey(filePath: string, key: string, now: () => number = Date.now): EligibilityResult {
+  const wellFormed = /^[a-z][a-z-]*:\S+$/.test(key) && (!key.startsWith('github:') || /^github:[1-9][0-9]*$/.test(key));
+  const safe = wellFormed && (!key.startsWith('github:') || Number.isSafeInteger(Number(key.slice(7))));
+  return evaluateEligibility(snapshotOf(filePath, safe ? key : null, now()));
 }
