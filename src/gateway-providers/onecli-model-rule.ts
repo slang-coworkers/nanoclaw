@@ -1,17 +1,23 @@
 /**
  * The OneCLI rules that keep closed models away from an open session.
  *
- * An open session runs on the OneCLI agent `<group id>`. For that agent the gateway holds two
+ * An open session runs on the OneCLI agent `<group id>`. For that agent the gateway holds three
  * block rules:
  *
  * - `open-models-only (<id>)` refuses every POST, PUT or PATCH to the inference host whose JSON
  *   body names no open model, including a body that cannot be read, so the rule fails closed;
- * - `open-models-only (<id>) routes` refuses the routes that pick the model from the URL, where
- *   a body `model` field could name an open model while the URL selects a closed one.
+ * - `open-models-only (<id>) routes` refuses, for every method, the routes that pick the model
+ *   from the URL, where a body `model` field could name an open model while the URL selects a
+ *   closed one;
+ * - `open-models-only (<id>) query` refuses a request of any method whose `model` query parameter
+ *   names no open model. A WebSocket handshake is a GET that carries its model there.
  *
- * A closed session uses the agent `<group id>-closed`, which has neither rule. The gateway needs
- * `onecli-cost:v4` or later, whose matcher reads `body` conditions with the `in` and `not_in`
- * operators.
+ * The gateway matches a rule against the canonical path, so `/%6Dodel/info` and `//model/info`
+ * meet the `routes` rule as `/model/info` does.
+ *
+ * A closed session uses the agent `<group id>-closed`, which has none of these rules. The gateway
+ * needs `onecli-cost:v5` or later: its matcher reads `body` and `query` conditions with the `in`
+ * and `not_in` operators, and matches the canonical path.
  */
 
 /** How to reach the gateway's management API. */
@@ -36,7 +42,8 @@ type BodyMethod = (typeof BODY_METHODS)[number];
 /**
  * Inference routes that pick the model from the URL, which an open session never uses: Bedrock
  * (`/model/<id>/invoke`) and the NVIDIA `/llm/` route. Open sessions call the `/v1` routes, where
- * the model is in the body.
+ * the model is in the body. The rule covers every method, so a GET or a WebSocket handshake on
+ * these routes is refused too.
  */
 const URL_MODEL_ROUTES = ['/model/*', '/llm/*'] as const;
 
@@ -46,11 +53,12 @@ interface RuleBody {
   enabled: true;
   requireApproval: false;
   identities: Array<{ type: 'agent'; id: string }>;
-  targets: Array<{ kind: 'network'; hostPattern: string; method: BodyMethod; pathPattern?: string }>;
-  conditions: Array<{ target: 'body'; key: 'model'; operator: 'not_in'; value: string }>;
+  /** A target without a `method` holds for every method. */
+  targets: Array<{ kind: 'network'; hostPattern: string; method?: BodyMethod; pathPattern?: string }>;
+  conditions: Array<{ target: 'body' | 'query'; key: 'model'; operator: 'not_in'; value: string }>;
 }
 
-/** The rules the gateway must hold for one open agent, the body rule first. */
+/** The rules the gateway must hold for one open agent: the body rule, the routes rule, the query rule. */
 export function desiredOpenModelRules(
   identifier: string,
   agentId: string,
@@ -77,11 +85,15 @@ export function desiredOpenModelRules(
       ...base,
       name: `${openModelRuleName(identifier)} routes`,
       targets: sorted.flatMap((hostPattern) =>
-        URL_MODEL_ROUTES.flatMap((pathPattern) =>
-          BODY_METHODS.map((method) => ({ kind: 'network' as const, hostPattern, method, pathPattern })),
-        ),
+        URL_MODEL_ROUTES.map((pathPattern) => ({ kind: 'network' as const, hostPattern, pathPattern })),
       ),
       conditions: [],
+    },
+    {
+      ...base,
+      name: `${openModelRuleName(identifier)} query`,
+      targets: sorted.map((hostPattern) => ({ kind: 'network' as const, hostPattern })),
+      conditions: [{ target: 'query', key: 'model', operator: 'not_in', value: globs.join(',') }],
     },
   ];
 }
@@ -165,7 +177,7 @@ export async function ensureOpenModelRule(
   };
   const refuse = async (res: Response, what: string): Promise<never> => {
     const detail = (await res.text().catch(() => '')).slice(0, 200);
-    const hint = res.status === 422 ? ' (the gateway may be older than onecli-cost v4)' : '';
+    const hint = res.status === 422 ? ' (the gateway may be older than onecli-cost v5)' : '';
     throw new Error(`${what} returned ${res.status}${hint}: ${detail}`);
   };
   const list = (status: 'draft' | 'published') =>

@@ -173,15 +173,16 @@ API and push-probe 200 from a coworker container; oracle call `7bc32ef2-…` cap
 `usage_input_tokens: 14`, `usage_output_tokens: 4`, cost header `0.000136`; `ncl cost-cap coworkers`
 unchanged. Prod (`onecli-cost:v2`, 1.41.0) not yet swapped.
 
-## Model rule (`onecli-cost:v4`)
+## Model rule (`onecli-cost:v5`)
 
-`gateway-model-rule-v1.42.0.patch` applies on top of `gateway-body-usage-tap-v1.42.0.patch` and the header capture. It lets a gateway rule read the `model` of a request body. The nanoclaw open sessions use it to refuse closed models (see `docs/session-privilege.md`).
+`gateway-model-rule-v1.42.0.patch` applies on top of `gateway-body-usage-tap-v1.42.0.patch` and the header capture. It lets a gateway rule read the `model` of a request body or of the URL query string, and it matches rules against the canonical path. The nanoclaw open sessions use it to refuse closed models (see `docs/session-privilege.md`).
 
 What it changes:
 
-- `apps/gateway/src/condition_match.rs` evaluates `body` conditions with the operators `in` and `not_in`. The value is a comma-separated list of globs, and `*` matches any run of characters. The matcher reads POST, PUT and PATCH bodies up to 32 MiB. A body that repeats the key, in any ASCII case, counts as unreadable.
+- `apps/gateway/src/condition_match.rs` evaluates `body` and `query` conditions with the operators `in` and `not_in`. The value is a comma-separated list of globs, and `*` matches any run of characters. The matcher reads POST, PUT and PATCH bodies up to 32 MiB. A body that repeats the key, in any ASCII case, counts as unreadable. A `query` condition holds only when the parameter is present: `not_in` holds when some copy of it matches no glob. The same file holds `canonical_path`.
+- `apps/gateway/src/policy.rs` matches every rule against the canonical path. The path is decoded until it stops changing, empty and `.` segments are dropped, and `..` is resolved. Without this, `/%6Dodel/info` and `//model/info` passed a rule on `/model/*`, and the inference server routed them to `/model/info`.
 - `apps/gateway/src/policy_engine/enforce.rs` asks the matcher whether a v2 rule needs the body. Before, the v2 engine never buffered a body.
-- `packages/api/src/validations/policy-rule.ts` accepts the two new operators.
+- `packages/api/src/validations/policy-rule.ts` accepts the two new operators and the `query` target.
 
 `not_in` holds when the field is missing, is not a string, or matches no glob. A block rule with `not_in` therefore fails closed. A condition the matcher does not understand holds, as every condition did before this patch.
 
@@ -192,7 +193,7 @@ cd onecli-src   # v1.42.0 with the two patches above applied
 git apply /path/to/gateway-model-rule-v1.42.0.patch
 docker run --rm -v "$PWD/apps/gateway":/build -w /build rust:1-alpine sh -c \
   'apk add --no-cache musl-dev pkgconfig openssl-dev openssl-libs-static && cargo test --release'
-docker build -f docker/Dockerfile -t onecli-cost:v4 .   # about 20 minutes with a cold cache
+docker build -f docker/Dockerfile -t onecli-cost:v5 .   # about 20 minutes with a cold cache
 ```
 
 A rule is written through the v2 policy API, and it ends with a publish:
@@ -206,4 +207,4 @@ curl -X POST "$ONECLI/v1/policy/rules" -H 'Content-Type: application/json' -d '{
 curl -X POST "$ONECLI/v1/policy/publish" -H 'Content-Type: application/json' -d '{}'
 ```
 
-Nanoclaw writes this rule itself for each open agent. Verified on lego 2026-11-14 with a proxy test: a closed model and a body without a model are refused for the agent with the rule, and an open model passes. The same closed model passes for an agent without the rule.
+Nanoclaw writes the rules itself for each open agent: a body rule, a routes rule and a query rule. Verified on lego with a proxy test: a closed model and a body without a model are refused for the agent with the rule, and an open model passes. The same closed model passes for an agent without the rule. The script `scripts/onecli-cost-capture/model-rule-drills.sh` sends 69 bypass attempts and checks through a side gateway.
