@@ -27,7 +27,7 @@ Privilege is user-level (owner/admin), not agent-group-level. See [docs/isolatio
 
 ## Two-DB Session Split
 
-Each session has **two** SQLite files under `data/v2-sessions/<session_id>/`:
+Each session has **two** SQLite files under `data/v2-sessions/<agent_group_id>/<session_id>/`:
 
 - `inbound.db` — host writes, container reads. `messages_in`, delivered, destinations, session_routing.
 - `outbound.db` — container writes, host reads. `messages_out`, processing_ack, session_state, container_state.
@@ -48,38 +48,36 @@ For ad-hoc central queries from skills or scripts, use the in-tree wrapper rathe
 | `src/router.ts` | Inbound routing: messaging group → agent group → session → `inbound.db` → wake |
 | `src/delivery.ts` | Polls `outbound.db`, delivers via adapter, handles system actions (schedule, approvals, etc.) |
 | `src/delivery-guard.ts` | `DeliveryGuardSpec` + `runGuarded` — the guard-consult pipeline for privileged delivery actions (registry stays in `delivery.ts`) |
-| `src/host-sweep.ts` | 60s sweep: `processing_ack` sync, stale detection, due-message wake, recurrence |
-| `src/session-manager.ts` | Resolves sessions; opens `inbound.db` / `outbound.db`; manages heartbeat path |
-| `src/container-runner.ts` | Spawns per-agent-group containers with session DB + outbox mounts, OneCLI `ensureAgent`, per-thread plumbing, webhook routing, A/B test infra |
-| `src/container-runtime.ts` | Container runtime wrapper (runtime binary, host-gateway args, mount args), orphan cleanup |
+| `src/host-sweep.ts` + `src/reconcile-session.ts` | 60s resync floor; the per-session pass (`reconcileSession`: `processing_ack` sync, stuck detection, due-message wake, recurrence) runs through the keyed queue in `src/reconcile-queue.ts` |
+| `src/session-manager.ts` | Resolves sessions; session folder, heartbeat and outbox paths; reads and writes session mailboxes through `src/mailbox/` |
+| `src/mailbox/` | Session-mailbox seam (`AgentMailbox`); the SQLite realization (`inbound.db` / `outbound.db`) is `src/mailbox/sqlite/`, mirrored in `container/agent-runner/src/mailbox/` |
+| `src/container-runner.ts` | Composes each session's `SessionSpec` (mounts, env, command) and hands it to the session driver — one agent container per session, plus any auxiliary containers the gateway adds; leases the session's gateway contribution and revokes it on exit |
+| `src/drivers/` | Session-driver seam: turns a `SessionSpec` into a running container (argv, mounts, kill/stop, orphan listing). `NANOCLAW_RUNTIME_DRIVER` picks the driver (default and only built-in: `docker`); overlays append a registration to `installed.ts`. `src/container-runtime.ts` keeps only the runtime binary name |
 | `src/claude-composer.ts` + `src/claude-composer/` | Coworker spine composer (lego model). See [docs/lego-coworker-workflows.md](docs/lego-coworker-workflows.md) |
 | `src/guard/` | Privileged-action decision seam: `guard(action, input)` → allow \| hold \| deny. Module-edge `guard.ts` adapters (cli, agent-to-agent, self-mod, permissions, approval-ledger) define each action's decision; ncl commands + delivery actions demand a guard at registration; approved replays carry the approval row as a grant and re-run the checks. Conformance test: `src/guard/conformance.test.ts` |
 | `src/modules/approval-ledger/` | PR-approver decision ledger (`approval_decisions`). Append-only, first-write-wins on `(repo, pr, commit_sha)`; writes require the `APPROVAL_LEDGER_WRITERS` capability (fail-closed when unset); human verdicts come only from the GitHub webhook path, keyed by delivery id. Metric consumers must filter `provenance = 'agent_verified'` (or use `listTrustedDecisions`) |
-| `src/container-runner.ts` | Spawns per-agent-group Docker containers with session DB + outbox mounts; leases the session's gateway contribution and revokes it on exit |
-| `src/container-runtime.ts` | Docker CLI wrapper (runtime binary, host-gateway args, mount args), orphan cleanup |
 | `src/gateway-providers/` | Credential-gateway seam: `GatewayProviderDefinition` + its single registry. One provider per install, selected by `NANOCLAW_GATEWAY_PROVIDER`; overlays append a registration to `installed.ts`. See [docs/gateway-seam.md](docs/gateway-seam.md) |
 | `src/gateway-approval-coordinator.ts` | Core-owned human approval flow every gateway gets: request validation, approver routing, `pending_approvals`, terminal cards, and supervised reconnect of the provider's approval subscription |
-| `src/guard/` | Privileged-action decision seam: `guard(action, input)` → allow \| hold \| deny. Module-edge `guard.ts` adapters (cli, agent-to-agent, self-mod, permissions) define each action's decision; ncl commands + delivery actions demand a guard at registration; approved replays carry the approval row as a grant and re-run the checks. Conformance test: `src/guard/conformance.test.ts` |
 | `src/modules/permissions/access.ts` | `canAccessAgentGroup` — owner / global admin / scoped admin / member resolution against `user_roles` + `agent_group_members` |
 | `src/modules/approvals/primitive.ts` | `pickApprover`, `pickApprovalDelivery`, `requestApproval`, approval-handler registry |
 | `src/command-gate.ts` | Router-side admin command gate — queries `user_roles` directly (no env var, no container-side check) |
 | `src/modules/permissions/user-dm.ts` | Cold-DM resolution + `user_dms` cache |
-| `src/group-init.ts` | Per-agent-group filesystem scaffold (CLAUDE.md, skills, agent-runner-src overlay) + container-config backfill |
+| `src/group-init.ts` | Per-agent-group scaffold: `groups/<folder>/` (`plugins/`, staged `instructions.prepend.md`), the `container_configs` row, and the provider's state dir — agent-runner source is a shared read-only mount, not copied per group |
 | `src/db/container-configs.ts` | CRUD for `container_configs` table (per-group container runtime config) |
 | `src/backfill-container-configs.ts` | Migrates legacy `container.json` files into the DB on startup |
 | `src/container-restart.ts` | Kill + on-wake respawn for agent group containers |
 | `src/modules/scheduling/` | Task creation, recurrence and run log — what `ncl tasks` writes; `src/host-sweep.ts` fires them |
-| `src/db/` | DB layer — agent_groups, messaging_groups, sessions, container_configs, user_roles, user_dms, pending_*, migrations |
+| `src/db/` | DB layer — `DbDriver` seam, agent_groups, messaging_groups, sessions, container_configs, pending_*, migrations; module tables (user_roles, user_dms, …) live in `src/modules/*/db/` |
 | `src/channels/` | Channel adapter infra (registry, Chat SDK bridge); specific channel adapters are skill-installed from the `channels` branch |
 | `src/channels/channel-defaults.ts` | Wiring-creation helpers over adapter-declared channel defaults (`resolveWiringDefaults`, `resolveThreadPolicy`, engage validation) |
-| `src/providers/` | Host-side provider container-config (`claude` baked in; `opencode` etc. copied in from their skill's `payload/`) |
+| `src/providers/` + `src/provider-contracts/` | Host-side provider seams: container-config and surface contracts (`claude` baked in; `opencode` etc. copied in from their skill's `payload/`) |
 | `setup/gateways/` | Gateway catalog (`gateway.json` discovery), selection/detection, and the skill-driven install used by setup and `/update-nanoclaw` |
 | `container/agent-runner/src/` | Agent-runner: poll loop, formatter, provider abstraction, MCP tools, destinations |
 | `container/skills/` | Container skills loaded inside agent containers: spine fragments + SKILL.md bodies + coworker-types.yaml |
 | `groups/<folder>/` | Per-agent-group filesystem (CLAUDE.md, skills, container config) |
 | `container/agent-runner/src/` | The agent-runner source, bind-mounted **read-only** at `/app/src` for every group — see [Agent-runner source](#agent-runner-source-one-shared-read-only-mount) |
 | `container/skills/` | Container skills mounted into every agent session (`agent-browser`, `frontend-engineer`, `self-customize`, `welcome`; the selected gateway's agent skill and opt-in skills like `vercel-cli`, `slack-formatting` and `whatsapp-formatting` install with the `/add-*` skill that adds their capability) |
-| `groups/<folder>/` | Per-agent-group filesystem (CLAUDE.md, skills) — agent-runner source is a shared read-only mount, not copied per group |
+| `groups/<folder>/` | Per-agent-group folder: `instructions.prepend.md` (standing instructions) and `memory/`, plus the composed project doc (`CLAUDE.md` or the provider's file) and `container.json`, both rewritten every spawn — never edit those two. Skills live in the provider's skill store (Claude: `data/v2-sessions/<id>/.claude-shared/skills/`) |
 | `scripts/init-first-agent.ts` | Bootstrap the first DM-wired agent (used by `/init-first-agent` skill) |
 | `scripts/skill-apply.ts` | Deterministic SKILL.md applier — executes `nc:` directive fences; declare/emit core, journaled + idempotent |
 | `scripts/skill-directives.ts` + `scripts/skill-policy.ts` | `nc:` grammar parser + lint; UI-free driver policy derived from document structure (gate confirm, URL offer) |
@@ -125,7 +123,7 @@ See [docs/lego-coworker-workflows.md](docs/lego-coworker-workflows.md) for the f
 
 Skill-installed surfaces remain first-class extension points — channel adapters live on a long-lived sibling branch, provider code lives in each provider skill's `payload/`, and skills copy them in:
 
-- **`channels` branch** — Discord, Slack, Telegram, WhatsApp, Teams, Linear, GitHub, iMessage, Webex, Resend, Matrix, Google Chat, WhatsApp Cloud, Signal, WeChat, DeltaChat, Emacs (+ helpers, tests, channel-specific setup steps). Installed via `/add-<channel>` skills.
+- **`channels` branch** — Discord, Slack, Telegram, WhatsApp, Teams, Linear, GitHub, iMessage, Webex, Resend, Matrix, Google Chat, WhatsApp Cloud, Signal, WeChat, DeltaChat, Mattermost, Dial, Emacs (+ helpers, tests, channel-specific setup steps). Installed via `/add-<channel>` skills.
 - **Provider skill payloads** — OpenCode, Codex and Cursor (and any future non-default agent providers) keep their code in `.claude/skills/add-<provider>/payload/` on `main`. Installed via `/add-opencode`, `/add-codex`, `/add-cursor`. The `providers` branch is locked; it stays for older releases that still copy from it and for the registry CI jobs that test refreshing those installs. This fork carries Codex in core (`setup/providers/codex.ts`, `src/providers/codex.ts`), so `add-codex` ships no `payload/` here.
 
 Author-time check: `npm run validate:templates` (runs in CI before tests).
@@ -154,9 +152,9 @@ The **Tier-2 cost cap** (`costCapT2Usd` / `costCeilingT2Usd`) is also materializ
 |-------|----------|
 | `disabled` | Agent never learns about ncl (instructions excluded from CLAUDE.md). Host dispatch rejects any `cli_request`. |
 | `group` (default) | Agent can access `groups`, `sessions`, `destinations`, `members`, `tasks`, `templates` only, scoped to its own agent group. `--id` and group args are auto-filled. Cross-group access rejected. `cli_scope` changes blocked. |
-| `global` | Unrestricted. Set automatically for owner agent groups via `init-first-agent`. |
+| `global` | Every resource, across groups, except host-only commands (`groups config add-mount`/`remove-mount`), which no container can run. `tasks`, `groups connect` and `sessions history` still act only on the caller's own group. Set automatically for owner agent groups via `init-first-agent`. |
 
-Key files: `src/db/container-configs.ts`, `src/container-config.ts`, `src/cli/dispatch.ts` (scope enforcement), `src/claude-composer/spine.ts` (spine instructions per scope — drops the ncl-only fragments at `disabled`).
+Key files: `src/db/container-configs.ts`, `src/container-config.ts`, `src/cli/guard.ts` (scope decision; group-scope list in `src/cli/registry.ts`), `src/cli/dispatch.ts` (arg auto-fill, row filtering), `src/project-doc-compose.ts` (instructions exclusion), `src/claude-composer/spine.ts` (spine instructions per scope — drops the ncl-only fragments at `disabled`).
 
 ## Container Restart
 
@@ -260,12 +258,12 @@ Run commands directly—don't tell the user to run them.
 # Host (Node + pnpm)
 pnpm run dev          # Host via tsx (no watch)
 pnpm run build        # Compile host TypeScript (src/)
-./container/build.sh  # Rebuild agent container image (nanoclaw-agent:latest)
+./container/build.sh  # Rebuild agent container image (nanoclaw-agent-v2-<slug>:latest)
 pnpm test             # Host tests (vitest)
 
 # Agent-runner (Bun — separate package tree under container/agent-runner/)
 cd container/agent-runner && bun install   # After editing agent-runner deps
-cd container/agent-runner && bun test      # Container tests (bun:test)
+cd container/agent-runner && bun run test  # Container tests (bun test --isolate, as CI runs them)
 ```
 
 Service management (`<slug>` is per checkout; from the project root, `source setup/lib/install-slug.sh && systemd_unit` prints the unit name):
@@ -295,7 +293,7 @@ Check these first when something goes wrong:
 | Setup logs | `logs/setup.log` (overall), `logs/setup-steps/*.log` (per-step: bootstrap, environment, container, gateway, mounts, service, etc.) |
 | Session DBs | `data/v2-sessions/<agent-group>/<session>/` — `inbound.db` (`messages_in`: did the message reach the container?), `outbound.db` (`messages_out`: did the agent produce a response?) |
 
-Note: container logs are lost after the container exits (`--rm` flag). If the agent silently failed inside the container, there's no persistent log to inspect.
+Note: containers run with `--rm`, so their own logs are gone after exit. If an agent container this host started exits non-zero on its own, the host log keeps its last 10 stderr lines in a `Container exited non-zero` warning; `LOG_LEVEL=debug` logs every stderr line. A container adopted after a host restart gets neither.
 
 **WhatsApp not connecting after upgrade:** WhatsApp is now a separate skill, not bundled in core. Run `/add-whatsapp` (or `npx tsx scripts/apply-skill.ts .claude/skills/add-whatsapp && npm run build`) to install it. Existing auth credentials and groups are preserved.
 
@@ -348,7 +346,7 @@ This project uses pnpm with `minimumReleaseAge: 4320` (3 days) in `pnpm-workspac
 
 ## Container Build Cache
 
-The container buildkit caches the build context aggressively. `--no-cache` alone does NOT invalidate COPY steps — the builder's volume retains stale files. To force a truly clean rebuild, prune the builder then re-run `./container/build.sh`.
+Agent-runner source (`container/agent-runner/src/`) and `container/skills/` are mounted read-only at spawn, so edits there need no image rebuild — Dockerfile, dependency and `cli-tools.json` changes do. To force a fully clean rebuild, prune the builder (`docker builder prune`) then re-run `./container/build.sh`. On an install that pulls its image (`NANOCLAW_HARDENED_IMAGE=true`), a bare `build.sh` only layers `cli-tools.json` on the pulled image; Dockerfile or agent-runner dependency edits need `./container/build.sh build`, which moves the install to local builds.
 
 
 ## Agent-runner source: one shared read-only mount
@@ -385,8 +383,8 @@ The agent container runs on **Bun**; the host runs on **Node** (pnpm). They comm
 - **Bumping `@anthropic-ai/claude-agent-sdk`, `@modelcontextprotocol/sdk`, or any agent-runner runtime dep** → no `minimumReleaseAge` policy applies to this tree. Check the release date on npm, pin deliberately, never `bun update` blindly.
 - **Writing a new named-param SQL insert/update in the container** → use `$name` in both SQL and JS keys: `.run({ $id: msg.id })`. `bun:sqlite` does not auto-strip the prefix the way `better-sqlite3` does on the host. Positional `?` params work normally.
 - **Adding a test in `container/agent-runner/src/`** → import from `bun:test`, not `vitest`. Vitest runs on Node and can't load `bun:sqlite`. `vitest.config.ts` excludes this tree.
-- **Adding a Node CLI the agent invokes at runtime** (like `agent-browser`, `claude-code`, `vercel`) → put it in the Dockerfile's pnpm global-install block, pinned to an exact version via a new `ARG`. Don't use `bun install -g` — that bypasses the pnpm supply-chain policy.
-- **Changing the Dockerfile entrypoint or the dynamic-spawn command** (`src/container-runner.ts`) → keep `exec bun ...` so signals forward cleanly. The image has no `/app/dist`; don't reintroduce a tsc build step.
+- **Adding a Node CLI the agent invokes at runtime** (like `agent-browser`, `claude-code`) → add a `{ "name", "version" }` entry, pinned to an exact version, to `container/cli-tools.json` (`"onlyBuilt": true` only for a native postinstall); `container/install-cli-tools.sh` installs it with pnpm. Don't add it in the Dockerfile (bypasses the manifest) or with `bun install -g` (bypasses the pnpm supply-chain policy).
+- **Changing the Dockerfile entrypoint or the dynamic-spawn command** (the agent `ContainerSpec` in `composeSessionSpec`, `src/container-runner.ts`) → keep `exec bun ...` so signals forward cleanly. The image has no `/app/dist`; don't reintroduce a tsc build step.
 - **Changing session-DB pragmas** (`container/agent-runner/src/mailbox/sqlite/connection.ts`) → `journal_mode=DELETE` is load-bearing for cross-mount visibility. Read the comment block at the top of the file first.
 
 ## CJK font support

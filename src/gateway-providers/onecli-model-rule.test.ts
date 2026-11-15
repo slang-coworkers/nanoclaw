@@ -9,7 +9,13 @@ type Rule = Record<string, unknown> & { id: string; name: string; priority: numb
  * that copies the draft. `refuseBodyConditions` models a gateway older than onecli-cost v4.
  */
 function policyGateway(
-  opts: { agents?: string[]; noPolicyApi?: boolean; refuseBodyConditions?: boolean; publishIsIgnored?: boolean } = {},
+  opts: {
+    agents?: string[];
+    noPolicyApi?: boolean;
+    refuseBodyConditions?: boolean;
+    refuseQueryTarget?: boolean;
+    publishIsIgnored?: boolean;
+  } = {},
 ) {
   const agents = (opts.agents ?? ['g1']).map((identifier) => ({ id: `id-${identifier}`, identifier }));
   let draft: Rule[] = [];
@@ -31,6 +37,10 @@ function policyGateway(
     }
     if (pathname === '/v1/policy/rules' && method === 'POST') {
       if (opts.refuseBodyConditions) return json({ error: { message: 'invalid operator' } }, 422);
+      const conditions = (body.conditions ?? []) as Array<{ target?: string }>;
+      if (opts.refuseQueryTarget && conditions.some((c) => c.target === 'query')) {
+        return json({ error: { message: 'invalid target' } }, 422);
+      }
       draft.push({ ...structuredClone(body), id: `r${nextId++}`, priority: 0, isDefault: false } as unknown as Rule);
       renumber();
       return json({ id: draft[draft.length - 1]!.id }, 201);
@@ -69,14 +79,20 @@ function policyGateway(
 
 const HOSTS = ['inference-api.nvidia.com'];
 const GLOBS = ['nvidia/zai-org/*', 'openai/nvidia/zai-org/*'];
+const ruleNames = (identifier: string) => [
+  openModelRuleName(identifier),
+  `${openModelRuleName(identifier)} routes`,
+  `${openModelRuleName(identifier)} query`,
+];
 const options = (g: ReturnType<typeof policyGateway>) => ({ baseUrl: 'http://gw', fetchImpl: g.fetchImpl });
 
 describe('open-models-only rule', () => {
   it('names the rules after the OneCLI agent and lists the open models as one string', () => {
-    const [body, routes] = desiredOpenModelRules('g1', 'id-g1', ['b.example', 'a.example'], GLOBS);
+    const [body, routes, query] = desiredOpenModelRules('g1', 'id-g1', ['b.example', 'a.example'], GLOBS);
     expect(body!.name).toBe(openModelRuleName('g1'));
     expect(routes!.name).toBe(`${openModelRuleName('g1')} routes`);
-    for (const rule of [body!, routes!]) {
+    expect(query!.name).toBe(`${openModelRuleName('g1')} query`);
+    for (const rule of [body!, routes!, query!]) {
       expect(rule.action).toBe('block');
       expect(rule.identities).toEqual([{ type: 'agent', id: 'id-g1' }]);
     }
@@ -91,17 +107,31 @@ describe('open-models-only rule', () => {
     expect(body!.conditions).toEqual([
       { target: 'body', key: 'model', operator: 'not_in', value: 'nvidia/zai-org/*,openai/nvidia/zai-org/*' },
     ]);
-    // The routes rule has no condition: it refuses the URL-model routes outright.
+    // The routes rule has no condition: it refuses the URL-model routes outright, for every method.
     expect(routes!.conditions).toEqual([]);
     expect(new Set(routes!.targets.map((t) => t.pathPattern))).toEqual(new Set(['/model/*', '/llm/*']));
+    expect(routes!.targets.every((t) => t.method === undefined)).toBe(true);
+    // The query rule refuses a model named in the URL that is not open, on every route and method.
+    expect(query!.targets).toEqual([
+      { kind: 'network', hostPattern: 'a.example' },
+      { kind: 'network', hostPattern: 'b.example' },
+    ]);
+    expect(query!.conditions).toEqual([
+      { target: 'query', key: 'model', operator: 'not_in', value: 'nvidia/zai-org/*,openai/nvidia/zai-org/*' },
+    ]);
   });
 
   it('installs the rule for the agent and publishes it', async () => {
     const g = policyGateway();
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
-    expect(g.published().map((r) => r.name)).toEqual([openModelRuleName('g1'), `${openModelRuleName('g1')} routes`]);
+    expect(g.published().map((r) => r.name)).toEqual(ruleNames('g1'));
     expect(g.published()[0]).toMatchObject({ action: 'block', enabled: true });
-    expect(g.writes).toEqual(['POST /v1/policy/rules', 'POST /v1/policy/rules', 'POST /v1/policy/publish']);
+    expect(g.writes).toEqual([
+      'POST /v1/policy/rules',
+      'POST /v1/policy/rules',
+      'POST /v1/policy/rules',
+      'POST /v1/policy/publish',
+    ]);
   });
 
   it('changes nothing when the published rule is already right', async () => {
@@ -131,18 +161,14 @@ describe('open-models-only rule', () => {
     g.writes.length = 0;
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
     expect(g.writes).toEqual(['POST /v1/policy/publish']);
-    expect(g.published()).toHaveLength(2);
+    expect(g.published()).toHaveLength(3);
   });
 
   it('puts the rule before an allow rule for the same host, because the first match wins', async () => {
     const g = policyGateway();
     g.seed({ name: 'allow-inference', action: 'allow' });
     await ensureOpenModelRule('g1', HOSTS, GLOBS, options(g));
-    expect(g.published().map((r) => r.name)).toEqual([
-      openModelRuleName('g1'),
-      `${openModelRuleName('g1')} routes`,
-      'allow-inference',
-    ]);
+    expect(g.published().map((r) => r.name)).toEqual([...ruleNames('g1'), 'allow-inference']);
     // A later change that puts another rule first is put right at the next check.
     const moveLast = (rules: Rule[]) => {
       rules.push(rules.shift()!);
@@ -151,14 +177,14 @@ describe('open-models-only rule', () => {
     moveLast(g.draft());
     moveLast(g.published());
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
-    expect(g.published().map((r) => r.name)[2]).toBe('allow-inference');
+    expect(g.published().map((r) => r.name)[3]).toBe('allow-inference');
     expect(
       g
         .published()
-        .slice(0, 2)
+        .slice(0, 3)
         .map((r) => r.name)
         .sort(),
-    ).toEqual([openModelRuleName('g1'), `${openModelRuleName('g1')} routes`].sort());
+    ).toEqual(ruleNames('g1').sort());
   });
 
   it('keeps one rule per agent, and the rules of several agents do not move each other', async () => {
@@ -166,25 +192,20 @@ describe('open-models-only rule', () => {
     await ensureOpenModelRule('g1', HOSTS, GLOBS, options(g));
     await ensureOpenModelRule('g2', HOSTS, GLOBS, options(g));
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('unchanged');
-    expect(g.published().map((r) => r.name)).toEqual([
-      openModelRuleName('g1'),
-      `${openModelRuleName('g1')} routes`,
-      openModelRuleName('g2'),
-      `${openModelRuleName('g2')} routes`,
-    ]);
+    expect(g.published().map((r) => r.name)).toEqual([...ruleNames('g1'), ...ruleNames('g2')]);
   });
 
   it('does not count an allow rule as ours because of its name', async () => {
     const g = policyGateway();
     g.seed({ name: `${openModelRuleName('g1')} (copy)`, action: 'allow' });
     await ensureOpenModelRule('g1', HOSTS, GLOBS, options(g));
-    expect(g.published()[2]).toMatchObject({ action: 'allow' });
+    expect(g.published()[3]).toMatchObject({ action: 'allow' });
     expect(
       g
         .published()
-        .slice(0, 2)
+        .slice(0, 3)
         .map((r) => r.action),
-    ).toEqual(['block', 'block']);
+    ).toEqual(['block', 'block', 'block']);
   });
 
   it('fails when the live rules do not match after the publish', async () => {
@@ -201,7 +222,13 @@ describe('open-models-only rule', () => {
 
   it('fails when the gateway refuses the rule, and says it may be too old', async () => {
     const g = policyGateway({ refuseBodyConditions: true });
-    await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).rejects.toThrow(/422.*older than onecli-cost v4/);
+    await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).rejects.toThrow(/422.*older than onecli-cost v5/);
+  });
+
+  it('fails when the gateway has no query target, which needs onecli-cost v5', async () => {
+    const g = policyGateway({ refuseQueryTarget: true });
+    await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).rejects.toThrow(/422.*older than onecli-cost v5/);
+    expect(g.writes).not.toContain('POST /v1/policy/publish');
   });
 
   it('fails for an agent the gateway does not know', async () => {
