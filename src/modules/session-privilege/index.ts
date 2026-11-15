@@ -16,6 +16,12 @@
  *   NANOCLAW_SESSION_PRIVILEGE      off (default) | enforce
  *   NANOCLAW_CLOSED_MODEL_APPROVED  path to the approved list (default
  *                                   data/closed-model-approved.json)
+ *   NANOCLAW_CLOSED_MODEL_CHECK2    off (default) | require | only. Whether Check 2 (the
+ *                                   evidence file of the input gate) also decides who gets
+ *                                   a closed session, and so checks the location of
+ *                                   the person (see "Check 2 on the closed path" below)
+ *   NANOCLAW_INPUT_GATE_ELIGIBILITY path to the evidence file (default
+ *                                   data/input-gate-eligibility.json)
  *
  * With the setting off, every message asks for an open session, every session
  * is open, and spawn ignores the privilege, so the install behaves as before.
@@ -24,15 +30,43 @@ import fs from 'fs';
 import path from 'path';
 
 import { readEnvFile } from '../../env.js';
+import { log } from '../../log.js';
 import type { ModelPolicyRow } from '../../model-policy.js';
+import { eligibilityOfKey } from '../input-gate/eligibility-file.js';
 
 export type SessionPrivilege = 'open' | 'closed';
 
-const KEYS = ['NANOCLAW_SESSION_PRIVILEGE', 'NANOCLAW_CLOSED_MODEL_APPROVED'];
+/**
+ * Check 2 on the closed path. `off`: the approved list alone decides. `require`: a person gets a
+ * closed session only when they are on the approved list and Check 2 finds them eligible now, with a
+ * verified identity, entity and a location checked within the window. `only`: Check 2 alone decides, and
+ * the approved list is not read. A closed session keeps its privilege for its whole life, but a person
+ * whose evidence has gone stale asks for an open session at their next message, so the closed session
+ * no longer receives their messages.
+ */
+export type ClosedCheck2 = 'off' | 'require' | 'only';
+
+const KEYS = [
+  'NANOCLAW_SESSION_PRIVILEGE',
+  'NANOCLAW_CLOSED_MODEL_APPROVED',
+  'NANOCLAW_CLOSED_MODEL_CHECK2',
+  'NANOCLAW_INPUT_GATE_ELIGIBILITY',
+];
 
 export interface PrivilegeSettings {
   mode: 'off' | 'enforce';
   approvedPath: string;
+  /** Unset means `off`. */
+  check2?: ClosedCheck2;
+  /** The evidence file of the input gate. Unset means its default path. */
+  eligibilityPath?: string;
+}
+
+/** A value we do not know counts as `require`, the safer of the two checks that combine, never as `off`. */
+function closedCheck2Of(value: string): ClosedCheck2 {
+  const v = value.toLowerCase();
+  if (v === '' || v === 'off') return 'off';
+  return v === 'only' ? 'only' : 'require';
 }
 
 export function readPrivilegeSettings(): PrivilegeSettings {
@@ -41,6 +75,8 @@ export function readPrivilegeSettings(): PrivilegeSettings {
   return {
     mode: val('NANOCLAW_SESSION_PRIVILEGE').toLowerCase() === 'enforce' ? 'enforce' : 'off',
     approvedPath: path.resolve(val('NANOCLAW_CLOSED_MODEL_APPROVED') || 'data/closed-model-approved.json'),
+    check2: closedCheck2Of(val('NANOCLAW_CLOSED_MODEL_CHECK2')),
+    eligibilityPath: path.resolve(val('NANOCLAW_INPUT_GATE_ELIGIBILITY') || 'data/input-gate-eligibility.json'),
   };
 }
 
@@ -67,14 +103,31 @@ export function loadApproved(approvedPath: string): Set<string> {
 /**
  * The privilege a message from `userId` asks for: closed when enforcement is
  * on and the sender is on the approved list, open otherwise. A message with no
- * known sender (a system event, a CI result) is open.
+ * known sender (a system event, a CI result) is open. With `NANOCLAW_CLOSED_MODEL_CHECK2`
+ * set, Check 2 decides too: see `ClosedCheck2`.
+ *
+ * Consider a maintainer on the approved list whose location was last checked 30 hours ago. With
+ * `require`, the file gives `location_stale`, so their message asks for an open session, and the
+ * log says why. When the operator records a fresh location, their next message asks for a closed one.
  */
 export function privilegeForSender(
   userId: string | null,
   settings: PrivilegeSettings = readPrivilegeSettings(),
 ): SessionPrivilege {
   if (settings.mode !== 'enforce' || !userId) return 'open';
-  return loadApproved(settings.approvedPath).has(userId) ? 'closed' : 'open';
+  const check2 = settings.check2 ?? 'off';
+  if (check2 !== 'only' && !loadApproved(settings.approvedPath).has(userId)) return 'open';
+  if (check2 === 'off') return 'closed';
+  const verdict = eligibilityOfKey(
+    settings.eligibilityPath ?? path.resolve('data/input-gate-eligibility.json'),
+    userId,
+  );
+  if (!verdict.eligible) {
+    // Only the verdict is logged, never an id or a place.
+    log.debug('Closed session not granted: Check 2 does not pass', { check2, reason: verdict.reason });
+    return 'open';
+  }
+  return 'closed';
 }
 
 /**

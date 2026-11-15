@@ -70,9 +70,12 @@ def main():
     # NOTE: plain glob, no `**`. The trace dirs are exactly one level under
     # groups/<folder>/ and are DOT-prefixed — Python's glob will not descend into
     # dot-directories via `**`, so a recursive pattern silently finds nothing.
-    pattern = os.path.join(a.repo, "groups", "*", ".claude-trace", "*")
+    # The OpenCode backend writes its own dumps to .opencode-trace; both folders share the budget.
+    paths = []
+    for folder in (".claude-trace", ".opencode-trace"):
+        paths += glob.glob(os.path.join(a.repo, "groups", "*", folder, "*"))
     files = []
-    for p in glob.glob(pattern):
+    for p in paths:
         try:
             st = os.stat(p)
         except OSError:
@@ -81,7 +84,7 @@ def main():
             files.append((p, st.st_size, st.st_mtime))
 
     if not files:
-        print(f"no claude-trace files under {a.repo}/groups/*/.claude-trace/")
+        print(f"no trace files under {a.repo}/groups/*/.claude-trace/ or .opencode-trace/")
         return 0
 
     total0 = sum(f[1] for f in files)
