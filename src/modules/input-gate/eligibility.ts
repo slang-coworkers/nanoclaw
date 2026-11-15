@@ -38,12 +38,23 @@ export async function checkEligibility(actor: GateActor, sources: EligibilitySou
   const identity = await read(sources.identity);
   const entity = await read(sources.entity);
   const location = await read(sources.location);
+  return evaluateEligibility({ identity, entity, location });
+}
 
-  // Missing, expired or conflicting evidence blocks; the first failing input names the reason.
+/**
+ * The verdict of Check 2 on the three pieces of evidence. Missing, expired or conflicting evidence
+ * blocks, and the first failing input names the reason. The session-privilege module calls this with
+ * evidence it read from the operator's file, so the verdict has one definition.
+ */
+export function evaluateEligibility(evidence: {
+  identity: EvidenceState;
+  entity: EvidenceState;
+  location: EvidenceState;
+}): EligibilityResult {
+  const { identity, entity, location } = evidence;
   let reason: string | null = null;
   if (identity !== 'verified') reason = identity === 'unknown' ? 'not_linked' : `identity_${identity}`;
   else if (entity !== 'verified') reason = `entity_${entity}`;
   else if (location !== 'verified') reason = location === 'expired' ? 'location_stale' : `location_${location}`;
-
   return { eligible: reason === null, identity, entity, location, reason };
 }
