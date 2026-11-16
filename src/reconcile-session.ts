@@ -323,10 +323,11 @@ export const STUCK_INBOUND_PASSED_OVER_MS = 7 * DAY_MS;
  * How long a trigger row must have been due in a closed session before the
  * host retires it. The host itself writes rows into a session as it closes:
  * consider a spent task session whose CLAUDE.md went stale. One reconcile pass
- * runs refreshStaleClaudeMd, which writes a `claudemd-refresh` notice due in
- * 5 s, and then, with nothing yet due, closes the session. On prod
- * (2026-11-16) 41 of the 401 closed-session rows were such late arrivals, all
- * under 10 hours old; none was between 1 and 7 days old, and the rest were
+ * runs refreshStaleClaudeMd, which kills the container and writes a
+ * `claudemd-refresh` notice due in 5 s; the container exits at once, and the
+ * next pass, with nothing yet due and no live task, closes the session. On
+ * prod (2026-11-16) 41 of the 401 closed-session rows were such late arrivals,
+ * all under a day old; none was between 1 and 7 days old, and the rest were
  * older than 7 days. A week therefore leaves the backlog's count unchanged
  * while giving an operator a full week, weekends included, to recover a
  * session that was closed by mistake before its mail is retired.
