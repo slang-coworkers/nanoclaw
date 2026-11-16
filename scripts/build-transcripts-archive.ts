@@ -3,8 +3,10 @@
  *
  * Walks every agent group + NanoClaw session, renders Claude Code SDK
  * sessions (via sdk_session_routes) + Codex rollouts (via filesystem)
- * through the merged claude-code-transcripts venv, then writes a
- * hierarchical index.html: groups -> sessions -> transcripts.
+ * through the merged claude-code-transcripts venv, renders OpenCode sessions
+ * from their trace (groups/<folder>/.opencode-trace/, via
+ * scripts/opencode-trace-html.py), then writes a hierarchical index.html:
+ * groups -> sessions -> transcripts.
  *
  * Usage:
  *   pnpm exec tsx scripts/build-transcripts-archive.ts \
@@ -21,6 +23,7 @@
  *         index.html                            ← transcript list (claude + codex)
  *         claude/<sdk-uuid>/index.html          ← rendered by claude-code-transcripts
  *         codex/<rollout-id>/index.html         ← rendered by claude-code-transcripts
+ *         opencode/index.html                   ← rendered by scripts/opencode-trace-html.py
  */
 import Database from 'better-sqlite3';
 import { execSync } from 'node:child_process';
@@ -28,11 +31,15 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { openCodeActivity, openCodeTracePath, renderOpenCodeTranscript } from './transcripts-opencode.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const REPO_ROOT = path.resolve(__dirname, '..');
 const DB_PATH = path.join(REPO_ROOT, 'data/v2.db');
 const SESSIONS_ROOT = path.join(REPO_ROOT, 'data/v2-sessions');
+const GROUPS_ROOT = path.join(REPO_ROOT, 'groups');
+const OPENCODE_CONVERTER = path.join(REPO_ROOT, 'scripts/opencode-trace-html.py');
 const RENDERER = '/home/ubuntu/.local/share/claude-code-transcripts-merged/.venv/bin/claude-code-transcripts';
 
 const args = process.argv.slice(2);
@@ -47,7 +54,9 @@ const SINCE_MS = SINCE_HOURS > 0 ? Date.now() - SINCE_HOURS * 3600 * 1000 : 0;
 
 if (!fs.existsSync(RENDERER)) {
   console.error(`renderer not found: ${RENDERER}`);
-  console.error('expected: merged claude-code-transcripts venv at /home/ubuntu/.local/share/claude-code-transcripts-merged/.venv');
+  console.error(
+    'expected: merged claude-code-transcripts venv at /home/ubuntu/.local/share/claude-code-transcripts-merged/.venv',
+  );
   process.exit(1);
 }
 
@@ -81,7 +90,7 @@ for (const r of db
 }
 db.close();
 
-type Activity = { claude: number; codex: number; max: number };
+type Activity = { claude: number; codex: number; opencode: number; max: number };
 
 function activityFor(group: Group, sess: Session): Activity {
   let claude = 0;
@@ -103,12 +112,13 @@ function activityFor(group: Group, sess: Session): Activity {
     };
     walk(codexDir);
   }
-  let max = Math.max(claude, codex);
+  const opencode = openCodeActivity(openCodeTracePath(GROUPS_ROOT, group.folder, sess.id));
+  let max = Math.max(claude, codex, opencode);
   if (max === 0) {
     const t = Date.parse(sess.created_at);
     if (!Number.isNaN(t)) max = t;
   }
-  return { claude, codex, max };
+  return { claude, codex, opencode, max };
 }
 
 function fmtAbs(ms: number): string {
@@ -196,6 +206,7 @@ const PAGE_CSS = `
   .badge { display: inline-block; padding: 2px 8px; background: #e5e7eb; border-radius: 3px; font-size: 11px; margin-left: 6px; }
   .claude { background: #dbeafe; }
   .codex  { background: #fef3c7; }
+  .opencode { background: #dcfce7; }
   .empty  { color: #aaa; font-style: italic; }
   .controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 12px 0 8px; }
   .controls input[type="search"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 4px; min-width: 280px; font-size: 13px; }
@@ -206,6 +217,7 @@ const PAGE_CSS = `
 
 let totalClaude = 0;
 let totalCodex = 0;
+let totalOpenCode = 0;
 let totalFailed = 0;
 
 const groupSummaries: {
@@ -213,8 +225,10 @@ const groupSummaries: {
   sessionCount: number;
   claudeCount: number;
   codexCount: number;
+  openCodeCount: number;
   claudeActivity: number;
   codexActivity: number;
+  openCodeActivity: number;
   lastActivity: number;
 }[] = [];
 
@@ -226,8 +240,10 @@ for (const group of groups) {
       sessionCount: 0,
       claudeCount: 0,
       codexCount: 0,
+      openCodeCount: 0,
       claudeActivity: 0,
       codexActivity: 0,
+      openCodeActivity: 0,
       lastActivity: 0,
     });
     continue;
@@ -235,9 +251,16 @@ for (const group of groups) {
   const groupOutDir = path.join(OUT_DIR, group.folder);
   fs.mkdirSync(groupOutDir, { recursive: true });
 
-  const sessionEntries: { sess: Session; claudeIds: string[]; codexFiles: string[]; activity: Activity }[] = [];
+  const sessionEntries: {
+    sess: Session;
+    claudeIds: string[];
+    codexFiles: string[];
+    openCode: boolean;
+    activity: Activity;
+  }[] = [];
   let groupClaude = 0;
   let groupCodex = 0;
+  let groupOpenCode = 0;
 
   for (const sess of sessions) {
     const sessOutDir = path.join(groupOutDir, sess.id);
@@ -273,7 +296,20 @@ for (const group of groups) {
         console.error(`codex render failed: ${cfile}: ${res.error}`);
       }
     }
-    sessionEntries.push({ sess, claudeIds, codexFiles: codexRendered, activity: activityFor(group, sess) });
+    const trace = openCodeTracePath(GROUPS_ROOT, group.folder, sess.id);
+    let openCode = false;
+    if (trace) {
+      const res = renderOpenCodeTranscript(OPENCODE_CONVERTER, trace, path.join(sessOutDir, 'opencode', 'index.html'));
+      if (res.ok) {
+        openCode = true;
+        groupOpenCode++;
+        totalOpenCode++;
+      } else {
+        totalFailed++;
+        console.error(`opencode render failed: ${trace}: ${res.error}`);
+      }
+    }
+    sessionEntries.push({ sess, claudeIds, codexFiles: codexRendered, openCode, activity: activityFor(group, sess) });
 
     const sessHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${group.name} · ${sess.id}</title>${PAGE_CSS}</head><body>
 <p><a href="../index.html">← ${group.name}</a> · <a href="../../index.html">All groups</a></p>
@@ -284,23 +320,18 @@ for (const group of groups) {
 ${
   claudeIds.length === 0
     ? '<p class="empty">none</p>'
-    : '<ul>' +
-      claudeIds
-        .map((id) => `<li><a href="claude/${id}/index.html">${id}</a></li>`)
-        .join('\n') +
-      '</ul>'
+    : '<ul>' + claudeIds.map((id) => `<li><a href="claude/${id}/index.html">${id}</a></li>`).join('\n') + '</ul>'
 }
 
 <h2>Codex transcripts <span class="badge codex">${codexRendered.length}</span></h2>
 ${
   codexRendered.length === 0
     ? '<p class="empty">none</p>'
-    : '<ul>' +
-      codexRendered
-        .map((id) => `<li><a href="codex/${id}/index.html">${id}</a></li>`)
-        .join('\n') +
-      '</ul>'
+    : '<ul>' + codexRendered.map((id) => `<li><a href="codex/${id}/index.html">${id}</a></li>`).join('\n') + '</ul>'
 }
+
+<h2>OpenCode transcript <span class="badge opencode">${openCode ? 1 : 0}</span></h2>
+${openCode ? '<ul><li><a href="opencode/index.html">model calls and conversation</a></li></ul>' : '<p class="empty">none</p>'}
 </body></html>`;
     fs.writeFileSync(path.join(sessOutDir, 'index.html'), sessHtml);
   }
@@ -308,7 +339,7 @@ ${
   const groupHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${group.name} sessions</title>${PAGE_CSS}</head><body>
 <p><a href="../index.html">← All groups</a></p>
 <h1>${group.name}</h1>
-<p class="meta">${sessions.length} sessions · ${groupClaude} Claude transcripts · ${groupCodex} Codex transcripts · sorted by last activity</p>
+<p class="meta">${sessions.length} sessions · ${groupClaude} Claude transcripts · ${groupCodex} Codex transcripts · ${groupOpenCode} OpenCode transcripts · sorted by last activity</p>
 <div class="controls">
   <input type="search" id="filter" placeholder="filter by session id or thread…" />
   <label>activity within
@@ -326,10 +357,13 @@ ${
 <ul id="session-list">
 ${sessionEntries
   .map(
-    (e) => `<li data-text="${htmlEscape((e.sess.id + ' ' + (e.sess.thread_id ?? '')).toLowerCase())}" data-activity="${e.activity.max}"><a href="${e.sess.id}/index.html">${e.sess.id}</a>
-  <span class="meta">claude ${fmtAgo(e.activity.claude)} · codex ${fmtAgo(e.activity.codex)} · created ${e.sess.created_at}${e.sess.thread_id ? ` · ${htmlEscape(e.sess.thread_id)}` : ''}</span>
+    (
+      e,
+    ) => `<li data-text="${htmlEscape((e.sess.id + ' ' + (e.sess.thread_id ?? '')).toLowerCase())}" data-activity="${e.activity.max}"><a href="${e.sess.id}/index.html">${e.sess.id}</a>
+  <span class="meta">claude ${fmtAgo(e.activity.claude)} · codex ${fmtAgo(e.activity.codex)} · opencode ${fmtAgo(e.activity.opencode)} · created ${e.sess.created_at}${e.sess.thread_id ? ` · ${htmlEscape(e.sess.thread_id)}` : ''}</span>
   <span class="badge claude">${e.claudeIds.length} claude</span>
-  <span class="badge codex">${e.codexFiles.length} codex</span></li>`,
+  <span class="badge codex">${e.codexFiles.length} codex</span>
+  <span class="badge opencode">${e.openCode ? 1 : 0} opencode</span></li>`,
   )
   .join('\n')}
 </ul>
@@ -363,24 +397,29 @@ ${sessionEntries
 
   const groupClaudeActivity = sessionEntries.reduce((m, e) => Math.max(m, e.activity.claude), 0);
   const groupCodexActivity = sessionEntries.reduce((m, e) => Math.max(m, e.activity.codex), 0);
-  const groupLastActivity = Math.max(groupClaudeActivity, groupCodexActivity);
+  const groupOpenCodeActivity = sessionEntries.reduce((m, e) => Math.max(m, e.activity.opencode), 0);
+  const groupLastActivity = Math.max(groupClaudeActivity, groupCodexActivity, groupOpenCodeActivity);
   groupSummaries.push({
     group,
     sessionCount: sessions.length,
     claudeCount: groupClaude,
     codexCount: groupCodex,
+    openCodeCount: groupOpenCode,
     claudeActivity: groupClaudeActivity,
     codexActivity: groupCodexActivity,
+    openCodeActivity: groupOpenCodeActivity,
     lastActivity: groupLastActivity,
   });
-  console.log(`${group.name}: ${sessions.length} sessions, ${groupClaude} claude, ${groupCodex} codex`);
+  console.log(
+    `${group.name}: ${sessions.length} sessions, ${groupClaude} claude, ${groupCodex} codex, ${groupOpenCode} opencode`,
+  );
 }
 
 groupSummaries.sort((a, b) => b.lastActivity - a.lastActivity);
 
 const topHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>NanoClaw transcripts</title>${PAGE_CSS}</head><body>
 <h1>NanoClaw transcripts</h1>
-<p class="meta">${groupSummaries.length} agent groups · ${totalClaude} Claude transcripts · ${totalCodex} Codex transcripts${totalFailed ? ` · ${totalFailed} render failures` : ''} · sorted by last activity</p>
+<p class="meta">${groupSummaries.length} agent groups · ${totalClaude} Claude transcripts · ${totalCodex} Codex transcripts · ${totalOpenCode} OpenCode transcripts${totalFailed ? ` · ${totalFailed} render failures` : ''} · sorted by last activity</p>
 <div class="controls">
   <input type="search" id="filter" placeholder="filter by group name or folder…" />
   <label>activity within
@@ -401,9 +440,10 @@ ${groupSummaries
     (s) =>
       `<a class="group-card" data-text="${htmlEscape((s.group.name + ' ' + s.group.folder).toLowerCase())}" data-activity="${s.lastActivity}" href="${s.group.folder}/index.html">
   <strong>${s.group.name}</strong>
-  <span class="meta">${s.group.folder} · ${s.sessionCount} sessions · claude ${fmtAgo(s.claudeActivity)} · codex ${fmtAgo(s.codexActivity)}</span>
+  <span class="meta">${s.group.folder} · ${s.sessionCount} sessions · claude ${fmtAgo(s.claudeActivity)} · codex ${fmtAgo(s.codexActivity)} · opencode ${fmtAgo(s.openCodeActivity)}</span>
   <span class="badge claude">${s.claudeCount} claude</span>
   <span class="badge codex">${s.codexCount} codex</span>
+  <span class="badge opencode">${s.openCodeCount} opencode</span>
 </a>`,
   )
   .join('\n')}
@@ -437,5 +477,7 @@ ${groupSummaries
 </body></html>`;
 fs.writeFileSync(path.join(OUT_DIR, 'index.html'), topHtml);
 
-console.log(`\nDone. ${totalClaude} Claude + ${totalCodex} Codex transcripts. Output: ${OUT_DIR}`);
+console.log(
+  `\nDone. ${totalClaude} Claude + ${totalCodex} Codex + ${totalOpenCode} OpenCode transcripts. Output: ${OUT_DIR}`,
+);
 if (totalFailed > 0) console.log(`${totalFailed} render failures (see stderr above)`);
