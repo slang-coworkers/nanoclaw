@@ -47,7 +47,7 @@ function row(
   );
 }
 
-const ids = (opts?: { passedOverMs?: number }) => getPendingTriggerRows(db, opts).map((r) => r.id);
+const ids = (opts?: { passedOverMs?: number; dueForMs?: number }) => getPendingTriggerRows(db, opts).map((r) => r.id);
 
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nanoclaw-pending-trigger-'));
@@ -117,6 +117,26 @@ describe('getPendingTriggerRows', () => {
     row('gated-task', { kind: 'task', timestamp: at(20), processAfter: at(20), status: 'completed' });
 
     expect(ids({ passedOverMs: 7 * DAY })).toEqual(['stuck-ping']);
+  });
+
+  it('counts a row as due from its write when its process_after is earlier', () => {
+    // A row cannot be passed over before it exists.
+    row('written-late', { timestamp: at(5), processAfter: at(0) });
+    row('newer-chat', { timestamp: at(10), status: 'completed' });
+
+    expect(getPendingTriggerRows(db)[0]).toMatchObject({ id: 'written-late', dueAt: '2026-10-05 05:10:06' });
+    expect(ids({ passedOverMs: 7 * DAY })).toEqual([]);
+  });
+
+  it('with dueForMs lists only rows due for that long now (the closed-session floor)', () => {
+    const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+    row('old', { timestamp: ago(8 * DAY) });
+    row('just-landed', { timestamp: ago(0), processAfter: new Date(Date.now() + 5000).toISOString() });
+    row('six-days', { timestamp: ago(6 * DAY) });
+    row('old-but-due-tomorrow', { kind: 'task', timestamp: ago(30 * DAY), processAfter: ago(-DAY) });
+
+    expect(ids({ dueForMs: 7 * DAY })).toEqual(['old']);
+    expect(ids({ dueForMs: 0 })).toEqual(['old', 'six-days']);
   });
 
   it('compares SQLite-style and ISO timestamps alike', () => {

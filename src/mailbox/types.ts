@@ -52,7 +52,7 @@ export interface MessageRetry {
 export interface PendingTriggerRow {
   id: string;
   kind: string;
-  /** When the row fell due: `process_after`, else `timestamp` (normalized 'YYYY-MM-DD HH:MM:SS', UTC). */
+  /** When the row fell due: the later of `timestamp` and `process_after` (normalized 'YYYY-MM-DD HH:MM:SS', UTC). */
   dueAt: string;
 }
 
@@ -153,9 +153,10 @@ export interface InboundMailbox {
   /**
    * Pending trigger rows, oldest first; with `passedOverMs`, only those the
    * session's runner has passed over for at least that long while consuming
-   * newer work (see getPendingTriggerRows). Optional for fakes.
+   * newer work, and with `dueForMs`, only those due for at least that long
+   * now (see getPendingTriggerRows). Optional for fakes.
    */
-  getPendingTriggerRows?(opts?: { passedOverMs?: number }): PendingTriggerRow[];
+  getPendingTriggerRows?(opts?: { passedOverMs?: number; dueForMs?: number }): PendingTriggerRow[];
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;

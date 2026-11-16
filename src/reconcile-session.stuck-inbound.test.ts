@@ -34,8 +34,9 @@ vi.mock('./modules/runaway/detect.js', () => ({ checkRunaway: vi.fn() }));
 vi.mock('./modules/runaway/index.js', () => ({ runawayCardDeps: {} }));
 vi.mock('./modules/critique-escalation/index.js', () => ({ checkCritiqueEscalation: vi.fn() }));
 
+import { claudeMdStaleForSession, recomposeAndUpdateHash } from './container-runner.js';
 import { closeDb, createAgentGroup, getDb, initTestDb, runMigrations } from './db/index.js';
-import { createSession, getClosedSessionIdsInUnpausedGroups } from './db/sessions.js';
+import { createSession, getClosedSessionIdsInUnpausedGroups, getSession } from './db/sessions.js';
 import { log } from './log.js';
 import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
 import {
@@ -48,6 +49,7 @@ import {
 } from './mailbox/sqlite/session-db.js';
 import { wrapSqliteInbound, wrapSqliteOutbound } from './mailbox/sqlite/index.js';
 import {
+  CLOSED_SESSION_MAIL_MIN_AGE_MS,
   STUCK_INBOUND_PASSED_OVER_MS,
   _resetClosedMailForTesting,
   _resetQuietSessionsForTesting,
@@ -68,12 +70,17 @@ async function group(id: string, paused = false): Promise<void> {
   if (paused) await getDb().run('UPDATE agent_groups SET paused = 1 WHERE id = ?', id);
 }
 
-async function session(id: string, agentGroupId: string, status: 'active' | 'closed' = 'active'): Promise<void> {
+async function session(
+  id: string,
+  agentGroupId: string,
+  status: 'active' | 'closed' = 'active',
+  threadId: string | null = null,
+): Promise<void> {
   await createSession({
     id,
     agent_group_id: agentGroupId,
     messaging_group_id: null,
-    thread_id: null,
+    thread_id: threadId,
     agent_provider: null,
     status,
     container_status: 'stopped',
@@ -295,15 +302,17 @@ describe('retireStuckInbound', () => {
 });
 
 describe('closed sessions: leftover pending mail', () => {
-  it('is retired, scheduled or due, while rows the runner already acked are completed instead', async () => {
+  it('is retired once due for the floor, while rows the runner already acked are completed instead', async () => {
     await group('ag-main');
     await session('sess-closed', 'ag-main', 'closed');
     insert('ag-main', 'sess-closed', [
       { id: 'gh-review-1', kind: 'webhook', timestamp: ago(80 * DAY) },
-      { id: 'claudemd-refresh-1', timestamp: ago(DAY) },
-      { id: 'task-future', kind: 'task', timestamp: ago(DAY), processAfter: new Date(NOW + DAY).toISOString() },
+      { id: 'a2a-past-floor', timestamp: ago(CLOSED_SESSION_MAIL_MIN_AGE_MS + 60_000) },
+      { id: 'claudemd-refresh-1', timestamp: ago(CLOSED_SESSION_MAIL_MIN_AGE_MS - DAY) },
+      // Written long ago but due tomorrow: not yet due at all, let alone for the floor.
+      { id: 'task-future', kind: 'task', timestamp: ago(30 * DAY), processAfter: new Date(NOW + DAY).toISOString() },
       { id: 'consumed-not-synced', timestamp: ago(DAY) },
-      { id: 'context', timestamp: ago(DAY), trigger: 0 },
+      { id: 'context', timestamp: ago(80 * DAY), trigger: 0 },
     ]);
     ack('ag-main', 'sess-closed', 'consumed-not-synced', 'completed');
 
@@ -311,8 +320,9 @@ describe('closed sessions: leftover pending mail', () => {
 
     expect(statuses('ag-main', 'sess-closed')).toEqual({
       'gh-review-1': 'failed',
-      'claudemd-refresh-1': 'failed',
-      'task-future': 'failed',
+      'a2a-past-floor': 'failed',
+      'claudemd-refresh-1': 'pending',
+      'task-future': 'pending',
       'consumed-not-synced': 'completed',
       context: 'pending',
     });
@@ -329,7 +339,7 @@ describe('closed sessions: leftover pending mail', () => {
     insert('ag-approver', 'sess-paused-closed', [{ id: 'a2a-1', timestamp: ago(60 * DAY) }]);
     await group('ag-fixer');
     await session('sess-live-closed', 'ag-fixer', 'closed');
-    insert('ag-fixer', 'sess-live-closed', [{ id: 'gh-1', kind: 'webhook', timestamp: ago(DAY) }]);
+    insert('ag-fixer', 'sess-live-closed', [{ id: 'gh-1', kind: 'webhook', timestamp: ago(30 * DAY) }]);
     running.add('sess-live-closed');
 
     await reconcileSession('sess-paused-closed');
@@ -349,6 +359,41 @@ describe('closed sessions: leftover pending mail', () => {
     // Unpaused, the paused group's closed session joins the scan.
     await getDb().run('UPDATE agent_groups SET paused = 0 WHERE id = ?', 'ag-approver');
     expect(unretiredClosedSessions(await getClosedSessionIdsInUnpausedGroups(), 10)).toEqual(['sess-paused-closed']);
+  });
+
+  it('keeps a row that just landed as its session closed, and the scan returns once it is due for the floor', async () => {
+    // Prod 2026-11-16 04:49:23: a CLAUDE.md change killed a spent task
+    // session's container with a refresh notice due in 5 s; the container
+    // exited and the session closed 0.4 s later, before the notice was due.
+    await group('ag-main');
+    await session('sess-task', 'ag-main', 'active', 'system:tasks:rechase-1');
+    insert('ag-main', 'sess-task', [{ id: 'task-last-run', kind: 'task', timestamp: ago(DAY), status: 'completed' }]);
+    running.add('sess-task');
+    vi.mocked(claudeMdStaleForSession).mockResolvedValueOnce({
+      sessionId: 'sess-task',
+      agentGroupId: 'ag-main',
+      folder: 'ag-main',
+    });
+    vi.mocked(recomposeAndUpdateHash).mockResolvedValueOnce({ kind: 'restart-ready', hash: 'a'.repeat(64) });
+
+    await reconcileSession('sess-task'); // writes the notice and kills the container
+    running.clear(); // the container exits
+    await reconcileSession('sess-task'); // nothing due yet, no live task: closes the session
+    expect((await getSession('sess-task'))?.status).toBe('closed');
+    const notice = Object.keys(statuses('ag-main', 'sess-task')).find((id) => id.startsWith('claudemd-refresh-'));
+    expect(notice).toBeDefined();
+
+    // The mail-write feed or the scan reaches the closed session at once.
+    await reconcileSession('sess-task');
+    expect(statuses('ag-main', 'sess-task')[notice!]).toBe('pending');
+    expect(warn).not.toHaveBeenCalledWith('Retired stuck inbound message', expect.anything());
+
+    // The scan skips it until the notice has been due for the floor.
+    const closed = await getClosedSessionIdsInUnpausedGroups();
+    expect(unretiredClosedSessions(closed, 10)).toEqual([]);
+    expect(unretiredClosedSessions(closed, 10, Date.now() + CLOSED_SESSION_MAIL_MIN_AGE_MS + 60_000)).toEqual([
+      'sess-task',
+    ]);
   });
 
   it('hands the scan at most a batch of not-yet-retired closed sessions', () => {

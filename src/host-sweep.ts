@@ -169,9 +169,10 @@ export function startHostSweep(): void {
       },
       // Closed sessions are never enqueued as active ones, so their leftover
       // inbound mail would sit pending forever. Hand the ones this process has
-      // not yet retired to the per-session reconcile, a batch per tick; a
-      // write into a closed session later re-enqueues it through the
-      // mail-write feed. See "stuck inbound retirement" in reconcile-session.ts.
+      // not yet checked, or whose held rows have since aged past the floor, to
+      // the per-session reconcile, a batch per tick; a write into a closed
+      // session later re-enqueues it through the mail-write feed. See "stuck
+      // inbound retirement" in reconcile-session.ts.
       'singleton:closed-session-mail': async () => {
         try {
           const closed = await getClosedSessionIdsInUnpausedGroups();

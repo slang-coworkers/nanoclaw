@@ -296,7 +296,13 @@ export async function reconcileSession(sessionId: string): Promise<void> {
 //     moved to a live session for the thread: a closed session is final by
 //     design (an admin's runaway Stop, a spent task session, a gh-thread merge
 //     whose rows were already copied into the canonical session), so moving
-//     the mail would undo the Stop or deliver the merged rows twice.
+//     the mail would undo the Stop or deliver the merged rows twice. The host
+//     never reopens a session: every lookup that routes new mail
+//     (findSessionForAgent, findSessionByAgentThread, findSystemSession, the
+//     a2a reply target) takes active sessions only, so the next message for
+//     the thread starts a new session. A row still reaches a closed session
+//     when its writer resolved the session just before the close, so a row is
+//     retired only once it has been due for CLOSED_SESSION_MAIL_MIN_AGE_MS.
 //
 // Neither touches a paused group: its mail waits for the unpause.
 
@@ -313,6 +319,20 @@ export async function reconcileSession(sessionId: string): Promise<void> {
  */
 export const STUCK_INBOUND_PASSED_OVER_MS = 7 * DAY_MS;
 
+/**
+ * How long a trigger row must have been due in a closed session before the
+ * host retires it. The host itself writes rows into a session as it closes:
+ * consider a spent task session whose CLAUDE.md went stale. One reconcile pass
+ * runs refreshStaleClaudeMd, which writes a `claudemd-refresh` notice due in
+ * 5 s, and then, with nothing yet due, closes the session. On prod
+ * (2026-11-16) 41 of the 401 closed-session rows were such late arrivals, all
+ * under 10 hours old; none was between 1 and 7 days old, and the rest were
+ * older than 7 days. A week therefore leaves the backlog's count unchanged
+ * while giving an operator a full week, weekends included, to recover a
+ * session that was closed by mistake before its mail is retired.
+ */
+export const CLOSED_SESSION_MAIL_MIN_AGE_MS = 7 * DAY_MS;
+
 export type InboundRetireReason = 'passed-over' | 'session-closed';
 
 /**
@@ -323,8 +343,9 @@ export type InboundRetireReason = 'passed-over' | 'session-closed';
  * STUCK_INBOUND_PASSED_OVER_MS, and never a row with a processing_ack: a
  * `processing` or `bounced-*` claim belongs to the claim-retry and a2a-redrive
  * budgets, which end in `failed` themselves. For `session-closed`, every
- * pending trigger row: a closed session has no runner and the sweep runs no
- * redrive for it, so a claim left there is as dead as the row.
+ * pending trigger row due for CLOSED_SESSION_MAIL_MIN_AGE_MS, claimed or not:
+ * a closed session has no runner and the sweep runs no redrive for it, so a
+ * claim left there is as dead as the row.
  */
 export function retireStuckInbound(
   mailbox: Pick<InboundMailbox, 'getPendingTriggerRows' | 'markMessageFailed'> &
@@ -336,7 +357,7 @@ export function retireStuckInbound(
   const rows =
     reason === 'passed-over'
       ? mailbox.getPendingTriggerRows({ passedOverMs: STUCK_INBOUND_PASSED_OVER_MS })
-      : mailbox.getPendingTriggerRows();
+      : mailbox.getPendingTriggerRows({ dueForMs: CLOSED_SESSION_MAIL_MIN_AGE_MS });
   if (rows.length === 0) return 0;
   let claimed = new Set<string>();
   if (reason === 'passed-over') {
@@ -360,48 +381,56 @@ export function retireStuckInbound(
   return retired;
 }
 
-// Closed sessions whose mail this process has already retired. The sweep's
-// closed-session scan (host-sweep.ts) enqueues only sessions missing from it,
-// so each closed session is opened once per host lifetime; a later write into
-// a closed session enqueues it again through the mail-write feed.
-const closedMailRetired = new Set<string>();
+// When the sweep's closed-session scan (host-sweep.ts) should next enqueue a
+// closed session this process has already checked: never again once its
+// pending trigger rows are all retired, or else once the earliest-due remaining
+// row has been due for CLOSED_SESSION_MAIL_MIN_AGE_MS. A session missing from the map is
+// checked on the next scan, and a later write into a closed session enqueues
+// it again through the mail-write feed.
+const closedMailNextCheckMs = new Map<string, number>();
 
-/** Closed-session ids the scan should still enqueue: those not yet retired, at most `limit`. */
-export function unretiredClosedSessions(closedIds: readonly string[], limit: number): string[] {
+/** Closed-session ids the scan should enqueue at `now`: those unchecked or due a recheck, at most `limit`. */
+export function unretiredClosedSessions(closedIds: readonly string[], limit: number, now = Date.now()): string[] {
   const out: string[] = [];
   for (const id of closedIds) {
     if (out.length >= limit) break;
-    if (!closedMailRetired.has(id)) out.push(id);
+    if (!((closedMailNextCheckMs.get(id) ?? 0) > now)) out.push(id);
   }
   return out;
 }
 
 export function _resetClosedMailForTesting(): void {
-  closedMailRetired.clear();
+  closedMailNextCheckMs.clear();
 }
 
 /**
- * Retire a closed session's leftover pending trigger rows (reason
- * `session-closed`). Skipped, and left for a later pass, while the group is
- * paused or a container for the session is still running — that container
- * could still claim a row. Acks the runner already wrote are applied first, so
- * a row it consumed is recorded `completed`, not retired.
+ * Retire a closed session's leftover pending trigger rows that have been due
+ * for CLOSED_SESSION_MAIL_MIN_AGE_MS (reason `session-closed`), and schedule
+ * the scan's next look for when the earliest-due remaining row is old enough.
+ * Skipped, and left for a later pass, while the group is paused or a container
+ * for the session is still running — that container could still claim a row.
+ * Acks the runner already wrote are applied first, so a row it consumed is
+ * recorded `completed`, not retired.
  */
 async function retireClosedSessionMail(session: Session): Promise<void> {
   const agentGroup = await getAgentGroup(session.agent_group_id);
   if (!agentGroup) {
-    closedMailRetired.add(session.id);
+    closedMailNextCheckMs.set(session.id, Number.POSITIVE_INFINITY);
     return;
   }
   if (agentGroup.paused || isContainerRunning(session.id)) return;
   try {
+    let nextCheckMs = Number.POSITIVE_INFINITY;
     await withExistingMailboxSession(agentGroup.id, session.id, (mailbox) => {
       // Most closed sessions hold nothing; check before opening outbound.db.
       if (!mailbox.getPendingTriggerRows?.().length) return;
       mailbox.applyProcessingAcks(mailbox.getTerminalProcessingAcks());
       retireStuckInbound(mailbox, session, 'session-closed');
+      for (const row of mailbox.getPendingTriggerRows?.() ?? []) {
+        nextCheckMs = Math.min(nextCheckMs, parseSqliteUtc(row.dueAt) + CLOSED_SESSION_MAIL_MIN_AGE_MS);
+      }
     });
-    closedMailRetired.add(session.id);
+    closedMailNextCheckMs.set(session.id, nextCheckMs);
     // eslint-disable-next-line no-catch-all/no-catch-all -- one unreadable mailbox must not fail the pass; left unretired, the next scan retries it
   } catch (err) {
     log.error('Closed-session mail retirement failed', { sessionId: session.id, err });

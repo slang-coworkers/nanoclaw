@@ -250,10 +250,16 @@ export function getNextDueAt(db: Database.Database): string | null {
 }
 
 /**
- * Pending trigger rows, oldest first. With `passedOverMs`, only the rows this
- * session's runner has passed over for at least that long.
+ * Pending trigger rows, oldest first. A row falls due once it is both written
+ * and past its `process_after`, so its `dueAt` is the later of `timestamp` and
+ * `process_after`.
  *
- * "Passed over" is read from the mailbox itself, so it needs no clock and no
+ * With `dueForMs`, only the rows that have been due for at least that long
+ * now. The closed-session rule uses it so that a row which lands as its
+ * session closes is not retired in the same pass.
+ *
+ * With `passedOverMs`, only the rows this session's runner has passed over for
+ * at least that long. "Passed over" is read from the mailbox itself, so it needs no clock and no
  * extra state. The runner claims every due trigger row it can consume in one
  * batch, so if it consumed an ordinary trigger row that was written
  * `passedOverMs` or more after row R fell due, R was due and visible on that
@@ -272,35 +278,32 @@ export function getNextDueAt(db: Database.Database): string | null {
  */
 export function getPendingTriggerRows(
   db: Database.Database,
-  opts: { passedOverMs?: number } = {},
+  opts: { passedOverMs?: number; dueForMs?: number } = {},
 ): PendingTriggerRow[] {
-  const due = "SUBSTR(REPLACE(REPLACE(COALESCE(process_after, timestamp), 'T', ' '), 'Z', ''), 1, 19)";
-  if (opts.passedOverMs === undefined) {
-    return db
+  const utc = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
+  const due = `MAX(${utc('timestamp')}, ${utc('COALESCE(process_after, timestamp)')})`;
+  const seconds = (ms: number) => Math.max(0, Math.floor(ms / 1000));
+  const where = ["status = 'pending'", 'trigger = 1'];
+  const params: Array<string | number> = [];
+  if (opts.passedOverMs !== undefined) {
+    const consumed = db
       .prepare(
-        `SELECT id, kind, ${due} AS dueAt FROM messages_in
-          WHERE status = 'pending' AND trigger = 1
-          ORDER BY seq`,
+        `SELECT ${utc('timestamp')} AS at FROM messages_in
+          WHERE trigger = 1 AND status = 'completed' AND kind NOT IN ('system', 'cost_override')
+          ORDER BY seq DESC LIMIT 1`,
       )
-      .all() as PendingTriggerRow[];
+      .get() as { at: string } | undefined;
+    if (!consumed) return [];
+    where.push(`datetime(${due}, '+' || ? || ' seconds') <= ?`);
+    params.push(seconds(opts.passedOverMs), consumed.at);
   }
-  const consumed = db
-    .prepare(
-      `SELECT SUBSTR(REPLACE(REPLACE(timestamp, 'T', ' '), 'Z', ''), 1, 19) AS at FROM messages_in
-        WHERE trigger = 1 AND status = 'completed' AND kind NOT IN ('system', 'cost_override')
-        ORDER BY seq DESC LIMIT 1`,
-    )
-    .get() as { at: string } | undefined;
-  if (!consumed) return [];
-  const passedOverSec = Math.max(0, Math.floor(opts.passedOverMs / 1000));
+  if (opts.dueForMs !== undefined) {
+    where.push(`datetime(${due}, '+' || ? || ' seconds') <= datetime('now')`);
+    params.push(seconds(opts.dueForMs));
+  }
   return db
-    .prepare(
-      `SELECT id, kind, ${due} AS dueAt FROM messages_in
-        WHERE status = 'pending' AND trigger = 1
-          AND datetime(${due}, '+' || ? || ' seconds') <= ?
-        ORDER BY seq`,
-    )
-    .all(passedOverSec, consumed.at) as PendingTriggerRow[];
+    .prepare(`SELECT id, kind, ${due} AS dueAt FROM messages_in WHERE ${where.join(' AND ')} ORDER BY seq`)
+    .all(...params) as PendingTriggerRow[];
 }
 
 export function markMessageFailed(db: Database.Database, messageId: string): void {
