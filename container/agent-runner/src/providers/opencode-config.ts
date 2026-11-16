@@ -42,6 +42,31 @@ function parseLimitEnv(varName: string, raw: string | undefined): number | undef
   return Number(trimmed);
 }
 
+// The most tokens OpenCode 1.18 asks for in one response (OUTPUT_TOKEN_MAX in
+// its provider transform); OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX replaces it.
+const OPENCODE_OUTPUT_TOKEN_MAX = 32_000;
+
+/**
+ * Return the response budget OpenCode itself requests for a model, so the
+ * Chat Completions endpoint can be told the same number as
+ * `max_completion_tokens`. OpenCode computes it as the model's declared output
+ * limit capped at its own maximum, or that maximum when the model declares
+ * none: `Math.min(limit.output, OUTPUT_TOKEN_MAX) || OUTPUT_TOKEN_MAX`.
+ *
+ * Why the endpoint needs it: OpenCode sends the number only as `max_tokens`,
+ * and the NVIDIA inference endpoint ignores that field and ends every response
+ * at 4096 tokens, reasoning included. A GLM 5.3 step that reasons at length
+ * then stops with finish reason "length" and no text. With
+ * `max_completion_tokens` in the request, the same prompt ran to 14,272
+ * output tokens and a normal stop (measured on prod, 2026-11-16).
+ */
+function openCodeResponseTokens(declaredOutput: number | undefined, environment: NodeJS.ProcessEnv): number {
+  const cap =
+    parseLimitEnv('OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX', environment.OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX) ??
+    OPENCODE_OUTPUT_TOKEN_MAX;
+  return Math.min(declaredOutput ?? 0, cap) || cap;
+}
+
 export function resolveOpenCodeInference(
   input: RuntimeInferenceInput,
   environment: NodeJS.ProcessEnv,
@@ -110,6 +135,23 @@ export function resolveOpenCodeInference(
   const modelModalities =
     requestedModalities.length > 0 ? { input: ['text', ...requestedModalities], output: ['text'] } : undefined;
 
+  // A custom base URL on the `openai` provider selects the Chat Completions
+  // transport (see `npm` below). On that transport each registered model also
+  // tells the endpoint its response budget as `max_completion_tokens`
+  // (openCodeResponseTokens); OpenCode passes unknown model options into the
+  // request body. The main model's budget follows its declared output limit;
+  // a distinct small model declares none.
+  const chatCompletions = provider === 'openai' && Boolean(proxyUrl);
+  const modelOptions = (isMainModel: boolean): Record<string, unknown> | undefined => {
+    const options: Record<string, unknown> = {
+      ...(isMainModel && effort ? { reasoningEffort: effort } : {}),
+      ...(chatCompletions
+        ? { max_completion_tokens: openCodeResponseTokens(isMainModel ? modelLimit?.output : undefined, environment) }
+        : {}),
+    };
+    return Object.keys(options).length > 0 ? options : undefined;
+  };
+
   // Native API providers also need a placeholder to become connected before
   // any HTTP request reaches the selected gateway. Model options do not depend on baseURL.
   const providerOptions: Record<string, unknown> = {
@@ -122,7 +164,7 @@ export function resolveOpenCodeInference(
       // (e.g. `openrouter`, set alongside ANTHROPIC_BASE_URL per the
       // documented OpenRouter config) ship their own native ai-sdk
       // package and must keep OpenCode's default transport resolution.
-      ...(provider === 'openai' && proxyUrl ? { npm: '@ai-sdk/openai-compatible' } : {}),
+      ...(chatCompletions ? { npm: '@ai-sdk/openai-compatible' } : {}),
       options: { apiKey: OPENCODE_CREDENTIAL_PLACEHOLDER, ...(proxyUrl ? { baseURL: proxyUrl } : {}) },
       ...(modelsToRegister.length > 0
         ? {
@@ -136,13 +178,14 @@ export function resolveOpenCodeInference(
                 // main one gets a bare entry instead, which resolves
                 // through OpenCode's own undeclared-model default.
                 const isMainModel = mid === providerModelId;
+                const options = modelOptions(isMainModel);
                 return [
                   mid,
                   {
                     id: mid,
                     name: mid,
                     tool_call: true,
-                    ...(isMainModel && effort ? { options: { reasoningEffort: effort } } : {}),
+                    ...(options ? { options } : {}),
                     ...(isMainModel && modelLimit ? { limit: modelLimit } : {}),
                     ...(isMainModel && modelModalities ? { attachment: true, modalities: modelModalities } : {}),
                   },
