@@ -70,9 +70,15 @@ for line in lines:
     if in_service and re.match(r"^\s+image:", line):
         line = re.sub(r"(image:\s*)\S+", r"\g<1>" + image, line)
         image_done = True
-    if in_service and ":10254" in line:
-        if "127.0.0.1:" not in line:
-            line = re.sub(r"(?:0\.0\.0\.0:)?(\d{2,5}):10254", r"127.0.0.1:\1:10254", line)
+    # Only a list item under `ports:` is a port mapping. A line such as `APP_URL: http://host:10254` is an
+    # environment value and stays as it is. The host part of a mapping can be empty, `0.0.0.0`, or a
+    # compose variable such as `${ONECLI_BIND_HOST:-127.0.0.1}`; each becomes `127.0.0.1`.
+    if in_service and re.match(r"^\s*-\s", line) and ":10254" in line:
+        line = re.sub(
+            r"""(["']?)(?:(?:\$\{[^}]*\}|[0-9.]+):)?(\d{2,5}):10254""",
+            r"\g<1>127.0.0.1:\g<2>:10254",
+            line,
+        )
         found = re.search(r"127\.0\.0\.1:(\d{2,5}):10254", line)
         if not found:
             sys.exit("could not bind the management API in: " + line.strip())
