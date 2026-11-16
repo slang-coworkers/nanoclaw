@@ -222,9 +222,16 @@ commit_dirty() { # checkout name
   drop_lock_after_timeout "$rc" "$wt" || return 1
 }
 
+# A repository whose branch has no commit yet (`git init`, or a clone whose fetch never
+# finished) has an unborn HEAD. commit_dirty gives it a commit when its tree has
+# content, so a HEAD that is still unborn afterwards means there is nothing to save.
+unborn() { ! git -C "$1" rev-parse -q --verify HEAD >/dev/null 2>&1; }
+UNBORN_SAVED="nothing to save (no commit yet and a clean tree)"
+
 save_worktree() { # owner path name
   local head
   commit_dirty "$2" "$3" || return $?
+  if unborn "$2"; then SAVED_AS="$UNBORN_SAVED"; return 0; fi
   head="$(git -C "$2" rev-parse HEAD 2>/dev/null)" || return 1
   git -C "$1" branch -f "wip/reap/$3" "$head" >/dev/null 2>&1 || return 1
   SAVED_AS="branch wip/reap/$3 in ${1#"$AGENT"/}"
@@ -232,12 +239,14 @@ save_worktree() { # owner path name
 
 save_clone() { # path name
   local n b
+  local -a tips=(HEAD --branches)
   commit_dirty "$1" "$2" || return $?
-  n="$(timeout "$(op_timeout)" git -C "$1" rev-list --count HEAD --branches --not --remotes 2>/dev/null)" || return 1
+  if unborn "$1"; then tips=(--branches); fi
+  n="$(timeout "$(op_timeout)" git -C "$1" rev-list --count "${tips[@]}" --not --remotes 2>/dev/null)" || return 1
   if [ "${n:-0}" -eq 0 ]; then SAVED_AS="nothing unsaved (every commit is on a remote-tracking ref)"; return 0; fi
   mkdir -p "$SAVED" || return 1
   b="$SAVED/$2.$(stamp).bundle"
-  timeout "$(op_timeout)" git -C "$1" bundle create "$b" HEAD --branches --not --remotes >/dev/null 2>&1 \
+  timeout "$(op_timeout)" git -C "$1" bundle create "$b" "${tips[@]}" --not --remotes >/dev/null 2>&1 \
     || { rm -f "$b"; return 1; }
   SAVED_AS="bundle ${b#"$AGENT"/} ($n commits)"
 }

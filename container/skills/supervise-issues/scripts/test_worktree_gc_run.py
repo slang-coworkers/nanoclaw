@@ -345,6 +345,31 @@ class GateTest(unittest.TestCase):
         self.assertFalse(bare.exists())
         self.assertEqual(len(list((self.s.agent / ".worktree-gc" / "saved").glob("bare-13388.git.*.bundle"))), 1)
 
+    def test_clone_with_an_unborn_head_is_reaped_without_error(self):
+        # `git init` + `remote add` whose fetch never finished: no commit, clean tree.
+        # Production: slang-triager's scratch-13527/dxc failed its save every hour.
+        d = self.s.agent / "scratch-13527"
+        d.mkdir()
+        git(d, "init", "-q", "-b", "master", "dxc")
+        git(d / "dxc", "remote", "add", "origin", "https://example.invalid/dxc.git")
+        unborn_wt = self.s.agent / "wt-13528-verify"
+        git(self.s.agent, "init", "-q", "-b", "master", unborn_wt.name)
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(d.exists())
+        self.assertFalse(unborn_wt.exists())
+
+    def test_unborn_clone_with_files_is_committed_and_bundled(self):
+        c = self.s.agent / "wt-13529-drill"
+        git(self.s.agent, "init", "-q", "-b", "master", c.name)
+        (c / "notes.txt").write_text("only copy\n")
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("wt-13529-drill.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+
     def test_plain_wt_directory_is_kept_and_reported(self):
         (self.s.agent / "wt-notes").mkdir()
         (self.s.agent / "wt-notes" / "draft.md").write_text("x\n")
