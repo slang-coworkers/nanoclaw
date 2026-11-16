@@ -642,80 +642,75 @@ def collect_host(state):
     emit("nanoclaw_host", fields)
 
 
-def collect_cost():
-    """Fleet / per-coworker / per-session USD accrued TODAY.
+def cost_points(d):
+    """Turn one `/api/sessions?period=1d` answer into `nanoclaw_cost` points, as (fields, tags) pairs.
 
-    Reads the dashboard's /api/sessions?period=1d (always-fresh, 60s
-    sessionCostCache). Every dollar is priced from the transcript JSONL, so
-    Claude and Codex are both included and split out. Emitted as one measurement
-    `nanoclaw_cost` with a `scope` tag so a single dashboard row can show fleet,
-    per-coworker and per-session breakdowns off the same series:
-
+    Pure, so the split can be tested. Each session's `cost` is `claudeUsd + codexUsd + openUsd`:
+    Claude models, GPT (the codex critic), and open-weights models (GLM, Kimi, DeepSeek). A dashboard
+    older than the open-weights split sends no `openUsd`, which reads as 0.
+    Points:
       scope=fleet                     -> whole-fleet usd today + active sessions
       scope=group   group=<name>      -> one point per coworker (zero-cost skipped)
       scope=session session=<id>      -> one point per costing session, top-N by usd
-
-    Honesty rules from ops/README.md are kept: a coworker/session that spent $0
-    today emits no point (so "no data" != "spent zero"), and if more sessions
-    cost money than the cardinality cap allows, the overflow COUNT is emitted
-    rather than silently dropped.
+    A coworker or session that spent $0 today emits no point ("no data" is not "spent zero"), and
+    when more sessions cost money than the cardinality cap allows, the overflow COUNT is emitted.
     """
+    sessions = d.get("sessions", []) or []
+    fleet = {"usd": 0.0, "claude": 0.0, "codex": 0.0, "open": 0.0}
+    active = 0
+    per = {}          # folder -> {"name", "usd", "claude", "codex", "open", "sessions"}
+    costed = []       # (usd, claude, codex, open, session_id, name, folder)
+    for s in sessions:
+        usd = float(s.get("cost") or 0)
+        claude = float(s.get("claudeUsd") or 0)
+        codex = float(s.get("codexUsd") or 0)
+        opn = float(s.get("openUsd") or 0)
+        folder = s.get("group_folder") or ""
+        name = s.get("group_name") or folder or "unknown"
+        if (s.get("container_status") or "") == "running":
+            active += 1
+        for k, v in (("usd", usd), ("claude", claude), ("codex", codex), ("open", opn)):
+            fleet[k] += v
+        g = per.setdefault(folder, {"name": name, "usd": 0.0, "claude": 0.0, "codex": 0.0, "open": 0.0, "sessions": 0})
+        for k, v in (("usd", usd), ("claude", claude), ("codex", codex), ("open", opn)):
+            g[k] += v
+        g["sessions"] += 1
+        if usd > 0:
+            costed.append((usd, claude, codex, opn, s.get("session_id") or "", name, folder))
+
+    def money(usd, claude, codex, opn):
+        return {"usd": round(usd, 6), "claude_usd": round(claude, 6), "codex_usd": round(codex, 6),
+                "open_usd": round(opn, 6)}
+
+    points = [(dict(money(fleet["usd"], fleet["claude"], fleet["codex"], fleet["open"]),
+                    active_sessions=active, sessions_total=len(sessions)), {"scope": "fleet"})]
+    for folder, g in per.items():
+        if g["usd"] <= 0:      # a coworker that spent nothing today emits nothing
+            continue
+        points.append((dict(money(g["usd"], g["claude"], g["codex"], g["open"]), sessions=g["sessions"]),
+                       {"scope": "group", "group": g["name"], "folder": folder}))
+    costed.sort(reverse=True)
+    for usd, claude, codex, opn, sid, name, folder in costed[:COST_TOP_SESSIONS]:
+        points.append((money(usd, claude, codex, opn),
+                       {"scope": "session", "session": sid, "group": name, "folder": folder}))
+    overflow = len(costed) - COST_TOP_SESSIONS
+    if overflow > 0:
+        # never silently truncate: how many costing sessions we could not emit
+        points.append(({"dropped_sessions": overflow}, {"scope": "session_overflow"}))
+    return points
+
+
+def collect_cost():
+    """Fleet / per-coworker / per-session USD accrued TODAY, from the dashboard's /api/sessions?period=1d
+    (the always-fresh 60s sessionCostCache). See cost_points for the split and the honesty rules."""
     req = urllib.request.Request(DASH_URL + "/api/sessions?period=1d")
     with urllib.request.urlopen(req, timeout=15) as resp:
         d = json.load(resp)
     if d.get("costUnavailable"):
         _errors.append("cost:costUnavailable")
         return
-    sessions = d.get("sessions", []) or []
-
-    fleet_usd = fleet_claude = fleet_codex = 0.0
-    active = 0
-    per = {}          # folder -> [name, usd, claude, codex, sessions]
-    costed = []       # (usd, claude, codex, session_id, name, folder)
-    for s in sessions:
-        usd = float(s.get("cost") or 0)
-        claude = float(s.get("claudeUsd") or 0)
-        codex = float(s.get("codexUsd") or 0)
-        folder = s.get("group_folder") or ""
-        name = s.get("group_name") or folder or "unknown"
-        if (s.get("container_status") or "") == "running":
-            active += 1
-        fleet_usd += usd
-        fleet_claude += claude
-        fleet_codex += codex
-        g = per.setdefault(folder, [name, 0.0, 0.0, 0.0, 0])
-        g[1] += usd
-        g[2] += claude
-        g[3] += codex
-        g[4] += 1
-        if usd > 0:
-            costed.append((usd, claude, codex, s.get("session_id") or "", name, folder))
-
-    emit("nanoclaw_cost",
-         {"usd": round(fleet_usd, 6), "claude_usd": round(fleet_claude, 6),
-          "codex_usd": round(fleet_codex, 6),
-          "active_sessions": active, "sessions_total": len(sessions)},
-         {"scope": "fleet"})
-
-    for folder, g in per.items():
-        if g[1] <= 0:      # a coworker that spent nothing today emits nothing
-            continue
-        emit("nanoclaw_cost",
-             {"usd": round(g[1], 6), "claude_usd": round(g[2], 6),
-              "codex_usd": round(g[3], 6), "sessions": g[4]},
-             {"scope": "group", "group": g[0], "folder": folder})
-
-    costed.sort(reverse=True)
-    for usd, claude, codex, sid, name, folder in costed[:COST_TOP_SESSIONS]:
-        emit("nanoclaw_cost",
-             {"usd": round(usd, 6), "claude_usd": round(claude, 6),
-              "codex_usd": round(codex, 6)},
-             {"scope": "session", "session": sid, "group": name, "folder": folder})
-
-    overflow = len(costed) - COST_TOP_SESSIONS
-    if overflow > 0:
-        # never silently truncate: how many costing sessions we could not emit
-        emit("nanoclaw_cost", {"dropped_sessions": overflow}, {"scope": "session_overflow"})
+    for fields, tags in cost_points(d):
+        emit("nanoclaw_cost", fields, tags)
 
 
 def collect_codex():
