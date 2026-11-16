@@ -160,6 +160,7 @@ describe('container env', () => {
       INTENT_ROUTER_OPENAI_MODEL: 'nvidia/zai-org/glm-5.3-flash',
       OPENCODE_MODEL: 'openai/nvidia/zai-org/glm-5.3',
       OPENCODE_SMALL_MODEL: 'openai/nvidia/zai-org/glm-5.3-flash',
+      CODEX_MODEL: 'nvidia/moonshotai/kimi-k3',
     });
     expect(modelPolicyEnv(resolveGroupModels('codex', { model: 'nvidia/moonshotai/kimi-k3' }, ENV))).toEqual({
       NANOCLAW_MODEL_WEIGHTS: 'any',
@@ -172,6 +173,15 @@ describe('container env', () => {
       NANOCLAW_CRITIC_MODEL: ENV.CODEX_MODEL,
       ANTHROPIC_DEFAULT_HAIKU_MODEL: 'aws/anthropic/x',
     });
+  });
+
+  it('keeps the closed Codex default away from an open-weights group, and leaves a closed group alone', () => {
+    const open = modelPolicyEnv(resolveGroupModels('opencode', { weights: 'open' }, ENV));
+    expect(open.CODEX_MODEL).toBe('nvidia/moonshotai/kimi-k3');
+    expect(isOpenWeightsModel(open.CODEX_MODEL, ENV)).toBe(true);
+    // The same install's closed groups keep the install's own Codex model.
+    expect(modelPolicyEnv(resolveGroupModels('opencode', {}, ENV)).CODEX_MODEL).toBeUndefined();
+    expect(modelPolicyEnv(resolveGroupModels('claude', {}, ENV)).CODEX_MODEL).toBeUndefined();
   });
 });
 
