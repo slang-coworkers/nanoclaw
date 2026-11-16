@@ -228,6 +228,22 @@ class GateTest(unittest.TestCase):
         self.assertEqual(git(self.slang, "show", "wip/reap/wt-9999-verify:f.txt").stdout, "wip\n")
         self.assertNotIn("wt-9999-verify", git(self.slang, "worktree", "list").stdout)
 
+    def test_skipped_worktree_keeps_its_idle_clock(self):
+        # The save check's `git status` used to write the refreshed index back, which
+        # made a worktree skipped for its size look freshly used on the next fire.
+        wt = self.s.worktree(self.slang, "wt-8888-verify")
+        with open(wt / "big.bin", "wb") as f:
+            f.truncate(201 * 1024 * 1024)  # sparse: above SAVE_MAX_MB, no real disk
+        self.s.age_all()
+        index = Path(git(wt, "rev-parse", "--path-format=absolute", "--git-path", "index").stdout.strip())
+        before = index.stat().st_mtime
+        for _ in range(2):
+            self.s.run("--gate")
+            self.assertTrue(any(s.startswith("wt-8888-verify:") for s in self.s.report()["skipped"]),
+                            self.s.report())
+        self.assertEqual(index.stat().st_mtime, before)
+        self.assertTrue(wt.exists())
+
     def test_backlog_drains_across_fires_under_the_time_box(self):
         for i in range(3):
             self.s.clone(self.slang, f"wt-100{i}-revA")

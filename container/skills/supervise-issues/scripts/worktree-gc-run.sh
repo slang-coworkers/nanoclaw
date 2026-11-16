@@ -49,6 +49,13 @@
 #              bookkeeping (the repair and prune discovery always runs).
 set -uo pipefail
 
+# `git status` writes a refreshed index back whenever it can take the lock, and a
+# linked worktree's idle clock reads its index mtime. Without this, the save check on
+# a worktree that is then skipped (untracked content above SAVE_MAX_MB) restarts its
+# idle clock, so it leaves REAP for a full idle period. With optional locks off, reads
+# leave the index alone; `git add` and `git commit` still take the locks they need.
+export GIT_OPTIONAL_LOCKS=0
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AGENT="${WORKTREE_GC_AGENT:-/workspace/agent}"
 STATE_DIR="$AGENT/.worktree-gc"
