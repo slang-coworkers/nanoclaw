@@ -22,11 +22,11 @@ OMIT = object()  # build_size=OMIT → the payload carries no build_size_gb at a
 
 
 def wt(dir, issue="OPEN", pr="OPEN", idle=None, size=6.7, has_build=True,
-       build_size=None, kind="primary", fs_idle=5.0):
+       build_size=None, kind="primary", fs_idle=5.0, shape="worktree"):
     """`idle` is the open PR's GitHub idleness; `fs_idle` is filesystem idleness
     (default 5 days: old enough that MIN_IDLE_DAYS never interferes). `size` is
     the whole worktree; `build_size` the build/ dir a reclaim deletes."""
-    w = {"dir": dir, "kind": kind, "idle_days": fs_idle, "issue_state": issue,
+    w = {"dir": dir, "kind": kind, "shape": shape, "idle_days": fs_idle, "issue_state": issue,
          "pr_state": pr, "pr_idle_days": idle, "size_gb": size, "has_build": has_build}
     if build_size is not OMIT:
         w["build_size_gb"] = round(size * 0.6, 2) if build_size is None else build_size
@@ -174,7 +174,8 @@ class TestSelect(unittest.TestCase):
         t = wg.select({"free_gb": 2, "total_gb": 1000, "running_dirs": [], "worktrees": []})["summary"]["thresholds"]
         for name in ("STALE_OPEN_IDLE_DAYS", "SCRATCH_IDLE_DAYS", "NOPR_IDLE_DAYS", "MIN_IDLE_DAYS",
                      "PRESSURE_GATE_PCT", "PRESSURE_IDLE_DAYS", "TARGET_FREE_PCT",
-                     "CRITICAL_GATE_PCT", "CRITICAL_IDLE_DAYS"):
+                     "CRITICAL_GATE_PCT", "CRITICAL_IDLE_DAYS", "RUNS_RETENTION_DAYS",
+                     "SAVE_MAX_MB", "ESCALATE_PCT"):
             self.assertEqual(t[name], getattr(wg, name))
 
 
@@ -211,6 +212,64 @@ class TestPressure(unittest.TestCase):
                          "worktrees": [wt("keep5", idle=5, size=7), wt("stale40", idle=40, size=7)]})
         self.assertEqual(next(w["dir"] for w in out["reclaim"]), "stale40")
         self.assertEqual({w["dir"] for w in out["reclaim"]}, {"stale40", "keep5"})
+
+
+class TestShapes(unittest.TestCase):
+    """Every per-task checkout is classified by the same tiers whatever its git
+    shape; the shape only matters where its work could not be saved."""
+
+    def test_idle_scratch_clone_is_reaped(self):
+        self.assertEqual(wg.classify(wt("wt-1-revA", kind="scratch", shape="clone", fs_idle=10), set()), "REAP")
+
+    def test_orphan_with_its_repository_is_reaped_when_idle(self):
+        w = wt("wt-1-verify", kind="scratch", shape="orphan", fs_idle=10)
+        w["owner_exists"] = True
+        self.assertEqual(wg.classify(w, set()), "REAP")
+
+    def test_orphan_without_a_repository_is_kept(self):
+        w = wt("wt-1-verify", kind="scratch", shape="orphan", fs_idle=90)
+        w["owner_exists"] = False
+        self.assertEqual(wg.classify(w, set()), "KEEP")
+        self.assertIn("repository is gone", w["gc_reason"])
+
+    def test_plain_directory_is_kept(self):
+        w = wt("wt-notes", kind="scratch", shape="plain", fs_idle=90)
+        self.assertEqual(wg.classify(w, set()), "KEEP")
+
+    def test_checkout_others_depend_on_is_kept_even_when_final(self):
+        w = wt("wt-1-base", kind="scratch", shape="clone", pr="MERGED", fs_idle=90)
+        w["dependents"] = ["wt-1-revA"]
+        self.assertEqual(wg.classify(w, set()), "KEEP")
+        self.assertEqual(w["gc_reason"], "used by wt-1-revA")
+
+    def test_shape_counts_in_summary(self):
+        out = wg.select({"free_gb": 500, "total_gb": 1000, "running_dirs": [],
+                         "worktrees": [wt("a", shape="clone"), wt("b", shape="clone"), wt("c")]})
+        self.assertEqual(out["summary"]["shapes"], {"clone": 2, "worktree": 1})
+
+
+class TestRunsRetention(unittest.TestCase):
+    def run_entry(self, name, idle, running=False, dependents=()):
+        return {"name": name, "idle_days": idle, "running": running, "dependents": list(dependents)}
+
+    def test_entries_past_retention_expire_most_idle_first(self):
+        runs = [self.run_entry("young", wg.RUNS_RETENTION_DAYS - 1),
+                self.run_entry("old", wg.RUNS_RETENTION_DAYS + 1),
+                self.run_entry("oldest", wg.RUNS_RETENTION_DAYS + 30)]
+        out = wg.select({"free_gb": 500, "total_gb": 1000, "running_dirs": [], "worktrees": [], "runs": runs})
+        self.assertEqual([r["name"] for r in out["runs_expired"]], ["oldest", "old"])
+        self.assertEqual(out["summary"]["runs_expired_count"], 2)
+        self.assertEqual(out["summary"]["runs_count"], 3)
+
+    def test_boundary_is_kept(self):
+        self.assertFalse(wg.expired_run(self.run_entry("x", wg.RUNS_RETENTION_DAYS)))
+
+    def test_held_or_borrowed_entries_never_expire(self):
+        self.assertFalse(wg.expired_run(self.run_entry("x", 99, running=True)))
+        self.assertFalse(wg.expired_run(self.run_entry("x", 99, dependents=["wt-1-revA"])))
+
+    def test_unmeasured_entry_is_kept(self):
+        self.assertFalse(wg.expired_run({"name": "x", "idle_days": None}))
 
 
 class TestUnknownVolume(unittest.TestCase):
