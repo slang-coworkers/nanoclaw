@@ -2505,6 +2505,40 @@ export function ensureReviewLengthGate(settingsFile: string): void {
   }
 }
 
+export const GITHUB_COMMENT_BODY_GATE_CMD = 'bash /app/hooks/gate-github-comment-body.sh';
+// Every tool call that can post a GitHub body: Bash (`gh issue|pr comment|review|create|edit`,
+// `gh api` to an issue, pull request, comment or review endpoint) and the GitHub MCP comment
+// and review tools. The prod MCP servers have no comment tool (slang-mcp's only GitHub write
+// is github_create_or_update_file), so on prod the hook runs on Bash alone.
+export const GITHUB_COMMENT_BODY_GATE_MATCHER =
+  'Bash|mcp__github__add_issue_comment|mcp__github__create_pending_pull_request_review|mcp__github__add_comment_to_pending_review|mcp__github__submit_pending_pull_request_review|mcp__github__create_and_submit_pull_request_review';
+
+/**
+ * Register gate-github-comment-body.sh as a PreToolUse hook in a group's settings.json.
+ *
+ * The hook refuses a GitHub body that would post broken: the literal text `@<path>` (gh reads
+ * a file only for --body-file and `gh api -F key=@<path>`) or a memo's YAML frontmatter. It is
+ * not an overlay gate, so every Claude-surface group carries it; OpenCode and Pi groups run it
+ * from the same settings.json through their hook bridges. Idempotent; registered outside the
+ * dashboard hook block.
+ */
+export function ensureGithubCommentBodyGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-github-comment-body.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    GITHUB_COMMENT_BODY_GATE_MATCHER,
+    'gate-github-comment-body.sh',
+    GITHUB_COMMENT_BODY_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
 export async function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -2966,6 +3000,9 @@ export async function buildMounts(
   // reviews under the character cap (summary plus inline comments). Marker-scoped
   // like the eval-sandbox gate, so the registration is universal and inert elsewhere.
   if (defaultSurfaces) ensureReviewLengthGate(settingsFile);
+  // gate-github-comment-body.sh: a GitHub comment, review or issue/PR body is never the
+  // literal text `@<path>` nor a memo's YAML frontmatter. Registered for every group.
+  if (defaultSurfaces) ensureGithubCommentBodyGate(settingsFile);
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.
@@ -3692,6 +3729,8 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PR_DESCRIPTION_GATE',
     'PR_DESCRIPTION_MAX_CHARS',
     'PR_DESCRIPTION_MAX_SECTION_LINES',
+    // gate-github-comment-body.sh off switch, read inside the container.
+    'GITHUB_COMMENT_BODY_GATE',
     // Mailbox history GC + outbound.db free-page reclaim, run by the runner on
     // its own file (defaults: 30 d, 256 MB live cap). Forwarded so one host
     // setting governs both sides — e.g. `0` turns the runner side off too.

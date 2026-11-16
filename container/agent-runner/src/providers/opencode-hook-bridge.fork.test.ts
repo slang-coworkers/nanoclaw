@@ -332,6 +332,61 @@ describe('UserPromptSubmit context', () => {
   });
 });
 
+// The real gate script, run the way the host registers it, on the commands an
+// OpenCode coworker sent on prod: the bridge must refuse them before they post.
+const BODY_GATE = path.join(import.meta.dir, '..', '..', '..', 'hooks', 'gate-github-comment-body.sh');
+const hasBodyGateTools = ['python3', 'jq'].every((tool) => Bun.spawnSync(['sh', '-c', `command -v ${tool}`]).success);
+
+describe.skipIf(!hasBodyGateTools)('the GitHub comment-body gate through the bridge', () => {
+  async function gated() {
+    const file = path.join(dir, 'settings.json');
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash|mcp__github__add_issue_comment',
+              hooks: [{ type: 'command', command: `bash ${BODY_GATE}`, timeout: 5 }],
+            },
+          ],
+        },
+      }),
+    );
+    process.env.NANOCLAW_HOOK_SETTINGS = file;
+    process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ mcp: { nanoclaw: {}, github: {} } });
+    return NanoclawHookBridge({});
+  }
+
+  it('refuses `gh api -f body=@<path>` from the bash tool and lets `-F body=@<path>` through', async () => {
+    const body = path.join(dir, 'issue-comment-14489-final.md');
+    fs.writeFileSync(body, '**Status:** fixed.\n');
+    const hooks = await gated();
+    const bash = (command: string) =>
+      hooks['tool.execute.before'](
+        { tool: 'bash', sessionID: 's1' },
+        { args: { command, timeout: 120000, workdir: '/workspace/agent/wt-slang-14489' } },
+      );
+    await expect(
+      bash(`gh api -X PATCH repos/shader-slang/slang/issues/comments/6912309417 -f body=@${body} --jq '.html_url'`),
+    ).rejects.toThrow('GITHUB BODY IS A FILE NAME');
+    await bash(`gh api -X PATCH repos/shader-slang/slang/issues/comments/6912309417 -F body=@${body} --jq '.body'`);
+  });
+
+  it('refuses a frontmatter body through the GitHub MCP tool OpenCode names github_add_issue_comment', async () => {
+    const hooks = await gated();
+    const comment = (body: string) =>
+      hooks['tool.execute.before'](
+        { tool: 'github_add_issue_comment', sessionID: 's1' },
+        { args: { owner: 'o', repo: 'r', issue_number: 1, body } },
+      );
+    await expect(comment('---\ntype: comment\ntitle: x\n---\n\nbody\n')).rejects.toThrow(
+      'GITHUB BODY STARTS WITH YAML FRONTMATTER',
+    );
+    await comment('Thanks @jkwak-work.\n\n---\n\nDetails.\n');
+  });
+});
+
 describe('lifecycle events', () => {
   const event = (type: string, properties: Record<string, unknown>) => ({ event: { type, properties } });
 

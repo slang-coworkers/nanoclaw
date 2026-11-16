@@ -20,10 +20,13 @@ import type { ContainerConfig } from './container-config.js';
 import {
   EVAL_SANDBOX_GATE_CMD,
   EVAL_SANDBOX_GATE_MATCHER,
+  GITHUB_COMMENT_BODY_GATE_CMD,
+  GITHUB_COMMENT_BODY_GATE_MATCHER,
   REVIEW_LENGTH_GATE_CMD,
   REVIEW_LENGTH_GATE_MATCHER,
   buildMounts,
   ensureEvalSandboxGate,
+  ensureGithubCommentBodyGate,
   ensurePrDescriptionGate,
   ensureReviewLengthGate,
 } from './container-runner.js';
@@ -192,6 +195,32 @@ describe('overlay hook registration', () => {
     const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
     expect(count(hooks.PreToolUse, 'gate-review-length.sh')).toBe(1);
     expect(hooks.PreToolUse[0]).toMatchObject({ matcher: REVIEW_LENGTH_GATE_MATCHER });
+  });
+
+  it('registers gate-github-comment-body.sh as a PreToolUse hook for every group, once', async () => {
+    // Not an overlay gate: every group, overlays or not, posts GitHub bodies the same way.
+    let hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-github-comment-body.sh')).toBe(1);
+    const entry = hooks.PreToolUse.find((e) =>
+      e.hooks?.some((h) => h.command?.includes('gate-github-comment-body.sh')),
+    );
+    expect(entry?.matcher).toBe(GITHUB_COMMENT_BODY_GATE_MATCHER);
+    expect(entry?.matcher?.split('|')[0]).toBe('Bash');
+    expect(entry?.matcher).toContain('mcp__github__add_issue_comment');
+    expect(entry?.hooks?.[0].command).toBe(GITHUB_COMMENT_BODY_GATE_CMD);
+    hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-github-comment-body.sh')).toBe(1);
+    hooks = await settingsAfterSpawn({ disable_overlays: 1 });
+    expect(count(hooks.PreToolUse, 'gate-github-comment-body.sh')).toBe(1);
+  });
+
+  it('registers the GitHub comment-body gate without the dashboard hook block, idempotently', () => {
+    fs.writeFileSync(settingsFile, '{}');
+    ensureGithubCommentBodyGate(settingsFile);
+    ensureGithubCommentBodyGate(settingsFile);
+    const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
+    expect(count(hooks.PreToolUse, 'gate-github-comment-body.sh')).toBe(1);
+    expect(hooks.PreToolUse[0]).toMatchObject({ matcher: GITHUB_COMMENT_BODY_GATE_MATCHER });
   });
 
   it('is not registered when overlays are disabled for the group', async () => {
