@@ -2875,7 +2875,7 @@
         "x": 0,
         "y": 36
       },
-      "description": "Each coworker's configured model tier, from container_configs (the value `ncl groups config update --model` writes, materialized to container.json and passed to the SDK as the query model). An empty Model means the group inherits the host/provider default, shown as tier 'default' rather than a guessed tier. Activity (5m) is the rolling hook-event count \u2014 an approximate turn/work proxy, NOT billed cost. Scan the Tier column for drift.",
+      "description": "Each coworker's configured model tier, from container_configs (the value `ncl groups config update --model` writes, materialized to container.json and passed to the SDK as the query model). An empty Model means the group inherits the host/provider default, shown as tier 'default' rather than a guessed tier. Activity (5m) is the rolling hook-event count \u2014 an approximate turn/work proxy, NOT billed cost. Scan the Tier column for drift. Current state: reads only the last 5 minutes, so a coworker that changed provider or tier shows once, with its new value.",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -2994,7 +2994,7 @@
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
           },
-          "query": "SELECT last(\"events\"), last(\"running\"), last(\"tool_failures\") FROM \"nanoclaw_group\" WHERE $timeFilter GROUP BY \"group\", \"coworker_type\", \"tier\", \"model\", \"provider\"",
+          "query": "SELECT last(\"events\"), last(\"running\"), last(\"tool_failures\") FROM \"nanoclaw_group\" WHERE time > now() - 5m GROUP BY \"group\", \"coworker_type\", \"tier\", \"model\", \"provider\"",
           "rawQuery": true,
           "resultFormat": "table"
         }
@@ -3035,7 +3035,7 @@
         "x": 14,
         "y": 36
       },
-      "description": "Sum of the 5m hook-event activity across all coworkers on each model tier (collector-side rollup, measurement nanoclaw_tier). Shows how the fleet's work splits across opus / sonnet / haiku / default. Activity is a turn/work proxy, not billed cost.",
+      "description": "Sum of the 5m hook-event activity across all coworkers on each model tier (collector-side rollup, measurement nanoclaw_tier). Shows how the fleet's work splits across opus / sonnet / haiku / default. Activity is a turn/work proxy, not billed cost. Current state: reads only the last 5 minutes, so a coworker that changed provider or tier shows once, with its new value.",
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -3079,7 +3079,7 @@
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
           },
-          "query": "SELECT last(\"events\") FROM \"nanoclaw_tier\" WHERE $timeFilter GROUP BY \"tier\"",
+          "query": "SELECT last(\"events\") FROM \"nanoclaw_tier\" WHERE time > now() - 5m GROUP BY \"tier\"",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "$tag_tier"
@@ -3100,7 +3100,7 @@
         "x": 19,
         "y": 36
       },
-      "description": "How many coworkers are configured on each model tier right now (nanoclaw_tier.coworkers). Makes tiering drift obvious: if a coworker flips opus\u2194sonnet, the bar counts move.",
+      "description": "How many coworkers are configured on each model tier right now (nanoclaw_tier.coworkers). Makes tiering drift obvious: if a coworker flips opus\u2194sonnet, the bar counts move. Current state: reads only the last 5 minutes, so a coworker that changed provider or tier shows once, with its new value.",
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -3144,7 +3144,7 @@
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
           },
-          "query": "SELECT last(\"coworkers\") FROM \"nanoclaw_tier\" WHERE $timeFilter GROUP BY \"tier\"",
+          "query": "SELECT last(\"coworkers\") FROM \"nanoclaw_tier\" WHERE time > now() - 5m GROUP BY \"tier\"",
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "$tag_tier"
