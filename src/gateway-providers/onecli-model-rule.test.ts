@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CLOSED_VENDOR_HOSTS,
   desiredOpenModelRules,
   ensureOpenModelRule,
   inferenceHostsOf,
@@ -88,16 +89,17 @@ const ruleNames = (identifier: string) => [
   openModelRuleName(identifier),
   `${openModelRuleName(identifier)} routes`,
   `${openModelRuleName(identifier)} query`,
+  `${openModelRuleName(identifier)} closed hosts`,
 ];
+const RULE_COUNT = ruleNames('g1').length;
 const options = (g: ReturnType<typeof policyGateway>) => ({ baseUrl: 'http://gw', fetchImpl: g.fetchImpl });
 
 describe('open-models-only rule', () => {
   it('names the rules after the OneCLI agent and lists the open models as one string', () => {
-    const [body, routes, query] = desiredOpenModelRules('g1', 'id-g1', ['b.example', 'a.example'], GLOBS);
-    expect(body!.name).toBe(openModelRuleName('g1'));
-    expect(routes!.name).toBe(`${openModelRuleName('g1')} routes`);
-    expect(query!.name).toBe(`${openModelRuleName('g1')} query`);
-    for (const rule of [body!, routes!, query!]) {
+    const rules = desiredOpenModelRules('g1', 'id-g1', ['b.example', 'a.example'], GLOBS);
+    const [body, routes, query] = rules;
+    expect(rules.map((r) => r.name)).toEqual(ruleNames('g1'));
+    for (const rule of rules) {
       expect(rule.action).toBe('block');
       expect(rule.identities).toEqual([{ type: 'agent', id: 'id-g1' }]);
     }
@@ -126,17 +128,52 @@ describe('open-models-only rule', () => {
     ]);
   });
 
+  it('refuses every method and path on the closed-vendor hosts, whatever the inference hosts are', () => {
+    for (const hosts of [['inference-api.nvidia.com'], ['a.example', 'b.example']]) {
+      const closedHosts = desiredOpenModelRules('g1', 'id-g1', hosts, GLOBS)[3]!;
+      expect(closedHosts.name).toBe(`${openModelRuleName('g1')} closed hosts`);
+      expect(closedHosts).toMatchObject({ action: 'block', identities: [{ type: 'agent', id: 'id-g1' }] });
+      // No method, no path and no condition: the rule holds for any request to these hosts.
+      expect(closedHosts.targets).toEqual(CLOSED_VENDOR_HOSTS.map((hostPattern) => ({ kind: 'network', hostPattern })));
+      expect(closedHosts.conditions).toEqual([]);
+    }
+  });
+
+  it('names each vendor domain bare and with `*.`, because the gateway `*.` does not meet the bare domain', () => {
+    for (const domain of ['anthropic.com', 'claude.ai', 'claude.com', 'openai.com', 'chatgpt.com']) {
+      expect(CLOSED_VENDOR_HOSTS).toContain(domain);
+      expect(CLOSED_VENDOR_HOSTS).toContain(`*.${domain}`);
+    }
+    // The API hosts are also named exactly, the one form every gateway version matches.
+    expect(CLOSED_VENDOR_HOSTS).toContain('api.anthropic.com');
+    expect(CLOSED_VENDOR_HOSTS).toContain('api.openai.com');
+    expect(new Set(CLOSED_VENDOR_HOSTS).size).toBe(CLOSED_VENDOR_HOSTS.length);
+  });
+
+  it('adds the closed-hosts rule to an install that has the three older rules, ahead of other rules', async () => {
+    const g = policyGateway();
+    g.seed({ name: 'allow-inference', action: 'allow' });
+    await ensureOpenModelRule('g1', HOSTS, GLOBS, options(g));
+    // An install from before the closed-hosts rule: the other three rules lead, the allow rule follows.
+    const closedHosts = `${openModelRuleName('g1')} closed hosts`;
+    for (const rules of [g.draft(), g.published()])
+      rules.splice(
+        rules.findIndex((r) => r.name === closedHosts),
+        1,
+      );
+    g.writes.length = 0;
+    await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
+    // The new rule lands after the allow rule, so it is moved up before the publish.
+    expect(g.writes).toEqual(['POST /v1/policy/rules', 'PUT /v1/policy/rules/order', 'POST /v1/policy/publish']);
+    expect(g.published().map((r) => r.name)).toEqual([...ruleNames('g1'), 'allow-inference']);
+  });
+
   it('installs the rule for the agent and publishes it', async () => {
     const g = policyGateway();
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
     expect(g.published().map((r) => r.name)).toEqual(ruleNames('g1'));
     expect(g.published()[0]).toMatchObject({ action: 'block', enabled: true });
-    expect(g.writes).toEqual([
-      'POST /v1/policy/rules',
-      'POST /v1/policy/rules',
-      'POST /v1/policy/rules',
-      'POST /v1/policy/publish',
-    ]);
+    expect(g.writes).toEqual([...ruleNames('g1').map(() => 'POST /v1/policy/rules'), 'POST /v1/policy/publish']);
   });
 
   it('changes nothing when the published rule is already right', async () => {
@@ -166,7 +203,7 @@ describe('open-models-only rule', () => {
     g.writes.length = 0;
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
     expect(g.writes).toEqual(['POST /v1/policy/publish']);
-    expect(g.published()).toHaveLength(3);
+    expect(g.published()).toHaveLength(RULE_COUNT);
   });
 
   it('puts the rule before an allow rule for the same host, because the first match wins', async () => {
@@ -182,11 +219,11 @@ describe('open-models-only rule', () => {
     moveLast(g.draft());
     moveLast(g.published());
     await expect(ensureOpenModelRule('g1', HOSTS, GLOBS, options(g))).resolves.toBe('installed');
-    expect(g.published().map((r) => r.name)[3]).toBe('allow-inference');
+    expect(g.published().map((r) => r.name)[RULE_COUNT]).toBe('allow-inference');
     expect(
       g
         .published()
-        .slice(0, 3)
+        .slice(0, RULE_COUNT)
         .map((r) => r.name)
         .sort(),
     ).toEqual(ruleNames('g1').sort());
@@ -204,13 +241,13 @@ describe('open-models-only rule', () => {
     const g = policyGateway();
     g.seed({ name: `${openModelRuleName('g1')} (copy)`, action: 'allow' });
     await ensureOpenModelRule('g1', HOSTS, GLOBS, options(g));
-    expect(g.published()[3]).toMatchObject({ action: 'allow' });
+    expect(g.published()[RULE_COUNT]).toMatchObject({ action: 'allow' });
     expect(
       g
         .published()
-        .slice(0, 3)
+        .slice(0, RULE_COUNT)
         .map((r) => r.action),
-    ).toEqual(['block', 'block', 'block']);
+    ).toEqual(ruleNames('g1').map(() => 'block'));
   });
 
   it('fails when the live rules do not match after the publish', async () => {
