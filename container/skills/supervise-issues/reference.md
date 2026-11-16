@@ -34,6 +34,9 @@ This eliminates the sampling gap — every `gh-issue-*` session is fetched and c
 issues are filtered out automatically (the script reads `issue_open` from `gh issue view`). Use
 this as the default path; fall back to manual assembly only if the script fails (e.g. `gh` auth).
 
+The hourly gate runs the same script with `--cache-dir` (the *cached pull*, see *Hourly gate*): it
+refetches only what changed since the gate's last pull. The tick itself always runs the full pull.
+
 **Enrichment is partial-tolerant (why the board no longer collapses to "N/M PRs").** The batched
 GraphQL resolver uses `issueOrPullRequest(number:)`, not `issue(number:)` — a chain can be keyed on
 a number that is actually a **PR** (a large fraction of active chains are), and `issue(number:)` is
@@ -62,7 +65,7 @@ its module docstring carries the full contract:
 | `now` | ISO-8601 (with `Z`) tick time |
 | `bot_logins` | optional; default `["nv-slang-bot[bot]", "nv-slang-bot"]` (App + user PAT — both are "us") |
 | `state` | prior `supervisor-state.json` (`{}` on first run) |
-| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows, each also stamped with `cost_status` (`'ok'`\|`'warn'`\|`'escalated'`\|`'stopped'`\|`'unknown'`) via `ncl cost-cap status --session <id>` |
+| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows, each also stamped with `cost_status` (`'stopped'`\|`'ok'`, or `'unknown'` for all when the call fails) from one `ncl cost-cap stopped` call |
 | `chains` | per `gh-issue-…` thread: `{repo, issue, sessions[], our_last_outbound, our_last_push, pr:{number,state,isDraft,fixes_issue}, comments:[{author,at,is_bot,kind}], pending_ask_user, disposition?}` |
 
 Output: `{rows, summary, state}`. Each row → `state` (`awaiting_us`/`awaiting_human`/`silent`/
@@ -193,7 +196,7 @@ liveness signals: `container_status` (from `ncl sessions list`) only tracks whet
 in-flight turn and refuses to spend further without necessarily exiting — and
 `last_outbound_error_class` infers a *bounced handoff* from outbound text, a different failure mode
 entirely. Neither one would have caught this case, which is exactly why `cost_status` is its own field
-(`pull-universe.sh` stamps it per session via `ncl cost-cap status --session <id>`, sourced from the
+(`pull-universe.sh` stamps it on every session from one `ncl cost-cap stopped` call, sourced from the
 same `outbound.db` `session_state.cost_cap` row the dashboard's cost-approval card reads) rather than
 overloading either existing signal.
 
@@ -255,6 +258,39 @@ PRs and for `not_planned` closes without a PR (maintainer wontfix — note and c
 3. **Close our draft with a pointer** linking the learning + superseding PR:
    `gh pr close <ours> --repo <owner>/<repo> --comment "Superseded by #<theirs> … Postmortem captured as <title>."`
 4. **Record** `postmortem = {done, supersededByPr, learningTitle, at}` and drop the chain.
+
+## Hourly gate (Scheduling)
+
+`scripts/supervise-gate.py` is the pre-task gate of the hourly supervise task. Constants live in the
+script: `FULL_PASS_EVERY_S` (12 h), `PULL_BUDGET_S` (150), `PULL_HARD_S` (230), `FAILURE_WAKE_AFTER`
+(3); the task script carries `# nanoclaw-task-timeout: 300`.
+
+| Step | Rule |
+|---|---|
+| Pull | `pull-universe.sh --state memory/supervisor-state.json --cache-dir .supervise-gate/cache --budget-s 150`, in its own process group. Past `PULL_HARD_S` the group is killed and the run is *degraded*. |
+| Classify | `scan.py`'s `run()` in-process — the tick's own rules. The gate never writes `supervisor-state.json`. |
+| Flags | `<thread>\|nudge` for `action == 'nudge'`, `<thread>\|escalate` for `escalate == true`. A row whose chain carries `cache_cold` raises no flag. |
+| Presented | The flags the last wake showed a tick. The gate wakes only for a flag not in that set; a flag that clears leaves it, so the chain wakes the agent again if it stalls again. A tick that judges a flag a false positive and sends nothing is not woken for it every hour; the next full pass shows it again. |
+| Full pass | Due when 12 h have passed since the later of the gate's last wake and `_meta.ran_at` (else `_meta.at`) in `supervisor-state.json`, so a hand-run tick counts. |
+| Degraded | A failed or killed pull, or a failed scan: no flags, `presented` kept, `failures` + 1. The `FAILURE_WAKE_AFTER`-th degraded run in a row wakes the agent once; the full pass fires on time regardless. |
+| Output | One JSON line on stdout, exit 0, always: `{"wakeAgent": bool, "data": {reasons, nudge, escalate, already_presented, hours_since_last_tick, chains: {in_flight, must_nudge, escalate, cold}, degraded, record}}`. The runner's contract is `container/agent-runner/src/scheduling/task-script.ts` (last stdout line, boolean `wakeAgent`, exit 0; anything else counts as a failed run and backs the series off). |
+
+**The cached pull** (`universe_cache.py`, `pull-universe.sh --cache-dir`). GitHub data is refetched
+for a chain when the repo's change listing (`GET /repos/{repo}/issues?state=all&since=…`, issues and
+PRs) names its number, its PR's number, or a PR whose body references it; when it was never fetched;
+and, for an open chain, at least every 24 h. A session's last outbound is reread unless the cached
+read was taken while the container was stopped and `last_active` has not moved: the host stamps
+`last_active` when it queues an inbound or starts the container, never on an outbound, so a running
+container is reread every time. The refetch stops at 60% of `--budget-s` for GitHub and 90% for the
+outbound reads (8 at a time). A chain built from missing or out-of-date data carries
+`cache_cold: true`; the first runs after a deploy (or after the cache is deleted) warm the cache
+most-recently-active first, and the full pass covers cold chains meanwhile.
+
+Files under `/workspace/agent/.supervise-gate/`: `state.json` (`last_wake_at`, `presented`,
+`failures`), `last-run.json` (every flag, the cold chains, the pull report), `history.log` (one line
+per run), `cache/` (`github.json`, `outbound.json`, `report.json`), `last/` (payload, scan output and
+pull log of the latest run). Deleting `cache/` forces a cold rebuild; deleting `state.json` makes
+the next run wake for the full pass unless `_meta` shows a tick within 12 h.
 
 ## Worktree GC (Step 8)
 
@@ -478,6 +514,10 @@ incidents live in operator memory.
   mount nearly every worktree shows `prunable` — a wrong-namespace artifact, not a reap signal.
   Decide and dispatch to the owning fixer (a `stopped` session wakes on the inbound); reap by `gh`
   issue state + PR state (issue CLOSED → reap regardless of PR state).
+- **Hourly gate.** A fixer container killed at its ceiling left its chain with no PR, no comment
+  and no outbound; with only a 12-hour tick nothing nudged it for half a day. The gate checks every
+  hour with no model tokens and wakes a tick only for a flag no tick has seen, so a stall surfaces
+  within the hour without a false positive waking the agent every hour.
 - **R11 — re-chase cap.** A parked chain's one-shot re-chase scheduled its successor on every
   fire, and nothing cancelled it when the issue closed: on 2026-10-15 the orchestrator held ~110
   live re-chases (several for closed #13230/#13338/#13306) and chains on their 4th/7th/15th

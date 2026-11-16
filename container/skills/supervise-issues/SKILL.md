@@ -1,14 +1,14 @@
 ---
 name: supervise-issues
 license: MIT
-description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, checks each PR's CI and nudges the fixer to rebase master when a run is stale or behind, verifies a resumable GitHub artifact exists for every chain, and escalates blockers to the operator. Self-scheduled on a 12-hour cron via `ncl tasks`.
+description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, checks each PR's CI and nudges the fixer to rebase master when a run is stale or behind, verifies a resumable GitHub artifact exists for every chain, and escalates blockers to the operator. Runs from one hourly `ncl tasks` cron whose zero-token gate wakes it when a chain needs a nudge or an escalation, and at least every 12 hours for the full pass.
 ---
 
 # /supervise-issues — Issue chain supervisor
 
 You are the orchestrator (or a coworker it delegated supervision to). Every tick, walk all
-in-flight issue chains, find the stuck ones, and nudge or escalate. Designed to run on a recurring
-`ncl tasks create` (suggested recurrence `0 */12 * * *`; each tick is a fresh session).
+in-flight issue chains, find the stuck ones, and nudge or escalate. It runs from one hourly gated
+task (see *Scheduling*); each tick is a fresh session.
 
 Lookup tables, command snippets, and the rationale behind each rule live in
 [reference.md](./reference.md). This file is the rules and the procedure.
@@ -73,8 +73,8 @@ These hold across every step below; the steps reference them by number rather th
 - **R10 — Never schedule a recurring task for a single issue/PR.** R1's scan and GitHub webhooks
   already cover state changes, and a per-issue cron never self-cancels — it wakes a fresh container
   forever. For a one-time future check use `--process-after` (no `--recurrence`); for a human blocker,
-  escalate (R7). The only recurrences you schedule are this skill's own 12h cron and the hourly
-  `task-hygiene` gate (below).
+  escalate (R7). The only recurrences you schedule are this skill's own hourly gated task and the
+  hourly `task-hygiene` gate (below).
 - **R11 — A re-chase is structured and capped.** Before scheduling a one-shot re-chase/re-check
   for a parked chain, run `python3 /app/skills/supervise-issues/scripts/task-hygiene.py next
   <thread_id>` (it reserves the slot — run it only when about to schedule; reuse the name on a
@@ -90,7 +90,7 @@ These hold across every step below; the steps reference them by number rather th
 
 **Use `scripts/pull-universe.sh` (preferred).** It exhaustively enumerates all `gh-issue-*` sessions
 via `ncl --limit 10000`, fetches PR/comments/outbound for each chain via `gh`/`ncl`, stamps each
-session's live cost-cap status via `ncl cost-cap status` (so `scan.py` can tell a session that's
+session's live cost-cap status from one `ncl cost-cap stopped` call (so `scan.py` can tell a session that's
 merely idle apart from one deliberately `stopped` pending a human cost decision — see Step 2), filters
 out closed issues (skips expensive fetches), and pipes the result directly into `scan.py`:
 
@@ -301,55 +301,41 @@ Never dispatch removals to coworkers and never delete anything yourself.
 
 ## Scheduling
 
-On first run, schedule yourself. Three cost levers keep ticks cheap: the **12-hour cadence** (issue
-chains move on the scale of hours), the **fresh session per tick** (each tick starts clean — all durable
-state is in `supervisor-state.json`, which is exactly why live rediscovery per R1 is mandatory),
-and the **wake gate** (a tick with nothing stuck is a no-op). A tick that does wake reports only
-the delta (Step 1).
+One recurring task drives the supervisor: an hourly cron whose pre-task gate,
+`scripts/supervise-gate.py`, decides with zero model tokens whether a tick is needed. The gate runs
+inside your container before you wake: it pulls the chain universe incrementally
+(`pull-universe.sh --cache-dir`), classifies it with `scan.py`'s own `run()`, and answers
+`wakeAgent: true` only when
 
-The gate runs as **bash inside your container** (the agent-runner runs the task `script` via
-`bash`, reads the last stdout line as JSON, and wakes the agent only when `wakeAgent` is `true`).
-So it uses **`ncl`** (on `PATH` at `/usr/local/bin/ncl`), not a dashboard HTTP endpoint. Do **not**
-fetch `http://…:3000/api/sessions/in-flight`: that endpoint does not exist and `:3000` is not the
-dashboard port (it varies per instance via `DASHBOARD_PORT`), so the old fetch always failed → the
-gate degraded to "wake every tick" (no saving). `ncl sessions list --json` needs no port and no auth.
+- a chain newly needs a nudge or an escalation (`action == 'nudge'` or `escalate`) — one the gate has
+  not already shown a tick;
+- 12 hours have passed since the last tick (the full discovery pass), or
+- three gate runs in a row could not pull (`data.degraded`).
+
+A woken tick runs the whole procedure above, whatever the reason. `data.reasons` says why it woke
+and `data.nudge` / `data.escalate` name the chains that tripped the gate; they must appear in this
+tick's scan. When `data.degraded` is set, put it in the summary's **Blocker** line. Three cost levers
+keep the supervisor cheap: the gate (an hour with nothing new stuck costs no tokens), the 12-hour
+full pass, and the fresh session per tick (all durable state is in `supervisor-state.json`, which is
+why live rediscovery per R1 is mandatory). The rules behind the gate — the presented-flag dedup, the
+cold chains, the time box — are in reference.md → *Hourly gate*.
+
+Create the task once on the orchestrator (host shell; inside the orchestrator container drop
+`--group`). An existing 12-hour task is converted in place with `ncl tasks update --id <series>`
+and the same `--recurrence`, `--script` and `--prompt`, so its session and history carry over:
 
 ```bash
-# Each tick is a fresh session by default — nothing to opt into.
-ncl tasks create --name "supervise issues" \
-  --prompt '/supervise-issues' \
-  --recurrence '0 */12 * * *' \
-  --script "$(cat <<'GATE'
-    # Wake only when a gh-issue chain has been silent (by us) for >60 min.
-    # ncl is in-container; --json returns {id,ok,data:[...]}. ncl ignores unknown
-    # flags silently — there is NO --thread-prefix; filter client-side.
-    # --limit: the generic list default is 200 rows, so without it a supervisor
-    # silently stops seeing the chains it is meant to supervise. 10000 per R-limit
-    # above.
-    ncl sessions list --limit 10000 --json 2>/dev/null | python3 -c "
-import json, sys, datetime
-now = datetime.datetime.now(datetime.timezone.utc)
-payload = json.load(sys.stdin)
-# A failed call must not read as 'nothing is stale' — that would suppress
-# supervision indefinitely and look identical to a quiet fleet.
-if payload.get('ok') is not True or not isinstance(payload.get('data'), list):
-    sys.exit(1)
-data = payload['data']
-def stale(s):
-    la = s.get('last_active')
-    if not la: return True
-    t = datetime.datetime.fromisoformat(la.replace('Z', '+00:00'))
-    return (now - t).total_seconds() > 3600
-gh = [s for s in data if (s.get('thread_id') or '').startswith('gh-issue-')]
-st = [s for s in gh if stale(s)]
-print(json.dumps({'wakeAgent': len(st) > 0, 'data': {'gh_chains': len(gh), 'stale': len(st)}}))
-"
-GATE
-)"
+ncl tasks create --group <orchestrator-ag-id> --name "supervise issues" \
+  --recurrence '0 * * * *' \
+  --script $'# nanoclaw-task-timeout: 300\nexec python3 /app/skills/supervise-issues/scripts/supervise-gate.py --gate' \
+  --prompt '/supervise-issues
+
+The hourly supervise gate woke you: data.reasons says why. Run the full tick either way.'
 ```
 
-(On a `ncl`/`python3` error the script exits non-zero → the agent-runner fail-closes and skips the
-tick rather than burning a model tick on a broken gate; the next cron fire retries.)
+Preview a decision with `python3 /app/skills/supervise-issues/scripts/supervise-gate.py --dry-run`
+inside the orchestrator container (it refreshes the pull cache and writes nothing else). Each run
+is recorded in `/workspace/agent/.supervise-gate/{last-run.json,history.log}`.
 
 ### Re-chase one-shots (`task-hygiene` gate)
 
