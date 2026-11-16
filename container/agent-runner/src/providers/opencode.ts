@@ -15,6 +15,7 @@ import {
   buildOpenCodeServerEnv,
   resolveOpenCodeInference,
   resolveOpenCodePromptModel,
+  withCloneClaudeMdInstructions,
 } from './opencode-config.js';
 import { buildDeliverySentences } from '../compact-instructions.js';
 import type { ResolvedRuntimeConfiguration } from '../provider-contracts/registry.js';
@@ -254,7 +255,8 @@ async function ensureSharedRuntime(
       destroySharedRuntime();
     }
     // The key above names the config as built; the proxy address is added only for the server we spawn.
-    const { url, proc } = await deps.spawnServer(await applyOpenCodeTrace(config));
+    // So are the clone guides: a repository cloned after the spawn does not restart a running server.
+    const { url, proc } = await deps.spawnServer(await applyOpenCodeTrace(withCloneClaudeMdInstructions(config)));
 
     let runtime: SharedRuntime;
     // Owns the SSE subscription and its retry loop. Teardown closes the

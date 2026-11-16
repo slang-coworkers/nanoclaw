@@ -1,5 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+
 import type { ProviderOptions } from './types.js';
 import type { ResolvedRuntimeConfiguration, RuntimeInferenceInput } from '../provider-contracts/registry.js';
+import { isPrimaryClone } from '../refresh-clones.js';
 import { mcpServersToOpenCodeConfig } from './mcp-to-opencode.js';
 import { openCodeInstructionsPath } from './opencode-memory.js';
 import { OPENCODE_CREDENTIAL_PLACEHOLDER } from './opencode-auth.js';
@@ -235,6 +239,108 @@ export function buildOpenCodeConfig(
     experimental: { mcp_timeout: MCP_REQUEST_TIMEOUT_MS },
     // The runner renders this file once per turn. Native steps, compaction
     // continuation and Task children reread it through the instructions pipeline.
+    // withCloneClaudeMdInstructions adds the guides of cloned repositories
+    // when the server spawns.
     instructions: [`${AGENT_DIR}/CLAUDE.md`, `${AGENT_DIR}/CLAUDE.local.md`, openCodeInstructionsPath()],
   };
+}
+
+/**
+ * Return `config` with the CLAUDE.md files from `cloneClaudeMdPaths` added
+ * after its existing instructions. OpenCode reads each instructions file on
+ * every model call, so a later pull of a clone reaches the next call; the
+ * list of files is fixed when the server spawns.
+ */
+export function withCloneClaudeMdInstructions(
+  config: Record<string, unknown>,
+  agentDir: string = AGENT_DIR,
+): Record<string, unknown> {
+  const guides = cloneClaudeMdPaths(agentDir);
+  if (guides.length === 0) return config;
+  return { ...config, instructions: [...(config.instructions as string[]), ...guides] };
+}
+
+/**
+ * Return the CLAUDE.md of each repository cloned directly under `agentDir`
+ * that OpenCode would otherwise skip. OpenCode reads one instructions file
+ * per folder and takes AGENTS.md before CLAUDE.md, so it skips CLAUDE.md when
+ * AGENTS.md is in the same folder. Claude Code read CLAUDE.md, and a
+ * repository that has both files often keeps its full guide in CLAUDE.md.
+ *
+ * A folder qualifies when all of these hold:
+ *   - Its `.git` is a directory. A linked worktree (`.git` is a file) is
+ *     another checkout of a clone, and its copy of the guide would load the
+ *     same text once per worktree.
+ *   - It has both files, and they are different files. With CLAUDE.md alone,
+ *     OpenCode finds it without help; when one name links to the other,
+ *     OpenCode already reads that text as AGENTS.md.
+ *   - Its `origin` is a remote URL, and no folder earlier in name order
+ *     clones a repository of the same name. Agents make per-task copies of a
+ *     repository, cloned from a local path or from the same remote, and a
+ *     group can hold many of them; the guide loads once.
+ *
+ * We add the file as is and do not expand its `@path` import lines, because
+ * an import of the sibling AGENTS.md would load that file a second time.
+ *
+ * For example, `tool/` (origin https://github.com/acme/tool.git) qualifies;
+ * `tool-bisect/` with the same origin, `wt-123/` cloned from
+ * `/workspace/agent/tool`, and the linked worktree `wt-tool-456/` do not.
+ */
+export function cloneClaudeMdPaths(agentDir: string = AGENT_DIR): string[] {
+  if (!fs.existsSync(agentDir)) return [];
+  const guideByRepository = new Map<string, string>();
+  for (const entry of fs.readdirSync(agentDir).sort()) {
+    const clone = path.join(agentDir, entry);
+    if (!isPrimaryClone(clone)) continue;
+    const claudeMd = path.join(clone, 'CLAUDE.md');
+    const agentsMd = path.join(clone, 'AGENTS.md');
+    if (!fs.existsSync(claudeMd) || !fs.existsSync(agentsMd)) continue;
+    if (fs.realpathSync(claudeMd) === fs.realpathSync(agentsMd)) continue;
+    const repository = remoteRepositoryName(originUrl(clone));
+    if (repository === undefined || guideByRepository.has(repository)) continue;
+    guideByRepository.set(repository, claudeMd);
+  }
+  return [...guideByRepository.values()];
+}
+
+/**
+ * Return the `remote.origin.url` of a clone, read from its `.git/config`, or
+ * undefined when it has none. We read the file rather than run `git config`
+ * because a group can hold hundreds of clones, and under Bun a synchronous
+ * child process can miss its exit and hang (see runHookCommand).
+ */
+function originUrl(clone: string): string | undefined {
+  let config: string;
+  try {
+    config = fs.readFileSync(path.join(clone, '.git', 'config'), 'utf-8');
+  } catch {
+    return undefined;
+  }
+  let section = '';
+  for (const raw of config.split('\n')) {
+    const line = raw.trim();
+    if (line.startsWith('[')) {
+      section = line;
+      continue;
+    }
+    const url = /^url\s*=\s*(.+)$/.exec(line);
+    if (section === '[remote "origin"]' && url) return url[1];
+  }
+  return undefined;
+}
+
+/**
+ * Return the repository name of a remote URL, such as `tool` for both
+ * `https://token@github.com/acme/tool.git` and `git@github.com:acme/tool`,
+ * or undefined for a local path. Git
+ * treats a URL with neither a `scheme:` nor a scp-style `host:` prefix, and
+ * any `file:` URL, as a path on this machine.
+ */
+function remoteRepositoryName(url: string | undefined): string | undefined {
+  if (url === undefined || url.startsWith('file:') || !/^[^/]+:/.test(url)) return undefined;
+  return url
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '')
+    .split(/[/:]/)
+    .pop();
 }
