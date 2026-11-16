@@ -47,6 +47,7 @@ const envConfig = readEnvFile([
   'WEBHOOK_HOST',
   'NANOCLAW_ABSOLUTE_CEILING_MS',
   'NANOCLAW_CLAIM_STUCK_MS',
+  'MAX_BUSY_CONTAINERS',
 ]);
 
 /**
@@ -184,7 +185,30 @@ export function validateContainerTimeouts(
   }
   return { ok: true };
 }
-export const MAX_CONCURRENT_CONTAINERS = Math.max(1, parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5);
+/**
+ * Busy agent containers allowed before a wake that needs a new container waits
+ * for the next sweep tick (see `src/spawn-admission.ts`). 0 turns the limit off.
+ *
+ * The default of 32 comes from prod on 2026-11-16, after its coworkers moved to
+ * OpenCode on the NVIDIA endpoint. Per minute, the OpenCode sessions with a
+ * model request in the trailing two minutes were 8 at the median and 29 at the
+ * 90th percentile. The endpoint's per-IP limit returned 429 whenever that count
+ * stayed above about 30 for a few minutes (33 to 37 at 07:14–07:18 and
+ * 07:25–07:29) and during the replay burst (124 to 265 at 06:46–06:51). At
+ * 10:14 there were 89 running containers and 5 had a heartbeat in the last
+ * minute, so the limit leaves normal traffic alone and holds a burst near the
+ * point where the endpoint starts refusing.
+ */
+export const DEFAULT_MAX_BUSY_CONTAINERS = 32;
+export const MAX_BUSY_CONTAINERS = parseBusyContainerLimit(
+  process.env.MAX_BUSY_CONTAINERS ?? envConfig.MAX_BUSY_CONTAINERS,
+);
+
+/** Parse `MAX_BUSY_CONTAINERS`: a whole number ≥ 0, else `DEFAULT_MAX_BUSY_CONTAINERS`. */
+export function parseBusyContainerLimit(raw: string | undefined): number {
+  const value = raw === undefined || raw.trim() === '' ? NaN : Number(raw);
+  return Number.isInteger(value) && value >= 0 ? value : DEFAULT_MAX_BUSY_CONTAINERS;
+}
 // Per-container resource caps, passed through to `docker run`. Default empty =
 // no flag added = today's unbounded behavior (don't OOM existing OSS workloads).
 // Operators opt in: CONTAINER_CPU_LIMIT=2, CONTAINER_MEMORY_LIMIT=8g.
