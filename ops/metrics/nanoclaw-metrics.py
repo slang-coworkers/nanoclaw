@@ -377,13 +377,15 @@ def collect_db(now_ms):
             emit("nanoclaw_approval_mode", {"count": n}, {"mode": mode or "unknown"})
 
         # --- queues / backlog ---
-        def count(tbl):
+        def count(tbl, where="1"):
             try:
-                return cur.execute(f"SELECT COUNT(*) FROM [{tbl}]").fetchone()[0]
+                return cur.execute(f"SELECT COUNT(*) FROM [{tbl}] WHERE {where}").fetchone()[0]
             except Exception:  # noqa: BLE001 - a collector must never crash the metrics pipeline
                 return None
         emit("nanoclaw_queue", {
-            "pending_reviewable_prs": count("pending_reviewable_prs"),
+            # A released park keeps its row until the PR closes (migration 951),
+            # so the gauge counts only the PRs still waiting for CI.
+            "pending_reviewable_prs": count("pending_reviewable_prs", "released_at IS NULL"),
             "pending_questions": count("pending_questions"),
             "pending_approvals": count("pending_approvals"),
             "pr_session_mappings": count("pr_session_mappings"),
