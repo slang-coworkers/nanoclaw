@@ -14,7 +14,7 @@
  *     ... of todowrite         ->  TaskCreated, TaskCompleted (a block refuses the write)
  *   tool.execute.after         ->  PostToolUse   (a block reason is appended to the tool output)
  *   event: a tool part in error ->  PostToolUseFailure (OpenCode skips tool.execute.after then)
- *   chat.message               ->  UserPromptSubmit (side effects only; not for a subagent's prompt)
+ *   chat.message               ->  UserPromptSubmit (context joins the prompt; not for a subagent's prompt)
  *   event: a child session     ->  SubagentStart, SubagentStop (opencode-lifecycle.ts)
  *   experimental.session.compacting -> PreCompact (stdout joins the compaction prompt)
  *   event: session.compacted   ->  SessionStart (source compact), PostCompact
@@ -83,6 +83,7 @@ import {
   type OpenCodeEvent,
   type OpenCodeTodo,
 } from './opencode-lifecycle.js';
+import { createOpenCodeId } from './opencode-turn.js';
 
 const PLUGIN_FILE = 'nanoclaw-hook-bridge.js';
 const TODO_READ_TIMEOUT_MS = 5_000;
@@ -145,6 +146,26 @@ export function mcpServerNames(configContent: string | undefined): string[] {
 }
 
 const ROUTER_HOOK = /\/intent-router\.sh\b/;
+
+/**
+ * Return the part that adds a UserPromptSubmit hook's context to the prompt.
+ * Claude Code adds that context (a hook's plain stdout or its
+ * `additionalContext`) next to the user's prompt. OpenCode calls chat.message
+ * before it saves the message, with the message's parts, so a synthetic text
+ * part pushed there is saved with the prompt and sent to the model, as the
+ * synthetic parts OpenCode adds itself are. Its id is made one millisecond
+ * later than now, so it sorts after the prompt's own parts.
+ */
+export function promptContextPart(sessionID: string, messageID: string, context: string): Record<string, unknown> {
+  return {
+    id: createOpenCodeId('prt', Date.now() + 1),
+    sessionID,
+    messageID,
+    type: 'text',
+    text: context,
+    synthetic: true,
+  };
+}
 
 /** The text of a chat message's parts (the user prompt). */
 function promptText(parts: unknown): string {
@@ -324,19 +345,26 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
       });
       if (outcome.block && typeof output.output === 'string') output.output = `${output.output}\n\n${outcome.reason}`;
     },
-    'chat.message': async (input: { sessionID?: string }, output: { parts?: unknown }) => {
+    'chat.message': async (
+      input: { sessionID?: string; messageID?: string },
+      output: { message?: { id?: string }; parts?: unknown[] },
+    ) => {
       // OpenCode sends a task's prompt to the child session as a chat message.
       // Claude Code reports a subagent's start as SubagentStart, never as a
       // user prompt, and workflow-state-reset.sh must not reset a workflow
       // because a subagent started.
       if (lifecycle.isSubagent(input.sessionID ?? '')) return;
-      await runHookEvent(
+      const outcome = await runHookEvent(
         settings(),
         'UserPromptSubmit',
         '',
         { session_id: input.sessionID ?? '', prompt: promptText(output.parts) },
         { skip: ROUTER_HOOK },
       );
+      const messageID = output.message?.id ?? input.messageID;
+      if (outcome.context && messageID && Array.isArray(output.parts)) {
+        output.parts.push(promptContextPart(input.sessionID ?? '', messageID, outcome.context));
+      }
     },
     // Claude Code uses a PreCompact hook's stdout as instructions for the
     // summary; compact-instructions.ts writes the delivery rules there. This

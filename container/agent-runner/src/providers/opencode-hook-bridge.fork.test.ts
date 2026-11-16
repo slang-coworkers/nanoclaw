@@ -13,6 +13,7 @@ import {
   type OpenCodeTodoClient,
 } from './opencode-hook-bridge.js';
 import { claudeToolResponse, type HookSettings } from '../settings-hooks.js';
+import { createOpenCodeId } from './opencode-turn.js';
 import { registerAgentMailbox, resetAgentMailboxForTesting } from '../mailbox/index.js';
 import { closeSessionDb, initTestSessionDb } from '../mailbox/sqlite/connection.js';
 import { SqliteAgentMailbox } from '../mailbox/sqlite/index.js';
@@ -280,6 +281,54 @@ describe('tool events inside a subagent', () => {
     expect(input).toMatchObject({ session_id: 'ses_main', tool_use_id: 'call_1' });
     expect(input).not.toHaveProperty('agent_id');
     expect(input).not.toHaveProperty('agent_type');
+  });
+});
+
+describe('UserPromptSubmit context', () => {
+  const prompt = () => ({
+    message: { id: 'msg_user' },
+    parts: [{ id: createOpenCodeId('prt'), type: 'text', text: 'fix the bug' }] as Record<string, unknown>[],
+  });
+
+  it("adds a hook's plain stdout and JSON additionalContext to the prompt as one synthetic part", async () => {
+    const hooks = await plugin({
+      UserPromptSubmit: [
+        { hooks: [{ command: `echo 'Current branch: main'` }] },
+        {
+          hooks: [
+            {
+              command: `echo '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"<buddy-note>re-run the tests</buddy-note>"}}'`,
+            },
+          ],
+        },
+        { hooks: [{ command: 'true' }] },
+      ],
+    });
+    const output = prompt();
+    await hooks['chat.message']({ sessionID: 'ses_main', messageID: 'msg_user' }, output);
+    expect(output.parts).toHaveLength(2);
+    const [text, context] = output.parts;
+    expect(context).toMatchObject({ sessionID: 'ses_main', messageID: 'msg_user', type: 'text', synthetic: true });
+    // The hooks' contexts join in the order the hooks are registered.
+    expect(context.text).toBe('Current branch: main\n\n<buddy-note>re-run the tests</buddy-note>');
+    // OpenCode orders a message's parts by id: the context follows the prompt.
+    expect(String(context.id).startsWith('prt_')).toBe(true);
+    expect(String(context.id) > String(text.id)).toBe(true);
+  });
+
+  it('adds nothing when the hooks print nothing, and nothing to a subagent prompt', async () => {
+    const hooks = await plugin({ UserPromptSubmit: [{ hooks: [{ command: `echo 'context'` }] }] });
+    const quiet = await plugin({ UserPromptSubmit: [{ hooks: [{ command: 'true' }] }] });
+    const output = prompt();
+    await quiet['chat.message']({ sessionID: 'ses_main' }, output);
+    expect(output.parts).toHaveLength(1);
+
+    await hooks.event({
+      event: { type: 'session.created', properties: { info: { id: 'ses_child', parentID: 'ses_main' } } },
+    });
+    const child = prompt();
+    await hooks['chat.message']({ sessionID: 'ses_child' }, child);
+    expect(child.parts).toHaveLength(1);
   });
 });
 

@@ -149,13 +149,22 @@ export async function acquireOpenCodeTurn(runtime: object, signal: AbortSignal):
   return release;
 }
 
-let messageCounter = 0;
-export function createOpenCodeMessageId(): string {
-  const time = (BigInt(Date.now()) * 4096n + BigInt(messageCounter++ % 4096)) & ((1n << 48n) - 1n);
-  // OpenCode's native IDs use a 12-hex time/counter prefix and 14 base62 characters.
+let idCounter = 0;
+/**
+ * Return a new OpenCode id for `prefix` (`msg` for a message, `prt` for a
+ * part) in OpenCode's ascending format: a 12-hex time and counter, then 14
+ * base62 characters. OpenCode orders a message's parts by id, so an id made
+ * at `timestamp` sorts after every id OpenCode made before that millisecond.
+ */
+export function createOpenCodeId(prefix: 'msg' | 'prt', timestamp = Date.now()): string {
+  const time = (BigInt(timestamp) * 4096n + BigInt(idCounter++ % 4096)) & ((1n << 48n) - 1n);
   const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
   const suffix = Array.from(randomBytes(14), (byte) => alphabet[byte % alphabet.length]).join('');
-  return `msg_${time.toString(16).padStart(12, '0')}${suffix}`;
+  return `${prefix}_${time.toString(16).padStart(12, '0')}${suffix}`;
+}
+
+export function createOpenCodeMessageId(): string {
+  return createOpenCodeId('msg');
 }
 
 export function openCodeError(error: unknown): Error {

@@ -52,9 +52,11 @@ export interface HookOutcome {
   block: boolean;
   reason: string;
   /**
-   * The plain-text stdout of the hooks that exited 0, when there is any.
-   * Claude Code uses it for some events: a PreCompact hook's stdout becomes
-   * instructions for the compaction summary.
+   * The context the hooks that exited 0 hand back, when there is any: their
+   * plain-text stdout, or the `hookSpecificOutput.additionalContext` of a JSON
+   * reply. Claude Code uses it for some events: a PreCompact hook's stdout
+   * becomes instructions for the compaction summary, and a UserPromptSubmit
+   * hook's is added to the prompt.
    */
   context?: string;
 }
@@ -91,8 +93,9 @@ export function matcherSelects(matcher: string | undefined, target: string): boo
 /**
  * Read a hook result the way Claude Code does: exit 2 blocks with stderr as the
  * reason; exit 0 blocks only when stdout is a JSON decision to block or deny,
- * and otherwise hands back stdout that is not JSON as plain-text context; any
- * other exit status is a non-blocking hook error.
+ * and otherwise hands back context: stdout that is not JSON, or a JSON reply's
+ * `hookSpecificOutput.additionalContext`; any other exit status is a
+ * non-blocking hook error.
  */
 export function hookOutcome(code: number | null, stdout: string, stderr: string): HookOutcome {
   if (code === 2) return { block: true, reason: stderr.trim() || 'Blocked by a hook.' };
@@ -109,7 +112,8 @@ export function hookOutcome(code: number | null, stdout: string, stderr: string)
     const reason = parsed.reason ?? specific.permissionDecisionReason ?? parsed.stopReason;
     return { block: true, reason: typeof reason === 'string' && reason ? reason : 'Blocked by a hook.' };
   }
-  return { block: false, reason: '' };
+  const context = typeof specific.additionalContext === 'string' ? specific.additionalContext.trim() : '';
+  return context ? { block: false, reason: '', context } : { block: false, reason: '' };
 }
 
 /** Run one hook command with `payload` on stdin; resolves even on failure or timeout. */
