@@ -26,6 +26,14 @@
  * The provider runs them through `settingsSessionHooks` when a query starts
  * and ends, as the Claude Code CLI does for each query.
  *
+ * A tool call inside a subagent runs in an OpenCode child session. Claude Code
+ * reports such a call in the main session, with the subagent's `agent_id` and
+ * `agent_type`: the dashboard files it under the main session, and
+ * spawn-buddy.sh forwards `session_id` to find the main session's transcript.
+ * The tool events take these fields from the lifecycle tracker
+ * (`sessionFields`), and OpenCode's `callID` as `tool_use_id`, which the
+ * dashboard uses to pair a PreToolUse with its PostToolUse.
+ *
  * Consider an OpenCode reviewer that calls the NanoClaw MCP tool to send
  * "[Review Verdict] ..." before any critique. OpenCode names the tool
  * `nanoclaw_send_message`; the bridge calls the PreToolUse hooks with
@@ -268,7 +276,7 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
         recordToolInFlight(null);
         const toolName = claudeToolName(failure.tool, servers);
         await runHookEvent(settings(), 'PostToolUseFailure', toolName, {
-          session_id: failure.sessionID,
+          ...lifecycle.sessionFields(failure.sessionID),
           tool_name: toolName,
           tool_input: claudeToolInput(toolName, failure.input),
           tool_use_id: failure.callID,
@@ -277,7 +285,10 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
       }
       for (const call of calls) await run(call);
     },
-    'tool.execute.before': async (input: { tool: string; sessionID?: string }, output: { args?: unknown }) => {
+    'tool.execute.before': async (
+      input: { tool: string; sessionID?: string; callID?: string },
+      output: { args?: unknown },
+    ) => {
       const toolName = claudeToolName(input.tool, servers);
       const toolInput = claudeToolInput(toolName, output.args);
       if (toolName === 'Bash') {
@@ -285,9 +296,10 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
         if (refusal) throw new Error(refusal);
       }
       const outcome = await runHookEvent(settings(), 'PreToolUse', toolName, {
-        session_id: input.sessionID ?? '',
+        ...lifecycle.sessionFields(input.sessionID ?? ''),
         tool_name: toolName,
         tool_input: toolInput,
+        ...(input.callID ? { tool_use_id: input.callID } : {}),
       });
       if (outcome.block) throw new Error(outcome.reason);
       if (toolName === 'TodoWrite') {
@@ -297,17 +309,18 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
       recordToolInFlight(toolName, toolInput);
     },
     'tool.execute.after': async (
-      input: { tool: string; sessionID?: string; args?: unknown },
+      input: { tool: string; sessionID?: string; callID?: string; args?: unknown },
       output: { args?: unknown; output?: unknown; content?: unknown },
     ) => {
       const toolName = claudeToolName(input.tool, servers);
       recordToolInFlight(null);
       // OpenCode 1.18 passes the arguments of a finished tool in `input`, not `output`.
       const outcome = await runHookEvent(settings(), 'PostToolUse', toolName, {
-        session_id: input.sessionID ?? '',
+        ...lifecycle.sessionFields(input.sessionID ?? ''),
         tool_name: toolName,
         tool_input: claudeToolInput(toolName, input.args ?? output.args),
         tool_response: claudeToolResponse(toolName, output),
+        ...(input.callID ? { tool_use_id: input.callID } : {}),
       });
       if (outcome.block && typeof output.output === 'string') output.output = `${output.output}\n\n${outcome.reason}`;
     },

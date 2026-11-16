@@ -223,6 +223,66 @@ describe('the OpenCode plugin', () => {
   });
 });
 
+describe('tool events inside a subagent', () => {
+  const event = (type: string, properties: Record<string, unknown>) => ({ event: { type, properties } });
+
+  it('carry the main session as session_id, the subagent as agent_id, and the call id', async () => {
+    const seen = path.join(dir, 'tools.jsonl');
+    const hooks = await plugin({
+      PreToolUse: [{ hooks: [recorder(seen)] }],
+      PostToolUse: [{ hooks: [recorder(seen)] }],
+      PostToolUseFailure: [{ hooks: [recorder(seen)] }],
+    });
+    await hooks.event(
+      event('session.created', {
+        sessionID: 'ses_child',
+        info: { id: 'ses_child', parentID: 'ses_main', agent: 'explore' },
+      }),
+    );
+    await hooks['tool.execute.before'](
+      { tool: 'bash', sessionID: 'ses_child', callID: 'call_1' },
+      { args: { command: 'ls' } },
+    );
+    await hooks['tool.execute.after'](
+      { tool: 'bash', sessionID: 'ses_child', callID: 'call_1', args: { command: 'ls' } },
+      { output: 'a\n' },
+    );
+    await hooks.event(
+      event('message.part.updated', {
+        part: {
+          type: 'tool',
+          sessionID: 'ses_child',
+          callID: 'call_2',
+          tool: 'read',
+          state: { status: 'error', input: { filePath: '/x' }, error: 'gone' },
+        },
+      }),
+    );
+    const identity = recorded(seen).map((input) => [
+      input.hook_event_name,
+      input.session_id,
+      input.agent_id,
+      input.agent_type,
+      input.tool_use_id,
+    ]);
+    expect(identity).toEqual([
+      ['PreToolUse', 'ses_main', 'ses_child', 'explore', 'call_1'],
+      ['PostToolUse', 'ses_main', 'ses_child', 'explore', 'call_1'],
+      ['PostToolUseFailure', 'ses_main', 'ses_child', 'explore', 'call_2'],
+    ]);
+  });
+
+  it('leave a main-session tool call without agent fields', async () => {
+    const seen = path.join(dir, 'tools.jsonl');
+    const hooks = await plugin({ PreToolUse: [{ hooks: [recorder(seen)] }] });
+    await hooks['tool.execute.before']({ tool: 'bash', sessionID: 'ses_main', callID: 'call_1' }, { args: {} });
+    const [input] = recorded(seen);
+    expect(input).toMatchObject({ session_id: 'ses_main', tool_use_id: 'call_1' });
+    expect(input).not.toHaveProperty('agent_id');
+    expect(input).not.toHaveProperty('agent_type');
+  });
+});
+
 describe('lifecycle events', () => {
   const event = (type: string, properties: Record<string, unknown>) => ({ event: { type, properties } });
 
