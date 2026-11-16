@@ -50,10 +50,24 @@ build counts as 0 (under-projecting keeps the executor going, over-projecting
 made a run stop with the disk still full). `summary.projected_free_gb` is a
 lower bound: the executor re-measures with `df` and stops on that.
 
-`runs` lists the entries of the group's `runs/` directory, where the review
-runners and the agent keep run output (run logs, combined reviews, verify
-builds). An entry idle longer than RUNS_RETENTION_DAYS, held by no process and
-borrowed from by no checkout, is expired into `runs_expired`, most idle first.
+Three more kinds of per-task output are expired by one rule (`expired_entry`):
+idle longer than RUNS_RETENTION_DAYS, held by no process, and borrowed from by
+no checkout, most idle first.
+
+  runs          entries of the group's `runs/` directory, where the review
+                runners and the agent keep run output (run logs, combined
+                reviews, verify builds)            → `runs_expired`
+  scratch_dirs  top-level directories whose name matches SCRATCH_DIR_PATTERNS:
+                the per-task work directories agents create next to their
+                checkouts (`review-14416`, `devin-13619-r2`, `B-13514`,
+                `bare-13387.git`, `scratch-12001`, `repro-881`)
+                                                   → `scratch_expired`
+  wt_files      top-level regular files named `wt-*`, the build and configure
+                logs agents write next to a checkout (`wt-12249-build.log`)
+                                                   → `files_expired`
+
+A scratch directory that holds git repositories is still expired; the executor
+saves each repository first, as it does for a checkout.
 
 Input (stdin):
 
@@ -70,7 +84,8 @@ Input (stdin):
     "runs": [{"name": "A-14412-r1", "idle_days": 20, "running": false, "dependents": []}]
   }
 
-Output: {"tiers": {...}, "reclaim": [...], "runs_expired": [...], "summary": {...}}.
+Output: {"tiers": {...}, "reclaim": [...], "runs_expired": [...],
+"scratch_expired": [...], "files_expired": [...], "summary": {...}}.
 Each worktree gets a `gc_reason` string explaining its tier.
 
 Run: python3 scripts/worktree-gc.py < payload.json
@@ -78,6 +93,7 @@ Test: python3 scripts/test_worktree_gc.py
 """
 
 import json
+import re
 import sys
 
 # ─── Thresholds — the ONLY place these live. Markdown references them by name. ───
@@ -95,6 +111,31 @@ SAVE_MAX_MB = 200           # untracked content larger than this is not committe
 ESCALATE_PCT = 10           # free below this share of the volume after a run → the gate wakes the agent
 
 FINAL_PR_STATES = ("MERGED", "CLOSED")
+
+# Top-level per-task scratch directories, as agents name them: a per-task word and
+# the issue/PR number (`review-14416`, `review-14416-r2-devin`, `B-13514-r2`,
+# `pr12249-review`, `ci-1181`), a bare clone a review cloned its checkouts from
+# (`bare-13387.git`), or a directory named as disposable (`scratch-…`, `repro-…`,
+# `tmp-…`). Full-match regexes; durable directories (`memory`, `tools`, `tasks`,
+# `conversations`, the base clones, `venv-*`) match none of them.
+PER_TASK_WORDS = (
+    "review", "reviewA", "reviewB", "reviewC", "reviewerA", "reviewerB", "reviewerC",
+    "revA", "revB", "revC", "runA", "runB", "runC", "A", "B", "C", "devin", "pr",
+    "probe", "probes", "critique", "codex", "drafts", "verify", "spike", "measure",
+    "ci", "ab", "ctl", "rel", "ubsweep",
+)
+SCRATCH_DIR_PATTERNS = (
+    r"(?:" + "|".join(PER_TASK_WORDS) + r")-?[0-9]{3,}(?:[-._][^/]*)?",
+    r"bare-[0-9]{3,}\.git",
+    r"(?:scratch|repro|tmp)-[^/]+",
+    r"(?:scratch|tmp)[0-9]+[^/]*",
+)
+_SCRATCH_DIR = re.compile("|".join(f"(?:{p})" for p in SCRATCH_DIR_PATTERNS))
+
+
+def is_scratch_dir(name):
+    """Is a top-level directory named like an agent's per-task scratch directory?"""
+    return bool(_SCRATCH_DIR.fullmatch(name))
 
 
 def _idle(wt):
@@ -151,15 +192,16 @@ def classify(wt, running_dirs):
     return tier("KEEP", "open PR, active")
 
 
-def expired_run(run):
-    """Is this `runs/` entry past RUNS_RETENTION_DAYS, held by no process and
-    borrowed from by no checkout? An entry without a measured idleness is kept."""
-    idle = _idle(run)
+def expired_entry(entry):
+    """Is this per-task output (a `runs/` entry, a scratch directory, a `wt-*`
+    file) past RUNS_RETENTION_DAYS, held by no process and borrowed from by no
+    checkout? An entry without a measured idleness is kept."""
+    idle = _idle(entry)
     return (
         idle is not None
         and idle > RUNS_RETENTION_DAYS
-        and not run.get("running")
-        and not run.get("dependents")
+        and not entry.get("running")
+        and not entry.get("dependents")
     )
 
 
@@ -187,6 +229,8 @@ def select(payload):
     running = set(payload.get("running_dirs", []))
     worktrees = payload.get("worktrees", [])
     runs = payload.get("runs", [])
+    scratch_dirs = payload.get("scratch_dirs", [])
+    wt_files = payload.get("wt_files", [])
 
     tiers = {"REAP": [], "KEEP": [], "STALE-OPEN": [], "NO-PR": []}
     for wt in worktrees:
@@ -220,9 +264,12 @@ def select(payload):
             break
         projected += build_gb(w)
 
-    runs_expired = sorted(
-        (r for r in runs if expired_run(r)), key=lambda r: r.get("idle_days") or 0, reverse=True
-    )
+    def expired(entries):
+        return sorted((e for e in entries if expired_entry(e)), key=lambda e: e.get("idle_days") or 0, reverse=True)
+
+    runs_expired = expired(runs)
+    scratch_expired = expired(scratch_dirs)
+    files_expired = expired(wt_files)
     shapes = {}
     for w in worktrees:
         shapes[w.get("shape") or "worktree"] = shapes.get(w.get("shape") or "worktree", 0) + 1
@@ -238,6 +285,10 @@ def select(payload):
         "shapes": shapes,
         "runs_count": len(runs),
         "runs_expired_count": len(runs_expired),
+        "scratch_dirs_count": len(scratch_dirs),
+        "scratch_expired_count": len(scratch_expired),
+        "wt_files_count": len(wt_files),
+        "files_expired_count": len(files_expired),
         "reclaim_count": len(reclaim),
         "reclaim_gb": round(sum(build_gb(w) for w in reclaim), 1),
         "unmeasured_builds": sum(1 for w in reclaim if not build_measured(w)),
@@ -259,7 +310,14 @@ def select(payload):
             "ESCALATE_PCT": ESCALATE_PCT,
         },
     }
-    return {"tiers": tiers, "reclaim": reclaim, "runs_expired": runs_expired, "summary": summary}
+    return {
+        "tiers": tiers,
+        "reclaim": reclaim,
+        "runs_expired": runs_expired,
+        "scratch_expired": scratch_expired,
+        "files_expired": files_expired,
+        "summary": summary,
+    }
 
 
 def main():
