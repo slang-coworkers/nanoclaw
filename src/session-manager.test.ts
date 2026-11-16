@@ -280,3 +280,71 @@ describe('writeSessionMessage re-provisions a deleted session folder', () => {
     }
   });
 });
+
+describe('writeSessionMessage writes only mailboxes a reader will find', () => {
+  const OTHER_AG = 'ag-other';
+
+  beforeEach(async () => {
+    const db = await initTestDb();
+    await runMigrations(db);
+    for (const id of [AG, OTHER_AG]) {
+      await createAgentGroup({ id, name: id, folder: id, agent_provider: null, created_at: new Date().toISOString() });
+    }
+    await createSession({
+      id: SESS,
+      agent_group_id: AG,
+      messaging_group_id: null,
+      thread_id: null,
+      agent_provider: null,
+      status: 'active',
+      container_status: 'stopped',
+      last_active: null,
+      created_at: new Date().toISOString(),
+    });
+  });
+
+  afterEach(async () => {
+    await closeDb();
+  });
+
+  // The interactive module writes an ask_user_question answer exactly like
+  // this: a system row, no trigger flag. The runner's poll loop never reads a
+  // system row, so as a trigger it stayed due forever once the asking tool had
+  // timed out (prod: 47 days in the Orchestrator session).
+  it('stores a system row as a non-trigger, so it never counts as due work', async () => {
+    await writeSessionMessage(AG, SESS, {
+      id: 'qr-q-late',
+      kind: 'system',
+      timestamp: new Date().toISOString(),
+      content: JSON.stringify({ type: 'question_response', questionId: 'q-late', selectedOption: 'B' }),
+    });
+
+    const count = await withMailboxSession(AG, SESS, (mailbox) => mailbox.countDueMessages());
+    expect(count).toBe(0);
+    const db = new Database(inboundDbPath(AG, SESS), { readonly: true });
+    try {
+      expect(db.prepare('SELECT trigger, status FROM messages_in WHERE id = ?').get('qr-q-late')).toEqual({
+        trigger: 0,
+        status: 'pending',
+      });
+    } finally {
+      db.close();
+    }
+  });
+
+  // prod: `ncl groups restart --id <other group> --message …` from an agent
+  // wrote its on-wake notice into v2-sessions/<other group>/<caller session>/,
+  // a mailbox no sweep, wake or mount ever opens.
+  it('refuses a session that belongs to another agent group, and provisions nothing there', async () => {
+    await expect(
+      writeSessionMessage(OTHER_AG, SESS, {
+        id: 'restart-1',
+        kind: 'chat',
+        timestamp: new Date().toISOString(),
+        content: JSON.stringify({ text: 'Resume' }),
+        onWake: true,
+      }),
+    ).rejects.toThrow(`session ${SESS} belongs to agent group ${AG}, not ${OTHER_AG}`);
+    expect(fs.existsSync(sessionDir(OTHER_AG, SESS))).toBe(false);
+  });
+});

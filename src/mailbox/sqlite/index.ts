@@ -18,7 +18,9 @@ import {
   getMessageForRetry,
   gcInboundHistory,
   getMostRecentPeerSourceSessionId,
+  getAckedMessageIds,
   getNextDueAt,
+  getPendingTriggerRows,
   getProcessingClaims,
   insertMessage,
   markDelivered,
@@ -199,6 +201,7 @@ export function wrapSqliteInbound(
     gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
     reclaimSpace: () => reclaimFreePages(db, mailboxReclaimOptions()),
     expireOrphanedCliResponses: (cutoffIso) => expireOrphanedCliResponses(db, cutoffIso),
+    getPendingTriggerRows: (opts) => getPendingTriggerRows(db, opts),
     setRouting: (routing) => {
       const record = parseSessionRoutingRecord(routing);
       upsertSessionRouting(db, {
@@ -385,6 +388,7 @@ export function wrapSqliteOutbound(
         });
         return { messageId: record.messageId, statusChanged: record.statusChanged };
       }),
+    getAckedMessageIds: (messageIds) => getAckedMessageIds(readable(), messageIds),
     deleteOrphanProcessingClaims: () => deleteOrphanProcessingClaims(writable()),
     getContainerState: () => {
       const row = getContainerState(readable());

@@ -612,7 +612,8 @@ registerResource({
       access: 'approval',
       description:
         'Restart containers for a group. Use --id <group-id> [--rebuild] [--message <text>]. ' +
-        'From inside a container, --id is auto-filled and only the calling session is restarted. ' +
+        'From inside a container, --id defaults to your own group and only the calling session is restarted; ' +
+        "naming another group (global scope only) restarts that group's running containers, as from the host. " +
         '--rebuild rebuilds the container image first (required for package changes). ' +
         '--message sets an on-wake instruction for the fresh container to act on when it starts — ' +
         'use this when you need to continue after the restart (e.g. verify a new tool works, notify the user). ' +
@@ -638,8 +639,15 @@ registerResource({
         }
         const message = args.message as string | undefined;
 
-        // From an agent: scope to the calling session only
-        if (ctx.caller === 'agent') {
+        // From an agent naming its own group: scope to the calling session
+        // only. The calling session belongs to the caller's group, so the
+        // on-wake notice below lands in that session's own mailbox. An agent
+        // naming ANOTHER group (only a global-scope caller can; group scope
+        // pins --id) gets the host behaviour below: that group's running
+        // containers restart. Writing the notice to (other group, calling
+        // session) instead provisioned a mailbox nothing reads and killed the
+        // caller's own container rather than the target's.
+        if (ctx.caller === 'agent' && id === ctx.agentGroupId) {
           if (message) {
             await writeSessionMessage(id, ctx.sessionId, {
               id: `restart-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -667,7 +675,8 @@ registerResource({
           return { restarted: 1, rebuilt: !!args.rebuild };
         }
 
-        // From the host: restart all running containers in the group
+        // From the host, or an agent naming another group: restart all running
+        // containers in the group.
         const count = await restartAgentGroupContainers(id, 'restarted via ncl', message);
         return { restarted: count, rebuilt: !!args.rebuild };
       },
