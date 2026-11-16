@@ -94,6 +94,8 @@ The model rule holds only when a session cannot reach the OneCLI management API.
 
 Bind the API to the loopback address of the host, and point `ONECLI_URL` at that address, for example `http://127.0.0.1:10256`. Do not publish it on `0.0.0.0` or on the docker bridge. The proxy port stays reachable, because sessions need it. The script `scripts/check-onecli-api-unreachable.sh` starts a throwaway container on the session network and tries to reach the API from there. It must print `UNREACHABLE` before you turn `enforce` on. Another service on the bridge, such as a database or a web server, is a similar risk, and `CHECK_PORTS` lets the script test it. The script `scripts/onecli-gateway-swap.sh` does the change: `swap <image>` backs up the compose file and `.env`, puts the image live, binds the API to loopback, and restarts the services. `rollback <stamp>` undoes it.
 
+The host writes the open-models-only rules at spawn, but only when `NANOCLAW_SESSION_PRIVILEGE=enforce`. An install that runs open-weights groups with `enforce` off has no rule, so a closed model is refused by configuration only. `pnpm exec tsx scripts/open-model-rules.ts` lists the open-weights groups, and `--apply` installs or repairs the three rules of each one and publishes them. Run it again after a group is added or moved to open weights. It needs `onecli-cost:v5` or later.
+
 ## Not covered yet
 
 - **Traffic the model rule does not see.** The rules cover the hosts of the three base URLs. A request that names its model where no rule reads it is outside them, and so is another host that accepts the same inference key. A container that calls another host with its own key is outside the rules too. A WebSocket frame after the handshake is not read.

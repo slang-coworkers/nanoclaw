@@ -35,6 +35,22 @@ export function openModelRuleName(identifier: string): string {
   return `${OPEN_MODEL_RULE_PREFIX} (${identifier})`;
 }
 
+/**
+ * The inference hosts an install sends model requests to: the host of each model base URL it sets.
+ * The rule names these hosts, so a model request to any other host is outside it. The host and the
+ * `scripts/open-model-rules.ts` script both read the list here.
+ */
+export function inferenceHostsOf(env: Record<string, string | undefined>): string[] {
+  const hosts = (['ANTHROPIC_BASE_URL', 'OPENCODE_BASE_URL', 'CODEX_BASE_URL'] as const).flatMap((key) => {
+    try {
+      return env[key] ? [new URL(env[key]!).hostname] : [];
+    } catch {
+      return [];
+    }
+  });
+  return [...new Set(hosts)];
+}
+
 /** The methods whose body can name a model. The gateway reads a body for exactly these. */
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'] as const;
 type BodyMethod = (typeof BODY_METHODS)[number];

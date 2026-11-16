@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { desiredOpenModelRules, ensureOpenModelRule, openModelRuleName } from './onecli-model-rule.js';
+import {
+  desiredOpenModelRules,
+  ensureOpenModelRule,
+  inferenceHostsOf,
+  openModelRuleName,
+} from './onecli-model-rule.js';
 
 type Rule = Record<string, unknown> & { id: string; name: string; priority: number };
 
@@ -241,5 +246,21 @@ describe('open-models-only rule', () => {
     await expect(ensureOpenModelRule('g1', [], GLOBS, options(g))).rejects.toThrow(/no inference host/);
     await expect(ensureOpenModelRule('g1', HOSTS, [], options(g))).rejects.toThrow(/no open-weights model/);
     expect(g.writes).toEqual([]);
+  });
+});
+
+describe('inferenceHostsOf', () => {
+  it('lists the host of each model base URL once', () => {
+    expect(
+      inferenceHostsOf({
+        ANTHROPIC_BASE_URL: 'https://inference-api.nvidia.com',
+        OPENCODE_BASE_URL: 'https://inference-api.nvidia.com/v1',
+        CODEX_BASE_URL: 'https://other.example/v1',
+      }),
+    ).toEqual(['inference-api.nvidia.com', 'other.example']);
+  });
+
+  it('skips a URL that is unset, empty or not a URL', () => {
+    expect(inferenceHostsOf({ ANTHROPIC_BASE_URL: '', OPENCODE_BASE_URL: 'not a url' })).toEqual([]);
   });
 });
