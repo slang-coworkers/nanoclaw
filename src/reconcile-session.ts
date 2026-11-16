@@ -9,17 +9,22 @@
  * Stuck / idle detection (replaces the old IDLE_TIMEOUT setTimeout + 10-min
  * heartbeat threshold):
  *
- *   If the container isn't running and there are 'processing' rows left over
- *   (e.g. it crashed mid-turn) → reset them to pending with backoff +
- *   tries++. Existing retry machinery does the rest.
+ *   If the container isn't running and a 'processing' row is left over (it
+ *   crashed, or a restart killed it mid-turn), the trigger is still 'pending'.
+ *   When it is due, this pass wakes a fresh container; the runner's startup
+ *   cleanup drops the stale claim and the turn runs again, with no try
+ *   charged. Only when no container starts (the wake is held or fails) does
+ *   the pass reset the row itself: backoff + tries++.
  *
  *   If the container IS running:
  *     1. Absolute ceiling: heartbeat age > max(30 min, current_bash_timeout)
  *        → kill. Covers the "alive but silent for 30 min" case. Extended
  *        only while Bash is declared as running longer, honouring the
- *        user's own timeout directive. Kill then resets processing rows.
- *        When no heartbeat file exists yet, falls back to the tracked
- *        container spawn time so a container that goes idle without ever
+ *        user's own timeout directive. A turn in flight is then requeued
+ *        exactly as in 2 (backoff + tries++, 'failed' after MAX_TRIES); an
+ *        idle container has nothing to requeue. When no heartbeat file
+ *        exists yet, falls back to the tracked container spawn time so a
+ *        container that goes idle without ever
  *        reaching an SDK event —
  *        and so never writes a heartbeat — still ages out instead of
  *        living forever (see decideStuckAction's grace-period comment).
@@ -876,6 +881,12 @@ function checkGpuProbeForSession(session: Session, agentGroupId: string): void {
  * notify meant a persistent compose failure killed the container every 60s and
  * announced an update that had not happened. `recomposeAndUpdateHash` logs its
  * own failure, so there is nothing to add here.
+ *
+ * We restart even when a turn is in flight instead of waiting for it to end. The
+ * interrupted trigger stays 'pending', so the next pass wakes the fresh container
+ * and the turn runs again under the new instructions, with no try charged.
+ * Waiting could keep a busy session on its old instructions indefinitely, since
+ * the sweep sees it between turns only by chance.
  *
  * Errors are swallowed per session. As a global loop, one broken group threw and
  * silently disabled instruction refresh for the whole fleet; keeping the guard
