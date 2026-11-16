@@ -163,7 +163,7 @@ describe('tasks CLI resource', () => {
     // once and ships it as `human`, so the Bun container prints the aligned
     // table instead of a raw column dump (it cannot import the host formatter).
     expect(resp.human).toBeDefined();
-    expect(resp.human).toMatch(/SERIES\s+SCHEDULE\s+RUNS\s+FAILED\s+LAST RUN\s+NEXT RUN/);
+    expect(resp.human).toMatch(/SERIES\s+SCHEDULE\s+RUNS\s+WOKE\s+FAILED\s+LAST RUN\s+NEXT RUN/);
     expect(resp.human).toContain('briefing-');
   });
 
