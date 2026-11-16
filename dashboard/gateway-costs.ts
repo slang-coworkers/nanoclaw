@@ -42,7 +42,7 @@
  */
 import { execFile } from 'child_process';
 
-import { CODEX_MODEL_PRICING, normalizeCodexModel } from './codex-costs.js';
+import { CODEX_MODEL_PRICING, OPEN_WEIGHTS_PRICING_KEYS, normalizeCodexModel } from './codex-costs.js';
 import { MODEL_PRICING, normalizeModel } from './session-costs.js';
 
 /** The day-entry shape every cost feed in server.ts uses (ccusage's `daily` row). */
@@ -328,6 +328,8 @@ export function priceGatewayRow(r: GatewayAggRow): PricedRow {
 export interface GatewayDay extends CostDayEntry {
   claudeUsd: number;
   codexUsd: number;
+  /** Spend on open-weights models (OPEN_WEIGHTS_PRICING_KEYS), kept out of claudeUsd and codexUsd. */
+  openUsd: number;
   source: 'gateway';
 }
 
@@ -379,6 +381,7 @@ function emptyGatewayDay(date: string): GatewayDay {
     modelBreakdowns: [],
     claudeUsd: 0,
     codexUsd: 0,
+    openUsd: 0,
     source: 'gateway',
   };
 }
@@ -407,7 +410,8 @@ export function buildGatewayDaily(rows: GatewayAggRow[], timezone = 'UTC', fetch
     d.cacheCreationTokens += p.cacheCreationTokens;
     d.totalTokens += p.totalTokens;
     d.totalCost += usd;
-    if (p.provider === 'codex') d.codexUsd += usd;
+    if (OPEN_WEIGHTS_PRICING_KEYS.has(p.modelKey)) d.openUsd += usd;
+    else if (p.provider === 'codex') d.codexUsd += usd;
     else d.claudeUsd += usd;
     const name = p.modelKey || r.model || '(unknown)';
     if (!d.modelsUsed.includes(name)) d.modelsUsed.push(name);
@@ -450,7 +454,7 @@ export function overlayGatewayDays<T extends CostDayEntry>(
   }
   for (const [day, g] of gw.days) {
     if (day < gw.cutover) continue;
-    const { claudeUsd: _c, codexUsd: _x, ...entry } = g;
+    const { claudeUsd: _c, codexUsd: _x, openUsd: _o, ...entry } = g;
     out.push({
       ...entry,
       modelsUsed: [...g.modelsUsed],

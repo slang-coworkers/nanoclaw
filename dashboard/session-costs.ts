@@ -113,7 +113,7 @@ export interface SessionCostEntry {
   groupFolder: string;
   groupName: string;
   /**
-   * TOTAL priced spend for the session in the window — `claudeUsd + codexUsd`.
+   * TOTAL priced spend for the session in the window — `claudeUsd + codexUsd + openUsd`.
    * Every existing consumer (ranking, p90/p99, the Sessions column) reads this
    * and keeps meaning "what this session cost", which is why the split was
    * added alongside it rather than replacing it.
@@ -127,6 +127,11 @@ export interface SessionCostEntry {
    * which never appears in a Claude transcript. See `codex-costs.ts`.
    */
   codexUsd: number;
+  /**
+   * Open-weights half of `cost`: GLM, Kimi or DeepSeek spend, from the ledger of an OpenCode
+   * or Pi session (or a codex critique on Kimi). Zero for transcript-priced sessions.
+   */
+  openUsd: number;
   tokens: number;
   lastActiveMs: number;
   unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know

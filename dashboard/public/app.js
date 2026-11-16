@@ -6796,18 +6796,24 @@ async function pollCeilingUntilTerminal(sid) {
 function renderCostCell(s) {
   const total = s.cost || 0;
   const codex = s.codexUsd || 0;
+  const open = s.openUsd || 0;
   const claude = s.claudeUsd || 0;
   const unpriced = s.costUnpriced
     ? '<span title="includes usage from a model without a known price" style="color:#F59E0B"> *</span>'
     : '';
-  // Only annotate when the split is real. Both-zero (idle) and codex-zero (the
-  // common case) render exactly as before.
-  if (codex <= 0) return `<span style="color:#10B981">${fmtUsd(total)}</span>${unpriced}`;
-  const pct = total > 0 ? Math.round((codex / total) * 100) : 0;
-  const tip = `Claude ${fmtUsd(claude)} + Codex ${fmtUsd(codex)} (${pct}% codex) — codex-critique MCP tool calls`;
+  // Only annotate when the split is real. A Claude-only session renders exactly as before.
+  if (codex <= 0 && open <= 0) return `<span style="color:#10B981">${fmtUsd(total)}</span>${unpriced}`;
+  const parts = [];
+  if (claude > 0) parts.push(`Claude ${fmtUsd(claude)}`);
+  if (open > 0) parts.push(`open weights ${fmtUsd(open)}`);
+  if (codex > 0) parts.push(`Codex ${fmtUsd(codex)}`);
+  const tip = parts.join(' + ');
+  const chip = (label, color) =>
+    `<span title="${escAttr(tip)}" style="margin-left:4px;font-size:9px;color:${color};border:1px solid ${color}55;border-radius:3px;padding:0 3px">${label}</span>`;
   return (
     `<span style="color:#10B981" title="${escAttr(tip)}">${fmtUsd(total)}</span>${unpriced}` +
-    `<span title="${escAttr(tip)}" style="margin-left:4px;font-size:9px;color:#A78BFA;border:1px solid #A78BFA55;border-radius:3px;padding:0 3px">+cdx ${fmtUsd(codex)}</span>`
+    (open > 0 ? chip(`open ${fmtUsd(open)}`, '#38BDF8') : '') +
+    (codex > 0 ? chip(`+cdx ${fmtUsd(codex)}`, '#A78BFA') : '')
   );
 }
 

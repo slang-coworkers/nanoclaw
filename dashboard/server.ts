@@ -1560,8 +1560,7 @@ function pickLatestMessageTs(
           const cols = sdb.prepare('PRAGMA table_info(session_state)').all() as Array<{ name: string }>;
           if (cols.some((c) => c.name === 'value')) {
             const capRow = sdb.prepare("SELECT value FROM session_state WHERE key = 'cost_cap'").get() as
-              | { value: string }
-              | undefined;
+              { value: string } | undefined;
             if (capRow?.value) costCapRaw = capRow.value;
           }
         } catch {
@@ -2478,6 +2477,7 @@ type CostHistoryAcc = {
   name: string;
   claude: Map<string, number>;
   codex: Map<string, number>;
+  open: Map<string, number>;
   sources: Map<string, 'gateway' | 'transcript' | 'mixed'>;
 };
 export function computeCostHistoryByGroup(
@@ -2501,6 +2501,7 @@ export function computeCostHistoryByGroup(
       name: group.name,
       claude: new Map<string, number>(),
       codex: new Map<string, number>(),
+      open: new Map<string, number>(),
       sources: new Map(),
     };
     const gwGroup = gateway?.groups.get(group.id);
@@ -2552,10 +2553,11 @@ export function computeCostHistoryByGroup(
         if (!inRange(key) || key < cutKey) continue;
         if (d.claudeUsd > 0) acc.claude.set(key, (acc.claude.get(key) ?? 0) + d.claudeUsd);
         if (d.codexUsd > 0) acc.codex.set(key, (acc.codex.get(key) ?? 0) + d.codexUsd);
-        if (d.claudeUsd > 0 || d.codexUsd > 0) mark(key, 'gateway');
+        if (d.openUsd > 0) acc.open.set(key, (acc.open.get(key) ?? 0) + d.openUsd);
+        if (d.claudeUsd > 0 || d.codexUsd > 0 || d.openUsd > 0) mark(key, 'gateway');
       }
     }
-    if (acc.claude.size || acc.codex.size) out.set(group.folder, acc);
+    if (acc.claude.size || acc.codex.size || acc.open.size) out.set(group.folder, acc);
   }
   return out;
 }
@@ -2721,6 +2723,7 @@ function refreshSessionCostCache(): void {
               cost,
               claudeUsd: cost,
               codexUsd: 0,
+              openUsd: 0,
               tokens,
               lastActiveMs: m,
               unpriced: fc.unpriced,
@@ -2755,6 +2758,7 @@ function refreshSessionCostCache(): void {
             let cost = 0;
             let claudeUsd = 0;
             let codexUsd = 0;
+            let openUsd = 0;
             let tokens = 0;
             let inWindow = false;
             for (const [key, d] of ledger.days) {
@@ -2763,6 +2767,7 @@ function refreshSessionCostCache(): void {
               cost += d.cost;
               claudeUsd += d.claudeUsd;
               codexUsd += d.codexUsd;
+              openUsd += d.openUsd ?? 0;
               tokens += d.tokens;
             }
             if (!inWindow) continue;
@@ -2776,6 +2781,7 @@ function refreshSessionCostCache(): void {
               cost,
               claudeUsd,
               codexUsd,
+              openUsd,
               tokens,
               lastActiveMs: ledger.mtimeMs,
               unpriced: ledger.unpriced,
@@ -2825,6 +2831,7 @@ function refreshSessionCostCache(): void {
               cost,
               claudeUsd: 0,
               codexUsd: cost,
+              openUsd: 0,
               tokens,
               lastActiveMs: cc.lastActiveMs,
               unpriced: cc.unpriced,
@@ -8024,8 +8031,7 @@ export async function handleRequest(
       try {
         if (db) {
           const row = db.prepare('SELECT coworker_type FROM agent_groups WHERE folder = ?').get(coworkerFolder) as
-            | { coworker_type?: string }
-            | undefined;
+            { coworker_type?: string } | undefined;
           coworkerType = row?.coworker_type || null;
         }
       } catch {
@@ -8597,8 +8603,7 @@ export async function handleRequest(
           const peerAgId = parts.find((p) => p.startsWith('ag-') && p !== nano.agent_group_id) || null;
           if (!peerAgId) return null;
           const peer = db.prepare('SELECT name, folder FROM agent_groups WHERE id = ?').get(peerAgId) as
-            | { name: string; folder: string }
-            | undefined;
+            { name: string; folder: string } | undefined;
           return peer?.name || peer?.folder || null;
         } catch {
           return null;
@@ -9933,10 +9938,9 @@ export async function handleRequest(
               continue;
             }
             const row = pdb
-              .prepare<
-                [string, string],
-                { id: string; timestamp: string }
-              >('SELECT id, timestamp FROM messages_in WHERE source_session_id = ? AND thread_id = ? ORDER BY timestamp ASC LIMIT 1')
+              .prepare<[string, string], { id: string; timestamp: string }>(
+                'SELECT id, timestamp FROM messages_in WHERE source_session_id = ? AND thread_id = ? ORDER BY timestamp ASC LIMIT 1',
+              )
               .get(fromSessionId, threadId);
             pdb.close();
             if (!row) continue;
@@ -10553,24 +10557,31 @@ export async function handleRequest(
     let overallSource: string | undefined;
     for (const [folder, acc] of byGroup) {
       if (groupFilter && folder !== groupFilter && acc.name !== groupFilter) continue;
-      const buckets = new Map<string, { usd: number; claudeUsd: number; codexUsd: number; source?: string }>();
+      const buckets = new Map<
+        string,
+        { usd: number; claudeUsd: number; codexUsd: number; openUsd: number; source?: string }
+      >();
       let total = 0;
       let claudeTot = 0;
       let codexTot = 0;
-      const add = (dayKey: string, usd: number, provider: 'claude' | 'codex') => {
+      let openTot = 0;
+      const add = (dayKey: string, usd: number, provider: 'claude' | 'codex' | 'open') => {
         const k = bucketOf(dayKey);
-        const b = buckets.get(k) ?? { usd: 0, claudeUsd: 0, codexUsd: 0 };
+        const b = buckets.get(k) ?? { usd: 0, claudeUsd: 0, codexUsd: 0, openUsd: 0 };
         b.source = mergeSource(b.source, acc.sources.get(dayKey) ?? 'transcript');
         b.usd += usd;
         if (provider === 'codex') b.codexUsd += usd;
+        else if (provider === 'open') b.openUsd += usd;
         else b.claudeUsd += usd;
         buckets.set(k, b);
         total += usd;
         if (provider === 'codex') codexTot += usd;
+        else if (provider === 'open') openTot += usd;
         else claudeTot += usd;
       };
       for (const [dk, usd] of acc.claude) add(dk, usd, 'claude');
       for (const [dk, usd] of acc.codex) add(dk, usd, 'codex');
+      for (const [dk, usd] of acc.open) add(dk, usd, 'open');
       if (total <= 0) continue;
       groups.push({
         group_folder: folder,
@@ -10578,6 +10589,7 @@ export async function handleRequest(
         total_usd: total,
         claudeUsd: claudeTot,
         codexUsd: codexTot,
+        openUsd: openTot,
         buckets: [...buckets.entries()]
           .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
           .map(([bucket, v]) => ({
@@ -10585,6 +10597,7 @@ export async function handleRequest(
             usd: v.usd,
             claudeUsd: v.claudeUsd,
             codexUsd: v.codexUsd,
+            openUsd: v.openUsd,
             source: v.source ?? 'transcript',
           })),
       });
@@ -10752,6 +10765,8 @@ export async function handleRequest(
       // the Claude transcript walk — see codex-costs.ts / issue #1327.
       s.claudeUsd = c ? c.claudeUsd : 0;
       s.codexUsd = c ? c.codexUsd : 0;
+      // Open-weights spend (GLM, Kimi, ...) is its own share of `cost`, not part of claudeUsd.
+      s.openUsd = c ? (c.openUsd ?? 0) : 0;
       s.costTokens = c ? c.tokens : 0;
       s.costUnpriced = c ? c.unpriced : false;
       // Which source priced this row: 'ledger' (outbound.db cost_events) or
@@ -11388,8 +11403,7 @@ export async function handleRequest(
 
       // Wire parent↔child agent destinations (same as delivery.ts create_agent)
       const adminGroup = wdb.prepare('SELECT id, name, folder FROM agent_groups WHERE is_admin = 1 LIMIT 1').get() as
-        | { id: string; name: string; folder: string }
-        | undefined;
+        { id: string; name: string; folder: string } | undefined;
       if (adminGroup) {
         const localName = normalizeDestinationName(name);
         const existingAdminDest = wdb
@@ -11557,8 +11571,7 @@ export async function handleRequest(
     }
     const group = db
       ? (db.prepare('SELECT id, folder, agent_provider FROM agent_groups WHERE folder = ?').get(folder) as
-          | (CoworkerGroupRow & { id: string })
-          | undefined)
+          (CoworkerGroupRow & { id: string }) | undefined)
       : undefined;
     if (!group) {
       res.writeHead(404, { 'Content-Type': 'application/json' });
@@ -11566,8 +11579,7 @@ export async function handleRequest(
       return;
     }
     const config = db!.prepare('SELECT * FROM container_configs WHERE agent_group_id = ?').get(group.id) as
-      | CoworkerConfigRow
-      | undefined;
+      CoworkerConfigRow | undefined;
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(coworkerModels(group, config)));
     return;
@@ -14287,8 +14299,7 @@ export async function handleRequest(
         return;
       }
       const groupRow = wdb.prepare('SELECT id, name, folder FROM agent_groups WHERE folder = ?').get(group) as
-        | { id: string; name: string; folder: string }
-        | undefined;
+        { id: string; name: string; folder: string } | undefined;
       if (!groupRow) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end('{"error":"coworker not found"}');
