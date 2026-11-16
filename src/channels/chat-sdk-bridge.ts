@@ -799,6 +799,7 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
   let state: SqliteStateAdapter;
   let setupConfig: ChannelSetup;
   let gatewayAbort: AbortController | null = null;
+  let stopWebhookServer: (() => Promise<void>) | null = null;
 
   async function messageToInbound(
     message: ChatMessage,
@@ -1038,7 +1039,9 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
         gatewayAbort = new AbortController();
 
         // Start local HTTP server to receive forwarded Gateway events (including interactions)
-        const webhookUrl = await startLocalWebhookServer(gatewayAdapter, config.botToken, resolveClick);
+        const webhookServer = await startLocalWebhookServer(gatewayAdapter, config.botToken, resolveClick);
+        const webhookUrl = webhookServer.url;
+        stopWebhookServer = webhookServer.stop;
 
         // Exponential backoff capped at 1h. Without this, an unrecoverable
         // failure (e.g., TokenInvalid) restarts ~10×/sec and Discord's
@@ -1307,6 +1310,8 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
 
     async teardown() {
       gatewayAbort?.abort();
+      await stopWebhookServer?.();
+      stopWebhookServer = null;
       await chat.shutdown();
       log.info('Chat SDK bridge shut down', { adapter: adapter.name });
     },
@@ -1414,12 +1419,14 @@ function removeButtonsAfter(edit: Promise<unknown>, removeButtons: () => void): 
  *
  * Loopback is not a trust boundary, so only our own Gateway listener may post
  * here: it sends the bot token in x-discord-gateway-token on every forward.
+ *
+ * Resolves with the server's URL and a stop function for the bridge's teardown.
  */
 function startLocalWebhookServer(
   adapter: GatewayAdapter,
   botToken: string | undefined,
   resolveClick: ResolveClick,
-): Promise<string> {
+): Promise<{ url: string; stop: () => Promise<void> }> {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       if (!gatewayTokenMatches(req.headers['x-discord-gateway-token'], botToken)) {
@@ -1448,8 +1455,22 @@ function startLocalWebhookServer(
       const addr = server.address() as { port: number };
       const url = `http://127.0.0.1:${addr.port}/webhook`;
       log.info('Local webhook server started', { port: addr.port });
-      resolve(url);
+      resolve({ url, stop: () => stopLocalWebhookServer(server) });
     });
+  });
+}
+
+/**
+ * Stops the local webhook server and ends every connection to it, the idle
+ * keep-alive ones and any forward still in flight. Ending an in-flight forward
+ * drops only its response: teardown has already aborted the Gateway listener
+ * that sent it. A connection left open would keep its client's keep-alive
+ * timer armed after the bridge is gone.
+ */
+function stopLocalWebhookServer(server: http.Server): Promise<void> {
+  return new Promise((resolve) => {
+    server.close(() => resolve());
+    server.closeAllConnections();
   });
 }
 

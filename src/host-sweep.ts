@@ -14,13 +14,13 @@
 import { INSTALL_SLUG } from './config.js';
 import { retryPendingAdoptions, stopOrphanedSessions } from './container-runner.js';
 import { ensureEgressNetwork } from './egress-lockdown.js';
-import { getActiveSessions } from './db/sessions.js';
+import { getActiveSessions, getClosedSessionIdsInUnpausedGroups } from './db/sessions.js';
 import { peekSessionDriver } from './drivers/index.js';
 import type { SessionWatch } from './drivers/types.js';
 import { log } from './log.js';
 import { registerReconcileEnqueue } from './reconcile-feeds.js';
 import { createReconcileQueue, type InProcessReconcileQueue } from './reconcile-queue.js';
-import { reconcileSession } from './reconcile-session.js';
+import { reconcileSession, unretiredClosedSessions } from './reconcile-session.js';
 import { sweepStats } from './sweep-stats.js';
 import { sessionKey } from './reconcile.js';
 
@@ -51,6 +51,14 @@ const SWEEP_INTERVAL_MS = 60_000;
  * nor loses.
  */
 export const RECONCILE_CONCURRENCY = 8;
+
+/**
+ * Closed sessions the closed-session mail scan enqueues per tick. Each costs
+ * one inbound.db open (outbound.db too only when mail is pending), so the
+ * first walk after a host start — about 5,000 closed sessions on prod — is
+ * spread over that many minutes / 100 instead of blocking one tick.
+ */
+export const CLOSED_SESSION_MAIL_BATCH = 100;
 
 let running = false;
 let queue: InProcessReconcileQueue | null = null;
@@ -159,6 +167,20 @@ export function startHostSweep(): void {
           log.error('Cost-ceiling-adjustment reconcile failed', { err });
         }
       },
+      // Closed sessions are never enqueued as active ones, so their leftover
+      // inbound mail would sit pending forever. Hand the ones this process has
+      // not yet checked, or whose held rows have since aged past the floor, to
+      // the per-session reconcile, a batch per tick; a write into a closed
+      // session later re-enqueues it through the mail-write feed. See "stuck
+      // inbound retirement" in reconcile-session.ts.
+      'singleton:closed-session-mail': async () => {
+        try {
+          const closed = await getClosedSessionIdsInUnpausedGroups();
+          for (const id of unretiredClosedSessions(closed, CLOSED_SESSION_MAIL_BATCH)) feedEnqueue(id);
+        } catch (err) {
+          log.error('Closed-session mail scan failed', { err });
+        }
+      },
       // Daily cost-ledger vs gateway drift check (opt-in, NANOCLAW_COST_DRIFT_CHECK).
       // Only decides whether a run is due; the run is detached and single-flight,
       // so it never holds a tick open. Read-only against every DB.
@@ -228,6 +250,7 @@ async function sweep(): Promise<void> {
   tickQueue.add('singleton:cost-cards');
   tickQueue.add('singleton:cost-ceiling-adjustments');
   tickQueue.add('singleton:cost-drift-check');
+  tickQueue.add('singleton:closed-session-mail');
   tickQueue.add('singleton:orphan-containers');
 
   // The tick ends — and the next one is armed — only after everything this

@@ -11,6 +11,7 @@ import Database from 'better-sqlite3';
 
 import { createInboundRecord, failureClassOf, isFailedAck, isGatedAck } from '../model.js';
 import type { InboundWrite } from '../model.js';
+import type { PendingTriggerRow } from '../types.js';
 import { INBOUND_SCHEMA, OUTBOUND_SCHEMA } from './schema.js';
 
 /**
@@ -248,6 +249,63 @@ export function getNextDueAt(db: Database.Database): string | null {
   return row?.next ?? null;
 }
 
+/**
+ * Pending trigger rows, oldest first. A row falls due once it is both written
+ * and past its `process_after`, so its `dueAt` is the later of `timestamp` and
+ * `process_after`.
+ *
+ * With `dueForMs`, only the rows that have been due for at least that long
+ * now. The closed-session rule uses it so that a row which lands as its
+ * session closes is not retired in the same pass.
+ *
+ * With `passedOverMs`, only the rows this session's runner has passed over for
+ * at least that long. "Passed over" is read from the mailbox itself, so it needs no clock and no
+ * extra state. The runner claims every due trigger row it can consume in one
+ * batch, so if it consumed an ordinary trigger row that was written
+ * `passedOverMs` or more after row R fell due, R was due and visible on that
+ * poll and the runner left it. Consider a session whose runner completed a
+ * chat row on 2026-11-16 while a `system` row has been due since 2026-09-30:
+ * that row has been passed over for 47 days. A session that consumed nothing
+ * since R fell due — its group paused, its cost cap stopped, its host down —
+ * has passed over nothing, so its held rows are never listed and run when the
+ * session resumes.
+ *
+ * Only completed rows count as consumption, and `system` and `cost_override`
+ * rows do not count: the first are read by a tool's own poll, the second are
+ * the control rows a cost-stopped runner still consumes while it holds
+ * everything else. The newest such row by `seq` stands in for the newest
+ * consumption; `seq` follows write order.
+ */
+export function getPendingTriggerRows(
+  db: Database.Database,
+  opts: { passedOverMs?: number; dueForMs?: number } = {},
+): PendingTriggerRow[] {
+  const utc = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
+  const due = `MAX(${utc('timestamp')}, ${utc('COALESCE(process_after, timestamp)')})`;
+  const seconds = (ms: number) => Math.max(0, Math.floor(ms / 1000));
+  const where = ["status = 'pending'", 'trigger = 1'];
+  const params: Array<string | number> = [];
+  if (opts.passedOverMs !== undefined) {
+    const consumed = db
+      .prepare(
+        `SELECT ${utc('timestamp')} AS at FROM messages_in
+          WHERE trigger = 1 AND status = 'completed' AND kind NOT IN ('system', 'cost_override')
+          ORDER BY seq DESC LIMIT 1`,
+      )
+      .get() as { at: string } | undefined;
+    if (!consumed) return [];
+    where.push(`datetime(${due}, '+' || ? || ' seconds') <= ?`);
+    params.push(seconds(opts.passedOverMs), consumed.at);
+  }
+  if (opts.dueForMs !== undefined) {
+    where.push(`datetime(${due}, '+' || ? || ' seconds') <= datetime('now')`);
+    params.push(seconds(opts.dueForMs));
+  }
+  return db
+    .prepare(`SELECT id, kind, ${due} AS dueAt FROM messages_in WHERE ${where.join(' AND ')} ORDER BY seq`)
+    .all(...params) as PendingTriggerRow[];
+}
+
 export function markMessageFailed(db: Database.Database, messageId: string): void {
   db.prepare("UPDATE messages_in SET status = 'failed' WHERE id = ?").run(messageId);
 }
@@ -309,6 +367,12 @@ export function getProcessingClaims(outDb: Database.Database): ProcessingClaim[]
   return outDb
     .prepare("SELECT message_id, status_changed FROM processing_ack WHERE status = 'processing'")
     .all() as ProcessingClaim[];
+}
+
+/** The subset of `messageIds` that hold a processing_ack row of any status. */
+export function getAckedMessageIds(outDb: Database.Database, messageIds: readonly string[]): Set<string> {
+  const stmt = outDb.prepare('SELECT 1 FROM processing_ack WHERE message_id = ?');
+  return new Set(messageIds.filter((id) => stmt.get(id) !== undefined));
 }
 
 /**

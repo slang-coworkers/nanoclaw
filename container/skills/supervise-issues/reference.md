@@ -308,8 +308,7 @@ and every top-level `wt-*` directory whatever its git shape — a linked worktre
 another clone), a standalone clone (`git clone --shared slang wt-<n>-revA`, a verify clone from
 GitHub), or an orphan (a `.git` file whose administrative directory is gone). A worktree that was
 renamed by hand is re-linked with `git worktree repair` before any prune, so renaming no longer
-orphans it. Top-level files named `wt-*` (build logs) and per-task directories under other names
-are not covered.
+orphans it.
 
 Tiers (thresholds live in `worktree-gc.py`; reference them by name):
 
@@ -337,10 +336,20 @@ How unsaved work is kept, and how to get it back:
 Untracked content above `SAVE_MAX_MB` is never committed: that tree is skipped and listed under
 `skipped`. Changes inside submodule working trees are third-party content and are not saved.
 
-`runs/` retention: an entry of `/workspace/agent/runs/` (the review runners' run directories,
-which the reviewer points `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` at, and the agent's own verify
-builds and probes) idle longer than `RUNS_RETENTION_DAYS`, held by no process and borrowed from
-by no clone, is renamed into the trash.
+Per-task output expires by one rule: idle longer than `RUNS_RETENTION_DAYS`, held by no process,
+and borrowed from by no clone, then renamed into the trash. It covers:
+
+- entries of `/workspace/agent/runs/` (the review runners' run directories, which the reviewer
+  points `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` at, and the agent's own verify builds and probes);
+- top-level directories named like per-task scratch (`SCRATCH_DIR_PATTERNS` in
+  `worktree-gc.py`: `review-<n>…`, `devin-<n>…`, `B-<n>…`, `revB-<n>…`, `pr<n>-review`,
+  `bare-<n>.git`, `scratch-…`, `repro-…`, `tmp-…`). Every git repository inside is saved first,
+  by shape as above; a bare clone keeps the commits its alternate does not have in a bundle;
+- top-level regular files named `wt-*` (the build and configure logs agents write next to a
+  checkout).
+
+Durable directories (`memory`, `tools`, `tasks`, `conversations`, the base clones, `venv-*`)
+match no pattern. To keep scratch out of the GC's reach, give it a name outside the list.
 
 Create or repair a tier's task (host shell):
 

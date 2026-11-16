@@ -277,6 +277,74 @@ class GateTest(unittest.TestCase):
         self.assertTrue(out["wakeAgent"])
         self.assertTrue(c.exists(), "a tree whose save failed must stay")
 
+    def test_stale_top_level_wt_files_are_expired(self):
+        # Build logs agents write next to a checkout: wt-12249-build.log and friends.
+        old = self.s.agent / "wt-12249-build.log"
+        old.write_text("log\n")
+        age_tree(old, 30)
+        fresh = self.s.agent / "wt-14500-build.log"
+        fresh.write_text("log\n")
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["files_expired"], 1, self.s.report())
+        self.assertFalse(old.exists())
+        self.assertTrue(fresh.exists())
+
+    def test_stale_scratch_directories_are_expired_and_durable_ones_kept(self):
+        for name in ("review-14416", "devin-13619-r2", "B-13514-r2", "scratch-voidptr", "tools", "memory"):
+            (self.s.agent / name).mkdir()
+            (self.s.agent / name / "notes.md").write_text("x\n")
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["scratch_expired"], 4, self.s.report())
+        for name in ("review-14416", "devin-13619-r2", "B-13514-r2", "scratch-voidptr"):
+            self.assertFalse((self.s.agent / name).exists(), name)
+        self.assertTrue((self.s.agent / "tools").exists())
+        self.assertTrue((self.s.agent / "memory").exists())
+
+    def test_recent_scratch_directory_is_kept(self):
+        (self.s.agent / "review-14500").mkdir()
+        (self.s.agent / "review-14500" / "lead-section.md").write_text("x\n")
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["scratch_expired"], 0)
+        self.assertTrue((self.s.agent / "review-14500").exists())
+
+    def test_scratch_clone_inside_a_scratch_dir_is_bundled_first(self):
+        d = self.s.agent / "scratch-881"
+        d.mkdir()
+        git(d, "clone", "-q", str(self.slang), "repo", days_ago=30)
+        (d / "repo" / "f.txt").write_text("edit\n")
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(d.exists())
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("scratch-881-repo.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+
+    def test_bare_clone_is_kept_while_a_checkout_borrows_from_it(self):
+        git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), "bare-13387.git", days_ago=30)
+        c = self.s.agent / "wt-13387-revA"
+        git(self.s.agent, "clone", "-q", "--shared", str(self.s.agent / "bare-13387.git"), c.name, days_ago=30)
+        self.s.age_all(30)
+        git(c, "checkout", "-q", "-b", "in-use")  # the borrower is in use, so it stays
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["scratch_expired"], 0, self.s.report())
+        self.assertTrue((self.s.agent / "bare-13387.git").exists())
+
+    def test_bare_clone_with_commits_of_its_own_is_bundled_then_expired(self):
+        bare = self.s.agent / "bare-13388.git"
+        git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), bare.name, days_ago=30)
+        other = self.s.tmp / "other"
+        git(self.s.tmp, "clone", "-q", str(self.slang), str(other))
+        (other / "g.txt").write_text("pr head\n")
+        git(other, "add", "-A")
+        git(other, "commit", "-qm", "pr head", days_ago=30)
+        sh("git", "--git-dir", str(bare), "fetch", "-q", str(other), "master:refs/heads/pr")
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["scratch_expired"], 1, self.s.report())
+        self.assertFalse(bare.exists())
+        self.assertEqual(len(list((self.s.agent / ".worktree-gc" / "saved").glob("bare-13388.git.*.bundle"))), 1)
+
     def test_plain_wt_directory_is_kept_and_reported(self):
         (self.s.agent / "wt-notes").mkdir()
         (self.s.agent / "wt-notes" / "draft.md").write_text("x\n")

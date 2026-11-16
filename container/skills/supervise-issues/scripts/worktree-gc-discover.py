@@ -6,13 +6,15 @@ prints into worktree-gc.py. It reports facts only: what each per-task checkout
 is, when the agent last used it, whether something holds it, and what depends
 on it. Every decision and every threshold lives in worktree-gc.py.
 
-It discovers four sets under the group directory (`/workspace/agent` in a
+It discovers six sets under the group directory (`/workspace/agent` in a
 container, `--agent` in tests):
 
   checkouts  every git worktree registered with a base clone
              (`<agent>/{slang,slangpy,slang-rhi}`), whatever its name, plus
              every top-level `wt-*` directory, the naming convention for
-             per-task checkouts, whatever its git shape:
+             per-task checkouts, and every top-level scratch directory
+             (worktree-gc.py's SCRATCH_DIR_PATTERNS) that is itself a checkout,
+             whatever its git shape:
                worktree  a linked worktree whose administrative directory
                          exists (owner = the repository that registered it)
                clone     a standalone clone: `.git` is a directory
@@ -21,6 +23,11 @@ container, `--agent` in tests):
                plain     no `.git` at all
   runs       every entry of `<agent>/runs/`, where review runners and the
              agent keep run output
+  scratch    every other top-level scratch directory, with the git
+             repositories found inside it (`git_inside`), which the executor
+             saves before it removes the directory; a bare clone such as
+             `bare-13387.git` is its own `git_inside` entry
+  wt files   every top-level regular file named `wt-*` (build logs)
   trash      what the executor already moved into `.worktree-gc/trash/` and
              still has to delete
 
@@ -42,6 +49,12 @@ import re
 import subprocess
 import sys
 import time
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+
+_spec = spec_from_file_location("worktree_gc", Path(__file__).with_name("worktree-gc.py"))
+wg = module_from_spec(_spec)
+_spec.loader.exec_module(wg)
 
 BASES = ("slang", "slangpy", "slang-rhi")
 BASE_REPOS = {"slang": "shader-slang/slang", "slangpy": "shader-slang/slangpy", "slang-rhi": "shader-slang/slang-rhi"}
@@ -61,6 +74,7 @@ DAY_S = 86400.0
 ACTIVE_WORK_FRESH_S = DAY_S
 RUN_ENTRY_SCAN_DEPTH = 2
 RUN_ENTRY_SCAN_LIMIT = 500
+NESTED_REPO_DEPTH = 3
 
 
 def git(args: list[str], cwd: str, timeout: float = 20) -> subprocess.CompletedProcess:
@@ -277,6 +291,49 @@ def live_worktrees_of(clone: str) -> list[str]:
     return out
 
 
+def is_bare_repo(path: str) -> bool:
+    return all(os.path.exists(os.path.join(path, f)) for f in ("HEAD", "objects", "refs"))
+
+
+def git_shape(path: str) -> tuple[str, str | None, str | None] | None:
+    """Classify a directory that git may own: (shape, owner, admin), or None
+    when it is not a repository. Shapes are those of a checkout plus `bare`."""
+    git_path = os.path.join(path, ".git")
+    if os.path.isdir(git_path):
+        return "clone", path, None
+    admin = read_gitfile(path)
+    if admin:
+        owner = owner_of_admin_dir(admin)
+        if owner and os.path.isdir(admin) and real(admin_target(admin)) == real(git_path):
+            return "worktree", owner, admin
+        return "orphan", owner, None
+    if is_bare_repo(path):
+        return "bare", path, None
+    return None
+
+
+def repositories_inside(path: str) -> list[dict]:
+    """Git repositories within NESTED_REPO_DEPTH levels of a scratch directory
+    (the directory itself included), outermost only; `build*` dirs are skipped."""
+    found, frontier = [], [(path, 0)]
+    while frontier:
+        d, depth = frontier.pop()
+        shape = git_shape(d)
+        if shape:
+            found.append({"path": d, "shape": shape[0], "owner": shape[1] or ""})
+            continue
+        if depth >= NESTED_REPO_DEPTH:
+            continue
+        try:
+            with os.scandir(d) as it:
+                for e in it:
+                    if e.is_dir(follow_symlinks=False) and not e.name.startswith("build"):
+                        frontier.append((e.path, depth + 1))
+        except OSError:
+            pass
+    return sorted(found, key=lambda r: r["path"])
+
+
 def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin: str | None,
                     branch: str, locked: bool, held: set[str], now: float) -> dict:
     name = os.path.basename(path)
@@ -354,25 +411,37 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
                 agent, p, "worktree", base_dir, read_gitfile(p), t.get("branch", ""),
                 bool(t.get("locked")), held, now)
 
+    scratch: dict[str, dict] = {}
+    wt_files: list[dict] = []
     for name in sorted(os.listdir(agent)):
         p = os.path.join(agent, name)
-        if not name.startswith("wt-") or os.path.islink(p) or not os.path.isdir(p) or real(p) in checkouts:
+        per_task = name.startswith("wt-") or wg.is_scratch_dir(name)
+        if not per_task or os.path.islink(p) or real(p) in checkouts:
             continue
-        git_path = os.path.join(p, ".git")
-        if os.path.isdir(git_path):
-            branch = git(["symbolic-ref", "-q", "--short", "HEAD"], p).stdout.strip()
-            checkouts[real(p)] = checkout_record(agent, p, "clone", p, None, branch, False, held, now)
+        if os.path.isfile(p):
+            if name.startswith("wt-"):
+                wt_files.append({"name": name, "path": p, "idle_days": round((now - mtime(p)) / DAY_S, 2),
+                                 "running": name in held, "dependents": []})
             continue
-        admin = read_gitfile(p)
-        owner = owner_of_admin_dir(admin) if admin else None
-        if admin and owner and os.path.isdir(admin) and real(admin_target(admin)) == real(os.path.join(p, ".git")):
-            branch = git(["symbolic-ref", "-q", "--short", "HEAD"], p).stdout.strip()
-            locked = os.path.exists(os.path.join(admin, "locked"))
-            checkouts[real(p)] = checkout_record(agent, p, "worktree", owner, admin, branch, locked, held, now)
-        elif admin:
-            checkouts[real(p)] = checkout_record(agent, p, "orphan", owner, None, "", False, held, now)
-        else:
+        if not os.path.isdir(p):
+            continue
+        shape = git_shape(p)
+        if shape and shape[0] != "bare":
+            kind, owner, admin = shape
+            branch = "" if kind == "orphan" else git(["symbolic-ref", "-q", "--short", "HEAD"], p).stdout.strip()
+            locked = bool(admin) and os.path.exists(os.path.join(admin, "locked"))
+            checkouts[real(p)] = checkout_record(agent, p, kind, owner, admin, branch, locked, held, now)
+        elif name.startswith("wt-"):
             checkouts[real(p)] = checkout_record(agent, p, "plain", None, None, "", False, held, now)
+        else:
+            scratch[real(p)] = {
+                "name": name,
+                "path": p,
+                "idle_days": round((now - run_entry_last_use(p)) / DAY_S, 2),
+                "running": name in held,
+                "dependents": [],
+                "git_inside": repositories_inside(p),
+            }
 
     runs_dir = os.path.join(agent, "runs")
     runs: dict[str, dict] = {}
@@ -393,7 +462,7 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
     # A checkout or run entry that another checkout borrows objects from
     # (`git clone --shared` writes objects/info/alternates) or that owns a live
     # linked worktree cannot go first: removing it corrupts the dependent.
-    by_path = {**checkouts, **runs}
+    by_path = {**checkouts, **runs, **scratch}
 
     def holder_of(target: str) -> dict | None:
         for root, rec in by_path.items():
@@ -421,6 +490,8 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
         "repaired": repaired,
         "worktrees": list(checkouts.values()),
         "runs": list(runs.values()),
+        "scratch_dirs": list(scratch.values()),
+        "wt_files": wt_files,
         "trash": trash,
     }
 
