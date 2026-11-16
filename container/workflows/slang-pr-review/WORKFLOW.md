@@ -52,9 +52,17 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    A and C each take 60–95 minutes. One Bash tool call cannot last that long, and a job started with `run_in_background=true` is killed with its process group when its call times out, so both run **detached** (`--detach`: own session, output in `<run_dir>/run.log`, `exit-status` written when done) and are awaited with the runner's `wait-run.sh` in calls that each stay well inside the tool limit. Do not use `Agent(run_in_background=true)` or `Bash(run_in_background=true)` for A or C.
 
+   Each reviewer writes into its own directory under `/workspace/agent/runs/`: `run_dir_A` =
+   `runs/A-<n>-r<k>`, `run_dir_B` = `runs/B-<n>-r<k>`, `run_dir_C` = `runs/C-<n>-r<k>`, where `<n>`
+   is the PR number (the branch or patch name in the other modes) and `<k>` the review round. Probes,
+   notes and copies of artifacts for this review go in those directories too, not in new top-level
+   directories: the worktree GC (supervise-issues §8) owns `runs/` and expires an entry once it has
+   been idle for `RUNS_RETENTION_DAYS`.
+
    **Reviewer A** — prints `run_dir_A` and returns at once:
 
    ```
+   REVIEW_RUN_DIR=/workspace/agent/runs/A-<n>-r<k> \
    slang-pr-review-runner compose-and-run --detach \
      --mode {pr|branch|patch} \
      --pr <N> | --branch <ref> | --patch <path> \
@@ -65,6 +73,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    **Reviewer C** — skip only if **Setup** found the clarity skills absent; runs in all three modes, prints `run_dir_C` and returns at once. Produces `<run_dir_C>/clarity-review.md`. Never posts.
 
    ```
+   CLARITY_RUN_DIR=/workspace/agent/runs/C-<n>-r<k> \
    slang-clarity-review-runner run-clarity --detach \
      --mode {pr|branch|patch} \
      --pr <N> | --branch <ref> | --patch <path> \
@@ -75,7 +84,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    **Reviewer B** — skip if `DEVIN_URL=""`. Best-effort, one attempt, 15-minute cap (the reviewer's first visit is what starts Devin's analysis, which took 6–11 minutes on the PRs measured so far; a shorter cap skips B on larger PRs). Run it as one foreground Bash call with the tool's timeout above the cap; it is merged if it finished, otherwise marked skipped (exit 2 = auth-wall, 3 = timeout, 4 = transient browser-launch failure). Never retry within the review.
 
    ```
-   slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out <run_dir> --max-minutes 15
+   slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out /workspace/agent/runs/B-<n>-r<k> --max-minutes 15
    ```
 
    **Wait for A and C.** `wait-run.sh` blocks until `<run_dir>/exit-status` exists and exits with that code; it exits **124** when `--timeout` passes with the run still going, **125** when the run died without writing a status, and prints the tail of `run.log` on any nonzero code. Call it with `--timeout 1200` (20 minutes) and a Bash tool timeout of 25 minutes, and repeat while it returns 124, up to 6 calls (2 hours) per reviewer. Wait for A first, then C; if a reviewer is still running after the sixth call, treat it as failed (`reviewers_complete=false`) and continue with the other's output.
@@ -173,7 +182,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 - **403 = graceful degrade.** No `pull_requests:write` → exit 3, fall back to `send_file`. Affects `slang-coworkers/*`; `shader-slang/*` are write-capable.
 - **Patch mode is sandboxed** — temp branch, reviewed, reset; no leak to `slang/master`. Skips Devin (no PR URL). Reviewer C still runs (sandboxes its own temp branch).
 - **Reviewer C (clarity) runs in all modes** — wraps the checkout's `slang-review-clarity-workflow` (shader-slang/slang#11340). It NEVER posts: the wrapper forbids `slang-review-post-github` and any GitHub-write tool; output is `clarity-review.md` only. Clarity is advisory — folded into the combined report sent to the fixer, never auto-posted to the PR.
-- **Name any ad-hoc git worktree `wt-<pr-or-issue-num>-<tag>`** under `/workspace/agent/` (e.g. `wt-11544-verify`, not `slang-11544-verify`). The supervisor's worktree GC (supervise-issues §8) reaps by this convention; freehand names still get caught by its name-agnostic backstop, but the `wt-` prefix keeps discovery uniform and unambiguous. Reviewer C's isolation worktree already follows this (`wt-clarity-*`).
+- **Name any ad-hoc git worktree `wt-<pr-or-issue-num>-<tag>`** under `/workspace/agent/` (e.g. `wt-11544-verify`, not `slang-11544-verify`). The supervisor's worktree GC (supervise-issues §8) reaps every per-task checkout under that prefix, a linked worktree or a standalone `git clone`, after saving its unsaved work; a checkout under any other name is never discovered. Reviewer C's isolation worktree already follows this (`wt-clarity-*`).
 - **Combined report is whole.** A + B + C are concatenated verbatim into `combined-review.md` and sent to the fixer un-summarized — the fixer sees every finding, not a digest. The `[Review Verdict]` message is the only summarized artifact.
 - **Reviewer C drift watch.** C reads the `slang-review-*` skills live from the checkout. If shader-slang/slang renames/restructures them, C breaks at the read step — update `slang-clarity-review-runner`'s wrapper prompt to track the new skill names.
 - **Devin is best-effort.** Reviewer A and C always produce the report; a Devin timeout, auth-wall or browser failure is noted in the verdict as skipped, not investigated. The page renders for anonymous viewers, draft PRs included; the first anonymous visit is what starts Devin's analysis, and when it finishes while the page is open Devin shows an "Analysis complete / View results" card that the fetch script clicks itself; Devin re-analyzes each new head on its own and there is nothing to click to force a refresh. If `devin-error.txt` shows the done-signals false on a fully rendered page (`devin-page.txt`), the fetch script's selectors are stale: report that upstream instead of retrying.
