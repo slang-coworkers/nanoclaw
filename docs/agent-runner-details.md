@@ -424,6 +424,7 @@ class OpenCodeProvider implements AgentProvider {
 - MCP config format translation (`type: 'local'`, `command: [cmd, ...args]`, `environment`)
 - System prompt injected via `<system>` prefix in prompt text
 - No resume support (sessions are always new or reused by ID)
+- Retryable model errors (`opencode-retry.ts`): OpenCode retries a failed model call itself (5 times, about 70 s). When it gives up on a 429 or an `isRetryable` error, the provider waits (15–30 s, doubling to 2–4 min, or the server's `retry-after`) and sends a short note asking the model to continue the request; it does not resend the prompt, so completed steps are not repeated. It stops 10 min after the first failure and the turn fails as before. While it waits it yields `activity`. The turn still ends in one `result` and one `usage`, which charges every attempt. Knobs: `OPENCODE_MODEL_RETRY_BUDGET_MS` (0 = off), `OPENCODE_MODEL_RETRY_BASE_MS`.
 
 ## Agent-Runner Core
 

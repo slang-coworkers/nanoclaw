@@ -385,6 +385,12 @@ describe('shared runtime recovery', () => {
       )
       .run();
     const server: ReturnType<typeof fakeServer> = fakeServer((sid) => onPrompt(server, sid));
+    const prompts: string[] = [];
+    const prompt = server.client.session.prompt;
+    server.client.session.prompt = ((params) => {
+      prompts.push((params.body.parts as Array<{ text: string }>)[0].text);
+      return prompt(params);
+    }) as OpenCodeSessionClient['prompt'];
     installDeps([server]);
     const query = newProvider().query({ prompt: 'work', cwd: CWD });
     query.push = mock(query.push);
@@ -403,7 +409,7 @@ describe('shared runtime recovery', () => {
     const sent = getUndeliveredMessages()
       .filter((row) => row.kind === 'chat')
       .map((row) => (JSON.parse(row.content) as { text: string }).text);
-    return { sent, exchanges, push: query.push as ReturnType<typeof mock> };
+    return { sent, exchanges, prompts, push: query.push as ReturnType<typeof mock> };
   }
 
   it('delivers the wrapped answer once and never sends the narration of earlier steps', async () => {
@@ -422,6 +428,132 @@ describe('shared runtime recovery', () => {
     expect(turn.sent).toEqual([]);
     expect(turn.push).toHaveBeenCalledTimes(1);
     expect(String(turn.push.mock.calls[0][0])).toContain('not wrapped in <message to="name">');
+  });
+
+  describe('a retryable model error after OpenCode gives up', () => {
+    // The error prod recorded on 2026-11-16 once OpenCode's own five retries were spent.
+    const RATE_LIMITED = {
+      name: 'APIError',
+      data: {
+        message: 'Too Many Requests',
+        statusCode: 429,
+        isRetryable: true,
+        responseHeaders: { 'x-amzn-waf-action': 'BLOCK', 'x-amzn-waf-rule': 'CPE_RateLimit_IP' },
+        responseBody: '',
+      },
+    };
+    const saved: Record<string, string | undefined> = {};
+    beforeEach(() => {
+      for (const name of ['OPENCODE_MODEL_RETRY_BASE_MS', 'OPENCODE_MODEL_RETRY_BUDGET_MS'])
+        saved[name] = process.env[name];
+      process.env.OPENCODE_MODEL_RETRY_BASE_MS = '1';
+    });
+    afterEach(() => {
+      for (const [name, value] of Object.entries(saved)) {
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+    });
+
+    it('retries with a note to continue, keeps completed steps, and answers once', async () => {
+      let attempt = 0;
+      const turn = await chatTurn((server, sid) => {
+        attempt += 1;
+        if (attempt === 1) {
+          server.push(assistantReply(sid, '<message to="main">Step one done.</message>'));
+          server.fail(sid, RATE_LIMITED);
+        } else if (attempt === 2) {
+          server.fail(sid, RATE_LIMITED);
+        } else {
+          server.reply(sid, '<message to="main">verdict</message>');
+        }
+      });
+      // The completed step went out once; no failure notice; the answer went out once.
+      expect(turn.sent).toEqual(['Step one done.', 'verdict']);
+      expect(turn.exchanges).toHaveLength(1);
+      expect(turn.exchanges[0].status).toBe('completed');
+      expect(turn.exchanges[0].result).toBe('<message to="main">verdict</message>');
+      // The prompt went once; each retry sent the note, never the prompt again.
+      expect(turn.prompts).toHaveLength(3);
+      expect(turn.prompts[0]).toBe('work');
+      for (const retry of turn.prompts.slice(1)) {
+        expect(retry).toContain('This is an automatic retry');
+        expect(retry).toContain('Do not repeat a step');
+      }
+    });
+
+    it('fails the turn as before once the retry budget is spent', async () => {
+      process.env.OPENCODE_MODEL_RETRY_BUDGET_MS = '0';
+      const turn = await chatTurn((server, sid) => server.fail(sid, RATE_LIMITED));
+      expect(turn.prompts).toEqual(['work']);
+      expect(turn.exchanges).toHaveLength(1);
+      expect(turn.exchanges[0].status).toBe('error');
+      expect(turn.sent).toHaveLength(1);
+      expect(turn.sent[0]).toContain("couldn't answer");
+    });
+
+    it('ends the turn with one result and one usage that charges every attempt', async () => {
+      // One billed step per attempt; the first attempt then hits the 429.
+      const step = (sid: string, id: string, input: number): Ev => ({
+        type: 'message.updated',
+        properties: {
+          info: { id, role: 'assistant', sessionID: sid, modelID: 'glm-5.3', tokens: { input, output: 10 } },
+        },
+      });
+      const server = fakeServer((sid, promptIndex) => {
+        if (promptIndex === 1) {
+          server.push([step(sid, 'msg_step_1', 100)]);
+          server.fail(sid, RATE_LIMITED);
+        } else {
+          server.push([step(sid, 'msg_step_2', 50)]);
+          server.reply(sid, 'recovered');
+        }
+      });
+      installDeps([server]);
+      const events = await runOneTurn(newProvider());
+      const kinds = events.map((event) => event.type).filter((type) => type !== 'text');
+      // No `usage` before the result: the poll loop's cost hard stop runs at
+      // `usage` and must only see the turn boundary.
+      expect(kinds[0]).toBe('init');
+      expect(kinds[1]).toBe('error');
+      expect(kinds.slice(2, -2).every((type) => type === 'activity')).toBe(true);
+      expect(kinds.slice(2, -2).length).toBeGreaterThan(0);
+      expect(kinds.slice(-2)).toEqual(['result', 'usage']);
+      expect(events.find((event) => event.type === 'error')).toMatchObject({ retryable: true });
+      expect(resultText(events)).toEqual(['recovered']);
+      const usage = events.find((event) => event.type === 'usage') as { turnTokens?: unknown[]; inputTokens: number };
+      expect(usage.inputTokens).toBe(150);
+      expect(usage.turnTokens).toEqual([
+        expect.objectContaining({ model: 'glm-5.3', inputTokens: 150, outputTokens: 20 }),
+      ]);
+    });
+
+    it('charges the failed attempt when the query is aborted while it waits to retry', async () => {
+      process.env.OPENCODE_MODEL_RETRY_BASE_MS = '60000';
+      const server = fakeServer((sid) => {
+        server.push([
+          {
+            type: 'message.updated',
+            properties: {
+              info: { id: 'msg_step', role: 'assistant', sessionID: sid, modelID: 'glm-5.3', tokens: { input: 100 } },
+            },
+          },
+        ]);
+        server.fail(sid, RATE_LIMITED);
+      });
+      installDeps([server]);
+      const query = newProvider().query({ prompt: 'hi', cwd: CWD });
+      query.end();
+      const events: ProviderEvent[] = [];
+      for await (const event of query.events) {
+        events.push(event);
+        if (event.type === 'error') setTimeout(() => query.abort(), 10);
+      }
+      const kinds = events.map((event) => event.type);
+      expect(kinds).not.toContain('result');
+      expect(kinds.at(-1)).toBe('usage');
+      expect(events.at(-1)).toMatchObject({ isError: true, inputTokens: 100 });
+    });
   });
 
   it('retries the spawn on the next query instead of caching the rejection', async () => {

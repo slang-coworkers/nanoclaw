@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 
+import { retryableModelError } from './opencode-retry.js';
 import { TurnTokenTally } from './turn-accounting.js';
 import type { TurnModelTokens } from './types.js';
 
@@ -29,6 +30,8 @@ export interface OpenCodeTurnResult {
   isError?: boolean;
   /** The turn's tokens by model, subagent sessions included. */
   tokens: TurnModelTokens[];
+  /** The native error that ended a failed turn (the assistant message's `error`), for the retry decision. */
+  error?: unknown;
 }
 
 /** The configured model as OpenCode's prompt API names it. */
@@ -199,7 +202,7 @@ export async function* executeOpenCodeTurn(options: {
   prepare?(): void | Promise<void>;
   discard(): void;
 }): AsyncGenerator<
-  { type: 'activity' } | { type: 'text'; text: string } | { type: 'error'; message: string; retryable: false },
+  { type: 'activity' } | { type: 'text'; text: string } | { type: 'error'; message: string; retryable: boolean },
   OpenCodeTurnResult
 > {
   const { client, pump, sessionId, signal } = options;
@@ -311,14 +314,16 @@ export async function* executeOpenCodeTurn(options: {
     await addSubagentTokens(client, pump, sessionId, turnStartedAt, tally, signal);
     const tokens = tally.rows();
     if (response.data.info.error) {
-      const message = openCodeError(response.data.info.error).message;
-      yield { type: 'error', message, retryable: false };
+      const error = response.data.info.error;
+      const message = openCodeError(error).message;
+      yield { type: 'error', message, retryable: retryableModelError(error) !== undefined };
       // Completed earlier steps went out as text events above. The result has
       // no text, so core sends its fixed failure notice and does not retry the
-      // failed turn. Diagnostics stay in the error event for logs: response
-      // bodies may contain message markup that must never be interpreted as a
-      // model-authored deliverable.
-      return { text: null, isError: true, tokens };
+      // failed turn; the provider may retry it first (opencode-retry.ts), and
+      // reads the native error from the result to decide. Diagnostics stay in
+      // the error event for logs: response bodies may contain message markup
+      // that must never be interpreted as a model-authored deliverable.
+      return { text: null, isError: true, tokens, error };
     }
     return { text: turnText.final, tokens };
   } catch (error) {
