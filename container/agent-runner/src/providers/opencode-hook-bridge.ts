@@ -11,9 +11,20 @@
  *
  *   OpenCode event                 Claude Code hook event
  *   tool.execute.before        ->  PreToolUse    (exit 2 or a deny decision blocks the tool)
+ *     ... of todowrite         ->  TaskCreated, TaskCompleted (a block refuses the write)
  *   tool.execute.after         ->  PostToolUse   (a block reason is appended to the tool output)
  *   event: a tool part in error ->  PostToolUseFailure (OpenCode skips tool.execute.after then)
- *   chat.message               ->  UserPromptSubmit (side effects only)
+ *   chat.message               ->  UserPromptSubmit (side effects only; not for a subagent's prompt)
+ *   event: a child session     ->  SubagentStart, SubagentStop (opencode-lifecycle.ts)
+ *   experimental.session.compacting -> PreCompact (stdout joins the compaction prompt)
+ *   event: session.compacted   ->  SessionStart (source compact), PostCompact
+ *
+ * SessionStart (startup, resume) and SessionEnd belong to the provider's
+ * query, not to an OpenCode event: the runner shares one OpenCode server
+ * between queries and kills it without a shutdown, and it never deletes a
+ * session, so no OpenCode event marks where a Claude Code session would end.
+ * The provider runs them through `settingsSessionHooks` when a query starts
+ * and ends, as the Claude Code CLI does for each query.
  *
  * Consider an OpenCode reviewer that calls the NanoClaw MCP tool to send
  * "[Review Verdict] ..." before any critique. OpenCode names the tool
@@ -40,9 +51,23 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { issueCloseRefusal } from '../issue-close.js';
-import { claudeToolResponse, hookSettingsPath, readHookSettings, runHookEvent } from '../settings-hooks.js';
+import {
+  claudeToolResponse,
+  hookSettingsPath,
+  readHookSettings,
+  runHookEvent,
+  type HookOutcome,
+} from '../settings-hooks.js';
+import {
+  OpenCodeLifecycle,
+  todoList,
+  type LifecycleHookCall,
+  type OpenCodeEvent,
+  type OpenCodeTodo,
+} from './opencode-lifecycle.js';
 
 const PLUGIN_FILE = 'nanoclaw-hook-bridge.js';
+const TODO_READ_TIMEOUT_MS = 5_000;
 
 // OpenCode's built-in tools and the Claude Code tool each one stands in for.
 const BUILTIN_TOOLS: Record<string, string> = {
@@ -125,7 +150,7 @@ export interface FailedToolCall {
 }
 
 /** The failed tool call an OpenCode event reports, or null for any other event. */
-export function failedToolPart(event: { type?: string; properties?: Record<string, unknown> }): FailedToolCall | null {
+export function failedToolPart(event: OpenCodeEvent): FailedToolCall | null {
   if (event.type !== 'message.part.updated') return null;
   const part = event.properties?.part as
     | {
@@ -146,32 +171,84 @@ export function failedToolPart(event: { type?: string; properties?: Record<strin
   };
 }
 
+/** The part of the OpenCode SDK client (the plugin context's `client`) the bridge uses. */
+export interface OpenCodeTodoClient {
+  session: {
+    todo(options: { path: { id: string }; signal?: AbortSignal }): Promise<{ data?: unknown; error?: unknown }>;
+  };
+}
+
+/**
+ * Return the todo list OpenCode stores for `sessionID`, or null when the
+ * server does not answer. A todowrite replaces the whole list, so the stored
+ * list is what the write changes.
+ */
+export async function storedTodos(
+  client: OpenCodeTodoClient | undefined,
+  sessionID: string,
+): Promise<OpenCodeTodo[] | null> {
+  if (!client) return null;
+  try {
+    const result = await client.session.todo({
+      path: { id: sessionID },
+      signal: AbortSignal.timeout(TODO_READ_TIMEOUT_MS),
+    });
+    return Array.isArray(result.data) ? todoList(result.data) : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * The OpenCode plugin. OpenCode calls every export of a plugin module, so the
  * file OpenCode loads re-exports only this function (see installOpenCodeHookBridge).
  */
-export const NanoclawHookBridge = async () => {
+export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = {}) => {
   const settingsPath = hookSettingsPath();
   const servers = mcpServerNames(process.env.OPENCODE_CONFIG_CONTENT);
   const settings = () => readHookSettings(settingsPath);
+  const lifecycle = new OpenCodeLifecycle();
+  const run = (call: LifecycleHookCall) => runHookEvent(settings(), call.event, call.matchTarget, call.payload);
   // A failed tool part can update several times; run its failure hooks once.
   const failedCalls = new Set<string>();
+
+  // Run the TaskCreated and TaskCompleted hooks of a todowrite, one task at a
+  // time as Claude Code creates them. A block refuses the whole write, which
+  // leaves the stored list as it was, as a blocked TaskCreate leaves no task.
+  async function runTaskHooks(sessionID: string, todos: unknown): Promise<HookOutcome> {
+    const before = await storedTodos(ctx.client, sessionID);
+    if (!before) {
+      console.error(`[nanoclaw-hook-bridge] no todo list for session ${sessionID}; task hooks not run`);
+      return { block: false, reason: '' };
+    }
+    const reasons: string[] = [];
+    for (const call of lifecycle.taskCalls(sessionID, before, todoList(todos))) {
+      const outcome = await run(call);
+      if (outcome.block) reasons.push(outcome.reason);
+    }
+    return reasons.length > 0 ? { block: true, reason: reasons.join('\n\n') } : { block: false, reason: '' };
+  }
+
   return {
-    // OpenCode does not call tool.execute.after for a tool that throws, so a
-    // failed call reaches the hooks from the event stream instead, as Claude
-    // Code's PostToolUseFailure (the dashboard records it, as for Claude).
-    event: async ({ event }: { event: { type?: string; properties?: Record<string, unknown> } }) => {
+    event: async ({ event }: { event: OpenCodeEvent }) => {
+      // The tracker reads the event before anything awaits (see opencode-lifecycle.ts).
+      const calls = lifecycle.observe(event);
+      // OpenCode does not call tool.execute.after for a tool that throws, so a
+      // failed call reaches the hooks from the event stream instead, as Claude
+      // Code's PostToolUseFailure (the dashboard records it, as for Claude).
       const failure = failedToolPart(event);
-      if (!failure || failedCalls.has(failure.callID)) return;
-      failedCalls.add(failure.callID);
-      const toolName = claudeToolName(failure.tool, servers);
-      await runHookEvent(settings(), 'PostToolUseFailure', toolName, {
-        session_id: failure.sessionID,
-        tool_name: toolName,
-        tool_input: claudeToolInput(toolName, failure.input),
-        tool_use_id: failure.callID,
-        error: failure.error,
-      });
+      if (failure && !failedCalls.has(failure.callID)) {
+        failedCalls.add(failure.callID);
+        const toolName = claudeToolName(failure.tool, servers);
+        await runHookEvent(settings(), 'PostToolUseFailure', toolName, {
+          session_id: failure.sessionID,
+          tool_name: toolName,
+          tool_input: claudeToolInput(toolName, failure.input),
+          tool_use_id: failure.callID,
+          error: failure.error,
+        });
+      }
+      for (const call of calls) await run(call);
     },
     'tool.execute.before': async (input: { tool: string; sessionID?: string }, output: { args?: unknown }) => {
       const toolName = claudeToolName(input.tool, servers);
@@ -186,6 +263,10 @@ export const NanoclawHookBridge = async () => {
         tool_input: toolInput,
       });
       if (outcome.block) throw new Error(outcome.reason);
+      if (toolName === 'TodoWrite') {
+        const tasks = await runTaskHooks(input.sessionID ?? '', toolInput.todos);
+        if (tasks.block) throw new Error(tasks.reason);
+      }
     },
     'tool.execute.after': async (
       input: { tool: string; sessionID?: string; args?: unknown },
@@ -202,6 +283,11 @@ export const NanoclawHookBridge = async () => {
       if (outcome.block && typeof output.output === 'string') output.output = `${output.output}\n\n${outcome.reason}`;
     },
     'chat.message': async (input: { sessionID?: string }, output: { parts?: unknown }) => {
+      // OpenCode sends a task's prompt to the child session as a chat message.
+      // Claude Code reports a subagent's start as SubagentStart, never as a
+      // user prompt, and workflow-state-reset.sh must not reset a workflow
+      // because a subagent started.
+      if (lifecycle.isSubagent(input.sessionID ?? '')) return;
       await runHookEvent(
         settings(),
         'UserPromptSubmit',
@@ -210,8 +296,48 @@ export const NanoclawHookBridge = async () => {
         { skip: ROUTER_HOOK },
       );
     },
+    // Claude Code uses a PreCompact hook's stdout as instructions for the
+    // summary; compact-instructions.ts writes the delivery rules there. This
+    // hook cannot cancel an OpenCode compaction, so a block only drops them.
+    'experimental.session.compacting': async (input: { sessionID: string }, output: { context: string[] }) => {
+      const outcome = await run(lifecycle.preCompact(input.sessionID));
+      if (outcome.context) output.context.push(outcome.context);
+    },
   };
 };
+
+/** Runs the group's SessionStart and SessionEnd hooks for the OpenCode provider's queries. */
+export interface OpenCodeSessionHooks {
+  /** A query starts on `sessionId`: a session it created (`startup`) or a stored continuation (`resume`). */
+  start(sessionId: string, source: 'startup' | 'resume', model?: string): Promise<void>;
+  /** The query on `sessionId` ends. */
+  end(sessionId: string): Promise<void>;
+}
+
+/**
+ * Return the session hooks that read the group's settings.json. Each call
+ * reads the file again, as the bridge does, so a hook the host adds while the
+ * container runs takes effect. Claude Code ends an SDK query's session with
+ * `reason: "other"`, so SessionEnd uses it too.
+ */
+export function settingsSessionHooks(env: NodeJS.ProcessEnv = process.env): OpenCodeSessionHooks {
+  const settingsPath = hookSettingsPath(env);
+  return {
+    async start(sessionId, source, model) {
+      await runHookEvent(readHookSettings(settingsPath), 'SessionStart', source, {
+        session_id: sessionId,
+        source,
+        ...(model ? { model } : {}),
+      });
+    },
+    async end(sessionId) {
+      await runHookEvent(readHookSettings(settingsPath), 'SessionEnd', 'other', {
+        session_id: sessionId,
+        reason: 'other',
+      });
+    },
+  };
+}
 
 /**
  * Put the bridge where OpenCode loads plugins: the native global plugin

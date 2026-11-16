@@ -9,6 +9,8 @@ import {
   claudeToolInput,
   claudeToolName,
   installOpenCodeHookBridge,
+  settingsSessionHooks,
+  type OpenCodeTodoClient,
 } from './opencode-hook-bridge.js';
 import { claudeToolResponse, type HookSettings } from '../settings-hooks.js';
 
@@ -86,15 +88,30 @@ describe('failed tool parts', () => {
   });
 });
 
-describe('the OpenCode plugin', () => {
-  async function plugin(settings: HookSettings) {
-    const file = path.join(dir, 'settings.json');
-    fs.writeFileSync(file, JSON.stringify({ hooks: settings }));
-    process.env.NANOCLAW_HOOK_SETTINGS = file;
-    process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ mcp: { nanoclaw: {}, codex: {} } });
-    return NanoclawHookBridge();
-  }
+async function plugin(settings: HookSettings, client?: OpenCodeTodoClient) {
+  const file = path.join(dir, 'settings.json');
+  fs.writeFileSync(file, JSON.stringify({ hooks: settings }));
+  process.env.NANOCLAW_HOOK_SETTINGS = file;
+  process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ mcp: { nanoclaw: {}, codex: {} } });
+  return NanoclawHookBridge({ client });
+}
 
+/** A hook that appends its stdin, one JSON line, to `file`: the dashboard telemetry hook stands in like this. */
+function recorder(file: string): { command: string } {
+  return { command: `cat >> ${file}; echo >> ${file}` };
+}
+
+/** The hook inputs `recorder` saw, in order. */
+function recorded(file: string): Record<string, unknown>[] {
+  if (!fs.existsSync(file)) return [];
+  return fs
+    .readFileSync(file, 'utf-8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
+describe('the OpenCode plugin', () => {
   it('blocks a delivery marker on the NanoClaw MCP tool when the PreToolUse gate refuses it', async () => {
     const gate = script(
       'gate.sh',
@@ -192,6 +209,216 @@ describe('the OpenCode plugin', () => {
     const output = { args: { command: 'gh pr create' }, output: 'created' };
     await hooks['tool.execute.after']({ tool: 'bash' }, output);
     expect(output.output).toBe('created\n\nadd the explanation comment');
+  });
+});
+
+describe('lifecycle events', () => {
+  const event = (type: string, properties: Record<string, unknown>) => ({ event: { type, properties } });
+
+  it('runs the SubagentStart and SubagentStop hooks whose matcher selects the agent type', async () => {
+    const seen = path.join(dir, 'subagent.jsonl');
+    const other = path.join(dir, 'other.jsonl');
+    const hooks = await plugin({
+      SubagentStart: [{ hooks: [recorder(seen)] }, { matcher: 'general', hooks: [recorder(other)] }],
+      SubagentStop: [{ matcher: 'explore', hooks: [recorder(seen)] }],
+    });
+    await hooks.event(
+      event('session.created', {
+        sessionID: 'ses_child',
+        info: { id: 'ses_child', parentID: 'ses_main', agent: 'explore' },
+      }),
+    );
+    await hooks.event(event('session.status', { sessionID: 'ses_child', status: { type: 'busy' } }));
+    await hooks.event(event('message.updated', { info: { id: 'msg_1', sessionID: 'ses_child', role: 'assistant' } }));
+    await hooks.event(
+      event('message.part.updated', {
+        part: { type: 'text', sessionID: 'ses_child', messageID: 'msg_1', text: 'done' },
+      }),
+    );
+    await hooks.event(event('session.idle', { sessionID: 'ses_child' }));
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'SubagentStart',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        agent_id: 'ses_child',
+        agent_type: 'explore',
+      },
+      {
+        hook_event_name: 'SubagentStop',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        agent_id: 'ses_child',
+        agent_type: 'explore',
+        stop_hook_active: false,
+        last_assistant_message: 'done',
+      },
+    ]);
+    expect(recorded(other)).toEqual([]);
+  });
+
+  it("runs no UserPromptSubmit hook for a subagent's prompt", async () => {
+    const seen = path.join(dir, 'prompt.jsonl');
+    const hooks = await plugin({ UserPromptSubmit: [{ hooks: [recorder(seen)] }] });
+    await hooks.event(
+      event('session.created', { sessionID: 'ses_child', info: { id: 'ses_child', parentID: 'ses_main' } }),
+    );
+    const parts = (t: string) => ({ parts: [{ type: 'text', text: t }] });
+    await hooks['chat.message']({ sessionID: 'ses_child' }, parts('find the call sites'));
+    await hooks['chat.message']({ sessionID: 'ses_main' }, parts('fix the bug'));
+    expect(recorded(seen).map((input) => [input.session_id, input.prompt])).toEqual([['ses_main', 'fix the bug']]);
+  });
+
+  it('adds the PreCompact stdout to the compaction prompt, then reports the compaction', async () => {
+    const seen = path.join(dir, 'compact.jsonl');
+    const hooks = await plugin({
+      PreCompact: [{ hooks: [{ command: `echo 'Keep the <message> blocks.'` }, recorder(seen)] }],
+      SessionStart: [{ matcher: 'compact', hooks: [recorder(seen)] }],
+      PostCompact: [{ matcher: 'auto', hooks: [recorder(seen)] }],
+    });
+    await hooks.event(
+      event('message.part.updated', {
+        part: { type: 'compaction', sessionID: 'ses_main', messageID: 'msg_user', auto: true },
+      }),
+    );
+    const output = { context: [] as string[] };
+    await hooks['experimental.session.compacting']({ sessionID: 'ses_main' }, output);
+    expect(output.context).toEqual(['Keep the <message> blocks.']);
+
+    await hooks.event(
+      event('message.updated', { info: { id: 'msg_sum', sessionID: 'ses_main', role: 'assistant', summary: true } }),
+    );
+    await hooks.event(
+      event('message.part.updated', {
+        part: { type: 'text', sessionID: 'ses_main', messageID: 'msg_sum', text: 'The summary.' },
+      }),
+    );
+    await hooks.event(event('session.compacted', { sessionID: 'ses_main' }));
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'PreCompact',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        trigger: 'auto',
+        custom_instructions: null,
+      },
+      { hook_event_name: 'SessionStart', cwd: '/workspace/agent', session_id: 'ses_main', source: 'compact' },
+      {
+        hook_event_name: 'PostCompact',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        trigger: 'auto',
+        compact_summary: 'The summary.',
+      },
+    ]);
+  });
+
+  function todoClient(todos: unknown): OpenCodeTodoClient & { reads: string[] } {
+    const reads: string[] = [];
+    return {
+      reads,
+      session: {
+        async todo({ path: { id } }) {
+          reads.push(id);
+          return { data: todos };
+        },
+      },
+    };
+  }
+
+  it('runs TaskCreated and TaskCompleted for a todowrite, against the stored list', async () => {
+    const seen = path.join(dir, 'tasks.jsonl');
+    const client = todoClient([{ content: 'Read the issue', status: 'in_progress', priority: 'high' }]);
+    const hooks = await plugin(
+      { TaskCreated: [{ matcher: 'ignored', hooks: [recorder(seen)] }], TaskCompleted: [{ hooks: [recorder(seen)] }] },
+      client,
+    );
+    await hooks['tool.execute.before'](
+      { tool: 'todowrite', sessionID: 'ses_main' },
+      {
+        args: {
+          todos: [
+            { content: 'Read the issue', status: 'completed', priority: 'high' },
+            { content: 'Write the test', status: 'pending', priority: 'high' },
+          ],
+        },
+      },
+    );
+    expect(client.reads).toEqual(['ses_main']);
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'TaskCompleted',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        task_id: '1',
+        task_subject: 'Read the issue',
+      },
+      {
+        hook_event_name: 'TaskCreated',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        task_id: '2',
+        task_subject: 'Write the test',
+      },
+    ]);
+  });
+
+  it('refuses a todowrite whose task a TaskCreated hook blocks', async () => {
+    const hooks = await plugin(
+      { TaskCreated: [{ hooks: [{ command: `echo 'name the ticket first' >&2; exit 2` }] }] },
+      todoClient([]),
+    );
+    await expect(
+      hooks['tool.execute.before'](
+        { tool: 'todowrite', sessionID: 'ses_main' },
+        { args: { todos: [{ content: 'Fix it', status: 'pending', priority: 'low' }] } },
+      ),
+    ).rejects.toThrow('name the ticket first');
+  });
+
+  it('runs no task hooks when the server cannot say what the list was', async () => {
+    const seen = path.join(dir, 'tasks.jsonl');
+    const failing: OpenCodeTodoClient = {
+      session: {
+        async todo() {
+          throw new Error('connection refused');
+        },
+      },
+    };
+    const hooks = await plugin({ TaskCreated: [{ hooks: [recorder(seen)] }] }, failing);
+    await hooks['tool.execute.before'](
+      { tool: 'todowrite', sessionID: 'ses_main' },
+      { args: { todos: [{ content: 'Fix it', status: 'pending', priority: 'low' }] } },
+    );
+    expect(recorded(seen)).toEqual([]);
+  });
+});
+
+describe('session hooks of a query', () => {
+  it('runs SessionStart for the matching source and SessionEnd with reason other', async () => {
+    const seen = path.join(dir, 'session.jsonl');
+    const file = path.join(dir, 'settings.json');
+    const settings: HookSettings = {
+      SessionStart: [
+        { matcher: 'startup|resume', hooks: [recorder(seen)] },
+        { matcher: 'compact', hooks: [] },
+      ],
+      SessionEnd: [{ hooks: [recorder(seen)] }],
+    };
+    fs.writeFileSync(file, JSON.stringify({ hooks: settings }));
+    const hooks = settingsSessionHooks({ NANOCLAW_HOOK_SETTINGS: file });
+    await hooks.start('ses_1', 'resume', 'nvidia/zai-org/glm-5.3');
+    await hooks.end('ses_1');
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'SessionStart',
+        cwd: '/workspace/agent',
+        session_id: 'ses_1',
+        source: 'resume',
+        model: 'nvidia/zai-org/glm-5.3',
+      },
+      { hook_event_name: 'SessionEnd', cwd: '/workspace/agent', session_id: 'ses_1', reason: 'other' },
+    ]);
   });
 });
 

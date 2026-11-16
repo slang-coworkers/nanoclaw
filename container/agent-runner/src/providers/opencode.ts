@@ -1,5 +1,5 @@
 import { initializeOpenCodeAuth } from './opencode-auth.js';
-import { installOpenCodeHookBridge } from './opencode-hook-bridge.js';
+import { installOpenCodeHookBridge, settingsSessionHooks, type OpenCodeSessionHooks } from './opencode-hook-bridge.js';
 import { spawn, type ChildProcess } from 'child_process';
 
 import { createOpencodeClient } from '@opencode-ai/sdk';
@@ -576,6 +576,10 @@ export class OpenCodeProvider implements AgentProvider {
     private readonly options: ProviderOptions = {},
     private readonly runtime?: OpenCodeRuntimeDeps,
     private readonly configuration?: ResolvedRuntimeConfiguration,
+    // Fork: the group's SessionStart and SessionEnd hooks, run once per query
+    // (see opencode-hook-bridge.ts). The registered provider reads them from
+    // settings.json; a provider built without them runs none.
+    private readonly sessionHooks?: OpenCodeSessionHooks,
   ) {}
 
   // true: every turn renders the hook's memory into the instructions file
@@ -600,6 +604,7 @@ export class OpenCodeProvider implements AgentProvider {
 
     async function* gen(): AsyncGenerator<ProviderEvent> {
       let sessionId = input.continuation;
+      let created = false;
       let initialized = false;
       let startedAt = Date.now();
       try {
@@ -623,16 +628,24 @@ export class OpenCodeProvider implements AgentProvider {
           if (abort.signal.aborted || (!pending.length && ended)) return;
           const turn = pending.shift()!;
           if (!sessionId) {
-            const created = await boundedOpenCodeCall(
+            const createdSession = await boundedOpenCodeCall(
               (signal) => runtime.client.session.create({ signal }),
               abort.signal,
             );
-            if (created.error) throw new Error(`OpenCode failed to create session: ${JSON.stringify(created.error)}`);
-            sessionId = created.data?.id;
+            if (createdSession.error) {
+              throw new Error(`OpenCode failed to create session: ${JSON.stringify(createdSession.error)}`);
+            }
+            sessionId = createdSession.data?.id;
             if (!sessionId) throw new Error('OpenCode failed to create session (no id)');
+            created = true;
           }
           if (!initialized) {
             initialized = true;
+            await self.sessionHooks?.start(
+              sessionId,
+              created ? 'startup' : 'resume',
+              promptModel && `${promptModel.providerID}/${promptModel.modelID}`,
+            );
             yield { type: 'init', continuation: sessionId };
           }
           startedAt = Date.now();
@@ -687,6 +700,7 @@ export class OpenCodeProvider implements AgentProvider {
         if (!abort.signal.aborted) throw error;
       } finally {
         abort.abort();
+        if (initialized && sessionId) await self.sessionHooks?.end(sessionId);
       }
     }
 
@@ -709,4 +723,7 @@ export class OpenCodeProvider implements AgentProvider {
   }
 }
 
-registerProvider('opencode', (opts, configuration) => new OpenCodeProvider(opts, undefined, configuration));
+registerProvider(
+  'opencode',
+  (opts, configuration) => new OpenCodeProvider(opts, undefined, configuration, settingsSessionHooks()),
+);
