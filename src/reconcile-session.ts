@@ -38,7 +38,7 @@ import { getSourceFor } from './db/a2a-session-sources.js';
 import { ABSOLUTE_CEILING_MS_RAW, CLAIM_STUCK_MS_RAW } from './config.js';
 import { log } from './log.js';
 import {
-  heartbeatPath,
+  heartbeatMtimeMs,
   openInboundDb,
   openOutboundDb,
   openOutboundDbRw,
@@ -941,15 +941,6 @@ async function deadLetterBouncedHandoff(
     sessionId: recipientSession.id,
     messageId: row.id,
   });
-}
-
-function heartbeatMtimeMs(agentGroupId: string, sessionId: string): number {
-  const hbPath = heartbeatPath(agentGroupId, sessionId);
-  try {
-    return fs.statSync(hbPath).mtimeMs;
-  } catch {
-    return 0;
-  }
 }
 
 function bashTimeoutMs(state: ContainerState | null): number | null {

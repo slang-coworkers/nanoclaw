@@ -278,7 +278,7 @@ curl -sS --noproxy '*' -X POST -H 'content-type: application/json' \
 | CL03 | `wakePromises` dedup: two simultaneous `wakeContainer` → ONE container spawned |
 | CL04 | Container repeatedly exits 1 → circuit breaker opens → next message returns error without respawn |
 | CL05 | Touch `groups/<name>/CLAUDE.md` → sweep detects stale → kill + respawn with fresh compose |
-| CL06 | N+1 concurrent spawns (N = MAX_CONCURRENT) → last one queued |
+| CL06 | `MAX_BUSY_CONTAINERS=N`, N+1 wakes of stopped sessions at once → N spawn, the last logs "Holding wake" and spawns on a later sweep tick once one goes idle |
 | CL07 | OOM (`stress --vm 1 --vm-bytes 4G`) → container exits 137 → graceful dashboard update, no hang |
 
 ---

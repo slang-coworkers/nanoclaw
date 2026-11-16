@@ -146,6 +146,8 @@ The host is an orchestrator:
 
 When a container spins up, the agent-runner immediately starts polling `inbound.db`. Messages are already there waiting.
 
+**Busy-container limit.** A spawn waits while `MAX_BUSY_CONTAINERS` (default 32, 0 = off) containers are busy: starting, or with a heartbeat in the last two minutes. Idle containers do not count. A held wake returns `false`, its messages stay pending, and the 60s sweep asks again; held sessions get free slots in the order they were held. A session whose container is already running is never held. See `src/spawn-admission.ts`.
+
 ## Media Handling
 
 ### Inbound

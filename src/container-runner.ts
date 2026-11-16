@@ -42,6 +42,7 @@ import {
   GROUPS_DIR,
   IDLE_TIMEOUT,
   INSTALL_SLUG,
+  MAX_BUSY_CONTAINERS,
   MAX_MESSAGES_PER_PROMPT,
   MCP_PROXY_PORT,
   TIMEZONE,
@@ -139,6 +140,7 @@ import {
   type VolumeMount,
 } from './providers/provider-container-registry.js';
 import {
+  heartbeatMtimeMs,
   heartbeatPath,
   markContainerRunning,
   markContainerStopped,
@@ -147,6 +149,7 @@ import {
   writeSessionContext,
   writeSessionRouting,
 } from './session-manager.js';
+import { BUSY_WINDOW_MS, STARTUP_GRACE_MS, SpawnAdmission, isBusyContainer } from './spawn-admission.js';
 import type { AgentGroup, Session } from './types.js';
 
 /**
@@ -401,6 +404,80 @@ const spawnedClaudeMdHash = new Map<string, string>();
  * double-replies.
  */
 const wakePromises = new Map<string, Promise<boolean>>();
+
+/**
+ * The busy-container limit every new spawn passes (see `src/spawn-admission.ts`).
+ * `admittedSpawns` holds the sessions admitted and not yet registered in
+ * `activeContainers`, so two wakes that pass the limit together are both counted
+ * while they compose their containers.
+ */
+let spawnAdmission = new SpawnAdmission(MAX_BUSY_CONTAINERS);
+let busyWindows = { busyWindowMs: BUSY_WINDOW_MS, startupGraceMs: STARTUP_GRACE_MS };
+const admittedSpawns = new Set<string>();
+
+/** Replace the spawn limit and its time windows; tests only. */
+export function _setSpawnAdmissionForTesting(
+  options: { limit?: number; busyWindowMs?: number; startupGraceMs?: number; waiterTtlMs?: number } = {},
+): void {
+  spawnAdmission = new SpawnAdmission(options.limit ?? MAX_BUSY_CONTAINERS, options.waiterTtlMs);
+  busyWindows = {
+    busyWindowMs: options.busyWindowMs ?? BUSY_WINDOW_MS,
+    startupGraceMs: options.startupGraceMs ?? STARTUP_GRACE_MS,
+  };
+  admittedSpawns.clear();
+}
+
+/**
+ * Count the containers that hold a slot under the busy limit at `nowMs`:
+ * registered containers that `isBusyContainer` calls busy, spawns admitted but
+ * not yet registered, and survivors waiting for a claim-fenced adoption (alive,
+ * but not in the registry). Each session counts once.
+ */
+function busyContainerCount(nowMs: number): number {
+  const busy = new Set<string>([...admittedSpawns, ...pendingAdoptions]);
+  for (const [sessionId, runtime] of activeContainers) {
+    if (busy.has(sessionId)) continue;
+    const activity = {
+      startedAtMs: runtime.startedAtMs,
+      adopted: runtime.adopted,
+      heartbeatMs: heartbeatMtimeMs(runtime.handle.key.agentGroupId, sessionId),
+    };
+    if (isBusyContainer(activity, nowMs, busyWindows)) busy.add(sessionId);
+  }
+  return busy.size;
+}
+
+/**
+ * Ask the busy limit whether `session` may spawn a container now. A held wake
+ * is logged once when it joins the queue and once when it is admitted, so a
+ * burst shows up in the log without a line per session per sweep tick.
+ */
+function admitSpawn(session: Session): boolean {
+  const nowMs = Date.now();
+  const busy = busyContainerCount(nowMs);
+  const decision = spawnAdmission.admit(session.id, busy, nowMs);
+  if (decision.admitted) {
+    if (decision.waitedMs !== undefined) {
+      log.info('Spawning held session — a busy slot is free', {
+        sessionId: session.id,
+        waitedMs: decision.waitedMs,
+        busy,
+        limit: spawnAdmission.limit,
+      });
+    }
+    return true;
+  }
+  const fields = {
+    sessionId: session.id,
+    busy,
+    limit: spawnAdmission.limit,
+    position: decision.position,
+    held: spawnAdmission.held,
+  };
+  if (decision.firstHold) log.info('Holding wake — busy-container limit reached; the sweep retries it', fields);
+  else log.debug('Wake still held at the busy-container limit', fields);
+  return false;
+}
 
 /**
  * Compose CLAUDE.md from the lego coworker model: spine fragments + skills +
@@ -1219,6 +1296,7 @@ async function wakeGuarded(session: Session): Promise<boolean> {
   const current = await getSession(session.id);
   if (current && current.status === 'closed') {
     log.debug('Skipping wake of closed session', { sessionId: session.id });
+    spawnAdmission.forget(session.id);
     return false;
   }
   // Operator kill switch. This is THE choke point every wake path funnels
@@ -1237,7 +1315,16 @@ async function wakeGuarded(session: Session): Promise<boolean> {
       sessionId: session.id,
       agentGroupId: session.agent_group_id,
     });
+    spawnAdmission.forget(session.id);
     return false;
+  }
+  // Busy-container limit. Same choke point, same contract as the pause above:
+  // a held wake returns false, its messages stay pending, and the sweep's
+  // due-message wake asks again next tick. A survivor awaiting adoption is
+  // already running, so reclaiming it is not a new spawn and skips the limit.
+  if (!pendingAdoptions.has(session.id)) {
+    if (!admitSpawn(session)) return false;
+    admittedSpawns.add(session.id);
   }
   try {
     await spawnContainer(session);
@@ -1246,6 +1333,8 @@ async function wakeGuarded(session: Session): Promise<boolean> {
   } catch (err) {
     log.warn('wakeContainer failed — host-sweep will retry', { sessionId: session.id, err });
     return false;
+  } finally {
+    admittedSpawns.delete(session.id);
   }
 }
 

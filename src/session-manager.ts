@@ -72,6 +72,15 @@ export function heartbeatPath(agentGroupId: string, sessionId: string): string {
   return path.join(sessionDir(agentGroupId, sessionId), '.heartbeat');
 }
 
+/** mtime of the session's heartbeat file in ms, or 0 when the file is absent. */
+export function heartbeatMtimeMs(agentGroupId: string, sessionId: string): number {
+  try {
+    return fs.statSync(heartbeatPath(agentGroupId, sessionId)).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
 function mailboxKey(agentGroupId: string, sessionId: string) {
   return { agentGroupId, sessionId };
 }
