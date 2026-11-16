@@ -262,14 +262,42 @@ class TestRunsRetention(unittest.TestCase):
         self.assertEqual(out["summary"]["runs_count"], 3)
 
     def test_boundary_is_kept(self):
-        self.assertFalse(wg.expired_run(self.run_entry("x", wg.RUNS_RETENTION_DAYS)))
+        self.assertFalse(wg.expired_entry(self.run_entry("x", wg.RUNS_RETENTION_DAYS)))
 
     def test_held_or_borrowed_entries_never_expire(self):
-        self.assertFalse(wg.expired_run(self.run_entry("x", 99, running=True)))
-        self.assertFalse(wg.expired_run(self.run_entry("x", 99, dependents=["wt-1-revA"])))
+        self.assertFalse(wg.expired_entry(self.run_entry("x", 99, running=True)))
+        self.assertFalse(wg.expired_entry(self.run_entry("x", 99, dependents=["wt-1-revA"])))
 
     def test_unmeasured_entry_is_kept(self):
-        self.assertFalse(wg.expired_run({"name": "x", "idle_days": None}))
+        self.assertFalse(wg.expired_entry({"name": "x", "idle_days": None}))
+
+
+class TestScratchDirs(unittest.TestCase):
+    def test_per_task_names_match(self):
+        for name in ("review-14416", "review-14416-r2-devin", "devin-13619-r2", "B-13514-R2", "revB-13315",
+                     "A-12464-recovered", "pr12249-review", "pr12249", "bare-13387.git", "scratch-12001",
+                     "scratch-voidptr", "repro-rhi-881", "tmp-A-1234", "probes-14284", "ci-1181-3cce"):
+            self.assertTrue(wg.is_scratch_dir(name), name)
+
+    def test_durable_names_do_not_match(self):
+        for name in ("memory", "tools", "tasks", "conversations", "runs", "slang", "slang-rhi", "slangpy",
+                     "slang-11225", "venv-1181", "uv-python", "tmp", "active-work", "reports", "rhi-d2",
+                     "llvm-22", "warm-briefings", "B-12", "review"):
+            self.assertFalse(wg.is_scratch_dir(name), name)
+
+    def test_scratch_dirs_and_wt_files_expire_by_the_shared_rule(self):
+        stale = wg.RUNS_RETENTION_DAYS + 1
+        out = wg.select({"free_gb": 500, "total_gb": 1000, "running_dirs": [], "worktrees": [],
+                         "scratch_dirs": [{"name": "review-1", "idle_days": stale, "running": False, "dependents": []},
+                                          {"name": "bare-2.git", "idle_days": stale, "running": False,
+                                           "dependents": ["wt-2-revA"]},
+                                          {"name": "devin-3", "idle_days": 1, "running": False, "dependents": []}],
+                         "wt_files": [{"name": "wt-1-build.log", "idle_days": stale, "running": False},
+                                      {"name": "wt-2-build.log", "idle_days": stale, "running": True}]})
+        self.assertEqual([r["name"] for r in out["scratch_expired"]], ["review-1"])
+        self.assertEqual([r["name"] for r in out["files_expired"]], ["wt-1-build.log"])
+        self.assertEqual(out["summary"]["scratch_dirs_count"], 3)
+        self.assertEqual(out["summary"]["files_expired_count"], 1)
 
 
 class TestUnknownVolume(unittest.TestCase):
