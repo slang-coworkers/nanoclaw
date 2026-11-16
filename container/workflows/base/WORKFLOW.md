@@ -19,7 +19,7 @@ A target for `extends:` and a splice point for cross-cutting overlays — agents
 
 1. **Understand** {#understand} — Read the inbound message. Identify what's asked, what artifacts exist, the success criterion. Ambiguous → the **Ambiguity** principle (Personality and Principles).
 
-2. **Setup** {#setup} — Establish workspace state for the task: claim active-work, ready the repo/files you'll touch, recall per the **Workspace › Recall rule**.
+2. **Setup** {#setup} — Establish workspace state for the task: claim active-work, ready the repo/files you'll touch, recall per the **Context › Recall rule**.
 
 3. **Change** {#change} — Do the work. Smallest correct change; keep the diff or output focused.
 

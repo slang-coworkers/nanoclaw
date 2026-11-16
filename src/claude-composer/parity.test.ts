@@ -131,8 +131,14 @@ describe('composed-document byte parity', () => {
       // Moved a tenth time when base-common gained the `invariants/gpu.md`
       // fragment (the standing GPU fact; the live measurement arrives as the
       // runner's `Environment:` system-prompt line).
-      'base-common': '42da875582235947',
-      'base-common.persona': '5fbde05b0437b53b',
+      //
+      // Moved an eleventh time when the Recall rule left `workspace.md` for its
+      // own `context/recall.md`, so the flat `main` type can list it too. The
+      // fragment is authored at `##`, so typed composition re-levels it to
+      // `### Recall rule`, a sibling of `### Workspace` (it was `####`, nested
+      // under Workspace). That heading is the only line that changed here.
+      'base-common': '1746257fc3cd81ce',
+      'base-common.persona': 'edde5b978576b607',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -140,8 +146,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'e92237bc9e1a2177',
-      'default.persona': 'a9ebdeb27db2dc58',
+      default: 'e5d925ba30679fe1',
+      'default.persona': 'e9d2c551f996d6a9',
     };
 
     const actual: Record<string, string> = {};
