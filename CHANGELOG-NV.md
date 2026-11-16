@@ -6,15 +6,45 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 814 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 316 |
-| `nv-slang` | slang project spine, skills, workflows | 219 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 134 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 111 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 850 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 318 |
+| `nv-slang` | slang project spine, skills, workflows | 223 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 135 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 112 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-16
+
+### nv-main (36 PRs)
+- **#2417** `supervise-issues: hourly zero-token gate (replaces the 12-hour task)`
+- **#2419** `Expire per-task scratch directories and wt-* files in the worktree GC`
+- **#2416** `` Show how many runs woke the agent in `ncl tasks list` ``
+- **#2418** `Retire stuck inbound mail and stop producing it`
+- **#2424** `fix(chat-sdk-bridge): close the webhook server on teardown; keep timer arguments in its test`
+- **#2422** `Continue an OpenCode turn cut off at the output limit; pin the kill-path requeue contract`
+- **#2423** `Treat a repository with no commit yet as nothing to save in the worktree GC`
+- **#2421** `Keep adopted containers on the 1 s delivery poll after a host restart`
+- **#2425** `worktree-gc: keep a skipped worktree's idle clock`
+_+27 more: #2415, #2414, #2413, #2412, #2411, #2410, #2409, #2408, #2407, #2406, #2405, #2404, #2403, #2402, #2401, #2400, #2398, #2397, #2396, #2395, #2393, #2391, #2390, #2389, #2388, #2387, #2379_
+
+### nv-dashboard (2 PRs)
+- **#2381** `Sync nv-dashboard with upstream/main`
+- **#2394** `Split open-weights spend from Claude and Codex in the dashboard costs`
+
+### nv-slang (4 PRs)
+- **#2382** `Sync nv-slang with upstream/main`
+- **#2392** `Post missing summon buttons at Discord collector startup`
+- **#2399** `slang-clarity-review-runner: run open-weights reviews on OpenCode`
+- **#2420** `Put every slang-pr-review run directory under runs/`
+
+### nv-slangpy (1 PRs)
+- **#2383** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2384** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-15
 
