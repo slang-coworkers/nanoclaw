@@ -154,13 +154,21 @@ describe('weights=open', () => {
 
 describe('container env', () => {
   it('writes the variables each provider reads', () => {
-    expect(modelPolicyEnv(resolveGroupModels('opencode', { weights: 'open' }, ENV))).toEqual({
+    expect(modelPolicyEnv(resolveGroupModels('opencode', { weights: 'open' }, ENV), ENV)).toEqual({
       NANOCLAW_MODEL_WEIGHTS: 'open',
       NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3',
       INTENT_ROUTER_OPENAI_MODEL: 'nvidia/zai-org/glm-5.3-flash',
       OPENCODE_MODEL: 'openai/nvidia/zai-org/glm-5.3',
       OPENCODE_SMALL_MODEL: 'openai/nvidia/zai-org/glm-5.3-flash',
       CODEX_MODEL: 'nvidia/moonshotai/kimi-k3',
+      ANTHROPIC_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_OPUS_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_SONNET_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      ANTHROPIC_SMALL_FAST_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_SUBAGENT_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_FALLBACK_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     });
     expect(modelPolicyEnv(resolveGroupModels('codex', { model: 'nvidia/moonshotai/kimi-k3' }, ENV))).toEqual({
       NANOCLAW_MODEL_WEIGHTS: 'any',
@@ -173,6 +181,52 @@ describe('container env', () => {
       NANOCLAW_CRITIC_MODEL: ENV.CODEX_MODEL,
       ANTHROPIC_DEFAULT_HAIKU_MODEL: 'aws/anthropic/x',
     });
+  });
+
+  it('points every Claude Code model variable of an open-weights group at its open models', () => {
+    // Consider a skill that starts the `claude` CLI inside an open-weights group: the host forwards
+    // the install's Claude settings into every container, so without these overrides the CLI would
+    // ask for a closed model first, and fall back to another closed one.
+    const claudeKeys = [
+      'ANTHROPIC_MODEL',
+      'ANTHROPIC_DEFAULT_OPUS_MODEL',
+      'ANTHROPIC_DEFAULT_SONNET_MODEL',
+      'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+      'ANTHROPIC_SMALL_FAST_MODEL',
+      'CLAUDE_CODE_SUBAGENT_MODEL',
+      'ANTHROPIC_FALLBACK_MODEL',
+    ];
+    for (const provider of ['opencode', 'codex', 'pi']) {
+      const env = modelPolicyEnv(resolveGroupModels(provider, { weights: 'open' }, ENV), ENV);
+      for (const key of claudeKeys) {
+        expect(isOpenWeightsModel(env[key], ENV), `${provider} ${key}=${env[key]}`).toBe(true);
+      }
+      expect(env.ANTHROPIC_FALLBACK_MODEL).not.toBe(env.ANTHROPIC_MODEL);
+      expect(env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBe('1');
+    }
+    // A group's own open models win over the open defaults, without OpenCode's provider prefix.
+    const own = modelPolicyEnv(
+      resolveGroupModels(
+        'opencode',
+        { weights: 'open', model: 'nvidia/moonshotai/kimi-k3', small_model: 'nvidia/qwen/qwen4-small' },
+        ENV,
+      ),
+      ENV,
+    );
+    expect(own.ANTHROPIC_MODEL).toBe('nvidia/moonshotai/kimi-k3');
+    expect(own.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('nvidia/qwen/qwen4-small');
+    // Closed groups keep the install's Claude settings: the policy writes none of them, except the
+    // Claude provider's own small model.
+    for (const provider of ['opencode', 'codex', 'pi', 'claude']) {
+      const env = modelPolicyEnv(resolveGroupModels(provider, {}, ENV), ENV);
+      for (const key of [
+        ...claudeKeys.filter((k) => k !== 'ANTHROPIC_DEFAULT_HAIKU_MODEL'),
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      ]) {
+        expect(env[key], `${provider} ${key}`).toBeUndefined();
+      }
+    }
+    expect(modelPolicyEnv(resolveGroupModels('opencode', {}, ENV), ENV).ANTHROPIC_DEFAULT_HAIKU_MODEL).toBeUndefined();
   });
 
   it('keeps the closed Codex default away from an open-weights group, and leaves a closed group alone', () => {

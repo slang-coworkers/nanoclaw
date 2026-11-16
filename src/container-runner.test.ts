@@ -1226,10 +1226,21 @@ describe('migrateStandingInstructions', () => {
 describe('composeSessionSpec applies the per-group model policy', () => {
   // src/model-policy.ts: spawn writes each role's model into the container env,
   // in one lane only, and refuses a weights=open group that would call a closed model.
-  const saved = process.env.OPENCODE_PROVIDER;
+  // The host .env's Claude settings, which forkContainerEnv forwards into every container.
+  const HOST_CLAUDE_ENV: Record<string, string> = {
+    ANTHROPIC_MODEL: 'aws/anthropic/bedrock-claude-opus-5-5[1m]',
+    ANTHROPIC_DEFAULT_OPUS_MODEL: 'aws/anthropic/bedrock-claude-opus-5-5[1m]',
+    ANTHROPIC_DEFAULT_SONNET_MODEL: 'aws/anthropic/bedrock-claude-sonnet-5-5',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: 'azure/anthropic/claude-haiku-5-5',
+    ANTHROPIC_FALLBACK_MODEL: 'azure/anthropic/claude-opus-5-5[1m]',
+  };
+  const saved: Record<string, string | undefined> = {};
+  for (const key of ['OPENCODE_PROVIDER', ...Object.keys(HOST_CLAUDE_ENV)]) saved[key] = process.env[key];
   afterEach(() => {
-    if (saved === undefined) delete process.env.OPENCODE_PROVIDER;
-    else process.env.OPENCODE_PROVIDER = saved;
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   });
 
   async function seedGroup(id: string, provider: string | null, weights: string) {
@@ -1271,6 +1282,44 @@ describe('composeSessionSpec applies the per-group model policy', () => {
       NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3',
     });
     expect(agent.contributedEnv?.OPENCODE_SMALL_MODEL).toBeUndefined();
+  });
+
+  it("replaces the host's Claude model settings in an open-weights group and keeps them in a closed one", async () => {
+    process.env.OPENCODE_PROVIDER = 'openai';
+    Object.assign(process.env, HOST_CLAUDE_ENV);
+    const compose = (id: string) =>
+      composeSessionSpec({
+        agentGroup: { ...agentGroup, id, folder: id, agent_provider: 'opencode' },
+        session,
+        containerName: `nanoclaw-v2-${id}-1700000000000`,
+        mounts,
+        containerConfig,
+        mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
+        contribution: {} as never,
+        gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+        provider: 'opencode',
+        instanceId: 'test-instance-id',
+      });
+
+    await seedGroup('ag-policy-open-claude-env', 'opencode', 'open');
+    const open = (await compose('ag-policy-open-claude-env')).containers[0].env;
+    expect(open).toMatchObject({
+      ANTHROPIC_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_OPUS_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_SONNET_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      ANTHROPIC_SMALL_FAST_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_SUBAGENT_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_FALLBACK_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    });
+    expect(JSON.stringify(open)).not.toContain('anthropic/');
+
+    // A closed group on the same install still gets the host's Claude settings.
+    await seedGroup('ag-policy-closed-claude-env', 'opencode', 'any');
+    const closed = (await compose('ag-policy-closed-claude-env')).containers[0].env;
+    expect(closed).toMatchObject(HOST_CLAUDE_ENV);
+    expect(closed.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBeUndefined();
   });
 
   it('refuses to start a Claude group set to open weights', async () => {

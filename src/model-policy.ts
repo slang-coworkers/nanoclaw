@@ -240,31 +240,75 @@ export function modelPolicyViolations(resolved: ResolvedModels, env: Env = proce
   return problems;
 }
 
-/** The env one container needs so each role uses its resolved model. */
-export function modelPolicyEnv(resolved: ResolvedModels): Record<string, string> {
-  const env: Record<string, string> = { NANOCLAW_MODEL_WEIGHTS: resolved.weights };
+/**
+ * Return the Claude Code settings of an open-weights container: every model
+ * variable Claude Code reads names one of the group's open models, and Claude
+ * Code's non-essential traffic is off.
+ *
+ * The host forwards the install's Claude settings (ANTHROPIC_MODEL, the
+ * Opus/Sonnet/Haiku defaults, ANTHROPIC_FALLBACK_MODEL) from its .env into
+ * every container (forkContainerEnv in container-runner.ts), because a Claude
+ * group needs them. An OpenCode, Codex or Pi group with weights=open does not
+ * run Claude Code itself, but a skill may start the `claude` CLI inside it, and
+ * that CLI would then ask for the install's Claude model first. Consider an
+ * OpenCode group with main model `openai/nvidia/zai-org/glm-5.3`: the main,
+ * Opus, Sonnet and subagent variables become `nvidia/zai-org/glm-5.3` (the
+ * endpoint's id, without OpenCode's provider prefix), and the Haiku,
+ * small-fast and fallback variables become the small model
+ * `nvidia/zai-org/glm-5.3-flash`, so the fallback differs from the main model
+ * as the Claude SDK requires. CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC turns
+ * off telemetry, error reporting and update checks, which go to closed-vendor
+ * hosts.
+ */
+function openWeightsClaudeCodeEnv(resolved: ResolvedModels, env: Env): Record<string, string> {
+  const { provider, main, small } = resolved;
+  // resolveGroupModels gives every role of a weights=open group a model.
+  if (!main || !small) throw new Error('an open-weights group resolves a main and a small model');
+  const mainId = endpointModelId(provider, 'main', main, env);
+  const smallId = endpointModelId(provider, 'small', small, env);
+  return {
+    ANTHROPIC_MODEL: mainId,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: mainId,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: mainId,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: smallId,
+    ANTHROPIC_SMALL_FAST_MODEL: smallId,
+    CLAUDE_CODE_SUBAGENT_MODEL: mainId,
+    ANTHROPIC_FALLBACK_MODEL: smallId,
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+  };
+}
+
+/**
+ * The env one container needs so each role uses its resolved model. `env` is
+ * the install's settings, read for OpenCode's provider prefix.
+ */
+export function modelPolicyEnv(resolved: ResolvedModels, env: Env = process.env): Record<string, string> {
+  const out: Record<string, string> = { NANOCLAW_MODEL_WEIGHTS: resolved.weights };
   const { provider, weights, main, small, router, critic } = resolved;
-  if (critic) env.NANOCLAW_CRITIC_MODEL = critic;
+  if (critic) out.NANOCLAW_CRITIC_MODEL = critic;
   // The Codex tool inside a container starts every turn on CODEX_MODEL unless the caller names a
   // model, and an install keeps a closed model there for its closed groups. An open-weights group
   // therefore gets its critic model as CODEX_MODEL, so a plain `codex` call stays on open weights.
   // A Codex group already sets CODEX_MODEL from its own main model below.
-  if (weights === 'open' && critic && provider !== 'codex') env.CODEX_MODEL = critic;
+  if (weights === 'open' && critic && provider !== 'codex') out.CODEX_MODEL = critic;
+  // modelPolicyViolations refuses a Claude group with weights=open, so an
+  // open-weights container never runs the Claude provider.
+  if (weights === 'open' && provider !== 'claude') Object.assign(out, openWeightsClaudeCodeEnv(resolved, env));
   if (provider === 'claude') {
     // One Claude setting serves the small model and the router.
-    if (small) env.ANTHROPIC_DEFAULT_HAIKU_MODEL = small;
-    return env;
+    if (small) out.ANTHROPIC_DEFAULT_HAIKU_MODEL = small;
+    return out;
   }
-  if (router) env.INTENT_ROUTER_OPENAI_MODEL = router;
+  if (router) out.INTENT_ROUTER_OPENAI_MODEL = router;
   if (provider === 'opencode') {
-    if (main) env.OPENCODE_MODEL = main;
-    if (small) env.OPENCODE_SMALL_MODEL = small;
+    if (main) out.OPENCODE_MODEL = main;
+    if (small) out.OPENCODE_SMALL_MODEL = small;
   } else if (provider === 'codex') {
-    if (main) env.CODEX_MODEL = main;
+    if (main) out.CODEX_MODEL = main;
   } else if (provider === 'pi') {
-    if (main) env.PI_MODEL = main;
+    if (main) out.PI_MODEL = main;
   }
-  return env;
+  return out;
 }
 
 /**
