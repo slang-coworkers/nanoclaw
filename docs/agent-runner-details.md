@@ -425,6 +425,7 @@ class OpenCodeProvider implements AgentProvider {
 - System prompt injected via `<system>` prefix in prompt text
 - No resume support (sessions are always new or reused by ID)
 - Retryable model errors (`opencode-retry.ts`): OpenCode retries a failed model call itself (5 times, about 70 s). When it gives up on a 429 or an `isRetryable` error, the provider waits (15–30 s, doubling to 2–4 min, or the server's `retry-after`) and sends a short note asking the model to continue the request; it does not resend the prompt, so completed steps are not repeated. It stops 10 min after the first failure and the turn fails as before. While it waits it yields `activity`. The turn still ends in one `result` and one `usage`, which charges every attempt. Knobs: `OPENCODE_MODEL_RETRY_BUDGET_MS` (0 = off), `OPENCODE_MODEL_RETRY_BASE_MS`.
+- Cut-off steps (`opencode-output-limit.ts`): OpenCode ends a turn on a step whose finish reason is `length` (the response budget ran out), often with no text. The provider then sends a fixed note asking the model to continue where it was cut off, in the same session and without resending the prompt, at most `MAX_OUTPUT_LIMIT_CONTINUES` (3) times per turn. This mirrors Claude Code's own output-limit recovery. The turn still ends in one `result` and one `usage` that charges every step. A turn still cut off after the last continue ends as before.
 
 ## Agent-Runner Core
 

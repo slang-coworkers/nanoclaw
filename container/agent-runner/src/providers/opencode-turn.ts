@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 
+import { OUTPUT_LIMIT_FINISH } from './opencode-output-limit.js';
 import { retryableModelError } from './opencode-retry.js';
 import { TurnTokenTally } from './turn-accounting.js';
 import type { TurnModelTokens } from './types.js';
@@ -16,6 +17,8 @@ export interface OpenCodeMessage {
     parentID?: string;
     summary?: boolean;
     error?: unknown;
+    /** Why an assistant step ended: `stop`, `tool-calls`, `length` (cut off at the output token limit), … */
+    finish?: string;
     time: { created: number; completed?: number };
     /** The model that served an assistant message. */
     modelID?: string;
@@ -32,6 +35,8 @@ export interface OpenCodeTurnResult {
   tokens: TurnModelTokens[];
   /** The native error that ended a failed turn (the assistant message's `error`), for the retry decision. */
   error?: unknown;
+  /** True when the turn's last step was cut off at the output token limit (opencode-output-limit.ts). */
+  truncated?: boolean;
 }
 
 /** The configured model as OpenCode's prompt API names it. */
@@ -334,7 +339,7 @@ export async function* executeOpenCodeTurn(options: {
       // that must never be interpreted as a model-authored deliverable.
       return { text: null, isError: true, tokens, error };
     }
-    return { text: turnText.final, tokens };
+    return { text: turnText.final, tokens, truncated: response.data.info.finish === OUTPUT_LIMIT_FINISH };
   } catch (error) {
     // The calls made before the failure were billed. Read their tokens back and
     // hand them on with the error, so the provider charges them before it
