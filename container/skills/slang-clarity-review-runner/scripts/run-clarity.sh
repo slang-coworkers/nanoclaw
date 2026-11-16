@@ -37,7 +37,8 @@
 # open) the same prompt and allowlist go to the sibling's
 # scripts/opencode-review.py, which runs them on OpenCode with the group's
 # model (OPENCODE_MODEL) and writes the same clarity-review.md and
-# tool-uses.jsonl; --model is refused there. Every other group runs `claude`.
+# tool-uses.jsonl; --model may only name that model there. Every other group
+# runs `claude`.
 
 set -euo pipefail
 # ~/.local/bin is the fallback slang-pr-review-runner's install.sh uses when the
@@ -66,7 +67,7 @@ RUN_ARGS=()
 while (($#)); do
   case "$1" in
     --detach) DETACH=1; shift; continue ;;
-    -h|--help) sed -n '2,40p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,41p' "$0"; exit 0 ;;
     --mode|--pr|--branch|--base|--patch|--repo|--max-budget-usd|--max-turns|--model)
       [ $# -ge 2 ] || { echo "error: $1 needs a value" >&2; exit 1; }
       RUN_ARGS+=("$1" "$2") ;;
@@ -122,8 +123,8 @@ RUNNER_SKILL_DIR="$(cd "$SKILL_DIR/.." && pwd)/slang-pr-review-runner"
 . "$RUNNER_SKILL_DIR/scripts/review-engine.sh"
 ENGINE="$(review_engine)"
 require_review_engine "slang-pr-review-runner's install.sh"
-if [ "$ENGINE" = "opencode" ] && [ "$MODEL_GIVEN" -eq 1 ]; then
-  echo "error: --model is not accepted in an open-weights group; the review runs on the group's model (OPENCODE_MODEL=${OPENCODE_MODEL:-})." >&2
+if [ "$ENGINE" = "opencode" ] && [ "$MODEL_GIVEN" -eq 1 ] && ! is_group_open_model "$MODEL"; then
+  echo "error: --model $MODEL is not the group's model; an open-weights review runs on OPENCODE_MODEL=${OPENCODE_MODEL:-}. Leave --model out." >&2
   exit 1
 fi
 command -v gh     >/dev/null || { echo "error: gh CLI missing." >&2; exit 1; }

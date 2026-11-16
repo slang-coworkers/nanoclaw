@@ -131,8 +131,13 @@ check "the private worktree is removed" is "$(ls "$T/wt")" ""
 echo "open-weights group, refused inputs:"
 # shellcheck disable=SC2086
 run_case model-flag $OPEN_ENV -- --model opus
-check "--model is refused" rc_is model-flag 1
-check "--model: no CLI ran" absent "$T/model-flag/opencode.args"
+check "--model opus is refused" rc_is model-flag 1
+check "--model opus: no CLI ran" absent "$T/model-flag/opencode.args"
+# shellcheck disable=SC2086
+run_case model-group $OPEN_ENV -- --model nvidia/zai-org/glm-5.3
+check "--model naming the group's model is accepted" rc_is model-group 0
+check "--model group model: opencode runs on OPENCODE_MODEL" is "$(arg_after model-group --model)" openai/nvidia/zai-org/glm-5.3
+check "--model group model: claude did not run" absent "$T/model-group/claude.args"
 if [ -z "$(PATH=/usr/bin:/bin command -v opencode)" ]; then
   mkdir -p "$T/stub-noopencode"
   cp "$T/stub/gh" "$T/stub/claude" "$T/stub-noopencode/"
