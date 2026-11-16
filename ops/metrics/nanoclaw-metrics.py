@@ -144,7 +144,19 @@ def parse_iso(s):
         return None
 
 
-def model_tier(model):
+OPEN_WEIGHTS_MARKERS = ("glm", "kimi", "deepseek", "moonshot", "zai-org")
+
+
+def effective_provider(group_provider, config_provider):
+    """The provider a group's sessions run on, in the host's own order (src/providers/provider-name.ts):
+    agent_groups.agent_provider, then container_configs.provider, then 'claude'. A per-session pin is not
+    a group property, so it is not shown here. Reading only container_configs labelled every group that was
+    moved with `ncl groups update --agent-provider` as 'claude'.
+    """
+    return (group_provider or config_provider or "claude").lower()
+
+
+def model_tier(model, weights=None):
     """Coarse model tier for the per-coworker wire-mix panel.
 
     Collapses an alias ('opus'/'sonnet'/'haiku') or a full model id
@@ -157,7 +169,8 @@ def model_tier(model):
     collector is written to avoid.
     """
     if not model:
-        return "default"
+        # weights=open is stated in the config: the model policy picks an open-weights model for every role.
+        return "open-default" if str(weights or "").lower() == "open" else "default"
     m = str(model).lower()
     if "opus" in m:
         return "opus"
@@ -165,6 +178,8 @@ def model_tier(model):
         return "sonnet"
     if "haiku" in m:
         return "haiku"
+    if any(k in m for k in OPEN_WEIGHTS_MARKERS):
+        return "open"
     return "other"
 
 
@@ -188,10 +203,15 @@ def collect_db(now_ms):
     con = connect_ro()
     cur = con.cursor()
     try:
-        groups = {}   # folder -> (name, coworker_type)
-        for gid, name, ctype, folder in cur.execute(
-                "SELECT id, name, coworker_type, folder FROM agent_groups"):
+        groups = {}   # gid -> (name, coworker_type, folder)
+        group_provider = {}   # gid -> agent_groups.agent_provider (first in the host's provider order)
+        try:
+            rows = cur.execute("SELECT id, name, coworker_type, folder, agent_provider FROM agent_groups").fetchall()
+        except Exception:  # noqa: BLE001 - an older schema has no agent_provider column
+            rows = [r + (None,) for r in cur.execute("SELECT id, name, coworker_type, folder FROM agent_groups").fetchall()]
+        for gid, name, ctype, folder, gprov in rows:
             groups[gid] = (name or gid, ctype or "unknown", folder or "")
+            group_provider[gid] = gprov or ""
 
         # --- per-group provider/model tier (wire-mix) ---
         # container_configs is the source of truth for a coworker's model
@@ -200,11 +220,15 @@ def collect_db(now_ms):
         # passes it to the SDK as the query model. Read read-only from the same
         # v2.db connection. Wrapped on its own so a schema surprise degrades to
         # "no model tag" instead of taking down every db metric below.
-        cfgs = {}   # gid -> (provider, model)
+        cfgs = {}   # gid -> (provider, model, weights)
         try:
-            for gid, provider, model in cur.execute(
-                    "SELECT agent_group_id, provider, model FROM container_configs"):
-                cfgs[gid] = (provider or "", model or "")
+            try:
+                rows = cur.execute("SELECT agent_group_id, provider, model, weights FROM container_configs").fetchall()
+            except Exception:  # noqa: BLE001 - an older schema has no weights column
+                rows = [r + (None,) for r in cur.execute(
+                    "SELECT agent_group_id, provider, model FROM container_configs").fetchall()]
+            for gid, provider, model, weights in rows:
+                cfgs[gid] = (provider or "", model or "", weights or "")
         except Exception as exc:  # noqa: BLE001 - degrade, never crash the pipeline
             _errors.append(f"cfgs:{exc}")
 
@@ -287,21 +311,22 @@ def collect_db(now_ms):
         tier_agg = {}   # tier -> {"events", "coworkers", "running"}
         for gid, d in per.items():
             name, ctype, folder = groups.get(gid, (gid, "unknown", ""))
-            provider, model = cfgs.get(gid, ("", ""))
-            tier = model_tier(model)
+            cfg_provider, model, weights = cfgs.get(gid, ("", "", ""))
+            provider = effective_provider(group_provider.get(gid), cfg_provider)
+            tier = model_tier(model, weights)
             ev = by_folder.get(folder, 0)
             # provider/model/tier tags feed the wire-mix panels. emit() drops
             # empty tag values, so an unset model simply omits the model tag;
-            # provider falls back to the baked-in default ('claude') and tier
-            # is always a groupable label ('default' when the model is unset).
+            # provider follows the host's order (effective_provider) and tier
+            # is always a groupable label ('open-default' or 'default' when the model is unset).
             emit("nanoclaw_group",
                  {"running": d["running"], "active": d["active"],
                   "total": d["total"], "stale": d["stale"],
                   "events": ev,
                   "tool_failures": fail_by_folder.get(folder, 0)},
                  {"group": name, "coworker_type": ctype,
-                  "provider": provider or "claude", "model": model,
-                  "tier": tier})
+                  "provider": provider, "model": model,
+                  "tier": tier, "weights": weights})
             a = tier_agg.setdefault(tier, {"events": 0, "coworkers": 0,
                                            "running": 0})
             a["events"] += ev
