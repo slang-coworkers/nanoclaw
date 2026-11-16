@@ -31,6 +31,14 @@
 # Divergences from upstream's slang-review-clarity-workflow (intentional):
 #   - `gh` not `gh.exe` (we are Linux, not WSL/Windows).
 #   - Skips step 11 (`slang-review-post-github`); we never post from here.
+#
+# Inner CLI: the sibling skill's scripts/review-engine.sh chooses it, the same
+# way it does for Reviewer A. In an open-weights group (NANOCLAW_MODEL_WEIGHTS=
+# open) the same prompt and allowlist go to the sibling's
+# scripts/opencode-review.py, which runs them on OpenCode with the group's
+# model (OPENCODE_MODEL) and writes the same clarity-review.md and
+# tool-uses.jsonl; --model may only name that model there. Every other group
+# runs `claude`.
 
 set -euo pipefail
 # ~/.local/bin is the fallback slang-pr-review-runner's install.sh uses when the
@@ -50,6 +58,7 @@ REPO=""
 MAX_BUDGET_USD="${CLARITY_MAX_BUDGET_USD:-30}"
 MAX_TURNS="${CLARITY_MAX_TURNS:-500}"
 MODEL="${CLARITY_MODEL:-${ANTHROPIC_DEFAULT_OPUS_MODEL:-opus}}"
+MODEL_GIVEN=0
 DETACH=0
 # Every flag except --detach is kept so the detached re-exec sees the same
 # request this invocation validated.
@@ -58,7 +67,7 @@ RUN_ARGS=()
 while (($#)); do
   case "$1" in
     --detach) DETACH=1; shift; continue ;;
-    -h|--help) sed -n '2,36p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,41p' "$0"; exit 0 ;;
     --mode|--pr|--branch|--base|--patch|--repo|--max-budget-usd|--max-turns|--model)
       [ $# -ge 2 ] || { echo "error: $1 needs a value" >&2; exit 1; }
       RUN_ARGS+=("$1" "$2") ;;
@@ -72,7 +81,7 @@ while (($#)); do
     --repo) REPO="$2"; shift 2 ;;
     --max-budget-usd) MAX_BUDGET_USD="$2"; shift 2 ;;
     --max-turns) MAX_TURNS="$2"; shift 2 ;;
-    --model) MODEL="$2"; shift 2 ;;
+    --model) MODEL="$2"; MODEL_GIVEN=1; shift 2 ;;
     *) echo "error: unknown flag $1" >&2; exit 1 ;;
   esac
 done
@@ -100,16 +109,25 @@ case "$MODE" in
     ;;
 esac
 
-# Tooling sanity
-command -v claude >/dev/null || { echo "error: claude CLI not in PATH. Run slang-pr-review-runner's install.sh." >&2; exit 1; }
-command -v gh     >/dev/null || { echo "error: gh CLI missing." >&2; exit 1; }
-
 # Reviewer A's skill is installed beside this one; Reviewer C borrows its
-# dry-run MCP config and its detach.sh / wait-run.sh pair so both reviewers are
-# started and awaited the same way.
+# engine choice, its dry-run MCP config and its detach.sh / wait-run.sh pair so
+# both reviewers run on the same CLI and are started and awaited the same way.
 RUNNER_SKILL_DIR="$(cd "$SKILL_DIR/.." && pwd)/slang-pr-review-runner"
 [ -d "$RUNNER_SKILL_DIR/scripts" ] \
   || { echo "error: sibling skill not found at $RUNNER_SKILL_DIR (is slang-pr-review-runner installed?)" >&2; exit 1; }
+[ -f "$RUNNER_SKILL_DIR/scripts/review-engine.sh" ] \
+  || { echo "error: $RUNNER_SKILL_DIR/scripts/review-engine.sh not found; update slang-pr-review-runner." >&2; exit 1; }
+
+# Tooling sanity
+# shellcheck source=/dev/null
+. "$RUNNER_SKILL_DIR/scripts/review-engine.sh"
+ENGINE="$(review_engine)"
+require_review_engine "slang-pr-review-runner's install.sh"
+if [ "$ENGINE" = "opencode" ] && [ "$MODEL_GIVEN" -eq 1 ] && ! is_group_open_model "$MODEL"; then
+  echo "error: --model $MODEL is not the group's model; an open-weights review runs on OPENCODE_MODEL=${OPENCODE_MODEL:-}. Leave --model out." >&2
+  exit 1
+fi
+command -v gh     >/dev/null || { echo "error: gh CLI missing." >&2; exit 1; }
 
 [ -f "$REPO_ROOT/REVIEW.md" ] \
   || { echo "error: $REPO_ROOT/REVIEW.md not found. Run slang-pr-review-runner's install.sh." >&2; exit 1; }
@@ -345,7 +363,7 @@ claude_md_excludes() {
 }
 INNER_SETTINGS="${INNER_CLAUDE_SETTINGS:-$(claude_md_excludes "$REPO_ROOT")}"
 
-echo ">>> run-clarity.sh: pr=${PROMPT_PR} repo=${PROMPT_REPO} mode=${MODE}"
+echo ">>> run-clarity.sh: engine=${ENGINE} pr=${PROMPT_PR} repo=${PROMPT_REPO} mode=${MODE}"
 echo ">>> REPO_ROOT=$REPO_ROOT"
 echo ">>> mcp-config=$MCP_CONFIG"
 echo ">>> settings=$INNER_SETTINGS"
@@ -362,6 +380,24 @@ cd "$REPO_ROOT"
 # Same setting as Reviewer A's repro.sh.
 export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
 
+if [ "$ENGINE" = "opencode" ]; then
+  # OpenCode writes stream.jsonl, clarity-review.md and tool-uses.jsonl itself.
+  echo ">>> max-budget-usd=${MAX_BUDGET_USD:-30} has no OpenCode equivalent; the run is bounded by max-turns=${MAX_TURNS:-500}"
+  set +e
+  python3 "$RUNNER_SKILL_DIR/scripts/opencode-review.py" \
+    --repo-root "$REPO_ROOT" \
+    --run-dir "$RUN_DIR" \
+    --prompt-file "$PROMPT_FILE" \
+    --allowed "$ALLOWED" \
+    --mcp-config "$MCP_CONFIG" \
+    --max-turns "${MAX_TURNS:-500}" \
+    --output clarity-review.md \
+    --title "slang-clarity-review ${MODE} ${PROMPT_PR}"
+  RC=$?
+  set -e
+else
+# The Claude path. Its extraction heredocs need their terminators in column 0,
+# so the block keeps its original indentation.
 set +e
 claude \
   --print \
@@ -413,6 +449,7 @@ with open("$RUN_DIR/stream.jsonl") as f:
             if b.get("type")=="tool_use":
                 print(json.dumps({"name": b.get("name"), "input": b.get("input")}))
 PY
+fi
 
 # Patch-mode cleanup: roll back the temp branch.
 if [ "$MODE" = "patch" ] && [ -n "${TEMP_BRANCH:-}" ]; then
