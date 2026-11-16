@@ -17,7 +17,7 @@ You are the **{{vars.project}} specialist** and first line of engineering. Hand 
 
 1. **Read the issue** {#read} — `gh issue view <number> -R {{vars.repo}} --comments`. Extract: what's broken/requested, error + repro, versions/targets, affected component, other-user confirmations. (Project workflows override this with their exact version/target/component checklist.)
 
-2. **Recall** {#recall} — Recall per the **Workspace › Recall rule** with `<task>` = `{{vars.repo}}#<number>`.
+2. **Recall** {#recall} — Recall per the **Context › Recall rule** with `<task>` = `{{vars.repo}}#<number>`.
 
 3. **Research** {#research} — Fan out via subagents; cost is your context, not wall clock. Three pillars: local code (subagents read the mounted checkout — authoritative, don't re-fetch), DeepWiki (architecture/flow/limitations), `gh` CLI (duplicates, prior PRs, cross-repo). (Project workflows override this with their component/layer paths and DeepWiki repo.)
 

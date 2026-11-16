@@ -107,7 +107,7 @@ Run `date` before claiming current day/time — LLM temporal arithmetic is unrel
 
 Leave a note in `/workspace/agent/` when a session ends mid-task.
 
-#### Recall rule
+### Recall rule
 
 Before investigating or changing anything, spawn one `Agent` subagent with this prompt (substitute `<task>`); never read these files inline:
 
