@@ -55,3 +55,34 @@ class TierTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CostSplitTest(unittest.TestCase):
+    def setUp(self):
+        self.m = _load()
+
+    def test_open_weights_spend_is_its_own_field(self):
+        d = {"sessions": [
+            {"cost": 6, "claudeUsd": 3, "codexUsd": 1, "openUsd": 2, "group_folder": "main", "group_name": "Orchestrator",
+             "session_id": "s1", "container_status": "running"},
+            {"cost": 4, "claudeUsd": 0, "codexUsd": 0, "openUsd": 4, "group_folder": "main", "group_name": "Orchestrator",
+             "session_id": "s2"},
+        ]}
+        points = self.m.cost_points(d)
+        fleet = next(f for f, t in points if t["scope"] == "fleet")
+        self.assertEqual((fleet["usd"], fleet["claude_usd"], fleet["codex_usd"], fleet["open_usd"]), (10, 3, 1, 6))
+        self.assertEqual(fleet["active_sessions"], 1)
+        group = next(f for f, t in points if t["scope"] == "group")
+        self.assertEqual(group["open_usd"], 6)
+        sessions = [f for f, t in points if t["scope"] == "session"]
+        self.assertEqual([s["open_usd"] for s in sessions], [2, 4])
+
+    def test_older_dashboard_without_open_usd_reads_zero(self):
+        points = self.m.cost_points({"sessions": [{"cost": 1, "claudeUsd": 1, "group_folder": "g", "session_id": "s"}]})
+        fleet = next(f for f, t in points if t["scope"] == "fleet")
+        self.assertEqual(fleet["open_usd"], 0)
+        self.assertEqual(fleet["claude_usd"], 1)
+
+    def test_zero_cost_groups_and_sessions_emit_nothing(self):
+        points = self.m.cost_points({"sessions": [{"cost": 0, "group_folder": "idle", "session_id": "s0"}]})
+        self.assertEqual([t["scope"] for f, t in points], ["fleet"])

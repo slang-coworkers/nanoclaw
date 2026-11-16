@@ -3153,7 +3153,7 @@
     },
     {
       "type": "row",
-      "title": "\ud83d\udcb5 Cost (today, priced from transcripts \u2014 Claude + Codex)",
+      "title": "\ud83d\udcb5 Cost (today, priced per model \u2014 Claude, open weights, Codex)",
       "id": 49,
       "collapsed": false,
       "gridPos": {
@@ -3289,6 +3289,69 @@
         }
       ],
       "description": "Claude half of today's fleet spend."
+    },
+    {
+      "type": "stat",
+      "title": "Open weights today",
+      "id": 77,
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 5,
+        "x": 19,
+        "y": 91
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "mappings": [],
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#3987e5"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#3987e5",
+                "value": null
+              }
+            ]
+          },
+          "noValue": "no data"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"open_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(previous)",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "description": "GLM, Kimi and DeepSeek spend today (open_usd), kept out of Claude and Codex."
     },
     {
       "type": "stat",
@@ -3503,6 +3566,17 @@
           "rawQuery": true,
           "resultFormat": "time_series",
           "alias": "codex"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"open_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'fleet') AND $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "open weights"
         }
       ],
       "description": "Intraday cumulative spend. fill(none): a collector gap shows as a break, never a plausible dip to zero."
@@ -3642,7 +3716,8 @@
               "session": "Session",
               "last": "usd",
               "last_1": "claude",
-              "last_2": "codex"
+              "last_2": "codex",
+              "last_3": "open"
             }
           }
         }
@@ -3654,7 +3729,7 @@
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
           },
-          "query": "SELECT last(\"usd\"), last(\"claude_usd\"), last(\"codex_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'session') AND $timeFilter GROUP BY \"session\",\"group\"",
+          "query": "SELECT last(\"usd\"), last(\"claude_usd\"), last(\"codex_usd\"), last(\"open_usd\") FROM \"nanoclaw_cost\" WHERE (\"scope\" = 'session') AND $timeFilter GROUP BY \"session\",\"group\"",
           "rawQuery": true,
           "resultFormat": "table"
         }
