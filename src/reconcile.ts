@@ -29,10 +29,10 @@ export type ReconcileFn = (sessionId: string) => Promise<void>;
  *
  * This tuple is the authoritative closed registry: `ReconcileQueueOptions`
  * demands a handler for every key here, and `ReconcileKey` refuses to carry one
- * that is absent. The last three are fork-only duties (cost-approval and
- * cost-ceiling reconcilers, the daily cost-drift check); they are listed here rather than run beside the
- * queue so they get the same coalescing, per-key backoff, and `idle()`
- * accounting as the rest. Widening the type to `singleton:${string}` was
+ * that is absent. The cost-approval and cost-ceiling reconcilers, the daily
+ * cost-drift check and the closed-session mail scan are fork-only duties; they
+ * are listed here rather than run beside the queue so they get the same
+ * coalescing, per-key backoff, and `idle()` accounting as the rest. Widening the type to `singleton:${string}` was
  * considered and rejected — it degrades this Record to an index signature, so a
  * misspelled key would compile and only fail at dispatch.
  */
@@ -43,6 +43,7 @@ export const SINGLETON_KEYS = [
   'singleton:cost-cards',
   'singleton:cost-ceiling-adjustments',
   'singleton:cost-drift-check',
+  'singleton:closed-session-mail',
 ] as const;
 export type SingletonKey = (typeof SINGLETON_KEYS)[number];
 

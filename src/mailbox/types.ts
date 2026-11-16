@@ -48,6 +48,14 @@ export interface MessageRetry {
   processAfter: string | null;
 }
 
+/** A pending trigger row as the stuck-inbound retirement sees it (see getPendingTriggerRows). */
+export interface PendingTriggerRow {
+  id: string;
+  kind: string;
+  /** When the row fell due: `process_after`, else `timestamp` (normalized 'YYYY-MM-DD HH:MM:SS', UTC). */
+  dueAt: string;
+}
+
 export interface ProcessingClaim {
   messageId: string;
   statusChanged: string;
@@ -142,6 +150,12 @@ export interface InboundMailbox {
    * the number of rows closed. Optional for fakes.
    */
   expireOrphanedCliResponses?(cutoffIso: string): number;
+  /**
+   * Pending trigger rows, oldest first; with `passedOverMs`, only those the
+   * session's runner has passed over for at least that long while consuming
+   * newer work (see getPendingTriggerRows). Optional for fakes.
+   */
+  getPendingTriggerRows?(opts?: { passedOverMs?: number }): PendingTriggerRow[];
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;
@@ -199,6 +213,8 @@ export interface InboundMailbox {
 export interface OutboundMailbox {
   getTerminalProcessingAcks(): ProcessingAck[];
   getProcessingClaims(): ProcessingClaim[];
+  /** The subset of `messageIds` holding a processing_ack row of any status. Optional for fakes. */
+  getAckedMessageIds?(messageIds: readonly string[]): Set<string>;
   deleteOrphanProcessingClaims(): number;
   getContainerState(): ContainerState | null;
   getDueMessages(excludeIds?: ReadonlySet<string>): OutboundMessage[];
