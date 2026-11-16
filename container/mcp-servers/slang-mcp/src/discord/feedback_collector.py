@@ -22,7 +22,7 @@ import logging
 import os
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import aiohttp
 
@@ -53,6 +53,53 @@ DASHBOARD_SECRET = os.environ.get("DASHBOARD_SECRET", "").strip()
 SUMMON_TARGET_GROUP = os.environ.get("SUMMON_TARGET_GROUP", "slang-discord-support")
 MAX_BOT_REPLIES_PER_THREAD = int(os.environ.get("MAX_BOT_REPLIES_PER_THREAD", "15"))
 THREAD_STATE_FILE = os.path.join(FEEDBACK_DIR, "thread_state.jsonl")
+
+# The summon button's custom_id and the first line of its message. Both are how a thread is
+# recognized as "already has its button" — by the backfill below and by the posting paths.
+SUMMON_CUSTOM_ID = "summon:get_help"
+SUMMON_MARKER = "Need help? Click below for a bot answer."
+DEFAULT_BACKFILL_DAYS = 7
+
+
+def _summon_prompt_text() -> str:
+    """Return the message posted with the summon button (one source for every posting path)."""
+    return (
+        f"🤖 *{SUMMON_MARKER}*\n"
+        f"*After the first reply, I'll keep responding to **your** follow-ups in this thread "
+        f"(up to {MAX_BOT_REPLIES_PER_THREAD} messages total). "
+        f"Click **Resolved** on any of my replies to pause me; click again to resume.*"
+    )
+
+
+def _backfill_days() -> int:
+    """Return how many days back the startup backfill looks: DISCORD_BACKFILL_DAYS, default 7, 0 = off.
+
+    A value that is not a whole number falls back to the default rather than turning the backfill off,
+    because a typo should not silently remove the downtime replay.
+    """
+    raw = os.environ.get("DISCORD_BACKFILL_DAYS", "").strip()
+    if not raw:
+        return DEFAULT_BACKFILL_DAYS
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        logger.warning(f"DISCORD_BACKFILL_DAYS={raw!r} is not a whole number; using {DEFAULT_BACKFILL_DAYS}")
+        return DEFAULT_BACKFILL_DAYS
+
+
+def _is_summon_message(message, bot_user_id) -> bool:
+    """True when `message` is the bot's own summon-button post.
+
+    Matches the button's custom_id, or the message text when components were not delivered. A bot
+    reply that carries only the feedback buttons is not a summon post.
+    """
+    if getattr(getattr(message, "author", None), "id", None) != bot_user_id:
+        return False
+    for row in getattr(message, "components", None) or []:
+        for child in getattr(row, "children", None) or []:
+            if getattr(child, "custom_id", None) == SUMMON_CUSTOM_ID:
+                return True
+    return SUMMON_MARKER in (getattr(message, "content", None) or "")
 
 
 def _forward_followups_here() -> bool:
@@ -457,6 +504,75 @@ def _save_thread_reply(message: discord.Message):
     logger.info(f"Thread reply saved in {getattr(message.channel, 'name', '?')}")
 
 
+# ── Startup backfill ────────────────────────────────────────────────────────
+
+async def _active_threads(forum):
+    """Return the forum's active threads: the guild's REST list when it answers, else the cache."""
+    guild = getattr(forum, "guild", None)
+    if guild is not None and hasattr(guild, "active_threads"):
+        try:
+            return [t for t in await guild.active_threads() if t.parent_id == forum.id]
+        except Exception as e:  # noqa: BLE001 - fall back to the gateway cache
+            logger.warning(f"Backfill: active_threads failed for forum {forum.id}: {e}")
+    return list(getattr(forum, "threads", None) or [])
+
+
+async def backfill_summon_buttons(client, now=None, pause_seconds: float = 0.5) -> dict:
+    """Post the summon button on recent threads that do not have one, and return the counts.
+
+    on_thread_create posts the button only while this daemon is connected, so a thread created during
+    downtime never gets one. At every READY this pass looks at the active threads of the watched forums
+    created in the last DISCORD_BACKFILL_DAYS days (default 7, 0 = off), skips archived and locked
+    threads and threads where the bot already posted its button, and posts the same message and view.
+    It is safe to repeat: a thread with a button is left alone. DISCORD_READ_ONLY=1 posts nothing, as in
+    on_thread_create.
+    """
+    counts = {"scanned": 0, "posted": 0, "had_button": 0, "skipped": 0, "errors": 0}
+    days = _backfill_days()
+    if days == 0:
+        logger.info("Backfill: off (DISCORD_BACKFILL_DAYS=0)")
+        return counts
+    if os.environ.get("DISCORD_READ_ONLY") == "1":
+        logger.warning("Backfill: DISCORD_READ_ONLY=1 — no summon buttons posted")
+        return counts
+    now = now or datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=days)
+    bot_id = client.user.id
+    for fid in sorted(WATCHED_FORUM_IDS):
+        try:
+            forum = client.get_channel(int(fid)) or await client.fetch_channel(int(fid))
+        except Exception as e:  # noqa: BLE001 - one missing forum must not stop the others
+            counts["errors"] += 1
+            logger.error(f"Backfill: cannot open forum {fid}: {e}")
+            continue
+        for thread in await _active_threads(forum):
+            if thread.created_at is None or thread.created_at < cutoff:
+                continue
+            counts["scanned"] += 1
+            if thread.archived or thread.locked:
+                counts["skipped"] += 1
+                continue
+            try:
+                history = [m async for m in thread.history(limit=50)]
+                if any(_is_summon_message(m, bot_id) for m in history):
+                    counts["had_button"] += 1
+                    continue
+                await thread.send(_summon_prompt_text(), view=SummonView())
+                counts["posted"] += 1
+                logger.info(f"Backfill: summon button posted in thread {thread.name}")
+                if pause_seconds:
+                    await asyncio.sleep(pause_seconds)
+            except Exception as e:  # noqa: BLE001 - keep going; the summary reports the count
+                counts["errors"] += 1
+                logger.error(f"Backfill: thread {getattr(thread, 'name', thread.id)}: {e}")
+    logger.info(
+        f"Backfill: {counts['scanned']} threads from the last {days} days; posted {counts['posted']} "
+        f"missing summon buttons; {counts['had_button']} already had one; {counts['skipped']} archived "
+        f"or locked; {counts['errors']} errors"
+    )
+    return counts
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 async def main():
@@ -470,6 +586,7 @@ async def main():
     intents = discord.Intents.default()
     intents.message_content = True
     client = discord.Client(intents=intents)
+    backfill_lock = asyncio.Lock()
 
     @client.event
     async def on_ready():
@@ -481,6 +598,11 @@ async def main():
             f"Continuation cap: {MAX_BOT_REPLIES_PER_THREAD} bot replies/thread; "
             f"target group: {SUMMON_TARGET_GROUP}"
         )
+        # A READY follows every reconnect, so the backfill also covers a Gateway outage, not only a
+        # restart. The lock keeps two READY events from posting into the same thread twice.
+        if not backfill_lock.locked():
+            async with backfill_lock:
+                await backfill_summon_buttons(client)
 
     # Architecture note:
     #   - on_thread_create lives HERE, not in slang-mcp/discord.py. Slang-mcp's
@@ -512,14 +634,8 @@ async def main():
             return
         # Wait briefly for the thread to be fully created before posting
         await asyncio.sleep(2)
-        prompt_text = (
-            "🤖 *Need help? Click below for a bot answer.*\n"
-            f"*After the first reply, I'll keep responding to **your** follow-ups in this thread "
-            f"(up to {MAX_BOT_REPLIES_PER_THREAD} messages total). "
-            f"Click **Resolved** on any of my replies to pause me; click again to resume.*"
-        )
         try:
-            await thread.send(prompt_text, view=SummonView())
+            await thread.send(_summon_prompt_text(), view=SummonView())
             logger.info(f"Summon button posted in new thread: {thread.name}")
         except Exception as e:
             logger.error(f"Failed to post summon button in {thread.name}: {e}")
