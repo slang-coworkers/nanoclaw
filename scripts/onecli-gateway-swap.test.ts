@@ -67,3 +67,54 @@ describe('onecli-gateway-swap compose edit', () => {
     expect(out.status).not.toBe(0);
   });
 });
+
+/**
+ * After a swap only 127.0.0.1 answers on the management port, so a host script that still calls the API on
+ * the bridge address fails. The prod GitHub token refresh did, silently, for three hours. `check-callers`
+ * must name such scripts and leave loopback calls and the proxy port alone.
+ */
+describe('onecli-gateway-swap check-callers', () => {
+  function run(files: Record<string, string>, crontab: string): { status: number | null; stdout: string } {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'swap-callers-'));
+    for (const [name, body] of Object.entries(files)) {
+      fs.mkdirSync(path.dirname(path.join(dir, name)), { recursive: true });
+      fs.writeFileSync(path.join(dir, name), body);
+    }
+    const tab = path.join(dir, 'crontab');
+    fs.writeFileSync(tab, crontab.replaceAll('$DIR', dir));
+    const r = spawnSync('bash', [SCRIPT, 'check-callers', '10254'], {
+      encoding: 'utf8',
+      env: { ...process.env, ONECLI_SCAN_DIRS: path.join(dir, 'cfg'), ONECLI_SCAN_CRONTAB_FILE: tab },
+    });
+    fs.rmSync(dir, { recursive: true, force: true });
+    return { status: r.status, stdout: r.stdout };
+  }
+
+  it('names a script that calls the API on the bridge address, from the scan folder and from crontab', () => {
+    const out = run(
+      {
+        'cfg/refresh.sh': 'ONECLI_API_HOST=http://172.17.0.1:10254 onecli secrets update --id x\n',
+        'bin/job.sh': 'curl -s http://0.0.0.0:10254/v1/health\n',
+      },
+      '*/30 * * * * $DIR/bin/job.sh >> /tmp/job.log 2>&1\n',
+    );
+    expect(out.status).toBe(0);
+    expect(out.stdout).toContain('cfg/refresh.sh calls the OneCLI management API');
+    expect(out.stdout).toContain('bin/job.sh calls the OneCLI management API');
+  });
+
+  it('leaves loopback calls, the proxy port and commented crontab lines alone', () => {
+    const out = run(
+      {
+        'cfg/ok.sh': 'curl http://127.0.0.1:10254/api/x\n',
+        'cfg/ok.py': 'URL = "http://localhost:10254/v1"\n',
+        'cfg/proxy.sh': 'HTTPS_PROXY=http://172.17.0.1:10255\n',
+        'bin/old.sh': 'curl http://172.17.0.1:10254/v1/health\n',
+      },
+      '# */30 * * * * $DIR/bin/old.sh\n',
+    );
+    expect(out.status).toBe(0);
+    expect(out.stdout).toContain('none call the management API off loopback');
+    expect(out.stdout).not.toContain('WARNING');
+  });
+});

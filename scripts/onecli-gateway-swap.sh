@@ -4,12 +4,16 @@
 # Usage:
 #   scripts/onecli-gateway-swap.sh swap <image>        for example onecli-cost:v5
 #   scripts/onecli-gateway-swap.sh rollback <stamp>    the stamp that `swap` printed
+#   scripts/onecli-gateway-swap.sh check-callers [port] name host scripts that still call the API off loopback
 #
 # `swap` backs up the compose file and the nanoclaw .env under one stamp, sets the image of the gateway
 # service, rewrites every host binding of container port 10254 (the management API) to 127.0.0.1, starts
 # the gateway, waits until it is healthy, sets ONECLI_URL in .env to the loopback address, and restarts the
 # nanoclaw services. If the gateway is not healthy it restores the compose file by itself and stops.
 # `rollback` restores both files from the stamp and starts the old gateway again.
+# After a swap, and on `check-callers`, it names every host script that still calls the management API on an
+# address other than loopback. Host cron jobs call that API directly (the GitHub token refresh does), and after
+# the swap only 127.0.0.1 answers, so such a script fails. The script changes nothing in those files.
 #
 # Environment (the defaults fit a prod-style install):
 #   ONECLI_COMPOSE_DIR  directory of the OneCLI docker-compose.yml        (default ~/.onecli)
@@ -17,6 +21,8 @@
 #   ONECLI_CONTAINER    its container name                                 (default: the service name)
 #   NANOCLAW_DIR        the nanoclaw checkout that holds .env              (default: the current directory)
 #   NANOCLAW_SERVICES   systemd user units to restart, space separated     (default "nanoclaw nanoclaw-dashboard")
+#   ONECLI_SCAN_DIRS    folders whose *.sh and *.py files the caller check reads (default ~/.config/nanoclaw)
+#   ONECLI_SCAN_CRONTAB_FILE  a crontab to read instead of `crontab -l` (for tests)
 #
 # It prints image and port lines only, never an environment value.
 set -u
@@ -33,8 +39,31 @@ ENVFILE=$NC_DIR/.env
 export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
 
 die() { echo "ERROR: $*" >&2; exit 1; }
-[ -f "$COMPOSE" ] || die "no compose file at $COMPOSE"
-[ -f "$ENVFILE" ] || die "no .env at $ENVFILE"
+if [ "$MODE" != check-callers ]; then
+  [ -f "$COMPOSE" ] || die "no compose file at $COMPOSE"
+  [ -f "$ENVFILE" ] || die "no .env at $ENVFILE"
+fi
+
+# report_stale_api_callers <port>: print one warning per host script that names the management API port on an
+# address other than 127.0.0.1 or localhost. It reads the scripts named in the user's crontab and the *.sh and
+# *.py files of ONECLI_SCAN_DIRS. The proxy port is not checked, because sessions keep reaching it on the bridge.
+report_stale_api_callers() {
+  local port=$1 files f hits=0 tab
+  if [ -n "${ONECLI_SCAN_CRONTAB_FILE:-}" ]; then tab=$(cat "$ONECLI_SCAN_CRONTAB_FILE" 2>/dev/null); else tab=$(crontab -l 2>/dev/null); fi
+  files=$({
+    printf '%s\n' "$tab" | grep -v '^[[:space:]]*#' | grep -o -E '/[^ ;|&>"]+\.(sh|py)'
+    for d in ${ONECLI_SCAN_DIRS:-$HOME/.config/nanoclaw}; do ls "$d"/*.sh "$d"/*.py 2>/dev/null; done
+  } | sort -u)
+  for f in $files; do
+    [ -f "$f" ] || continue
+    if grep -E "://[A-Za-z0-9._-]+:$port([^0-9]|\$)" "$f" | grep -v -E "://(127\.0\.0\.1|localhost):$port" | grep -q .; then
+      echo "WARNING: $f calls the OneCLI management API (port $port) on a non-loopback address; it answers only on 127.0.0.1 now"
+      hits=$((hits + 1))
+    fi
+  done
+  [ "$hits" = 0 ] && echo "host scripts: none call the management API off loopback"
+  return 0
+}
 
 # healthy <container>: the container reports healthy, or runs when it has no health check.
 healthy() {
@@ -118,6 +147,7 @@ case "$MODE" in
       echo "WARNING: no ONECLI_URL in $ENVFILE; nanoclaw uses its default address"
     fi
     restart_units
+    report_stale_api_callers "$PORT"
     echo "stamp: $STAMP   (rollback: $0 rollback $STAMP)"
     echo SWAP-DONE
     ;;
@@ -134,8 +164,11 @@ case "$MODE" in
     docker ps --filter "name=$CONTAINER" --format '  {{.Names}} {{.Image}} {{.Status}}'
     echo ROLLBACK-DONE
     ;;
+  check-callers)
+    report_stale_api_callers "${ARG:-10254}"
+    ;;
   *)
-    sed -n '2,25p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//'
     exit 2
     ;;
 esac
