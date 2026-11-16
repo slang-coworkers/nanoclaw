@@ -41,6 +41,7 @@ ncl groups restart --id <group-id>
 - A group with `--weights open` must resolve each role to an open-weights model. The command refuses a closed model, and the host does not start such a group. The error names each closed role.
 - A Claude group cannot use `--weights open`, because its SDK and its router call Claude models. Switch it to OpenCode first.
 - OpenCode needs its provider prefix on model ids (`openai/nvidia/zai-org/glm-5.3`). The policy adds the prefix to a bare id.
+- The host passes the install's Claude settings from `.env` to every container. In a `--weights open` group, the policy replaces each Claude Code model setting with an open model, so a `claude` CLI that a skill starts there asks for an open model: `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL` get the `main` model, and `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_SMALL_FAST_MODEL` and `ANTHROPIC_FALLBACK_MODEL` get the `small` model (ids without OpenCode's prefix). `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` stops Claude Code's telemetry, error reports and update checks. Other groups keep the install's settings.
 - Changes take effect at the next container start (`ncl groups restart`).
 
 ## Moving every coworker to open weights
