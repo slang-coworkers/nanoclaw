@@ -2,11 +2,18 @@
 """worktree-gc.py — deterministic worktree reclaim classifier.
 
 Every tier (fixer, reviewer, triager, slangpy-*) runs `worktree-gc-run.sh` as a
-gated task inside its own container; that script discovers the tier's worktrees,
-resolves issue/PR state with `gh`, and hands the set to this module. The
-supervisor's §8 only reads the reports. The thresholds below are the single
-source of truth: SKILL.md / reference.md reference them by name and never
-restate the numbers.
+gated task inside its own container; that script collects facts with
+`worktree-gc-discover.py`, resolves issue/PR state with `gh`, and hands the set
+to this module. The supervisor's §8 only reads the reports. The thresholds below
+are the single source of truth: SKILL.md / reference.md / worktree-gc-run.sh
+reference them by name (the run script reads them from `summary.thresholds`)
+and never restate the numbers.
+
+A checkout is any per-task tree the discovery found: a linked worktree, a
+standalone clone, an orphan (a `.git` file whose administrative directory git
+has pruned) or a plain directory under a `wt-*` name. The tiers below apply to
+every shape; `shape` only matters where the executor could not save the tree
+before removing it (see `classify`).
 
 Four tiers:
 
@@ -18,7 +25,11 @@ Four tiers:
   STALE-OPEN  primary tree whose PR is OPEN but idle > STALE_OPEN_IDLE_DAYS:
               reclaim the regenerable `build/` in place, never the worktree.
   KEEP        anything with a running session, anything touched within
-              MIN_IDLE_DAYS, scratch trees still in use, open PRs still active.
+              MIN_IDLE_DAYS, scratch trees still in use, open PRs still active,
+              any checkout another checkout borrows objects from or that owns a
+              live linked worktree (`dependents`), and any tree whose work the
+              executor has no way to save: a plain directory, or an orphan
+              whose repository is gone.
   NO-PR       primary tree, issue OPEN, no PR yet, not idle enough to reap.
 
 `kind` tells primary from scratch. A primary tree is a tier's fix checkout
@@ -39,21 +50,28 @@ build counts as 0 (under-projecting keeps the executor going, over-projecting
 made a run stop with the disk still full). `summary.projected_free_gb` is a
 lower bound: the executor re-measures with `df` and stops on that.
 
+`runs` lists the entries of the group's `runs/` directory, where the review
+runners and the agent keep run output (run logs, combined reviews, verify
+builds). An entry idle longer than RUNS_RETENTION_DAYS, held by no process and
+borrowed from by no checkout, is expired into `runs_expired`, most idle first.
+
 Input (stdin):
 
   {
     "free_gb": 2, "total_gb": 2481,
     "running_dirs": ["wt-slang-12073", ...],
     "worktrees": [
-      {"dir": "wt-slang-11511", "kind": "primary", "idle_days": 3,
-       "size_gb": 6.7, "build_size_gb": 4.1, "has_build": true,
-       "issue_state": "OPEN", "pr_state": "OPEN", "pr_idle_days": 34},
+      {"dir": "wt-slang-11511", "kind": "primary", "shape": "worktree",
+       "idle_days": 3, "size_gb": 6.7, "build_size_gb": 4.1, "has_build": true,
+       "issue_state": "OPEN", "pr_state": "OPEN", "pr_idle_days": 34,
+       "dependents": [], "owner_exists": true},
       ...
-    ]
+    ],
+    "runs": [{"name": "A-14412-r1", "idle_days": 20, "running": false, "dependents": []}]
   }
 
-Output: {"tiers": {...}, "reclaim": [...], "summary": {...}}. Each worktree
-gets a `gc_reason` string explaining its tier.
+Output: {"tiers": {...}, "reclaim": [...], "runs_expired": [...], "summary": {...}}.
+Each worktree gets a `gc_reason` string explaining its tier.
 
 Run: python3 scripts/worktree-gc.py < payload.json
 Test: python3 scripts/test_worktree_gc.py
@@ -72,6 +90,9 @@ PRESSURE_IDLE_DAYS = 7      # under pressure, a KEEP build whose PR is idle > th
 TARGET_FREE_PCT = 30        # projection target once under pressure (hysteresis above the gate)
 CRITICAL_GATE_PCT = 2       # free below this share → ENOSPC-imminent
 CRITICAL_IDLE_DAYS = 2      # under critical pressure, a KEEP build idle > this is reclaimable
+RUNS_RETENTION_DAYS = 14    # a runs/ entry untouched longer than this is expired
+SAVE_MAX_MB = 200           # untracked content larger than this is not committed; the tree is skipped
+ESCALATE_PCT = 10           # free below this share of the volume after a run → the gate wakes the agent
 
 FINAL_PR_STATES = ("MERGED", "CLOSED")
 
@@ -94,8 +115,17 @@ def classify(wt, running_dirs):
         wt["gc_reason"] = why
         return name
 
+    dependents = wt.get("dependents") or []
+    shape = wt.get("shape") or "worktree"
+
+    if dependents:
+        return tier("KEEP", "used by " + ", ".join(sorted(dependents)))
     if running:
         return tier("KEEP", "running session")
+    if shape == "plain":
+        return tier("KEEP", "not a git checkout; nothing can save its contents")
+    if shape == "orphan" and not wt.get("owner_exists"):
+        return tier("KEEP", "orphaned and its repository is gone; nothing can save its contents")
     if idle is not None and idle < MIN_IDLE_DAYS:
         return tier("KEEP", f"touched {idle:g}d ago")
 
@@ -121,6 +151,18 @@ def classify(wt, running_dirs):
     return tier("KEEP", "open PR, active")
 
 
+def expired_run(run):
+    """Is this `runs/` entry past RUNS_RETENTION_DAYS, held by no process and
+    borrowed from by no checkout? An entry without a measured idleness is kept."""
+    idle = _idle(run)
+    return (
+        idle is not None
+        and idle > RUNS_RETENTION_DAYS
+        and not run.get("running")
+        and not run.get("dependents")
+    )
+
+
 def build_measured(wt):
     """Was this worktree's `build/` actually measured? A genuinely measured empty
     build and an unmeasured one are different facts that share a number."""
@@ -144,6 +186,7 @@ def select(payload):
     total = payload.get("total_gb") or 0
     running = set(payload.get("running_dirs", []))
     worktrees = payload.get("worktrees", [])
+    runs = payload.get("runs", [])
 
     tiers = {"REAP": [], "KEEP": [], "STALE-OPEN": [], "NO-PR": []}
     for wt in worktrees:
@@ -177,6 +220,13 @@ def select(payload):
             break
         projected += build_gb(w)
 
+    runs_expired = sorted(
+        (r for r in runs if expired_run(r)), key=lambda r: r.get("idle_days") or 0, reverse=True
+    )
+    shapes = {}
+    for w in worktrees:
+        shapes[w.get("shape") or "worktree"] = shapes.get(w.get("shape") or "worktree", 0) + 1
+
     summary = {
         "free_gb": free,
         "total_gb": total,
@@ -185,6 +235,9 @@ def select(payload):
         "under_pressure": under_pressure,
         "critical": critical,
         "counts": {k: len(v) for k, v in tiers.items()},
+        "shapes": shapes,
+        "runs_count": len(runs),
+        "runs_expired_count": len(runs_expired),
         "reclaim_count": len(reclaim),
         "reclaim_gb": round(sum(build_gb(w) for w in reclaim), 1),
         "unmeasured_builds": sum(1 for w in reclaim if not build_measured(w)),
@@ -201,9 +254,12 @@ def select(payload):
             "TARGET_FREE_PCT": TARGET_FREE_PCT,
             "CRITICAL_GATE_PCT": CRITICAL_GATE_PCT,
             "CRITICAL_IDLE_DAYS": CRITICAL_IDLE_DAYS,
+            "RUNS_RETENTION_DAYS": RUNS_RETENTION_DAYS,
+            "SAVE_MAX_MB": SAVE_MAX_MB,
+            "ESCALATE_PCT": ESCALATE_PCT,
         },
     }
-    return {"tiers": tiers, "reclaim": reclaim, "summary": summary}
+    return {"tiers": tiers, "reclaim": reclaim, "runs_expired": runs_expired, "summary": summary}
 
 
 def main():

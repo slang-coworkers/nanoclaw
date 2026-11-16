@@ -260,22 +260,51 @@ PRs and for `not_planned` closes without a PR (maintainer wontfix — note and c
 
 Every tier (slang-fixer, slang-reviewer, slang-triager, slangpy-fixer, slangpy-reviewer,
 slangpy-triager) runs `scripts/worktree-gc-run.sh` as the pre-task gate of an hourly task inside
-its own container, where its group directory is writable. The script discovers the tier's
-worktrees, measures idleness, resolves issue/PR state with `gh`, classifies with
+its own container, where its group directory is writable. The script collects facts with
+`scripts/worktree-gc-discover.py`, resolves issue/PR state with `gh`, classifies with
 `scripts/worktree-gc.py`, acts within the gate's time box, and writes
 `/workspace/agent/.worktree-gc/last-run.json` plus a line in `history.log`. It wakes the agent
-only when an action errored or less than 10% of the volume is free.
+only when an action errored or less than `ESCALATE_PCT` of the volume is free; a tree it had to
+skip is listed under `skipped` and does not wake anyone.
+
+What it covers: every worktree registered with a base clone (`slang`, `slangpy`, `slang-rhi`),
+and every top-level `wt-*` directory whatever its git shape — a linked worktree (of a base or of
+another clone), a standalone clone (`git clone --shared slang wt-<n>-revA`, a verify clone from
+GitHub), or an orphan (a `.git` file whose administrative directory is gone). A worktree that was
+renamed by hand is re-linked with `git worktree repair` before any prune, so renaming no longer
+orphans it. Top-level files named `wt-*` (build logs) and per-task directories under other names
+are not covered.
 
 Tiers (thresholds live in `worktree-gc.py`; reference them by name):
 
 | Tier | What | Action |
 |---|---|---|
-| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree (`wt-<n>-verify`, `-master`, `-revA`, `wt-clarity-*`, any non-primary name) whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | uncommitted work committed to a local `wip/reap/<name>` branch, then `git worktree remove --force`; `active-work/<slug>` removed |
+| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree (`wt-<n>-verify`, `-master`, `-revA`, `wt-clarity-*`, any non-primary name) whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
 | STALE-OPEN | primary tree, PR OPEN but idle > `STALE_OPEN_IDLE_DAYS` | `rm -rf <worktree>/build` only; tree, branch and PR stay |
-| KEEP | running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
+| KEEP | running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a checkout another checkout borrows objects from (`--shared` alternates) or that owns a live worktree, a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
 | NO-PR | primary tree, issue open, no PR yet | nothing until idle > `NOPR_IDLE_DAYS` |
 
-Resume a reaped tree with `git worktree add <dir> wip/reap/<dir>` from the base clone.
+Idleness is the agent's last use. For a linked worktree that is its directory, `.git` file,
+index, HEAD and build logs. A standalone clone is also fast-forwarded by the boot refresh
+(`container/agent-runner/src/refresh-clones.ts`), which rewrites its files and index, so for a
+clone only its HEAD reflog entries other than the refresh's own `pull --ff-only --quiet`, its
+`.git/HEAD` and its build logs count.
+
+How unsaved work is kept, and how to get it back:
+
+| Shape | Saved as | Restore |
+|---|---|---|
+| worktree | uncommitted changes committed; HEAD as branch `wip/reap/<name>` in the owning repository | `git worktree add <dir> wip/reap/<name>` from that repository |
+| clone | uncommitted changes committed; commits no remote-tracking ref holds written to `.worktree-gc/saved/<name>.<stamp>.bundle` (nothing when every commit is on a remote) | `git fetch <bundle> HEAD:refs/heads/<branch>` in any clone of the repository |
+| orphan | the tree, minus ignored files and nested repositories, as a parentless commit on branch `wip/reap/<name>` in the repository its `.git` file names | `git worktree add <dir> wip/reap/<name>` |
+
+Untracked content above `SAVE_MAX_MB` is never committed: that tree is skipped and listed under
+`skipped`. Changes inside submodule working trees are third-party content and are not saved.
+
+`runs/` retention: an entry of `/workspace/agent/runs/` (the review runners' run directories,
+which the reviewer points `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` at, and the agent's own verify
+builds and probes) idle longer than `RUNS_RETENTION_DAYS`, held by no process and borrowed from
+by no clone, is renamed into the trash.
 
 Create or repair a tier's task (host shell):
 

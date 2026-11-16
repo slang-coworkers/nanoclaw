@@ -291,7 +291,8 @@ Each tier reclaims its own worktrees hourly (R8). Your job is the readout:
 
 1. Read `/workspace/extra/ephemeral/prod-groups/*/.worktree-gc/last-run.json`.
 2. Put `worktree-vol: <N>GB free` (`df -BG --output=avail /workspace/extra/ephemeral`) and the
-   per-tier counts (`reaped`, `build_reclaimed`, `left_for_next_run`) in the rollup.
+   per-tier counts (`reaped`, `build_reclaimed`, `runs_expired`, `left_for_next_run`) in the
+   rollup, and name any tree a report lists under `skipped` (it holds work the GC cannot save).
 3. Escalate to the operator when less than 10% of the volume is free, when a tier's report is
    older than 24 h or missing (its task is not firing: `ncl tasks list --group <tier>`), or when a
    report lists `errors`. Below 10%, name the operator-only docker reclaim (reference.md →
