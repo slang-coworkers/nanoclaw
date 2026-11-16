@@ -96,9 +96,9 @@ update_api_secret 5145efc4-a517-4d70-aa0a-cb25276013b0
 API_OK=$UPDATED
 
 # --- github.com App-token git-push/read secrets (Basic base64(x-access-token:APP)) ---
-# shader-slang/slang fix/issue-* push and public submodule reads.
-# The list includes d5a3bb2e, the github.com catch-all. An older note says that secret holds the nv-slang-bot
-# USER PAT and is not refreshed here; the list overwrites it with the App token on every run.
+# shader-slang/slang fix/issue-* push and public submodule reads. d5a3bb2e is the read secret for
+# github.com/KhronosGroup/* (the glslang, SPIRV-Tools, SPIRV-Headers and Vulkan-Headers submodules).
+# Pushes to the slang-coworkers forks use separate nv-slang-bot user-PAT secrets that this job does not touch.
 GIT_PUSH_VALUE=$(printf '%s' "x-access-token:$TOKEN" | base64 -w0)
 for SID in 3002afd1-33e5-4141-9df9-e69849f89272 26887f9a-b1ab-45d7-95bb-c0b30d3c79c6 \
   d5a3bb2e-a551-4825-bab8-b342eaa8f4cb dbb9d06a-cf0e-4440-b9f6-391ebbaaca79 \
