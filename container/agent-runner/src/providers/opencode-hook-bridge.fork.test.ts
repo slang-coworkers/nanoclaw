@@ -13,6 +13,9 @@ import {
   type OpenCodeTodoClient,
 } from './opencode-hook-bridge.js';
 import { claudeToolResponse, type HookSettings } from '../settings-hooks.js';
+import { registerAgentMailbox, resetAgentMailboxForTesting } from '../mailbox/index.js';
+import { closeSessionDb, initTestSessionDb } from '../mailbox/sqlite/connection.js';
+import { SqliteAgentMailbox } from '../mailbox/sqlite/index.js';
 
 // Fork-owned. OpenCode never reads the Claude Code hook settings the host
 // writes, so without this bridge every gate (critique, plan, eval sandbox, PR
@@ -28,10 +31,18 @@ function script(name: string, body: string): string {
   return file;
 }
 
+// The OpenCode process registers the SQLite mailbox through the plugin file's
+// barrel import; the tests register it over in-memory session databases.
+let outbound: ReturnType<typeof initTestSessionDb>['outbound'];
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-hook-bridge-'));
+  resetAgentMailboxForTesting();
+  registerAgentMailbox(() => new SqliteAgentMailbox());
+  outbound = initTestSessionDb().outbound;
 });
 afterEach(() => {
+  closeSessionDb();
+  resetAgentMailboxForTesting();
   fs.rmSync(dir, { recursive: true, force: true });
   delete process.env.NANOCLAW_HOOK_SETTINGS;
   delete process.env.OPENCODE_CONFIG_CONTENT;
@@ -422,13 +433,84 @@ describe('session hooks of a query', () => {
   });
 });
 
+describe('the tool in flight', () => {
+  const inFlight = () =>
+    outbound.prepare('SELECT current_tool, tool_declared_timeout_ms, tool_started_at FROM container_state').get() as {
+      current_tool: string | null;
+      tool_declared_timeout_ms: number | null;
+      tool_started_at: string | null;
+    } | null;
+
+  it('records a tool that passed its gates and clears it when the tool finishes', async () => {
+    const hooks = await plugin({});
+    await hooks['tool.execute.before'](
+      { tool: 'bash', sessionID: 's1' },
+      { args: { command: 'make', timeout: 900000 } },
+    );
+    expect(inFlight()).toMatchObject({ current_tool: 'Bash', tool_declared_timeout_ms: 900000 });
+    expect(inFlight()?.tool_started_at).toBeString();
+
+    await hooks['tool.execute.after']({ tool: 'bash', sessionID: 's1', args: { command: 'make' } }, { output: 'ok' });
+    expect(inFlight()).toEqual({ current_tool: null, tool_declared_timeout_ms: null, tool_started_at: null });
+  });
+
+  it('records no declared timeout for a tool other than Bash', async () => {
+    const hooks = await plugin({});
+    await hooks['tool.execute.before']({ tool: 'nanoclaw_send_message' }, { args: { text: 'hi', timeout: 5 } });
+    expect(inFlight()).toMatchObject({ current_tool: 'mcp__nanoclaw__send_message', tool_declared_timeout_ms: null });
+  });
+
+  it('clears the record when the tool fails', async () => {
+    const hooks = await plugin({});
+    await hooks['tool.execute.before']({ tool: 'read', sessionID: 's1' }, { args: { filePath: '/nope' } });
+    expect(inFlight()?.current_tool).toBe('Read');
+    await hooks.event({
+      event: {
+        type: 'message.part.updated',
+        properties: {
+          part: {
+            type: 'tool',
+            sessionID: 's1',
+            callID: 'c1',
+            tool: 'read',
+            state: { status: 'error', error: 'gone' },
+          },
+        },
+      },
+    });
+    expect(inFlight()?.current_tool).toBeNull();
+  });
+
+  it('records nothing for a call a gate refuses', async () => {
+    const hooks = await plugin({
+      PreToolUse: [{ matcher: 'Write', hooks: [{ command: `echo 'PLAN REQUIRED' >&2; exit 2` }] }],
+    });
+    await expect(
+      hooks['tool.execute.before']({ tool: 'write', sessionID: 's1' }, { args: { filePath: '/x', content: '' } }),
+    ).rejects.toThrow('PLAN REQUIRED');
+    expect(inFlight()).toBeNull(); // no row: nothing was ever in flight
+  });
+});
+
 describe('installation', () => {
-  it('writes a plugin file that re-exports only the bridge', () => {
-    const file = installOpenCodeHookBridge(dir, '/app/src/providers/opencode-hook-bridge.ts');
+  it('writes a plugin file that registers the mailbox and re-exports only the bridge', () => {
+    const file = installOpenCodeHookBridge(
+      dir,
+      '/app/src/providers/opencode-hook-bridge.ts',
+      '/app/src/modules/index.ts',
+    );
     expect(file).toBe(path.join(dir, 'opencode', 'plugin', 'nanoclaw-hook-bridge.js'));
     expect(fs.readFileSync(file, 'utf-8')).toBe(
-      'export { NanoclawHookBridge } from "/app/src/providers/opencode-hook-bridge.ts";\n',
+      'import "/app/src/modules/index.ts";\n' +
+        'export { NanoclawHookBridge } from "/app/src/providers/opencode-hook-bridge.ts";\n',
     );
+  });
+
+  it('points the plugin file at the runner capability barrel by default', () => {
+    const file = installOpenCodeHookBridge(dir);
+    const barrel = /^import "(.+)";$/m.exec(fs.readFileSync(file, 'utf-8'))?.[1];
+    expect(barrel).toBe(path.join(import.meta.dir, '..', 'modules', 'index.ts'));
+    expect(fs.existsSync(barrel!)).toBe(true);
   });
 });
 

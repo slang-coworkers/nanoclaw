@@ -38,6 +38,15 @@
  * (`createPreToolUseHook`), not a script, so the bridge runs the same
  * `detectIssueClose` before the hook scripts.
  *
+ * The in-flight tool record is in-process under Claude too: its PreToolUse
+ * callback writes `container_state` in the session's outbound.db and its
+ * PostToolUse callback clears it. The host's stuck check reads that row to give
+ * a long Bash call its declared timeout. The bridge writes the same row through
+ * the same mailbox calls once a tool call passes its gates, and clears it when
+ * the call finishes or fails. The plugin file OpenCode loads imports the
+ * runner's capability barrel first, so the OpenCode process has the mailbox
+ * the runner, the MCP server and `ncl` each register for themselves.
+ *
  * The hook semantics (matchers, block rules, the settings file) live in
  * settings-hooks.ts. Stop hooks need the runner, which owns the turn, so the
  * runner runs them (stop-hooks.ts); they are not handled here.
@@ -50,6 +59,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+import { clearContainerToolInFlight, declaredToolTimeoutMs, setContainerToolInFlight } from '../db/container-state.js';
 import { issueCloseRefusal } from '../issue-close.js';
 import {
   claudeToolResponse,
@@ -171,6 +181,22 @@ export function failedToolPart(event: OpenCodeEvent): FailedToolCall | null {
   };
 }
 
+/**
+ * Record `toolName` as the tool in flight, or clear the record when it is null.
+ * A failed write is logged and ignored: the record only informs the host's
+ * stuck check, and must not fail the tool call.
+ */
+function recordToolInFlight(toolName: string | null, toolInput?: Record<string, unknown>): void {
+  try {
+    if (toolName === null) clearContainerToolInFlight();
+    else setContainerToolInFlight(toolName, declaredToolTimeoutMs(toolName, toolInput));
+  } catch (err) {
+    console.error(
+      `[nanoclaw-hook-bridge] could not record the tool in flight: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
 /** The part of the OpenCode SDK client (the plugin context's `client`) the bridge uses. */
 export interface OpenCodeTodoClient {
   session: {
@@ -239,6 +265,7 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
       const failure = failedToolPart(event);
       if (failure && !failedCalls.has(failure.callID)) {
         failedCalls.add(failure.callID);
+        recordToolInFlight(null);
         const toolName = claudeToolName(failure.tool, servers);
         await runHookEvent(settings(), 'PostToolUseFailure', toolName, {
           session_id: failure.sessionID,
@@ -267,12 +294,14 @@ export const NanoclawHookBridge = async (ctx: { client?: OpenCodeTodoClient } = 
         const tasks = await runTaskHooks(input.sessionID ?? '', toolInput.todos);
         if (tasks.block) throw new Error(tasks.reason);
       }
+      recordToolInFlight(toolName, toolInput);
     },
     'tool.execute.after': async (
       input: { tool: string; sessionID?: string; args?: unknown },
       output: { args?: unknown; output?: unknown; content?: unknown },
     ) => {
       const toolName = claudeToolName(input.tool, servers);
+      recordToolInFlight(null);
       // OpenCode 1.18 passes the arguments of a finished tool in `input`, not `output`.
       const outcome = await runHookEvent(settings(), 'PostToolUse', toolName, {
         session_id: input.sessionID ?? '',
@@ -343,16 +372,23 @@ export function settingsSessionHooks(env: NodeJS.ProcessEnv = process.env): Open
  * Put the bridge where OpenCode loads plugins: the native global plugin
  * directory. A plugin found there is not a declared plugin, so server startup
  * does not wait for a package install (see the add-opencode ARCHITECTURE.md
- * "Offline startup" section). The file only re-exports `NanoclawHookBridge` from
- * this module, because OpenCode would call any other export as a plugin too.
+ * "Offline startup" section). The file is the OpenCode process's entry into
+ * the runner code: it imports the capability barrel, which registers the
+ * session mailbox as the runner's own entry does, and re-exports only
+ * `NanoclawHookBridge`, because OpenCode would call any other export as a
+ * plugin too.
  */
 export function installOpenCodeHookBridge(
   configHome: string = process.env.XDG_CONFIG_HOME || path.join(process.env.HOME || os.homedir(), '.config'),
   bridgeModule: string = fileURLToPath(import.meta.url),
+  barrelModule: string = fileURLToPath(new URL('../modules/index.ts', import.meta.url)),
 ): string {
   const dir = path.join(configHome, 'opencode', 'plugin');
   fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, PLUGIN_FILE);
-  fs.writeFileSync(file, `export { NanoclawHookBridge } from ${JSON.stringify(bridgeModule)};\n`);
+  fs.writeFileSync(
+    file,
+    `import ${JSON.stringify(barrelModule)};\nexport { NanoclawHookBridge } from ${JSON.stringify(bridgeModule)};\n`,
+  );
   return file;
 }
