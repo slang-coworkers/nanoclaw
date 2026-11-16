@@ -6,6 +6,7 @@ import { tmpdir } from 'os';
 import path from 'path';
 import type { OpenCodeMessage, OpenCodeSessionClient } from './opencode-turn.js';
 import type { OpenCodeMemorySessionHook } from './opencode-memory.js';
+import { MAX_OUTPUT_LIMIT_CONTINUES, OUTPUT_LIMIT_CONTINUE_PROMPT } from './opencode-output-limit.js';
 
 import {
   destroySharedRuntime,
@@ -553,6 +554,119 @@ describe('shared runtime recovery', () => {
       expect(kinds).not.toContain('result');
       expect(kinds.at(-1)).toBe('usage');
       expect(events.at(-1)).toMatchObject({ isError: true, inputTokens: 100 });
+    });
+  });
+
+  describe('a step cut off at the output token limit', () => {
+    // The step prod recorded on 2026-11-16: all 4096 tokens spent reasoning,
+    // finish reason `length`, no text.
+    const cutOff = (sid: string, id: string): Ev => ({
+      type: 'message.updated',
+      properties: {
+        info: {
+          id,
+          role: 'assistant',
+          sessionID: sid,
+          finish: 'length',
+          modelID: 'glm-5.3',
+          tokens: { input: 100, output: 1, reasoning: 4095 },
+        },
+      },
+    });
+
+    it('continues after a cut-off step with a note instead of the prompt, and answers once', async () => {
+      let attempt = 0;
+      const turn = await chatTurn((server, sid) => {
+        attempt += 1;
+        if (attempt === 1) {
+          server.push([cutOff(sid, 'msg_cut_1')]);
+          server.finish();
+        } else {
+          server.reply(sid, '<message to="main">verdict</message>');
+        }
+      });
+      expect(turn.prompts).toEqual(['work', OUTPUT_LIMIT_CONTINUE_PROMPT]);
+      expect(turn.sent).toEqual(['verdict']);
+      expect(turn.exchanges).toHaveLength(1);
+      expect(turn.exchanges[0].status).toBe('completed');
+      expect(turn.exchanges[0].result).toBe('<message to="main">verdict</message>');
+      // The turn answered, so the poll loop's silent-turn nudge never fired.
+      expect(turn.push).not.toHaveBeenCalled();
+    });
+
+    it('stops continuing after MAX_OUTPUT_LIMIT_CONTINUES and leaves the turn to the silent-turn path', async () => {
+      let attempt = 0;
+      const turn = await chatTurn((server, sid) => {
+        attempt += 1;
+        server.push([cutOff(sid, `msg_cut_${attempt}`)]);
+        server.finish();
+      });
+      expect(turn.prompts).toEqual([
+        'work',
+        ...Array.from({ length: MAX_OUTPUT_LIMIT_CONTINUES }, () => OUTPUT_LIMIT_CONTINUE_PROMPT),
+      ]);
+      // The poll loop handles the empty turn as before: one re-send nudge (a
+      // no-op here, the query has ended), then its fixed notice.
+      expect(turn.push).toHaveBeenCalledTimes(1);
+      expect(String(turn.push.mock.calls[0][0])).toContain('produced NO output');
+      expect(turn.sent).toHaveLength(1);
+      expect(turn.sent[0]).toContain('without producing any output');
+    });
+
+    it('does not continue a step that ended normally', async () => {
+      const turn = await chatTurn((server, sid) => {
+        server.push([
+          {
+            type: 'message.updated',
+            properties: { info: { id: 'msg_done', role: 'assistant', sessionID: sid, finish: 'stop' } },
+          },
+          {
+            type: 'message.part.updated',
+            properties: {
+              part: { type: 'text', messageID: 'msg_done', sessionID: sid, text: '<message to="main">done</message>' },
+            },
+          },
+        ]);
+        server.finish();
+      });
+      expect(turn.prompts).toEqual(['work']);
+      expect(turn.sent).toEqual(['done']);
+    });
+
+    it('ends the turn with one result and one usage that charges every step', async () => {
+      const server = fakeServer((sid, promptIndex) => {
+        if (promptIndex === 1) {
+          server.push([cutOff(sid, 'msg_cut_1')]);
+          server.finish();
+        } else {
+          server.push([
+            {
+              type: 'message.updated',
+              properties: {
+                info: {
+                  id: 'msg_done',
+                  role: 'assistant',
+                  sessionID: sid,
+                  finish: 'stop',
+                  modelID: 'glm-5.3',
+                  tokens: { input: 50, output: 10 },
+                },
+              },
+            },
+          ]);
+          server.reply(sid, 'recovered');
+        }
+      });
+      installDeps([server]);
+      const events = await runOneTurn(newProvider());
+      const kinds = events.map((event) => event.type).filter((type) => type !== 'text' && type !== 'activity');
+      expect(kinds).toEqual(['init', 'result', 'usage']);
+      expect(resultText(events)).toEqual(['recovered']);
+      const usage = events.find((event) => event.type === 'usage') as { turnTokens?: unknown[]; inputTokens: number };
+      expect(usage.inputTokens).toBe(150);
+      expect(usage.turnTokens).toEqual([
+        expect.objectContaining({ model: 'glm-5.3', inputTokens: 150, outputTokens: 4096 + 10 }),
+      ]);
     });
   });
 

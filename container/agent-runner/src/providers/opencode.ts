@@ -38,6 +38,7 @@ import {
   retryableModelError,
   waitWithActivity,
 } from './opencode-retry.js';
+import { MAX_OUTPUT_LIMIT_CONTINUES, OUTPUT_LIMIT_CONTINUE_PROMPT } from './opencode-output-limit.js';
 import {
   boundedOpenCodeCall,
   executeOpenCodeTurn,
@@ -621,7 +622,8 @@ export class OpenCodeProvider implements AgentProvider {
       let created = false;
       let initialized = false;
       let startedAt = Date.now();
-      // Tokens of this turn's failed attempts, charged with its result.
+      // Tokens of this turn's earlier prompts (a retried failure or a continued
+      // cut-off step), charged with its result.
       let retriedTokens: TurnModelTokens[] = [];
       try {
         const runtime = self.runtime
@@ -669,8 +671,12 @@ export class OpenCodeProvider implements AgentProvider {
           // with a note to continue rather than the prompt (opencode-retry.ts).
           // The turn still ends in one `result` and one `usage` that charges
           // every attempt: the poll loop runs the cost hard stop at `usage` and
-          // relies on it arriving only at a turn boundary.
+          // relies on it arriving only at a turn boundary. A turn whose last
+          // step was cut off at the output token limit is continued the same
+          // way, without a wait and at most MAX_OUTPUT_LIMIT_CONTINUES times
+          // (opencode-output-limit.ts).
           const backoff = new ModelRetryBackoff(modelRetryPolicyFromEnv());
+          let continues = 0;
           let text = turn;
           startedAt = Date.now();
           retriedTokens = [];
@@ -678,6 +684,7 @@ export class OpenCodeProvider implements AgentProvider {
             const {
               tokens: attemptTokens,
               error: nativeError,
+              truncated,
               ...result
             } = yield* executeOpenCodeTurn({
               runtime,
@@ -719,6 +726,14 @@ export class OpenCodeProvider implements AgentProvider {
               continue;
             }
             if (retryable) log(`Model error persists after ${backoff.retries} retries; the turn fails`);
+            if (truncated && continues < MAX_OUTPUT_LIMIT_CONTINUES) {
+              continues += 1;
+              retriedTokens = tokens;
+              log(`Step cut off at the output token limit; continue ${continues}/${MAX_OUTPUT_LIMIT_CONTINUES}`);
+              text = OUTPUT_LIMIT_CONTINUE_PROMPT;
+              continue;
+            }
+            if (truncated) log(`Step still cut off after ${continues} continues; the turn ends there`);
             retriedTokens = [];
             const accounting = turnAccounting(tokens, {
               sessionId,
@@ -729,7 +744,7 @@ export class OpenCodeProvider implements AgentProvider {
             yield { type: 'usage', ...accounting };
             break;
           }
-          // Aborted while waiting to retry: the failed attempts were billed.
+          // Aborted while waiting to retry or during a continue: the earlier attempts were billed.
           if (retriedTokens.length > 0) {
             yield {
               type: 'usage',
