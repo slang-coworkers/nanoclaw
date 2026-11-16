@@ -910,6 +910,7 @@ describe('formatTasksTable', () => {
       series_id: 'task-5bbe082a-6298-4699',
       schedule: '* * * * *',
       runs: 7,
+      gated_runs: 5,
       failed_runs: 2,
       last_run: '2026-01-15T09:04:30Z',
       next_run: '2026-01-15T09:06:00Z',
@@ -922,7 +923,9 @@ describe('formatTasksTable', () => {
 
   it('renders an aligned table with run history', () => {
     const lines = formatTasksTable(rows, now).split('\n');
-    expect(lines[0]).toMatch(/SERIES\s+SCHEDULE\s+RUNS\s+FAILED\s+LAST RUN\s+NEXT RUN\s+STATUS\s+AGE\s+PROMPT/);
+    expect(lines[0]).toMatch(/SERIES\s+SCHEDULE\s+RUNS\s+WOKE\s+FAILED\s+LAST RUN\s+NEXT RUN\s+STATUS\s+AGE\s+PROMPT/);
+    // 7 runs, 5 gated by the pre-task script → 2 woke the agent.
+    expect(lines[1]).toMatch(/\*\s+7\s+2\s+2\s+1m ago/);
     expect(lines[1]).toContain('1h'); // AGE column — created 1h ago
     expect(lines[1]).toContain('task-5bbe082a-6298-4699'); // FULL series id — copy-pasteable into `tasks get --id`
     expect(lines[1]).toContain('* * * * *');
