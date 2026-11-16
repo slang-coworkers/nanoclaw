@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# worktree-gc-run.sh — reclaim this tier's own per-task checkouts and run output.
+# worktree-gc-run.sh — reclaim this tier's own per-task checkouts, scratch and run output.
 # Runs INSIDE the tier's container (rw mount of its group directory), as the
 # pre-task gate of the tier's hourly `worktree-gc` task, or by hand with --sweep.
 #
@@ -7,12 +7,15 @@
 #   1. discover  worktree-gc-discover.py lists every per-task checkout (worktrees
 #                registered with /workspace/agent/{slang,slangpy,slang-rhi}, and every
 #                top-level wt-* directory whatever its git shape: linked worktree,
-#                standalone clone, orphan, plain), every runs/ entry, and the trash.
+#                standalone clone, orphan, plain), every runs/ entry, every top-level
+#                scratch directory and wt-* file, and the trash.
 #   2. resolve   issue/PR state with one gh GraphQL batch of up to 40 numbers per call.
 #   3. classify  worktree-gc.py, the single source of thresholds.
 #   4. act       REAP → save unsaved work, then rename the checkout into
-#                .worktree-gc/trash/; reclaim → delete <checkout>/build; runs/ entries
-#                past retention → rename into the trash; finally delete trash entries.
+#                .worktree-gc/trash/; reclaim → delete <checkout>/build; runs/ entries,
+#                scratch directories and wt-* files past retention → rename into the
+#                trash (a scratch directory after saving every repository inside it);
+#                finally delete trash entries.
 #   5. report    /workspace/agent/.worktree-gc/last-run.json (what the supervisor's §8
 #                reads) and one history.log line.
 #
@@ -30,6 +33,8 @@
 #   orphan    the tree, minus ignored files and nested repositories, committed with
 #             a scratch index as branch `wip/reap/<name>` in the repository its
 #             `.git` file names.
+#   bare      the commits not reachable from the repository it borrows objects from
+#             (`git clone --bare --shared`), written to .worktree-gc/saved/ as a bundle.
 # Untracked content above SAVE_MAX_MB is never committed: that checkout is skipped
 # and listed under `skipped` in the report. Changes inside submodule working trees
 # are third-party content and are not saved.
@@ -59,7 +64,7 @@ for a in "$@"; do
     --gate) MODE=gate ;;
     --sweep) MODE=sweep ;;
     --dry-run) MODE=dry ;;
-    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,50p' "$0"; exit 0 ;;
     *) echo "unknown flag: $a" >&2; exit 2 ;;
   esac
 done
