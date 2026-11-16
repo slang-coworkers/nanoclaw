@@ -243,8 +243,13 @@ export function modelPolicyViolations(resolved: ResolvedModels, env: Env = proce
 /** The env one container needs so each role uses its resolved model. */
 export function modelPolicyEnv(resolved: ResolvedModels): Record<string, string> {
   const env: Record<string, string> = { NANOCLAW_MODEL_WEIGHTS: resolved.weights };
-  const { provider, main, small, router, critic } = resolved;
+  const { provider, weights, main, small, router, critic } = resolved;
   if (critic) env.NANOCLAW_CRITIC_MODEL = critic;
+  // The Codex tool inside a container starts every turn on CODEX_MODEL unless the caller names a
+  // model, and an install keeps a closed model there for its closed groups. An open-weights group
+  // therefore gets its critic model as CODEX_MODEL, so a plain `codex` call stays on open weights.
+  // A Codex group already sets CODEX_MODEL from its own main model below.
+  if (weights === 'open' && critic && provider !== 'codex') env.CODEX_MODEL = critic;
   if (provider === 'claude') {
     // One Claude setting serves the small model and the router.
     if (small) env.ANTHROPIC_DEFAULT_HAIKU_MODEL = small;
