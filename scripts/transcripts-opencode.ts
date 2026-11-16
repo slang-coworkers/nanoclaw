@@ -32,6 +32,8 @@ type Runner = (file: string, args: string[], opts: { stdio: ['ignore', 'pipe', '
 /**
  * Render one trace to `outFile` with the converter. Returns `{ ok: false, error }` instead of throwing, so one
  * broken trace does not stop the archive build, the same contract as the claude-code-transcripts renderer.
+ * The trace index job (ops/claude-trace-www) already writes `session-<id>.html` next to a recent trace; when
+ * that page is at least as new as the trace it is copied, so the archive build does not render it twice.
  */
 export function renderOpenCodeTranscript(
   converter: string,
@@ -40,6 +42,15 @@ export function renderOpenCodeTranscript(
   run: Runner = execFileSync,
 ): { ok: boolean; error?: string } {
   fs.mkdirSync(path.dirname(outFile), { recursive: true });
+  const page = tracePath.replace(/\.jsonl$/, '.html');
+  try {
+    if (page !== tracePath && fs.existsSync(page) && fs.statSync(page).mtimeMs >= fs.statSync(tracePath).mtimeMs) {
+      fs.copyFileSync(page, outFile);
+      return { ok: true };
+    }
+  } catch {
+    // a page that vanished between the checks is simply rendered below
+  }
   try {
     run('python3', [converter, tracePath, outFile], { stdio: ['ignore', 'pipe', 'pipe'], timeout: 120_000 });
     return { ok: true };

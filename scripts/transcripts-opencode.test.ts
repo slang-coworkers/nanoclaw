@@ -54,6 +54,28 @@ describe('OpenCode sessions in the transcripts archive', () => {
     expect(page).toContain('Triage done.');
   });
 
+  it('copies the page the trace index already made when it is current, and renders when it is stale', () => {
+    const { root, trace } = fixture();
+    const page = trace.replace(/\.jsonl$/, '.html');
+    fs.writeFileSync(page, '<p>made by the trace index</p>');
+    const now = Date.now() / 1000;
+    fs.utimesSync(trace, now - 60, now - 60);
+    fs.utimesSync(page, now, now);
+    let calls = 0;
+    const counting = () => {
+      calls++;
+    };
+    const out = path.join(root, 'out', 'a.html');
+    expect(renderOpenCodeTranscript(CONVERTER, trace, out, counting)).toEqual({ ok: true });
+    expect(calls).toBe(0);
+    expect(fs.readFileSync(out, 'utf8')).toContain('made by the trace index');
+    fs.utimesSync(page, now - 120, now - 120);
+    expect(renderOpenCodeTranscript(CONVERTER, trace, path.join(root, 'out', 'b.html'), counting)).toEqual({
+      ok: true,
+    });
+    expect(calls).toBe(1);
+  });
+
   it('reports a failed render instead of throwing', () => {
     const { root, trace } = fixture();
     const failing = () => {
