@@ -550,6 +550,15 @@ describe('composeSessionSpec', () => {
     }
   });
 
+  it('forwards the GitHub comment-body gate off switch into the container', async () => {
+    vi.stubEnv('GITHUB_COMMENT_BODY_GATE', '0');
+    try {
+      expect((await compose()).containers[0].env.GITHUB_COMMENT_BODY_GATE).toBe('0');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('the gateway contribution fills the contributed lane last and wins a collision', async () => {
     const spec = await compose({
       contribution: { env: { HTTPS_PROXY: 'http://provider:1' } },
