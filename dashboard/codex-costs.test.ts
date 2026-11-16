@@ -462,3 +462,19 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
     for (const k of runnerOnly) expect(dashboardKeys.has(k), `${k} is runner-only`).toBe(false);
   });
 });
+
+describe('open-weights pricing keys', () => {
+  it('names only models the codex rate table prices', async () => {
+    const { CODEX_MODEL_PRICING, OPEN_WEIGHTS_PRICING_KEYS } = await import('./codex-costs.js');
+    for (const key of OPEN_WEIGHTS_PRICING_KEYS) expect(CODEX_MODEL_PRICING).toHaveProperty([key]);
+  });
+
+  it('recognises open-weights wire ids and leaves Claude and GPT out', async () => {
+    const { isOpenWeightsModel } = await import('./codex-costs.js');
+    expect(isOpenWeightsModel('openai/nvidia/zai-org/glm-5.3')).toBe(true);
+    expect(isOpenWeightsModel('nvidia/moonshotai/kimi-k3')).toBe(true);
+    expect(isOpenWeightsModel('openai/openai/gpt-6-sol')).toBe(false);
+    expect(isOpenWeightsModel('aws/anthropic/bedrock-claude-opus-5-5')).toBe(false);
+    expect(isOpenWeightsModel(undefined)).toBe(false);
+  });
+});

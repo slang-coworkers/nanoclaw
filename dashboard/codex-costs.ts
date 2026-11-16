@@ -162,6 +162,25 @@ export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
 };
 
 /**
+ * Pricing keys of the open-weights models above. The cost views split open-weights
+ * spend from Claude and GPT spend by this one list, so a group moved to open weights
+ * no longer shows its GLM or Kimi dollars as Claude.
+ */
+export const OPEN_WEIGHTS_PRICING_KEYS: ReadonlySet<string> = new Set([
+  'kimi-k3',
+  'glm-5.3',
+  'glm-5.3-flash',
+  'deepseek-v4.1-flash-1017',
+  'llama-3.1-8b-instruct',
+  'gpt-oss-20b',
+]);
+
+/** True when a wire model id prices as one of the open-weights models (OPEN_WEIGHTS_PRICING_KEYS). */
+export function isOpenWeightsModel(model: string | undefined): boolean {
+  return OPEN_WEIGHTS_PRICING_KEYS.has(normalizeCodexModel(model));
+}
+
+/**
  * Reduce a rollout's wire model id to its base pricing key.
  *
  * Handles the doubled-prefix forms the OneCLI gateway actually emits

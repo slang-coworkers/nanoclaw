@@ -50,7 +50,7 @@ import { statSync } from 'fs';
 
 import Database from 'better-sqlite3';
 
-import { normalizeCodexModel } from './codex-costs.js';
+import { isOpenWeightsModel, normalizeCodexModel } from './codex-costs.js';
 import { MODEL_PRICING, normalizeModel } from './session-costs.js';
 
 /** The `cost_events` columns this module reads (one row). */
@@ -144,6 +144,8 @@ export interface LedgerDay {
   cost: number;
   claudeUsd: number;
   codexUsd: number;
+  /** Spend on open-weights models (GLM, Kimi, DeepSeek, ...), whichever runner called them. */
+  openUsd: number;
   tokens: number;
 }
 
@@ -209,10 +211,12 @@ export function foldLedgerRows(input: Iterable<LedgerRow>, hasAcctColumn = true)
     const p = priceLedgerRow(row);
     if (p.unpriced) out.unpriced = true;
     const key = ledgerDayKey(row.ts);
-    const d = out.days.get(key) || { cost: 0, claudeUsd: 0, codexUsd: 0, tokens: 0 };
+    const d = out.days.get(key) || { cost: 0, claudeUsd: 0, codexUsd: 0, openUsd: 0, tokens: 0 };
     d.cost += p.usd;
-    // `claudeUsd` is the session's own model spend, which for OpenCode and Pi is their model's.
-    if (row.provider === 'codex') d.codexUsd += p.usd;
+    // The split follows the model, not the runner: an open-weights row (an OpenCode turn on GLM, or a
+    // codex critique on Kimi) is open spend; other codex rows are GPT; the rest is Claude.
+    if (isOpenWeightsModel(row.model)) d.openUsd += p.usd;
+    else if (row.provider === 'codex') d.codexUsd += p.usd;
     else d.claudeUsd += p.usd;
     d.tokens += p.tokens;
     out.days.set(key, d);

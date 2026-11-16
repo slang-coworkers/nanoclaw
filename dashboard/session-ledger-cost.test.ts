@@ -518,7 +518,7 @@ describe('GET /api/sessions — ledger is primary, transcript is the fallback, n
 });
 
 describe('OpenCode and Pi ledger rows', () => {
-  it('keep the dollars the runner charged, count as exact, and land in the session model bucket', () => {
+  it('keep the dollars the runner charged, count as exact, and land in the open-weights bucket', () => {
     const out = foldLedgerRows([
       row({
         id: 'opencode:1:sess:1:nvidia/zai-org/glm-5.3',
@@ -541,8 +541,29 @@ describe('OpenCode and Pi ledger rows', () => {
     expect(out.unpriced).toBe(false);
     const day = [...out.days.values()][0];
     expect(day.cost).toBeCloseTo(5.8, 10);
-    expect(day.claudeUsd).toBeCloseTo(5.8, 10);
+    // GLM is an open-weights model: its dollars are open spend, not Claude spend.
+    expect(day.openUsd).toBeCloseTo(5.8, 10);
+    expect(day.claudeUsd).toBe(0);
     expect(day.codexUsd).toBe(0);
+  });
+
+  it('split each row by its model: Claude on OpenCode, Kimi critique, GPT critique', () => {
+    const out = foldLedgerRows([
+      row({
+        id: 'opencode:1:sess:1:claude',
+        provider: 'opencode',
+        model: 'aws/anthropic/bedrock-claude-opus-5-5',
+        priced_usd: 3,
+        acct_seg: null,
+      }),
+      row({ id: 'codex:kimi', provider: 'codex', model: 'nvidia/moonshotai/kimi-k3', priced_usd: 2, acct_seg: null }),
+      row({ id: 'codex:gpt', provider: 'codex', model: 'openai/openai/gpt-6-sol', priced_usd: 1, acct_seg: null }),
+    ]);
+    const day = [...out.days.values()][0];
+    expect(day.cost).toBeCloseTo(6, 10);
+    expect(day.claudeUsd).toBeCloseTo(3, 10);
+    expect(day.openUsd).toBeCloseTo(2, 10);
+    expect(day.codexUsd).toBeCloseTo(1, 10);
   });
 
   it('flag a model neither rate table names', () => {

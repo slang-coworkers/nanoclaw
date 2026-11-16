@@ -198,6 +198,31 @@ describe('pricing', () => {
     expect(p.totalTokens).toBe(10_500);
   });
 
+  it('keeps open-weights spend out of the Claude and Codex buckets', () => {
+    const g = buildGatewayDaily([
+      aggRow({
+        groupId: 'ag-1',
+        day: '2026-11-16',
+        usageApi: 'openai_chat_completions_v1',
+        model: 'nvidia/zai-org/glm-5.3',
+        output: 1_000_000,
+      }),
+      aggRow({
+        groupId: 'ag-1',
+        day: '2026-11-16',
+        usageApi: 'openai_responses_v1',
+        model: 'openai/openai/gpt-6-sol',
+        output: 1_000_000,
+      }),
+      aggRow({ groupId: 'ag-1', day: '2026-11-16', model: 'aws/anthropic/bedrock-claude-opus-5-5', output: 1_000_000 }),
+    ]);
+    const d = g.groups.get('ag-1')!.days.get('2026-11-16')!;
+    expect(d.openUsd).toBeCloseTo(4.4, 6);
+    expect(d.codexUsd).toBeCloseTo(10, 6);
+    expect(d.claudeUsd).toBeGreaterThan(0);
+    expect(d.totalCost).toBeCloseTo(d.claudeUsd + d.codexUsd + d.openUsd, 6);
+  });
+
   it('an unpriced model is UNKNOWN (null), listed, and adds no dollars', () => {
     const p = priceGatewayRow(aggRow({ groupId: 'ag-1', day: '2026-10-01', model: 'mystery-9', output: 1000 }));
     expect(p.usd).toBeNull();
