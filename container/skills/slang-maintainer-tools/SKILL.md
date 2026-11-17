@@ -31,3 +31,13 @@ Each recipe is self-contained: data sources, pagination rules, output template.
 | **Deliver**            | "Report Structure" or "Output Format" |
 
 Cross-cutting pitfalls (rate limits, pagination, user-id resolution, squash-merge quirks): [gotchas.md](./gotchas.md).
+
+## Discord is read-only
+
+You read Discord channels and threads to report on them; you never post in them. The one Discord post a
+maintainer makes is the weekly PR report, delivered by `/slang-pr-report` to its configured channel.
+Answering community questions belongs to the slang-discord-support coworker, which replies only when a
+thread's author summons it. When a thread needs an answer, or a bug report needs details from its author,
+list it in your report with the thread link and what to ask, and the operator routes it. For example, a
+reporter whose `slangd` bug lacks a repro goes into the report as "ask for a minimal `.slang` file and the
+`slangd` version", not into a reply in their thread.
