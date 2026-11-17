@@ -23,6 +23,7 @@ const noopSingletons: Record<SingletonKey, () => Promise<void>> = {
   'singleton:cost-ceiling-adjustments': async () => {},
   'singleton:cost-drift-check': async () => {},
   'singleton:closed-session-mail': async () => {},
+  'singleton:worktree-gc-coverage': async () => {},
 };
 
 beforeEach(() => {
@@ -200,6 +201,7 @@ describe('reconcile queue', () => {
         },
         'singleton:cost-drift-check': async () => {},
         'singleton:closed-session-mail': async () => {},
+        'singleton:worktree-gc-coverage': async () => {},
       },
     });
 

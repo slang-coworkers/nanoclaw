@@ -22,12 +22,11 @@ import { AnchoredDir } from '../anchored-dir.js';
 import { mcpServerPluginOwner, resolveGroupTimezone, type McpServerConfig } from '../container-config.js';
 import { getAgentGroup, getAllAgentGroups } from '../db/agent-groups.js';
 import { getContainerConfig, updateContainerConfigJson } from '../db/container-configs.js';
-import { findTaskSessions } from '../db/sessions.js';
 import { resolveGroupFolderPath } from '../group-folder.js';
 import { PERSONA_PREPEND_FILE, readGroupPersona } from '../group-persona.js';
 import { log } from '../log.js';
 import { createScheduledTask, taskNameSlug } from '../modules/scheduling/create.js';
-import { parseTaskContent } from '../modules/scheduling/task-content.js';
+import { findTaskSeriesBySlug, planTaskSeries, updateTaskSeries } from '../modules/scheduling/series.js';
 import { withExistingMailboxSession } from '../session-manager.js';
 import type { AgentGroup } from '../types.js';
 import { groupSkillsOverlayDir, markPluginServers } from './create-agent.js';
@@ -340,11 +339,9 @@ export async function restampAgentFromTemplate(
   const oldTasks = new Map(old.tasks.map((t) => [taskNameSlug(t.name), t]));
   for (const task of tpl.tasks) {
     const prepared = preparedTasks.get(task.name)!;
-    const match = await findTaskSeriesBySlug(group.id, taskNameSlug(task.name));
+    const plan = await planTaskSeries(group.id, task.name, prepared);
     const oldTask = oldTasks.get(taskNameSlug(task.name));
-    // A dead series (no live row, nothing armed to re-arm) is history, not a
-    // task — a fresh series is created alongside it.
-    if (match === undefined || (!match.live && match.recurrence === null)) {
+    if (plan.action === 'create') {
       changes.push({
         surface: 'task',
         name: task.name,
@@ -358,10 +355,8 @@ export async function restampAgentFromTemplate(
       });
       continue;
     }
-    if (!match.live) {
-      // Completed row with a recurrence: the sweep re-arms it within a minute.
-      // Updating history rows would falsify what actually ran, so ask for a
-      // retry instead of writing through the window.
+    const match = plan.match;
+    if (plan.action === 'rearming') {
       changes.push({
         surface: 'task',
         name: task.name,
@@ -370,9 +365,7 @@ export async function restampAgentFromTemplate(
       });
       continue;
     }
-    const changed =
-      match.prompt !== prepared.prompt || match.script !== prepared.script || match.recurrence !== prepared.recurrence;
-    if (!changed) {
+    if (plan.action === 'unchanged') {
       changes.push({ surface: 'task', name: task.name, action: 'unchanged', note: `series ${match.seriesId}` });
       continue;
     }
@@ -389,15 +382,7 @@ export async function restampAgentFromTemplate(
       note: `series ${match.seriesId}; status "${match.status}" kept`,
     });
     ops.push(async () => {
-      await withExistingMailboxSession(group.id, match.sessionId, (mailbox) =>
-        mailbox.updateTask(match.seriesId, {
-          prompt: prepared.prompt,
-          script: prepared.script,
-          ...(match.recurrence !== prepared.recurrence
-            ? { recurrence: prepared.recurrence, processAfter: prepared.processAfter }
-            : {}),
-        }),
-      );
+      await updateTaskSeries(group.id, match, prepared);
     });
   }
   for (const [slug, oldTask] of oldTasks) {
@@ -524,44 +509,4 @@ function dirsEqual(a: string, b: string): boolean {
     if (!fs.readFileSync(absA).equals(fs.readFileSync(absB))) return false;
   }
   return true;
-}
-
-interface TaskSeriesMatch {
-  sessionId: string;
-  seriesId: string;
-  /** A pending/paused row exists — the series can be updated in place. */
-  live: boolean;
-  status: string;
-  recurrence: string | null;
-  prompt: string;
-  script: string | null;
-}
-
-/**
- * Find the task series a named task produced. Task rows don't store the name —
- * the id embeds its slug as `<slug>-<4hex>`, so match that shape across the
- * group's task sessions. Oldest session first: the stamped series predates any
- * same-named task created later, so a user's own task never shadows it. Rows
- * match in ANY state — a recurring series between a run completing and the
- * sweep re-arming it (≤60s) has only completed rows but is still alive.
- */
-async function findTaskSeriesBySlug(agentGroupId: string, slug: string): Promise<TaskSeriesMatch | undefined> {
-  if (!slug) return undefined;
-  for (const session of [...(await findTaskSessions(agentGroupId))].reverse()) {
-    const row = await withExistingMailboxSession(agentGroupId, session.id, (mailbox) =>
-      mailbox.findTaskBySeriesSlug(slug),
-    );
-    if (!row?.seriesId) continue;
-    const content = parseTaskContent(row.content);
-    return {
-      sessionId: session.id,
-      seriesId: row.seriesId,
-      live: row.status === 'pending' || row.status === 'paused',
-      status: row.status,
-      recurrence: row.recurrence,
-      prompt: content.prompt,
-      script: content.script,
-    };
-  }
-  return undefined;
 }

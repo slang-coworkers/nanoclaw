@@ -12,9 +12,11 @@ container, `--agent` in tests):
   checkouts  every git worktree registered with a base clone
              (`<agent>/{slang,slangpy,slang-rhi}`), whatever its name, plus
              every top-level `wt-*` directory, the naming convention for
-             per-task checkouts, and every top-level scratch directory
-             (worktree-gc.py's SCRATCH_DIR_PATTERNS) that is itself a checkout,
-             whatever its git shape:
+             per-task checkouts, and every other top-level directory that is
+             itself a checkout, whatever its name (worktree-gc.py's
+             `is_durable_dir` names excepted), whatever its git shape, and
+             every top-level bare repository whose name carries no issue
+             number (a reference clone, `bare`):
                worktree  a linked worktree whose administrative directory
                          exists (owner = the repository that registered it)
                clone     a standalone clone: `.git` is a directory
@@ -25,8 +27,9 @@ container, `--agent` in tests):
              agent keep run output
   scratch    every other top-level scratch directory, with the git
              repositories found inside it (`git_inside`), which the executor
-             saves before it removes the directory; a bare clone such as
-             `bare-13387.git` is its own `git_inside` entry
+             saves before it removes the directory, and every top-level bare
+             repository whose name is per-task or carries a number; a bare
+             clone such as `bare-13387.git` is its own `git_inside` entry
   wt files   every top-level regular file named `wt-*` (build logs)
   trash      what the executor already moved into `.worktree-gc/trash/` and
              still has to delete
@@ -236,7 +239,8 @@ def last_use(shape: str, path: str, admin: str | None) -> float:
     also fast-forwarded by the boot refresh, which rewrites its working files,
     index and FETCH_HEAD; so only signals the refresh never writes count there:
     HEAD reflog entries other than the refresh's own, the `.git/HEAD` file, and
-    build logs. An orphan has nothing but its files."""
+    build logs. A bare repository has no working files: its HEAD, packed refs
+    and reflog count. An orphan has nothing but its files."""
     marks = [build_markers(path)]
     if shape == "worktree":
         marks += [mtime(path), mtime(os.path.join(path, ".git"))]
@@ -245,6 +249,8 @@ def last_use(shape: str, path: str, admin: str | None) -> float:
     elif shape == "clone":
         git_dir = os.path.join(path, ".git")
         marks += [last_agent_reflog(git_dir), mtime(os.path.join(git_dir, "HEAD"))]
+    elif shape == "bare":
+        marks += [last_agent_reflog(path), mtime(os.path.join(path, "HEAD")), mtime(os.path.join(path, "packed-refs"))]
     else:
         marks += [mtime(path), mtime(os.path.join(path, ".git"))]
     return max(marks)
@@ -334,6 +340,26 @@ def repositories_inside(path: str) -> list[dict]:
     return sorted(found, key=lambda r: r["path"])
 
 
+def is_per_task_name(name: str) -> bool:
+    """Is a top-level name per-task by convention: a `wt-*` name, or one of
+    worktree-gc.py's SCRATCH_DIR_PATTERNS?"""
+    return name.startswith("wt-") or wg.is_scratch_dir(name)
+
+
+def checkout_kind(name: str, shape: str, number: str) -> str:
+    """primary, scratch or reference (see worktree-gc.py). Only a standalone clone
+    or a bare repository can be a reference clone: a linked worktree or an orphan
+    was made per task by `git worktree add`, and a per-task name or an issue/PR
+    number marks a repository as made for one task too. A sha in the name is not
+    a number: `slang-69ad6c1` is scratch as a linked worktree, a reference as a
+    standalone clone."""
+    if PRIMARY_NAME.match(name):
+        return "primary"
+    if shape not in ("clone", "bare") or number or is_per_task_name(name):
+        return "scratch"
+    return "reference"
+
+
 def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin: str | None,
                     branch: str, locked: bool, held: set[str], now: float) -> dict:
     name = os.path.basename(path)
@@ -359,7 +385,7 @@ def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin:
         "base": base,
         "repo": repo_slug(repo_dir, agent) if repo_dir and os.path.isdir(repo_dir) else "",
         "number": m.group(1) if m else "",
-        "kind": "primary" if PRIMARY_NAME.match(name) else "scratch",
+        "kind": checkout_kind(name, shape, m.group(1) if m else ""),
         "idle_days": round((now - last_use(shape, path, admin)) / DAY_S, 2),
         "has_build": os.path.isdir(os.path.join(path, "build")),
         "running": bool(running_why),
@@ -415,8 +441,8 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
     wt_files: list[dict] = []
     for name in sorted(os.listdir(agent)):
         p = os.path.join(agent, name)
-        per_task = name.startswith("wt-") or wg.is_scratch_dir(name)
-        if not per_task or os.path.islink(p) or real(p) in checkouts:
+        per_task = is_per_task_name(name)
+        if os.path.islink(p) or real(p) in checkouts:
             continue
         if os.path.isfile(p):
             if name.startswith("wt-"):
@@ -425,8 +451,14 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             continue
         if not os.path.isdir(p):
             continue
+        # A per-task name is managed whatever it holds; any other name only when
+        # it is itself a git repository and not the agent's durable state.
         shape = git_shape(p)
-        if shape and shape[0] != "bare":
+        if not per_task and (shape is None or name in BASES or wg.is_durable_dir(name)):
+            continue
+        if shape and shape[0] == "bare" and not per_task and not NUMBER_IN_NAME.search(name):
+            checkouts[real(p)] = checkout_record(agent, p, "bare", p, None, "", False, held, now)
+        elif shape and shape[0] != "bare":
             kind, owner, admin = shape
             branch = "" if kind == "orphan" else git(["symbolic-ref", "-q", "--short", "HEAD"], p).stdout.strip()
             locked = bool(admin) and os.path.exists(os.path.join(admin, "locked"))
