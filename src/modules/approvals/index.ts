@@ -29,6 +29,7 @@ export {
   registerApprovalResolvedHandler,
   notifyAgent,
   notifyAgentWithId,
+  systemMessageId,
 } from './primitive.js';
 export type { ApprovalHandler, ApprovalHandlerContext, RequestApprovalOptions } from './primitive.js';
 // Host-sweep hook for ghosted "Reject with reason…" holds. The re-export also

@@ -75,6 +75,7 @@ import {
   registerApprovalHandler,
   registerApprovalResolvedHandler,
   requestApproval,
+  systemMessageId,
 } from '../approvals/index.js';
 
 import { classifyEscalation, isSelfHealable, selfHealDirective, type EscalationClass } from './classify.js';
@@ -952,17 +953,27 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // ── 6. Self-heal: drive the agent to run the critique. Gate stays SHUT.
   if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS && window !== 'undelivered') {
     const attempt = attempts + 1;
+    // The nudge's id is stored with the attempt, before the send: if the send
+    // fails, the attempt waits on its own (undelivered) id, not on the previous
+    // nudge's expired window.
+    const msgId = systemMessageId();
     patchEscalationFile(
       session,
-      { class: cls, self_heal_at: new Date().toISOString(), self_heal_attempts: attempt },
+      {
+        class: cls,
+        self_heal_at: new Date().toISOString(),
+        self_heal_attempts: attempt,
+        self_heal_msg_id: msgId,
+        self_heal_delivered_at: null,
+      },
       dirOverride,
     );
     await record(session, { ...esc, class: cls }, 'self_heal', { attempt });
-    const msgId = await notifyAgentWithId(
+    await notifyAgentWithId(
       session,
       selfHealDirective({ cls, reason, hit, attempt, maxAttempts: MAX_SELF_HEAL_ATTEMPTS }),
+      msgId,
     );
-    patchEscalationFile(session, { self_heal_msg_id: msgId, self_heal_delivered_at: null }, dirOverride);
     log.info('Critique-gate self-heal nudge', { sessionId: session.id, cls, attempt, reason });
     return;
   }
