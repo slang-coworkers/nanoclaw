@@ -29,6 +29,7 @@ import {
   createCodexConfigOverrides,
   initializeCodexAppServer,
   killCodexAppServer,
+  notificationThreadId,
   spawnCodexAppServer,
   startCodexTurn,
   startOrResumeCodexThread,
@@ -389,6 +390,14 @@ async function* runOneTurn(
     // idle timer — yield before any event-specific translation so even
     // long tool executions keep the loop awake.
     buffer.push({ type: 'activity' });
+
+    // A sub-agent the turn spawns runs on its own thread on this app-server: its
+    // notifications keep the turn awake (above) but are not this turn's text,
+    // init or completion.
+    if (notificationThreadId(n) !== threadId) {
+      kick();
+      return;
+    }
 
     switch (method) {
       case 'thread/started': {
