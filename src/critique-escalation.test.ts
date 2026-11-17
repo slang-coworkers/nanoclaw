@@ -409,6 +409,93 @@ describe('checkCritiqueEscalation — nudges count once the runner claims them',
   });
 });
 
+describe('checkCritiqueEscalation — critique calls in flight or failing on the critic', () => {
+  // #14532 / #14536: the agent ran PLAN_REVIEW 6 and 12 times; every call
+  // failed with "codex bridge: exceeded retry limit, last status: 429", and the
+  // card said the agent "was asked 3 times and has not".
+  const minsAgo = (m: number): string => new Date(Date.now() - m * 60_000).toISOString();
+  const secsAgo = (m: number): number => Math.floor((Date.now() - m * 60_000) / 1000);
+  const ERR_429 = 'exceeded retry limit, last status: 429 Too Many Requests';
+  const journal = (lines: object[]): void =>
+    fs.writeFileSync(path.join(dir, 'critique-attempts.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  const base = (requestedMinsAgo: number) => ({
+    requested_at: secsAgo(requestedMinsAgo),
+    reason: 'missing critique stages: PLAN_REVIEW',
+    hit: 'PR creation',
+  });
+
+  it('waits while a critique call is still running', async () => {
+    writeEscalation(base(20));
+    journal([{ at: minsAgo(3), event: 'start', stage: 'PLAN_REVIEW' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+  });
+
+  it('stops waiting for a start whose result never came within the bridge timeout', async () => {
+    writeEscalation(base(60));
+    journal([{ at: minsAgo(40), event: 'start', stage: 'PLAN_REVIEW' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('asks for a retry without spending an attempt when the critic failed', async () => {
+    writeEscalation(base(20));
+    journal([
+      { at: minsAgo(18), event: 'start', stage: 'PLAN_REVIEW' },
+      { at: minsAgo(15), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 },
+    ]);
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(notifyAgentMock).toHaveBeenCalledTimes(1);
+    const directive = String(notifyAgentMock.mock.calls[0][1]);
+    expect(directive).toContain("failed on the critic's side");
+    expect(directive).toContain('429');
+    expect(directive).toContain('not counted against you');
+    const esc = readEscalation();
+    expect(esc.self_heal_attempts).toBeUndefined();
+    expect(esc).toMatchObject({ critic_retry_nudges: 1, self_heal_msg_id: 'sys-nudge-1' });
+  });
+
+  it('counts the nudge when the agent made no critique call after receiving it', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base(60),
+      self_heal_attempts: 1,
+      self_heal_at: minsAgo(40),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(30),
+    });
+    journal([{ at: minsAgo(45), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().self_heal_attempts).toBe(2);
+    expect(String(notifyAgentMock.mock.calls[0][1])).toContain('attempt 2 of 3');
+  });
+
+  it('treats a call the agent got wrong as a missed critique, not a critic failure', async () => {
+    writeEscalation(base(20));
+    journal([{ at: minsAgo(15), event: 'failure', stage: 'PLAN_REVIEW', error: 'codex: `prompt` is required' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('cards "critic unavailable" once the critic has failed for two hours', async () => {
+    writeEscalation({ ...base(150), critic_retry_nudges: 5 });
+    journal([
+      { at: minsAgo(140), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 },
+      { at: minsAgo(5), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 },
+    ]);
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    const card = requestApprovalMock.mock.calls[0][0] as { title: string; question: string };
+    expect(card.title).toContain('critic unavailable');
+    expect(card.question).toContain('the critic has failed 2 time(s)');
+    expect(card.question).toContain('429');
+  });
+});
+
 describe('auto-retraction', () => {
   it('isRequirementCleared is true only when a critique round postdates the request', () => {
     writeState({ last_critique_at: '2026-08-05T12:59:48Z' });

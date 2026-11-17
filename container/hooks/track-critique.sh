@@ -37,17 +37,11 @@ if grep -q "You are Buddy" <<< "$DEV_INST" 2>/dev/null; then exit 0; fi
 # so a TASK line that happens to read "BATCH 2 (" doesn't drop a real round.
 if grep -qE "^BATCH [0-9]+ \(" <<< "${PROMPT:0:500}" 2>/dev/null; then exit 0; fi
 
-# Skip error / timeout responses. Sniff only a bounded prefix here — the
-# verdict parse below must see the FULL payload. (Truncating the whole
-# response to 2000 bytes before parsing cut long reviews mid-JSON and
-# silently dropped their verdicts: 45% of June must-fix verdicts were lost
-# that way, and a lost must-fix downgrades the delivery gate to count-only.)
-RESPONSE_HEAD=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 2000 || true)
-if grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' <<< "$RESPONSE_HEAD" 2>/dev/null; then exit 0; fi
-
 STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 mkdir -p "$(dirname "$STATE")"
-[ -f "$STATE" ] || echo '{}' > "$STATE"
+# Append-only record of critique attempts, read by the host's escalation
+# sweep. Unlike workflow-state.json, no task reset rewrites it.
+ATTEMPTS="$(dirname "$STATE")/critique-attempts.jsonl"
 
 # Parse STAGE: marker from the codex prompt — only present on direct
 # `mcp__codex__codex` calls (the entry point of a critique session).
@@ -65,6 +59,31 @@ mkdir -p "$(dirname "$STATE")"
 STAGE=$(grep -m1 -oE 'STAGE:[[:space:]]*[A-Z_]+' <<< "$PROMPT" 2>/dev/null | sed -E 's/^STAGE:[[:space:]]*//' || true)
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# The codex bridge also reports when a call starts and when it fails
+# (critique-record.ts). Neither is a round, but both go to the attempts
+# record, so the host can tell an agent that never tried from one whose
+# critique is still running or whose critic is down.
+EVENT=$(echo "$INPUT" | jq -r '.hook_event_name // empty')
+if [ "$EVENT" = "PreToolUse" ] || [ "$EVENT" = "PostToolUseFailure" ]; then
+  KIND=start
+  [ "$EVENT" = "PostToolUseFailure" ] && KIND=failure
+  ERR=$(echo "$INPUT" | jq -r '.error // empty' 2>/dev/null | head -c 300 || true)
+  jq -cn --arg at "$NOW" --arg e "$KIND" --arg s "$STAGE" --arg err "$ERR" \
+    '{at: $at, event: $e, stage: $s} + (if $err == "" then {} else {error: $err} end)' >> "$ATTEMPTS" 2>/dev/null || true
+  exit 0
+fi
+
+# Skip error / timeout responses. Sniff only a bounded prefix here — the
+# verdict parse below must see the FULL payload. (Truncating the whole
+# response to 2000 bytes before parsing cut long reviews mid-JSON and
+# silently dropped their verdicts: 45% of June must-fix verdicts were lost
+# that way, and a lost must-fix downgrades the delivery gate to count-only.)
+RESPONSE_HEAD=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null | head -c 2000 || true)
+if grep -qE '"error":|"is_error":\s*true|"timed[_ ]out"|^Error\b' <<< "$RESPONSE_HEAD" 2>/dev/null; then exit 0; fi
+
+[ -f "$STATE" ] || echo '{}' > "$STATE"
+
 
 # Extract verdict from codex response content ("### Verdict\napprove" or "### Verdict\nmust-fix").
 # In production tool_response arrives as a JSON-encoded string
@@ -277,7 +296,6 @@ fi
 # rewrites it when a new task starts, which can be seconds after the round. So
 # every recorded round is also appended to critique-attempts.jsonl, which no
 # reset touches. One short line per append keeps concurrent writers whole.
-ATTEMPTS="$(dirname "$STATE")/critique-attempts.jsonl"
 jq -cn --arg at "$NOW" --arg s "${STAGE:-$REPLY_STAGE}" --arg v "$VERDICT" \
   '{at: $at, event: "round", stage: $s, verdict: $v}' >> "$ATTEMPTS" 2>/dev/null || true
 

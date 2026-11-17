@@ -77,7 +77,13 @@ import {
   requestApproval,
 } from '../approvals/index.js';
 
-import { classifyEscalation, isSelfHealable, selfHealDirective, type EscalationClass } from './classify.js';
+import {
+  classifyEscalation,
+  criticRetryDirective,
+  isSelfHealable,
+  selfHealDirective,
+  type EscalationClass,
+} from './classify.js';
 
 const BYPASS_ACTION = 'critique_gate_bypass';
 
@@ -105,6 +111,18 @@ const SELF_HEAL_COOLDOWN_SECS = envInt('CRITIQUE_SELF_HEAL_COOLDOWN_SECS', 600);
  * undelivered after an hour means the session is stuck, which a human must see.
  */
 const SELF_HEAL_UNDELIVERED_SECS = envInt('CRITIQUE_SELF_HEAL_UNDELIVERED_SECS', 3600);
+/**
+ * How long a critique call may run before the sweep stops waiting for it. The
+ * codex bridge fails a turn after 30 minutes (TURN_TIMEOUT_MS); a start with
+ * no result after that means the call died with its container.
+ */
+const CRITIQUE_IN_FLIGHT_SECS = envInt('CRITIQUE_IN_FLIGHT_SECS', 35 * 60);
+/**
+ * How long the critic may keep failing the agent's critique calls before a
+ * human is carded. Until then the agent is asked to retry and no self-heal
+ * attempt is spent: 429 waves on the inference API have lasted 1–2 hours.
+ */
+const CRITIC_OUTAGE_SECS = envInt('CRITIQUE_CRITIC_OUTAGE_SECS', 2 * 3600);
 /** How long an admin-approved bypass stays usable before it must be re-asked. */
 const BYPASS_TTL_SECS = envInt('CRITIQUE_BYPASS_TTL_SECS', 3600);
 /**
@@ -149,6 +167,8 @@ interface EscalationFile {
   self_heal_delivered_at?: string;
   /** How many nudges the runner has claimed. */
   self_heal_delivered?: number;
+  /** Retry nudges sent because the critic failed; they spend no attempt. */
+  critic_retry_nudges?: number;
   failed_open_recorded?: boolean;
   resolved?: string;
   resolved_by?: string;
@@ -556,9 +576,14 @@ export function isRequirementCleared(session: Session, esc: EscalationFile, dirO
 
 /** One line of the container's critique-attempts journal. */
 export interface CritiqueAttempt {
-  /** 'round': track-critique.sh recorded a critique round. */
+  /**
+   * 'round': track-critique.sh recorded a critique round. 'start' / 'failure':
+   * the codex bridge started a call / the call failed (critique-record.ts).
+   */
   event: string;
   atMs: number;
+  /** The bridge's error text, on a failure. */
+  error: string;
 }
 
 /**
@@ -604,9 +629,50 @@ export function readCritiqueAttempts(session: Session, dirOverride?: string): Cr
     }
     const atMs = typeof raw.at === 'string' ? Date.parse(raw.at) : NaN;
     if (typeof raw.event !== 'string' || !Number.isFinite(atMs)) continue;
-    attempts.push({ event: raw.event, atMs });
+    attempts.push({ event: raw.event, atMs, error: typeof raw.error === 'string' ? raw.error : '' });
   }
   return attempts;
+}
+
+/** What the attempts record says about the agent's critique calls since a gate denial. */
+export interface CritiqueEffort {
+  /** A call started and has no result yet, and is younger than CRITIQUE_IN_FLIGHT_SECS. */
+  inFlight: boolean;
+  /** Failures on the critic's side (see isCriticFailure) since the denial. */
+  criticFailures: number;
+  firstCriticFailureMs: number | null;
+  lastCriticFailureMs: number | null;
+  lastCriticError: string;
+}
+
+/**
+ * Is a failed critique call the critic's fault rather than the agent's? A
+ * rate limit, a server error, a timeout or a crashed app-server is; a call the
+ * agent got wrong (no prompt, a closed model on an open-weights group, a bad
+ * thread id) is not, and stays a missed critique.
+ */
+export function isCriticFailure(error: string): boolean {
+  return /\b429\b|too many requests|\b5\d\d\b|timed? ?out|timeout|exited|overloaded|ECONNRESET/i.test(error);
+}
+
+/**
+ * Summarize the agent's critique calls since `sinceMs` (the gate denial). A
+ * call is in flight when the record holds more starts than results (rounds
+ * and failures) within the last CRITIQUE_IN_FLIGHT_SECS; counting rather than
+ * pairing keeps parallel calls right.
+ */
+export function critiqueEffort(attempts: CritiqueAttempt[], sinceMs: number, nowMs = Date.now()): CritiqueEffort {
+  const recent = attempts.filter((a) => a.atMs > nowMs - CRITIQUE_IN_FLIGHT_SECS * 1000);
+  const starts = recent.filter((a) => a.event === 'start').length;
+  const results = recent.filter((a) => a.event === 'round' || a.event === 'failure').length;
+  const failures = attempts.filter((a) => a.event === 'failure' && a.atMs > sinceMs && isCriticFailure(a.error));
+  return {
+    inFlight: starts > results,
+    criticFailures: failures.length,
+    firstCriticFailureMs: failures.length ? failures[0].atMs : null,
+    lastCriticFailureMs: failures.length ? failures[failures.length - 1].atMs : null,
+    lastCriticError: failures.length ? failures[failures.length - 1].error : '',
+  };
 }
 
 /**
@@ -1004,14 +1070,52 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   const cls = esc.class ?? classifyEscalation(reason);
   const attempts = esc.self_heal_attempts ?? 0;
 
-  // ── 5. The agent is still inside its window to answer the last nudge — which
+  // ── 5. A critique call is running: its result decides, so wait for it.
+  const effort = isSelfHealable(cls)
+    ? critiqueEffort(readCritiqueAttempts(session, dirOverride), (esc.requested_at ?? 0) * 1000)
+    : null;
+  if (effort?.inFlight) return;
+
+  // ── 6. The agent is still inside its window to answer the last nudge — which
   // also holds the card after the final nudge, so the last ask gets the same
   // time as the others.
   const window = isSelfHealable(cls) && attempts > 0 ? await nudgeWindow(session, esc, dirOverride) : 'over';
   if (window === 'open') return;
 
-  // ── 6. Self-heal: drive the agent to run the critique. Gate stays SHUT.
-  if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS && window !== 'undelivered') {
+  // ── 7. The agent ran the critique after its last nudge and the critic
+  // failed: it complied, so no attempt is spent. Ask it to retry, until the
+  // critic has failed for CRITIC_OUTAGE_SECS, then a human decides.
+  const answeredSinceMs = esc.self_heal_delivered_at
+    ? Date.parse(esc.self_heal_delivered_at)
+    : (esc.requested_at ?? 0) * 1000;
+  const criticDown =
+    effort !== null && effort.lastCriticFailureMs !== null && effort.lastCriticFailureMs > answeredSinceMs;
+  const criticOutage =
+    criticDown &&
+    effort.firstCriticFailureMs !== null &&
+    Date.now() - effort.firstCriticFailureMs >= CRITIC_OUTAGE_SECS * 1000;
+  if (criticDown && !criticOutage && window !== 'undelivered') {
+    const retries = (esc.critic_retry_nudges ?? 0) + 1;
+    patchEscalationFile(
+      session,
+      { class: cls, self_heal_at: new Date().toISOString(), critic_retry_nudges: retries },
+      dirOverride,
+    );
+    await record(session, { ...esc, class: cls }, 'self_heal', {
+      attempt: attempts || null,
+      reason: `critic failed: ${effort.lastCriticError}`,
+    });
+    const msgId = await notifyAgentWithId(
+      session,
+      criticRetryDirective({ reason, hit, error: effort.lastCriticError }),
+    );
+    patchEscalationFile(session, { self_heal_msg_id: msgId, self_heal_delivered_at: null }, dirOverride);
+    log.info('Critique-gate critic-retry nudge', { sessionId: session.id, retries, error: effort.lastCriticError });
+    return;
+  }
+
+  // ── 8. Self-heal: drive the agent to run the critique. Gate stays SHUT.
+  if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS && window !== 'undelivered' && !criticOutage) {
     const attempt = attempts + 1;
     patchEscalationFile(
       session,
@@ -1028,14 +1132,16 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     return;
   }
 
-  // ── 7. Human decision required: a failed critique, self-heal exhausted, or
-  // a nudge the runner never claimed.
+  // ── 9. Human decision required: a failed critique, self-heal exhausted, a
+  // nudge the runner never claimed, or a critic that keeps failing.
   const pr = await lookupPrForSession(session.id);
   const target = pr ? `${pr.repo}#${pr.pr_number}` : (session.thread_id ?? 'no PR mapped');
   const prUrl = pr ? `https://github.com/${pr.repo}/pull/${pr.pr_number}` : null;
-  const exhausted = isSelfHealable(cls) && (attempts >= MAX_SELF_HEAL_ATTEMPTS || window === 'undelivered');
-  const title =
-    window === 'undelivered'
+  const exhausted =
+    isSelfHealable(cls) && (attempts >= MAX_SELF_HEAL_ATTEMPTS || window === 'undelivered' || criticOutage);
+  const title = criticOutage
+    ? `Critique gate — ${target}: critic unavailable`
+    : window === 'undelivered'
       ? `Critique gate — ${target}: agent did not receive the critique nudge`
       : exhausted
         ? `Critique gate — ${target}: agent could not self-heal`
@@ -1046,13 +1152,20 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     ? `received ${delivered} of ${attempts} nudge(s)`
     : `was nudged ${attempts} time(s)`;
   const queuedMins = esc.self_heal_at ? Math.round((Date.now() - Date.parse(esc.self_heal_at)) / 60_000) : null;
+  const outageMins =
+    effort?.firstCriticFailureMs != null ? Math.round((Date.now() - effort.firstCriticFailureMs) / 60_000) : null;
 
   const question = [
-    window === 'undelivered'
-      ? `**${session.agent_group_id}** was nudged ${attempts} time(s) to run the critique; its runner has received ${delivered}. The latest nudge has waited ${queuedMins ?? '?'} min undelivered — the session may be stuck in one turn. Its ${hit} is still blocked.`
-      : exhausted
-        ? `**${session.agent_group_id}** ${asked} to run the critique, had ${Math.round(SELF_HEAL_COOLDOWN_SECS / 60)} min after each, and has not recorded one, so its ${hit} is still blocked.`
-        : `**${session.agent_group_id}** ran the critique and it returned **must-fix**, then tried to ${hit} anyway.`,
+    criticOutage
+      ? `**${session.agent_group_id}** ran the critique, and the critic has failed ${effort.criticFailures} time(s) over ${outageMins ?? '?'} min (last error: ${effort.lastCriticError}). Its ${hit} is still blocked.`
+      : window === 'undelivered'
+        ? `**${session.agent_group_id}** was nudged ${attempts} time(s) to run the critique; its runner has received ${delivered}. The latest nudge has waited ${queuedMins ?? '?'} min undelivered — the session may be stuck in one turn. Its ${hit} is still blocked.`
+        : exhausted
+          ? `**${session.agent_group_id}** ${asked} to run the critique, had ${Math.round(SELF_HEAL_COOLDOWN_SECS / 60)} min after each, and has not recorded one, so its ${hit} is still blocked.`
+          : `**${session.agent_group_id}** ran the critique and it returned **must-fix**, then tried to ${hit} anyway.`,
+    ...(effort && effort.criticFailures > 0 && !criticOutage
+      ? [``, `Critic failures since the gate denied: ${effort.criticFailures} (last: ${effort.lastCriticError}).`]
+      : []),
     ``,
     `- **Target:** ${prUrl ?? target}`,
     `- **Session:** \`${session.id}\``,
@@ -1080,6 +1193,7 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
       denials: esc.denials ?? null,
       selfHealAttempts: attempts,
       selfHealDelivered: delivered,
+      criticFailures: effort?.criticFailures ?? 0,
       requestedAt: esc.requested_at ?? null,
     },
     title,
@@ -1102,6 +1216,7 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     target,
     exhaustedSelfHeal: exhausted,
     nudgeUndelivered: window === 'undelivered',
+    criticOutage,
     reason,
   });
 }

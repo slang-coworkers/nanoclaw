@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-import { recordCritiqueRound } from './critique-record.js';
+import { recordCritiqueAttempt, recordCritiqueRound } from './critique-record.js';
 
 // Fork-owned. The codex MCP bridge records each critique round itself, for
 // every provider; these pin when it records and the payload the script gets.
@@ -57,5 +57,36 @@ describe('recordCritiqueRound', () => {
       NANOCLAW_HOOKS_DIR: path.join(dir, 'none'),
       CRITIQUE_GATE_ACTIVE: '1',
     });
+  });
+});
+
+describe('recordCritiqueAttempt', () => {
+  const env = (): NodeJS.ProcessEnv => ({ NANOCLAW_HOOKS_DIR: dir, CRITIQUE_GATE_ACTIVE: '1', PATH: process.env.PATH });
+
+  it('hands track-critique.sh a PreToolUse payload when a call starts', async () => {
+    const input = { prompt: 'STAGE: PLAN_REVIEW\nreview this' };
+    await recordCritiqueAttempt('codex', input, { started: true }, env());
+    const payload = JSON.parse(fs.readFileSync(seen, 'utf-8').trim());
+    expect(payload).toEqual({ hook_event_name: 'PreToolUse', tool_name: 'mcp__codex__codex', tool_input: input });
+  });
+
+  it('hands track-critique.sh a PostToolUseFailure payload with the error when a call fails', async () => {
+    const error = 'exceeded retry limit, last status: 429 Too Many Requests';
+    await recordCritiqueAttempt('codex-reply', { threadId: 't', prompt: 'p' }, { error }, env());
+    expect(JSON.parse(fs.readFileSync(seen, 'utf-8').trim())).toMatchObject({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'mcp__codex__codex-reply',
+      error,
+    });
+  });
+
+  it('records nothing for a group without the critique overlay', async () => {
+    await recordCritiqueAttempt(
+      'codex',
+      { prompt: 'p' },
+      { error: 'x' },
+      { NANOCLAW_HOOKS_DIR: dir, PATH: process.env.PATH },
+    );
+    expect(fs.existsSync(seen)).toBe(false);
   });
 });

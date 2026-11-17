@@ -93,3 +93,24 @@ export function selfHealDirective(opts: {
     `an admin is asked to decide.`,
   ].join('\n');
 }
+
+/**
+ * The message the host injects when the agent ran the critique and the critic
+ * itself failed (rate-limited, timed out, crashed). The agent did comply, so
+ * the nudge does not count toward the self-heal attempts; it tells the agent
+ * the failure is on the critic's side and to retry one stage at a time,
+ * because parallel stages multiply a rate limit.
+ */
+export function criticRetryDirective(opts: { reason: string; hit: string; error: string }): string {
+  const { reason, hit, error } = opts;
+  return [
+    `CRITIQUE GATE still blocks your ${hit}: your last critique call failed on the critic's side.`,
+    ``,
+    `Critic error: ${error}`,
+    `Unmet requirement: ${reason}`,
+    ``,
+    `This is not counted against you. Run \`/codex-critique\` with STAGE: ${stageToRerun(reason)} again`,
+    `now, one stage at a time, then retry the ${hit}. The gate stays shut until a critique`,
+    `round is recorded; if the critic keeps failing, an admin is asked to decide.`,
+  ].join('\n');
+}
