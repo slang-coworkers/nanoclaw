@@ -343,7 +343,7 @@ Tiers (thresholds live in `worktree-gc.py`; reference them by name):
 |---|---|---|
 | REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
 | STALE-OPEN | primary tree, PR OPEN but idle > `STALE_OPEN_IDLE_DAYS` | `rm -rf <worktree>/build` only; tree, branch and PR stay |
-| KEEP | every reference clone, running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a checkout another checkout borrows objects from (`--shared` alternates) or that owns a live worktree, a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
+| KEEP | every reference clone, running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a checkout another checkout borrows objects from (`--shared` alternates), that owns a live worktree, or whose git directory holds another checkout's submodule repositories (a copied `external/` whose `.git` files name `slang/.git/worktrees/<donor>/modules/...`), a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
 | NO-PR | primary tree, issue open, no PR yet | nothing until idle > `NOPR_IDLE_DAYS` |
 
 Idleness is the agent's last use. For a linked worktree that is its directory, `.git` file,
@@ -361,7 +361,9 @@ How unsaved work is kept, and how to get it back:
 | orphan | the tree, minus ignored files and nested repositories, as a parentless commit on branch `wip/reap/<name>` in the repository its `.git` file names | `git worktree add <dir> wip/reap/<name>` |
 
 Untracked content above `SAVE_MAX_MB` is never committed: that tree is skipped and listed under
-`skipped`. Changes inside submodule working trees are third-party content and are not saved.
+`skipped`. Changes inside submodule working trees are third-party content and are not saved: every
+save step ignores submodules (status with `--ignore-submodules=all`, `add` excluding every gitlink
+path), so a submodule whose git directory is gone never blocks the save of its tree.
 
 Per-task output expires by one rule: idle longer than `RUNS_RETENTION_DAYS`, held by no process,
 and borrowed from by no clone, then renamed into the trash. It covers:

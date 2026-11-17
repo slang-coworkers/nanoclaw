@@ -29,8 +29,9 @@ Four tiers:
   KEEP        every reference clone, anything with a running session,
               anything touched within MIN_IDLE_DAYS, scratch trees still in use,
               open PRs still active,
-              any checkout another checkout borrows objects from or that owns a
-              live linked worktree (`dependents`), and any tree whose work the
+              any checkout another checkout borrows objects from, that owns a
+              live linked worktree, or whose git directory holds another
+              checkout's submodule repositories (`dependents`), and any tree whose work the
               executor has no way to save: a plain directory, or an orphan
               whose repository is gone.
   NO-PR       primary tree, issue OPEN, no PR yet, not idle enough to reap.

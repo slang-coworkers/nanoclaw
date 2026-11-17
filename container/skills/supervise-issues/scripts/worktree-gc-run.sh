@@ -42,7 +42,8 @@
 #             (`git clone --bare --shared`), written to .worktree-gc/saved/ as a bundle.
 # Untracked content above SAVE_MAX_MB is never committed: that checkout is skipped
 # and listed under `skipped` in the report. Changes inside submodule working trees
-# are third-party content and are not saved.
+# are third-party content and are not saved; every save step stays out of submodules
+# (see NOSUB), so one whose git directory is gone does not block the save.
 #
 # Modes:
 #   --gate     (default) time-boxed for the task runner's 30 s limit: acts for at
@@ -217,6 +218,23 @@ ESCALATE_PCT=$(plan_get 'p["summary"]["thresholds"]["ESCALATE_PCT"]')
 # must be skipped (SKIP_WHY says why), anything else on failure.
 COMMITTER=(-c user.name=worktree-gc -c user.email=worktree-gc@nanoclaw -c commit.gpgsign=false)
 
+# Submodules are third-party content the GC never saves, and a submodule's git
+# directory can be gone. Consider a reviewer that copies `external/` from one
+# checkout into another: each copied submodule's `.git` file still names the donor's
+# `slang/.git/worktrees/<donor>/modules/...`, and once the donor is reaped that
+# directory is pruned. `git add -A` (and a plain `git status`) then dies with "not a
+# git repository" on the copy. So every save step stays out of submodules: status
+# ignores them, `add` excludes every gitlink path, and nothing recurses.
+NOSUB=(-c submodule.recurse=false -c diff.ignoreSubmodules=all)
+
+# Print a literal exclude pathspec for every gitlink (submodule) in a checkout's
+# index, NUL-separated, for `git add -A -- . <these>`.
+gitlink_excludes() { # checkout
+  git -C "$1" ls-files -s -z 2>/dev/null | while IFS= read -r -d '' entry; do
+    [ "${entry%% *}" = 160000 ] && printf ':(exclude,literal)%s\0' "${entry#*$'\t'}"
+  done
+}
+
 bytes_mb() { awk '{s+=$1} END {print int((s+1048575)/1048576)}'; }
 
 # A timed-out git step leaves its index.lock behind; that lock is ours, and keeping it
@@ -224,13 +242,15 @@ bytes_mb() { awk '{s+=$1} END {print int((s+1048575)/1048576)}'; }
 drop_lock_after_timeout() { [ "$1" -eq 124 ] && rm -f "$(git -C "$2" rev-parse --git-path index.lock 2>/dev/null)"; return "$1"; }
 
 commit_dirty() { # checkout name
-  local wt="$1" name="$2" mb rc
-  [ -n "$(timeout "$(op_timeout)" git -C "$wt" status --porcelain --ignore-submodules=dirty 2>/dev/null | head -1)" ] || return 0
+  local wt="$1" name="$2" mb rc x
+  local -a excl=()
+  [ -n "$(timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" status --porcelain --ignore-submodules=all 2>/dev/null | head -1)" ] || return 0
   mb=$(git -C "$wt" ls-files -z --others --exclude-standard 2>/dev/null | (cd "$wt" && xargs -0 -r stat -c %s --) 2>/dev/null | bytes_mb)
   if [ "${mb:-0}" -gt "$SAVE_MAX_MB" ]; then SKIP_WHY="${mb} MB of untracked files exceeds SAVE_MAX_MB"; return 4; fi
-  timeout "$(op_timeout)" git -C "$wt" add -A >/dev/null 2>&1; rc=$?
+  while IFS= read -r -d '' x; do excl+=("$x"); done < <(gitlink_excludes "$wt")
+  timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" add -A -- . "${excl[@]}" >/dev/null 2>&1; rc=$?
   drop_lock_after_timeout "$rc" "$wt" || return 1
-  timeout "$(op_timeout)" git -C "$wt" "${COMMITTER[@]}" commit -q --no-verify \
+  timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" "${COMMITTER[@]}" commit -q --no-verify \
     -m "wip(reap): $name @ $(git -C "$wt" rev-parse --short HEAD 2>/dev/null)" >/dev/null 2>&1; rc=$?
   drop_lock_after_timeout "$rc" "$wt" || return 1
 }
@@ -270,14 +290,14 @@ save_orphan() { # owner path name
   # Nested repositories (submodules) are excluded; their `.git` files point into the
   # pruned administrative directory, so git would otherwise add their files one by one.
   while IFS= read -r -d '' g; do
-    [ "$g" = . ] || excl+=(":(exclude)${g#./}")
+    [ "$g" = . ] || excl+=(":(exclude,literal)${g#./}")
   done < <(cd "$wt" && find . \( -type d -name 'build*' -prune \) -o \( -name .git -prune -printf '%h\0' \) 2>/dev/null)
   rm -f "$idx"
   GIT_INDEX_FILE="$idx" git "${gd[@]}" read-tree HEAD >/dev/null 2>&1 || rm -f "$idx"
-  mb=$(GIT_INDEX_FILE="$idx" git -C "$wt" "${gd[@]}" --work-tree="$wt" ls-files -z --others --exclude-standard -- . "${excl[@]}" 2>/dev/null \
+  mb=$(GIT_INDEX_FILE="$idx" git "${NOSUB[@]}" -C "$wt" "${gd[@]}" --work-tree="$wt" ls-files -z --others --exclude-standard -- . "${excl[@]}" 2>/dev/null \
     | (cd "$wt" && xargs -0 -r stat -c %s --) 2>/dev/null | bytes_mb)
   if [ "${mb:-0}" -gt "$SAVE_MAX_MB" ]; then SKIP_WHY="${mb} MB of files outside the repository's tree exceeds SAVE_MAX_MB"; return 4; fi
-  GIT_INDEX_FILE="$idx" timeout "$(op_timeout)" git -C "$wt" "${gd[@]}" --work-tree="$wt" add -A -- . "${excl[@]}" >/dev/null 2>&1; rc=$?
+  GIT_INDEX_FILE="$idx" timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" "${gd[@]}" --work-tree="$wt" add -A -- . "${excl[@]}" >/dev/null 2>&1; rc=$?
   [ "$rc" -eq 0 ] || return 1
   tree="$(GIT_INDEX_FILE="$idx" git "${gd[@]}" write-tree 2>/dev/null)" || return 1
   commit="$(git "${gd[@]}" "${COMMITTER[@]}" commit-tree "$tree" -m "wip(reap): orphaned $name (snapshot of its files)" 2>/dev/null)" || return 1
