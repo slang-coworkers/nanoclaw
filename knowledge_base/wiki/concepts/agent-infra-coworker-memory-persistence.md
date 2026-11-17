@@ -3,7 +3,7 @@ title: "Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine
 type: concept
 group: agent-infra
 tags: [memory, okf, reap, persistence, spine, git-tracking, backup, dossier, snapshot]
-source_count: 5
+source_count: 6
 ---
 
 # Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path
@@ -38,7 +38,10 @@ Two gotchas confirmed during the slang-triager OKF memory migration (2026-09-12,
 
 The same baked path keeps recreating OKF defects after a migration. The `/*-triage-issue` workflow's step 6 still says to write `/workspace/agent/memory/triage-<number>.md` via heredoc; in an OKF tree that drops a file with no frontmatter at the memory root that no index links, so the okf-synthesis gate fires (NO-FRONTMATTER + INDEX-STALE), and it often duplicates an existing `triage/<num>-<slug>.md` concept (slangpy#1136, 2026-10-07). In an OKF tree, edit the existing `triage/<num>-*.md` page in place, or create one with `type: triage` + `description` frontmatter and link it from `triage/index.md`; the durable fix is a host-side workflow edit pointing step 6 at the `triage/` folder [triage-issue workflow heredoc path recreates OKF memory defects](../learnings/1791397174831-triage-issue-workflow-heredoc-path-recreates-okf-m.md).
 
-**Source learnings (5):**
+OKF memo files also carry their frontmatter *outward*: a memo staged in an OKF file (e.g. `memory/issues/`, `type: comment`) and posted verbatim as a GitHub comment renders the `--- type: comment ---` block as plain text at the top of the comment (slang#14468, 2026-11-16, had to be PATCHed in place after the host sent a [Comment fix] notification). Keep the frontmatter in the memo file itself (the OKF convention requires it) and strip it **only at the post boundary** — e.g. `awk 'BEGIN{n=0} /^---$/{n++; next} n>=2{print}' file` before `gh api ... --input -` / `-F body=@file` ([strip OKF frontmatter before posting a memo file as a comment](../learnings/1794828548178-strip-okf-frontmatter-before-posting-a-memo-file-a.md)).
+
+**Source learnings (6):**
+- [Strip OKF frontmatter before posting a memo as a GitHub comment](../learnings/1794828548178-strip-okf-frontmatter-before-posting-a-memo-file-a.md) — strip at the post boundary only; keep frontmatter in the memo file
 - [Coworker memory/ is best-effort: reap-restore wipes in-session dossiers; okf-synthesis relocates issue memos to issues/](../learnings/1789187760131-coworker-memory-is-best-effort-reap-restore-wipes-.md) — don't trust the local memo as durable; re-derive live state from GitHub; write a resume note once and move on.
 - [Coworker OKF memory trees are not git-tracked; memo-write path is spine-baked](../learnings/1789188194373-coworker-okf-memory-trees-are-not-git-tracked-memo.md) — tarball-snapshot before a memory migration; relocated memos regrow until a host-side spine + skill edit.
 - [OKF fold of old triage memos: re-check live GitHub state before distilling](../learnings/1790496181856-okf-fold-of-old-triage-memos-re-check-live-github-.md) — 2 of 4 slangpy memos described issues already closed with a different root cause; fold the current truth, not the memo.

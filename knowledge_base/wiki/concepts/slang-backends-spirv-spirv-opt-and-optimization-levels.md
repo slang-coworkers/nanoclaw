@@ -3,7 +3,7 @@ title: "Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels"
 type: concept
 group: slang-backends
 tags: [spirv, spirv-opt, spirv-tools, slang-glslang, optimization-level, O0, inlining, constant-folding, loop-unroll, wave-ops]
-source_count: 32
+source_count: 33
 ---
 
 # Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels
@@ -18,6 +18,7 @@ How Slang's SPIR-V passes through the bundled `slang-glslang` module (SPIRV-Tool
 - Pre-existing: linking a precompiled `-embed-downstream-ir` module with `-g2 -separate-debug-info` and any spirv-opt pass segfaults in libslang-glslang.
 - slangc has no build-graph edge to the dlopen'd `slang-glslang` (FetchContent consumers need `DEPENDS slang-glslang`). Trace its calls with a logging shim in a directory passed as `-spirv-opt-path <dir>`.
 - Default optimization runs spirv-opt, `-target spirv-asm` included; only `-O0` runs zero passes (a faithful "no spirv-opt" proxy). `-O<n>` never changes Slang IR passes; `-minimum-slang-optimization` does.
+- The default preset's trailing `--eliminate-dead-code-aggressive` DCEs stores of `OpUndef`: an undef-store-based fix does not survive the default pipeline. Materialize a real constant and measure the FINAL artifact, not Slang IR.
 - `-O0` does not stop Slang DCE dropping an unused shader parameter. `-preserve-params` keeps it on SPIR-V only at `-O0` without `-Xspirv-opt` (spirv-opt strips it at every other level; GLSL/HLSL keep it); `-reflection-json` still lists it.
 - spirv-opt is size/perf only; binary size is not GPU runtime. `CreatePrivateToLocalPass` (default preset) breaks function-`static` persistence. Granular pass control goes through `RegisterPassesFromFlags`.
 - Default-opt SPIR-V is exhaustively inlined into one `OpFunction`; WGSL/HLSL keep the call graph and Slang has no inlining heuristic, so deep wrapper chains cost DXC time unless `[ForceInline]`.
@@ -45,6 +46,8 @@ How Slang's SPIR-V passes through the bundled `slang-glslang` module (SPIRV-Tool
 ## What each optimization level runs
 
 **Default optimization runs spirv-opt**, even for plain `-target spirv-asm` with no `-O`: the level is Default, so `glslang_optimizeSPIRV` runs the `#elif 1` DEFAULT preset, `CreatePrivateToLocalPass` included ([default opt runs spirv-opt](../learnings/1781714495665-slangc-target-spirv-asm-at-default-opt-does-run-sp.md)). That pass moves a `Private` var used in one function to per-call `Function` storage without checking that the function runs once per invocation, breaking function-`static` persistence; the fix removes both live registrations ([private-to-local](../learnings/1781713084820-spir-v-function-static-state-loss-spirv-tools-priv.md)).
+
+**The default preset DCEs stores of `OpUndef`.** The default optimization level's pass chain ends in a second `--eliminate-dead-code-aggressive` (after `--eliminate-local-single-block`), which removes `OpStore %r <OpUndef>` from Slang's output even when Slang's own IR and the emitter both contained the store — so an undef-store-based fix for loop-carried registers does NOT survive the default pipeline; measure the FINAL artifact, not Slang's IR. What survives is a raw `kIROp_DefaultConstruct` created at `eliminatePhis` time (slang-emit.cpp:2875, after `removeRawDefaultConstructors` at :2631), which lowers to `OpConstantNull`. Isolate which layer eats an instruction with `slangc -O0` (skips the embedded opt entirely); note `-dump-ir-after` prints to STDERR and only for registered pass names (simplifyIR, eliminateMultiLevelBreak, eliminatePhis, checkUnsupportedInst dump; performForceInlining does not). Verified on #14493: the undef store was present in the `-O0` module, gone at default, and `OpPhi` went 8→7 only with the DefaultConstruct materialization ([embedded default -O1 spirv-opt DCEs OpUndef stores](../learnings/1794838503083-slang-embedded-default-o1-spirv-opt-dces-opundef-s.md)).
 
 **`-O0` is a faithful no-spirv-opt proxy.** `needsOptimization = getOptimizationLevel() != None` maps None → downstream None and `glslang_optimizeSPIRV` early-returns; the always-on `legalizeIRForSPIRV` does not depend on `-O`. A study of what spirv-opt buys must state that binary size ≠ GPU runtime (the driver re-optimizes), only large real shaders show the 50-70% size win, and no size/perf harness exists ([-O0 proxy](../learnings/1784653425624-o0-is-a-faithful-no-spirv-opt-proxy-spirv-opt-is-s.md)).
 
@@ -76,7 +79,8 @@ Float reassociation under default fp-mode (#12160) is also a spirv-opt fold, gat
 
 [[wiki/concepts/slang-backends-spirv.md]] (emitter) · [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] · [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]] · [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] · [[wiki/concepts/slang-backends-spirv-capabilities-and-version-gating.md]] · [[wiki/concepts/slang-backends-spirv-descriptor-handles-and-heap.md]] · [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] · [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] · [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]]
 
-**Source learnings (32):**
+**Source learnings (33):**
+- [embedded default -O1 spirv-opt DCEs OpUndef stores (#14493)](../learnings/1794838503083-slang-embedded-default-o1-spirv-opt-dces-opundef-s.md) — materialize DefaultConstruct; `-dump-ir-after` goes to stderr
 - [CI validation env loads slang-glslang at -O0](../learnings/1792682583662-slang-test-ci-exports-slang-run-spirv-validation-1.md) — set `SkipSPIRVValidation`
 - [-O<n> does not change IR passes](../learnings/1792593053197-slang-o-n-does-not-change-ir-passes-test-ir-fold-f.md) — test IR folds under `-minimum-slang-optimization`
 - [-g2 `_dbgvar_` vars at -O0 vs -O1](../learnings/1792627978559-spir-v-g2-dbgvar-helper-vars-o0-duplicates-real-st.md)

@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max, storage-buffer, GLSLShaderStorageBuffer, typealias]
-source_count: 39
+source_count: 40
 ---
 
 # Slang Intrinsics & Builtins
@@ -86,6 +86,8 @@ Since #11493, `convertToBuiltinArithmeticOp` rewrites `a OP b` on builtin operan
 
 **`enum : bool` shifts ICE.** `enum Mode : bool` with `m.shr(1)` (or `v.shr(n)` in a `T : ILogical` generic) fails E99997 (`getIntTypeWidth`) on every target (ae4e57957): the synthesized `shl`/`shr` witnesses (`slang-check-decl.cpp` ~9402-9407) are raw `intrinsicOp(Lsh/Rsh)`, so after `lowerEnumType` they shift a `bool`; #14402 routes infix `m >> 1` there too. A `lowerEnumType` fix must also cover `Mode.Off << 1` (`@ConstExpr` typed by the `RateQualified` wrapper, missed by `enumType->firstUse`: walk the module, compare `getDataType()`, keep the rate) and generics, where the body-less `[intrinsicOp(Rsh)]` witness becomes `Rsh` only after specialization (give it a body `IntCast<bool>(Rsh(IntCast<int>(x), n))`) [enum:bool ICE](../learnings/1794107028636-slang-shifts-on-bool-tagged-enums-ice-ir-rewrites-.md).
 
+**`*` on matrices is element-wise; `m * v` has no overload and no `mul` hint.** In Slang as in HLSL, `*` on two matrices is element-wise and the matrix product is `mul()` (slangi: `float2x2(1,2,3,4) * float2x2(5,6,7,8)` = `5 12 21 32`; `mul` of them = `19 22 43 50`). But `float4x4 m; float4 v; m * v` fails E39999 "no overload for '*'" with ~21 notes (CoopVec/CoopMat/int8 candidates, "64 more overload candidates") and nothing suggesting `mul` — the only "did you mean" note in slang-diagnostics.lua is on undefined identifiers. `import glsl;` makes `m * v` compile, but the glsl module's operator returns `mul(v, m)` (GLSL operand order, glsl.meta.slang:249-252), so it is never a drop-in for HLSL-style code: tell users to write `mul(m, v)` ([m * v: E39999, no mul hint; import glsl flips order](../learnings/1794385834955-slang-m-v-on-matrices-e39999-with-no-mul-hint-impo.md)).
+
 ## `static_assert`, matrix inverse/determinant, fp64 on SPIR-V
 
 **`static_assert` (#13208)** is `__intrinsic_op(kIROp_StaticAssert)`, not a keyword: at module scope `ident(...)` parses as a declarator and fails with `unexpected '(', expected ')'`. #6136 tracks any-scope support (syntax-decl plus module-level `kIROp_StaticAssert`) [static_assert](../learnings/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md).
@@ -122,7 +124,8 @@ Capability RFC #9210 facts (@33f9ed0ce): `__requireCapability(...)` → `Require
 
 Falsified: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays runtime `OpSNegate` (#9382); `specializeAddressSpace` on DXIL fixes groupshared params (#10641).
 
-**Source learnings (39):**
+**Source learnings (40):**
+- [m * v on matrices: E39999 with no mul hint; import glsl flips order](../learnings/1794385834955-slang-m-v-on-matrices-e39999-with-no-mul-hint-impo.md) — matrix `*` is element-wise; `mul()` is the product
 - [`__intrinsic_type`/`__intrinsic_op` legal in user code](../learnings/1792065241922-intrinsic-type-intrinsic-op-are-accepted-in-user-c.md) — E31229 covers three others; bogus opcode ICEs
 - [intrinsic-prefix emitter rules filter arity/type, never assert](../learnings/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md) — revert-drilled row
 - [`float(sign(x))` == `FSign(x)+0.0`; signed-zero hazard (#13676)](../learnings/1792095513009-float-int-fsign-x-fsign-x-0-0-exactly-spirv-opt-fo.md) — peephole needs casts outside asm

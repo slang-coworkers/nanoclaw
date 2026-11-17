@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 53
+source_count: 56
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -25,6 +25,7 @@ source_count: 53
 - **Reassignment after the bot's draft PR exists → freeze, don't stand down** (#13463/#13475).
 - **No new dedicated test when the existing tests you updated already go red→green** (#14438); add one only for a case they miss.
 - **Size the fix to the feature's usage** (#14247): for a rarely used feature with a trivial workaround, offer the minimal option beside the producer-side fix.
+- **CONTRIBUTING.md's behavior-based `pr: breaking change` is canonical** over CLAUDE.md's compile-only one — the repo carries both definitions until #13498 lands a written policy.
 
 Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
 
@@ -51,6 +52,8 @@ gh pr view <n> -R <owner>/<repo> --json reviewDecision,headRefOid,reviews --jq '
 ```
 
 Re-requesting review is a forbidden `requested_reviewers` write; surface it upward ([comment-only commit](../learnings/1784048274524-never-push-after-a-maintainer-approves-even-a-comm.md)).
+
+**Each review round is amnesiac: adjudicate round-over-round contradictions, don't treat the latest round as fresh truth.** On #14507 round-2's Reviewer A flagged a missing Input/Output variant that round-1's Reviewer A had explicitly directed the fixer NOT to add, citing the same VUID. When declining a reviewer's ask that contradicts an earlier round, surface the disagreement for the human maintainer rather than silently following the newest round ([reviewer rounds are amnesiac](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md)).
 
 ## Verifying a Merge
 
@@ -108,18 +111,24 @@ A rename/branding request is a governance call: park at triage as a feature requ
 
 **Reassignment after the bot's draft PR exists is a freeze, not a stand-down.** Stand-down (#13420/#13436) covers reassignment *before* a PR exists. On slang#13463 (#13475), jkwak-work reassigned the issue 14 h after the bot draft opened, without declining it; the new assignee approved and merged the draft five days later. Keep the draft, freeze proactive bot work (no un-draft, rebase, push, re-run or @-mention), relay human comments verbatim on the canonical thread, and act only on an explicit human ask, fetching before any push. Check a fixer's counter-proposal against the code: auditing every setting's null path found a third outlier (`clangFormatFallbackStyle` null → silent LLVM style) ([reassign after a bot PR: freeze](../learnings/1791822138397-maintainer-reassign-after-a-bot-pr-exists-freeze-d.md)).
 
+**Until #13498 lands a written policy, the repo carries TWO conflicting `pr: breaking change` definitions.** CONTRIBUTING.md (~:348) is behavior-based ("may no longer compile **or behave the same way**", includes runtime behavior and intrinsic removal) and is the canonical/broader one, while `.github/copilot-instructions.md` (~:59) and CLAUDE.md (~:276) tell contributors/LLM tooling the narrower compile-only version (ABI breaks or existing code erroring out). Maintainer relabel precedent: newly rejecting meaningless code → `pr: non-breaking` (#12992); parser-acceptance changes with a "theoretical chance" of breaking existing code → `pr: breaking change` (#13429). Label calls escalate to a maintainer as a measurement question ([two conflicting breaking-change definitions](../learnings/1794892944633-slang-has-two-conflicting-breaking-change-definiti.md)).
+
 ## Declined Issues, Reversals, and Superseded PRs
 
 - **#11568 (ResourceDescriptorHeap/SamplerDescriptorHeap)**: declined for `DescriptorHandle<T>`, then reversed: the team is implementing csyonghe's `UntypedResourceHandle`/`UntypedSamplerHandle` proxy types (implicit-cast to resource types) ([#11568 reversed](../learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md)). The descriptor-heap stride work (#11718) is backend-only (SPIR-V emit/CLI/diagnostics); the E39999 front-end blocker stays ([#11718 is backend-only](../learnings/1782339425194-slang-11568-corollary-11718-unified-descriptor-hea.md)).
 - **#11599 (clip-space Z-remap)**: declined as out of scope ([#11599 declined](../learnings/1782171529298-slang-11599-clip-space-z-remap-declined-by-maintai.md)); a later GLSL-only PR got `CHANGES_REQUESTED` = "won't merge to ToT": a cherry-pickable reference, not acceptance ([#11599 reference PR](../learnings/1782512199002-slang-11599-feature-delivered-as-a-cherry-pickable.md)).
 - **#11681 (DescriptorHandle `_coerce` guard)**: the maintainer preferred removing the dubious `ParameterGroupType` guard over a DescriptorHandle carve-out ([#11681 remove the guard](../learnings/1782164510013-addendum-slang-11681-maintainer-preferred-removing.md)).
 - **New standard-module proposals (#14020)**: maintainers steer new libraries away from standard modules (a back-compat burden) toward separate repos via the package manager: issue #12404 (`slang pkg`) and open PR #12656 (`slang-package.json` with Git-URL + version-range deps, a lock file, `v1.2`-style tags; depends on #12984). Say it is unmerged and may change; don't answer for the maintainers ([package manager refs](../learnings/1793728634729-slang-package-manager-public-refs-12404-pr-12656-s.md)).
+- **#13177/#13108 (arg promotion)**: the by-value half now has a live vehicle — minco3's draft PR #13583 (passes only the fields a callee reads from large aggregate parameters; PTX local mem 8208→4104 B on the #13108 repro). Park #13177 (the pointer/`inout` half, assignee jkwak-work; root cause confirmed downstream — NVRTC's inliner size budget declines big helpers) until #13583 lands, then read its diff first, since it likely contains the shared machinery. Master still has no size-based inlining heuristic (`shouldInline` base false), and the static-const struct-table piece landed via #14204, superseding closed PR #13115 ([#13583 is the live arg-promotion vehicle](../learnings/1794892944295-13177-13108-arg-promotion-draft-pr-13583-is-the-li.md)).
 
 ## Discord Support Bot Routing
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; channels like #slang-discussion are read-only to it ([summon threads only](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (53):**
+**Source learnings (56):**
+- [two conflicting breaking-change definitions until #13498](../learnings/1794892944633-slang-has-two-conflicting-breaking-change-definiti.md) — CONTRIBUTING.md behavior-based is canonical; label calls go to a maintainer
+- [#13177/#13108 arg promotion: draft PR #13583 is the lineage](../learnings/1794892944295-13177-13108-arg-promotion-draft-pr-13583-is-the-li.md) — park the pointer half until #13583 lands; #14204 superseded #13115
+- [BFloat16 I/O spec-forbidden atom: reviewer rounds are amnesiac](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md) — adjudicate round-over-round contradictions for the maintainer
 - [doc-comment shape](../learnings/1791566071976-slang-doc-comments-one-sentence-what-it-does-brief.md)
 - [minimal comment churn](../learnings/1791941642114-slang-maintainers-want-minimal-comment-churn-keep-.md)
 - [verify review state](../learnings/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md)

@@ -18,7 +18,7 @@ Rules for running the GitHub side and the `/slang-pr-review` pipeline. The bot t
 - **Auto-close keywords fire even inside a negation.** Write "part of #N", then check that `closingIssuesReferences` is empty.
 - **Don't duplicate or pre-empt a fix.**
   - A community PR is open: post the triage 5-bullet and hand off "review and land."
-  - A MEMBER self-assigned and self-diagnosed: hold the bot PR.
+  - A MEMBER self-assigned and self-diagnosed: check for their own PR/in-flight work first (competing-PR rule); the assignment alone no longer holds the bot PR (operator correction 2026-11-17, `operator/1794884111425`).
   - A sibling PR is tightening the primitive you reuse: stack on its branch.
 - **A maintainer's literal suggestion is a request, not a spec.** Enumerate every read site of a changed predicate first.
 - **Runner scripts take flags only.** Take the run dir from the `>>> output →` line.
@@ -69,7 +69,7 @@ Sometimes slang-fixer gets a combined verdict for a contributor-owned PR, and th
 
 **A community fix PR is open.** Post the triage 5-bullet anyway ("triaged → PR #X already fixes this, pending review"). The PR predates the issue and carries no `Fixes #N`. Tell the fixer to review and land it, not to write a competing PR ([community fix PR](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md)).
 
-**A MEMBER self-assigned and self-diagnosed.** A bot PR would pre-empt the assignee. Stage a read-only briefing, hold the PR, and route a go/no-go to the parent. Release the PR only if the author asks for help, declines, or lets the issue go stale (NO-GO on slang#13030) ([defer to the MEMBER](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md)).
+**A MEMBER self-assigned and self-diagnosed.** Superseded 2026-11-17 by operator correction `operator/1794884111425`: the self-assignment/self-diagnosis no longer holds the bot PR — only an explicit stand-down does. Keep the real collision guard: check first for the assignee's own PR or actively in-flight work (the competing-PR rule), and only stand down if that exists. The old practice (stage a read-only briefing, hold the PR, route a go/no-go to the parent, release only if the author asks or goes stale — NO-GO on slang#13030) applied when the author had work under way, and that part survives as the human-PR rule ([defer to the MEMBER](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md)).
 
 **A sibling PR is tightening the primitive you reuse: stack on it.** On #11861, the new struct-field recursion in `isVkBindingCompatibleEntryPointParameterType` reused a leaf that still returned `true` for `PtrType`. That would make `struct { uint* p; }` wrongly suppress E38010, which is the bug sibling #11870 was removing. Duplicating that fix means conflicts, and guarding around the leaf ships a known defect. Instead:
 1. `git reset --hard origin/<sibling-branch>`.
@@ -153,7 +153,7 @@ The COMMENT-state post in `/slangpy-pr-review` and `/slang-pr-review` runs only 
 - [Markdown links](../learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md) — render refs as [repo#N](url) in user-facing replies
 - [Close keyword inside a negation](../learnings/1789173822407-github-parses-close-fixes-keyword-even-inside-a-ne.md) — "does not close #N" still closes; check closingIssuesReferences
 - [Issue with a community fix PR](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md) — post the triage bullet; hand off "review and land"
-- [Defer to a self-assigned MEMBER](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md) — hold the bot PR; route a parent go/no-go
+- [Defer to a self-assigned MEMBER](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md) — **superseded 2026-11-17** (operator/1794884111425): assignment ≠ stand-down; only their own in-flight PR/work defers the bot PR
 - [Stack on a sibling PR](../learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md) — --base the sibling branch; faithful subset by construction
 - [Literal suggestion can be unsafe](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md) — enumerate every read site of a reused predicate
 - [run-clarity.sh takes flags](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity word exits 1 at once

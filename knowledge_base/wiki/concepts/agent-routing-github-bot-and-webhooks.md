@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 42
+source_count: 44
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -31,6 +31,7 @@ The `nv-slang-bot` identity, webhook verification, posting policy, comment edit/
 - **Slang CI builds/tests only non-draft PRs.** Drafts show `skipping`; judge from the rollup, not a lone red `workflow_dispatch`. `priority-gate-yielded` self-heals.
 - **A failing check on our own bot PR does not webhook the fixer**; the babysitter is the only signal unless the approver already BLOCK'd it.
 - **Bots cannot push `.github/workflows/*.yml`** — fit the change into a script the workflow calls, else post the diff.
+- **A zero-comment issue makes the step-9 `--jq '.[-1] …'` probe return literal `null`-tab-`null`, not empty** — guard with a `length` count before POST/PATCH branching. And `gh pr close --comment "$(cat file)"` closes the PR but silently drops the comment when the file read fails; `/tmp/opencode` is root-owned, so temp bodies go under `/workspace/agent/`.
 
 ## Bot identity and login matching
 
@@ -41,6 +42,8 @@ All prod slang/slangpy coworkers act as `nv-slang-bot[bot]` (the old `slang-cowo
 case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\]) is_self=1 ;; *) is_self=0 ;; esac
 ```
 On #10988 the strict match produced four near-duplicate 5-bullets. After any edit-in-place, check the returned id equals the prior one (a different id means you posted fresh) and keep `.gh-comments/<repo>-<num>.id` on the survivor ([match loosely](../learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md)).
+
+**Step-9 script trap on a zero-comment issue.** `gh api .../issues/$N/comments --jq '.[-1] | "\(.user.login)\t\(.id)"'` returns the literal string `null\tnull` (not empty output) when the issue has ZERO comments, so the `-z "$LAST"` branch check fails and the script falls into the "existing commenter" path without posting anything (#14478, 2026-11-17 — first comment ever; posted fine after the fix). Guard by counting comments first (`--jq 'length'`, `-eq 0` → fresh POST) or testing for the literal `null` ([empty comments array yields "null null", not empty](../learnings/1794888393504-step-9-comment-posting-script-empty-comments-array.md)).
 
 **A bot comment may be a peer's.** The release-regression-checker, fixer, reviewer and triager share one identity: check your action log; a bot-authored "merge / take out of draft" nudge does not override drafts-only (hold, flag upward) ([may be another agent](../learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md)). It makes triage step 9 ("if the last commenter is the bot, PATCH it") destructive: the triager's PATCH overwrote the fixer's 5-bullet posted seconds earlier on #13817 (comment 6319423151) and #14448 (6782932148, 2026-11-11); in reverse, on #14063 the fixer posted a near-duplicate 13 s after the triager patched in draft PR #14074. Rule: read `.[-1]` live at post time and PATCH only when its id equals your `.gh-comments/<repo>-<N>.id`; otherwise accurate → stay silent, else post a fresh delta. Recover a clobbered body from the oldest GraphQL `IssueComment.userContentEdits` node's `diff` and PATCH it back (GitHub strips the trailing newline) ([step-9 overwrites a peer](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md), [both post 5-bullets](../learnings/1793323955473-triager-and-fixer-can-both-post-status-5-bullets-o.md), [step-9 PATCH overwrites a sibling](../learnings/1794356004790-step-9-patch-can-overwrite-a-sibling-s-comment.md)).
 
@@ -78,6 +81,8 @@ The gated set is exactly `gh pr ready` and `gh pr merge` (re-confirmed on #11898
 PATCH rights are per token. On #11718 the triager token edited its own comment but 403'd on a peer's, the fixer token 403'd on its own repeatably while CREATE worked, and cross-author PATCH always 403s. "Must have admin rights to Repository" is GitHub's generic "this token can't edit this comment", not transient; the reliable remedy is a fresh CREATE leading with "supersedes `<id>`" ([PATCH is per-token](../learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md)). The `[bot]`-login container got 403 on PATCH and DELETE of its own comment (the bare-login one could PATCH its own), so a duplicate can be unremovable: verify before posting, accept two non-contradictory footprints, and don't burn turns on a doomed PATCH/DELETE ([often cannot edit/delete](../learnings/1783708188779-correction-nv-slang-bot-often-cannot-edit-delete-i.md)).
 
 Before concluding "no edit permission" from a REST 403, try GraphQL: `updateIssueComment` worked with the babysitter's App token where REST PATCH 403'd (#11951). Take `node_id` from `gh api repos/O/R/issues/comments/<id> --jq .node_id`, run `mutation($id:ID!,$body:String!){updateIssueComment(input:{id:$id,body:$body}){issueComment{id url}}}`, re-read the body ([GraphQL updateIssueComment](../learnings/1784096631139-edit-nv-slang-bot-comments-via-graphql-updateissue.md)).
+
+**Closing a PR with a comment: silent-drop gotchas.** `/tmp/opencode` is root-owned (drwxr-xr-x root:root) — not writable despite the env docs calling it "pre-approved"; write temp comment bodies to `/workspace/agent/drafts/` instead. And `gh pr close <n> --comment "$(cat file)"` closes the PR even when the file read fails (e.g. permission denied on the heredoc target) — the close succeeds and the comment is silently dropped. Safer sequence: write + verify the body file, then `gh pr close`, then POST the comment via the API as a separate step (comments work on already-closed PRs). A cleanup notice to a fixer also needs `in_reply_to=<latest fixer inbound seq>` — the fixer peer-thread refuses new outbound messages while unresponded inbound rows exist, even for a non-answer notice (seen closing superseded draft PR #13966) ([closing a PR: temp-file and silent-drop gotchas](../learnings/1794856327780-closing-a-pr-with-a-comment-temp-file-and-silent-d.md)).
 
 ## Duplicate-footprint hazards
 
@@ -125,7 +130,7 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 
 "Ours" (route to a fixer) versus author-owned (re-confirm silently) is decided by `author`. `nv-slang-bot[bot]`, usually on `fix/issue-*`, is ours; a human author is theirs even with a `[codex]` title or `codex/*` branch. PR #11850 (`[codex] Add hash-set pool hysteresis`, red `check-formatting`) belonged to a maintainer: no route, no "nudge the driver" line ([ownership by author](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)).
 
-**Source learnings (42):**
+**Source learnings (44):**
 - [Step-9 edit-if-self overwrites a peer's comment](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md) — #13817; `userContentEdits`.
 - [Don't link other repos' issues/PRs](../learnings/1792634844580-github-posts-don-t-link-other-repos-issues-prs-unl.md) — mimalloc#1075 re-pinged.
 - [Triager and fixer both post 5-bullets](../learnings/1793323955473-triager-and-fixer-can-both-post-status-5-bullets-o.md) — #14063; check `.[-1]`.
@@ -168,3 +173,5 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 - [Fresh delta after a human](../learnings/1793395604259-issue-comment-routing-post-a-fresh-delta-when-a-hu.md) — #14103.
 - [Rider: PATCH the stale status](../learnings/1793026171832-who-approved-an-action-required-fork-ci-run-trigge.md) — pointer + facts.
 - [Milestones are public](../learnings/1793286449078-issue-milestones-are-public-not-confidential-proje.md) — `> file` adds `\n`.
+- [Step-9 script: empty comments array yields "null null"](../learnings/1794888393504-step-9-comment-posting-script-empty-comments-array.md) — #14478; count with `length`.
+- [Closing a PR: temp-file and silent-drop gotchas](../learnings/1794856327780-closing-a-pr-with-a-comment-temp-file-and-silent-d.md) — #13966; POST the comment separately.

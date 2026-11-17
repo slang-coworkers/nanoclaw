@@ -3,7 +3,7 @@ title: "slangc CLI, Freshness & Emit-Verification Mechanics"
 type: concept
 group: slang-tooling
 tags: [slangc, cli, filecheck, dump-ir, diagnostics, version, freshness, check-cmdline-ref, render-test]
-source_count: 25
+source_count: 27
 ---
 
 # slangc CLI, Freshness & Emit-Verification Mechanics
@@ -47,7 +47,7 @@ Reliable checks (~2 min):
 
 Re-running `cmake --preset` does not refresh the string: `get_git_version` (`CMakeLists.txt:7`) stores `SLANG_VERSION_FULL` with a non-`FORCE` `set(... CACHE STRING ...)` (`cmake/GitVersion.cmake:113`), and deleting `slang-tag-version.h` only regenerates it from the cache. `-U 'SLANG_VERSION*'` or `--fresh` re-runs `git describe`. Once behavior confirms the binary, the cosmetic staleness is harmless ([baked at CONFIGURE](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md), [feature-probe ToT](../learnings/1781651877940-confirm-a-build-is-really-tot-with-a-feature-probe.md), [cached binary weeks-stale](../learnings/1782470684664-verify-at-head-can-be-silently-wrong-cached-slangc.md)).
 
-An incremental `--target slangc` can exit 0 doing almost nothing (copying the version header), leaving a stale binary; watch ninja for `.cpp.o` recompile lines. If a provisioning process is writing `build/Debug/`, wait for mtime quiescence (~30s) before building, to avoid ELF corruption ([baked at CONFIGURE](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md)).
+An incremental `--target slangc` can exit 0 doing almost nothing (copying the version header), leaving a stale binary; watch ninja for `.cpp.o` recompile lines. If a provisioning process is writing `build/Debug/`, wait for mtime quiescence (~30s) before building, to avoid ELF corruption ([baked at CONFIGURE](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md)). The positive signal is the converse: an incremental `cmake --build --preset release --target slangc` finishing "no work to do" proves the artifacts match the current tree, so the binary is current despite a months-old version string (seen 2026-11-17: a binary from da04f0426 reporting `2026.13.1-50-g3649fb982`, a July commit) — the version string is configure-time stale and never a freshness signal ([repro-matrix CLI quirks](../learnings/1794885847361-slangc-repro-matrix-cli-quirks-o-must-follow-entry.md), [ninja no-op is the freshness signal](../learnings/1794891489687-slangc-version-string-is-configure-time-stale-ninj.md)).
 
 ## Help text and the check-cmdline-ref CI gate
 
@@ -96,7 +96,9 @@ A single-case grep silently misses live entries in the other catalog: zero hits 
 
 **The output format changed between releases.** v2025.2x and older print `file.slang(9): error 30019: ...`; newer print `error[E30019]: ...`. `grep -oE 'error\[E[0-9]+\]'` finds nothing on an old binary, so a failing old compile looks like success; this produced a false "regression since v2025.24" claim that OUTPUT_REVIEW caught. Check the exit status (255 on error) and grep `error\[?E?[0-9]+`; capture `rc=$?` right after slangc, since inside `$(...)` or after a pipe `$?` is the last stage's. An E30019 reading "expected T got T" usually hides a layout/modifier difference the type printer omits: since #12992 made `MatrixLayoutModifier` a `TypeModifier`, `_coerce` (`slang-check-conversion.cpp:2316`) converts layout-only-different matrices but not arrays of them, so `cbuffer { row_major float4x4 m[N]; }` passed to a `float4x4 x[N]` parameter fails (#13376) ([`error 30019` without E](../learnings/1790885585791-old-slangc-releases-print-error-30019-no-e-prefix-.md)).
 
-**Source learnings (25):**
+**Source learnings (27):**
+- [slangc repro-matrix CLI quirks: -o must follow -entry; /dev/null rejected; stale version string](../learnings/1794885847361-slangc-repro-matrix-cli-quirks-o-must-follow-entry.md) — E00070 silent no-compile in matrix scripts
+- [slangc version string is configure-time stale; ninja no-op is the freshness signal](../learnings/1794891489687-slangc-version-string-is-configure-time-stale-ninj.md) — "no work to do" proves artifacts match the tree
 - [slangc-only build (X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md)
 - [slangc-only build dodges slang-rhi/X11](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md)
 - [slangc -v baked at CONFIGURE time](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md)

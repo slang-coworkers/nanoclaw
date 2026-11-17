@@ -3,7 +3,7 @@ title: "Slang SPIR-V capabilities, extensions, and version gating"
 type: concept
 group: slang-backends
 tags: [spirv, capabilities, capdef, extensions, require, spirv-version, profile, ser, target-switch, E36107]
-source_count: 31
+source_count: 32
 ---
 
 # Slang SPIR-V capabilities, extensions, and version gating
@@ -50,6 +50,8 @@ How SPIR-V capabilities and extensions are declared in `slang-capabilities.capde
 
 **Signature-derived VariablePointers.** A capability derived from a signature type must gate on the function surviving inlining: check `[noinline]` via `findDecoration`, not `hasUses()`, or VariablePointers is over-declared (driver bug #9061) ([VariablePointers must gate on [noinline]](../learnings/1781023718622-signature-derived-spir-v-variablepointers-must-gat.md)). The value-site rules and what VariablePointers can and cannot lift are on [[wiki/concepts/slang-backends-spirv.md]].
 
+**BFloat16 in Input/Output storage classes is spec-forbidden — never add capability tests for that arm** (#14507). spirv-val rejects it with SPV_ERROR_INVALID_ID, VkErrorID 10370 (VUID-StandaloneSpirv-OpTypeFloat-10370; `validate_interfaces.cpp:715-735`), while slangc still compiles the shader and — after the BFloat16 16-bit-storage-capability fix — emits `OpCapability StorageInputOutput16`. A `TEST:SIMPLE` filecheck subtest would pass, because slang-test runs the SPIR-V validator only with an explicit `-validate-with-downstream-compiler` flag (`tools/slang-test/README.md:172-176`) which the `tests/spirv` capability-test family never passes — but it would pin emission behavior for a module shape Vulkan forbids ([BFloat16 I/O spec-forbidden; no capability tests](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md)).
+
 **Conditionally requiring a capability for ray tracing:** To limit a shader to `SPV_KHR_ray_query` without pulling in `SPV_KHR_ray_tracing`, use `-capability spvRayQueryKHR` and verify no `TraceRay`/raygen path re-introduces the extension. The `RaytracingAccelerationStructure` type itself triggers a dual "any" requirement; post-PR #6615 dedup should collapse it to ray_query when only `RayQuery` usage exists ([Slang AS: forcing ray-query-only capability (avoid SPV_KHR_ray_tracing)](../learnings/1781905197543-slang-as-forcing-ray-query-only-capability-avoid-s.md)).
 
 ## The emitted SPIR-V version
@@ -84,7 +86,8 @@ The specific over-require driving #12097 is that the SER extensions are pinned t
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (31):**
+**Source learnings (32):**
+- [BFloat16 in SPIR-V Input/Output is spec-forbidden; never add capability tests for that arm (#14507)](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md) — VkErrorID 10370; slang-test capability family never validates
 - [Adding a SPIR-V capability atom to Slang (capdef recipe)](../learnings/1781120340432-adding-a-spir-v-capability-atom-to-slang-capdef-re.md)
 - [Adding a SPIR-V capability atom — ADDENDUM (two generated docs + test -capability)](../learnings/1781122622446-adding-a-spir-v-capability-atom-addendum-two-gener.md)
 - [capability-atom add/reorder in slang-capabilities.capdef is `pr: non-breaking` (public `SlangCapabilityID` opaque + name-resolved; internal enums positional) — serialized by value into IR/.slang-module but that format is already not cross-version-stable (#12244)](../learnings/1785429130429-capability-atom-rename-prs-are-abi-safe-shadow-bia.md)

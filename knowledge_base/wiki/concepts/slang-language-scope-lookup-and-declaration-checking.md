@@ -3,7 +3,7 @@ title: "Slang Scope Lookup, Function-Local Types, and Declaration Checking"
 type: concept
 group: slang-language-core
 tags: [slang, lookup, _lookUpInScopes, scope, function-local-type, local-struct, ParamDecl, isLocalVar, _isUncheckedLocalVar, extension, namespace, hiddenFromLookup, self-reference, EmptyDecl, GenericDecl, checkInterfaceConformance, checkTypeModifier, ModifiedTypeExpr, isOverloaded, refineLookup, using-namespace, maybeDereference, NoDeref, Ptr, openExistential, e30015, e31201, e38100, e99999]
-source_count: 18
+source_count: 19
 ---
 
 # Slang Scope Lookup, Function-Local Types, and Declaration Checking
@@ -105,6 +105,10 @@ The checker rewrites `p.m` to `(*p).m` before `lookUpMember` runs: `maybeInsertI
 
 **Decide the level before opening an existential.** `maybeInsertImplicitOpForMemberBase` dereferences first and then opens an interface-typed base, and `openExistential` → `maybeMoveTemp` → `moveTemp` registers `let tmp = *e` in the `ExprLocalScope` at once. A fallback that later swaps `expr->baseExpression` back to `e` leaves that let in place, so `e` is evaluated twice. With `IFoo* nextEntry()` and `extension<T> Ptr<T> { int tag() }`, `nextEntry().tag()` runs the call twice on cpu, vk and cuda; a plain variable base hides the bug because the extra load is dead. Deciding by a lookup on the *unopened* interface type is also wrong: it misses members of `extension<T : IFoo> T` that the opened `ExtractExistentialType` finds, so `pFoo.extra()` flips from the pointee's 7 to the `Ptr` extension's 8. What worked is a lookup on a stand-in `ExtractExistentialType` built from a throwaway `VarDecl`, which adds no let and no container member [a lookup fallback that swaps the base after maybeOpenExistential double-evaluates it](../learnings/1793822655959-slang-checker-a-member-lookup-fallback-that-swaps-.md).
 
+## Per-import internal-visibility grants: one mechanism, two spellings (#14428 / #10471)
+
+#14428 (`[__AllowUnsafeImportOfInternalDeclarations] import foo;`, tangent-vector RFC) and #10471 Part 1 (csyonghe-blessed `__slangpy_trampoline import`) are two spellings of the SAME mechanism: a per-import grant recorded at `visitImportDecl` (slang-check-decl.cpp ~19007) and consulted in the `Internal` branch of `isDeclVisibleFromScope` (slang-check-expr.cpp ~1186-1192). Imported scopes are already spliced into the importer's lookup chain, so elevation needs no scope change; visibility is check-only (internal decls are already mangled and survive serialization — the "lock-in" risk #14428 flags is status quo, not new). #14428 is parked on surface spelling/scope/name (decision owner tangent-vector); if a fixer is ever dispatched on either issue, implement the shared mechanism once and parameterize the surface ([same per-import internal-visibility mechanism, two spellings](../learnings/1794888440522-14428-10471-part-1-same-per-import-internal-visibi.md)).
+
 ## Tooling notes from this cluster
 
 - A codex CODE_REVIEW/OUTPUT_REVIEW call sometimes returns a wiki-recall blurb, which the critique tracker still records; re-ask on the same `threadId` [#13718 note](../learnings/1792176216247-slang-function-local-types-must-not-see-enclosing-.md). The first `mcp__codex__codex` call here often does this; a `codex-reply` (or first prompt) asking for "ONLY the structured output" fixes it [PR #13889 note](../learnings/1792755685949-slang-lookup-isoverloaded-continuation-also-fires-.md).
@@ -117,8 +121,9 @@ The checker rewrites `p.m` to `(*p).m` before `lookUpMember` runs: `maybeInsertI
 - The #13750 atom says non-function lookup stops at the first level with a hit; before PR #13889 that held only for a single hit (#13888).
 - The two #13888/#13889 continuation atoms overlap but both stay live: the first alone has the `h(7)` miscompile, the ALL-rule counterexample and test gotchas; the second the type-scope cases.
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [function-local struct members resolve enclosing params/locals (#13435)](../learnings/1792157985562-slang-function-local-types-see-enclosing-locals-pa.md) — unbounded walk; no-capture ruling; `m_parentFunc` trap
+- [#14428/#10471: same per-import internal-visibility mechanism, two spellings](../learnings/1794888440522-14428-10471-part-1-same-per-import-internal-visibi.md) — grant at visitImportDecl, consulted in isDeclVisibleFromScope
 - [lookup boundary after `AggTypeDeclBase` (PR #13718)](../learnings/1792176216247-slang-function-local-types-must-not-see-enclosing-.md) — drop ParamDecl/locals; filter breadcrumbs; break on empty
 - [C++ local class: a shadowed global is not reachable by unqualified name](../learnings/1792163585759-c-local-class-shadowed-global-is-not-reachable-by-.md) — g++/clang reject; `::x` escapes
 - [extension bodies use lexical-only lookup (#13721)](../learnings/1792178854023-slang-extension-bodies-use-lexical-only-lookup-ext.md) — `extension N::T` can't see N; shadowing trap; no spec rule

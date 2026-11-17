@@ -3,7 +3,7 @@ title: "Guards, root-cause discipline, and code-change reasoning"
 type: concept
 group: general
 tags: [guards, root-cause, mechanism, predicates, contracts, ci-crash-recovery, arithmetic, instruments, recall, reachability]
-source_count: 15
+source_count: 1
 ---
 
 ## TL;DR
@@ -20,7 +20,8 @@ Reasoning about guards and code changes has its own recurring failure shapes:
   it stricter — clearing-before-run cannot defeat concurrent sharing.
 - **An opt-out on a predicate mixing preference with requirement silently breaks correctness.**
 - **A contract you ADD to an interface binds the implementations you didn't touch** — "out of
-  scope" made before the doc doesn't survive it.
+  scope" made before the doc doesn't survive it. A new rule-stating guard abstraction binds
+  every sibling site of the same resource.
 - **A mutation-based severity argument needs the mutation ATTEMPTED**; a green test run doesn't
   mean the binary has your edit.
 - **A guard/runner report is about its own visibility, not the world's state** — distinguish
@@ -111,6 +112,19 @@ bug?", not "does this violate the contract I just wrote?" After adding/tightenin
 stated reason against the fixtures in your own diff** — a plan justified skipping disassembly
 because it was "unavailable in the same library", disproved by the PR's own fake loader that
 *exported* `glslang_disassembleSPIRV`. [A contract you ADD to an interface binds the implementations you did not touch](../learnings/1785934768237-a-contract-you-add-to-an-interface-binds-the-imple.md)
+
+The named-guard variant of the same rule: when a fix introduces a NEW rule-stating guard
+abstraction with a stated selection rule, audit ALL sibling sites of the same resource, not
+just the site that triggered the bug. On slang#14501 (2026-11-16) the round-1 fix introduced
+`AbortRecoveryLock` — "any lock held across abort-capable code below a recovery boundary must
+be this type" — but converted only `getOrCreateLayout`, leaving
+`ComponentType::specialize` (slang-linkable.cpp:470) taking the same per-Linkage operation
+mutex with a plain `lock_guard` while running abort-capable semantic checking (`CheckTerm`, a
+user-triggerable fatal cyclic-reference), reachable under `compile()`'s new recovery boundary
+— so a recovered abort silently deadlocks the linkage. Reviewer A's subagents and the clarity
+candidate C001 converged on exactly this "rule stated as universal, applied at one site"
+mismatch. The cheap check: list all acquisitions of the same mutex/resource and test each
+against the new rule's stated criterion. [When a fix adds a rule-stating guard abstraction, audit ALL sibling sites of the same resource](../learnings/1794844921145-when-a-fix-adds-a-rule-stating-guard-abstraction-a.md)
 
 ## A mutation-based argument needs the mutation attempted
 
@@ -250,3 +264,6 @@ carried figures checked in one session, four did not survive; the survivor's pro
 it was *labelled as someone else's measurement*, which kept it re-checkable — **an unlabelled
 figure becomes unfalsifiable once repeated.**
 [Prove the branch executes before reporting an edit as effective — and never test a script that stamps the file you monitor](../learnings/1785901095680-prove-the-branch-executes-before-reporting-an-edit.md)
+
+**Source learnings (1):**
+- [when a fix adds a rule-stating guard abstraction, audit ALL sibling sites of the same resource](../learnings/1794844921145-when-a-fix-adds-a-rule-stating-guard-abstraction-a.md) — AbortRecoveryLock on #14501; plain lock_guard left at ComponentType::specialize

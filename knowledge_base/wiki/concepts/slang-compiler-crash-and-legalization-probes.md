@@ -3,7 +3,7 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix, dump-ir, pass-hooks]
-source_count: 25
+source_count: 26
 ---
 
 # Slang Compiler Crash & Legalization Probes
@@ -54,6 +54,8 @@ An entry point with a `uniform` parameter compiled together with another entry p
 
 The `[numthreads]` spec-constant dangling-operand trap (#13767, PR #13826) is on [[wiki/concepts/slang-compiler-specialization-constants-across-targets.md]].
 
+**An init store re-added for a `legalizeDefUse` loop-header hoist must be an uninit-memory store, not poison (#14493).** Two pipeline facts constrain the fix: (1) `removeRawDefaultConstructors` (slang-emit.cpp ~2631, SPIR-V-direct + CPU/LLVM targets) runs BEFORE `eliminateMultiLevelBreak` (~2817), so a raw `kIROp_DefaultConstruct` emitted inside legalizeDefUse (hoist at slang-ir-util.cpp ~3182/~3278) is never stripped and the SPIR-V emitter has no case for it; (2) peephole inside simplifyIR (runs immediately after eliminateMultiLevelBreak) ELIDES stores of `getPoison`/plain Undefined but deliberately preserves `emitLoadFromUninitializedMemory` (slang-ir-peephole.cpp ~2130; kept for the uninit-use checker). So a poison-store init vanishes silently, while an uninit-memory store survives and SPIR-V renders it as `OpUndef` (slang-emit-spirv.cpp ~5627) ([legalizeDefUse hoist init: poison stores elided; use LoadFromUninitializedMemory](../learnings/1794815966129-slang-legalizedefuse-hoist-init-poison-stores-get-.md)).
+
 ## Subsumption, wrappers, and value-shape completeness
 
 "Guard A subsumes guard B" is a claim about the full consumer set each protects. On #12623 a transitive "never defer a func reachable from a static_assert" gate was claimed to subsume the producer-side `!isFromCoreModule` guard; the broad `tests/cuda` suite falsified it: core-module `[ForceInline]` helpers fold into consumers OTHER than static_assert (an intrinsic operand IR validation requires be an integer literal), which the use-site walk can't see. Keep both, and let the broad suite, not the one motivating test, expose a false subsumption ([does NOT subsume](../learnings/1787658437191-reachability-from-static-assert-does-not-subsume-a.md)).
@@ -68,8 +70,9 @@ Texture swizzle stores have their own gap. `assign()` in `slang-lower-to-ir.cpp`
 
 **A last `### AFTER <pass>` dump does not mean that pass finished.** `SLANG_PASS` wraps each pass in `PassHooksRAII` (`source/slang/slang-pass-wrapper.h`), whose destructor runs `postPassHooks`, including the `-dump-ir` "AFTER" dump. When a pass throws (e.g. a `SLANG_RELEASE_ASSERT` InternalError) that dump still prints during unwinding, showing the PARTIALLY transformed IR, with no "BEFORE <next pass>" after it. Confirm with `-dump-ir-before <next pass>`, which prints nothing if X threw; the partial IR shows the half-rewritten state at the throw. Triage of #13948 placed its crash inside `lowerBufferElementTypeToStorageType` this way; root cause on [[wiki/concepts/slang-compiler-ir-type-legalization.md]] ([printed during unwind](../learnings/1792961894220-dump-ir-after-pass-can-be-printed-during-exception.md)).
 
-**Source learnings (25):**
+**Source learnings (26):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — bracket-only attributes
+- [legalizeDefUse hoist init: poison stores elided](../learnings/1794815966129-slang-legalizedefuse-hoist-init-poison-stores-get-.md) — use LoadFromUninitializedMemory; peephole keeps it
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — size-0 skip
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — emitDefaultConstruct; exact `==`
 - [Array of ConstantBuffer with resource element crashes type-legalization](../learnings/1787601573078-array-of-constantbuffer-with-resource-element-cras.md) — no implicitDeref case

@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1420 learnings. [Catalog](../index.md)
+1424 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -860,6 +860,7 @@ type: topic
 - [[approver/dispatch-integrity] A re-dispatch's head_sha can be a phantom (nonexistent) commit with a fabricated rationale — verify existence vs live, don't just compare staleness](../learnings/1786733118533-approver-dispatch-integrity-a-re-dispatch-s-head-s.md)
 - [[approver/efficiency] Protected-path (.github/workflows/**) PRs short-circuit at Step 1 — skip Devin, but surface the substantive risk to the human](../learnings/1789023811236-approver-efficiency-protected-path-github-workflow.md)
 - [[approver/false-safe-averted] OUTPUT_REVIEW flipped WOULD_APPROVE→ABSTAIN: audit the UNSTATED error paths, and never round up past an independent reviewer's unresolved Moderate](../learnings/1787660015668-approver-false-safe-averted-output-review-flipped-.md)
+- [[approver/false-safe] #12820 join closure: human merged only after the editorial reframing — validates the editorial-appropriateness gap diagnosis](../learnings/1794811509820-approver-false-safe-12820-join-closure-human-merge.md)
 - [[approver/false-safe] #817 merged with my abstained bytes byte-identical — 5 abstain rows overruled, and the gap I held on was REAL but I never established it FIRES](../learnings/1786347918704-approver-false-safe-817-merged-with-my-abstained-b.md)
 - [[approver/false-safe] #918 human-confirmed: re-derived WOULD_APPROVE agrees with ccummingsNV APPROVED + MERGED at the SAME head I decided — the staging fallback destroyed a correct-agreement datum, and conservative-direction bugs cost calibration signal rather than triggering alarms](../learnings/1785945140067-approver-false-safe-918-human-confirmed-re-derived.md)
 - [[approver/false-safe] A public header's consumers are not enumerable — no grep of the repo can establish SOURCE compatibility (critique reversed my WOULD_APPROVE)](../learnings/1786390562483-approver-false-safe-a-public-header-s-consumers-ar.md)
@@ -1091,6 +1092,8 @@ type: topic
 - [[approver/human-disagreement] slang#12448: human APPROVED with my OPEN_GAP still open — the PR's own acceptance criterion was an unchecked box no PR CI can ever check](../learnings/1786451888928-approver-human-disagreement-slang-12448-human-appr.md)
 - [[approver/human-disagreement] slang#12455 merged with my BLOCK's defect live — detection was right, severity placement was wrong for warn-only test tooling](../learnings/1786442149465-approver-human-disagreement-slang-12455-merged-wit.md)
 - [[approver/human-disagreement] slang#12569 merged unchanged at my ABSTAIN head — a proven concern that never reached the PR can't block a merge (over-abstain in the falsifiable sense, but the bug shipped)](../learnings/1787558345957-approver-human-disagreement-slang-12569-merged-unc.md)
+- [[approver/human-disagreement] slang#12878 dependabot extras/scaler grpc bump: by-design author_trust abstain vs merged-unchanged; go.sum/decoupling probes validated](../learnings/1794811537525-approver-human-disagreement-slang-12878-dependabot.md)
+- [[approver/human-disagreement] slang#12922 join: by-design author_trust false-abstain, merged at R2 decision commit; Metal blast-radius probe validated](../learnings/1794811546953-approver-human-disagreement-slang-12922-join-by-de.md)
 - [[approver/human-disagreement] slang-rhi maintainers merged past a REUSE holder-accuracy OPEN_GAP while fixing every advisory — holder ≠ merge-blocker when lint is green](../learnings/1787558430570-approver-human-disagreement-slang-rhi-maintainers-.md)
 - [[approver/human-disagreement] slang-rhi UB-fix that WIDENS a container's input set can newly expose a pre-existing error-path bug — enumerate every failure mode of a Major finding before clearing it](../learnings/1786614164733-approver-human-disagreement-slang-rhi-ub-fix-that-.md)
 - [[approver/human-disagreement] slang-rhi Vulkan new-feature PR: refuted-bot-Major + unproven accounting-omission + zero-exec-coverage merged unchanged with admin approve — recalibrate that combo below OPEN_GAP](../learnings/1787917157150-approver-human-disagreement-slang-rhi-vulkan-new-f.md)
@@ -1423,6 +1426,7 @@ type: topic
 - [touch_tracker_verdict leaves reruns/requeues keys absent for brand-new PRs](../learnings/1789812403577-touch-tracker-verdict-leaves-reruns-requeues-keys-.md)
 - [touch_tracker_verdict now requires a paired log_row — the pairing invariant moved from prose to code](../learnings/1791004403685-touch-tracker-verdict-now-requires-a-paired-log-ro.md)
 - [track-critique Attested parser rejects backtick-wrapped hashes](../learnings/1791828331890-track-critique-attested-parser-rejects-backtick-wr.md)
+- [track-critique REQUIREMENTS links must be anchored or the round silently drops](../learnings/1794861965038-track-critique-requirements-links-must-be-anchored.md)
 - [Two agents citing the same commit while holding different HEADs manufactures a false disagreement](../learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md)
 - [Verdict-bearing zeros and ones need a four-leg test — counts are semantically blind in both directions](../learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md)
 - [When the probe is irreversible, documentation agreement is the correct stopping point](../learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md)

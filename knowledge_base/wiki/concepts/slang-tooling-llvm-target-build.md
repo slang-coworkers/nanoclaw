@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen, llvm-prebuilt, gcs, ci]
-source_count: 21
+source_count: 22
 ---
 
 ## TL;DR
@@ -58,6 +58,8 @@ release (releases come only from version tags via `release.yml`). Demonstrate RE
 binary plus a `-cpu` emit-C++ control that stays green; state that GREEN is CI-gated. A test-file
 edit needs no rebuild — re-run `./build/Debug/bin/slang-test <file>`
 [editing source/slang-llvm requires a from-source build](../learnings/1789619858349-editing-source-slang-llvm-requires-a-from-source-b.md).
+
+`ILLVMBuilder` (source/slang-llvm/slang-llvm-builder.h:280) is a COM-style interface ABI-frozen against the **prebuilt** slang-llvm binary that `FETCH_BINARY` downloads (version-matched to the Slang release): changing the header forces a new slang-llvm release ("quite an ordeal" per juliusikkala). A fix that stays entirely inside slang-llvm-builder.cpp (no interface change) is ABI-safe — an older prebuilt keeps loading with the old behavior. PR CI rebuilds slang-llvm from source (USE_SYSTEM_LLVM) whenever `source/slang-llvm` is touched, so source-only fixes are testable in CI without a local LLVM 21 build (#13857's sNaN-quieting in `LLVMBuilder::getConstantFloat`: repro `slangc x.slang -target llvm-ir -O1`, observable only with #13846 applied — on master the constant fold quiets the sNaN first). Affected paths: `-target llvm-ir`, LLVM object/JIT and the CPU-via-LLVM paths (`SLANG_EMIT_CPU_VIA_LLVM`); CUDA PTX does not use LLVMBuilder ([ILLVMBuilder ABI constraint and CI testing](../learnings/1794890998708-slang-llvm-illvmbuilder-abi-constraint-and-ci-test.md)).
 
 The same fetch pins the **slang-test ↔ slang-llvm FileCheck interface**. `FETCH_BINARY_IF_POSSIBLE` takes the
 slang-llvm of the release matching the last git tag (`cmake/GitHubRelease.cmake:58`), or builds with LLVM
@@ -170,7 +172,8 @@ A Linux cold build takes ~15 minutes, so the 120-minute ceiling bites only macOS
 
 For a "bump LLVM to a version containing upstream PR X" issue (e.g. slang#13549 / llvm#229712), check three things. **PR state:** `gh pr view <N> -R llvm/llvm-project --json state,mergedAt,mergeCommit,milestone,comments` — `gh api repos/llvm/...` REST returns 401 through the gateway, but `gh pr view` uses GraphQL and works. **Whether the fix is in a release:** before merge, fetch the touched file from raw.githubusercontent.com at each tag (`llvmorg-21.1.8`, `22.1.8`, `23.1.x`, `main`), compare md5s, and `git apply --check` the local backport on a temp tree of just those files. Once merged, ancestry of the merge SHA settles the tag: a cheap clone (`git init; git remote add origin https://github.com/llvm/llvm-project.git; git fetch --filter=blob:none --shallow-since=<a few months back> origin refs/heads/release/23.x:refs/remotes/origin/release/23.x refs/heads/main:refs/remotes/origin/main refs/tags/llvmorg-23.1.4:refs/tags/llvmorg-23.1.4`, ~25 s), then `git merge-base --is-ancestor <sha> <tag>`. A negative in a shallow clone is weak, so back it with `git show <tag>:<file> | grep <new symbol>`. A `main` fix reaches an x.1.y release only through a backport (milestone "LLVM X.Y Release" + `/cherry-pick <sha>`, per llvm/docs/GitHub.md), and `llvmorg-N-init` is the branch point, not a release ([is an LLVM main commit in a release tag](../learnings/1793197406074-check-if-an-llvm-main-commit-is-in-a-release-tag-w.md)). **Tag dates:** `git ls-remote --tags` for the list, GraphQL `ref(qualifiedName:"refs/tags/…")` committedDate for dates. Slang facts as of 2026-10-09: the LLVM pin lives only in `external/build-llvm.sh:57` and `build-llvm.ps1:58`; deleting a backport patch rekeys the prebuilts (the key globs `external/llvm-*.patch`); LLVM 23 trips `static_assert(LLVM_VERSION_MAJOR < 23)` in `slang-llvm-jit-shared-library.cpp` (the Win64 RTDyld workaround); draft #11017 bumps to 22.1.4 ([checking whether an upstream LLVM fix has shipped](../learnings/1791577897128-checking-whether-an-upstream-llvm-fix-has-shipped-.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
+- [ILLVMBuilder ABI constraint and CI testing (#13857 sNaN cluster)](../learnings/1794890998708-slang-llvm-illvmbuilder-abi-constraint-and-ci-test.md) — header changes force a slang-llvm release; cpp-only fixes are ABI-safe and CI-tested
 - [target-gating: CPU-via-LLVM is a separate emitter — producer predicate excludes isCPUTargetViaLLVM (#13228)](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
 - [emitCast int widening follows SOURCE signedness; default `-cpu` never reaches slang-emit-llvm.cpp (#13202)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md)
 - [adjudicating "isSignedType flip" findings: real witnesses are float→intptr on `-target llvm`, `OpSLessThan` on SPIR-V](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)

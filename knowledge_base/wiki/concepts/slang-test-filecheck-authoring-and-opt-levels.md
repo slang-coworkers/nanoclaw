@@ -3,7 +3,7 @@ title: "Slang Test — FileCheck Authoring and Opt-Levels"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, FileCheck, slang-llvm, libslang-llvm, CHECK-NOT, vacuous-assertion, ordered-match, spirv-asm, opt-level, goldens, OpSource, g2, gitattributes]
-source_count: 33
+source_count: 34
 ---
 
 # Slang Test — FileCheck Authoring and Opt-Levels
@@ -79,7 +79,7 @@ Prove a negative live by flipping it to a known-present pattern (require RED) an
 
 ## Positive pins and refreshing stale CHECK lines
 
-**`-DAG` pins prove each line exists, not which function it is in**: `WGSL-DAG:` lines `fn A`, `let bits = X`, `fn B`, `let bits = Y` pass with X and Y swapped; give each helper its own prefix (`HNAN: fn …` then `HNAN-NEXT:`). **Small integers match larger ones**: `1`, `2`, `3` pass on `10`, `12`, `13` (worst when 1..3 code NaN/Inf and 10+v finite values); write `// CHECK: {{^}}1{{$}}` or use non-overlapping codes (header variant on [Output Assertions](slang-test-output-assertions-and-truncated-runs.md)). A mutant drill caught both on #13669/#13680 ([small integers, -DAG pins](../learnings/1792149954051-filecheck-unanchored-small-integer-check-lines-mat.md)). In a `filecheck-buffer` dump `// CHECK: 1` matches inside `AAAAAA01`, so a 1-byte write into a `0xAAAAAAAA` word passes (#14283): anchor it, and for partial writes read the per-backend `tests/<t>.slang[.N].actual.txt`. Scratch probes need no shared-checkout edit (slang-test only wants `tests/` under the cwd): `mkdir -p /tmp/x/tests && cp t.slang /tmp/x/tests/ && cd /tmp/x && <checkout>/build/Release/bin/slang-test tests/t.slang` ([out-of-tree runs](../learnings/1793752818996-slang-test-runs-out-of-tree-tests-anchor-filecheck.md)).
+**`-DAG` pins prove each line exists, not which function it is in**: `WGSL-DAG:` lines `fn A`, `let bits = X`, `fn B`, `let bits = Y` pass with X and Y swapped; give each helper its own prefix (`HNAN: fn …` then `HNAN-NEXT:`). **Small integers match larger ones**: `1`, `2`, `3` pass on `10`, `12`, `13` (worst when 1..3 code NaN/Inf and 10+v finite values); write `// CHECK: {{^}}1{{$}}` or use non-overlapping codes (header variant on [Output Assertions](slang-test-output-assertions-and-truncated-runs.md)). A mutant drill caught both on #13669/#13680 ([small integers, -DAG pins](../learnings/1792149954051-filecheck-unanchored-small-integer-check-lines-mat.md)). In a `filecheck-buffer` dump `// CHECK: 1` matches inside `AAAAAA01`, so a 1-byte write into a `0xAAAAAAAA` word passes (#14283): anchor it, and for partial writes read the per-backend `tests/<t>.slang[.N].actual.txt`. Scratch probes need no shared-checkout edit (slang-test only wants `tests/` under the cwd): `mkdir -p /tmp/x/tests && cp t.slang /tmp/x/tests/ && cd /tmp/x && <checkout>/build/Release/bin/slang-test tests/t.slang` ([out-of-tree runs](../learnings/1793752818996-slang-test-runs-out-of-tree-tests-anchor-filecheck.md)). Type-only `OpIMul`/`OpIAdd` DAG pins are weaker still: on PR #14452 `SPV_OPS-DAG: OpIAdd %ulong` was matched by the shader's own setup code (`uint64_t x = y + 1`) and by matrix row loops, so a mutant dropping only the u64 add passed every SPIR-V text row. Capture the multiply and pin the add that consumes it — `// SPV_OPS-DAG: %[[MUL_U64:[A-Za-z0-9_]+]] = OpIMul %ulong` then `// SPV_OPS-DAG: OpIAdd %ulong %[[MUL_U64]]{{ }}` (the `{{ }}` stops `%46` matching a prefix of `%465`) — after first checking each type has exactly one `OpIMul` in both direct and via-GLSL output, and prove the strengthening with a drill that removes just one add ([type-only DAG pins match unrelated setup ops](../learnings/1794382846418-filecheck-type-only-opimul-opiadd-dag-pins-can-be-.md)).
 
 **Refresh a stale CHECK by pinning the claim, not the token that broke it.** When WGSL began parenthesizing comparisons (#13569, `if(a > b)` → `if((a > b))`), refresh to `if{{[(]+}}a_N > ...` (`_meta/prompts/_common.md` rule 8: "Pin only what the claim depends on"). PR #13731 also found a `WGSL-NOT: break;` after `default :` that never covered case 0's tail. Prove a refreshed block non-vacuous with a scratch copy that violates the claim ([refreshing a stale line](../learnings/1792230758914-refreshing-a-stale-filecheck-line-don-t-re-pin-the.md)).
 
@@ -105,7 +105,8 @@ For a GLSL/HLSL text-emitter bug, `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK
 - **"Whole-file negatives need a top anchor"** — superseded by the lone-prefix negative.
 - **"Agent containers have no GPU"** (2026-09-28 passthrough outage) — historical; containers have an L40S again.
 
-**Source learnings (33):**
+**Source learnings (34):**
+- [type-only OpIMul/OpIAdd DAG pins match unrelated setup ops (#14452)](../learnings/1794382846418-filecheck-type-only-opimul-opiadd-dag-pins-can-be-.md) — capture the multiply, pin the consuming add, `{{ }}` fence
 - [CHECK-NOT is bounded by surrounding positive CHECKs](../learnings/1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi.md)
 - [a `CHECK-NOT` can be vacuous because DCE removed its subject (#12116)](../learnings/1785754047907-a-filecheck-check-not-can-be-vacuous-because-dce-r.md)
 - [Attempt a crafted minimal repro before concluding a sanitizer witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)

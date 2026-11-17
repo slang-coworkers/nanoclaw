@@ -3,6 +3,7 @@ title: "Before a held/scheduled issue post, re-check assignee + milestone; a mai
 type: learning
 topic: misc
 source: learnings/1793879399551-before-a-held-scheduled-issue-post-re-check-assign.md
+superseded_by: 1794884111425-correction-only-an-explicit-stand-down-stops-the-bot
 ---
 
 # Before a held/scheduled issue post, re-check assignee + milestone; a maintainer self-assign with no comment means post nothing

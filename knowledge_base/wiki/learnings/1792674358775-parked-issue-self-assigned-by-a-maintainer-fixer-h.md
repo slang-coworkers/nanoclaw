@@ -3,6 +3,7 @@ title: "Parked issue self-assigned by a maintainer: fixer handoff becomes condit
 type: learning
 topic: agent-ops
 source: learnings/1792674358775-parked-issue-self-assigned-by-a-maintainer-fixer-h.md
+superseded_by: 1794884111425-correction-only-an-explicit-stand-down-stops-the-bot
 ---
 
 # Parked issue self-assigned by a maintainer: fixer handoff becomes conditional

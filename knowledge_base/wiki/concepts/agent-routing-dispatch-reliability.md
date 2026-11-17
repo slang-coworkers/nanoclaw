@@ -1,0 +1,65 @@
+---
+title: "Agent Routing: Dispatch Reliability — Self-Collisions, Duplicates, and 429 Storms"
+type: concept
+group: agent-routing
+tags: [dispatch, duplicate-dispatch, self-collision, host-error-replay, 429, rate-limit, sequential-dispatch, re-dispatch, sibling-chains, opencode-engine]
+source_count: 8
+---
+
+# Agent Routing: Dispatch Reliability — Self-Collisions, Duplicates, and 429 Storms
+
+What actually goes wrong when a dispatch "fails": host-error replays of your own turn imitate a peer session, real duplicate sessions need a specific stand-down protocol, concurrent fan-out amplifies provider 429s wholesale, and a re-dispatch of already-triaged work is a rationale-diff exercise, not a redo.
+
+## TL;DR
+- A "host error killed your turn" note is not a lost dispatch. The harness REPLAYS the dead turn, and the replay does real filesystem work — your own sentinel/worktree/builds come back to you looking like a peer's.
+- Before declaring a session collision, identify YOUR OWN session: `ncl sessions list` + `ncl sessions history <id>` — your own outbound messages name your session id. If the "peer owner" id you are standing down for is your own, there is no peer; resume work.
+- Orchestrators: when a coworker reports a collision/stand-down, verify the claimed peer session exists in `ncl sessions list` before recording it as fact. A stand-down by the sole owner means the chain is STALLED — chase the stander-down.
+- For a REAL duplicate (two sessions created seconds apart on one canonical thread): claim nothing, stop nothing, send the pinned owner your verified context in ONE message, ONE collision report to parent, end turn.
+- Parents re-dispatching after an error check for a live session on the canonical thread first; a re-dispatch pins `target_session_id` — bare `to:` sends mint duplicate peer sessions.
+- Concurrent dispatch amplifies provider 429s: parallel A/C review runners both died to the same storm; re-dispatch sequentially (A, wait rc=0, then C). Parallel Task subagent fan-out can 429 wholesale — fall back to inline Grep/Read and sequential direct calls.
+- Before dispatching triage on an umbrella-family issue, grep the issues register for sibling chains; never start a fleet fixer chain on a core a maintainer is actively overhauling.
+- A re-dispatch of an already-triaged issue diffs the new correction against the memo's recorded skip *rationales* — only a removed rationale changes the disposition.
+- The core-team no-repro skip rule no longer suppresses a dispatched triage; it only shapes the public-comment decision.
+- opencode-engine review dispatches take no `--model`; verify a detached run's health early from its stream log instead of waiting out the full budget.
+
+## The #14474 self-collision: host-error replays of your own turn imitate a peer session
+
+A transient host error killed slang-fixer's first turn on the #14474 handoff mid-setup; the harness replayed the turn, and the replay created the sentinel, `wt-slang-14474` worktree, builds and plan file. The fixer's next visible turn saw "artifacts I didn't create" plus a session on its own thread in `ncl sessions list`, declared a false collision, sent a "standing down" report naming its own session id as the "peer owner", and went passive for ~5 hours until a supervisor tick exposed it. Two independent post-mortems converge on the same rules ([Correction: the #14474 "duplicate dispatch" was a self-collision](../learnings/1794837218511-correction-the-14474-duplicate-dispatch-was-a-self.md), [host-error replays of your own turns can look like a peer session](../learnings/1794814609966-host-error-redrive-manual-nudge-can-mint-a-duplica.md)):
+
+1. **Identify your own session before declaring a collision.** `ncl sessions list` (+ `ncl sessions history <id>`) is the ground truth for how many sessions exist on a work thread; your own outbound messages (replies, reports, learnings) name your session id. A session on "your" thread that contains your own messages IS you. Self-ID check: if the "peer owner" you are standing down for is your session id, there is no peer — resume work.
+2. **Artifacts with mtimes inside your own session's window (± a few minutes) that you don't remember creating are replay-turn output from your own container** — the host-error-replay path, not a peer.
+3. **Orchestrators must not rationalize a disconfirming fact away.** When a coworker reports a collision that does not appear in the sessions list, suspect self-misread, not a vanished phantom; verify the claimed peer session exists before recording the collision as fact or appending a fleet learning. A stand-down report from the session that is actually the sole owner also means the chain is now stalled — chase the stander-down, don't accept the "clean resolution".
+4. **Standing down is only correct when a FRESHER claim from a DIFFERENT, live session exists** — verified via the sessions list, not inferred from artifacts on disk. Sentinel/claim mechanisms (`wt-<issue-key>` + timestamp) remain the right arbiter for REAL concurrent claims, but the sentinel must be attributed to a different live session.
+
+## Real duplicate dispatch: detection and stand-down protocol
+
+When a parent genuinely retries a handoff (e.g. after a transient host error), both the original and the retry session can be alive on the same issue — one filesystem, one identity, two workers. Detection: an `active-work/<target>` sentinel + `wt-<target>` worktree that were ABSENT in an earlier `ls` appear minutes later with fresh mtimes you didn't create, and `ncl sessions list` shows two sessions created seconds apart on the same `gh-issue-<owner>/<repo>-<num>` thread — but the self-ID check above comes FIRST, or you will stand yourself down ([Correction: the #14474 "duplicate dispatch" was a self-collision](../learnings/1794837218511-correction-the-14474-duplicate-dispatch-was-a-self.md)). Response per prod rule: claim NOTHING (a plan-gate-blocked first claim attempt is a blessing — no half-claims to undo), stop nothing (you started nothing), send the owner (pinned via `send_message(..., target_session_id="sess-...", thread_id=gh-issue-...)`) your verified context (plan file path, repro inbox paths, infra status, recall hits) in ONE peer message, ONE collision report to parent, end turn — no hold/poll/negotiate. Root cause to dedupe upstream: a "host error killed your turn, please retry" note can re-send the full handoff and mint a second session; parents check for a live session on the canonical thread before re-dispatching.
+
+## Concurrent dispatch amplifies 429s — go sequential
+
+Dispatching PR-review runners A and C concurrently (slang#14520 r1, 2026-11-17) got BOTH outer turns killed by provider-side 429 rate-limit storms (10 retries exhausted, terminal_reason=api_error): A died at consolidation after all 6 subagents completed ($9.24 lost, final-review.md never written), C died early with a 59-byte output; the same storm 429'd the dispatcher's own top-level session at the same minute. The fix: re-dispatch sequentially — A first, wait for `wait-run.sh rc=0`, then C; attempt 2 of A passed with its 429s retried internally, and attempt 2 of C ran with zero 429s. The rate limit is load-amplified across concurrent inner sessions. Archive failed run dirs as `<run>-fail1`, clean `tmp/review-candidates` and `tmp/pr-*` from REPO_ROOT, and before re-dispatching verify the inner run is healthy early (grep `stream.jsonl` for assistant turns and `error_status: 429` after ~2 min) so you don't burn another 30 min on a dead-on-arrival run ([Sequential A/C re-dispatch after a 429 storm](../learnings/1794892391798-sequential-a-c-re-dispatch-after-a-429-storm-pr-re.md)). The same wholesale failure hits subagent fan-out: firing 3 Task subagents simultaneously (per the triage workflow's parallelism rule) got all three killed with HTTP 429 and zero results; the resilient fallback is to do the local-code recon directly with Grep/Read/git-log, run each direct MCP call (deepwiki, gh) in its own sequential turn, and skip the subagent wrapper entirely for gh checks — fan-out is worth it only when output volume would genuinely pollute context ([Parallel subagent fan-out can 429 wholesale — fall back to direct sequential research](../learnings/1794890272845-parallel-subagent-fan-out-can-429-wholesale-fall-b.md)).
+
+## Re-dispatch of already-triaged work is a rationale-diff, not a redo
+
+When a retro-release batch re-dispatches an issue that already has a triage memo, first diff the operator's correction against the memo's recorded skip *rationales*: the correction ("assignment is NOT a stand-down", 2026-11-17) only removes assignment as a rationale — if the skip also rested on the core-team-no-reproducer rule (MEMBER author + no repro → silent skip) or on out-of-scope external infra, the disposition stands unchanged. Verify live state matches the memo, append a dated reconciliation section, and report the rationale-diff to the parent instead of redoing the full triage ([Retro-batch re-dispatch: diff the correction against the prior skip rationale](../learnings/1794893926936-retro-batch-re-dispatch-diff-the-correction-agains.md)). Under the same operator correction, the core-team no-repro skip rule NO LONGER suppresses a dispatched triage: a dispatch means you triage and make the content/publicity call regardless of who reported the issue; the rule only shapes the outcome (e.g. no public comment), and the decision to suppress a GitHub post must stand on content grounds — such as echoing internal-infra detail on an owner-action issue with no repo surface ([No-repro skip rule no longer suppresses a dispatch](../learnings/1794893975569-no-repro-skip-rule-no-longer-suppresses-a-dispatch.md)).
+
+## Check the issues register for sibling chains before dispatching
+
+Before dispatching or starting triage on an umbrella-family issue, grep `memory/issues/index.md` for sibling/family chains — the parent or siblings may already be triaged by a sibling session the same day (2026-11-17: #14473's parent umbrella was parked by another session hours before the #14476 sub-umbrella dispatch, found via the register only after posting). Family chains cross-reference each other's comment ids and re-check tasks rather than double-parking or posting overlapping 5-bullets on the same family ([Check the issues register for sibling chains before triaging umbrella-family issues](../learnings/1794888396502-check-the-issues-register-for-sibling-chains-befor.md)). The same register read surfaces dispatch suppressions: when a maintainer has announced an overhaul of the core an issue family reduces to (skiminki-nv's IR SCCP integer-folding overhaul, #13994), never start a fleet fixer chain on that core while it is in flight.
+
+## opencode-engine review dispatch mechanics
+
+For opencode-engine A/C review-runner dispatches: do NOT pass `--model` — the post-11-24-sync runner refuses any value and uses OPENCODE_MODEL automatically; the opencode path is much faster than the old claude-CLI numbers (C ~9 min, A ~19 min, 1–2 `wait-run.sh` calls at `--timeout 540` instead of 3–4), and Devin on a brand-new PR completes fresh within the 15-min cap without the stale-analysis retry ([#14521 r1: opencode-engine dispatch notes](../learnings/1794895081791-14521-r1-opencode-engine-dispatch-no-model-speed-b.md)). Two mechanical traps from the same run: (1) a bash `mkdir -p X && setsid nohup … &` backgrounds the WHOLE `&&` list, so a following `echo $! > X/pid` races the mkdir — split into two statements when launching a detached job; (2) when a critique-gate correction is sent via `send_message`, `in_reply_to` must reference the peer's INBOUND message id (the fixer's inbound row), not your own outbound id — an outbound id does not resolve the peer edge.
+
+**Source learnings (8):**
+
+- [#14474 correction: self-collision, not duplicate dispatch](../learnings/1794837218511-correction-the-14474-duplicate-dispatch-was-a-self.md)
+- [Host-error replays look like a peer session — verify in sessions list](../learnings/1794814609966-host-error-redrive-manual-nudge-can-mint-a-duplica.md)
+- [Sequential A/C re-dispatch after a 429 storm](../learnings/1794892391798-sequential-a-c-re-dispatch-after-a-429-storm-pr-re.md)
+- [Parallel subagent fan-out can 429 wholesale](../learnings/1794890272845-parallel-subagent-fan-out-can-429-wholesale-fall-b.md)
+- [Retro-batch re-dispatch: diff correction vs prior skip rationale](../learnings/1794893926936-retro-batch-re-dispatch-diff-the-correction-agains.md)
+- [No-repro skip rule no longer suppresses a dispatch](../learnings/1794893975569-no-repro-skip-rule-no-longer-suppresses-a-dispatch.md)
+- [Check the issues register for sibling chains before dispatch](../learnings/1794888396502-check-the-issues-register-for-sibling-chains-befor.md)
+- [#14521 r1: opencode-engine dispatch (no --model) mechanics](../learnings/1794895081791-14521-r1-opencode-engine-dispatch-no-model-speed-b.md)
+
+_Catalog: [[wiki/index.md]]_

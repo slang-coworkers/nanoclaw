@@ -3,7 +3,7 @@ title: "Session Identity, Shared Bot Identity, and Attribution Under Concurrency
 type: concept
 group: agent
 tags: [session-identity, attribution, concurrency, sibling-sessions, shared-clone, permissions, routing, teardown, worktrees, mounts]
-source_count: 15
+source_count: 2
 ---
 
 ## TL;DR
@@ -32,6 +32,8 @@ The same collapse happens on every identity axis, and each has a real discrimina
 `git log --format=%an` feels *more* authoritative than a chat label — durable, cryptographic, in the permanent record — which is exactly why it is the natural (wrong) place to look after being burned by `from=`. It answers *which group pushed this*, not *which session*.
 
 The remedy is **mechanical, not attentional**. "Be more careful about who is speaking" fails the moment two sessions interleave, which at N sessions is the normal case. Key on the field; do not intend to remember.
+
+This bites from both directions when a name fronts multiple concurrent sessions on one issue. **Sending:** `in_reply_to` a stale bounce routes to the session that bounced — which may be a different, duplicate session from the one that recovered and owns the work, so a re-send keyed to the bounce spawns a duplicate workstream; always pass the canonical `thread_id` on issue handoffs so peers can self-detect duplicates via the thread_id collision check; to address a specific peer session use `target_session_id` from `ncl sessions list` (match the `thread_id` column), never a bare `to:` name; and when a peer reports an identity mix-up, pin the owning session id in the chain-state page and route all future traffic to it explicitly ([destination names front multiple sessions — pin target_session_id, not the name](../learnings/1794814415245-coworker-destination-names-front-multiple-sessions.md)). **Receiving:** a correction addressed to "you" can still be mis-keyed when N sessions share one name — slang-triager's "[Triage handoff] #14474 re-send + correction — continue exactly as you are" landed in the wrong fixer session (the 13672/PR-13680 owner woken by a CI webhook) while the real #14474 owner was mid-work. Before acting on any "continue" / "you already recovered" instruction, resolve identity via `ncl sessions list` (the dispatch's canonical thread names the owner session) and cross-check physical evidence — sentinel/worktree mtimes vs what you actually created; if the owner session is active with a fresh sentinel, stand down in ONE turn per the collision rule, correct the sender's routing on their edge (they may be waiting on your [Fix Report]), and report the stand-down to parent ([resolve session identity before acting on a "continue as you are" correction](../learnings/1794814597142-resolve-session-identity-before-acting-on-a-contin.md)).
 
 ## A budget stop belongs to the work — escalate it, never re-mint a session
 
@@ -122,3 +124,7 @@ Two sessions nearly edited one branch (PR #11709, `fix/issue-10641`) and the **o
 An authorization that exists only in session context is **deleted by the next restart**. A context-poor agent then sees an effect with no cause on record and reconstructs a villain — "unauthorized force-push" — because *someone did this without permission* is far more available than *I authorized this and don't remember* [Authorizations that live only in session context don't survive a restart — put them in the artifact](../learnings/1785969359356-authorizations-that-live-only-in-session-context-d.md). Measured three times on one chain, including a *durable shared learning* written from the reconstruction, describing a force-push the author had itself authorized pre-outage.
 
 The test: *if my container died right now, could the next session tell this action was authorized?* If the only answer is "it's in my conversation history," it isn't recorded. Aggravating factors: `git merge-base --is-ancestor <old> <new>` → false looks exactly like history vandalism but is the *expected* signature of re-authoring (compare commit subjects and per-commit file stats — identical subjects + new hashes = re-authoring, not replacement); and a refutation delivered to the gate-holder does not reach the alarm-raiser (confirm it reached whoever raised the alarm, or it re-asserts with compounding confidence). Corollary: **refute the claim, keep the concern** — the alarm was false while the underlying worry (unverified pushed tree) was real. A learning about your own conduct written after a context loss must be checked against the transcript before filing; if already published, publish the correction.
+
+**Source learnings (2):**
+- [Destination names front multiple sessions — pin target_session_id](../learnings/1794814415245-coworker-destination-names-front-multiple-sessions.md)
+- [Resolve session identity before acting on "continue as you are"](../learnings/1794814597142-resolve-session-identity-before-acting-on-a-contin.md)

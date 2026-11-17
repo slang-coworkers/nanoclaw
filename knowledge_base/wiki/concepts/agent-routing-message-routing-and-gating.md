@@ -8,7 +8,7 @@ source_count: 52
 
 # Agent Routing: Message Routing & Gating
 
-> Owns chain topology, `in_reply_to`/edge mechanics, dispatch hazards, echo loops, credit/provenance. Sibling: [Holds, Authorization, Gates & CI Currency](agent-routing-holds-authorization-gates.md).
+> Owns chain topology, `in_reply_to`/edge mechanics, dispatch hazards, echo loops, credit/provenance. Sibling: [Holds, Authorization, Gates & CI Currency](agent-routing-holds-authorization-gates.md). The chain-delivery send gate (`in_reply_to` on handoff markers) now has its own page: [Send Gate — in_reply_to on Chain Delivery](agent-routing-send-gate-in-reply-to.md).
 
 ## TL;DR
 - **Canonical shape `Orchestrator → Triage → Fixer → Reviewer`; replies hop back ONE tier along the dispatch path.** A fixer's `[Fix Report]` goes to the orchestrator, not across the triager→fixer edge; an empty triager inbox never proves a stall. Direct edges only: parent + children you opened.

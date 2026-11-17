@@ -3,7 +3,7 @@ title: "Slang Compiler Internals: Parser, IR, Types, and Language Semantics"
 type: concept
 group: slang-grab-bag
 tags: [parser, IRBuilder, type-interning, module-import, autodiff, SLANG_ASSERT, String, AST, DeclRefType, ThisType, source-location, lexer, constref, immutable-location, opaque-type, copy-elision, com-api, loadmodule, ownership, ffi]
-source_count: 28
+source_count: 29
 ---
 
 # Slang Compiler Internals: Parser, IR, Types, and Language Semantics
@@ -32,6 +32,7 @@ Rules this page once carried only in its TL;DR live on the sibling pages that ci
 - **`Slang::String` is copy-on-write with a shallow copy ctor** — to share across threads, deep-copy with `String(x.getUnownedSlice())` under the producer's lock.
 - **`canCoerce` probes call with `outExpr == nullptr`**, so a `return true` nested in `if (outExpr)` makes init-lists fail as arguments; the error path can still leak real-sink diagnostics during probes.
 - **`#language slang <ver>` unconditionally overrides the default version for that file**; files without a directive keep the default. It does not cross an `import` boundary.
+- **`IRBuilder::getSet` sorts on lazily-assigned `getUniqueID`, so set order is host-compiler dependent.** Sequencing the comparator's calls is not a fix (`std::stable_sort` alone reorders a 5-conformer set on master); pre-assigning IDs in iteration order gives byte-identical output under every comparator variant. Sweep variants with one env-var-switched scratch build; Clang 14 can't build master — use GCC.
 - **Before re-reporting a silent chain as parked, search all-state PRs referencing the issue** and re-verify the defect at HEAD — the assignee may have shipped their own fix.
 
 ## Lexer: Hex-Digit Decoder Bug
@@ -102,11 +103,16 @@ Slang platform macros such as `SLANG_OSX`, `SLANG_LINUX` and `SLANG_VC` are **al
 
 When brace initializers work in var-decl/return/assignment but fail as function arguments, check the `canCoerce` viability probe: it calls with `outExpr == nullptr`, so a `return true` nested inside `if (outExpr)` in a coercion helper reports a false negative. Un-nest the `return true` so viability does not depend on whether an output AST was requested ([Slang init-list-as-argument bugs: check canCoerce viability-probe (outExpr==null) divergence](../learnings/1782736932170-slang-init-list-as-argument-bugs-check-cancoerce-v.md)). PR #11818 (issue #11730) fixed the success return, but the error return in `createInvokeExprForExplicitCtor` still calls `diagnoseRaw` on the real sink during probes, leaking hard diagnostics before overload ranking completes ([slang init-list arg coercion: #11730 fixed the success return's probe-safety but the ERROR return still leaks a real-sink diagnostic during canCoerce](../learnings/1782739042356-slang-init-list-arg-coercion-11730-fixed-the-succe.md)).
 
+## IRBuilder::getSet Ordering: Pre-Assign IDs, Sweep Comparator Variants in One Build
+
+For host-compiler-dependent output (#14350/#13474, `IRBuilder::getSet` sorting on lazily-assigned `getUniqueID`), do not rebuild once per candidate fix: add a scratch `static const int mode = getenv(...)` switch inside the comparator so ONE build covers every variant — reversed operand order (MSVC stand-in), `std::stable_sort` (a different comparison pattern), and pre-assigned IDs — then diff the emitted HLSL by md5. Result on #14350: `stable_sort` alone reorders a 5-conformer set on master, so sequencing the comparator's calls is not a fix; pre-assigning IDs in iteration order gives byte-identical output under all variants with zero full-suite churn (the host-compiler-dependence fact itself is on [[wiki/concepts/slang-compiler-serialization-and-enums.md]]). Build with GCC: Debian clang 14.0.6 cannot compile master (`slang-internally-linked-list.h:122` missing `typename`; C++20 `views::reverse` fails against libstdc++ 12), and Linux CI uses GCC, which matches Clang's order on this repro. A `git worktree` on the shared clone needs `git -c protocol.file.allow=always submodule update --init --recursive` (the submodule URLs are local paths), and `SLANG_ENABLE_TESTS` requires `SLANG_ENABLE_SLANG_RHI=ON` ([set-order stand-in matrix; Clang 14 can't build master](../learnings/1794427105962-slang-set-order-stand-in-matrix-env-var-switched-c.md)).
+
 ## #language Directive Precedence
 
 The precedence is well-defined. Each file starts at `optionSet.getLanguageVersion()` (`slang-compile-request.cpp:324`); `HandleLanguageDirective` (`slang-preprocessor.cpp:4568`) assigns the directive's version unconditionally, so it overrides the default in either direction; and the value is written back only if a directive was seen (`!= UNKNOWN`), so directive-less files keep the default. `slangc -std`/`-lang` already sets `CompilerOptionName::LanguageVersion`, so a "default version for files without a directive" feature (slangd) only needs to feed that option per file. Valid versions are `legacy`/2018, 2025 and 2026; `maybeUpgradeLanguageVersionFromLegacy` bumps LEGACY→2025 when a visibility modifier is parsed. A directive in a shared file propagates only through textual `#include`, not across an `import` boundary, because each module has its own `languageVersion` ([Slang #language directive precedence: unconditional per-file override of the option-set default](../learnings/1782153228750-slang-language-directive-precedence-unconditional-.md)).
 
-**Source learnings (28):**
+**Source learnings (29):**
+- [set-order stand-in matrix: env-var-switched comparator variants in one build; Clang 14 can't build master](../learnings/1794427105962-slang-set-order-stand-in-matrix-env-var-switched-c.md) — pre-assign getUniqueID; GCC matches Clang's order
 - [semicolon-less `throw` orphans a following `else` (#12326) — a missing-terminator omission also REJECTS valid code; requiring `;` does not tighten the expression bound; `SLANG_LANGUAGE_VERSION_202C` absent at HEAD](../learnings/1785766261707-slang-semicolon-less-throw-orphans-a-following-els.md)
 - [supervisor nudge on a silent escalation: search all-state PRs referencing the issue before re-reporting "parked" (#12070 autodiff loop-start reconstruction; read both diffs; re-verify at HEAD)](../learnings/1785761376469-supervisor-nudge-on-a-silent-escalation-check-whet.md)
 - [NRVO for opaque non-copyable returns must be scoped to opaque HANDLES (RayQuery/HitObject), not all [__NonCopyableType] (#12197)](../learnings/1784798335581-nrvo-for-opaque-non-copyable-returns-must-be-scope.md)

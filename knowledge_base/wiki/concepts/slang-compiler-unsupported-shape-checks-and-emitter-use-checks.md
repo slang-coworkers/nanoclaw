@@ -3,7 +3,7 @@ title: "Slang unsupported-shape diagnostics and emitter result-unused checks: wh
 type: concept
 group: slang-compiler
 tags: [slang, ir, diagnostics, linkAndOptimizeIR, checkUnsupportedResourceLocals, makeArrayFromElement, specialization-constant, E55222, E55223, E55204, IRBuiltinGenericType, collectGlobalUniformParameters, sourceLoc, DebugValue, hasNonDebugUse, minimum-slang-optimization, metal, atomics, DIAGNOSTIC_TEST, checkUnsupportedInst, double, fp64, E99997]
-source_count: 14
+source_count: 15
 ---
 
 # Slang unsupported-shape diagnostics and emitter result-unused checks: where they run, what they must look through, and debug-info users
@@ -83,8 +83,13 @@ The MSL rules behind these two PRs (only void relaxed `atomic_ulong` min/max on 
 - **Run a reviewer's front-end claim before acting on it.** A reviewer claimed that `{1,2,3,4}` on a spec-constant-sized array "silently dropped to MakeArrayFromElement"; every build actually reports E30523 "too many initializers" ([same](../learnings/1793318861659-pre-optimization-unsupported-value-checks-reject-c.md)).
 - **Do not re-split commits with `git reset --soft origin/master` in a worktree.** `origin/master` is shared with the base clone, and another session's `git fetch` moves it, so the reset silently "reverts" every new master commit in your index; reset to the recorded base SHA instead ([same](../learnings/1793300205701-emitter-result-unused-checks-must-ignore-debugvalu.md)). Worktree hygiene in general is on [[wiki/concepts/agent-infra-f0909b0-git-worktree-hygiene.md]].
 
-**Source learnings (14):**
+## Enforce a guard at the single funnel, with two predicates (accessor writability)
+
+Guarding a writability invariant at ONE lowering site (the `tryGetAddress` reroute) leaves sibling accessor-binding sites unguarded (materialize's ref fallback, assign's setter arm, mutating getters). The durable fix is a single enforcement point: `_emitCallToAccessor` is the funnel EVERY accessor invocation passes through, so a guard there covers all sites and future ones. Use TWO predicates: the reroute check (tryGetAddress) can be conservative because refusal has a sound fallback (the get/modify/set round-trip through a nonmutating setter), but the DIAGNOSTIC check must fire only on PROVEN violation (pointer type carries Read/Immutable) — the conservative version false-positived on ExtractedExistential bases (dynamic-dispatch special-members-setter.slang) that are legitimately writable. Also: `AcceptQualifier::WriteOnly` counts as writable storage (a `__ref_writeonly` receiver backs stores; rerouting to a getter would LOAD write-only memory). Empirically no execution backend can currently run a call to a ref accessor whose body returns an l-value (CPU/CUDA llvm rejects at coercion, Vulkan segfaults pre-existing on master), so positive-case tests for ref-accessor binding must be codegen-level CHECK tests ([accessor-writability guard: enforce at the _emitCallToAccessor funnel](../learnings/1794835801190-slang-accessor-writability-guard-enforce-at-the-em.md)).
+
+**Source learnings (15):**
 - [CORRECTION: don't make checkUnsupportedInst run under -minimum-slang-optimization](../learnings/1793902435162-correction-don-t-make-checkunsupportedinst-run-und.md) — PR #14210 ruling: keep the min-opt guard (input validation only); top-level IRFunc walk; corpus diff; three `emitTempModifiers` copies
+- [Accessor-writability guard: enforce at the _emitCallToAccessor funnel](../learnings/1794835801190-slang-accessor-writability-guard-enforce-at-the-em.md) — reroute conservative, diagnose on proven violation; WriteOnly is writable
 - [Emitter result-unused checks must ignore DebugValue users](../learnings/1793300205701-emitter-result-unused-checks-must-ignore-debugvalu.md) — `hasUses()` is wrong under `-g`; DIAGNOSTIC_TEST needs header and span carets; MSL 64-bit atomic limits; shared `origin/master` reset hazard (#14044)
 - [Emitter result-unused checks depend on DCE: probe -g -minimum-slang-optimization](../learnings/1793303529967-emitter-result-unused-checks-depend-on-dce-g-minim.md) — surviving `store(%o, %atomicMin)` fires E55204 only in that mode; metallib gets `-std=metal3.1`; MSL PDF via curl + pypdf
 - [Late IR unsupported-shape checks must look through wrappers](../learnings/1793309934870-late-ir-unsupported-shape-checks-must-look-through.md) — `IRBuiltinGenericType` elements and undeclared values; call results first; `globalParams` key sourceLoc after the assert; `.slang-module` corpus noise (#14049)
