@@ -20,6 +20,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from './types.js';
 
 const requestApprovalMock = vi.fn().mockResolvedValue(undefined);
+let notifyThrows = false;
+let nudgeIds = 0;
 const notifyAgentMock = vi.fn();
 type ApprovalHandler = (ctx: {
   session: Session;
@@ -47,8 +49,10 @@ vi.mock('./modules/approvals/index.js', () => ({
   notifyAgent: (...args: unknown[]) => notifyAgentMock(...args),
   notifyAgentWithId: (...args: unknown[]) => {
     notifyAgentMock(...args);
-    return Promise.resolve(`sys-nudge-${notifyAgentMock.mock.calls.length}`);
+    if (notifyThrows) return Promise.reject(new Error('mailbox unavailable'));
+    return Promise.resolve(args[2]);
   },
+  systemMessageId: () => `sys-nudge-${++nudgeIds}`,
 }));
 
 // sessionDir walks DATA_DIR (cwd-derived); mock it so nothing touches ./data.
@@ -177,6 +181,8 @@ beforeEach(() => {
   insertedEvents.length = 0;
   createGrantThrows = false;
   claimedIds.clear();
+  notifyThrows = false;
+  nudgeIds = 0;
 });
 
 afterEach(() => {
@@ -389,6 +395,27 @@ describe('checkCritiqueEscalation — nudges count once the runner claims them',
     await checkCritiqueEscalation(session, dir);
     const card = requestApprovalMock.mock.calls[0][0] as { question: string };
     expect(card.question).toContain('was nudged 3 time(s)');
+  });
+
+  it('keeps the new nudge id when the send fails, so the attempt does not inherit an expired window', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base,
+      self_heal_attempts: 1,
+      self_heal_at: minsAgo(30),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(20),
+    });
+    notifyThrows = true;
+    await expect(checkCritiqueEscalation(session, dir)).rejects.toThrow('mailbox unavailable');
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 2, self_heal_msg_id: 'sys-nudge-1' });
+    expect(readEscalation().self_heal_delivered_at).toBeNull();
+
+    notifyThrows = false;
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(readEscalation().self_heal_attempts).toBe(2);
   });
 
   it('cards a nudge left unclaimed for an hour, and says it was not delivered', async () => {

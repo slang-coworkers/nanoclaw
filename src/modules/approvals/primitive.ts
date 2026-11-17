@@ -208,12 +208,18 @@ export async function notifyAgent(session: Session, text: string): Promise<void>
   await notifyAgentWithId(session, text);
 }
 
+/** A fresh id for a system chat to an agent's session. */
+export function systemMessageId(): string {
+  return `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 /**
- * Send a system chat to the agent's session, like notifyAgent, and return the
- * inbound message id so the caller can see when the runner claims it.
+ * Send a system chat to the agent's session, like notifyAgent, under `id`, and
+ * return the id. A caller that tracks the message (to see when the runner
+ * claims it) stores the id before sending, so a failed send leaves a record of
+ * the attempt rather than the previous message's.
  */
-export async function notifyAgentWithId(session: Session, text: string): Promise<string> {
-  const id = `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+export async function notifyAgentWithId(session: Session, text: string, id = systemMessageId()): Promise<string> {
   await writeSessionMessage(session.agent_group_id, session.id, {
     id,
     kind: 'chat',
