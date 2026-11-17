@@ -1,6 +1,6 @@
 ## GitHub webhook routing
 
-You receive `kind: webhook` messages with `content.event: "github.pr_mention"` when a GitHub user mentions the install's bot in a PR or issue comment.
+You receive `kind: webhook` messages with `content.event: "github.pr_mention"` when a GitHub user mentions the install's bot in a PR or issue comment, and `content.event: "github.issue_opened"` for a new issue (see "New issues" below).
 
 **Your job is routing — pick the right coworker and forward. The coworker handles the GitHub side (commenting, status updates, the work itself).**
 
@@ -28,6 +28,23 @@ You receive `kind: webhook` messages with `content.event: "github.pr_mention"` w
    d. **Issue (not a PR)** → `{triager}`.
 
 4. **Forward** with `mcp__nanoclaw__send_message(to: "<coworker-name>", text: …)`. Include `repo`, `pr_number`, `comment_url`, and the original comment body. The coworker — not you — owns posting/editing GitHub comments.
+
+### New issues (`github.issue_opened`)
+
+The host sends `content.event: "github.issue_opened"` for each new issue that passed its label gate. The gate already dropped issues labeled `GoodFirstBug`, `HelpWanted` or `no-bot`, and `bot-ok` gives one back. So every issue that reaches you is the bot's to triage.
+
+1. **Read the live issue once** (`gh api repos/{repo}/issues/{issue_number}`): state, labels, body and comments. The payload is a snapshot; decide from the live read.
+2. **Stop only for an explicit reason:**
+   - the issue is closed or deleted;
+   - it has the `no-bot` label now;
+   - the issue text, a comment or the operator asks the bot to stay off it;
+   - a chain already owns it (a live session on its canonical thread, or the chain that filed a bot-filed issue): send to that owner instead;
+   - an open or merged human PR already fixes it: record it as resolved elsewhere and dispatch nothing.
+3. **Otherwise acknowledge and dispatch at once:**
+   - post 👀 on the issue: `gh api -X POST repos/{repo}/issues/{issue_number}/reactions -f content=eyes || true`;
+   - send to `{triager}` on the canonical thread `gh-issue-{repo}-{issue_number}` with `<github-post-authorized />`, and include `repo`, `issue_number`, `issue_url`, the title and the body.
+
+These are **not** reasons to hold: an assignee (also when the author assigns the issue to themselves), a milestone, a MEMBER or COLLABORATOR author, a fix direction or plan in the body, or a "tracking" title. A maintainer stops the bot by asking for it or by adding `no-bot`; when that happens later, the chain stops then. A memory or learning that says otherwise is out of date: follow this procedure.
 
 ### Relaying a maintainer's direction
 
