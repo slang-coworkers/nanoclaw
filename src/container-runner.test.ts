@@ -87,8 +87,16 @@ describe('resolveProviderName', () => {
     expect(resolveProviderName(tiers(null, null, 'opencode'))).toBe('opencode');
   });
 
-  it('defaults to claude when nothing is set', () => {
-    expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
+  it('defaults to the install default when nothing is set', () => {
+    vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', '');
+    vi.stubEnv('DEFAULT_AGENT_PROVIDER', '');
+    try {
+      expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('opencode');
+      vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', 'any');
+      expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('lowercases the resolved name', () => {
@@ -107,7 +115,12 @@ describe('resolveProviderName', () => {
   it('treats empty string as unset (falls through)', () => {
     expect(resolveProviderName(tiers('', 'opencode', null))).toBe('opencode');
     expect(resolveProviderName(tiers(null, '', 'codex'))).toBe('codex');
-    expect(resolveProviderName(tiers(null, '', ''))).toBe('claude');
+    vi.stubEnv('DEFAULT_AGENT_PROVIDER', 'pi');
+    try {
+      expect(resolveProviderName(tiers(null, '', ''))).toBe('pi');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
@@ -536,6 +549,8 @@ describe('composeSessionSpec', () => {
   });
 
   it('forwards the host fallback model so the SDK never falls back to its built-in default', async () => {
+    // An install whose default is Claude: an open-weights group would get its open small model instead.
+    vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', 'any');
     vi.stubEnv('ANTHROPIC_FALLBACK_MODEL', 'aws/anthropic/bedrock-claude-sonnet-5-5');
     try {
       expect((await compose()).containers[0].env.ANTHROPIC_FALLBACK_MODEL).toBe(
@@ -1342,10 +1357,16 @@ describe('composeSessionSpec applies the per-group model policy', () => {
   });
 
   it('refuses to start a Claude group set to open weights', async () => {
-    await seedGroup('ag-policy-claude', null, 'open');
+    await seedGroup('ag-policy-claude', 'claude', 'open');
     await expect(
       composeSessionSpec({
-        agentGroup: { ...agentGroup, id: 'ag-policy-claude', name: 'ag-policy-claude', folder: 'ag-policy-claude' },
+        agentGroup: {
+          ...agentGroup,
+          id: 'ag-policy-claude',
+          name: 'ag-policy-claude',
+          folder: 'ag-policy-claude',
+          agent_provider: 'claude',
+        },
         session,
         containerName: 'nanoclaw-v2-policy-claude-1700000000000',
         mounts,
@@ -1353,6 +1374,7 @@ describe('composeSessionSpec applies the per-group model policy', () => {
         mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
         contribution: {} as never,
         gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+        provider: 'claude',
         instanceId: 'test-instance-id',
       }),
     ).rejects.toThrow('Model policy refuses to start group "ag-policy-claude"');

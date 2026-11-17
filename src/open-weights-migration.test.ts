@@ -10,16 +10,18 @@ import { loadMigrationInputs, planGroupMigration, type MigrationGroupInput } fro
 // A fixed install env, so the host's own .env cannot change what the plan resolves.
 const ENV = { ANTHROPIC_MODEL: 'claude-opus-5-5', ANTHROPIC_DEFAULT_HAIKU_MODEL: 'claude-haiku-5-5' };
 
+// A group that existed before the open-weights install default records weights=any
+// (migration 952), so the fixture starts there; a test's own config columns add to it.
 function input(over: Partial<MigrationGroupInput>): MigrationGroupInput {
   return {
     id: 'ag-1',
     folder: 'g',
     provider: 'claude',
-    config: {},
     pinnedSessions: [],
     imageTag: null,
     imageBase: 'nanoclaw-agent-test',
     ...over,
+    config: { weights: 'any', ...over.config },
   };
 }
 

@@ -174,8 +174,9 @@ export function privilegeEnforced(settings: PrivilegeSettings = readPrivilegeSet
 /**
  * The model settings a session runs with: the group's row, adjusted for the
  * session's privilege. An open session runs under `weights=open`, so spawn
- * refuses to start it on a closed model. A closed session runs without the
- * rule, so the group's models and the install defaults apply, and a group set
+ * refuses to start it on a closed model. A closed session runs under
+ * `weights=any` (an empty value would mean the install default, which may be
+ * open), so the group's models and the install defaults apply, and a group set
  * to `weights=open` for its open sessions can still run closed models for its
  * approved people. With enforcement off, the row is the group's own, as before.
  */
@@ -185,7 +186,7 @@ export function rowForPrivilege(
   settings: PrivilegeSettings = readPrivilegeSettings(),
 ): ModelPolicyRow {
   if (settings.mode !== 'enforce') return row;
-  return { ...row, weights: privilege === 'open' ? 'open' : null };
+  return { ...row, weights: privilege === 'open' ? 'open' : 'any' };
 }
 
 /**

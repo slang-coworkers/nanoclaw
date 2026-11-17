@@ -4,6 +4,7 @@ import path from 'path';
 
 import { readEnvFile } from './env.js';
 import { getContainerImageBase, getDefaultContainerImage, getInstallSlug } from './install-slug.js';
+import { installDefaultProvider } from './model-policy.js';
 import { isValidTimezone } from './timezone.js';
 
 // Read config values from .env (falls back to process.env).
@@ -36,6 +37,7 @@ const envConfig = readEnvFile([
   'CI_GATE_REQUIRED_SUITE',
   'CI_GATE_REQUIRED_CHECK_RUN',
   'DEFAULT_AGENT_PROVIDER',
+  'NANOCLAW_DEFAULT_WEIGHTS',
   'NANOCLAW_DEFAULT_MODEL',
   'NANOCLAW_FAST_MODE',
   'CONTAINER_CPU_LIMIT',
@@ -58,16 +60,18 @@ const envConfig = readEnvFile([
  */
 export const ASSISTANT_NAME = process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
 
-// Instance-wide default agent provider for newly created groups. `claude` (the
-// built-in provider) when unset, so existing installs are unaffected on upgrade.
-// Applied only at group-creation time (stamped onto the config row) — never in
-// provider resolution — so existing groups are never retroactively flipped.
-// Per-group `ncl groups config update --provider` still overrides it.
-export const DEFAULT_AGENT_PROVIDER = (
-  process.env.DEFAULT_AGENT_PROVIDER ||
-  envConfig.DEFAULT_AGENT_PROVIDER ||
-  'claude'
-).toLowerCase();
+// Instance-wide default agent provider: the provider of every group that names
+// none of its own, decided in one place (installDefaultProvider in
+// model-policy.ts) from DEFAULT_AGENT_PROVIDER and NANOCLAW_DEFAULT_WEIGHTS.
+// With neither set it is OpenCode on open-weights models. Provider resolution
+// reads the same function at spawn; this constant is the setup wizard's copy,
+// read once with the .env file as fallback because setup does not run under
+// the host's systemd environment. Existing groups were pinned to what they ran
+// on before the default changed (migration 952), so it never moves them.
+export const DEFAULT_AGENT_PROVIDER = installDefaultProvider({
+  DEFAULT_AGENT_PROVIDER: process.env.DEFAULT_AGENT_PROVIDER || envConfig.DEFAULT_AGENT_PROVIDER,
+  NANOCLAW_DEFAULT_WEIGHTS: process.env.NANOCLAW_DEFAULT_WEIGHTS || envConfig.NANOCLAW_DEFAULT_WEIGHTS,
+});
 
 // Instance-wide default model for agent containers, applied when the group has
 // no model of its own. Unset means the provider SDK's own default, which is

@@ -135,7 +135,7 @@ registerResource({
       name: 'agent_provider',
       type: 'string',
       description:
-        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → "claude").',
+        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → install default, which is "opencode" with open-weights models unless NANOCLAW_DEFAULT_WEIGHTS=any or DEFAULT_AGENT_PROVIDER says otherwise). A change is checked against the model policy: a Claude group needs `ncl groups config update --weights any` first.',
       updatable: true,
     },
     {
@@ -160,6 +160,29 @@ registerResource({
   // the container_config a working group needs; the generic single-table
   // DELETE violates FK constraints (#2525).
   operations: { list: 'open', get: 'open', update: 'approval' },
+  // A provider change is checked against the model policy the way spawn checks
+  // it, so a change that would stop the group from starting (Claude on a
+  // weights=open group, for example) is refused here instead of at the next
+  // spawn. Only the policy can refuse it, and only for weights=open, so the
+  // message names the command that lifts the rule.
+  preUpdate: async (updates, current) => {
+    if (!('agent_provider' in updates)) return;
+    const id = String(current.id);
+    const row = await getContainerConfig(id);
+    const provider = resolveProviderName({
+      override: undefined,
+      session: undefined,
+      group: updates.agent_provider as string | null | undefined,
+      config: row?.provider,
+    });
+    const problems = modelPolicyViolations(resolveGroupModels(provider, row ?? {}));
+    if (problems.length > 0) {
+      throw new Error(
+        `Model policy: ${problems.join('; ')}. The group is weights=open; to run it on ${provider}, ` +
+          `first run \`ncl groups config update --id ${id} --weights any\`.`,
+      );
+    }
+  },
   customOperations: {
     connect: {
       access: 'open',
@@ -695,15 +718,19 @@ registerResource({
         if (!row) throw new Error(`No container config for group: ${id}`);
         const presented = presentConfig(row);
 
-        // Enrich with agent_provider from agent_groups — the tier that wins the
-        // resolution chain (session → agent_group → container_config → claude),
-        // so it is what the group actually runs on. Reported as "claude" when
-        // the column is null, matching the chain's default rather than implying
-        // the column is set. (`container_configs.provider` is the next tier
-        // down, NOT a model provider: the Codex model provider comes from
-        // CODEX_MODEL_PROVIDER in the config.toml template, not from this row.)
+        // Enrich with agent_provider: the provider the group runs on, resolved
+        // through the group tiers (agent_group → container_config → install
+        // default) as spawn resolves it, so an empty column reports the
+        // default rather than implying the column is set. (The Codex model
+        // provider is not this: it comes from CODEX_MODEL_PROVIDER in the
+        // config.toml template.)
         const agentGroup = await getAgentGroup(id);
-        const agentProvider = agentGroup?.agent_provider ?? 'claude';
+        const agentProvider = resolveProviderName({
+          override: undefined,
+          session: undefined,
+          group: agentGroup?.agent_provider,
+          config: row.provider,
+        });
 
         // Derive effective_model when container_configs.model is null. For Codex,
         // the model is set via CODEX_MODEL env var on the host process and baked
@@ -741,7 +768,7 @@ registerResource({
         'Update container config scalar fields. Changes are saved but do NOT take effect until you run `ncl groups restart`. ' +
         'Use --id <group-id> and any of: --provider, --model, --effort, --speed, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope, ' +
         '--small-model, --router-model, --critic-model, --weights. ' +
-        '--weights open makes the group use open-weights models only: unset roles take the open defaults (GLM for the doer, GLM flash for the small model and router, Kimi for the critic), and a role set to a closed model is refused; --weights any (or "") removes the rule. The model flags take "" to clear back to the install default. ' +
+        '--weights open makes the group use open-weights models only: unset roles take the open defaults (GLM for the doer, GLM flash for the small model and router, Kimi for the critic), and a role set to a closed model is refused; --weights any removes the rule, and "" follows the install default (NANOCLAW_DEFAULT_WEIGHTS: open unless set to any). The model flags take "" to clear back to the install default. ' +
         '--speed must be one of the speed tiers the group\'s provider declares (Claude: "standard", "fast"), or "" to follow the install default; a provider that declares none accepts only "". ' +
         '--timezone (IANA id like "Europe/Lisbon"; "" clears back to the install default; scheduled-task times follow it immediately, message display after restart).',
       handler: async (args) => {
@@ -803,8 +830,10 @@ registerResource({
           if (args[key] !== undefined) updates[key] = (args[key] as string) || null;
         }
         if (args.weights !== undefined) {
-          const weights = parseModelWeights(args.weights as string);
-          updates.weights = weights === 'any' ? null : weights;
+          // Stored as given: "any" and "open" are the group's own setting, and
+          // "" (stored as NULL) follows the install default, which may be open.
+          const weights = String(args.weights);
+          updates.weights = weights === '' ? null : parseModelWeights(weights);
         }
         if (args.image_tag !== undefined) updates.image_tag = args.image_tag as string;
         if (args.assistant_name !== undefined) updates.assistant_name = args.assistant_name as string;
