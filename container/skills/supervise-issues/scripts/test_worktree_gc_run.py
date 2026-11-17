@@ -415,18 +415,25 @@ class GateTest(unittest.TestCase):
         rev = self.s.clone(self.slang, "rev-1179-base")
         falcor = self.other_clone("falcor-13876", OLD_DAYS)
         (falcor / "r.txt").write_text("local repro edit\n")
+        # A worktree of a clone that is not a base: no base registers it, so only the
+        # top-level walk finds it, and its clone stays while the worktree lives.
+        owner = self.s.clone(self.slang, "slang-11225")
         pr = self.s.agent / "slang-13742-pr"
-        git(self.slang, "worktree", "add", "-q", "--detach", str(self.s.tmp / "elsewhere"), days_ago=OLD_DAYS)
-        shutil.move(str(self.s.tmp / "elsewhere"), str(pr))  # moved by hand: an orphan until repaired
+        git(owner, "worktree", "add", "-q", "--detach", str(pr), days_ago=OLD_DAYS)
         self.s.age_all()
         out = self.s.run("--gate")
         self.assertEqual(out["data"]["errors"], 0, self.s.report())
         self.assertEqual(out["data"]["reaped"], 3, self.s.report())
         for tree in (rev, falcor, pr):
             self.assertFalse(tree.exists(), tree.name)
+        self.assertTrue(owner.exists())
         bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("falcor-13876.*.bundle"))
         self.assertEqual(len(bundles), 1, self.s.report())
-        self.assertEqual(self.s.report()["plan"]["kinds"], {"scratch": 3}, self.s.report())
+        self.assertEqual(self.s.report()["plan"]["kinds"], {"scratch": 4}, self.s.report())
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["reaped"], 1, self.s.report())
+        self.assertFalse(owner.exists())
 
     def test_bare_repository_with_any_name_expires_after_saving(self):
         bare = self.s.agent / "r0-origin.git"
