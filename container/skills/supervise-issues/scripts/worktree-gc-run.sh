@@ -11,8 +11,7 @@
 #                directory whatever its git shape: linked worktree, standalone clone,
 #                orphan, plain, and every other top-level git checkout whatever its
 #                name), every runs/ entry, every top-level scratch directory, bare
-#                repository and wt-* file, the group's .worktree-gc/keep list, and
-#                the trash.
+#                repository and wt-* file, and the trash.
 #   2. resolve   issue/PR state with one gh GraphQL batch of up to 40 numbers per call.
 #   3. classify  worktree-gc.py, the single source of thresholds.
 #   4. act       REAP → save unsaved work, then rename the checkout into
@@ -20,8 +19,10 @@
 #                scratch directories and wt-* files past retention → rename into the
 #                trash (a scratch directory after saving every repository inside it);
 #                finally delete trash entries.
-#   5. report    /workspace/agent/.worktree-gc/last-run.json (what the supervisor's §8
-#                reads) and one history.log line.
+#   5. report    measure the reference clones it keeps (a size is reused for
+#                REFERENCE_SIZE_TTL_H), then write /workspace/agent/.worktree-gc/last-run.json
+#                (the host's coverage pass copies it for the supervisor's §8) and one
+#                history.log line.
 #
 # A reap is a rename, not a delete: it is O(1), so the gate's time box limits only
 # how many bytes are freed per run, never how many checkouts leave the group
@@ -66,6 +67,7 @@ STATE_DIR="$AGENT/.worktree-gc"
 TRASH="$STATE_DIR/trash"
 SAVED="$STATE_DIR/saved"
 GATE_BUDGET_S="${GATE_BUDGET_S:-18}"
+REFERENCE_SIZE_TTL_H="${REFERENCE_SIZE_TTL_H:-24}"  # a reference clone's measured size is reused this long
 GH_BUDGET_S="${GH_BUDGET_S:-8}"        # share of the gate budget the gh lookups may use
 OP_TIMEOUT_S="${RM_TIMEOUT_S:-15}"     # cap on any one git or rm step in --gate mode
 
@@ -402,28 +404,78 @@ if [ "$MODE" != dry ]; then
   fi
 fi
 
+# --- Reference clones -------------------------------------------------------
+# Reference clones are never removed (worktree-gc.py); the report lists each with
+# its size so the supervisor can flag a large dormant one to the operator. `du`
+# over a clone with a build tree can take many seconds, so a size measured within
+# REFERENCE_SIZE_TTL_H is taken from the previous report, and the rest are
+# measured in the time the gate has left, the oldest measurement first; one the
+# budget does not reach keeps its previous size until a later run.
+python3 - "$WORK/plan.json" "$STATE_DIR/last-run.json" "$(remaining)" "$REFERENCE_SIZE_TTL_H" "$HERE/worktree-gc.py" \
+  > "$WORK/references.json" <<'PY' || echo '[]' > "$WORK/references.json"
+import datetime, importlib.util, json, subprocess, sys, time
+plan, last, budget, ttl_h, gc_path = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4]), sys.argv[5]
+spec = importlib.util.spec_from_file_location("worktree_gc", gc_path)
+wg = importlib.util.module_from_spec(spec); spec.loader.exec_module(wg)
+refs = json.load(open(plan)).get("references") or []
+try:
+    before = {r["name"]: r for r in json.load(open(last)).get("references") or [] if isinstance(r, dict) and "name" in r}
+except (OSError, ValueError, AttributeError):
+    before = {}
+now = datetime.datetime.now(datetime.timezone.utc)
+deadline = time.time() + budget - 2  # leave the report its own time
+def age_h(stamp):
+    try: return (now - datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))).total_seconds() / 3600
+    except (AttributeError, ValueError): return None
+out = []
+for r in refs:
+    prev = before.get(r["name"]) or {}
+    out.append({"name": r["name"], "shape": r.get("shape"), "idle_days": r.get("idle_days"),
+                "size_gb": prev.get("size_gb"), "size_measured_at": prev.get("size_measured_at")})
+due = [o for o in out if age_h(o["size_measured_at"]) is None or age_h(o["size_measured_at"]) >= ttl_h]
+due.sort(key=lambda o: o["size_measured_at"] or "")
+paths = {r["name"]: r["path"] for r in refs}
+for o in due:
+    left = deadline - time.time()
+    if left < 1:
+        break
+    try:
+        du = subprocess.run(["du", "-sk", "--one-file-system", paths[o["name"]]], capture_output=True, text=True,
+                            timeout=left, check=False)
+        kb = int(du.stdout.split()[0])
+    except (subprocess.TimeoutExpired, OSError, ValueError, IndexError):
+        continue
+    o["size_gb"] = round(kb / 1048576, 2)
+    o["size_measured_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+for o in out:
+    o["dormant_large"] = wg.dormant_large(o)
+out.sort(key=lambda o: -(o["size_gb"] or 0))
+print(json.dumps(out))
+PY
+
 # --- Report -----------------------------------------------------------------
 FREE_AFTER=$(free_gb)
 SUMMARY="$(python3 -c "
 import json,sys; p=json.load(open(sys.argv[1])); s=p['summary']
 print(json.dumps({'counts': s['counts'], 'shapes': s['shapes'], 'kinds': s['kinds'],
-                  'declared_keep': s['declared_keep'], 'reclaim_count': s['reclaim_count'],
+                  'references_count': s['references_count'], 'reclaim_count': s['reclaim_count'],
                   'runs_expired_count': s['runs_expired_count'], 'scratch_expired_count': s['scratch_expired_count'],
                   'files_expired_count': s['files_expired_count'], 'free_pct': s['free_pct'],
                   'under_pressure': s['under_pressure'], **p['discovery']}))" "$WORK/plan.json")"
 if [ "$MODE" != dry ]; then
   mkdir -p "$STATE_DIR"
   python3 - "$STATE_DIR" "$MODE" "${FREE_BEFORE:-0}" "${FREE_AFTER:-0}" "$reaped" "$reclaimed" "$runs_expired" "$scratch_expired" "$files_expired" "$drained" "$left" "$SUMMARY" \
-    "$(printf '%s\n' "${actions[@]:-}")" "$(printf '%s\n' "${skipped[@]:-}")" "$(printf '%s\n' "${errors[@]:-}")" <<'PY'
+    "$(printf '%s\n' "${actions[@]:-}")" "$(printf '%s\n' "${skipped[@]:-}")" "$(printf '%s\n' "${errors[@]:-}")" "$WORK/references.json" <<'PY'
 import json, sys, datetime, os
-d, mode, fb, fa, reaped, reclaimed, runs_expired, scratch_expired, files_expired, drained, left, summary, actions, skipped, errors = sys.argv[1:16]
+d, mode, fb, fa, reaped, reclaimed, runs_expired, scratch_expired, files_expired, drained, left, summary, actions, skipped, errors, refs = sys.argv[1:17]
 lines = lambda s: [x for x in s.split("\n") if x]
 rep = {"at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "mode": mode,
        "free_gb_before": int(fb or 0), "free_gb_after": int(fa or 0), "reaped": int(reaped),
        "build_reclaimed": int(reclaimed), "runs_expired": int(runs_expired),
        "scratch_expired": int(scratch_expired), "files_expired": int(files_expired), "trash_drained": int(drained),
        "left_for_next_run": int(left), "plan": json.loads(summary),
-       "actions": lines(actions), "skipped": lines(skipped), "errors": lines(errors)}
+       "actions": lines(actions), "skipped": lines(skipped), "errors": lines(errors),
+       "references": json.load(open(refs))}
 json.dump(rep, open(os.path.join(d, "last-run.json"), "w"), indent=1)
 with open(os.path.join(d, "history.log"), "a") as f:
     f.write(f"{rep['at']} {mode} free {rep['free_gb_before']}G→{rep['free_gb_after']}G reaped={reaped} build_reclaimed={reclaimed} "
@@ -432,11 +484,11 @@ PY
 fi
 
 if [ "$MODE" = dry ]; then
-  python3 - "$WORK/plan.json" <<'PY'
+  python3 - "$WORK/plan.json" "$WORK/references.json" <<'PY'
 import json, sys
 p=json.load(open(sys.argv[1])); s=p['summary']
 print('free_gb', s['free_gb'], 'of', s['total_gb'], '=', s['free_pct'], '% | counts', s['counts'], '| shapes', s['shapes'],
-      '| kinds', s['kinds'], '| declared keep', s['declared_keep'],
+      '| kinds', s['kinds'],
       '| build-reclaim', s['reclaim_count'], '| runs expired', s['runs_expired_count'], 'of', s['runs_count'],
       '| scratch dirs expired', s['scratch_expired_count'], 'of', s['scratch_dirs_count'],
       '| wt-* files expired', s['files_expired_count'], 'of', s['wt_files_count'])
@@ -447,6 +499,7 @@ for w in p['tiers']['KEEP']:
     if w.get('shape') in ('orphan', 'plain') or w.get('dependents'): print('KEEP   ', w['dir'], f"[{w.get('shape')}]", '|', w.get('gc_reason'))
 for r in p['runs_expired']: print('EXPIRE  runs/' + r['name'], '| idle', r.get('idle_days'), 'd')
 for r in p['scratch_expired']: print('EXPIRE ', r['name'], '| idle', r.get('idle_days'), 'd', '| git:', [g['shape'] for g in r.get('git_inside') or []])
+for r in json.load(open(sys.argv[2])): print('REFER  ', r['name'], f"[{r.get('shape')}]", '| idle', r.get('idle_days'), 'd | size', r.get('size_gb'), 'GB', '| DORMANT-LARGE' if r.get('dormant_large') else '')
 PY
   exit 0
 fi

@@ -323,23 +323,27 @@ Each checkout has a kind:
 - **primary**: a tier's fix tree (`wt-slang-<n>`, `wt-slangpy-<n>`, `wt-slang-pr-<n>`, `wt-<n>`);
 - **scratch**: any other `wt-*` or per-task-named checkout, any linked worktree or orphan, and any
   other checkout whose name carries an issue or PR number (`falcor-13876`, `slang-pr13537`);
-- **reference**: a standalone clone whose name carries no number (`spec`, `SPIRV-Tools`,
-  `slang-bisect`). Nothing says when its task is done, so only idleness past
-  `REFERENCE_IDLE_DAYS` retires it, after the usual save; the agent clones it again when it needs
-  it.
+- **reference**: a standalone clone or bare repository whose name carries no number (`spec`,
+  `SPIRV-Tools`, `slang-playground`, `r0-origin.git`). It is always KEEP ("reference clone") and
+  never removed automatically: nothing would clone it again (the boot refresh only fast-forwards
+  clones that exist), and its git history is no measure of use, since a group can read it every
+  day without moving HEAD. A sha in a name is not a number: `slang-69ad6c1` is scratch as a linked
+  worktree and a reference as a standalone clone.
 
-A group keeps any entry for good by listing it in `/workspace/agent/.worktree-gc/keep` (one
-top-level name per line, `runs/<name>` for a run entry, `#` for comments). A listed entry is KEEP
-and never expires; the report counts them under `plan.declared_keep`. Use it for a clone the
-group's own instructions expect to find (an eval bank, a knowledge-base repository).
+Every run lists the reference clones under `references` in `last-run.json`: `name`, `shape`,
+`size_gb`, `size_measured_at`, `idle_days` and `dormant_large`. Sizes come from `du` within the
+gate's time budget and are reused for `REFERENCE_SIZE_TTL_H` (24 h, in `worktree-gc-run.sh`); one
+not yet measured has `size_gb: null`. `dormant_large` marks a clone at least `REFERENCE_LARGE_GB`
+that has been idle `REFERENCE_DORMANT_DAYS` (`worktree-gc.py`); the operator decides whether to
+remove it or its build.
 
 Tiers (thresholds live in `worktree-gc.py`; reference them by name):
 
 | Tier | What | Action |
 |---|---|---|
-| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree whose PR is final or that is idle > `SCRATCH_IDLE_DAYS`; reference clone idle > `REFERENCE_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
+| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
 | STALE-OPEN | primary tree, PR OPEN but idle > `STALE_OPEN_IDLE_DAYS` | `rm -rf <worktree>/build` only; tree, branch and PR stay |
-| KEEP | running session, an entry listed in `.worktree-gc/keep`, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a reference clone used within `REFERENCE_IDLE_DAYS`, a checkout another checkout borrows objects from (`--shared` alternates) or that owns a live worktree, a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
+| KEEP | every reference clone, running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a checkout another checkout borrows objects from (`--shared` alternates) or that owns a live worktree, a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
 | NO-PR | primary tree, issue open, no PR yet | nothing until idle > `NOPR_IDLE_DAYS` |
 
 Idleness is the agent's last use. For a linked worktree that is its directory, `.git` file,
@@ -366,22 +370,23 @@ and borrowed from by no clone, then renamed into the trash. It covers:
   points `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` at, and the agent's own verify builds and probes);
 - top-level directories named like per-task scratch (`SCRATCH_DIR_PATTERNS` in
   `worktree-gc.py`: `review-<n>…`, `devin-<n>…`, `B-<n>…`, `revB-<n>…`, `pr<n>-review`,
-  `bare-<n>.git`, `scratch-…`, `repro-…`, `tmp-…`), and every top-level bare repository whatever
-  its name (`r0-origin.git`). Every git repository inside is saved first, by shape as above; a
+  `bare-<n>.git`, `scratch-…`, `repro-…`, `tmp-…`), and every other top-level bare repository
+  whose name carries a number (`origin-13388.git`). Every git repository inside is saved first,
+  by shape as above; a
   bare clone keeps the commits its alternate does not have in a bundle;
 - top-level regular files named `wt-*` (the build and configure logs agents write next to a
   checkout).
 
-Durable directories match no pattern. To keep an entry out of the GC's reach, list it in
-`.worktree-gc/keep`.
+Durable directories match no pattern.
 
 Coverage (what step 8 reads): each host pass writes `data/shared/worktree-gc/coverage.json`,
 `/workspace/shared/worktree-gc/coverage.json` in every container, because only the host sees
 every group directory. It holds `at`, `stale_after`, one entry per group that holds GC work
 (`folder`, `status`, `action`, `series_id`, `task_status`, `report_at`, `report_age_hours`,
-`report_errors`, `report_skipped`, `free_gb`), `gaps` (the folders whose status needs the
-operator) and `residue` (group directories with GC work but no agent group: deleted-group
-leftovers, never deleted automatically). Statuses, worst first:
+`report_errors`, `report_skipped`, `free_gb`, and `references` copied from the report), `gaps`
+(the folders whose status needs the operator), `dormant_references` (`<folder>/<name>` of every
+reference clone marked `dormant_large`) and `residue` (group directories with GC work but no
+agent group: deleted-group leftovers, never deleted automatically). Statuses, worst first:
 
 | Status | Meaning | Gap |
 |---|---|---|

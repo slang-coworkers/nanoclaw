@@ -23,14 +23,12 @@ Four tiers:
               `wip/reap/<name>` branch). Primary fix trees whose PR is
               MERGED/CLOSED, or whose issue is CLOSED with no PR; primary trees
               with no PR idle > NOPR_IDLE_DAYS; every scratch tree whose PR is
-              MERGED/CLOSED or that is idle > SCRATCH_IDLE_DAYS; every reference
-              clone idle > REFERENCE_IDLE_DAYS.
+              MERGED/CLOSED or that is idle > SCRATCH_IDLE_DAYS.
   STALE-OPEN  primary tree whose PR is OPEN but idle > STALE_OPEN_IDLE_DAYS:
               reclaim the regenerable `build/` in place, never the worktree.
-  KEEP        anything with a running session, anything the group declared in
-              `.worktree-gc/keep` (KEEP_FILE), anything touched within
-              MIN_IDLE_DAYS, scratch trees still in use, open PRs still active,
-              reference clones used within REFERENCE_IDLE_DAYS,
+  KEEP        every reference clone, anything with a running session,
+              anything touched within MIN_IDLE_DAYS, scratch trees still in use,
+              open PRs still active,
               any checkout another checkout borrows objects from or that owns a
               live linked worktree (`dependents`), and any tree whose work the
               executor has no way to save: a plain directory, or an orphan
@@ -43,12 +41,15 @@ or per-task-named checkout (`wt-<n>-verify`, `wt-<n>-master`, `wt-<n>-revA`,
 `wt-clarity-*`, `review-<n>`), and every other top-level checkout whose name
 carries an issue or PR number (`slang-13742-pr`, `falcor-13876`,
 `rev-1179-base`); it holds no work the PR does not already hold. A reference
-clone is a top-level checkout whose name carries no number (`spec`,
-`SPIRV-Tools`, `slang-bisect`): a repository the agent cloned to read or bisect,
-with no issue to say when it is done, so only long idleness retires it. A group
-that wants one kept for good lists its directory name in `.worktree-gc/keep`.
-Every removal is preceded by the executor's save, so a reaped reference clone
-comes back with a fresh clone plus the saved bundle or branch.
+clone is a top-level standalone clone or bare repository whose name carries no
+number (`spec`, `SPIRV-Tools`, `slang-playground`, `r0-origin.git`): a
+repository the group reads or builds from. It is always KEEP. Nothing would
+clone it again (the boot refresh in refresh-clones.ts only fast-forwards clones
+that exist), and its git history is no measure of use: a group can read it
+every day without moving HEAD. The run lists every reference clone in its report
+under `references`, with its size and idleness, and flags one at least
+REFERENCE_LARGE_GB that has been idle REFERENCE_DORMANT_DAYS (`dormant_large`)
+for the operator; nothing removes it automatically.
 `idle_days` is filesystem idleness (index, build log, directory mtimes);
 `pr_idle_days` is GitHub idleness of the open PR.
 
@@ -98,7 +99,8 @@ Input (stdin):
   }
 
 Output: {"tiers": {...}, "reclaim": [...], "runs_expired": [...],
-"scratch_expired": [...], "files_expired": [...], "summary": {...}}.
+"scratch_expired": [...], "files_expired": [...], "references": [...],
+"summary": {...}}.
 Each worktree gets a `gc_reason` string explaining its tier.
 
 Run: python3 scripts/worktree-gc.py < payload.json
@@ -113,7 +115,8 @@ import sys
 STALE_OPEN_IDLE_DAYS = 14   # open PR untouched longer than this → STALE-OPEN (build/ reclaimed)
 SCRATCH_IDLE_DAYS = 2       # scratch tree idle longer than this → REAP
 NOPR_IDLE_DAYS = 30         # primary tree with no PR idle longer than this → REAP
-REFERENCE_IDLE_DAYS = 60    # reference clone (no number in its name) idle longer than this → REAP
+REFERENCE_LARGE_GB = 20     # a reference clone at least this large …
+REFERENCE_DORMANT_DAYS = 30  # … and idle this long is flagged `dormant_large` for the operator (never removed)
 MIN_IDLE_DAYS = 1           # nothing touched within this many days is reaped or reclaimed
 PRESSURE_GATE_PCT = 25      # free below this share of the volume → idle KEEP builds join the reclaim list
 PRESSURE_IDLE_DAYS = 7      # under pressure, a KEEP build whose PR is idle > this is reclaimable
@@ -125,11 +128,6 @@ SAVE_MAX_MB = 200           # untracked content larger than this is not committe
 ESCALATE_PCT = 10           # free below this share of the volume after a run → the gate wakes the agent
 
 FINAL_PR_STATES = ("MERGED", "CLOSED")
-
-# `.worktree-gc/keep` in the group directory: one top-level name per line
-# (`runs/<name>` for a run entry), `#` starts a comment. Whatever it names is KEEP
-# and never expires, whatever its kind or age.
-KEEP_FILE = "keep"
 
 # Top-level directories that are the agent's durable state, never per-task work,
 # whatever they hold. The base clones are durable too; discovery owns their names
@@ -180,8 +178,8 @@ def classify(wt, running_dirs):
     issue = (wt.get("issue_state") or "").upper()
     pr = (wt.get("pr_state") or "").upper()
     running = wt.get("dir") in running_dirs or bool(wt.get("running"))
-    idle = _idle(wt)
     kind = wt.get("kind") or "primary"
+    idle = _idle(wt)
     scratch = kind == "scratch"
 
     def tier(name, why):
@@ -191,23 +189,18 @@ def classify(wt, running_dirs):
     dependents = wt.get("dependents") or []
     shape = wt.get("shape") or "worktree"
 
+    if kind == "reference":
+        return tier("KEEP", "reference clone")
     if dependents:
         return tier("KEEP", "used by " + ", ".join(sorted(dependents)))
     if running:
         return tier("KEEP", "running session")
-    if wt.get("declared_keep"):
-        return tier("KEEP", f"declared in .worktree-gc/{KEEP_FILE}")
     if shape == "plain":
         return tier("KEEP", "not a git checkout; nothing can save its contents")
     if shape == "orphan" and not wt.get("owner_exists"):
         return tier("KEEP", "orphaned and its repository is gone; nothing can save its contents")
     if idle is not None and idle < MIN_IDLE_DAYS:
         return tier("KEEP", f"touched {idle:g}d ago")
-
-    if kind == "reference":
-        if idle is not None and idle > REFERENCE_IDLE_DAYS:
-            return tier("REAP", f"reference clone, idle {idle:g}d")
-        return tier("KEEP", "reference clone, used " + (f"{idle:g}d ago" if idle is not None else "at an unknown time"))
 
     if scratch:
         if pr in FINAL_PR_STATES:
@@ -233,16 +226,26 @@ def classify(wt, running_dirs):
 
 def expired_entry(entry):
     """Is this per-task output (a `runs/` entry, a scratch directory, a `wt-*`
-    file) past RUNS_RETENTION_DAYS, held by no process, borrowed from by no
-    checkout and not declared in KEEP_FILE? An entry without a measured
-    idleness is kept."""
+    file) past RUNS_RETENTION_DAYS, held by no process and borrowed from by no
+    checkout? An entry without a measured idleness is kept."""
     idle = _idle(entry)
     return (
         idle is not None
         and idle > RUNS_RETENTION_DAYS
         and not entry.get("running")
         and not entry.get("dependents")
-        and not entry.get("declared_keep")
+    )
+
+
+def dormant_large(ref):
+    """Is a reference clone (a `references` entry with a measured `size_gb`) at
+    least REFERENCE_LARGE_GB and idle at least REFERENCE_DORMANT_DAYS? The
+    supervisor escalates such a clone to the operator; nothing removes it."""
+    size, idle = ref.get("size_gb"), _idle(ref)
+    return (
+        isinstance(size, (int, float)) and not isinstance(size, bool)
+        and size >= REFERENCE_LARGE_GB
+        and idle is not None and idle >= REFERENCE_DORMANT_DAYS
     )
 
 
@@ -315,7 +318,10 @@ def select(payload):
     for w in worktrees:
         shapes[w.get("shape") or "worktree"] = shapes.get(w.get("shape") or "worktree", 0) + 1
         kinds[w.get("kind") or "primary"] = kinds.get(w.get("kind") or "primary", 0) + 1
-    declared_keep = sum(1 for e in [*worktrees, *runs, *scratch_dirs, *wt_files] if e.get("declared_keep"))
+    references = [
+        {"name": w.get("dir"), "path": w.get("path"), "shape": w.get("shape"), "idle_days": w.get("idle_days")}
+        for w in worktrees if w.get("kind") == "reference"
+    ]
 
     summary = {
         "free_gb": free,
@@ -327,7 +333,7 @@ def select(payload):
         "counts": {k: len(v) for k, v in tiers.items()},
         "shapes": shapes,
         "kinds": kinds,
-        "declared_keep": declared_keep,
+        "references_count": len(references),
         "runs_count": len(runs),
         "runs_expired_count": len(runs_expired),
         "scratch_dirs_count": len(scratch_dirs),
@@ -344,7 +350,8 @@ def select(payload):
             "STALE_OPEN_IDLE_DAYS": STALE_OPEN_IDLE_DAYS,
             "SCRATCH_IDLE_DAYS": SCRATCH_IDLE_DAYS,
             "NOPR_IDLE_DAYS": NOPR_IDLE_DAYS,
-            "REFERENCE_IDLE_DAYS": REFERENCE_IDLE_DAYS,
+            "REFERENCE_LARGE_GB": REFERENCE_LARGE_GB,
+            "REFERENCE_DORMANT_DAYS": REFERENCE_DORMANT_DAYS,
             "MIN_IDLE_DAYS": MIN_IDLE_DAYS,
             "PRESSURE_GATE_PCT": PRESSURE_GATE_PCT,
             "PRESSURE_IDLE_DAYS": PRESSURE_IDLE_DAYS,
@@ -362,6 +369,7 @@ def select(payload):
         "runs_expired": runs_expired,
         "scratch_expired": scratch_expired,
         "files_expired": files_expired,
+        "references": references,
         "summary": summary,
     }
 

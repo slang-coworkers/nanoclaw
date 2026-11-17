@@ -293,11 +293,13 @@ Every group that holds checkouts reclaims its own hourly (R8). Your job is the r
 1. Read `/workspace/shared/worktree-gc/coverage.json`, the host's view of every group directory
    (most are not mounted here). Its fields and statuses are in reference.md → *Worktree GC*.
 2. Put `worktree-vol: <N>GB free` (`df -BG --output=avail /workspace/extra/ephemeral`, and the
-   `free_gb` the root-volume groups report) and the per-group `status` counts in the rollup;
-   name every group whose report lists `report_skipped` (a tree that holds work the GC cannot
-   save) and every `residue` folder.
-3. Escalate to the operator each folder in `gaps`, with its status, and the file itself when it
-   is missing or the current time is past its `stale_after` (the host's coverage pass stopped).
+   `free_gb` the root-volume groups report), the per-group `status` counts, and the reference
+   clones (count and total `size_gb`) in the rollup; name every group whose report lists
+   `report_skipped` (a tree that holds work the GC cannot save) and every `residue` folder.
+3. Escalate to the operator each folder in `gaps`, with its status; each entry of
+   `dormant_references`, with its size and idleness (reference clones are never removed
+   automatically, so only the operator can reclaim one); and the file itself when it is missing
+   or the current time is past its `stale_after` (the host's coverage pass stopped).
    Below 10% free, name the operator-only docker reclaim (reference.md → *Worktree GC*).
 
 Never dispatch removals to coworkers and never delete anything yourself.

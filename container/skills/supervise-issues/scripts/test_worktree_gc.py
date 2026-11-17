@@ -248,43 +248,46 @@ class TestShapes(unittest.TestCase):
         self.assertEqual(out["summary"]["shapes"], {"clone": 2, "worktree": 1})
 
 
-class TestReferenceAndKeep(unittest.TestCase):
-    """A top-level clone whose name carries no issue number is a reference clone:
-    nothing says when its task is done, so only long idleness retires it, and a
-    group can keep any entry for good by listing it in `.worktree-gc/keep`."""
+class TestReference(unittest.TestCase):
+    """A top-level clone or bare repository whose name carries no issue number is
+    a reference clone. Nothing would clone it again and its git history is no
+    measure of use, so it is always KEEP and only reported."""
 
-    def test_reference_clone_is_kept_until_long_idle(self):
-        used = wt("spec", kind="reference", shape="clone", pr="", issue="", fs_idle=wg.REFERENCE_IDLE_DAYS)
-        self.assertEqual(wg.classify(used, set()), "KEEP")
-        self.assertIn("reference clone", used["gc_reason"])
-        idle = wt("spec", kind="reference", shape="clone", pr="", issue="", fs_idle=wg.REFERENCE_IDLE_DAYS + 1)
-        self.assertEqual(wg.classify(idle, set()), "REAP")
+    def ref(self, **kw):
+        return wt("spec", kind="reference", shape="clone", pr="", issue="", **kw)
 
-    def test_reference_clone_never_enters_stale_open(self):
-        w = wt("slang-bisect", kind="reference", shape="clone", pr="OPEN", idle=90, fs_idle=10)
+    def test_reference_clone_is_kept_however_idle(self):
+        for idle in (0.5, 30, 400):
+            w = self.ref(fs_idle=idle)
+            self.assertEqual(wg.classify(w, set()), "KEEP", idle)
+            self.assertEqual(w["gc_reason"], "reference clone")
+
+    def test_reference_clone_never_enters_stale_open_or_the_reclaim_list(self):
+        w = self.ref(fs_idle=90)
+        w["pr_state"], w["pr_idle_days"] = "OPEN", 90
         self.assertEqual(wg.classify(w, set()), "KEEP")
+        out = wg.select({"free_gb": 1, "total_gb": 1000, "running_dirs": [], "worktrees": [self.ref(fs_idle=90)]})
+        self.assertTrue(out["summary"]["critical"])
+        self.assertEqual(out["reclaim"], [])
 
-    def test_declared_keep_wins_over_every_reap_rule(self):
-        for w in (wt("spec", kind="reference", shape="clone", fs_idle=400),
-                  wt("wt-1-verify", kind="scratch", pr="MERGED", fs_idle=90),
-                  wt("wt-slang-1", pr="CLOSED", fs_idle=90)):
-            w["declared_keep"] = True
-            self.assertEqual(wg.classify(w, set()), "KEEP", w["dir"])
-            self.assertIn(".worktree-gc/keep", w["gc_reason"])
-
-    def test_declared_keep_never_expires(self):
-        e = {"name": "review-1", "idle_days": wg.RUNS_RETENTION_DAYS + 30, "running": False, "dependents": [],
-             "declared_keep": True}
-        self.assertFalse(wg.expired_entry(e))
-
-    def test_kind_and_keep_counts_in_summary(self):
-        kept = wt("spec", kind="reference", shape="clone")
-        kept["declared_keep"] = True
+    def test_references_are_listed_with_kind_counts(self):
+        bare = wt("r0-origin.git", kind="reference", shape="bare", pr="", issue="", fs_idle=130)
         out = wg.select({"free_gb": 500, "total_gb": 1000, "running_dirs": [],
-                         "worktrees": [wt("a"), wt("b", kind="scratch"), kept]})
-        self.assertEqual(out["summary"]["kinds"], {"primary": 1, "scratch": 1, "reference": 1})
-        self.assertEqual(out["summary"]["declared_keep"], 1)
-        self.assertEqual(out["summary"]["thresholds"]["REFERENCE_IDLE_DAYS"], wg.REFERENCE_IDLE_DAYS)
+                         "worktrees": [wt("a"), wt("b", kind="scratch"), self.ref(fs_idle=12), bare]})
+        self.assertEqual([r["name"] for r in out["references"]], ["spec", "r0-origin.git"])
+        self.assertEqual(out["references"][1], {"name": "r0-origin.git", "path": None, "shape": "bare",
+                                                "idle_days": 130})
+        self.assertEqual(out["summary"]["kinds"], {"primary": 1, "scratch": 1, "reference": 2})
+        self.assertEqual(out["summary"]["references_count"], 2)
+        self.assertEqual(out["summary"]["thresholds"]["REFERENCE_LARGE_GB"], wg.REFERENCE_LARGE_GB)
+        self.assertEqual(out["summary"]["thresholds"]["REFERENCE_DORMANT_DAYS"], wg.REFERENCE_DORMANT_DAYS)
+
+    def test_dormant_large_needs_both_size_and_idleness(self):
+        big, idle = wg.REFERENCE_LARGE_GB, wg.REFERENCE_DORMANT_DAYS
+        self.assertTrue(wg.dormant_large({"size_gb": big, "idle_days": idle}))
+        self.assertFalse(wg.dormant_large({"size_gb": big - 0.1, "idle_days": 400}))
+        self.assertFalse(wg.dormant_large({"size_gb": 400, "idle_days": idle - 1}))
+        self.assertFalse(wg.dormant_large({"size_gb": None, "idle_days": 400}))
 
     def test_durable_directories(self):
         for name in ("memory", "tools", "tasks", "conversations", "runs", "active-work", "plugins", "venv-1181",

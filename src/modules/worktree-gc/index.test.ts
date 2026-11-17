@@ -211,6 +211,26 @@ describe('reconcileWorktreeGcCoverage', () => {
     expect((await liveSeries(id))?.live).toBe(true);
   });
 
+  it('copies the reported reference clones and lists the large dormant ones', async () => {
+    await group('slang-release-regression-check');
+    checkout('slang-release-regression-check', 'slang-bump');
+    await reconcileWorktreeGcCoverage({ now: NOW });
+    report('slang-release-regression-check', {
+      references: [
+        { name: 'slang-bump', shape: 'clone', size_gb: 41.5, idle_days: 159, dormant_large: true },
+        { name: 'spec', shape: 'clone', size_gb: 0.2, idle_days: 84, dormant_large: false },
+        { shape: 'clone', size_gb: 1 },
+      ],
+    });
+    const fleet = await reconcileWorktreeGcCoverage({ now: NOW + COVERAGE_INTERVAL_MS });
+    expect(coverageOf(fleet, 'slang-release-regression-check')?.references).toEqual([
+      { name: 'slang-bump', size_gb: 41.5, idle_days: 159, dormant_large: true },
+      { name: 'spec', size_gb: 0.2, idle_days: 84, dormant_large: false },
+    ]);
+    expect(fleet?.dormant_references).toEqual(['slang-release-regression-check/slang-bump']);
+    expect(fleet?.gaps).toEqual([]);
+  });
+
   it('flags a report with errors and a stale report', async () => {
     await group('slangpy-fixer');
     checkout('slangpy-fixer', 'slangpy');

@@ -27,8 +27,10 @@
  * few), so the pass also writes the fleet's coverage, one status per group, to
  * `data/shared/worktree-gc/coverage.json`, which every container reads at
  * `/workspace/shared/worktree-gc/coverage.json`. The supervisor's step 8
- * escalates the `gaps` it lists, and escalates the file itself once it is past
- * its `stale_after`: then this pass has stopped running.
+ * escalates the `gaps` it lists and the `dormant_references` (large reference
+ * clones idle for a long time, which nothing removes automatically), and
+ * escalates the file itself once it is past its `stale_after`: then this pass
+ * has stopped running.
  *
  * Cost: the host sweep calls this every tick and a pass runs at most once per
  * COVERAGE_INTERVAL_MS. A group whose series this process already verified
@@ -94,6 +96,21 @@ export interface GroupCoverage {
   report_errors: number | null;
   report_skipped: number | null;
   free_gb: number | null;
+  /** The reference clones the group's GC keeps and reports (worktree-gc.py), largest first. */
+  references: GcReference[];
+}
+
+/**
+ * A reference clone as the GC reports it: a top-level clone or bare repository
+ * with no issue number in its name, which nothing removes automatically.
+ * `dormant_large` marks one at least REFERENCE_LARGE_GB that has been idle
+ * REFERENCE_DORMANT_DAYS (thresholds in worktree-gc.py), for the operator.
+ */
+export interface GcReference {
+  name: string;
+  size_gb: number | null;
+  idle_days: number | null;
+  dormant_large: boolean;
 }
 
 export interface FleetCoverage {
@@ -105,6 +122,8 @@ export interface FleetCoverage {
   gaps: string[];
   /** Group directories with GC work but no agent group (deleted-group residue, never auto-deleted). */
   residue: string[];
+  /** `<folder>/<name>` of every reference clone flagged `dormant_large`, for the operator to decide on. */
+  dormant_references: string[];
 }
 
 interface VerifiedSeries {
@@ -224,6 +243,26 @@ interface GcReport {
   errors: number | null;
   skipped: number | null;
   freeGb: number | null;
+  references: GcReference[];
+}
+
+/** The well-formed entries of a report's `references`; anything else in it is dropped. */
+function referencesOf(raw: unknown): GcReference[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+  return raw.flatMap((r: unknown) => {
+    if (!r || typeof r !== 'object') return [];
+    const ref = r as Record<string, unknown>;
+    if (typeof ref.name !== 'string') return [];
+    return [
+      {
+        name: ref.name,
+        size_gb: num(ref.size_gb),
+        idle_days: num(ref.idle_days),
+        dormant_large: ref.dormant_large === true,
+      },
+    ];
+  });
 }
 
 /** The group's last GC report (`.worktree-gc/last-run.json`), or null when it has none. */
@@ -245,6 +284,7 @@ function readGcReport(groupDir: string, now: number): GcReport | null {
       errors: body ? count(body.errors) : 1,
       skipped: body ? count(body.skipped) : null,
       freeGb: typeof body?.free_gb_after === 'number' ? body.free_gb_after : null,
+      references: referencesOf(body?.references),
     };
   } finally {
     state.close();
@@ -329,6 +369,7 @@ async function coverGroup(
     report_errors: report?.errors ?? null,
     report_skipped: report?.skipped ?? null,
     free_gb: report?.freeGb ?? null,
+    references: report?.references ?? [],
   };
 }
 
@@ -409,6 +450,7 @@ export async function reconcileWorktreeGcCoverage(
         report_errors: null,
         report_skipped: null,
         free_gb: null,
+        references: [],
       });
     }
     /* eslint-enable no-catch-all/no-catch-all */
@@ -421,6 +463,9 @@ export async function reconcileWorktreeGcCoverage(
     groups,
     gaps: groups.filter((g) => GAP_STATUSES.has(g.status)).map((g) => g.folder),
     residue: residueWithGcWork(new Set(all.map((g) => g.folder))),
+    dormant_references: groups.flatMap((g) =>
+      g.references.filter((r) => r.dormant_large).map((r) => `${g.folder}/${r.name}`),
+    ),
   };
   writeFleetCoverage(fleet);
   if (fleet.gaps.length > 0) log.warn('Worktree GC coverage gaps', { gaps: fleet.gaps });

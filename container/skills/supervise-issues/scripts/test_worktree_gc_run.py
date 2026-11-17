@@ -435,8 +435,8 @@ class GateTest(unittest.TestCase):
         self.assertEqual(out["data"]["reaped"], 1, self.s.report())
         self.assertFalse(owner.exists())
 
-    def test_bare_repository_with_any_name_expires_after_saving(self):
-        bare = self.s.agent / "r0-origin.git"
+    def test_numbered_bare_repository_expires_after_saving(self):
+        bare = self.s.agent / "origin-13388.git"
         git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), bare.name, days_ago=30)
         sh("git", "--git-dir", str(bare), "branch", "-q", "review-head", "master")
         self.s.age_all(30)
@@ -445,43 +445,31 @@ class GateTest(unittest.TestCase):
         self.assertEqual(out["data"]["scratch_expired"], 1, self.s.report())
         self.assertFalse(bare.exists())
 
-    def test_reference_clone_is_kept_until_long_idle_then_saved_and_reaped(self):
-        spec = self.other_clone("spec", 30)
-        self.s.age_all(30)
-        out = self.s.run("--gate")
-        self.assertEqual(out["data"]["reaped"], 0, self.s.report())
-        self.assertTrue(spec.exists())
-        self.assertEqual(self.s.report()["plan"]["kinds"], {"reference": 1}, self.s.report())
-
-        old = self.other_clone("SPIRV-Tools", 70)
-        (old / "local.txt").write_text("unpushed\n")
-        git(old, "add", "-A")
-        git(old, "commit", "-qm", "local work", days_ago=70)
-        self.s.age_all(70)
-        out = self.s.run("--gate")
-        self.assertEqual(out["data"]["errors"], 0, self.s.report())
-        self.assertFalse(old.exists())
-        # File mtimes do not count for a clone; its own HEAD reflog says it was used 30 days ago.
-        self.assertTrue(spec.exists())
-        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("SPIRV-Tools.*.bundle"))
-        self.assertEqual(len(bundles), 1, self.s.report())
-
-    def test_declared_keep_is_never_collected(self):
-        kb = self.other_clone("nanoclaw-kb", 400)
-        wt = self.s.worktree(self.slang, "wt-1234-verify")
-        (self.s.agent / "review-14416").mkdir()
-        (self.s.agent / "runs").mkdir()
-        (self.s.agent / "runs" / "A-14412-r1").mkdir()
-        state = self.s.agent / ".worktree-gc"
-        state.mkdir()
-        (state / "keep").write_text("# reference repos this group reads\nnanoclaw-kb\nwt-1234-verify/\n"
-                                    "review-14416  # kept for the postmortem\nruns/A-14412-r1\n")
+    def test_reference_clones_are_never_removed_and_are_reported_with_their_size(self):
+        # slang-playground and slang-bump on prod: read every day, HEAD unmoved for months.
+        spec = self.other_clone("spec", 400)
+        git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), "r0-origin.git", days_ago=400)
         self.s.age_all(400)
         out = self.s.run("--gate")
         self.assertEqual(out["data"]["errors"], 0, self.s.report())
-        for path in (kb, wt, self.s.agent / "review-14416", self.s.agent / "runs" / "A-14412-r1"):
-            self.assertTrue(path.exists(), path.name)
-        self.assertEqual(self.s.report()["plan"]["declared_keep"], 4, self.s.report())
+        self.assertEqual(out["data"]["reaped"] + out["data"]["scratch_expired"], 0, self.s.report())
+        self.assertTrue(spec.exists())
+        self.assertTrue((self.s.agent / "r0-origin.git").exists())
+        report = self.s.report()
+        self.assertEqual(report["plan"]["kinds"], {"reference": 2}, report)
+        refs = {r["name"]: r for r in report["references"]}
+        self.assertEqual(set(refs), {"spec", "r0-origin.git"}, report)
+        for r in refs.values():
+            self.assertIsInstance(r["size_gb"], float, r)
+            self.assertGreaterEqual(r["idle_days"], 399, r)
+            self.assertFalse(r["dormant_large"], r)  # far below REFERENCE_LARGE_GB
+        self.assertEqual(refs["r0-origin.git"]["shape"], "bare")
+
+        # A size measured within REFERENCE_SIZE_TTL_H is reused, not measured again.
+        measured = {n: r["size_measured_at"] for n, r in refs.items()}
+        self.s.run("--gate")
+        again = {r["name"]: r["size_measured_at"] for r in self.s.report()["references"]}
+        self.assertEqual(again, measured)
 
     def test_durable_directories_are_never_collected_even_as_repositories(self):
         for name in ("memory", "tools", "plugins"):
