@@ -14,7 +14,12 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { REVIEW_LENGTH_GATE_MATCHER, ensureReviewLengthGate } from './container-runner.js';
+import {
+  REVIEW_LENGTH_GATE_MATCHER,
+  REVIEW_LENGTH_POST_GATE_CMD,
+  REVIEW_LENGTH_POST_GATE_MATCHER,
+  ensureReviewLengthGate,
+} from './container-runner.js';
 
 const SCRIPT = path.resolve(process.cwd(), 'container', 'hooks', 'gate-review-length.sh');
 const hasPython = spawnSync('python3', ['--version']).status === 0;
@@ -240,5 +245,79 @@ describe('ensureReviewLengthGate', () => {
     expect(entries[0].matcher).toBe(REVIEW_LENGTH_GATE_MATCHER);
     expect(entries[0].matcher).toContain('Write');
     expect(entries[0].matcher).toContain('mcp__github__add_comment_to_pending_review');
+  });
+});
+
+// The post-write check: `--post` measures the answer files the call just wrote, whatever
+// wrote them, and moves an over-cap answer aside so the runner cannot score it.
+describe.skipIf(!hasPython || !hasJq)('gate-review-length.sh --post', () => {
+  function post(toolName: string, toolInput: object, env: Record<string, string> = {}, active = true) {
+    const marker = path.join(tmp, '.overlay-review-length');
+    if (active) fs.writeFileSync(marker, 'review-length\n');
+    else fs.rmSync(marker, { force: true });
+    const proc = spawnSync('bash', [SCRIPT, '--post'], {
+      input: JSON.stringify({ tool_name: toolName, tool_input: toolInput, cwd: tmp }),
+      env: {
+        PATH: process.env.PATH || '',
+        HOME: tmp,
+        OVERLAY_MARKER_DIR: tmp,
+        REVIEW_LENGTH_ANSWER_ROOT: path.join(tmp, 'eval'),
+        ...env,
+      },
+      encoding: 'utf-8',
+    });
+    return { status: proc.status ?? -1, stderr: (proc.stderr ?? '').trim() };
+  }
+  const answerDir = () => path.join(tmp, 'eval', 'slang-pr-1-abc', 'r1');
+  const writeAnswer = (summaryLen: number, findings: number[], ageSec = 0) => {
+    fs.mkdirSync(answerDir(), { recursive: true });
+    const file = path.join(answerDir(), 'answer.json');
+    fs.writeFileSync(file, answer(summaryLen, findings));
+    if (ageSec) {
+      const t = (Date.now() - ageSec * 1000) / 1000;
+      fs.utimesSync(file, t, t);
+    }
+    return file;
+  };
+
+  it('moves an over-cap answer aside after a Bash call and tells the agent to shorten it', () => {
+    const file = writeAnswer(1000, [2000, 2000]);
+    const r = post('Bash', { command: 'python3 make_answer.py' });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('REVIEW TOO LONG');
+    expect(r.stderr).toContain('5,000');
+    expect(r.stderr).toContain('moved to answer.json.too-long-');
+    expect(fs.existsSync(file)).toBe(false);
+    expect(fs.readdirSync(answerDir()).some((f) => f.startsWith('answer.json.too-long-'))).toBe(true);
+  });
+
+  it('leaves an answer under the cap alone', () => {
+    const file = writeAnswer(1000, [1000, 1000]);
+    expect(post('Write', { file_path: file, content: '' }).status).toBe(0);
+    expect(fs.existsSync(file)).toBe(true);
+  });
+
+  it('ignores answer files older than the window, tools that write nothing, and an inactive gate', () => {
+    writeAnswer(1000, [2000, 2000], 2 * 3600);
+    expect(post('Bash', { command: 'ls' }).status).toBe(0);
+    writeAnswer(1000, [2000, 2000]);
+    expect(post('Read', { file_path: '/tmp/x' }).status).toBe(0);
+    expect(post('Bash', { command: 'ls' }, {}, false).status).toBe(0);
+    expect(post('Bash', { command: 'ls' }, { REVIEW_LENGTH_GATE: '0' }).status).toBe(0);
+    expect(fs.existsSync(path.join(answerDir(), 'answer.json'))).toBe(true);
+  });
+
+  it('is registered as a PostToolUse hook next to the PreToolUse one', () => {
+    const settingsFile = path.join(tmp, 'settings.json');
+    fs.writeFileSync(settingsFile, JSON.stringify({ hooks: {} }));
+    ensureReviewLengthGate(settingsFile);
+    ensureReviewLengthGate(settingsFile);
+    const doc = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+    const post_ = (doc.hooks.PostToolUse as { matcher: string; hooks: { command: string }[] }[]).filter((e) =>
+      e.hooks.some((h) => h.command === REVIEW_LENGTH_POST_GATE_CMD),
+    );
+    expect(post_).toHaveLength(1);
+    expect(post_[0].matcher).toBe(REVIEW_LENGTH_POST_GATE_MATCHER);
+    expect(REVIEW_LENGTH_POST_GATE_CMD).toContain('--post');
   });
 });
