@@ -17,6 +17,7 @@ import {
   markFailed,
   markScriptSkipped,
   getMessageInBySeq,
+  isControlRow,
   type MessageInRow,
 } from './db/messages-in.js';
 import { classifyTurnError } from './transient-error.js';
@@ -3611,7 +3612,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       // + continuation). Everything else stays pending until the session resumes.
       const hasClear = messages.some((m) => (m.kind === 'chat' || m.kind === 'chat-sdk') && isClearCommand(m));
       if (!hasClear) {
-        const controls = messages.filter((m) => m.kind === 'cost_override');
+        const controls = messages.filter(isControlRow);
         if (controls.length === 0) {
           await sleep(POLL_INTERVAL_MS);
           continue;
@@ -3640,7 +3641,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     for (const msg of messages) {
       // Cost-cap override (NanoClaw #1): a human decision from the dashboard.
       // Applied to the in-memory cost state and acked — never fed to the agent.
-      if (msg.kind === 'cost_override') {
+      if (isControlRow(msg)) {
         applyCostOverride(msg);
         commandIds.push(msg.id);
         continue;
@@ -4368,7 +4369,7 @@ export async function processQuery(
         // ack them, and drop them from newMessages so they never reach
         // query.push. A 'stop' quiesces promptly: end the active stream and
         // return so the outer loop settles into the stop state.
-        const overrides = newMessages.filter((m) => m.kind === 'cost_override');
+        const overrides = newMessages.filter(isControlRow);
         if (overrides.length > 0) {
           const overrideIds = overrides.map((m) => m.id);
           markProcessing(overrideIds);

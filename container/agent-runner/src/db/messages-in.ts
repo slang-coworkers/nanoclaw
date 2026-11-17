@@ -80,6 +80,16 @@ const SIDECAR_TYPES = new Set(['cli_response', 'question_response']);
 /** Ask the mailbox for the whole unclaimed due set; this file re-windows. */
 const NO_CAP = 1_000_000;
 
+/**
+ * Is this row a runner control row rather than agent-turn input? A
+ * `cost_override` (continue, stop, set_ceiling, reconcile) is applied to the
+ * runner's cost state and acked; it never reaches the prompt, so the
+ * per-prompt cap has no reason to count it.
+ */
+export function isControlRow(m: Pick<MessageInRow, 'kind'>): boolean {
+  return m.kind === 'cost_override';
+}
+
 function isSidecar(content: string): boolean {
   try {
     const parsed = JSON.parse(content) as unknown;
@@ -110,6 +120,14 @@ function isSidecar(content: string): boolean {
  * would let a cap-sized batch of those claimed rows fill the window, the
  * ack filter would then empty it, and genuinely new rows beyond the window
  * would be invisible for the rest of the turn.
+ *
+ * Control rows (isControlRow) bypass the window: every due one is returned on
+ * top of the capped batch. A cost-stopped runner takes no turn input, so the
+ * rows in its window never drain; if a human's `continue` sat behind a full
+ * window of older wake rows, the stopped runner would never see it. Consider
+ * a session stopped at its ceiling with 16 GitHub events queued and a cap of
+ * 10: a `continue` written after them is row 17, outside every window, so the
+ * stop could never be lifted.
  */
 export function getPendingMessages(isFirstPoll = false): MessageInRow[] {
   // NO_CAP asks the mailbox for every unclaimed due row so the sidecar filter
@@ -119,11 +137,13 @@ export function getPendingMessages(isFirstPoll = false): MessageInRow[] {
     .map(messageRow)
     .filter((m) => !isSidecar(m.content));
 
+  const controls = all.filter(isControlRow);
+  const input = all.filter((m) => !isControlRow(m));
   const cap = getMaxMessagesPerPrompt();
-  const wake = all.filter((m) => m.trigger === 1).slice(0, cap);
+  const wake = input.filter((m) => m.trigger === 1).slice(0, cap);
   const remaining = cap - wake.length;
-  const context = remaining > 0 ? all.filter((m) => m.trigger === 0).slice(-remaining) : [];
-  return [...wake, ...context].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
+  const context = remaining > 0 ? input.filter((m) => m.trigger === 0).slice(-remaining) : [];
+  return [...wake, ...context, ...controls].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
 }
 
 export function markProcessing(ids: string[]): void {
