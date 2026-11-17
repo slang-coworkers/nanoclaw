@@ -56,7 +56,7 @@ import {
   sanitizeStoredMcpServers,
 } from './container-config.js';
 import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
-import { modelPolicyEnv, modelPolicyViolations } from './model-policy.js';
+import { installDefaultProvider, modelPolicyEnv, modelPolicyViolations } from './model-policy.js';
 import { privilegeEnforced, resolveSessionModels, sessionPrivilegeOf } from './modules/session-privilege/index.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
@@ -3415,7 +3415,7 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
   // only: the provider's contribution (e.g. OPENCODE_SMALL_MODEL from the host
   // .env) would otherwise win the collision and undo the group's setting.
   const models = resolveSessionModels(
-    input.provider ?? 'claude',
+    input.provider ?? installDefaultProvider(),
     (await getContainerConfig(agentGroup.id)) ?? {},
     session,
   );

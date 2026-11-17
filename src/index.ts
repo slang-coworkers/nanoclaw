@@ -9,6 +9,7 @@ import path from 'path';
 
 import { backfillAgentsSymlinks } from './agents-symlink-backfill.js';
 import { backfillContainerConfigs } from './backfill-container-configs.js';
+import { checkInstallDefault } from './install-default-check.js';
 import {
   CENTRAL_DB_PATH,
   DASHBOARD_INGRESS_HOST,
@@ -176,6 +177,11 @@ async function main(): Promise<void> {
   // Idempotent — skips groups that already have a config row.
   if (db.dialect === 'sqlite') await backfillContainerConfigs();
   else log.info('Skipping local container.json backfill for non-local central DB');
+
+  // 1c-ter. The install default provider and weights (src/model-policy.ts):
+  // refuse to start on an unreadable NANOCLAW_DEFAULT_WEIGHTS, and log which
+  // groups follow the default. After the backfill, so every group has its row.
+  await checkInstallDefault();
 
   // 1c-bis. Backfill AGENTS.md / .agents symlinks for codex-mode skill
   // discovery. group-init.ts creates these for new groups; this catches

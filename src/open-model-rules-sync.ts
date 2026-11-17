@@ -6,6 +6,7 @@
  * refused by configuration only. `scripts/open-model-rules.ts` calls this module to close that gap
  * for the groups that exist now, and again after a group is added or moved to open weights.
  */
+import { parseModelWeights } from './model-policy.js';
 import type { MigrationGroupInput } from './open-weights-migration.js';
 
 /** One group that must have the rules: its id is the name of its OneCLI agent. */
@@ -22,14 +23,18 @@ export interface OpenModelRuleResult extends OpenModelRuleTarget {
 }
 
 /**
- * The groups that need the rules: `weights=open` on a provider that can run open models. A Claude
+ * The groups that need the rules: `weights=open` on a provider that can run open models, where an
+ * empty `weights` column follows the install default (`env`'s NANOCLAW_DEFAULT_WEIGHTS). A Claude
  * group cannot be open (its SDK and router call Claude), so a `weights=open` setting on one is a
  * mistake that `ncl groups config update` and the migration plan already refuse; a rule for it
  * would only cut it off from the model it must use.
  */
-export function openModelRuleTargets(inputs: MigrationGroupInput[]): OpenModelRuleTarget[] {
+export function openModelRuleTargets(
+  inputs: MigrationGroupInput[],
+  env: Readonly<Record<string, string | undefined>> = process.env,
+): OpenModelRuleTarget[] {
   return inputs
-    .filter((input) => input.config.weights === 'open' && input.provider !== 'claude')
+    .filter((input) => parseModelWeights(input.config.weights, env) === 'open' && input.provider !== 'claude')
     .map(({ id, folder }) => ({ id, folder }))
     .sort((a, b) => a.folder.localeCompare(b.folder));
 }

@@ -21,6 +21,7 @@ import { createSession, getSession } from '../../db/sessions.js';
 import { dispatch } from '../dispatch.js';
 import type { CallerContext } from '../frame.js';
 import { lookup } from '../registry.js';
+import { installDefaultProvider } from '../../model-policy.js';
 import './sessions.js';
 import '../../providers/index.js';
 
@@ -114,7 +115,7 @@ describe('sessions update --provider', () => {
     expect(listed.data.find((r) => r.id === 's-open')).toMatchObject({ effective_provider: 'codex' });
     expect(listed.data.find((r) => r.id === 's-bare')).toMatchObject({
       agent_provider: null,
-      effective_provider: 'claude',
+      effective_provider: installDefaultProvider(),
       provider_source: 'default',
     });
   });
@@ -159,7 +160,7 @@ describe('sessions update --provider', () => {
   it('refuses to clear a pin when the group provider would break the policy', async () => {
     // A weights=open group whose stored provider is Claude cannot start; its
     // session only runs because of its OpenCode pin.
-    await updateContainerConfigScalars('ag-bare', { weights: 'open' });
+    await updateContainerConfigScalars('ag-bare', { provider: 'claude', weights: 'open' });
     await pin('s-bare', 'opencode');
     const res = await pin('s-bare', '');
     expect(message(res)).toContain('Model policy refuses to clear the pin of session s-bare');

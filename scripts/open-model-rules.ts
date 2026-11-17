@@ -33,15 +33,23 @@ const keys = [
   'OPENCODE_BASE_URL',
   'CODEX_BASE_URL',
   'NANOCLAW_OPEN_WEIGHTS_PREFIXES',
+  'DEFAULT_AGENT_PROVIDER',
+  'NANOCLAW_DEFAULT_WEIGHTS',
 ];
 const env = { ...process.env, ...readEnvFile(keys) };
+// A group with no provider or weights of its own follows the install default, which provider
+// resolution reads from process.env as the host does (systemd loads .env there); a shell running
+// this script may not have it.
+for (const key of ['DEFAULT_AGENT_PROVIDER', 'NANOCLAW_DEFAULT_WEIGHTS']) {
+  if (env[key] !== undefined) process.env[key] = env[key];
+}
 const hosts = inferenceHostsOf(env);
 const globs = openWeightsModelGlobs(env);
 
 await initDb(dbPath, { role: 'tool' });
 let failed = 0;
 try {
-  const targets = openModelRuleTargets(await loadMigrationInputs());
+  const targets = openModelRuleTargets(await loadMigrationInputs(), env);
   console.log(
     `${targets.length} open-weights groups; inference hosts: ${hosts.join(', ') || '(none)'}; ${globs.length} model patterns\n`,
   );

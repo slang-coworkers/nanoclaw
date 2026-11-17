@@ -33,10 +33,16 @@ describe('openModelRuleTargets', () => {
     const targets = openModelRuleTargets([
       group('eval-triage', 'claude', null),
       group('eval-fixer', 'claude', 'any'),
-      group('closed-opencode', 'opencode', null),
+      group('closed-opencode', 'opencode', 'any'),
       group('open-opencode', 'opencode', 'open'),
     ]);
     expect(targets.map((t) => t.folder)).toEqual(['open-opencode']);
+  });
+
+  it('reads an empty weights column as the install default', () => {
+    const groups = [group('default-opencode', 'opencode', null), group('eval-triage', 'claude', null)];
+    expect(openModelRuleTargets(groups, {}).map((t) => t.folder)).toEqual(['default-opencode']);
+    expect(openModelRuleTargets(groups, { NANOCLAW_DEFAULT_WEIGHTS: 'any' })).toEqual([]);
   });
 
   it('leaves out a Claude group even when its weights say open, because a rule would cut it off', () => {

@@ -1,4 +1,5 @@
 import type { ContainerConfig } from '../container-config.js';
+import { installDefaultProvider } from '../model-policy.js';
 import type { AgentGroup, Session } from '../types.js';
 import { listProviderContainerConfigNames } from './provider-container-registry.js';
 
@@ -32,7 +33,8 @@ export interface ProviderTiers {
 /**
  * The one rule for which provider an agent group runs on: the session's pinned
  * provider, else the group's own `agent_provider`, else the group's container
- * config, else Claude. Spawn resolves through this, and so does every host
+ * config, else the install default (`installDefaultProvider`: OpenCode with
+ * open-weights models unless the install chooses otherwise). Spawn resolves through this, and so does every host
  * command that must validate against the group's actual provider (e.g.
  * `--speed`).
  *
@@ -56,7 +58,7 @@ export function resolveProviderTier(tiers: ProviderTiers): { provider: string; t
     const value = tiers[tier];
     if (value) return { provider: value.toLowerCase(), tier };
   }
-  return { provider: 'claude', tier: 'default' };
+  return { provider: installDefaultProvider(), tier: 'default' };
 }
 
 /**

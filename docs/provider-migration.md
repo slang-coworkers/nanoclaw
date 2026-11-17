@@ -16,7 +16,26 @@ to Codex and back. The switch runs from the host.
 ## Switching
 
 ```bash
-ncl groups config update --id <group-id> --provider codex
+ncl groups update --id <group-id> --agent-provider codex
+ncl groups restart --id <group-id>
+```
+
+A spawn takes the first provider it finds, in this order: the session pin
+(`sessions.agent_provider`), the group's provider (`agent_groups.agent_provider`,
+set by `ncl groups update --agent-provider`), the group's container config
+(`container_configs.provider`, set by `ncl groups config update --provider`),
+and the install default. Set the group's provider: a container-config change
+has no effect on a group that has its own provider.
+
+The install default is OpenCode with open-weights models
+(`NANOCLAW_DEFAULT_WEIGHTS`, see [model-policy.md](model-policy.md)). A group
+that runs under `weights=open`, by its own setting or by the default, cannot
+run Claude; `ncl groups update --agent-provider claude` refuses it. Lift the
+rule first:
+
+```bash
+ncl groups config update --id <group-id> --weights any
+ncl groups update --id <group-id> --agent-provider claude
 ncl groups restart --id <group-id>
 ```
 
@@ -56,8 +75,11 @@ filesystem search (`rg`, `find`, and relative Markdown links).
 
 ## Rolling back
 
+Set the group's provider back, with the weights it ran under:
+
 ```bash
-ncl groups config update --id <group-id> --provider claude
+ncl groups config update --id <group-id> --weights any   # only when going back to Claude
+ncl groups update --id <group-id> --agent-provider claude
 ncl groups restart --id <group-id>
 ```
 
