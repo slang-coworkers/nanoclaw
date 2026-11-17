@@ -60,6 +60,8 @@ fi
 # learning, a container-restart notice) is the host talking about the work in
 # progress, so it never starts a new task. A routed message renders as
 # <message> and a scheduled task as <task>; either one keeps the idle check.
+# The formatter XML-escapes every body, so a literal "<task" inside a
+# notification's text cannot fake either tag.
 # Without this, the gate's own nudge erased the critique round it asked for.
 if grep -q '<system-notification' <<< "$PROMPT" && ! grep -qE '<message|<task' <<< "$PROMPT"; then
   exit 0
