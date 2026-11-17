@@ -115,6 +115,54 @@ describe('track-critique counts genuine critique calls', () => {
   });
 });
 
+describe('track-critique appends recorded rounds to the attempts journal', () => {
+  // workflow-state-reset.sh rewrites workflow-state.json when a new task
+  // starts; the host reads critique-attempts.jsonl, which no reset touches.
+  const journal = (): Array<Record<string, string>> => {
+    const file = path.join(tmpRoot, 'critique-attempts.jsonl');
+    if (!fs.existsSync(file)) return [];
+    return fs
+      .readFileSync(file, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+  };
+
+  it('appends one round line with the stage and verdict', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_response: JSON.stringify({ threadId: 't1', content: '### Verdict\napprove' }),
+    });
+    const lines = journal();
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ event: 'round', stage: 'PLAN_REVIEW', verdict: 'approve' });
+    expect(lines[0].at).toBe(readState().last_critique_at);
+  });
+
+  it('keeps earlier lines when the state file is replaced by a task reset', () => {
+    const call = {
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_response: '{"verdict":"approve"}',
+    };
+    run(call);
+    fs.writeFileSync(stateFile, JSON.stringify({ task_id: 'task-2', critique_rounds: 0 }));
+    run(call);
+    expect(journal()).toHaveLength(2);
+    expect(readState().critique_rounds).toBe(1);
+  });
+
+  it('appends nothing for a call that records no round', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': 'Reply exactly: approve' },
+      tool_response: '{"verdict":"approve"}',
+    });
+    expect(journal()).toHaveLength(0);
+  });
+});
+
 describe('track-critique with OpenCode argument names', () => {
   // OpenCode drops the hyphens from MCP argument names, so the reviewer block
   // arrives as `developerinstructions`. Before this alias no OpenCode critique

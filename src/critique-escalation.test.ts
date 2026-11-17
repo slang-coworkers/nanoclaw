@@ -320,6 +320,33 @@ describe('auto-retraction', () => {
     expect(isRequirementCleared(session, {}, dir)).toBe(false);
   });
 
+  it('clears from a round in the attempts journal after a task reset rewrote the state', async () => {
+    // The #14530 shape: the round lands at 15:47:12, a new task rewrites
+    // workflow-state.json at 15:47:49, the next sweep runs at 15:48:05.
+    writeState({ task_id: 'task-2', critique_rounds: 0, started_at: '2026-11-17T15:47:49Z' });
+    fs.writeFileSync(
+      path.join(dir, 'critique-attempts.jsonl'),
+      '{"at":"2026-11-17T15:47:12Z","event":"round","stage":"PLAN_REVIEW","verdict":"approve"}\n',
+    );
+    const requestedAt = Date.parse('2026-11-17T15:40:10Z') / 1000;
+    expect(isRequirementCleared(session, { requested_at: requestedAt }, dir)).toBe(true);
+    expect(isRequirementCleared(session, { requested_at: requestedAt + 3600 }, dir)).toBe(false);
+
+    writeEscalation({ requested_at: requestedAt, reason: 'missing critique stages: PLAN_REVIEW', hit: 'PR creation' });
+    await checkCritiqueEscalation(session, dir);
+    expect(eventKinds()).toContain('self_healed');
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+  });
+
+  it('skips torn journal lines and reads only round events as rounds', () => {
+    writeState({});
+    fs.writeFileSync(
+      path.join(dir, 'critique-attempts.jsonl'),
+      ['{"at":"2026-11-17T16:00:00Z","event":"other"}', '{"at":"2026-11-17T16:0', ''].join('\n'),
+    );
+    expect(isRequirementCleared(session, { requested_at: Date.parse('2026-11-17T15:00:00Z') / 1000 }, dir)).toBe(false);
+  });
+
   it('retracts a carded escalation once the requirement is satisfied', async () => {
     pendingApprovals = [{ approval_id: 'appr-1', session_id: 'sess-esc-test', status: 'pending' }];
     writeState({ last_critique_at: '2026-08-05T12:59:48Z' });
