@@ -354,6 +354,11 @@ describe('auto-retraction', () => {
     expect(isRequirementCleared(session, mustFix, dir)).toBe(false);
     journal([{ at: '2026-11-17T15:46:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'approve' }]);
     expect(isRequirementCleared(session, mustFix, dir)).toBe(true);
+    journal([
+      { at: '2026-11-17T15:46:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'approve' },
+      { at: '2026-11-17T15:50:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'must-fix' },
+    ]);
+    expect(isRequirementCleared(session, mustFix, dir)).toBe(false);
   });
 
   it('ignores journal lines that are not objects or are dated in the future', () => {
