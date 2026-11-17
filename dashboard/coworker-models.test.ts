@@ -18,9 +18,12 @@ const ENV = {
   INTENT_ROUTER_OPENAI_MODEL: 'nvidia/zai-org/glm-5.3-flash',
 };
 
+// A group whose weights column is empty follows the install default, so a fixture
+// that means a Claude, Codex or weights=any group says `weights: 'any'`, as
+// migration 952 records for every group that existed before that default.
 describe('coworkerModels', () => {
   it('a Claude group: the doer, Haiku for small and router, the install critic', () => {
-    expect(coworkerModels({ folder: 'cl', agent_provider: null }, undefined, ENV)).toEqual({
+    expect(coworkerModels({ folder: 'cl', agent_provider: 'claude' }, { weights: 'any' }, ENV)).toEqual({
       folder: 'cl',
       provider: 'claude',
       weights: 'any',
@@ -60,7 +63,7 @@ describe('coworkerModels', () => {
   });
 
   it('a role with no model has no badge (Codex has no small model)', () => {
-    const card = coworkerModels({ folder: 'cx', agent_provider: 'codex' }, undefined, ENV);
+    const card = coworkerModels({ folder: 'cx', agent_provider: 'codex' }, { weights: 'any' }, ENV);
     expect(card.roles.find((r) => r.role === 'small')).toEqual({ role: 'small', model: null, openWeights: null });
   });
 });
@@ -80,11 +83,15 @@ describe('weightsBadge', () => {
   });
 
   it('a Claude group is closed, although its critic is open-weights', () => {
-    expect(weightsBadge({ folder: 'cl', agent_provider: null }, undefined, null, ENV, OFF).weights).toBe('closed');
+    expect(weightsBadge({ folder: 'cl', agent_provider: 'claude' }, { weights: 'any' }, null, ENV, OFF).weights).toBe(
+      'closed',
+    );
   });
 
   it('one closed role makes a weights=any group closed', () => {
-    expect(weightsBadge(OC, { critic_model: 'openai/openai/gpt-6.1-sol' }, null, ENV, OFF).weights).toBe('closed');
+    expect(
+      weightsBadge(OC, { weights: 'any', critic_model: 'openai/openai/gpt-6.1-sol' }, null, ENV, OFF).weights,
+    ).toBe('closed');
   });
 
   it('a weights=open group is open, because spawn refuses its closed roles rather than call them', () => {
@@ -93,7 +100,7 @@ describe('weightsBadge', () => {
   });
 
   it('the session pin outranks the group and the container config', () => {
-    expect(weightsBadge(OC, OPEN_CRITIC, { agent_provider: 'claude' }, ENV, OFF)).toEqual({
+    expect(weightsBadge(OC, { ...OPEN_CRITIC, weights: 'any' }, { agent_provider: 'claude' }, ENV, OFF)).toEqual({
       effectiveProvider: 'claude',
       weights: 'closed',
     });
@@ -112,7 +119,13 @@ describe('weightsBadge', () => {
 
   it('a group with no model at all is not called open', () => {
     expect(
-      weightsBadge({ folder: 'x', agent_provider: 'codex' }, { critic_model: 'unknown/x' }, null, {}, OFF).weights,
+      weightsBadge(
+        { folder: 'x', agent_provider: 'codex' },
+        { weights: 'any', critic_model: 'unknown/x' },
+        null,
+        {},
+        OFF,
+      ).weights,
     ).toBe('closed');
   });
 
