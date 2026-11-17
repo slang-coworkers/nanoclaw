@@ -99,6 +99,24 @@ export function notificationThreadId(n: JsonRpcNotification): string | undefined
   return typeof thread?.id === 'string' ? thread.id : undefined;
 }
 
+/**
+ * Return why a turn ended without an answer, read from its `turn/completed`
+ * params, or undefined when the turn completed normally.
+ *
+ * Codex 0.160 has no `turn/failed` notification. A failed turn ends with
+ * `turn/completed` whose `turn.status` is "failed" and whose `turn.error.message`
+ * says why (for example the model endpoint's error body); an interrupted turn
+ * has status "interrupted" and a null error. A `turn/completed` without a
+ * status, as older codex versions sent, is a normal completion.
+ */
+export function turnCompletedError(params: Record<string, unknown> | undefined): string | undefined {
+  const turn = (params ?? {}).turn as { status?: unknown; error?: { message?: unknown } | null } | undefined;
+  const message = typeof turn?.error?.message === 'string' && turn.error.message ? turn.error.message : undefined;
+  if (turn?.status === 'failed') return message ?? 'codex turn failed';
+  if (turn?.status === 'interrupted') return message ?? 'codex turn was interrupted';
+  return undefined;
+}
+
 function makeRequest(method: string, params: Record<string, unknown>): JsonRpcRequest {
   return { id: nextRequestId++, method, params };
 }
