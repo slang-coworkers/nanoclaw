@@ -1,6 +1,6 @@
 #!/bin/bash
 # Refresh the GitHub App installation token everywhere prod uses it: the GH_TOKEN fallback in the prod .env,
-# the gh CLI login, six api.github.com OneCLI secrets (raw token) and sixteen github.com OneCLI secrets
+# the gh CLI login, seven api.github.com OneCLI secrets (raw token) and sixteen github.com OneCLI secrets
 # (Basic base64(x-access-token:TOKEN)). Cron runs it every 30 minutes because the token lives one hour.
 #
 # Prod runs this file from ~/.config/nanoclaw/refresh-gh-tokens.sh; this copy is the reviewed source.
@@ -93,6 +93,9 @@ update_api_secret 8b1c3365-486d-4f0f-ac16-4bf8f3175907
 update_api_secret bcb9d4d2-2caa-4c19-95c3-c1baf45dba76
 update_api_secret ea6a6dd9-8b88-4587-bf56-d3642df8efc1
 update_api_secret 5145efc4-a517-4d70-aa0a-cb25276013b0
+# /rate_limit — the quota endpoint that `gh api rate_limit` and health probes call. Without a secret on
+# this path the gateway answers 401 "app not connected", which agents read as a GitHub outage.
+update_api_secret f7d26e23-bb71-416b-997a-c027857b6d0c
 API_OK=$UPDATED
 
 # --- github.com App-token git-push/read secrets (Basic base64(x-access-token:APP)) ---
@@ -113,8 +116,8 @@ done
 GIT_OK=$((UPDATED - API_OK))
 
 if [ "$FAILED" = 0 ]; then
-  log "Tokens refreshed (shader-slang; $API): $API_OK/6 api secrets, $GIT_OK/16 git secrets"
+  log "Tokens refreshed (shader-slang; $API): $API_OK/7 api secrets, $GIT_OK/16 git secrets"
   exit 0
 fi
-log "ERROR: token refresh incomplete (shader-slang; $API): $API_OK/6 api secrets, $GIT_OK/16 git secrets, $FAILED failed"
+log "ERROR: token refresh incomplete (shader-slang; $API): $API_OK/7 api secrets, $GIT_OK/16 git secrets, $FAILED failed"
 exit 1
