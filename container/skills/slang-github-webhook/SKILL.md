@@ -1,7 +1,7 @@
 ---
 name: slang-github-webhook
 license: MIT
-description: 'Handle GitHub PR webhooks: @nv-slang-bot mentions and reviewable-PR events (draft→ready / opened / synchronize) — route via send_message; and on a PR you own — review verdicts, inline comments, review-thread resolves, and CI failures (reply, resolve LLM threads, infra-vs-code CI triage).'
+description: 'Handle GitHub webhooks: new issues (route to the triager at once; only an explicit stand-down stops the bot), @nv-slang-bot mentions and reviewable-PR events (draft→ready / opened / synchronize) — route via send_message; and on a PR you own — review verdicts, inline comments, review-thread resolves, and CI failures (reply, resolve LLM threads, infra-vs-code CI triage).'
 provides: [github.webhook.routing]
 allowed-tools: Bash(gh:*), Bash(jq:*), Bash(date:*), Bash(mkdir:*), Bash(echo:*), Bash(cat:*), mcp__nanoclaw__send_message
 ---
@@ -10,6 +10,7 @@ allowed-tools: Bash(gh:*), Bash(jq:*), Bash(date:*), Bash(mkdir:*), Bash(echo:*)
 
 Run on a `kind: webhook` message whose `content.event` starts `github.`:
 
+- `github.issue_opened` → a new issue passed the host's label gate. **Route** it to the project's triager at once (the orchestrator's job — see "New issues" in the routing context). Only an explicit stand-down stops the bot: the `no-bot` label, or a person asking the bot to stay off. An assignee, a milestone or the author's role is not one.
 - `github.pr_mention` → **route** to the owning coworker (the orchestrator's job — see below).
 - `github.pr_ready_for_review` → a PR became reviewable (draft→ready, opened non-draft, or a new push). **Route** to the project's `*-pr-approver` coworker (the orchestrator's job — see "Reviewable PR events").
 - `github.pr_review` / `github.pr_review_comment` / `github.pr_review_thread` / `github.ci_failed` → **handle on the PR you own** (a coworker's job — see "PR activity events").
