@@ -55,7 +55,7 @@ import {
   resolveGroupTimezone,
   sanitizeStoredMcpServers,
 } from './container-config.js';
-import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
+import { getAllContainerConfigs, getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
 import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
 import { privilegeEnforced, rowForPrivilege, sessionPrivilegeOf } from './modules/session-privilege/index.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
@@ -1413,6 +1413,10 @@ async function spawnContainer(session: Session): Promise<void> {
   // the config object, threaded through provider resolution, buildMounts,
   // and buildContainerArgs so we don't re-read.
   const containerConfig = await materializeContainerJson(agentGroup.id);
+  // Not awaited: a rebuild can take minutes, and callers (the sweep, inbound
+  // routing) wait on this spawn. This container may start on the old image;
+  // the next spawn gets the new one.
+  void refreshStaleGroupImage(agentGroup.id, containerConfig.imageTag);
 
   // initGroupFilesystem must scaffold for the provider the container will
   // actually run, so this resolves through the same call as the contribution.
@@ -3943,8 +3947,20 @@ exec bun run /app/src/index.ts`;
 // Argument lists, not shell strings: DATA_DIR is the install folder, which may hold spaces.
 const execFileAsync = promisify(execFile);
 
-/** The last build started for each agent group, while it runs. */
-const groupImageBuilds = new Map<string, Promise<void>>();
+// One image job per group at a time: the stale check, `--rebuild` and
+// install_packages all write the same tag through the same Dockerfile path.
+const groupImageJobs = new Map<string, Promise<void>>();
+
+function runGroupImageJob(agentGroupId: string, job: () => Promise<void>): Promise<void> {
+  const next = (groupImageJobs.get(agentGroupId) ?? Promise.resolve()).catch(() => undefined).then(job);
+  groupImageJobs.set(agentGroupId, next);
+  void next
+    .finally(() => {
+      if (groupImageJobs.get(agentGroupId) === next) groupImageJobs.delete(agentGroupId);
+    })
+    .catch(() => undefined);
+  return next;
+}
 
 /**
  * Build a per-agent-group Docker image with the group's apt and npm packages, tagged
@@ -3953,22 +3969,15 @@ const groupImageBuilds = new Map<string, Promise<void>>();
  * Builds of one group run one after another, in call order. Each build reads the package lists
  * when it starts, so the build that started last also ends last and its image keeps the tag. The
  * in-process callers can overlap: an approved `install_packages`, `ncl groups restart --rebuild`,
- * and the wake-path repair of a missing image. scripts/rebuild-derived-images.ts runs in its own
- * process, outside this queue.
+ * the stale-image refresh, and the wake-path repair of a missing image. scripts/rebuild-derived-images.ts
+ * runs in its own process, outside this queue.
  *
  * By default the build also pins the group to the new image. `pin: false` leaves
  * `container_configs.image_tag` as it is; the wake-path repair uses it, because a pin change made
  * while a long build runs must not be undone when the build ends.
  */
 export function buildAgentGroupImage(agentGroupId: string, opts: { pin?: boolean } = {}): Promise<void> {
-  const previous = groupImageBuilds.get(agentGroupId) ?? Promise.resolve();
-  const build = previous.catch(() => {}).then(() => buildAgentGroupImageNow(agentGroupId, opts.pin ?? true));
-  groupImageBuilds.set(agentGroupId, build);
-  const forget = () => {
-    if (groupImageBuilds.get(agentGroupId) === build) groupImageBuilds.delete(agentGroupId);
-  };
-  build.then(forget, forget);
-  return build;
+  return runGroupImageJob(agentGroupId, () => buildAgentGroupImageNow(agentGroupId, { pin: opts.pin ?? true }));
 }
 
 /**
@@ -3979,7 +3988,102 @@ export function repairDerivedImage(agentGroupId: string): Promise<void> {
   return buildAgentGroupImage(agentGroupId, { pin: false });
 }
 
-async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Promise<void> {
+const DERIVED_FROM_LABEL = 'dev.nanoclaw.derived-from';
+
+/** Agent image id a group's rebuild last failed on, so each spawn does not retry the same failing build. */
+const failedGroupImageRefreshes = new Map<string, string>();
+const queuedGroupImageRefreshes = new Map<string, Promise<void>>();
+
+async function inspectImage(ref: string, format: string): Promise<string | null> {
+  try {
+    // Bounded: a hung daemon must not hold the group's job queue forever.
+    const { stdout } = await execFileAsync(CONTAINER_RUNTIME_BIN, ['image', 'inspect', '--format', format, ref], {
+      timeout: 30_000,
+    });
+    return stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rebuild a group's own image when it was layered onto an older agent image.
+ * Updates and setup rebuild only the agent image, and spawn prefers the group's
+ * pin, so the group would keep the old tools and agent-runner dependencies
+ * under new agent-runner source. Never throws: on failure the group keeps its
+ * current image, as it did before this check existed.
+ */
+export function refreshStaleGroupImage(agentGroupId: string, imageTag: string | null | undefined): Promise<void> {
+  const derivedTag = `${CONTAINER_IMAGE_BASE}:${agentGroupId}`;
+  // A pin to any other image is the operator's choice, not something this host built.
+  if (imageTag !== derivedTag) return Promise.resolve();
+  // A check that has not started yet reads the newest state anyway, so share it.
+  const queued = queuedGroupImageRefreshes.get(agentGroupId);
+  if (queued) return queued;
+  const refresh = refreshGroupImageNow(agentGroupId, derivedTag).finally(() => {
+    if (queuedGroupImageRefreshes.get(agentGroupId) === refresh) queuedGroupImageRefreshes.delete(agentGroupId);
+  });
+  queuedGroupImageRefreshes.set(agentGroupId, refresh);
+  return refresh;
+}
+
+async function refreshGroupImageNow(agentGroupId: string, derivedTag: string): Promise<void> {
+  try {
+    if (!getSessionDriver().capabilities().imageBuild) return;
+    await runGroupImageJob(agentGroupId, async () => {
+      queuedGroupImageRefreshes.delete(agentGroupId);
+      // Re-read: a queued job can run after the operator re-pinned the group.
+      const row = await getContainerConfig(agentGroupId);
+      if (row?.image_tag !== derivedTag) return;
+      // All packages removed but the pin kept: the build would refuse on every
+      // agent image change, so the group keeps its image as before this check.
+      if (
+        (JSON.parse(row.packages_apt) as string[]).length === 0 &&
+        (JSON.parse(row.packages_npm) as string[]).length === 0
+      ) {
+        return;
+      }
+      const baseId = await inspectImage(CONTAINER_IMAGE, '{{.Id}}');
+      if (!baseId) return;
+      const builtOn = await inspectImage(derivedTag, `{{index .Config.Labels "${DERIVED_FROM_LABEL}"}}`);
+      if (builtOn === baseId || failedGroupImageRefreshes.get(agentGroupId) === baseId) return;
+      log.info('Group image was built on an older agent image, rebuilding it', {
+        agentGroupId,
+        imageTag: derivedTag,
+        builtOn,
+        baseId,
+      });
+      try {
+        // The pin already names this tag; writing it again could undo a re-pin made during the build.
+        await buildAgentGroupImageNow(agentGroupId, { pin: false });
+        failedGroupImageRefreshes.delete(agentGroupId);
+      } catch (err) {
+        failedGroupImageRefreshes.set(agentGroupId, baseId);
+        throw err;
+      }
+    });
+  } catch (err) {
+    log.warn('Could not rebuild the group image on the current agent image; the group keeps its old image', {
+      agentGroupId,
+      fix: `ncl groups restart --id ${agentGroupId} --rebuild`,
+      err,
+    });
+  }
+}
+
+/** Startup pass, so groups are usually current before their first message after an update. */
+export async function refreshStaleGroupImages(): Promise<void> {
+  let rows: Awaited<ReturnType<typeof getAllContainerConfigs>>;
+  try {
+    rows = await getAllContainerConfigs();
+  } catch (err) {
+    log.warn('Could not list group images to check', { err });
+    return;
+  }
+  for (const row of rows) await refreshStaleGroupImage(row.agent_group_id, row.image_tag);
+}
+
+async function buildAgentGroupImageNow(agentGroupId: string, { pin = true } = {}): Promise<void> {
   const agentGroup = await getAgentGroup(agentGroupId);
   if (!agentGroup) throw new Error('Agent group not found');
 
@@ -4002,19 +4106,8 @@ async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Prom
   // can tell which base a group's packages were layered onto — the image id
   // rather than a RepoDigest, because a locally built base has no RepoDigest at
   // all and an id is unambiguous either way.
-  let baseId = '';
-  try {
-    const { stdout } = await execFileAsync(CONTAINER_RUNTIME_BIN, [
-      'image',
-      'inspect',
-      '--format',
-      '{{.Id}}',
-      CONTAINER_IMAGE,
-    ]);
-    baseId = stdout.trim();
-  } catch {
-    // Non-fatal: the build below fails on its own if the base is really absent.
-  }
+  // Empty is non-fatal: the build below fails on its own if the base is really absent.
+  const baseId = (await inspectImage(CONTAINER_IMAGE, '{{.Id}}')) ?? '';
 
   let dockerfile = `FROM ${CONTAINER_IMAGE}\nUSER root\n`;
   if (aptPackages.length > 0) {
