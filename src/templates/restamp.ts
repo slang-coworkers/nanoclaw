@@ -401,11 +401,11 @@ export async function restampAgentFromTemplate(
     });
   }
 
-  // coworker_type is CREATION-ONLY: restamp does not own it, because changing a
-  // live group's type changes its mirrored skill scope — the destructive path
-  // #1646 had to fix — and doing that implicitly inside a plugin update is the
-  // wrong place for it. But silently dropping a template's changed intent is
-  // also wrong, so say so and name the deliberate migration step.
+  // restamp does not own coworker_type: changing a live group's type changes its
+  // mirrored skill scope (group-init prunes what the new scope drops), so it is a
+  // deliberate operator step with its own plan (`ncl groups coworker-type set`,
+  // coworker-type-switch.ts), not a side effect of a plugin update. Silently
+  // dropping a template's changed intent is also wrong, so say so and name it.
   const forkExt = readForkExtension(tpl.extensions);
   const notices = [...tpl.report, ...forkExt.report];
   const declaredType = forkExt.defaultCoworkerType;
@@ -413,7 +413,7 @@ export async function restampAgentFromTemplate(
     notices.push(
       `template declares coworker type "${declaredType}" but this group is ` +
         `${group.coworker_type === null ? 'untyped' : `"${group.coworker_type}"`}; ` +
-        'restamp does not change it (creation-only) — migrate the type deliberately if you want it',
+        'restamp does not change it — switch it deliberately with `ncl groups coworker-type set` if you want it',
     );
   }
 

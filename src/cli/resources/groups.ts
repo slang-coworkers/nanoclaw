@@ -35,6 +35,11 @@ import {
   resolveGroupModels,
 } from '../../model-policy.js';
 import { resolveProviderName } from '../../providers/provider-name.js';
+import {
+  formatCoworkerTypeSwitchPlan,
+  planCoworkerTypeSwitch,
+  type CoworkerTypeSwitchPlan,
+} from '../../coworker-type-switch.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
 import { decideCoworkerType } from '../../templates/coworker-type.js';
 import { templateApprovalDetail } from '../../templates/approval-detail.js';
@@ -365,6 +370,82 @@ registerResource({
         };
       },
     },
+    'coworker-type set': {
+      access: 'approval',
+      // Same principal rules as `mcp-tools set`: a type change rewrites what the
+      // group may do (workflows, invariants, MCP servers), so it never comes from
+      // the group itself and is held for approval when an agent asks.
+      denySelfTarget: true,
+      description:
+        "Switch an existing agent group's coworker type. Without --yes, prints the plan: the skills, " +
+        'workflows, invariants, overlays and MCP servers that change, and the composed CLAUDE.md before and ' +
+        'after. With --yes, applies it and RESTARTS the running containers of the group so they compose as ' +
+        'the new type (group-init then mirrors the new skill scope and prunes catalog skills the type no ' +
+        'longer claims). --id <agent-group-id> --type <coworker type>. Refused for an admin/immortal group, ' +
+        'for a type that does not resolve, composes flat or grants immortality, for a type of another project, ' +
+        'and (on --yes) while a running session is inside a turn. The explicit MCP allow-list, standing ' +
+        'instructions, memory and sessions are untouched. An agent may never change its OWN type.',
+      handler: async (args, ctx) => {
+        const id = String(args.id ?? '');
+        if (!id) throw new Error('--id is required');
+        const type = args.type === undefined ? '' : String(args.type);
+        if (!type.trim()) throw new Error('--type is required');
+
+        if (ctx?.caller === 'agent' && ctx.agentGroupId === id) {
+          throw new Error(
+            'An agent cannot change its own coworker type. Ask the admin/Main group to make this change.',
+          );
+        }
+        if (ctx?.caller === 'agent') {
+          const caller = await getAgentGroup(ctx.agentGroupId);
+          if (!caller?.is_admin) {
+            throw new Error("Only an admin agent group may change another group's coworker type.");
+          }
+        }
+
+        const group = await getAgentGroup(id);
+        if (!group) throw new Error(`No agent group ${id}`);
+
+        const plan = await planCoworkerTypeSwitch(group, type);
+        if (!args.yes) {
+          return { applied: false, plan, next: 'Re-run with --yes to apply.' };
+        }
+        if (plan.blockers.length > 0) {
+          throw new Error(`coworker type switch blocked: ${plan.blockers.join('; ')}`);
+        }
+
+        await updateAgentGroup(id, { coworker_type: plan.to });
+
+        // Restart rather than wait for the stale-CLAUDE.md sweep: the sweep
+        // compares documents, but a type switch also changes the MCP servers and
+        // overlays a container booted with, which only a respawn picks up.
+        // Deferred so the response frame is durable first (see post-response.ts).
+        const wakeMessage =
+          `[system] Your coworker type changed from ${plan.from ?? 'untyped'} to ${plan.to}, and your container ` +
+          'was restarted so your instructions, workflows and skills match it. Re-read your instructions before ' +
+          'continuing.';
+        if (plan.running_sessions.length > 0) {
+          enqueuePostResponseEffect(`coworker-type-set:restart:${id}`, () => {
+            restartAgentGroupContainers(id, 'coworker type changed', wakeMessage);
+          });
+        }
+        return {
+          applied: true,
+          plan,
+          containers_pending_restart: plan.running_sessions,
+          note:
+            plan.running_sessions.length > 0
+              ? `${plan.running_sessions.length} container(s) are being restarted to compose as ${plan.to}.`
+              : `No containers are running; the group composes as ${plan.to} at its next spawn.`,
+        };
+      },
+      formatHuman: (data) => {
+        const d = data as { applied: boolean; plan: CoworkerTypeSwitchPlan; note?: string; next?: string };
+        const lines = formatCoworkerTypeSwitchPlan(d.plan);
+        lines.push(d.applied ? `Applied. ${d.note ?? ''}`.trim() : (d.next ?? ''));
+        return lines.join('\n');
+      },
+    },
     create: {
       access: 'approval',
       // A bare `--template <ref>` tells the approver nothing about the MCP servers
@@ -385,7 +466,7 @@ registerResource({
         'Optional --timezone <IANA id> sets the group timezone (template task schedules fire in it); like --name, it applies only when a group is created — both are ignored on the in-place update of an existing group. ' +
         "Optional --coworker-type <type> composes the agent as that lego type: for a template it overrides the template's own " +
         'declared default, and pass --coworker-type "" to stamp untyped regardless of what the template asks for; for a bare ' +
-        "create it sets the new group's type, and an existing group with another type is refused (the type is set only at create). A type " +
+        "create it sets the new group's type, and an existing group with another type is refused (switch an existing group's type with `coworker-type set`). A type " +
         'that does not resolve here fails the create, and a flat type (e.g. main) is refused.',
       handler: async (args) => {
         const timezone = parseTimezoneFlag(args.timezone) ?? undefined;
@@ -453,12 +534,13 @@ registerResource({
         // not duplicated.
         const existing = await getAgentGroupByFolder(folder);
         if (existing) {
-          // The type is set only at create, and `groups update` cannot change
-          // it, so a different type on a reused folder is refused, not ignored.
+          // `create` sets the type only for a new group, and a type change has its
+          // own planned verb, so a different type on a reused folder is refused,
+          // not ignored.
           if (typeDecision && (existing.coworker_type ?? null) !== typeDecision.coworkerType) {
             throw new Error(
               `group '${folder}' already exists with coworker type ${JSON.stringify(existing.coworker_type ?? null)}; ` +
-                '--coworker-type applies only when a group is created',
+                '--coworker-type applies only when a group is created; use `ncl groups coworker-type set` to switch it',
             );
           }
           await initGroupFilesystem(existing); // ensure a reused group is fully configured too (idempotent; also repairs a missing workspace folder)
