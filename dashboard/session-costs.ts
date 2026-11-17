@@ -4,7 +4,7 @@
  * ccusage only reports cost per group per day, so a session-level figure has to
  * be computed from the raw per-message `usage` in each session's transcript.
  * This module owns the pricing math (pure, testable); the file walking and
- * caching live in server.ts (`refreshSessionCostCache`), mirroring how
+ * caching live in session-cost-scan.ts (`computeSessionCostSnapshot`), mirroring how
  * `unit-cost.ts` is the tested core behind the funnel's cost column.
  *
  * Rates are LiteLLM's `model_prices_and_context_window.json` — the SAME source

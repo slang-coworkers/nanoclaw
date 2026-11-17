@@ -158,7 +158,7 @@ describe('SessionCostEntry provider split', () => {
   };
 
   it('cost is the sum of both halves', () => {
-    // Mirrors how refreshSessionCostCache accumulates: the Claude walk adds to
+    // Mirrors how computeSessionCostSnapshot accumulates: the Claude walk adds to
     // cost+claudeUsd, the codex walk adds to cost+codexUsd, on the same row.
     const e = { ...entry };
     e.cost += 78.69;
