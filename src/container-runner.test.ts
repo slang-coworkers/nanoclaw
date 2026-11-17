@@ -13,7 +13,12 @@ import os from 'os';
 import path from 'path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
+import {
+  CONTAINER_BUILD_JOBS,
+  CONTAINER_CPU_LIMIT,
+  CONTAINER_MEMORY_LIMIT,
+  resolveContainerBuildJobs,
+} from './config.js';
 import type { CapDiagnostics } from './claude-composer/project-doc.js';
 import type { ContainerConfig } from './container-config.js';
 import {
@@ -519,6 +524,11 @@ describe('composeSessionSpec', () => {
       ANTHROPIC_AUTH_TOKEN: 'placeholder',
     });
     expect(spec.containers[0].env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
+  });
+
+  it('caps cmake --build at a fair share of the host cores', async () => {
+    expect(CONTAINER_BUILD_JOBS).toBe(resolveContainerBuildJobs(undefined, os.availableParallelism()));
+    expect((await compose()).containers[0].env.CMAKE_BUILD_PARALLEL_LEVEL).toBe(String(CONTAINER_BUILD_JOBS));
   });
 
   it('passes non-secret mailbox environment on the composed lane', async () => {
