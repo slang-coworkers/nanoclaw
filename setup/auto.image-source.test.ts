@@ -114,8 +114,10 @@ it('still offers Echo once to a run that never reached the question', async () =
 // re-entered process does with it: fail()'s retry of the container step
 // starts without 'container' in NANOCLAW_SKIP and asks again; the sg-docker
 // re-exec only follows a finished container step, so it skips the question.
+// `projects` joins the skip list here too: it is fork-only and unmocked (see
+// beforeEach), and skipping it changes nothing about the container step.
 it('asks the open question again in a re-entered run that has not finished the container step', async () => {
-  vi.stubEnv('NANOCLAW_SKIP', 'environment');
+  vi.stubEnv('NANOCLAW_SKIP', 'environment,projects');
   let finish!: () => void;
   const exited = new Promise<void>((resolve) => {
     finish = resolve;
