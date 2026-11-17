@@ -13,10 +13,12 @@ import pytest
 
 from src.discord.discord import (
     CreateChannelArgs,
+    CreateThreadArgs,
     ModerateMessageArgs,
     SendMessageArgs,
     _read_only_blocked,
     create_channel,
+    create_thread,
     moderate_message,
     send_message,
 )
@@ -64,5 +66,14 @@ async def test_create_channel_blocked_when_read_only():
     args = CreateChannelArgs(server_id="123", name="test", type="text")
     with patch.dict(os.environ, {"DISCORD_READ_ONLY": "1"}, clear=False):
         result = await create_channel(args)
+    assert "error" in result
+    assert "DISCORD_READ_ONLY=1" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_create_thread_blocked_when_read_only():
+    args = CreateThreadArgs(channel_id="123", name="status")
+    with patch.dict(os.environ, {"DISCORD_READ_ONLY": "1"}, clear=False):
+        result = await create_thread(args)
     assert "error" in result
     assert "DISCORD_READ_ONLY=1" in result["error"]
