@@ -64,3 +64,35 @@ ncl groups restart --id <group-id>
 Memory and standing instructions need no reverse migration because both
 providers use the same files. The prior provider resumes its own continuation,
 subject to its normal transcript rotation policy.
+
+## Pinning one session
+
+A session can run on another provider than its group. The pin is the first
+place a spawn looks for the provider:
+
+1. `sessions.agent_provider`: the session pin
+2. `agent_groups.agent_provider`: the group's provider
+3. `container_configs.provider`: the group's container config
+4. the install default
+
+```bash
+ncl sessions update --id <session-id> --provider codex             # pin
+ncl sessions update --id <session-id> --provider codex --restart   # pin, apply now
+ncl sessions update --id <session-id> --provider ''                # clear: follow the group again
+```
+
+`ncl sessions get` and `ncl sessions list` show the pin (`agent_provider`), the
+provider the session runs on (`effective_provider`) and the step that decided
+it (`provider_source`).
+
+The command checks the pin with the model policy that spawn uses, including the
+session's privilege. It refuses a provider the host does not register, and a
+pin that would make a `weights=open` session call a closed model, for example
+`--provider claude` on an open-weights group. It also refuses to clear a pin
+when the group's own provider would break the policy.
+
+The pin applies at the session's next spawn. A running container keeps its old
+provider: `--restart` stops only this session's container, and the next message
+starts it on the new provider. `ncl groups restart --id <group-id>` restarts
+every running container of the group instead. From inside a container the
+command needs admin approval, like `ncl groups update`.

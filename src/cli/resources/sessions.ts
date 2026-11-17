@@ -6,6 +6,7 @@ import {
 } from '../../modules/cross-session-context/index.js';
 import { registerResource } from '../crud.js';
 import { readSessionMessages, type ReadOpts } from '../session-messages.js';
+import { formatSessionPin, pinSessionProvider, presentSessionProviders } from '../session-provider-pin.js';
 
 registerResource({
   name: 'session',
@@ -31,7 +32,10 @@ registerResource({
     {
       name: 'agent_provider',
       type: 'string',
-      description: 'Provider override. Null means inherit from agent group.',
+      description:
+        'Provider pin, set with `ncl sessions update --provider`. Null means the session follows its group. ' +
+        'list/get also show effective_provider (what the session runs on) and provider_source ' +
+        '(session, group, config or default: the tier that decided it).',
     },
     {
       name: 'status',
@@ -50,7 +54,39 @@ registerResource({
     { name: 'created_at', type: 'string', description: 'Auto-set.', generated: true },
   ],
   operations: { list: 'open', get: 'open' },
+  presentRows: presentSessionProviders,
   customOperations: {
+    update: {
+      access: 'approval',
+      description:
+        "Pin a session to a provider, or clear its pin with --provider ''. The pin outranks the group's " +
+        'provider and its container config (session pin → agent_groups.agent_provider → ' +
+        'container_configs.provider → default). The pin is checked against the model policy the way spawn ' +
+        'checks it, so a pin that would make a weights=open session call a closed model is refused. It ' +
+        "applies at the session's next spawn; --restart stops the session's running container now, and the " +
+        'next message starts it on the new provider.',
+      examples: [
+        '# Run one session on Codex, and apply it now:\nncl sessions update --id sess-1751234-abc123 --provider codex --restart',
+        "# Back to the group's provider:\nncl sessions update --id sess-1751234-abc123 --provider ''",
+      ],
+      args: [
+        { name: 'id', type: 'string', description: 'Session id (from `ncl sessions list`).', required: true },
+        {
+          name: 'provider',
+          type: 'string',
+          description: "Provider to pin (one this host registers, e.g. opencode or claude). '' clears the pin.",
+          required: true,
+        },
+        {
+          name: 'restart',
+          type: 'boolean',
+          description:
+            "Stop the session's running container so the next message starts it on the new provider. Default false.",
+        },
+      ],
+      handler: async (args) => pinSessionProvider(args),
+      formatHuman: formatSessionPin,
+    },
     messages: {
       access: 'open',
       description:

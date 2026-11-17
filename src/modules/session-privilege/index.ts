@@ -31,7 +31,7 @@ import path from 'path';
 
 import { readEnvFile } from '../../env.js';
 import { log } from '../../log.js';
-import type { ModelPolicyRow } from '../../model-policy.js';
+import { resolveGroupModels, type ModelPolicyRow, type ResolvedModels } from '../../model-policy.js';
 import { eligibilityOfKey } from '../input-gate/eligibility-file.js';
 
 export type SessionPrivilege = 'open' | 'closed';
@@ -186,4 +186,20 @@ export function rowForPrivilege(
 ): ModelPolicyRow {
   if (settings.mode !== 'enforce') return row;
   return { ...row, weights: privilege === 'open' ? 'open' : null };
+}
+
+/**
+ * The model each role of `session` resolves to when it runs on `provider`: the
+ * group's row adjusted for the session's privilege, then resolved per role.
+ * Spawn checks this against the model policy before it starts a container, and
+ * `ncl sessions update --provider` checks the same result before it stores a
+ * pin, so the command refuses exactly what spawn would refuse.
+ */
+export function resolveSessionModels(
+  provider: string,
+  row: ModelPolicyRow,
+  session: { privilege?: SessionPrivilege | null },
+  settings: PrivilegeSettings = readPrivilegeSettings(),
+): ResolvedModels {
+  return resolveGroupModels(provider, rowForPrivilege(row, sessionPrivilegeOf(session), settings));
 }
