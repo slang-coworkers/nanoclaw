@@ -208,9 +208,8 @@ registerResource({
         const group = await getAgentGroup(id);
         if (!group) throw new Error(`No agent group ${id}`);
         // Same resolver the spawn path uses, so the displayed policy is the
-        // enforced policy. Reporting a stored NULL as "unrestricted, nothing
-        // blocked" was wrong for every non-admin group: the runtime falls back
-        // to the coworker-type manifest, which restricts.
+        // enforced policy (src/mcp-allowlist.ts: only an explicit stored list
+        // restricts; a stored NULL inherits, which restricts nothing).
         const resolved = resolveMcpAllowlist(group);
         // Discovery is already done by the proxy at server start; this only reads
         // the cache, so it needs no MCP handshake of its own.
@@ -257,9 +256,10 @@ registerResource({
         'change is enforced on direct MCP servers too. ' +
         '--id <agent-group-id> --tools \'["mcp__server__tool", …]\' for an explicit list, ' +
         "--tools '[]' to allow no configurable MCP tool at all, " +
-        '--tools inherit to fall back to the coworker-type manifest (the default), ' +
-        '--tools unrestricted to allow every discovered tool. ' +
-        "NOTE: 'inherit' is NOT 'unrestricted' — it restricts to the type manifest. " +
+        '--tools inherit to clear the stored list (the default state, which restricts nothing: the ' +
+        'coworker-type manifest is a composition input, never a permission grant), ' +
+        '--tools unrestricted to allow every discovered tool explicitly. ' +
+        "NOTE: only an explicit list restricts, so 'inherit' lifts any restriction the group had. " +
         'An agent may never change its OWN allow-list.',
       handler: async (args, ctx) => {
         const id = String(args.id ?? '');
