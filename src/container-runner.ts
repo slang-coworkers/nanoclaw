@@ -31,6 +31,7 @@ import {
 import { PROJECT_DOC_MAX_BYTES, ProjectDocTooLargeError } from './claude-composer/doc-size-cap.js';
 import { renderProjectDoc, type CapDiagnostics } from './claude-composer/project-doc.js';
 import {
+  CONTAINER_BUILD_JOBS,
   CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
   CONTAINER_IMAGE_BASE,
@@ -3602,6 +3603,9 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // validates a hand-edited DB value.
   env.TZ = await resolveGroupTimezone(agentGroup.id);
   if (provider) env.AGENT_PROVIDER = provider;
+  // Read by `cmake --build`: each build that passes no -j takes a fair share
+  // of the host's cores, not all of them (config.ts resolveContainerBuildJobs).
+  if (CONTAINER_BUILD_JOBS !== undefined) env.CMAKE_BUILD_PARALLEL_LEVEL = String(CONTAINER_BUILD_JOBS);
 
   // claude-trace: point the SDK's executable at the wrapper mounted by
   // buildMounts. Unlike stock claude-trace (a require-hook, JS-only), this
