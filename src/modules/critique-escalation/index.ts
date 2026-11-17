@@ -582,13 +582,10 @@ export function isRequirementCleared(session: Session, esc: EscalationFile, dirO
   const needApprove = classifyEscalation(reason) === 'failed';
   const journal = readCritiqueAttempts(session, dirOverride);
   if (journal.length > 0) {
-    return journal.some(
-      (a) =>
-        a.event === 'round' &&
-        after(a.atMs) &&
-        (stage === null || a.stage === stage) &&
-        (!needApprove || a.verdict === 'approve'),
-    );
+    const rounds = journal.filter((a) => a.event === 'round' && after(a.atMs) && (stage === null || a.stage === stage));
+    // For a must-fix denial the latest round of the stage decides: an approve
+    // followed by another must-fix has not cleared it.
+    return needApprove ? rounds.length > 0 && rounds[rounds.length - 1].verdict === 'approve' : rounds.length > 0;
   }
   const last = readWorkflowState(session, dirOverride).last_critique_at;
   return typeof last === 'string' && after(Date.parse(last));
