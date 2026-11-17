@@ -536,16 +536,77 @@ async function pendingCardFor(sessionId: string): Promise<{ approval_id: string 
  * disappeared, so cards accumulated as permanent queue residue. One of prod's
  * two outstanding cards on 2026-08-05 was in exactly this state — its session
  * had recorded an OUTPUT_REVIEW approve 37 minutes after the card went out.
+ *
+ * The round comes from the append-only attempts journal first, because
+ * workflow-state.json is task state: workflow-state-reset.sh rewrites it when a
+ * new task starts, and a reset that lands between two sweeps erases the round
+ * before the host sees it. `last_critique_at` in the state stays as a second
+ * source for a container that predates the journal.
  */
 export function isRequirementCleared(session: Session, esc: EscalationFile, dirOverride?: string): boolean {
   const requestedAt = esc.requested_at ?? 0;
   if (!requestedAt) return false;
-  const state = readWorkflowState(session, dirOverride);
-  const last = state.last_critique_at;
-  if (typeof last !== 'string') return false;
-  const lastMs = Date.parse(last);
-  if (!Number.isFinite(lastMs)) return false;
-  return Math.floor(lastMs / 1000) > requestedAt;
+  const times = readCritiqueAttempts(session, dirOverride)
+    .filter((a) => a.event === 'round')
+    .map((a) => a.atMs);
+  const last = readWorkflowState(session, dirOverride).last_critique_at;
+  if (typeof last === 'string') times.push(Date.parse(last));
+  return times.some((ms) => Number.isFinite(ms) && Math.floor(ms / 1000) > requestedAt);
+}
+
+/** One line of the container's critique-attempts journal. */
+export interface CritiqueAttempt {
+  /** 'round': track-critique.sh recorded a critique round. */
+  event: string;
+  atMs: number;
+}
+
+/**
+ * How much of the attempts journal the sweep reads. A line is ~100 bytes and a
+ * busy fixer session records a few hundred rounds over its life, so the tail
+ * holds every attempt an open escalation can care about.
+ */
+const ATTEMPTS_TAIL_BYTES = 256 * 1024;
+
+/**
+ * Read the tail of the session's critique-attempts journal
+ * (`.claude/critique-attempts.jsonl`, appended by track-critique.sh), oldest
+ * first. A line that does not parse is skipped: two appends racing can tear
+ * one, and one lost line cannot make an escalation clear wrongly.
+ */
+export function readCritiqueAttempts(session: Session, dirOverride?: string): CritiqueAttempt[] {
+  const file = path.join(claudeDir(session, dirOverride), 'critique-attempts.jsonl');
+  let text: string;
+  try {
+    const fd = fs.openSync(file, 'r');
+    try {
+      const size = fs.fstatSync(fd).size;
+      const start = Math.max(0, size - ATTEMPTS_TAIL_BYTES);
+      const buf = Buffer.alloc(size - start);
+      fs.readSync(fd, buf, 0, buf.length, start);
+      text = buf.toString('utf-8');
+      // A tail read starts mid-line; drop the partial first line.
+      if (start > 0) text = text.slice(text.indexOf('\n') + 1);
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return []; // No journal yet.
+  }
+  const attempts: CritiqueAttempt[] = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let raw: Record<string, unknown>;
+    try {
+      raw = JSON.parse(line) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const atMs = typeof raw.at === 'string' ? Date.parse(raw.at) : NaN;
+    if (typeof raw.event !== 'string' || !Number.isFinite(atMs)) continue;
+    attempts.push({ event: raw.event, atMs });
+  }
+  return attempts;
 }
 
 /**
