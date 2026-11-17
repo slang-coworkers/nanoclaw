@@ -1,6 +1,28 @@
 import { describe, it, expect } from 'bun:test';
 
-import { STALE_THREAD_RE, createCodexConfigOverrides, tomlBasicString } from './codex-app-server.js';
+import {
+  STALE_THREAD_RE,
+  createCodexConfigOverrides,
+  notificationThreadId,
+  tomlBasicString,
+} from './codex-app-server.js';
+
+describe('notificationThreadId', () => {
+  // Shapes from codex 0.160's app-server protocol: turn and item notifications
+  // name their thread in params.threadId; thread/started carries the thread.
+  it('reads the thread of turn, item and thread notifications', () => {
+    expect(notificationThreadId({ method: 'turn/completed', params: { threadId: 'a', turn: { id: 't' } } })).toBe('a');
+    const item = { method: 'item/completed', params: { threadId: 'b', turnId: 't', item: { type: 'x' } } };
+    expect(notificationThreadId(item)).toBe('b');
+    const started = { method: 'thread/started', params: { thread: { id: 'c', parentThreadId: 'a' } } };
+    expect(notificationThreadId(started)).toBe('c');
+  });
+  it('is undefined for a notification about no single thread', () => {
+    expect(notificationThreadId({ method: 'account/rateLimits/updated', params: { rateLimits: {} } })).toBeUndefined();
+    const bare = { method: 'x', params: undefined as unknown as Record<string, unknown> };
+    expect(notificationThreadId(bare)).toBeUndefined();
+  });
+});
 
 describe('tomlBasicString', () => {
   it('leaves safe strings unchanged inside quotes', () => {

@@ -35,6 +35,7 @@ import {
   attachCodexAutoApproval,
   initializeCodexAppServer,
   killCodexAppServer,
+  notificationThreadId,
   spawnCodexAppServer,
   startCodexTurn,
   startOrResumeCodexThread,
@@ -59,6 +60,9 @@ export const THREAD_IDLE_MS =
   Number(process.env.CODEX_MCP_THREAD_IDLE_MS) > 0 ? Number(process.env.CODEX_MCP_THREAD_IDLE_MS) : 15 * 60_000;
 /** Live app-servers kept at once; the least recently used one is evicted (its thread can still be resumed). */
 export const MAX_LIVE_THREADS = 4;
+/** Shortest gap between two MCP progress notifications for one call (see progressReporter). */
+export const PROGRESS_INTERVAL_MS =
+  Number(process.env.CODEX_MCP_PROGRESS_INTERVAL_MS) > 0 ? Number(process.env.CODEX_MCP_PROGRESS_INTERVAL_MS) : 30_000;
 
 // ── tool schema: byte-for-byte what codex 0.153.4's `codex mcp-server` advertised ──────────────
 
@@ -172,6 +176,41 @@ export function runnerOverrides(env: NodeJS.ProcessEnv = process.env): string[] 
   }
 }
 
+// ── progress ────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Return a callback that sends an MCP progress notification for the call that
+ * carries `progressToken`, at most once per `intervalMs`, or undefined when the
+ * client sent no token.
+ *
+ * A critique turn runs for minutes (5 to 15 on prod), and OpenCode's MCP
+ * request timeout is 330 s. OpenCode calls tools with `resetTimeoutOnProgress`,
+ * so each progress notification restarts that clock: the call then times out
+ * only after 330 s with no codex activity at all, and TURN_TIMEOUT_MS stays the
+ * bound on the whole turn. Without it OpenCode gave up on every long critique,
+ * the agent called again, and the abandoned turn ran on beside the new one.
+ */
+export function progressReporter(
+  progressToken: string | number | undefined,
+  send: (n: {
+    method: 'notifications/progress';
+    params: { progressToken: string | number; progress: number };
+  }) => Promise<void>,
+  intervalMs: number = PROGRESS_INTERVAL_MS,
+  now: () => number = Date.now,
+): (() => void) | undefined {
+  if (progressToken === undefined) return undefined;
+  let progress = 0;
+  let last = -Infinity;
+  return () => {
+    const t = now();
+    if (t - last < intervalMs) return;
+    last = t;
+    progress += 1;
+    send({ method: 'notifications/progress', params: { progressToken, progress } }).catch(() => undefined);
+  };
+}
+
 // ── turn collection ─────────────────────────────────────────────────────────────────────────────
 
 export interface TurnResult {
@@ -181,13 +220,20 @@ export interface TurnResult {
 }
 
 /**
- * Start one turn and collect the agent's final message. Resolves on
- * `turn/completed`, rejects on `turn/failed`, process exit or timeout.
+ * Start one turn and collect the agent's final message. Resolves on the turn's
+ * own `turn/completed`, rejects on `turn/failed`, process exit or timeout.
+ *
+ * Only notifications on `params.threadId` make up the result. When the critic
+ * spawns a sub-agent (for example to recall prior learnings), the sub-agent's
+ * message and `turn/completed` arrive on this app-server under the sub-agent's
+ * thread id; they count as activity (`onActivity`) but never complete the
+ * parent's turn or replace its message.
  */
 export function runTurn(
   server: AppServer,
   params: { threadId: string; inputText: string; model?: string; cwd?: string },
   timeoutMs: number = TURN_TIMEOUT_MS,
+  onActivity?: () => void,
 ): Promise<TurnResult> {
   return new Promise<TurnResult>((resolve, reject) => {
     let deltas = '';
@@ -206,6 +252,8 @@ export function runTurn(
     const onExit = (code: number | null): void =>
       finish(() => reject(new Error(`codex app-server exited (code=${code}) before the turn completed`)));
     const handler = (n: JsonRpcNotification): void => {
+      onActivity?.();
+      if (notificationThreadId(n) !== params.threadId) return;
       const p = (n.params ?? {}) as Record<string, unknown>;
       switch (n.method) {
         case 'item/agentMessage/delta': {
@@ -305,7 +353,10 @@ export function criticModel(env: NodeJS.ProcessEnv = process.env): string | unde
   return env.NANOCLAW_CRITIC_MODEL || env.CODEX_MODEL || undefined;
 }
 
-export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: string; text: string }> {
+export async function handleCodex(
+  args: CodexToolArgs,
+  onActivity?: () => void,
+): Promise<{ threadId: string; text: string }> {
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim()) throw new Error('codex: `prompt` is required');
   const overrides = [...runnerOverrides(), ...configToOverrides(args.config)];
   if (args.model) overrides.push(`model=${tomlBasicString(args.model)}`);
@@ -331,12 +382,17 @@ export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: stri
   touch(threadId, t);
   const started = Date.now();
   try {
-    const r = await runTurn(server, {
-      threadId,
-      inputText: inputWithDeveloperInstructions(args.prompt, args['developer-instructions']),
-      ...(model ? { model } : {}),
-      cwd,
-    });
+    const r = await runTurn(
+      server,
+      {
+        threadId,
+        inputText: inputWithDeveloperInstructions(args.prompt, args['developer-instructions']),
+        ...(model ? { model } : {}),
+        cwd,
+      },
+      TURN_TIMEOUT_MS,
+      onActivity,
+    );
     log(
       `thread ${threadId}: turn done in ${Math.round((Date.now() - started) / 1000)}s, ${r.items} item(s), ${r.text.length} chars`,
     );
@@ -348,7 +404,10 @@ export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: stri
   }
 }
 
-export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId: string; text: string }> {
+export async function handleCodexReply(
+  args: CodexReplyArgs,
+  onActivity?: () => void,
+): Promise<{ threadId: string; text: string }> {
   const threadId = (args?.threadId || args?.conversationId || '').trim();
   if (!threadId) throw new Error('codex-reply: `threadId` is required');
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim())
@@ -371,7 +430,12 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
       t = { server, overrides, model, cwd, lastUsed: Date.now(), timer: setTimeout(() => undefined, 0) };
       live.set(resumed, t);
       touch(resumed, t);
-      const r = await runTurn(server, { threadId: resumed, inputText: args.prompt, ...(model ? { model } : {}), cwd });
+      const r = await runTurn(
+        server,
+        { threadId: resumed, inputText: args.prompt, ...(model ? { model } : {}), cwd },
+        TURN_TIMEOUT_MS,
+        onActivity,
+      );
       touch(resumed, t);
       return { threadId: resumed, text: r.text };
     } catch (err) {
@@ -381,12 +445,12 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
   }
   touch(threadId, t);
   try {
-    const r = await runTurn(t.server, {
-      threadId,
-      inputText: args.prompt,
-      ...(t.model ? { model: t.model } : {}),
-      cwd: t.cwd,
-    });
+    const r = await runTurn(
+      t.server,
+      { threadId, inputText: args.prompt, ...(t.model ? { model: t.model } : {}), cwd: t.cwd },
+      TURN_TIMEOUT_MS,
+      onActivity,
+    );
     touch(threadId, t);
     return { threadId, text: r.text };
   } catch (err) {
@@ -422,19 +486,20 @@ export function canonicalToolArgs(
 export function createBridgeServer(): Server {
   const server = new Server({ name: 'codex-mcp-bridge', version: '1.0.0' }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [CODEX_TOOL, CODEX_REPLY_TOOL] }));
-  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  server.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
     const name = req.params.name;
     const raw = (req.params.arguments ?? {}) as Record<string, unknown>;
     const args = canonicalToolArgs(
       raw,
       (name === 'codex-reply' ? CODEX_REPLY_TOOL : CODEX_TOOL).inputSchema.properties as Record<string, unknown>,
     );
+    const onActivity = progressReporter(req.params._meta?.progressToken, (n) => extra.sendNotification(n));
     try {
       const r =
         name === 'codex'
-          ? await handleCodex(args as unknown as CodexToolArgs)
+          ? await handleCodex(args as unknown as CodexToolArgs, onActivity)
           : name === 'codex-reply'
-            ? await handleCodexReply(args as unknown as CodexReplyArgs)
+            ? await handleCodexReply(args as unknown as CodexReplyArgs, onActivity)
             : null;
       if (!r) return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] };
       // One critique round per successful call, recorded before the answer so

@@ -80,6 +80,25 @@ export interface JsonRpcServerRequest {
 
 type JsonRpcMessage = JsonRpcResponse | JsonRpcNotification | JsonRpcServerRequest;
 
+/**
+ * Return the thread a server notification is about: `params.threadId` on turn,
+ * item and thread-status notifications, `params.thread.id` on `thread/started`,
+ * and undefined for a notification about no single thread (account or MCP
+ * server status).
+ *
+ * One app-server runs several threads at once when a turn spawns sub-agents
+ * (codex's `spawn_agent` tool): each sub-agent has its own thread, and its
+ * notifications arrive on the same stdout as the parent's. A consumer that
+ * collects one turn compares this id with the turn's thread, so a sub-agent's
+ * message or `turn/completed` is never taken for the parent's.
+ */
+export function notificationThreadId(n: JsonRpcNotification): string | undefined {
+  const params = n.params ?? {};
+  if (typeof params.threadId === 'string') return params.threadId;
+  const thread = params.thread as { id?: unknown } | undefined;
+  return typeof thread?.id === 'string' ? thread.id : undefined;
+}
+
 function makeRequest(method: string, params: Record<string, unknown>): JsonRpcRequest {
   return { id: nextRequestId++, method, params };
 }

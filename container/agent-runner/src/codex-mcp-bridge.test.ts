@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import {
   CODEX_MCP_BRIDGE_OVERRIDES_ENV,
@@ -13,6 +14,7 @@ import {
   canonicalToolArgs,
   configToOverrides,
   criticModel,
+  progressReporter,
 } from './codex-mcp-bridge.js';
 
 // The bridge must be a drop-in for codex 0.153.4's `codex mcp-server`: same two
@@ -49,6 +51,7 @@ beforeAll(async () => {
       NANOCLAW_HOOKS_DIR: binDir,
       CRITIQUE_GATE_ACTIVE: '1',
       CODEX_MODEL: 'openai/openai/gpt-test',
+      CODEX_MCP_PROGRESS_INTERVAL_MS: '50',
       [CODEX_MCP_BRIDGE_OVERRIDES_ENV]: JSON.stringify(['sandbox_mode=danger-full-access', 'features.hooks=true']),
     },
     stderr: 'pipe',
@@ -243,5 +246,62 @@ describe('codex MCP bridge over stdio', () => {
     };
     expect(r.isError).toBe(true);
     expect(r.content[0].text).toContain('prompt');
+  });
+
+  // On prod a critic spawned a sub-agent to recall prior learnings. The
+  // sub-agent's turn ended first, on its own thread, and the bridge returned its
+  // "Recall complete …" message as the critique verdict, minutes before the
+  // critic itself had answered.
+  it("returns the call's own answer when the critic spawns a sub-agent", async () => {
+    const r = (await client.callTool({
+      name: 'codex',
+      arguments: { prompt: 'STAGE: PLAN_REVIEW SPAWN_SUBAGENT', cwd: binDir },
+    })) as { content: Array<{ text: string }>; structuredContent?: { threadId: string }; isError?: boolean };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toBe('VERDICT: approve');
+    expect(r.structuredContent?.threadId).not.toContain('subagent');
+  });
+
+  // OpenCode's MCP request timeout is 330 s; a critique runs 5 to 15 minutes.
+  // OpenCode calls with resetTimeoutOnProgress, as this client does here with a
+  // timeout shorter than the turn.
+  it('sends progress during a long turn, so a client timeout that resets on progress does not fire', async () => {
+    let progressSeen = 0;
+    const r = (await client.callTool(
+      { name: 'codex', arguments: { prompt: 'SLOW_TURN', cwd: binDir } },
+      CallToolResultSchema,
+      { timeout: 400, resetTimeoutOnProgress: true, onprogress: () => (progressSeen += 1) },
+    )) as { content: Array<{ text: string }>; isError?: boolean };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toBe('VERDICT: approve');
+    expect(progressSeen).toBeGreaterThan(1);
+  });
+});
+
+describe('progressReporter', () => {
+  it('sends increasing progress at most once per interval, and nothing without a token', () => {
+    const sent: Array<{ progressToken: string | number; progress: number }> = [];
+    let clock = 0;
+    const report = progressReporter(
+      7,
+      async (n) => {
+        sent.push(n.params);
+      },
+      1000,
+      () => clock,
+    )!;
+    report();
+    clock = 500;
+    report();
+    clock = 1000;
+    report();
+    clock = 2500;
+    report();
+    expect(sent).toEqual([
+      { progressToken: 7, progress: 1 },
+      { progressToken: 7, progress: 2 },
+      { progressToken: 7, progress: 3 },
+    ]);
+    expect(progressReporter(undefined, async () => undefined)).toBeUndefined();
   });
 });
