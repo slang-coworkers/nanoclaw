@@ -91,7 +91,6 @@ import {
   collectClaudeJsonlFiles,
   computeSessionCostSnapshot,
   emptySessionCostByPeriod,
-  isoDayKey,
   loadPerFileCostCache,
   persistPerFileCostCache,
   scanFileCost,
@@ -101,6 +100,32 @@ import {
   type SessionCostByPeriod,
   type SessionCostPhases,
 } from './session-cost-scan.js';
+import {
+  ContextScanner,
+  type ContextPassPhases,
+  type ContextStatsByPeriod,
+  type ContextWindowInfo,
+} from './context-scan.js';
+import {
+  ThreadSummaryScanner,
+  type SessionThreadSummary,
+  type ThreadSummaryDelta,
+  type ThreadSummaryPhases,
+} from './thread-summary-scan.js';
+import type { SummaryPass } from './summary-worker.js';
+import {
+  TaskScanner,
+  summarizeGroupTasks,
+  type GroupTaskSummary,
+  type ScheduledTaskRow,
+  type TaskPassPhases,
+} from './task-scan.js';
+import {
+  recordWorkerError,
+  superviseWorker,
+  tsWorkerExecArgv,
+  type WorkerLifecycleState,
+} from './worker-supervisor.js';
 import {
   parseCostCapBlob,
   buildCostCapEntry,
@@ -1511,29 +1536,20 @@ bootstrapHookEvents();
 const lastMessageTsCache = new Map<string, string>();
 
 // Live per-session cost-cap/ceiling state (dash-1 set-ceiling-v2), keyed by
-// session id. Fed by the scan worker's `costCaps` deltas when it's active, or
-// by this file's own main-thread fallback (pickLatestMessageTs below) when the
-// worker is unavailable — same dual-path shape as lastMessageTsCache/
-// activityDataCache above. /api/sessions joins this map for EVERY session,
+// session id. Fed by the scan worker's `costCaps` deltas, like
+// lastMessageTsCache and activityDataCache (see spawnScanWorker); tests feed it
+// through refreshCostCapsForTests. /api/sessions joins this map for EVERY session,
 // independent of the `period` query param: that's what fixes "a session's live
 // ceiling disappears when you change the day-window filter" (the old code only
 // read cost_cap when the SELECTED PERIOD's priced cost was positive). See
 // session-cost-caps.ts for the entry shape and blob-parsing.
 const sessionCostCapsMap = new Map<string, SessionCostCapEntry>();
 
-// Fleet-scan timer handles at module scope so the scan worker (dash-perf round
-// 2) can stop them on handoff and restart them on fallback. When the worker is
-// active these are cleared and the corresponding caches are fed by worker deltas
-// instead; under VITEST (no worker) the timers are the live path.
-let msgTsTimer: ReturnType<typeof setInterval> | undefined;
-let activityTimer: ReturnType<typeof setInterval> | undefined;
-
 // Per-file mtime gate for refreshMessageTimestamps: session DBs use
 // journal_mode=DELETE (writes land in the main .db file, so its mtime advances
 // on every commit — see container/agent-runner/src/db/connection.ts). We stat
 // the file (cheap) and only re-open+query it when the mtime changed since the
 // last poll; an idle session costs one stat instead of a full sqlite open.
-// This is what makes a 1s poll cheaper than the old 3s full-open sweep.
 // `costCapRaw` (outbound paths only) mirrors the scan worker's per-file cache —
 // see pickLatestMessageTs.
 const msgTsFileCache = new Map<string, { mtimeMs: number; ts: string | null; costCapRaw?: string | null }>();
@@ -1594,6 +1610,13 @@ function pickLatestMessageTs(
   return Date.parse(ts) > Date.parse(current) ? ts : current;
 }
 
+/**
+ * Run the message-timestamp and cost-cap scan once on this thread. In the
+ * running dashboard the scan worker (scan-worker.mjs) owns this scan and this
+ * thread never runs it: at startup it opened every session DB before the server
+ * could answer. Tests call it through refreshCostCapsForTests, because the scan
+ * worker does not run under VITEST.
+ */
 function refreshMessageTimestamps(): void {
   if (!db) return;
   const next = new Map<string, string>();
@@ -1629,384 +1652,14 @@ function refreshMessageTimestamps(): void {
     /* DB not ready */
   }
 }
-refreshMessageTimestamps();
-// Poll every 1s — agent-originated messages (a2a replies, fix reports, peer-review
-// verdicts) write to outbound.db inside container subprocesses; the dashboard has no
-// direct hook, so we rely on this poll to surface new activity to the unread badge
-// and drive the coworker-chat auto-refresh (app.js keys on lastMessageTs). The poll
-// is now mtime-gated (pickLatestMessageTs), so an idle session is a cheap stat rather
-// than a sqlite open — 1s is both snappier than the old 3s and lighter on disk I/O.
-if (!process.env.VITEST) {
-  msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
-  msgTsTimer.unref?.();
-}
-
-// ---------- Context window cache (token usage per coworker) ----------
-interface ContextWindowInfo {
-  contextTokens: number;
-  outputTokens: number;
-  cacheReadTokens: number;
-  cacheCreationTokens: number;
-  maxContext: number;
-  usagePercent: number;
-  cacheHitPercent: number;
-  model: string;
-}
-function modelMaxContext(model: string): number {
-  // The 1M-context variants carry a [1m] marker in the model id
-  // (e.g. bedrock-claude-opus-4-8[1m]); that suffix is the authoritative signal.
-  if (model.includes('[1m]')) return 1000000;
-  if (model.includes('opus-4-8')) return 1000000;
-  if (model.includes('opus-4-7')) return 1000000;
-  if (model.includes('opus-4-6')) return 200000;
-  if (model.includes('sonnet-5')) return 200000;
-  if (model.includes('sonnet-4')) return 200000;
-  if (model.includes('haiku')) return 200000;
-  return 200000;
-}
-const contextWindowCache = new Map<string, ContextWindowInfo>();
-// dash-perf round 2: remember which (newest-file path, mtime) produced each
-// group's current contextWindowCache entry, so an idle group whose newest
-// transcript hasn't advanced is a single stat rather than a full file re-read +
-// reverse-scan every 10s. Only the group whose active transcript actually grew
-// pays the read.
-const ctxWindowFileCache = new Map<string, { path: string; mtimeMs: number }>();
-
-function refreshContextWindowCache(): void {
-  if (!db) return;
-  try {
-    const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
-    const sessionsDir = join(getDataDir(), 'v2-sessions');
-    for (const group of groups) {
-      const claudeShared = join(sessionsDir, group.id, '.claude-shared');
-      const jsonlFiles = collectClaudeJsonlFiles(claudeShared);
-      if (jsonlFiles.length === 0) continue;
-
-      // Stat each candidate exactly once (the old comparator called statSync
-      // twice per comparison → O(F log F) stats every 10s per group), then pick
-      // the single newest file.
-      let newestPath = '';
-      let newestMtime = -1;
-      for (const f of jsonlFiles) {
-        let m: number;
-        try {
-          m = statSync(f).mtimeMs;
-        } catch {
-          continue;
-        }
-        if (m > newestMtime) {
-          newestMtime = m;
-          newestPath = f;
-        }
-      }
-      if (!newestPath) continue;
-
-      // mtime-gate: skip the read+parse when the newest transcript is unchanged
-      // since we last parsed it for this group.
-      const gate = ctxWindowFileCache.get(group.folder);
-      if (gate && gate.path === newestPath && gate.mtimeMs === newestMtime) continue;
-
-      // Read FIRST, commit the gate only on success. Committing up front made a
-      // transient read failure permanent: the (path, mtime) would already be
-      // recorded as processed, so every later tick short-circuits on the
-      // unchanged file and the stale context reading sticks until the transcript
-      // happens to grow again.
-      let content: string;
-      try {
-        content = readFileSync(newestPath, 'utf-8');
-      } catch {
-        continue; // leave the previous gate in place → retried next tick
-      }
-      ctxWindowFileCache.set(group.folder, { path: newestPath, mtimeMs: newestMtime });
-
-      const lines = content.split('\n');
-      for (let i = lines.length - 1; i >= 0; i--) {
-        if (!lines[i].trim()) continue;
-        try {
-          const r = JSON.parse(lines[i]);
-          if (r.type === 'assistant' && r.message?.usage) {
-            const u = r.message.usage;
-            const model = r.message.model || 'unknown';
-            const inputTokens = u.input_tokens || 0;
-            const cacheRead = u.cache_read_input_tokens || 0;
-            const cacheCreation = u.cache_creation_input_tokens || 0;
-            const ctx = inputTokens + cacheRead + cacheCreation;
-            const maxCtx = modelMaxContext(model);
-            contextWindowCache.set(group.folder, {
-              contextTokens: ctx,
-              outputTokens: u.output_tokens || 0,
-              cacheReadTokens: cacheRead,
-              cacheCreationTokens: cacheCreation,
-              maxContext: maxCtx,
-              usagePercent: maxCtx > 0 ? Math.round((ctx / maxCtx) * 100) : 0,
-              cacheHitPercent: ctx > 0 ? Math.round((cacheRead / ctx) * 100) : 0,
-              model,
-            });
-            break;
-          }
-        } catch {
-          /* skip line */
-        }
-      }
-    }
-  } catch {
-    /* DB not ready */
-  }
-}
-refreshContextWindowCache();
-if (!process.env.VITEST) {
-  const ctxTimer = setInterval(refreshContextWindowCache, 10000);
-  ctxTimer.unref?.();
-}
-
-// ---------- Context-usage stats per coworker (compactions + peak histogram) ----------
-// Distinct from contextWindowCache (which only snapshots the *latest* turn): this
-// scans every session transcript for a group and answers "how hard is this
-// coworker pushing context?" — how often it compacts, and the distribution of
-// per-session peak context. Feeds the "Context" column in the By-Coworker table.
-interface ContextStats {
-  sessions: number; // transcript files that had at least one usage/compaction signal
-  compactions: number; // total compact_boundary events
-  autoCompactions: number;
-  manualCompactions: number;
-  avgPreTokens: number; // mean context size (tokens) at the moment of compaction
-  avgPeakContext: number; // mean per-session peak context tokens
-  avgPeakPct: number; // avgPeakContext as % of model max context
-  maxContext: number; // model context window used for the % scale
-  histogram: number[]; // per-session peak-context% distribution, 5 buckets
-  capped: boolean; // true if the transcript scan hit the per-group file cap
-}
-// Peak-context% buckets: <25, 25–50, 50–75, 75–90, 90%+. The last two are narrow
-// on purpose — that's where compaction risk lives and where the signal matters.
-const CONTEXT_HIST_BUCKETS = [0.25, 0.5, 0.75, 0.9, Infinity];
-const MAX_CONTEXT_FILES_PER_GROUP = 400; // bound the scan on very long-lived groups
-// One transcript day's worth of signal, keyed YYYYMMDD. Per-day granularity is
-// exactly enough to reconstruct any of the day-based period windows without
-// re-reading the (append-only, mtime-cached) file.
-interface DayContextAgg {
-  peak: number; // max (input + cache_read + cache_creation) across that day's assistant turns
-  compactions: number;
-  auto: number;
-  manual: number;
-  preTokensSum: number;
-}
-interface PerFileContext {
-  mtimeMs: number;
-  days: Map<string, DayContextAgg>; // YYYYMMDD -> that day's aggregate
-  maxWindow: number; // max model context window seen in this file (0 if none)
-  hadSignal: boolean;
-}
-function contextDayAgg(out: PerFileContext, key: string): DayContextAgg {
-  let d = out.days.get(key);
-  if (!d) {
-    d = { peak: 0, compactions: 0, auto: 0, manual: 0, preTokensSum: 0 };
-    out.days.set(key, d);
-  }
-  return d;
-}
-// Per-file cache keyed by path: transcripts are append-only, so a file whose mtime
-// is unchanged never needs re-parsing. Only the active session file (which grows
-// each turn) is re-read on a given cycle.
-const perFileContextCache = new Map<string, PerFileContext>();
-// Per group, one ContextStats per period ('1d'|'7d'|'30d'|'all'); null when the
-// group has no in-window signal for that period.
-const contextStatsCache = new Map<string, Record<ContextPeriod, ContextStats | null>>();
-
-function scanFileContext(path: string, mtimeMs: number): PerFileContext {
-  const cached = perFileContextCache.get(path);
-  if (cached && cached.mtimeMs === mtimeMs) return cached;
-  const out: PerFileContext = {
-    mtimeMs,
-    days: new Map(),
-    maxWindow: 0,
-    hadSignal: false,
-  };
-  try {
-    const lines = readFileSync(path, 'utf-8').split('\n');
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      // Cheap pre-filter before JSON.parse — most lines are neither.
-      if (line.indexOf('"usage"') < 0 && line.indexOf('compact_boundary') < 0) continue;
-      let r: Record<string, unknown>;
-      try {
-        r = JSON.parse(line);
-      } catch {
-        continue;
-      }
-      if (r.type === 'system' && r.subtype === 'compact_boundary') {
-        const m = (r.compactMetadata || {}) as { trigger?: string; preTokens?: number };
-        const d = contextDayAgg(out, isoDayKey(r.timestamp) ?? MISSING_TS_KEY);
-        d.compactions++;
-        if (m.trigger === 'manual') d.manual++;
-        else d.auto++;
-        d.preTokensSum += m.preTokens || 0;
-        out.hadSignal = true;
-        continue;
-      }
-      const msg = r.message as { usage?: Record<string, number>; model?: string } | undefined;
-      if (r.type === 'assistant' && msg?.usage) {
-        const u = msg.usage;
-        const ctx = (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0);
-        const d = contextDayAgg(out, isoDayKey(r.timestamp) ?? MISSING_TS_KEY);
-        if (ctx > d.peak) d.peak = ctx;
-        // Track the LARGEST window across models used — a session's effective
-        // context is the 1M Opus window whenever any turn runs on it, even if a
-        // later turn hands off to a 200k model (sonnet/haiku/gpt). Scaling to the
-        // last-seen model would understate the window and inflate the peak %.
-        // File-level (period-independent): the % scale stays fixed across periods.
-        if (msg.model) out.maxWindow = Math.max(out.maxWindow, modelMaxContext(msg.model));
-        out.hadSignal = true;
-      }
-    }
-  } catch {
-    /* unreadable file — treat as no signal */
-  }
-  perFileContextCache.set(path, out);
-  return out;
-}
-
-// Per-period accumulator over a group's sessions. One per ContextPeriod.
-interface ContextAcc {
-  peaks: number[];
-  compactions: number;
-  auto: number;
-  manual: number;
-  preTokensSum: number;
-  preTokensCount: number;
-  sessions: number;
-}
-function newContextAcc(): ContextAcc {
-  return { peaks: [], compactions: 0, auto: 0, manual: 0, preTokensSum: 0, preTokensCount: 0, sessions: 0 };
-}
-// Fold one accumulator into a ContextStats. maxContext is passed in (fixed across
-// periods) so the % scale/histogram bucketing stay comparable when toggling
-// periods. Math mirrors the original single-period build. null when no sessions.
-function buildContextStats(a: ContextAcc, maxContext: number, capped: boolean): ContextStats | null {
-  if (a.sessions === 0) return null;
-  const avgPeakContext = a.peaks.length ? a.peaks.reduce((x, y) => x + y, 0) / a.peaks.length : 0;
-  const histogram = new Array(CONTEXT_HIST_BUCKETS.length).fill(0);
-  for (const p of a.peaks) {
-    const pct = maxContext > 0 ? p / maxContext : 0;
-    const bi = CONTEXT_HIST_BUCKETS.findIndex((t) => pct < t);
-    histogram[bi < 0 ? CONTEXT_HIST_BUCKETS.length - 1 : bi]++;
-  }
-  return {
-    sessions: a.sessions,
-    compactions: a.compactions,
-    autoCompactions: a.auto,
-    manualCompactions: a.manual,
-    avgPreTokens: a.preTokensCount ? Math.round(a.preTokensSum / a.preTokensCount) : 0,
-    avgPeakContext: Math.round(avgPeakContext),
-    avgPeakPct: maxContext > 0 ? Math.round((avgPeakContext / maxContext) * 100) : 0,
-    maxContext,
-    histogram,
-    capped,
-  };
-}
-
-function refreshContextStatsCache(): void {
-  if (!db) return;
-  try {
-    const groups = db.prepare('SELECT id, folder FROM agent_groups').all() as { id: string; folder: string }[];
-    const sessionsDir = join(getDataDir(), 'v2-sessions');
-    const livePaths = new Set<string>();
-    // Day cutoffs, computed once per refresh — identical to the cost columns
-    // (see the ccusage refresh). '' = no filter for 'all'.
-    const cutoffs: Record<ContextPeriod, string> = {
-      '1d': ccusageSinceDate(0),
-      '7d': ccusageSinceDate(7),
-      '30d': ccusageSinceDate(30),
-      all: '',
-    };
-    for (const group of groups) {
-      const claudeShared = join(sessionsDir, group.id, '.claude-shared');
-      let files = collectClaudeJsonlFiles(claudeShared);
-      if (files.length === 0) {
-        contextStatsCache.delete(group.id);
-        continue;
-      }
-      // Most-recent files first, then cap — a group with thousands of archived
-      // transcripts shouldn't stall the poll; we log the cap via `capped`.
-      const withMtime = files
-        .map((f) => {
-          try {
-            return { f, m: statSync(f).mtimeMs };
-          } catch {
-            return { f, m: 0 };
-          }
-        })
-        .sort((a, b) => b.m - a.m);
-      const capped = withMtime.length > MAX_CONTEXT_FILES_PER_GROUP;
-      const chosen = withMtime.slice(0, MAX_CONTEXT_FILES_PER_GROUP);
-
-      const acc: Record<ContextPeriod, ContextAcc> = {
-        '1d': newContextAcc(),
-        '7d': newContextAcc(),
-        '30d': newContextAcc(),
-        all: newContextAcc(),
-      };
-      // Widest window the coworker ever ran on, over ALL signal files — the fixed
-      // % scale shared by every period (1M for Opus fleets).
-      let groupMaxWindow = 0;
-      for (const { f, m } of chosen) {
-        livePaths.add(f);
-        const fc = scanFileContext(f, m);
-        if (!fc.hadSignal) continue;
-        if (fc.maxWindow > groupMaxWindow) groupMaxWindow = fc.maxWindow;
-        for (const period of CONTEXT_PERIODS) {
-          const since = cutoffs[period];
-          let sessionPeak = 0,
-            comp = 0,
-            au = 0,
-            man = 0,
-            preSum = 0,
-            inWindow = false;
-          for (const [key, d] of fc.days) {
-            // 'all' keeps every day (incl. MISSING_TS_KEY); dated periods require
-            // key >= cutoff — MISSING_TS_KEY ('00000000') never qualifies.
-            if (period !== 'all' && !(key >= since)) continue;
-            inWindow = true;
-            if (d.peak > sessionPeak) sessionPeak = d.peak;
-            comp += d.compactions;
-            au += d.auto;
-            man += d.manual;
-            preSum += d.preTokensSum;
-          }
-          if (!inWindow) continue; // session has no activity in this window — not counted
-          const a = acc[period];
-          a.sessions++;
-          if (sessionPeak > 0) a.peaks.push(sessionPeak);
-          a.compactions += comp;
-          a.auto += au;
-          a.manual += man;
-          a.preTokensSum += preSum;
-          a.preTokensCount += comp;
-        }
-      }
-      // Fall back to the model default if no model was ever identified.
-      const maxContext = groupMaxWindow || modelMaxContext('unknown');
-      const rec: Record<ContextPeriod, ContextStats | null> = {
-        '1d': buildContextStats(acc['1d'], maxContext, capped),
-        '7d': buildContextStats(acc['7d'], maxContext, capped),
-        '30d': buildContextStats(acc['30d'], maxContext, capped),
-        all: buildContextStats(acc.all, maxContext, capped),
-      };
-      // rec.all is the superset — null there means no signal in any window, the
-      // same condition the old `sessions === 0` delete guarded.
-      if (!rec.all) {
-        contextStatsCache.delete(group.id);
-        continue;
-      }
-      contextStatsCache.set(group.id, rec);
-    }
-    // Evict per-file cache entries for transcripts no longer in any group's window.
-    if (perFileContextCache.size > livePaths.size * 2 + 1000) {
-      for (const k of perFileContextCache.keys()) if (!livePaths.has(k)) perFileContextCache.delete(k);
-    }
-  } catch {
-    /* DB not ready */
-  }
-}
+// ---------- Context caches (served from the summary worker) ----------
+// The context window (latest-turn token usage per coworker folder, on the
+// coworker card) and the context stats (compactions and peak-context histogram
+// per group id, in the By-Coworker table) are computed by context-scan.ts in the
+// summary worker. This thread only swaps in the maps the worker publishes; see
+// startSummaryWorker.
+let contextWindowCache = new Map<string, ContextWindowInfo>();
+let contextStatsCache = new Map<string, ContextStatsByPeriod>();
 
 let sessionCostCache: SessionCostByPeriod = emptySessionCostByPeriod();
 
@@ -2061,9 +1714,7 @@ const costSnapshotState = {
   phases: null as SessionCostPhases | null,
 };
 
-let costWorker: Worker | null = null;
 let costWorkerOptions: CostWorkerOptions = {};
-let costWorkerRestartTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Freshness of the cost snapshot `/api/sessions` serves. `stale` is true when no
@@ -2097,82 +1748,277 @@ function applyCostSnapshot(msg: Extract<CostWorkerMessage, { kind: 'snapshot' }>
   costSnapshotState.phases = msg.phases;
 }
 
-function recordCostWorkerError(message: string): void {
-  costSnapshotState.lastError = message;
-  costSnapshotState.lastErrorAt = Date.now();
-}
-
-/**
- * Worker `execArgv`: the worker is TypeScript. Under tsx, which is how the
- * dashboard runs, the loader is already in `process.execArgv` and the worker
- * inherits it; anywhere else (vitest) we load tsx explicitly.
- */
-function costWorkerExecArgv(): string[] | undefined {
-  const hasTsxLoader = process.execArgv.some((a) => /[\\/]tsx[\\/]dist[\\/](loader|preflight)/.test(a));
-  return hasTsxLoader ? undefined : ['--import', 'tsx'];
-}
+const costWorkerSupervisor = superviseWorker<CostWorkerMessage>({
+  label: 'cost worker',
+  state: costSnapshotState,
+  policy: () => ({
+    restartOnFailure: costWorkerOptions.restartOnFailure !== false,
+    restartMinMs: costWorkerOptions.restartMinMs ?? COST_RESTART_MIN_MS,
+    restartMaxMs: COST_RESTART_MAX_MS,
+  }),
+  spawn: () => {
+    const execArgv = tsWorkerExecArgv();
+    return new Worker(new URL('./cost-worker.ts', import.meta.url), {
+      workerData: {
+        dataDir: getDataDir(),
+        centralDbPath: costWorkerOptions.centralDbPath ?? getDbPath(),
+        intervalMs: costWorkerOptions.intervalMs ?? COST_REFRESH_INTERVAL_MS,
+        firstDelayMs: costWorkerOptions.firstDelayMs ?? COST_FIRST_DELAY_MS,
+        testDelayMs: costWorkerOptions.testDelayMs ?? 0,
+      },
+      ...(execArgv ? { execArgv } : {}),
+    });
+  },
+  onMessage: (msg) => {
+    if (msg.kind === 'snapshot') applyCostSnapshot(msg);
+    else if (msg.kind === 'error') recordWorkerError(costSnapshotState, msg.message);
+  },
+});
 
 /** Start the cost worker. Returns null when it could not be created (then a restart is scheduled). */
 function startCostWorker(opts: CostWorkerOptions = {}): Worker | null {
   costWorkerOptions = opts;
-  let worker: Worker;
-  try {
-    const execArgv = costWorkerExecArgv();
-    worker = new Worker(new URL('./cost-worker.ts', import.meta.url), {
+  return costWorkerSupervisor.start();
+}
+
+// ---------- Summary worker: thread summaries, context and task scans, off the event loop ----------
+//
+// The main chat view's threadSummaries, the coworker card's context window, the
+// By-Coworker context stats and the per-coworker scheduled-task counts used to
+// be computed on this thread: the first opened two SQLite files per per-thread
+// session on each /api/messages call (2.3-3.4 s for the Main coworker's 2,200
+// threads), the context scans walked every transcript directory every 10 s and
+// every 60 s (about 0.5 s each), and the task scan opened every session's
+// inbound.db after each restart, one coworker per synchronous chunk. The prod
+// CPU profile of 2026-11-17 showed these as the remaining multi-second stalls
+// after the cost scan moved to its worker. summary-worker.ts now runs all four;
+// this thread applies what it publishes and request handlers read memory.
+//
+// The failure model is the cost worker's: a failed pass or a dead worker leaves
+// the last published result served and marked stale in /api/debug, and a dead
+// worker is restarted with backoff. Nothing falls back to scanning here.
+const SUMMARY_THREADS_INTERVAL_MS = 2_000;
+const SUMMARY_CONTEXT_WINDOW_INTERVAL_MS = 10_000;
+const SUMMARY_CONTEXT_STATS_INTERVAL_MS = 60_000;
+// The first context-stats pass reads every transcript once; it waits a few
+// seconds so the first thread-summary and context-window passes land first.
+const SUMMARY_CONTEXT_STATS_FIRST_DELAY_MS = 4_000;
+const SUMMARY_TASKS_INTERVAL_MS = 15_000;
+const SUMMARY_RESTART_MIN_MS = 10_000;
+const SUMMARY_RESTART_MAX_MS = 10 * 60_000;
+const SUMMARY_PASS_INTERVAL_MS: Record<SummaryPass, number> = {
+  threads: SUMMARY_THREADS_INTERVAL_MS,
+  contextWindow: SUMMARY_CONTEXT_WINDOW_INTERVAL_MS,
+  contextStats: SUMMARY_CONTEXT_STATS_INTERVAL_MS,
+  tasks: SUMMARY_TASKS_INTERVAL_MS,
+};
+
+/** What the summary worker posts to this thread. */
+type SummaryWorkerMessage =
+  | ({ kind: 'threads'; computedAt: string } & ThreadSummaryDelta)
+  | {
+      kind: 'contextWindow';
+      computedAt: string;
+      entries: Array<[string, ContextWindowInfo]>;
+      phases: ContextPassPhases;
+    }
+  | {
+      kind: 'contextStats';
+      computedAt: string;
+      entries: Array<[string, ContextStatsByPeriod]>;
+      phases: ContextPassPhases;
+    }
+  | { kind: 'tasks'; computedAt: string; entries: Array<[string, GroupTaskSummary]>; phases: TaskPassPhases }
+  | { kind: 'error'; pass: SummaryPass; message: string };
+
+interface SummaryWorkerOptions {
+  threadsIntervalMs?: number;
+  contextWindowIntervalMs?: number;
+  contextStatsIntervalMs?: number;
+  contextStatsFirstDelayMs?: number;
+  tasksIntervalMs?: number;
+  /** Test hook: extra busy time inside each threads pass, to stand in for a slow scan. */
+  testDelayMs?: number;
+  centralDbPath?: string;
+  /** Restart a dead worker with backoff (off in tests that kill it on purpose). */
+  restartOnFailure?: boolean;
+  /** First restart delay; doubles per restart up to SUMMARY_RESTART_MAX_MS. */
+  restartMinMs?: number;
+}
+
+/** Freshness of one pass's published result. */
+interface SummaryPassState {
+  /** Results applied since start; 0 = nothing published yet. */
+  generation: number;
+  computedAt: string | null;
+  /** When this thread applied the result (epoch ms). */
+  lastSuccessAt: number | null;
+  /** When this pass last failed in the worker (epoch ms). */
+  lastErrorAt: number | null;
+  phases: ThreadSummaryPhases | ContextPassPhases | TaskPassPhases | null;
+}
+
+function emptySummaryPassState(): SummaryPassState {
+  return { generation: 0, computedAt: null, lastSuccessAt: null, lastErrorAt: null, phases: null };
+}
+
+const summarySnapshotState: WorkerLifecycleState & { passes: Record<SummaryPass, SummaryPassState> } = {
+  workerRunning: false,
+  restarts: 0,
+  lastError: null,
+  lastErrorAt: null,
+  passes: {
+    threads: emptySummaryPassState(),
+    contextWindow: emptySummaryPassState(),
+    contextStats: emptySummaryPassState(),
+    tasks: emptySummaryPassState(),
+  },
+};
+
+// Thread summary per active per-thread session, keyed by session id. The main
+// view of /api/messages sums these per thread_id into its threadSummaries.
+let threadSummaryBySession = new Map<string, SessionThreadSummary>();
+
+let summaryWorkerOptions: SummaryWorkerOptions = {};
+
+/**
+ * Freshness of each summary pass, for /api/debug. A pass is `stale` when it has
+ * published nothing yet, when the worker is not running, when its latest run
+ * failed, or when its result is older than three of its intervals.
+ */
+function summarySnapshotView(now = Date.now()) {
+  const st = summarySnapshotState;
+  const pass = (name: SummaryPass) => {
+    const p = st.passes[name];
+    const ageMs = p.lastSuccessAt === null ? null : now - p.lastSuccessAt;
+    const failedSinceSuccess = p.lastErrorAt !== null && (p.lastSuccessAt === null || p.lastErrorAt > p.lastSuccessAt);
+    return {
+      generation: p.generation,
+      computedAt: p.computedAt,
+      ageSec: ageMs === null ? null : Math.round(ageMs / 1000),
+      stale: !st.workerRunning || failedSinceSuccess || ageMs === null || ageMs > 3 * SUMMARY_PASS_INTERVAL_MS[name],
+      phases: p.phases,
+    };
+  };
+  return {
+    workerRunning: st.workerRunning,
+    restarts: st.restarts,
+    lastError: st.lastError,
+    lastErrorAt: st.lastErrorAt === null ? null : new Date(st.lastErrorAt).toISOString(),
+    threadSessions: threadSummaryBySession.size,
+    threads: pass('threads'),
+    contextWindow: pass('contextWindow'),
+    contextStats: pass('contextStats'),
+    tasks: pass('tasks'),
+  };
+}
+
+function markSummaryPass(name: SummaryPass, computedAt: string, phases: SummaryPassState['phases']): void {
+  const p = summarySnapshotState.passes[name];
+  p.generation += 1;
+  p.computedAt = computedAt;
+  p.lastSuccessAt = Date.now();
+  p.phases = phases;
+}
+
+/** Serve one result from the summary worker (or from a test's in-process pass). */
+function applySummaryMessage(msg: SummaryWorkerMessage): void {
+  switch (msg.kind) {
+    case 'threads': {
+      const next = msg.full ? new Map<string, SessionThreadSummary>() : threadSummaryBySession;
+      for (const [sessionId, count, lastTs] of msg.changed) next.set(sessionId, { count, lastTs });
+      for (const sessionId of msg.removed) next.delete(sessionId);
+      threadSummaryBySession = next;
+      markSummaryPass('threads', msg.computedAt, msg.phases);
+      break;
+    }
+    case 'contextWindow':
+      contextWindowCache = new Map(msg.entries);
+      markSummaryPass('contextWindow', msg.computedAt, msg.phases);
+      break;
+    case 'contextStats':
+      contextStatsCache = new Map(msg.entries);
+      markSummaryPass('contextStats', msg.computedAt, msg.phases);
+      break;
+    case 'tasks':
+      groupTaskCache = new Map(msg.entries);
+      markSummaryPass('tasks', msg.computedAt, msg.phases);
+      // Task counts are part of coworker state: publish the change promptly.
+      invalidateStateCache();
+      break;
+    case 'error':
+      summarySnapshotState.passes[msg.pass].lastErrorAt = Date.now();
+      recordWorkerError(summarySnapshotState, `${msg.pass}: ${msg.message}`);
+      break;
+  }
+}
+
+const summaryWorkerSupervisor = superviseWorker<SummaryWorkerMessage>({
+  label: 'summary worker',
+  state: summarySnapshotState,
+  policy: () => ({
+    restartOnFailure: summaryWorkerOptions.restartOnFailure !== false,
+    restartMinMs: summaryWorkerOptions.restartMinMs ?? SUMMARY_RESTART_MIN_MS,
+    restartMaxMs: SUMMARY_RESTART_MAX_MS,
+  }),
+  spawn: () => {
+    const execArgv = tsWorkerExecArgv();
+    return new Worker(new URL('./summary-worker.ts', import.meta.url), {
       workerData: {
         dataDir: getDataDir(),
-        centralDbPath: opts.centralDbPath ?? getDbPath(),
-        intervalMs: opts.intervalMs ?? COST_REFRESH_INTERVAL_MS,
-        firstDelayMs: opts.firstDelayMs ?? COST_FIRST_DELAY_MS,
-        testDelayMs: opts.testDelayMs ?? 0,
+        centralDbPath: summaryWorkerOptions.centralDbPath ?? getDbPath(),
+        threadsIntervalMs: summaryWorkerOptions.threadsIntervalMs ?? SUMMARY_THREADS_INTERVAL_MS,
+        contextWindowIntervalMs: summaryWorkerOptions.contextWindowIntervalMs ?? SUMMARY_CONTEXT_WINDOW_INTERVAL_MS,
+        contextStatsIntervalMs: summaryWorkerOptions.contextStatsIntervalMs ?? SUMMARY_CONTEXT_STATS_INTERVAL_MS,
+        contextStatsFirstDelayMs: summaryWorkerOptions.contextStatsFirstDelayMs ?? SUMMARY_CONTEXT_STATS_FIRST_DELAY_MS,
+        tasksIntervalMs: summaryWorkerOptions.tasksIntervalMs ?? SUMMARY_TASKS_INTERVAL_MS,
+        testDelayMs: summaryWorkerOptions.testDelayMs ?? 0,
       },
       ...(execArgv ? { execArgv } : {}),
     });
-  } catch (e) {
-    recordCostWorkerError(`cost worker could not start: ${e instanceof Error ? e.message : String(e)}`);
-    scheduleCostWorkerRestart();
-    return null;
-  }
-  costWorker = worker;
-  costSnapshotState.workerRunning = true;
-  const onDeath = (reason: string): void => {
-    if (costWorker !== worker) return; // already replaced or stopped
-    costWorker = null;
-    costSnapshotState.workerRunning = false;
-    recordCostWorkerError(reason);
-    scheduleCostWorkerRestart();
-  };
-  worker.on('message', (msg: CostWorkerMessage) => {
-    if (costWorker !== worker) return;
-    if (msg.kind === 'snapshot') applyCostSnapshot(msg);
-    else if (msg.kind === 'error') recordCostWorkerError(msg.message);
-  });
-  worker.on('error', (e) => onDeath(`cost worker crashed: ${e instanceof Error ? e.message : String(e)}`));
-  worker.on('exit', (code) => onDeath(`cost worker exited with code ${code}`));
-  return worker;
+  },
+  onMessage: applySummaryMessage,
+});
+
+/** Start the summary worker. Returns null when it could not be created (then a restart is scheduled). */
+function startSummaryWorker(opts: SummaryWorkerOptions = {}): Worker | null {
+  summaryWorkerOptions = opts;
+  return summaryWorkerSupervisor.start();
 }
 
-function scheduleCostWorkerRestart(): void {
-  if (costWorkerOptions.restartOnFailure === false || costWorkerRestartTimer) return;
-  const minMs = costWorkerOptions.restartMinMs ?? COST_RESTART_MIN_MS;
-  const delay = Math.min(COST_RESTART_MAX_MS, minMs * 2 ** costSnapshotState.restarts);
-  costWorkerRestartTimer = setTimeout(() => {
-    costWorkerRestartTimer = null;
-    costSnapshotState.restarts += 1;
-    startCostWorker(costWorkerOptions);
-  }, delay);
-  costWorkerRestartTimer.unref?.();
+/** Ask the summary worker to run `pass` now. Without a running worker the next scheduled pass picks the change up. */
+function requestSummaryPass(pass: SummaryPass): void {
+  summaryWorkerSupervisor.post({ kind: 'run', pass });
 }
 
-/** Stop the cost worker without a restart. The served snapshot stays, marked stale. */
-async function stopCostWorker(): Promise<void> {
-  if (costWorkerRestartTimer) clearTimeout(costWorkerRestartTimer);
-  costWorkerRestartTimer = null;
-  const worker = costWorker;
-  costWorker = null;
-  costSnapshotState.workerRunning = false;
-  if (worker) await worker.terminate();
-}
+/** Test-only surface for the summary worker. */
+export const __summaryWorkerTestHooks = {
+  startSummaryWorker: (opts: SummaryWorkerOptions) => startSummaryWorker(opts),
+  stopSummaryWorker: () => summaryWorkerSupervisor.stop(),
+  summarySnapshotView: () => summarySnapshotView(),
+  contextWindow: () => Object.fromEntries(contextWindowCache),
+  contextStats: () => Object.fromEntries(contextStatsCache),
+  groupTasks: () => Object.fromEntries(groupTaskCache),
+  requestSummaryPass: (pass: SummaryPass) => requestSummaryPass(pass),
+  reset: () => {
+    threadSummaryBySession = new Map();
+    contextWindowCache = new Map();
+    contextStatsCache = new Map();
+    groupTaskCache = new Map();
+    Object.assign(summarySnapshotState, {
+      workerRunning: false,
+      restarts: 0,
+      lastError: null,
+      lastErrorAt: null,
+      passes: {
+        threads: emptySummaryPassState(),
+        contextWindow: emptySummaryPassState(),
+        contextStats: emptySummaryPassState(),
+        tasks: emptySummaryPassState(),
+      },
+    });
+  },
+};
 
 // Event-loop delay over the last minute: the direct measure of whether something
 // on this thread is blocking requests. Published with the cost worker's phases
@@ -2202,7 +2048,7 @@ function startEventLoopMonitor(): void {
 /** Test-only surface for the cost worker. */
 export const __costWorkerTestHooks = {
   startCostWorker: (opts: CostWorkerOptions) => startCostWorker(opts),
-  stopCostWorker: () => stopCostWorker(),
+  stopCostWorker: () => costWorkerSupervisor.stop(),
   costSnapshotView: () => costSnapshotView(),
   reset: () => {
     sessionCostCache = emptySessionCostByPeriod();
@@ -2232,8 +2078,8 @@ export const __costWorkerTestHooks = {
 // gated on `s.cost > 0` in the SELECTED period — which is exactly the bug that
 // hid a session's ceiling whenever it had no priced spend in the currently
 // selected day-window even though it was very much alive. It's now read by the
-// scan worker / main-thread fallback above (pickLatestMessageTs,
-// applyMainThreadCostCap) into the always-fresh `sessionCostCapsMap`, joined
+// scan worker (or, in tests, refreshMessageTimestamps above) into the
+// always-fresh `sessionCostCapsMap`, joined
 // for every session unconditionally — see the /api/sessions handler and
 // session-cost-caps.ts.
 
@@ -2464,17 +2310,14 @@ function computeCostP99ByGroup(costByNano: Map<string, SessionCostEntry>): {
 }
 
 if (!process.env.VITEST) {
-  // Defer the first (cold) scan a few seconds so it never blocks server startup —
-  // it reads every transcript once (~seconds on a large install); after that the
-  // per-file cache makes each 60s cycle cheap (only the growing active files are
-  // re-read). Until the first scan lands the endpoint just reports null stats.
-  setTimeout(refreshContextStatsCache, 4000).unref?.();
-  const ctxStatsTimer = setInterval(refreshContextStatsCache, 60000);
-  ctxStatsTimer.unref?.();
-  // Per-session cost runs in the cost worker, on the same 60s cadence (see
-  // startCostWorker); its first pass is offset so it does not land on the same
-  // tick as the context scan above. This thread still warms its own per-file
-  // cache from disk for on-demand reads (computeCostHistoryByGroup).
+  // Thread summaries and the context scans run in the summary worker (see
+  // startSummaryWorker). Until its first passes land, the main view has no reply
+  // stubs and the context columns report null.
+  if (process.env.DASHBOARD_DISABLE_SUMMARY_WORKER !== '1') startSummaryWorker();
+  // Per-session cost runs in the cost worker, on a 60s cadence (see
+  // startCostWorker); its first pass is offset from the summary worker's first
+  // context-stats pass. This thread still warms its own per-file cache from disk
+  // for on-demand reads (computeCostHistoryByGroup).
   loadPerFileCostCache(getDataDir());
   if (process.env.DASHBOARD_DISABLE_COST_WORKER !== '1') startCostWorker();
   startEventLoopMonitor();
@@ -3504,77 +3347,10 @@ function startFunnelRefresh(): { started: boolean } {
   return { started: true };
 }
 
+// The 24h hourly inbound/outbound histogram. The scan worker (scan-worker.mjs)
+// computes it from its mtime-gated per-file buckets and publishes it here; this
+// thread never opens session DBs for it. Null until the worker's first publish.
 let activityDataCache: ActivityBucket[] | null = null;
-
-function refreshActivityData(): void {
-  const sessionsDir = join(getDataDir(), 'v2-sessions');
-  if (!existsSync(sessionsDir)) {
-    activityDataCache = null;
-    return;
-  }
-
-  const now = Date.now();
-  const buckets: Record<string, { inbound: number; outbound: number }> = {};
-  for (let i = 0; i < 24; i++) {
-    const key = new Date(now - i * 3600000).toISOString().slice(0, 13);
-    buckets[key] = { inbound: 0, outbound: 0 };
-  }
-  const cutoff = new Date(now - 86400000).toISOString();
-
-  let agDirs: string[];
-  try {
-    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
-  } catch {
-    return;
-  }
-
-  for (const agDir of agDirs) {
-    const agPath = join(sessionsDir, agDir);
-    let sessDirs: string[];
-    try {
-      sessDirs = readdirSync(agPath).filter((d) => d.startsWith('sess-'));
-    } catch {
-      continue;
-    }
-    for (const sessDir of sessDirs) {
-      for (const [dbName, direction] of [
-        ['inbound.db', 'inbound'],
-        ['outbound.db', 'outbound'],
-      ] as const) {
-        const dbPath = join(agPath, sessDir, dbName);
-        if (!existsSync(dbPath)) continue;
-        let sdb: InstanceType<typeof Database> | null = null;
-        try {
-          sdb = new Database(dbPath, { readonly: true });
-          sdb.pragma('busy_timeout = 1000');
-          const table = direction === 'outbound' ? 'messages_out' : 'messages_in';
-          const rows = sdb.prepare(`SELECT timestamp FROM ${table} WHERE timestamp > ?`).all(cutoff) as {
-            timestamp: string;
-          }[];
-          for (const row of rows) {
-            const key = row.timestamp.slice(0, 13);
-            if (buckets[key]) buckets[key][direction]++;
-          }
-        } catch {
-          /* skip */
-        } finally {
-          try {
-            sdb?.close();
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-    }
-  }
-
-  activityDataCache = Object.entries(buckets)
-    .map(([hour, counts]) => ({ hour, ...counts }))
-    .sort((a, b) => a.hour.localeCompare(b.hour));
-}
-refreshActivityData();
-activityTimer = setInterval(refreshActivityData, 30000);
-activityTimer.unref?.();
 
 // ---------- Users data collection ----------
 interface UserData {
@@ -4620,10 +4396,9 @@ function getState(): DashboardState {
         }
       }
 
-      // Count scheduled tasks from the background-refreshed per-group snapshot.
-      // getGroupTaskSummary is a memo hit in steady state, so the 5s state
-      // broadcast no longer walks every session dir + opens every inbound.db;
-      // it falls back to a live (mtime-cached) scan only when the memo is cold.
+      // Count scheduled tasks from the summary worker's per-group snapshot
+      // (getGroupTaskSummary), so the 5s state broadcast never walks session
+      // dirs or opens an inbound.db.
       if (db) {
         try {
           const agRow2 = db.prepare('SELECT id FROM agent_groups WHERE folder = ?').get(folder) as any;
@@ -5031,14 +4806,21 @@ function fullStateJson(): string {
 }
 
 // ---- Session-DB scan worker (dash-perf round 2) --------------------------
-// A dedicated worker_threads worker owns the message-timestamp + activity fleet
-// scans (the ~6k stats/sec + thousands of SQLite opens/30s that used to run on
-// the event loop). It publishes immutable cache deltas; the main thread applies
-// them here and never opens a session DB for these scans. If the worker can't
-// start or dies, we fall back to the main-thread timers so behavior degrades to
-// pre-round-2, never breaks. Disabled under VITEST and via
-// DASHBOARD_DISABLE_SCAN_WORKER=1 (the escape hatch for the adversarial review).
-let scanWorker: Worker | null = null;
+// A dedicated worker_threads worker owns the message-timestamp, activity and
+// cost-cap fleet scans (thousands of stats per second and an open of every
+// session DB that changed). It publishes immutable cache deltas; the main thread
+// applies them here and never opens a session DB for these scans.
+//
+// The worker owns them from startup: until its warm-up publishes, the unread
+// timestamps, the activity histogram and the live cost caps are empty. The main
+// thread used to run the same scans until the worker was ready, and again
+// whenever it died; at startup that opened every session DB before the server
+// could answer (prod 2026-11-17: /api/health first answered 2.8 min after a
+// restart). A dead worker is restarted with backoff instead, and the caches keep
+// their last values meanwhile. Disabled under VITEST and via
+// DASHBOARD_DISABLE_SCAN_WORKER=1.
+const SCAN_RESTART_MIN_MS = 5_000;
+const SCAN_RESTART_MAX_MS = 5 * 60_000;
 let workerStats: Record<string, unknown> | null = null;
 
 function applyMsgTsDelta(changed: [string, string][], removed: string[]): void {
@@ -5063,8 +4845,7 @@ function applyMsgTsDelta(changed: [string, string][], removed: string[]): void {
  * set-ceiling-v2). `changed` entries carry the RAW `session_state.value` TEXT —
  * parsing/interpretation happens here (buildCostCapEntry), not in the worker —
  * matching applyMainThreadCostCap's division of labor so the worker path and
- * the main-thread-fallback path can never disagree on what a given raw blob
- * means.
+ * the in-process test path can never disagree on what a given raw blob means.
  */
 function applyCostCapsDelta(changed: [string, string, string, number][], removed: string[]): void {
   for (const [sessionId, agentGroupId, raw, mtimeMs] of changed) {
@@ -5079,25 +4860,12 @@ function applyCostCapsDelta(changed: [string, string, string, number][], removed
   perfCounters.scanCostCapsPublishes++;
 }
 
-function restartMainThreadScans(): void {
-  if (process.env.VITEST) return;
-  if (!msgTsTimer) {
-    refreshMessageTimestamps();
-    msgTsTimer = setInterval(refreshMessageTimestamps, 1000);
-    msgTsTimer.unref?.();
-  }
-  if (!activityTimer) {
-    refreshActivityData();
-    activityTimer = setInterval(refreshActivityData, 30000);
-    activityTimer.unref?.();
-  }
-}
-
 /**
  * Host half of the scan-worker handoff protocol.
  *
  * The worker publishes nothing until its warm-up pass has settled every session
- * path, and posts `ready` immediately BEFORE its first data frame. This side
+ * path (or its warm-up backstop expired), and posts `ready` immediately BEFORE
+ * its first data frame. This side
  * still queues anything that arrives pre-`ready` instead of DISCARDING it — the
  * bug that made round 1 wrong was structural, not cosmetic: MessagePort delivery
  * is ordered, so a discarded frame is gone for good while the worker has already
@@ -5116,11 +4884,9 @@ interface ScanHandoffHooks {
   /** Optional so existing hook objects (e.g. tests written before dash-1
    *  set-ceiling-v2) don't need updating just to keep compiling. */
   applyCostCaps?: (changed: [string, string, string, number][], removed: string[]) => void;
-  /** Handoff complete: the worker owns these scans, stop the main-thread timers. */
+  /** The worker's first complete state follows: drop what an earlier worker published. */
   onReady: () => void;
   onStats: (stats: Record<string, unknown>) => void;
-  /** The worker declared its cache unusable — revert to main-thread scans. */
-  onFatal: (message: string) => void;
   /** Ask the worker to re-send its full state (our pre-ready queue overflowed). */
   requestRepublish: () => void;
   maxPreReadyFrames?: number;
@@ -5178,10 +4944,7 @@ function createScanHandoff(hooks: ScanHandoffHooks): {
         hooks.onStats(msg);
         break;
       case 'error':
-        console.error('[dashboard] scan worker init error:', msg.message);
-        break;
-      case 'fatal':
-        hooks.onFatal(String(msg.message || 'unspecified'));
+        console.error('[dashboard] scan worker:', msg.message);
         break;
       default:
         break;
@@ -5198,30 +4961,18 @@ function createScanHandoff(hooks: ScanHandoffHooks): {
   };
 }
 
-function startScanWorker(): void {
-  if (process.env.VITEST || process.env.DASHBOARD_DISABLE_SCAN_WORKER === '1') return;
-  let worker: Worker;
-  try {
-    worker = new Worker(new URL('./scan-worker.mjs', import.meta.url), {
-      workerData: { dataDir: getDataDir(), centralDbPath: getDbPath() },
-    });
-  } catch (e) {
-    console.error('[dashboard] scan worker failed to start; using main-thread scans', e);
-    return;
-  }
-  scanWorker = worker;
-  let stopHandoff: (() => void) | null = null;
-  const fallback = (reason: string): void => {
-    if (scanWorker !== worker) return; // already replaced
-    scanWorker = null;
-    perfCounters.workerActive = false;
-    // Stop applying worker frames BEFORE the main-thread scans resume, so the
-    // two can never both write the caches.
-    if (stopHandoff) stopHandoff();
-    console.error(`[dashboard] scan worker ${reason}; reverting to main-thread scans`);
-    restartMainThreadScans();
-  };
-  const handoff = createScanHandoff({
+const scanWorkerState: WorkerLifecycleState = { workerRunning: false, restarts: 0, lastError: null, lastErrorAt: null };
+let scanHandoff: ReturnType<typeof createScanHandoff> | null = null;
+
+/** Create a scan worker and the handoff that applies its frames; the previous worker's handoff stops applying. */
+function spawnScanWorker(): Worker {
+  const worker = new Worker(new URL('./scan-worker.mjs', import.meta.url), {
+    workerData: { dataDir: getDataDir(), centralDbPath: getDbPath() },
+  });
+  worker.unref?.();
+  scanHandoff?.stop();
+  perfCounters.workerActive = false;
+  scanHandoff = createScanHandoff({
     applyMsgTs: (changed, removed) => applyMsgTsDelta(changed, removed),
     applyActivity: (buckets) => {
       activityDataCache = buckets as ActivityBucket[];
@@ -5230,25 +4981,16 @@ function startScanWorker(): void {
     applyCostCaps: (changed, removed) => applyCostCapsDelta(changed, removed),
     onReady: () => {
       perfCounters.workerActive = true;
-      // Hand off: the worker now owns these scans, so stop the main-thread
-      // timers to avoid duplicate work. The queued pre-ready frames are applied
-      // by the handoff immediately after this returns, so there is no window in
-      // which neither side owns the cache.
-      if (msgTsTimer) {
-        clearInterval(msgTsTimer);
-        msgTsTimer = undefined;
-      }
-      if (activityTimer) {
-        clearInterval(activityTimer);
-        activityTimer = undefined;
-      }
+      // A worker publishes its complete state right after `ready`, as deltas
+      // against an empty cache. After a restart the caches still hold the dead
+      // worker's values, which the new worker cannot remove, so we drop them here.
+      // The queued pre-ready frames are applied right after this returns.
+      lastMessageTsCache.clear();
+      sessionCostCapsMap.clear();
+      invalidateStateCache();
     },
     onStats: (stats) => {
       workerStats = stats;
-    },
-    onFatal: (message) => {
-      fallback(`reported a fatal warm-up failure (${message})`);
-      void worker.terminate();
     },
     requestRepublish: () => {
       try {
@@ -5258,19 +5000,22 @@ function startScanWorker(): void {
       }
     },
   });
-  stopHandoff = handoff.stop;
-  worker.on('message', (msg: any) => handoff.handle(msg));
-  worker.on('error', (e) => {
-    console.error('[dashboard] scan worker error', e);
-    fallback('errored');
-  });
-  worker.on('exit', (code) => {
-    if (code !== 0) fallback(`exited (code ${code})`);
-  });
-  worker.unref?.();
+  return worker;
 }
 
-startScanWorker();
+const scanWorkerSupervisor = superviseWorker<unknown>({
+  label: 'scan worker',
+  state: scanWorkerState,
+  policy: () => ({ restartOnFailure: true, restartMinMs: SCAN_RESTART_MIN_MS, restartMaxMs: SCAN_RESTART_MAX_MS }),
+  spawn: spawnScanWorker,
+  onMessage: (msg) => scanHandoff?.handle(msg),
+  onDeath: (reason) => {
+    perfCounters.workerActive = false;
+    console.error(`[dashboard] ${reason}; serving the last scan results until it restarts`);
+  },
+});
+
+if (!process.env.VITEST && process.env.DASHBOARD_DISABLE_SCAN_WORKER !== '1') scanWorkerSupervisor.start();
 
 function getLiveCoworkerPatch(event: HookEvent): Partial<CoworkerState> & { folder: string } {
   const hookState = liveHookState.get(event.group);
@@ -5296,8 +5041,11 @@ export function resetTransientDashboardStateForTests(): void {
   lastMessageTsCache.clear();
   msgTsFileCache.clear();
   sessionCostCapsMap.clear();
-  groupTaskCache.clear();
-  perFileTaskCache.clear();
+  threadSummaryBySession = new Map();
+  contextWindowCache = new Map();
+  contextStatsCache = new Map();
+  groupTaskCache = new Map();
+  onDemandTasks = new TaskScanner();
   runningContainers.clear();
   _mcpAllTools = [];
   _typeColors = null;
@@ -5362,13 +5110,12 @@ export function forceOpenDbForTests(): void {
 }
 
 /**
- * Force one pass of the main-thread fallback scan (msgTs + cost-cap mtime
- * read) for tests. The scan worker is disabled under VITEST and the
- * main-thread timer only self-schedules outside VITEST too (see
- * msgTsTimer/refreshMessageTimestamps above), so nothing re-reads a session's
- * outbound.db on its own during a test — this gives tests a synchronous
- * "the fleet-scan tick just ran" hook, exactly like forceOpenDbForTests gives
- * a synchronous "the DB handle is open" hook.
+ * Run one in-process pass of the msgTs + cost-cap scan (refreshMessageTimestamps)
+ * for tests. The scan worker owns that scan in the running dashboard and does
+ * not run under VITEST, so nothing re-reads a session's outbound.db on its own
+ * during a test — this gives tests a synchronous "the fleet-scan tick just ran"
+ * hook, exactly like forceOpenDbForTests gives a synchronous "the DB handle is
+ * open" hook.
  */
 export function refreshCostCapsForTests(): void {
   refreshMessageTimestamps();
@@ -5391,8 +5138,38 @@ export function refreshSessionCostsForTests(): void {
     phases.writeMs = Date.now() - tw;
     applyCostSnapshot({ kind: 'snapshot', computedAt: new Date().toISOString(), phases, byPeriod });
   } catch (e) {
-    recordCostWorkerError(e instanceof Error ? e.message : String(e));
+    recordWorkerError(costSnapshotState, e instanceof Error ? e.message : String(e));
   }
+}
+
+/**
+ * Run one synchronous thread-summary pass on this thread, for tests, and serve
+ * its result. In production the same scan runs only in the summary worker. A
+ * fresh scanner publishes a full result, so the served map is replaced.
+ */
+export function refreshThreadSummariesForTests(): void {
+  if (!db) return;
+  const delta = new ThreadSummaryScanner().scan(db, getDataDir());
+  applySummaryMessage({ kind: 'threads', computedAt: new Date().toISOString(), ...delta });
+}
+
+/** Run one synchronous task-scan pass on this thread, for tests, and serve its result. */
+export function refreshGroupTasksForTests(): void {
+  if (!db) return;
+  const scanner = new TaskScanner();
+  const phases = scanner.refresh(db, getDataDir());
+  applySummaryMessage({ kind: 'tasks', computedAt: new Date().toISOString(), entries: [...scanner.groups], phases });
+}
+
+/** Run one synchronous pass of both context scans on this thread, for tests, and serve the result. */
+export function refreshContextCachesForTests(): void {
+  if (!db) return;
+  const scanner = new ContextScanner();
+  const computedAt = new Date().toISOString();
+  const windowPhases = scanner.refreshWindow(db, getDataDir());
+  applySummaryMessage({ kind: 'contextWindow', computedAt, entries: [...scanner.window], phases: windowPhases });
+  const statsPhases = scanner.refreshStats(db, getDataDir());
+  applySummaryMessage({ kind: 'contextStats', computedAt, entries: [...scanner.stats], phases: statsPhases });
 }
 
 /**
@@ -6025,193 +5802,27 @@ function collectSessionDbFiles(agentGroupId: string): { files: Map<string, strin
   return { files, sessionIds };
 }
 
-/** One pending/paused scheduled task row, as surfaced to the dashboard. */
-interface ScheduledTaskRow {
-  origId: string;
-  sessionId: string;
-  recurrence: string | null;
-  processAfter: string | null;
-  content: string;
-  status: string;
-}
-
-// mtime-keyed cache of the pending/paused task rows in each session's inbound.db.
-// A scheduled task only changes when the host writes messages_in (create / pause
-// / resume / delete), which bumps the file's mtime; an idle session's inbound.db
-// is therefore a cheap stat rather than a sqlite open on every scan. Mirrors the
-// perFileCostCache / msgTsFileCache mtime-gating already used for the cost and
-// message-timestamp scans. Pruned in refreshGroupTaskCache once it outgrows the
-// live session set. Correctness is mtime-exact: a task mutation changes the file,
-// so the very next scan re-reads it (no stale window past the mutating write).
-const perFileTaskCache = new Map<string, { mtimeMs: number; tasks: ScheduledTaskRow[] }>();
-
-/** Read the pending/paused tasks from one session's inbound.db, mtime-gated:
- *  reuse the cached rows when the file is unchanged since the last scan, so only
- *  sessions whose task set actually moved pay a sqlite open. Tri-state: `ok:false`
- *  means the DB open/query failed (transient lock / I/O). Callers building a
- *  cached aggregate must NOT publish a `!ok` result, else a momentary lock gets
- *  memoized as a group-wide undercount. A genuinely absent file is `ok:true` with
- *  no tasks. Only clean reads are cached; a failed read is retried next scan. */
-function extractSessionTasks(dbPath: string, sessionId: string): { ok: boolean; tasks: ScheduledTaskRow[] } {
-  let mtimeMs: number;
-  try {
-    mtimeMs = statSync(dbPath).mtimeMs; // throws if the file doesn't exist
-  } catch {
-    perFileTaskCache.delete(dbPath);
-    return { ok: true, tasks: [] }; // no inbound.db → genuinely no tasks
-  }
-  const cached = perFileTaskCache.get(dbPath);
-  if (cached && cached.mtimeMs === mtimeMs) return { ok: true, tasks: cached.tasks };
-  let sdb: Database.Database | null = null;
-  try {
-    sdb = new Database(dbPath, { readonly: true });
-    sdb.pragma('busy_timeout = 3000');
-    const rows = sdb
-      .prepare(
-        "SELECT id, recurrence, process_after, content, status FROM messages_in WHERE kind = 'task' AND status IN ('pending', 'paused')",
-      )
-      .all() as any[];
-    const tasks: ScheduledTaskRow[] = rows.map((r) => ({
-      origId: r.id,
-      sessionId,
-      recurrence: r.recurrence || null,
-      processAfter: r.process_after || null,
-      content: r.content,
-      status: r.status,
-    }));
-    perFileTaskCache.set(dbPath, { mtimeMs, tasks }); // cache only on a clean read
-    return { ok: true, tasks };
-  } catch {
-    return { ok: false, tasks: [] }; // corrupt/locked — don't cache; next scan retries
-  } finally {
-    try {
-      sdb?.close();
-    } catch {
-      /* */
-    }
-  }
-}
-
-/** Scan a group's sessions for scheduled tasks. Tri-state: `ok:false` if ANY
- *  constituent session read failed, so the memo layer can decline to publish a
- *  possibly-undercounted aggregate (a transient lock must not poison the memo). */
-function extractGroupTasks(agentGroupId: string, sessionIds: string[]): { ok: boolean; tasks: ScheduledTaskRow[] } {
-  const tasks: ScheduledTaskRow[] = [];
-  let ok = true;
-  for (const sessId of sessionIds) {
-    const dbPath = join(getDataDir(), 'v2-sessions', agentGroupId, sessId, 'inbound.db');
-    const r = extractSessionTasks(dbPath, sessId);
-    if (!r.ok) ok = false;
-    for (const t of r.tasks) tasks.push(t);
-  }
-  return { ok, tasks };
-}
+// Scheduled tasks (task-scan.ts). The per-group summaries that the coworker
+// state (every 5 s) and /api/overview read come from the summary worker's `tasks`
+// pass, so neither walks session directories on this thread; a group the worker
+// has not covered yet reads as no tasks. A task mutation asks the worker for an
+// immediate pass (requestSummaryPass) instead of dropping the group's summary.
+// The routes that list or export tasks on request (/api/tasks, coworker export)
+// read through onDemandTasks, whose per-file cache makes a repeat call one stat
+// per session.
+let onDemandTasks = new TaskScanner();
+let groupTaskCache = new Map<string, GroupTaskSummary>();
 
 /** Fail-soft task list across a group's sessions (returns whatever read cleanly).
  *  Used by /api/tasks and the import/export paths, which surface a live snapshot
- *  and can tolerate a transient partial without poisoning the shared memo. */
+ *  and can tolerate a transient partial. */
 function extractScheduledTasks(agentGroupId: string, sessionIds: string[]): ScheduledTaskRow[] {
-  return extractGroupTasks(agentGroupId, sessionIds).tasks;
+  return onDemandTasks.groupTasks(getDataDir(), agentGroupId, sessionIds).tasks;
 }
 
-// Per-agent-group scheduled-task snapshot, refreshed on a background interval so
-// the hot paths (getState's 5s state broadcast, the /api/overview landing panel,
-// /api/tasks) serve counts/rows from memory instead of walking every session dir
-// and opening every inbound.db inline on the request/broadcast path. Mirrors
-// the per-session cost snapshot (sessionCostCache). The underlying scan is mtime-gated
-// (extractSessionTasks), so a steady-state refresh is a stat per session, not a
-// sqlite open. Readers fall back to a direct (still mtime-cached) scan when a
-// group is not yet in the snapshot, so a freshly-created group is never missed.
-interface GroupTaskSummary {
-  tasks: ScheduledTaskRow[];
-  active: number;
-  paused: number;
-  completed: number;
-  // When this group's summary was last (re)published — per-group, since the
-  // refresh publishes each group independently rather than swapping the whole
-  // map at the end, so readers observe a completed group's fresh count at once.
-  refreshedAt: number;
-}
-const groupTaskCache = new Map<string, GroupTaskSummary>();
-
-function summarizeGroupTasks(tasks: ScheduledTaskRow[]): GroupTaskSummary {
-  let active = 0;
-  let paused = 0;
-  let completed = 0;
-  for (const t of tasks) {
-    const st = t.status === 'pending' ? 'active' : t.status;
-    if (st === 'active') active++;
-    else if (st === 'paused') paused++;
-    else if (st === 'completed') completed++;
-  }
-  return { tasks, active, paused, completed, refreshedAt: Date.now() };
-}
-
-/** Snapshot of a group's scheduled tasks: memo hit when warm, else a live
- *  (mtime-cached) scan. The memo is seeded only on a clean read: a partial (a
- *  constituent DB read failed) is returned for this one response but not cached,
- *  so the next reader/refresh retries instead of memoizing an undercount. */
+/** A group's scheduled-task summary from the summary worker, or an empty one before its first `tasks` pass. */
 function getGroupTaskSummary(agentGroupId: string): GroupTaskSummary {
-  const cached = groupTaskCache.get(agentGroupId);
-  if (cached) return cached;
-  const { sessionIds } = collectSessionDbFiles(agentGroupId);
-  const scan = extractGroupTasks(agentGroupId, sessionIds);
-  const summary = summarizeGroupTasks(scan.tasks);
-  if (scan.ok) groupTaskCache.set(agentGroupId, summary);
-  return summary;
-}
-
-// Re-entrancy guard: the scan yields between groups (setImmediate), so a slow
-// fleet refresh can outlast the 15s interval; a second tick must not stack on
-// the first. Mirrors sessionCostScanning.
-let groupTaskRefreshing = false;
-
-/** Refresh the per-group task snapshot. Publishes each group independently the
- *  moment its scan completes (with a per-group refreshedAt) rather than swapping
- *  the whole map after the last group, so a slow scan can't push staleness toward
- *  two intervals. Yields between groups so requests/SSE/WS keep flowing on a
- *  several-thousand-session install. A group whose scan hit a transient read
- *  error keeps its previous summary and is retried next cycle. Deleted groups are
- *  pruned separately after the pass. */
-async function refreshGroupTaskCache(): Promise<void> {
-  if (groupTaskRefreshing) return;
-  groupTaskRefreshing = true;
-  try {
-    if (!db) db = openDb();
-    if (!db) return;
-    let groups: { id: string }[];
-    try {
-      groups = db.prepare('SELECT id FROM agent_groups').all() as { id: string }[];
-    } catch {
-      return; // DB not ready
-    }
-    const liveGroupIds = new Set<string>();
-    const livePaths = new Set<string>();
-    for (const g of groups) {
-      liveGroupIds.add(g.id);
-      const { sessionIds } = collectSessionDbFiles(g.id);
-      for (const sid of sessionIds) {
-        livePaths.add(join(getDataDir(), 'v2-sessions', g.id, sid, 'inbound.db'));
-      }
-      const scan = extractGroupTasks(g.id, sessionIds);
-      // Publish a clean read only; a partial retains the previous summary.
-      if (scan.ok) groupTaskCache.set(g.id, summarizeGroupTasks(scan.tasks));
-      // Yield so a large fleet scan doesn't monopolize the event loop; each
-      // published group is observable by readers immediately.
-      await new Promise<void>((resolve) => setImmediate(resolve));
-    }
-    // Prune summaries for groups that no longer exist (replaces the old
-    // whole-map swap, which is gone now that we publish per group).
-    for (const id of groupTaskCache.keys()) {
-      if (!liveGroupIds.has(id)) groupTaskCache.delete(id);
-    }
-    // Drop per-file cache entries for sessions that no longer exist.
-    if (perFileTaskCache.size > livePaths.size * 2 + 1000) {
-      for (const k of perFileTaskCache.keys()) if (!livePaths.has(k)) perFileTaskCache.delete(k);
-    }
-  } finally {
-    groupTaskRefreshing = false;
-  }
+  return groupTaskCache.get(agentGroupId) ?? summarizeGroupTasks([]);
 }
 
 // ---------------------------------------------------------------------------
@@ -8797,6 +8408,11 @@ export async function handleRequest(
           // lives in the root session. If we ever mirror parents into
           // thread DBs this count is off-by-one and needs WHERE id !=
           // parentId.
+          //
+          // Each session's count and newest timestamp come from the summary
+          // worker (threadSummaryBySession, see thread-summary-scan.ts); this
+          // handler opens no session DB for them. A session the worker has not
+          // scanned yet (created within the last pass) counts as no replies.
           if (!threadMode && !sessionDirect && dashMgId) {
             let threadSessions: Array<{ id: string; thread_id: string }> = [];
             try {
@@ -8815,43 +8431,9 @@ export async function handleRequest(
               /* ignore */
             }
             for (const ts of threadSessions) {
-              let count = 0;
-              let lastTs: string | null = null;
-              for (const file of ['inbound.db', 'outbound.db']) {
-                const p = join(sessionsDir, ts.id, file);
-                if (!existsSync(p)) continue;
-                try {
-                  const sdb = new Database(p, { readonly: true });
-                  try {
-                    const table = file === 'inbound.db' ? 'messages_in' : 'messages_out';
-                    // Scope COUNT to rows belonging to this thread (matching
-                    // thread_id, plus NULL — the messages endpoint shows NULL-
-                    // thread rows in threadMode, so badge counts must match).
-                    // Fallback to unscoped COUNT for legacy session DBs that
-                    // pre-date the thread_id column.
-                    let row: { n: number; ts: string | null };
-                    try {
-                      row = sdb
-                        .prepare(
-                          `SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table} WHERE thread_id = ? OR thread_id IS NULL`,
-                        )
-                        .get(ts.thread_id) as { n: number; ts: string | null };
-                    } catch {
-                      row = sdb.prepare(`SELECT COUNT(*) AS n, MAX(timestamp) AS ts FROM ${table}`).get() as {
-                        n: number;
-                        ts: string | null;
-                      };
-                    }
-                    count += row.n || 0;
-                    if (row.ts && (!lastTs || row.ts > lastTs)) lastTs = row.ts;
-                  } catch {
-                    /* ignore */
-                  }
-                  sdb.close();
-                } catch {
-                  /* ignore */
-                }
-              }
+              const summary = threadSummaryBySession.get(ts.id);
+              const count = summary?.count ?? 0;
+              const lastTs = summary?.lastTs ?? null;
               if (count > 0) {
                 // Aggregate when multiple sessions share a thread_id (common
                 // for cross-coworker threads or session forks). Without this,
@@ -9458,8 +9040,8 @@ export async function handleRequest(
         result.groups.total = (db.prepare('SELECT COUNT(*) as c FROM agent_groups').get() as any)?.c || 0;
         result.messages.total = (db.prepare('SELECT COUNT(*) as c FROM hook_events').get() as any)?.c || 0;
         result.sessions = (db.prepare('SELECT COUNT(*) as c FROM sessions').get() as any)?.c || 0;
-        // Task counts come from the background-refreshed per-group snapshot
-        // (getGroupTaskSummary), so this default landing panel no longer opens
+        // Task counts come from the summary worker's per-group snapshot
+        // (getGroupTaskSummary), so this default landing panel never opens
         // every session's inbound.db inline on each request — the O(N-sessions)
         // synchronous DB-open storm that made the cold page load slow.
         const groups = db.prepare('SELECT id FROM agent_groups').all() as any[];
@@ -9769,11 +9351,11 @@ export async function handleRequest(
                 .run(newStatus, taskId);
               if (result.changes > 0) {
                 found = true;
-                // Reflect this task mutation immediately in the memoized snapshot
-                // that getState / /api/overview read, else the count lags up to
-                // one refresh interval. /api/tasks re-reads live (mtime-gated), so
-                // the write's mtime bump already makes its rows fresh.
-                groupTaskCache.delete(g.id);
+                // Ask the summary worker to rescan tasks now, so the counts that
+                // getState / /api/overview read do not lag a full interval.
+                // /api/tasks re-reads live (mtime-gated), so the write's mtime
+                // bump already makes its rows fresh.
+                requestSummaryPass('tasks');
                 break;
               }
             } catch {
@@ -9829,11 +9411,11 @@ export async function handleRequest(
               const result = sdb.prepare("DELETE FROM messages_in WHERE id = ? AND kind = 'task'").run(taskId);
               if (result.changes > 0) {
                 found = true;
-                // Reflect this task mutation immediately in the memoized snapshot
-                // that getState / /api/overview read, else the count lags up to
-                // one refresh interval. /api/tasks re-reads live (mtime-gated), so
-                // the write's mtime bump already makes its rows fresh.
-                groupTaskCache.delete(g.id);
+                // Ask the summary worker to rescan tasks now, so the counts that
+                // getState / /api/overview read do not lag a full interval.
+                // /api/tasks re-reads live (mtime-gated), so the write's mtime
+                // bump already makes its rows fresh.
+                requestSummaryPass('tasks');
                 break;
               }
             } catch {
@@ -11437,14 +11019,10 @@ export async function handleRequest(
               }
             }
           }
-          // Any newly-paused row invalidates this group's memoized task snapshot
-          // so getState / /api/overview stop reporting the paused tasks as active
-          // until the next background refresh; the state cache is bumped too so
-          // live consumers repaint promptly.
-          if (pausedChanges > 0) {
-            groupTaskCache.delete(group.id);
-            invalidateStateCache();
-          }
+          // Newly-paused rows change this group's task counts: ask the summary
+          // worker to rescan tasks now so getState / /api/overview stop
+          // reporting them as active.
+          if (pausedChanges > 0) requestSummaryPass('tasks');
         }
 
         // Also generate YAML bundle pointing at the archive and write to coworkers/
@@ -13245,7 +12823,13 @@ export async function handleRequest(
         stateRev: publishedRev,
         ...perfCounters,
         scanWorker: workerStats,
+        scanWorkerState: {
+          ...scanWorkerState,
+          lastErrorAt:
+            scanWorkerState.lastErrorAt === null ? null : new Date(scanWorkerState.lastErrorAt).toISOString(),
+        },
         costWorker: costSnapshotView(),
+        summaryWorker: summarySnapshotView(),
         eventLoopDelay: {
           lastMinute: eventLoopDelayLastMinute,
           sinceLastReset: eventLoopHistogram
@@ -14543,7 +14127,6 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   // routes below still serve, so endpoint tests are unaffected.
   let stopWatchingMcpToken: (() => void) | null = null;
   let mcpRefreshTimer: ReturnType<typeof setInterval> | undefined;
-  let groupTaskTimer: ReturnType<typeof setInterval> | undefined;
   if (!process.env.VITEST) {
     // Load MCP tool inventory eagerly and refresh when the auth proxy rotates the token.
     void refreshMcpTools();
@@ -14654,7 +14237,6 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
   server.on('close', () => {
     stopWatchingMcpToken?.();
     clearInterval(mcpRefreshTimer);
-    clearInterval(groupTaskTimer);
     clearInterval(broadcastTimer);
     clearInterval(heartbeatTimer);
     clearInterval(expireTimer);
@@ -14676,23 +14258,6 @@ export function startServer(port = getDashboardPort(), host = getDashboardHost()
     console.log(`  Tab 2: Timeline (all-time metrics)`);
     if (getDashboardSecret()) console.log(`  Auth: dashboard secret required for browser/admin access`);
     console.log();
-
-    // Prime the scheduled-task snapshot only AFTER the port is bound, so the
-    // fleet scan never delays the listener coming up / readiness probes on a
-    // cold restart. The scan yields between groups (refreshGroupTaskCache), so
-    // neither the prime nor the 15s refresh monopolizes the event loop. Skipped
-    // under VITEST — the test server uses the live (mtime-cached) fallback path.
-    if (!process.env.VITEST) {
-      void refreshGroupTaskCache().catch(() => {
-        /* non-fatal; the interval retries */
-      });
-      groupTaskTimer = setInterval(() => {
-        void refreshGroupTaskCache().catch(() => {
-          /* non-fatal; next tick retries */
-        });
-      }, 15000);
-      groupTaskTimer.unref?.();
-    }
   });
 
   return server;
