@@ -307,10 +307,21 @@ describe('codex MCP bridge over stdio', () => {
   it('records one critique round per successful call, and none for a failed one', async () => {
     // The earlier calls in this file succeeded (codex, codex-reply) or failed
     // (a stale thread, a missing prompt); only the successes were recorded.
+    // The recorder also sees each call's start and failure; rounds are the
+    // PostToolUse payloads.
     const records = readFileSync(recordFile, 'utf8')
       .trim()
       .split('\n')
-      .map((l) => JSON.parse(l) as { tool_name: string; tool_input: { prompt?: string }; tool_response: string });
+      .map(
+        (l) =>
+          JSON.parse(l) as {
+            hook_event_name: string;
+            tool_name: string;
+            tool_input: { prompt?: string };
+            tool_response: string;
+          },
+      )
+      .filter((r) => r.hook_event_name === 'PostToolUse');
     expect(records.length).toBeGreaterThanOrEqual(2);
     expect(records[0]).toMatchObject({ tool_name: 'mcp__codex__codex', tool_input: { prompt: 'review this' } });
     expect(JSON.parse(records[0].tool_response)).toEqual({ threadId: 'thread-1', content: 'VERDICT: approve' });
@@ -359,14 +370,25 @@ describe('codex MCP bridge over stdio', () => {
   // Codex 0.160 reports a failed turn as turn/completed with status "failed";
   // the bridge used to answer it as a successful critique with an empty verdict.
   it('a failed turn is an error result carrying codex error, and records no critique round', async () => {
-    const recordedBefore = readFileSync(recordFile, 'utf8').trim().split('\n').length;
+    const recorded = (): Array<{ hook_event_name: string; error?: string; tool_use_id?: string }> =>
+      readFileSync(recordFile, 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+    const before = recorded().length;
     const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'TURN_FAILS', cwd: binDir } })) as {
       isError?: boolean;
       content: Array<{ text: string }>;
     };
     expect(r.isError).toBe(true);
     expect(r.content[0].text).toContain('fake model rejected the request');
-    expect(readFileSync(recordFile, 'utf8').trim().split('\n').length).toBe(recordedBefore);
+    // A start and a failure, with the error text, and no round.
+    const added = recorded().slice(before);
+    expect(added.map((p) => p.hook_event_name)).toEqual(['PreToolUse', 'PostToolUseFailure']);
+    expect(added[1].error).toContain('fake model rejected the request');
+    // One call id on both, so the host can match the start to its result.
+    expect(added[0].tool_use_id).toBeTruthy();
+    expect(added[1].tool_use_id).toBe(added[0].tool_use_id);
   });
 
   it('an interrupted turn is an error result', async () => {

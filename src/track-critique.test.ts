@@ -163,6 +163,48 @@ describe('track-critique appends recorded rounds to the attempts journal', () =>
   });
 });
 
+describe('track-critique records call starts and failures from the codex bridge', () => {
+  const journal = (): Array<Record<string, string>> => {
+    const file = path.join(tmpRoot, 'critique-attempts.jsonl');
+    if (!fs.existsSync(file)) return [];
+    return fs
+      .readFileSync(file, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+  };
+  const input = { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS };
+
+  it('appends a start line with the call id and records no round', () => {
+    run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__codex__codex', tool_input: input, tool_use_id: 'c-7' });
+    expect(journal()).toEqual([expect.objectContaining({ event: 'start', stage: 'PLAN_REVIEW', call: 'c-7' })]);
+    expect(readState().critique_rounds).toBeUndefined();
+  });
+
+  it('appends a failure line with the error and records no round', () => {
+    run({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'mcp__codex__codex',
+      tool_input: input,
+      error: 'exceeded retry limit, last status: 429 Too Many Requests',
+    });
+    expect(journal()).toEqual([
+      expect.objectContaining({ event: 'failure', stage: 'PLAN_REVIEW', error: expect.stringContaining('429') }),
+    ]);
+    expect(readState().critique_rounds).toBeUndefined();
+  });
+
+  it("ignores Buddy's calls", () => {
+    run({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'p', 'developer-instructions': 'You are Buddy, ...' },
+      error: '429',
+    });
+    expect(journal()).toEqual([]);
+  });
+});
+
 describe('track-critique with OpenCode argument names', () => {
   // OpenCode drops the hyphens from MCP argument names, so the reviewer block
   // arrives as `developerinstructions`. Before this alias no OpenCode critique

@@ -27,6 +27,8 @@
  *
  * Protocol traffic is stdout; everything logged here goes to stderr.
  */
+import { randomUUID } from 'crypto';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -45,7 +47,7 @@ import {
   type JsonRpcNotification,
   type ThreadParams,
 } from './providers/codex-app-server.js';
-import { recordCritiqueRound } from './critique-record.js';
+import { recordCritiqueAttempt, recordCritiqueRound } from './critique-record.js';
 
 function log(msg: string): void {
   console.error(`[codex-mcp-bridge] ${msg}`);
@@ -589,6 +591,13 @@ export function createBridgeServer(): Server {
       (name === 'codex-reply' ? CODEX_REPLY_TOOL : CODEX_TOOL).inputSchema.properties as Record<string, unknown>,
     );
     const onActivity = progressReporter(req.params._meta?.progressToken, (n) => extra.sendNotification(n));
+    const tool = name as 'codex' | 'codex-reply';
+    const known = name === 'codex' || name === 'codex-reply';
+    const callId = randomUUID();
+    // Start and failure go to the attempts record (critique-record.ts): the
+    // host waits for a critique still running and tells a failing critic from
+    // an agent that never tried.
+    if (known) await recordCritiqueAttempt(tool, args, { started: true }, callId);
     try {
       const r =
         name === 'codex'
@@ -599,11 +608,12 @@ export function createBridgeServer(): Server {
       if (!r) return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] };
       // One critique round per successful call, recorded before the answer so
       // the agent's next delivery sees it (critique-record.ts).
-      await recordCritiqueRound(name as 'codex' | 'codex-reply', args, r);
+      await recordCritiqueRound(tool, args, r, process.env, callId);
       return codexToolResult(r);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log(`${name} failed: ${msg}`);
+      if (known) await recordCritiqueAttempt(tool, args, { error: msg }, callId);
       return { isError: true, content: [{ type: 'text', text: `codex bridge: ${msg}` }] };
     }
   });
