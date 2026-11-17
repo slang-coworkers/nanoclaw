@@ -23,6 +23,14 @@ PRs updated since `synced_at`) names its number, its PR's number, or a PR whose
 body references it; when it was never fetched; or when an open entry is older
 than MAX_AGE_S (the backstop for an event that does not bump `updated_at`).
 
+A repo that GitHub refuses to list (HTTP 401 or 404) while another repo lists
+fine in the same run is out of the bot's reach: renamed, removed from the App,
+or a mistyped repo in a hand-typed thread id (prod: `gh-issue-slang/slang-12371`
+for shader-slang/slang#12371). Its chains cannot be fetched, so the gate stops
+listing the repo and fetching its chains for UNREACHABLE_RETRY_S, reports it under
+`unreachable`, and then probes it again. When every listing fails, the cause is
+the token or the network, not one repo, and each repo is a plain sync error.
+
 A session's outbound is reread unless the cached read was taken while the
 container was stopped and `last_active` has not moved since. The host stamps
 `last_active` when it queues an inbound message and when it starts the
@@ -56,6 +64,11 @@ SYNC_OVERLAP_S = 10 * 60
 # prod: `gh-issue-shader-slang/slang-11568/recovery`) is fetched as a cold
 # chain and then only by the MAX_AGE_S backstop.
 REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
+# A repo found out of reach is not listed again for this long.
+UNREACHABLE_RETRY_S = 24 * 60 * 60
+# list_changed's answer when GitHub refuses the listing itself (HTTP 401 or 404).
+UNREACHABLE = object()
+REFUSED_RE = re.compile(r"\(HTTP (?:401|404)\)")
 # A bare `#123` in a PR body (not `owner/repo#123`, not a URL fragment).
 BODY_REF_RE = re.compile(r"(?<![\w/])#(\d+)\b")
 # An issue/PR URL in a PR body; the repo is checked by the caller.
@@ -119,7 +132,8 @@ def body_refs(body: str, repo: str) -> set:
 
 def list_changed(repo: str, since: str, timeout: float = 30):
     """Numbers of the issues and PRs in `repo` updated at or after `since`, plus every issue a
-    changed PR's body names; None when the listing fails.
+    changed PR's body names; UNREACHABLE when GitHub refuses the listing with HTTP 401 or 404
+    (`gh` reports "Bad credentials (HTTP 401)"); None when the listing fails any other way.
 
     One paginated REST call (`GET /repos/{repo}/issues?state=all&since=…`), which returns
     PRs as well as issues. A PR's body is read so that a new fix PR marks the issue it
@@ -134,7 +148,7 @@ def list_changed(repo: str, since: str, timeout: float = 30):
     except (OSError, subprocess.SubprocessError):
         return None
     if r.returncode != 0:
-        return None
+        return UNREACHABLE if REFUSED_RE.search(r.stderr or "") else None
     changed = set()
     for line in r.stdout.splitlines():
         line = line.strip()
@@ -163,6 +177,7 @@ class UniverseCache:
         lo = load_json(os.path.join(cache_dir, OUTBOUND_CACHE), {})
         self.outbound = lo.get("sessions") if isinstance(lo.get("sessions"), dict) else {}
         self.sync_errors = []
+        self.unreachable = []
         self.changed = set()
 
     # --- GitHub -------------------------------------------------------------
@@ -176,38 +191,58 @@ class UniverseCache:
         changed since the last listing, left dirty by an earlier run, never fetched
         (most recently active chain first), and open entries older than MAX_AGE_S
         (oldest first). A repo whose listing fails keeps its `synced_at`, so the next
-        run lists the same window again.
+        run lists the same window again. A repo out of reach (see the module docstring)
+        keeps its `synced_at` too, and none of its chains are planned.
         """
         by_repo = {}
         for t in threads:
             by_repo.setdefault(t["repo"], []).append(t)
         listing_start = iso(self.now)
+        refused, any_listed = [], False
         for repo, repo_threads in sorted(by_repo.items()):
             if not REPO_RE.match(repo):
                 continue
-            synced = parse_iso((self.repos.get(repo) or {}).get("synced_at"))
+            state = self.repos.get(repo) or {}
+            unreachable_at = parse_iso(state.get("unreachable_at"))
+            if unreachable_at is not None and (self.now - unreachable_at).total_seconds() < UNREACHABLE_RETRY_S:
+                self.unreachable.append(repo)
+                continue
+            synced = parse_iso(state.get("synced_at"))
             if synced is None:
                 # First sight of this repo: every chain in it is fetched as cold.
                 self.repos[repo] = {"synced_at": listing_start}
                 continue
             since = iso(synced - timedelta(seconds=SYNC_OVERLAP_S))
             numbers = lister(repo, since)
+            if numbers is UNREACHABLE:
+                refused.append(repo)
+                continue
             if numbers is None:
                 self.sync_errors.append(repo)
                 continue
+            any_listed = True
             self.repos[repo] = {"synced_at": listing_start}
             for t in repo_threads:
                 key = chain_key(t)
                 pr_number = ((self.issues.get(key) or {}).get("bot_pr") or {}).get("number")
                 if t["issue"] in numbers or (pr_number is not None and pr_number in numbers):
                     self.changed.add(key)
+        for repo in refused:
+            if any_listed:
+                self.repos[repo] = {**self.repos[repo], "unreachable_at": listing_start}
+                self.unreachable.append(repo)
+            else:
+                self.sync_errors.append(repo)
         self.dirty |= self.changed
+        out_of_reach = set(self.unreachable)
 
         def recency(t):
             return max((session_last_active.get(s) or "" for s in t["sessions"]), default="")
 
         changed, dirty, cold, stale = [], [], [], []
         for t in threads:
+            if t["repo"] in out_of_reach:
+                continue
             key = chain_key(t)
             entry = self.issues.get(key)
             if key in self.changed:

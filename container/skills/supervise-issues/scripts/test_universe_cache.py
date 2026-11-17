@@ -26,6 +26,7 @@ import textwrap
 import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest import mock
 
 HERE = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location("universe_cache", HERE / "universe_cache.py")
@@ -98,6 +99,67 @@ class PlanGithub(unittest.TestCase):
                "issue": 7, "sessions": []}
         c.repos[bad["repo"]] = {"synced_at": "2026-11-16T11:00:00Z"}
         c.plan_github([bad], {}, lister=lambda *_: self.fail("must not list a malformed repo"))
+
+    def test_repo_refused_while_another_lists_is_out_of_reach_for_a_day(self):
+        # Prod: `gh-issue-slang/slang-12371`, a mistyped shader-slang/slang thread, got
+        # HTTP 401 on its listing every hour while every other repo listed fine.
+        bad = {"thread": "gh-issue-slang/slang-12371", "repo": "slang/slang", "issue": 12371, "sessions": []}
+        good = thread(1, [])
+        c = self.cache()
+        for repo in (REPO, "slang/slang"):
+            c.repos[repo] = {"synced_at": "2026-11-16T11:00:00Z"}
+        old = (NOW - timedelta(seconds=uc.MAX_AGE_S + 60)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        c.issues["slang/slang:12371"] = {"state": "OPEN", "degraded": True, "fetched_at": old}
+        c.issues[f"{REPO}:1"] = {"state": "OPEN", "fetched_at": "2026-11-16T11:00:00Z"}
+        listed = []
+
+        def lister(repo, since):
+            listed.append(repo)
+            return uc.UNREACHABLE if repo == "slang/slang" else set()
+
+        self.assertEqual(c.plan_github([bad, good], {}, lister=lister), [])
+        self.assertEqual((c.unreachable, c.sync_errors), (["slang/slang"], []))
+        self.assertEqual(c.repos["slang/slang"],
+                         {"synced_at": "2026-11-16T11:00:00Z", "unreachable_at": "2026-11-16T12:00:00Z"})
+        c.save(["slang/slang:12371", f"{REPO}:1"], [], {})
+
+        # An hour later: neither listed nor fetched, and still reported.
+        c = self.cache(NOW + timedelta(hours=1))
+        listed.clear()
+        self.assertEqual(c.plan_github([bad, good], {}, lister=lister), [])
+        self.assertEqual((listed, c.unreachable), ([REPO], ["slang/slang"]))
+
+        # A day later it is probed again; a repo that lists again is back in reach.
+        c = self.cache(NOW + timedelta(seconds=uc.UNREACHABLE_RETRY_S + 60))
+        listed.clear()
+        c.plan_github([bad, good], {}, lister=lambda repo, since: listed.append(repo) or set())
+        self.assertEqual((sorted(listed), c.unreachable), ([REPO, "slang/slang"], []))
+        self.assertNotIn("unreachable_at", c.repos["slang/slang"])
+
+    def test_every_listing_refused_is_a_sync_error_not_unreachable(self):
+        # A dead token refuses every repo at once: no repo is marked out of reach.
+        c = self.cache()
+        for repo in (REPO, "acme/gadget"):
+            c.repos[repo] = {"synced_at": "2026-11-16T11:00:00Z"}
+        other = {"thread": "gh-issue-acme/gadget-2", "repo": "acme/gadget", "issue": 2, "sessions": []}
+        c.plan_github([thread(1, []), other], {}, lister=lambda *_: uc.UNREACHABLE)
+        self.assertEqual((sorted(c.sync_errors), c.unreachable), (["acme/gadget", REPO], []))
+        self.assertNotIn("unreachable_at", c.repos[REPO])
+
+    def test_list_changed_tells_a_refused_repo_from_a_failed_call(self):
+        def gh(stderr, rc=1, stdout=""):
+            return lambda *a, **k: subprocess.CompletedProcess(a, rc, stdout=stdout, stderr=stderr)
+
+        with mock.patch.object(uc.subprocess, "run", gh("gh: Bad credentials (HTTP 401)\n")):
+            self.assertIs(uc.list_changed(REPO, "x"), uc.UNREACHABLE)
+        with mock.patch.object(uc.subprocess, "run", gh("gh: Not Found (HTTP 404)\n")):
+            self.assertIs(uc.list_changed(REPO, "x"), uc.UNREACHABLE)
+        with mock.patch.object(uc.subprocess, "run", gh("gh: API rate limit exceeded (HTTP 403)\n")):
+            self.assertIsNone(uc.list_changed(REPO, "x"))
+        with mock.patch.object(uc.subprocess, "run", gh("gh: Server Error (HTTP 502)\n")):
+            self.assertIsNone(uc.list_changed(REPO, "x"))
+        with mock.patch.object(uc.subprocess, "run", gh("", rc=0, stdout='[7, ""]\n')):
+            self.assertEqual(uc.list_changed(REPO, "x"), {7})
 
     def test_body_refs(self):
         body = "Fixes #12, see other/repo#99 and https://github.com/acme/widget/issues/34 and /pull/x#5"
