@@ -67,13 +67,15 @@ import {
 } from '../../db/critique-escalations.js';
 import { deletePendingApproval, getPendingApprovalsByAction } from '../../db/sessions.js';
 import { log } from '../../log.js';
-import { sessionDir } from '../../session-manager.js';
+import { sessionDir, withExistingMailboxSession } from '../../session-manager.js';
 import type { Session } from '../../types.js';
 import {
   notifyAgent,
+  notifyAgentWithId,
   registerApprovalHandler,
   registerApprovalResolvedHandler,
   requestApproval,
+  systemMessageId,
 } from '../approvals/index.js';
 
 import { classifyEscalation, isSelfHealable, namedStage, selfHealDirective, type EscalationClass } from './classify.js';
@@ -88,12 +90,22 @@ function envInt(name: string, fallback: number): number {
 /** Self-heal nudges before a human is asked. */
 const MAX_SELF_HEAL_ATTEMPTS = envInt('CRITIQUE_SELF_HEAL_ATTEMPTS', 3);
 /**
- * Gap between nudges. The sweep runs far more often than an agent can complete
- * a critique round, so without a cooldown the attempt budget would burn in
- * three consecutive sweeps and every escalation would reach a human in
- * minutes — reintroducing the noise this module exists to remove.
+ * How long the agent has to answer a nudge, counted from when its runner
+ * received the nudge (not when the host queued it), before the next nudge or,
+ * after the last one, the card. The sweep runs far more often than an agent
+ * can complete a critique round, so without this window the attempt budget
+ * would burn in three consecutive sweeps and every escalation would reach a
+ * human in minutes — reintroducing the noise this module exists to remove.
  */
 const SELF_HEAL_COOLDOWN_SECS = envInt('CRITIQUE_SELF_HEAL_COOLDOWN_SECS', 600);
+/**
+ * How long a nudge may wait undelivered before the host stops waiting and
+ * cards a human. A runner whose provider ends its query on a follow-up
+ * (OpenCode, Codex, Pi) reads a message only after the running turn ends, and
+ * a fixer turn with a full test run takes half an hour or more; a nudge still
+ * undelivered after an hour means the session is stuck, which a human must see.
+ */
+const SELF_HEAL_UNDELIVERED_SECS = envInt('CRITIQUE_SELF_HEAL_UNDELIVERED_SECS', 3600);
 /** How long an admin-approved bypass stays usable before it must be re-asked. */
 const BYPASS_TTL_SECS = envInt('CRITIQUE_BYPASS_TTL_SECS', 3600);
 /**
@@ -132,6 +144,12 @@ interface EscalationFile {
   approval_id?: string | null;
   self_heal_at?: string;
   self_heal_attempts?: number;
+  /** Inbound message id of the latest nudge, to see when the runner claims it. */
+  self_heal_msg_id?: string;
+  /** When the sweep first saw the latest nudge claimed by the runner. */
+  self_heal_delivered_at?: string;
+  /** How many nudges the runner has claimed. */
+  self_heal_delivered?: number;
   failed_open_recorded?: boolean;
   resolved?: string;
   resolved_by?: string;
@@ -1007,37 +1025,65 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   const cls = esc.class ?? classifyEscalation(reason);
   const attempts = esc.self_heal_attempts ?? 0;
 
-  // ── 5. Self-heal: drive the agent to run the critique. Gate stays SHUT.
-  if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS) {
-    const lastNudgeMs = esc.self_heal_at ? Date.parse(esc.self_heal_at) : NaN;
-    if (Number.isFinite(lastNudgeMs) && Date.now() - lastNudgeMs < SELF_HEAL_COOLDOWN_SECS * 1000) {
-      return; // Nudged recently — give the agent time to actually comply.
-    }
+  // ── 5. The agent is still inside its window to answer the last nudge — which
+  // also holds the card after the final nudge, so the last ask gets the same
+  // time as the others.
+  const window = isSelfHealable(cls) && attempts > 0 ? await nudgeWindow(session, esc, dirOverride) : 'over';
+  if (window === 'open') return;
+
+  // ── 6. Self-heal: drive the agent to run the critique. Gate stays SHUT.
+  if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS && window !== 'undelivered') {
     const attempt = attempts + 1;
+    // The nudge's id is stored with the attempt, before the send: if the send
+    // fails, the attempt waits on its own (undelivered) id, not on the previous
+    // nudge's expired window.
+    const msgId = systemMessageId();
     patchEscalationFile(
       session,
-      { class: cls, self_heal_at: new Date().toISOString(), self_heal_attempts: attempt },
+      {
+        class: cls,
+        self_heal_at: new Date().toISOString(),
+        self_heal_attempts: attempt,
+        self_heal_msg_id: msgId,
+        self_heal_delivered_at: null,
+      },
       dirOverride,
     );
     await record(session, { ...esc, class: cls }, 'self_heal', { attempt });
-    await notifyAgent(session, selfHealDirective({ cls, reason, hit, attempt, maxAttempts: MAX_SELF_HEAL_ATTEMPTS }));
+    await notifyAgentWithId(
+      session,
+      selfHealDirective({ cls, reason, hit, attempt, maxAttempts: MAX_SELF_HEAL_ATTEMPTS }),
+      msgId,
+    );
     log.info('Critique-gate self-heal nudge', { sessionId: session.id, cls, attempt, reason });
     return;
   }
 
-  // ── 6. Human decision required: a failed critique, or self-heal exhausted.
+  // ── 7. Human decision required: a failed critique, self-heal exhausted, or
+  // a nudge the runner never claimed.
   const pr = await lookupPrForSession(session.id);
   const target = pr ? `${pr.repo}#${pr.pr_number}` : (session.thread_id ?? 'no PR mapped');
   const prUrl = pr ? `https://github.com/${pr.repo}/pull/${pr.pr_number}` : null;
-  const exhausted = isSelfHealable(cls) && attempts >= MAX_SELF_HEAL_ATTEMPTS;
-  const title = exhausted
-    ? `Critique gate — ${target}: agent could not self-heal`
-    : `Critique gate — ${target}: critique returned must-fix`;
+  const exhausted = isSelfHealable(cls) && (attempts >= MAX_SELF_HEAL_ATTEMPTS || window === 'undelivered');
+  const title =
+    window === 'undelivered'
+      ? `Critique gate — ${target}: agent did not receive the critique nudge`
+      : exhausted
+        ? `Critique gate — ${target}: agent could not self-heal`
+        : `Critique gate — ${target}: critique returned must-fix`;
+  const delivered = esc.self_heal_delivered ?? 0;
+  // An escalation raised before nudge ids were kept has no delivery count.
+  const asked = esc.self_heal_msg_id
+    ? `received ${delivered} of ${attempts} nudge(s)`
+    : `was nudged ${attempts} time(s)`;
+  const queuedMins = esc.self_heal_at ? Math.round((Date.now() - Date.parse(esc.self_heal_at)) / 60_000) : null;
 
   const question = [
-    exhausted
-      ? `**${session.agent_group_id}** was asked ${attempts} time(s) to run the critique and has not, so its ${hit} is still blocked.`
-      : `**${session.agent_group_id}** ran the critique and it returned **must-fix**, then tried to ${hit} anyway.`,
+    window === 'undelivered'
+      ? `**${session.agent_group_id}** was nudged ${attempts} time(s) to run the critique; its runner has received ${delivered}. The latest nudge has waited ${queuedMins ?? '?'} min undelivered — the session may be stuck in one turn. Its ${hit} is still blocked.`
+      : exhausted
+        ? `**${session.agent_group_id}** ${asked} to run the critique, had ${Math.round(SELF_HEAL_COOLDOWN_SECS / 60)} min after each, and has not recorded one, so its ${hit} is still blocked.`
+        : `**${session.agent_group_id}** ran the critique and it returned **must-fix**, then tried to ${hit} anyway.`,
     ``,
     `- **Target:** ${prUrl ?? target}`,
     `- **Session:** \`${session.id}\``,
@@ -1064,6 +1110,7 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
       class: cls,
       denials: esc.denials ?? null,
       selfHealAttempts: attempts,
+      selfHealDelivered: delivered,
       requestedAt: esc.requested_at ?? null,
     },
     title,
@@ -1085,6 +1132,63 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
     cls,
     target,
     exhaustedSelfHeal: exhausted,
+    nudgeUndelivered: window === 'undelivered',
     reason,
   });
+}
+
+/**
+ * Where the agent stands on the latest self-heal nudge:
+ *
+ * - 'open': it is still inside its SELF_HEAL_COOLDOWN_SECS window, or the
+ *   runner has not claimed the nudge yet;
+ * - 'over': the window passed without a recorded critique round;
+ * - 'undelivered': the nudge waited SELF_HEAL_UNDELIVERED_SECS unclaimed.
+ *
+ * The window starts when the runner claims the nudge (a processing_ack row),
+ * because a provider that ends its query on a follow-up reads the nudge only
+ * after its running turn ends. Timing from the queue instead let #14530's
+ * nudges 2 and 3 expire unread while the agent finished a 27-minute turn. The
+ * sweep stamps the first time it sees the claim, so the window is accurate to
+ * one sweep interval. An escalation file without a message id (written before
+ * ids were kept, or if the notify failed) times the window from the queue.
+ */
+async function nudgeWindow(
+  session: Session,
+  esc: EscalationFile,
+  dirOverride?: string,
+): Promise<'open' | 'over' | 'undelivered'> {
+  const now = Date.now();
+  const windowMs = SELF_HEAL_COOLDOWN_SECS * 1000;
+  const queuedMs = esc.self_heal_at ? Date.parse(esc.self_heal_at) : NaN;
+  if (!esc.self_heal_msg_id) return Number.isFinite(queuedMs) && now - queuedMs < windowMs ? 'open' : 'over';
+
+  let deliveredMs = esc.self_heal_delivered_at ? Date.parse(esc.self_heal_delivered_at) : NaN;
+  if (!Number.isFinite(deliveredMs)) {
+    if (!(await nudgeClaimed(session, esc.self_heal_msg_id))) {
+      return Number.isFinite(queuedMs) && now - queuedMs >= SELF_HEAL_UNDELIVERED_SECS * 1000 ? 'undelivered' : 'open';
+    }
+    deliveredMs = now;
+    esc.self_heal_delivered_at = new Date(now).toISOString();
+    esc.self_heal_delivered = (esc.self_heal_delivered ?? 0) + 1;
+    patchEscalationFile(
+      session,
+      { self_heal_delivered_at: esc.self_heal_delivered_at, self_heal_delivered: esc.self_heal_delivered },
+      dirOverride,
+    );
+  }
+  return now - deliveredMs < windowMs ? 'open' : 'over';
+}
+
+/**
+ * Has the session's runner claimed the inbound message `msgId`? A
+ * processing_ack row of any status means the runner took it into a turn. A
+ * mailbox that cannot report acks counts as claimed, which keeps the
+ * queue-time behavior rather than holding the escalation forever.
+ */
+async function nudgeClaimed(session: Session, msgId: string): Promise<boolean> {
+  const acked = await withExistingMailboxSession(session.agent_group_id, session.id, (mailbox) =>
+    mailbox.getAckedMessageIds?.([msgId]),
+  );
+  return acked ? acked.has(msgId) : true;
 }
