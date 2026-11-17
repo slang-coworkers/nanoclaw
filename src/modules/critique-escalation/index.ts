@@ -81,6 +81,7 @@ import {
   classifyEscalation,
   criticRetryDirective,
   isSelfHealable,
+  namedStage,
   selfHealDirective,
   type EscalationClass,
 } from './classify.js';
@@ -548,30 +549,42 @@ async function pendingCardFor(sessionId: string): Promise<{ approval_id: string 
 
 /**
  * Has the underlying requirement been satisfied since the escalation was
- * raised? A critique round recorded after `requested_at` means the agent did
- * the thing the gate was asking for, so the escalation — and any card raised
- * for it — is moot.
+ * raised? A critique round of the stage the denial named, recorded after
+ * `requested_at`, means the agent did the thing the gate was asking for, so
+ * the escalation — and any card raised for it — is moot. For a must-fix
+ * denial the round must also return approve. A round of another stage does
+ * not clear it.
  *
  * This check was missing entirely: nothing retracted a card when its cause
  * disappeared, so cards accumulated as permanent queue residue. One of prod's
  * two outstanding cards on 2026-08-05 was in exactly this state — its session
  * had recorded an OUTPUT_REVIEW approve 37 minutes after the card went out.
  *
- * The round comes from the append-only attempts journal first, because
- * workflow-state.json is task state: workflow-state-reset.sh rewrites it when a
- * new task starts, and a reset that lands between two sweeps erases the round
- * before the host sees it. `last_critique_at` in the state stays as a second
- * source for a container that predates the journal.
+ * The rounds come from the attempts journal, because workflow-state.json is
+ * task state: workflow-state-reset.sh rewrites it when a new task starts, and a
+ * reset that lands between two sweeps erases the round before the host sees
+ * it. A container that predates the journal writes none; for it the state's
+ * `last_critique_at`, which carries no stage, is the only evidence.
  */
 export function isRequirementCleared(session: Session, esc: EscalationFile, dirOverride?: string): boolean {
   const requestedAt = esc.requested_at ?? 0;
   if (!requestedAt) return false;
-  const times = readCritiqueAttempts(session, dirOverride)
-    .filter((a) => a.event === 'round')
-    .map((a) => a.atMs);
+  const after = (ms: number): boolean => Number.isFinite(ms) && Math.floor(ms / 1000) > requestedAt;
+  const reason = typeof esc.reason === 'string' ? esc.reason : '';
+  const stage = namedStage(reason);
+  const needApprove = classifyEscalation(reason) === 'failed';
+  const journal = readCritiqueAttempts(session, dirOverride);
+  if (journal.length > 0) {
+    return journal.some(
+      (a) =>
+        a.event === 'round' &&
+        after(a.atMs) &&
+        (stage === null || a.stage === stage) &&
+        (!needApprove || a.verdict === 'approve'),
+    );
+  }
   const last = readWorkflowState(session, dirOverride).last_critique_at;
-  if (typeof last === 'string') times.push(Date.parse(last));
-  return times.some((ms) => Number.isFinite(ms) && Math.floor(ms / 1000) > requestedAt);
+  return typeof last === 'string' && after(Date.parse(last));
 }
 
 /** One line of the container's critique-attempts journal. */
@@ -582,8 +595,14 @@ export interface CritiqueAttempt {
    */
   event: string;
   atMs: number;
+  /** The stage the round covered ('' when unknown). */
+  stage: string;
+  /** The round's verdict ('' when none was parsed). */
+  verdict: string;
   /** The bridge's error text, on a failure. */
   error: string;
+  /** The codex call this line belongs to (the bridge's tool_use_id); '' when unknown. */
+  call: string;
 }
 
 /**
@@ -592,6 +611,8 @@ export interface CritiqueAttempt {
  * holds every attempt an open escalation can care about.
  */
 const ATTEMPTS_TAIL_BYTES = 256 * 1024;
+/** How far ahead of the host clock a journal line may be dated (container clock skew). */
+const JOURNAL_CLOCK_SKEW_MS = 5 * 60_000;
 
 /**
  * Read the tail of the session's critique-attempts journal
@@ -619,17 +640,29 @@ export function readCritiqueAttempts(session: Session, dirOverride?: string): Cr
     return []; // No journal yet.
   }
   const attempts: CritiqueAttempt[] = [];
+  const latestMs = Date.now() + JOURNAL_CLOCK_SKEW_MS;
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '');
   for (const line of text.split('\n')) {
     if (!line.trim()) continue;
-    let raw: Record<string, unknown>;
+    let parsed: unknown;
     try {
-      raw = JSON.parse(line) as Record<string, unknown>;
+      parsed = JSON.parse(line);
     } catch {
       continue;
     }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+    const raw = parsed as Record<string, unknown>;
     const atMs = typeof raw.at === 'string' ? Date.parse(raw.at) : NaN;
-    if (typeof raw.event !== 'string' || !Number.isFinite(atMs)) continue;
-    attempts.push({ event: raw.event, atMs, error: typeof raw.error === 'string' ? raw.error : '' });
+    // A future time is not a record of something that happened.
+    if (typeof raw.event !== 'string' || !Number.isFinite(atMs) || atMs > latestMs) continue;
+    attempts.push({
+      event: raw.event,
+      atMs,
+      stage: str(raw.stage),
+      verdict: str(raw.verdict),
+      error: str(raw.error),
+      call: str(raw.call),
+    });
   }
   return attempts;
 }

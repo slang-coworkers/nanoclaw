@@ -523,6 +523,34 @@ describe('auto-retraction', () => {
     expect(notifyAgentMock).not.toHaveBeenCalled();
   });
 
+  it('clears only from a round of the stage the denial named, and an approve for a must-fix', () => {
+    const at = (iso: string): number => Date.parse(iso) / 1000;
+    const journal = (lines: object[]): void =>
+      fs.writeFileSync(
+        path.join(dir, 'critique-attempts.jsonl'),
+        lines.map((l) => JSON.stringify(l)).join('\n') + '\n',
+      );
+    const missing = { requested_at: at('2026-11-17T15:40:10Z'), reason: 'missing critique stages: PLAN_REVIEW' };
+    journal([{ at: '2026-11-17T15:45:00Z', event: 'round', stage: 'CODE_REVIEW', verdict: 'approve' }]);
+    expect(isRequirementCleared(session, missing, dir)).toBe(false);
+
+    const mustFix = { requested_at: at('2026-11-17T15:40:10Z'), reason: REASON_FAILED };
+    journal([{ at: '2026-11-17T15:45:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'must-fix' }]);
+    expect(isRequirementCleared(session, mustFix, dir)).toBe(false);
+    journal([{ at: '2026-11-17T15:46:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'approve' }]);
+    expect(isRequirementCleared(session, mustFix, dir)).toBe(true);
+  });
+
+  it('ignores journal lines that are not objects or are dated in the future', () => {
+    writeState({});
+    const future = new Date(Date.now() + 3_600_000).toISOString();
+    fs.writeFileSync(
+      path.join(dir, 'critique-attempts.jsonl'),
+      ['null', '[1]', '"x"', JSON.stringify({ at: future, event: 'round', stage: 'OUTPUT_REVIEW' }), ''].join('\n'),
+    );
+    expect(isRequirementCleared(session, { requested_at: 1785932550, reason: REASON_MISSING }, dir)).toBe(false);
+  });
+
   it('skips torn journal lines and reads only round events as rounds', () => {
     writeState({});
     fs.writeFileSync(
