@@ -359,11 +359,69 @@ export function criticModel(env: NodeJS.ProcessEnv = process.env): string | unde
   return env.NANOCLAW_CRITIC_MODEL || env.CODEX_MODEL || undefined;
 }
 
+/** Codex config keys that choose the model, or the provider that serves it. */
+const MODEL_CHOOSING_CONFIG_KEYS = [
+  'model',
+  'review_model',
+  'model_provider',
+  'model_providers',
+  'profile',
+  'profiles',
+];
+
+/**
+ * Return why a `codex` call may not run in this container, or undefined when it may.
+ *
+ * In an open-weights group (NANOCLAW_MODEL_WEIGHTS=open) the host's model policy fixes the
+ * critic model (NANOCLAW_CRITIC_MODEL), and the gateway refuses every closed model. A caller
+ * that names another model, directly or through a model-choosing `config` key, would only get
+ * six refused retries and a failed critique. On prod the GLM fixer passed `model: "gpt-5.2"`,
+ * the example in this tool's own schema. So the bridge refuses such a call at once and names
+ * the critic model; a group that is not open keeps the free choice codex has always offered.
+ */
+export function openWeightsModelError(
+  args: Pick<CodexToolArgs, 'model' | 'config'>,
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  if (env.NANOCLAW_MODEL_WEIGHTS !== 'open') return undefined;
+  const critic = criticModel(env);
+  const chosen: string[] = [];
+  if (args.model && args.model !== critic) chosen.push(`model "${args.model}"`);
+  for (const key of Object.keys(args.config ?? {})) {
+    if (MODEL_CHOOSING_CONFIG_KEYS.some((k) => key === k || key.startsWith(`${k}.`))) chosen.push(`config.${key}`);
+  }
+  if (chosen.length === 0) return undefined;
+  return (
+    `codex: this group runs open-weights models only, so its critic model is fixed` +
+    `${critic ? ` at ${critic}` : ''}; leave out ${chosen.join(' and ')}.`
+  );
+}
+
+/**
+ * Return the `codex` tool as this container advertises it. In an open-weights group the
+ * `model` field says that the critic model is fixed, instead of suggesting closed models;
+ * every other group gets the codex 0.153.4 schema unchanged.
+ */
+export function codexToolFor(env: NodeJS.ProcessEnv = process.env): typeof CODEX_TOOL {
+  if (env.NANOCLAW_MODEL_WEIGHTS !== 'open') return CODEX_TOOL;
+  const critic = criticModel(env);
+  const model = {
+    type: 'string',
+    description: `Leave unset. This group runs open-weights models only; the critic model is fixed${critic ? ` at ${critic}` : ''}.`,
+  };
+  return {
+    ...CODEX_TOOL,
+    inputSchema: { ...CODEX_TOOL.inputSchema, properties: { ...CODEX_TOOL.inputSchema.properties, model } },
+  } as unknown as typeof CODEX_TOOL;
+}
+
 export async function handleCodex(
   args: CodexToolArgs,
   onActivity?: () => void,
 ): Promise<{ threadId: string; text: string }> {
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim()) throw new Error('codex: `prompt` is required');
+  const refused = openWeightsModelError(args);
+  if (refused) throw new Error(refused);
   const overrides = [...runnerOverrides(), ...configToOverrides(args.config)];
   if (args.model) overrides.push(`model=${tomlBasicString(args.model)}`);
   const cwd = args.cwd || process.env.CODEX_MCP_CWD || process.cwd();
@@ -522,7 +580,7 @@ export function codexToolResult(r: { threadId: string; text: string }): {
 
 export function createBridgeServer(): Server {
   const server = new Server({ name: 'codex-mcp-bridge', version: '1.0.0' }, { capabilities: { tools: {} } });
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [CODEX_TOOL, CODEX_REPLY_TOOL] }));
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [codexToolFor(), CODEX_REPLY_TOOL] }));
   server.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
     const name = req.params.name;
     const raw = (req.params.arguments ?? {}) as Record<string, unknown>;
