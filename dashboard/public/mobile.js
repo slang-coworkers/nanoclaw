@@ -432,9 +432,21 @@ function renderCwList() {
     cwState.types = 'loading';
     fetch('/api/types').then(r => r.ok ? r.json() : {}).then(t => { cwState.types = t; renderCwList(); }).catch(() => { cwState.types = {}; });
   }
-  const coworkers = getCwCoworkers();
-  if (coworkers.length === 0) {
+  const allCoworkers = getCwCoworkers();
+  const filterEl = document.getElementById('m-cw-wt-filter');
+  if (allCoworkers.length === 0) {
+    if (filterEl) filterEl.innerHTML = '';
     list.innerHTML = '<div class="m-cw-empty">No coworkers yet.</div>';
+    return;
+  }
+  // Open/closed weights filter (weights.js), stored separately from the desktop sidebar's.
+  const weightsFilter = NanoclawWeights.loadFilter('mobile-coworkers');
+  if (filterEl) {
+    filterEl.innerHTML = NanoclawWeights.filterBar('mobile-coworkers', weightsFilter, allCoworkers.map(c => c.weights));
+  }
+  const coworkers = allCoworkers.filter(c => NanoclawWeights.matches(c.weights, weightsFilter));
+  if (coworkers.length === 0) {
+    list.innerHTML = `<div class="m-cw-empty">No ${esc(weightsFilter)}-weights coworkers.</div>`;
     return;
   }
   const statusPriority = { working: 0, active: 1, thinking: 2, error: 3, idle: 4 };
@@ -458,7 +470,7 @@ function renderCwList() {
     return `<div class="m-cw-item${selected}" data-folder="${escAttr(cw.folder)}">
       <div class="m-cw-dot ${cw.status}"></div>
       <div class="m-cw-info">
-        <div class="m-cw-name">${label}</div>
+        <div class="m-cw-name">${label}${NanoclawWeights.pill(cw.weights, cw.effectiveProvider)}</div>
         <div class="m-cw-meta">${esc(meta)}</div>
       </div>
       <div class="m-cw-badges">
@@ -475,6 +487,8 @@ function renderCwList() {
     });
   });
 }
+
+NanoclawWeights.register('mobile-coworkers', () => renderCwList());
 
 function selectCoworker(folder) {
   cwState.selected = folder;
@@ -498,6 +512,8 @@ function updateChatHeader() {
   const cw = getCwCoworkers().find(c => c.folder === cwState.selected);
   if (!cw) return;
   document.getElementById('m-chat-name').textContent = cw.name;
+  const weightsEl = document.getElementById('m-chat-weights');
+  if (weightsEl) weightsEl.innerHTML = NanoclawWeights.pill(cw.weights, cw.effectiveProvider);
   const badge = document.getElementById('m-chat-status');
   const [color] = getStatusConfig(cw.status);
   badge.textContent = cw.status;

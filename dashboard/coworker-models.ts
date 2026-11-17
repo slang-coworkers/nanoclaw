@@ -16,7 +16,14 @@ import {
   type ModelPolicyRow,
   type ModelRole,
   type ModelWeights,
+  type ResolvedModels,
 } from '../src/model-policy.js';
+import {
+  rowForPrivilege,
+  sessionPrivilegeOf,
+  type PrivilegeSettings,
+  type SessionPrivilege,
+} from '../src/modules/session-privilege/index.js';
 import { resolveProviderName } from '../src/providers/provider-name.js';
 
 export interface CoworkerModelRole {
@@ -45,26 +52,39 @@ export interface CoworkerGroupRow {
 export type CoworkerConfigRow = ModelPolicyRow & { provider?: string | null };
 
 /**
- * Resolve the model card of one group from its rows. The provider follows the
- * spawn rule without a session pin: the group's provider, else its container
- * config's, else Claude.
+ * Resolve the provider and the four role models of one group (or one of its
+ * sessions) with spawn's own rules: the session pin, else the group's
+ * provider, else its container config's, else the install default. The model
+ * card and the weights badge both go through here, so they cannot disagree.
+ */
+function resolveCoworker(
+  group: CoworkerGroupRow,
+  config: CoworkerConfigRow | undefined,
+  sessionPin: string | null | undefined,
+  env: NodeJS.ProcessEnv,
+): ResolvedModels {
+  const row = config ?? {};
+  const provider = resolveProviderName({
+    override: undefined,
+    session: sessionPin,
+    group: group.agent_provider,
+    config: row.provider,
+  });
+  return resolveGroupModels(provider, row, env);
+}
+
+/**
+ * Resolve the model card of one group from its rows, without a session pin.
  */
 export function coworkerModels(
   group: CoworkerGroupRow,
   config: CoworkerConfigRow | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): CoworkerModels {
-  const row = config ?? {};
-  const provider = resolveProviderName({
-    override: undefined,
-    session: undefined,
-    group: group.agent_provider,
-    config: row.provider,
-  });
-  const models = resolveGroupModels(provider, row, env);
+  const models = resolveCoworker(group, config, undefined, env);
   return {
     folder: group.folder,
-    provider,
+    provider: models.provider,
     weights: models.weights,
     roles: MODEL_ROLES.map((role) => ({
       role,
@@ -72,5 +92,63 @@ export function coworkerModels(
       openWeights: isOpenWeightsRole(models, role, env),
     })),
     problems: modelPolicyViolations(models, env),
+  };
+}
+
+/**
+ * Which kind of models a coworker or session may call, for the dashboard's
+ * colour badge. It is `open` when the resolved policy is `weights=open`,
+ * because spawn then starts only open-weights models and refuses the rest
+ * (the model card names why). Under `weights=any` it is `open` when every role
+ * that has a model is open-weights, and `closed` otherwise: one closed critic
+ * makes the whole coworker `closed`, because the gateway sees that call too.
+ */
+export type WeightsClass = 'open' | 'closed';
+
+export interface WeightsBadge {
+  /** The provider the next container of this group or session runs on. */
+  effectiveProvider: string;
+  weights: WeightsClass;
+}
+
+/** The `sessions` columns that change what one session runs. */
+export interface BadgeSessionRow {
+  /** The session's provider pin, which outranks the group's provider. */
+  agent_provider: string | null;
+  /** Absent on a DB from before the column existed, which sessionPrivilegeOf reads as `open`. */
+  privilege?: SessionPrivilege | null;
+}
+
+/**
+ * Resolve the weights badge of a group, or of one of its sessions when
+ * `session` is given, with spawn's own steps: the session's provider pin
+ * (resolveProviderName), then its privilege applied to the group's row
+ * (rowForPrivilege), then the role models (resolveGroupModels).
+ *
+ * Consider an OpenCode group with `weights=open` and two sessions. One has
+ * `agent_provider = 'claude'`: its badge names `claude`, and stays `open`,
+ * because spawn refuses the Claude provider under `weights=open`. The other is
+ * a `closed` privilege session while privilege enforcement is on: spawn drops
+ * the open rule for it, so it is `closed` once any of its models is closed.
+ */
+export function weightsBadge(
+  group: CoworkerGroupRow,
+  config: CoworkerConfigRow | undefined,
+  session: BadgeSessionRow | null,
+  env: NodeJS.ProcessEnv = process.env,
+  privilegeSettings?: PrivilegeSettings,
+): WeightsBadge {
+  const row = config ?? {};
+  // rowForPrivilege changes only the policy columns, so the row keeps its
+  // provider; without `privilegeSettings` it reads the install's own.
+  const sessionRow = session
+    ? { ...row, ...rowForPrivilege(row, sessionPrivilegeOf(session), privilegeSettings) }
+    : row;
+  const models = resolveCoworker(group, sessionRow, session?.agent_provider, env);
+  const open = MODEL_ROLES.map((role) => isOpenWeightsRole(models, role, env)).filter((o) => o !== null);
+  const allOpen = open.length > 0 && open.every(Boolean);
+  return {
+    effectiveProvider: models.provider,
+    weights: models.weights === 'open' || allOpen ? 'open' : 'closed',
   };
 }

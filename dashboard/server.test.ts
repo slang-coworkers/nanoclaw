@@ -3908,3 +3908,123 @@ describe('/api/sessions — cost totals (dash-6)', () => {
     if (!data.costTotals.available) expect(data.costTotals.ccusageTotalUsd).toBe(0);
   });
 });
+
+describe('open/closed weights badge on coworkers and sessions', () => {
+  // Spawn resolves a session's provider from its pin, then its group, then the
+  // group's container config, then the default (coworker-models.ts
+  // weightsBadge). The coworker list, the admin session table and the chat
+  // session list all carry that same answer.
+  const FOLDERS = ['weights-probe-oc', 'weights-probe-cl'];
+  const ENV: Record<string, string | undefined> = {
+    ANTHROPIC_MODEL: 'aws/anthropic/bedrock-claude-opus-5-5',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: 'aws/anthropic/bedrock-claude-haiku-5-5',
+    CODEX_MODEL: 'nvidia/moonshotai/kimi-k3',
+    OPENCODE_PROVIDER: 'openai',
+    OPENCODE_MODEL: 'openai/nvidia/zai-org/glm-5.3',
+    OPENCODE_SMALL_MODEL: 'openai/nvidia/zai-org/glm-5.3-flash',
+    INTENT_ROUTER_OPENAI_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+    NANOCLAW_DEFAULT_MODEL: undefined,
+    NANOCLAW_OPEN_WEIGHTS_PREFIXES: undefined,
+    NANOCLAW_SESSION_PRIVILEGE: undefined,
+  };
+  const saved: Record<string, string | undefined> = {};
+
+  beforeEach(() => {
+    for (const [k, v] of Object.entries(ENV)) {
+      saved[k] = process.env[k];
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    for (const f of FOLDERS) mkdirSync(path.join(GROUPS_DIR, f), { recursive: true });
+  });
+
+  afterEach(() => {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+    for (const f of FOLDERS) rmSync(path.join(GROUPS_DIR, f), { recursive: true, force: true });
+  });
+
+  it('carries effective provider and class per group and per session, the session pin first', async () => {
+    const db = createDashboardTestDb();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS container_configs (
+        agent_group_id TEXT PRIMARY KEY, provider TEXT, model TEXT, small_model TEXT,
+        router_model TEXT, critic_model TEXT, weights TEXT
+      );
+    `);
+    const now = new Date().toISOString();
+    const group = db.prepare(
+      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, routing, created_at)
+       VALUES (?, ?, ?, 0, ?, 'direct', ?)`,
+    );
+    // The OpenCode group takes its provider from its container config, not its own row.
+    group.run('ag-wt-oc', 'Weights OC', 'weights-probe-oc', null, now);
+    group.run('ag-wt-cl', 'Weights CL', 'weights-probe-cl', null, now);
+    db.prepare(`INSERT INTO container_configs (agent_group_id, provider) VALUES ('ag-wt-oc', 'opencode')`).run();
+    const session = db.prepare(
+      `INSERT INTO sessions (id, agent_group_id, thread_id, status, agent_provider, created_at)
+       VALUES (?, ?, NULL, 'active', ?, ?)`,
+    );
+    session.run('sess-wt-oc', 'ag-wt-oc', null, now);
+    session.run('sess-wt-pin', 'ag-wt-oc', 'claude', now);
+    session.run('sess-wt-cl', 'ag-wt-cl', null, now);
+    db.close();
+    forceOpenDbForTests();
+
+    const coworkers = await (await fetch(`${baseUrl}/api/coworkers`)).json();
+    const byFolder = (f: string) => coworkers.find((c: { folder: string }) => c.folder === f);
+    expect(byFolder('weights-probe-oc')).toMatchObject({ effectiveProvider: 'opencode', weights: 'open' });
+    expect(byFolder('weights-probe-cl')).toMatchObject({ effectiveProvider: 'claude', weights: 'closed' });
+
+    const { sessions } = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    const row = (id: string) => sessions.find((s: { session_id: string }) => s.session_id === id);
+    expect(row('sess-wt-oc')).toMatchObject({ effective_provider: 'opencode', weights: 'open' });
+    expect(row('sess-wt-pin')).toMatchObject({ effective_provider: 'claude', weights: 'closed' });
+    expect(row('sess-wt-cl')).toMatchObject({ effective_provider: 'claude', weights: 'closed' });
+    // The raw provider columns only feed the badge.
+    expect(row('sess-wt-pin')).not.toHaveProperty('session_agent_provider');
+    expect(row('sess-wt-pin')).not.toHaveProperty('group_agent_provider');
+
+    const parents = await (await fetch(`${baseUrl}/api/hook-events/sessions`)).json();
+    const parent = (id: string) => parents.find((p: { nanoclaw_session_id: string }) => p.nanoclaw_session_id === id);
+    expect(parent('sess-wt-oc')).toMatchObject({ effective_provider: 'opencode', weights: 'open' });
+    expect(parent('sess-wt-pin')).toMatchObject({ effective_provider: 'claude', weights: 'closed' });
+  });
+
+  it("applies a session's privilege as spawn does while enforcement is on", async () => {
+    process.env.NANOCLAW_SESSION_PRIVILEGE = 'enforce';
+    const db = createDashboardTestDb();
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS container_configs (
+        agent_group_id TEXT PRIMARY KEY, provider TEXT, model TEXT, small_model TEXT,
+        router_model TEXT, critic_model TEXT, weights TEXT
+      );
+    `);
+    const cols = db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>;
+    if (!cols.some((c) => c.name === 'privilege')) {
+      db.exec(`ALTER TABLE sessions ADD COLUMN privilege TEXT NOT NULL DEFAULT 'open'`);
+    }
+    const now = new Date().toISOString();
+    // A Claude group with weights=any: its open sessions run under weights=open
+    // (spawn refuses them, so they never call Claude), its closed ones run Claude.
+    db.prepare(
+      `INSERT INTO agent_groups (id, name, folder, is_admin, agent_provider, routing, created_at)
+       VALUES ('ag-wt-priv', 'Weights Priv', 'weights-probe-priv', 0, 'claude', 'direct', ?)`,
+    ).run(now);
+    const session = db.prepare(
+      `INSERT INTO sessions (id, agent_group_id, thread_id, status, privilege, created_at)
+       VALUES (?, 'ag-wt-priv', NULL, 'active', ?, ?)`,
+    );
+    session.run('sess-wt-open', 'open', now);
+    session.run('sess-wt-closed', 'closed', now);
+    db.close();
+    forceOpenDbForTests();
+
+    const { sessions } = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    const row = (id: string) => sessions.find((s: { session_id: string }) => s.session_id === id);
+    expect(row('sess-wt-open')).toMatchObject({ effective_provider: 'claude', weights: 'open' });
+    expect(row('sess-wt-closed')).toMatchObject({ effective_provider: 'claude', weights: 'closed' });
+  });
+});

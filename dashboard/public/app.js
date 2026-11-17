@@ -3069,6 +3069,7 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:nowrap;min-width:0">
         <span style="display:inline-block;width:${dotSize};height:${dotSize};border-radius:50%;background:${dotColor};flex-shrink:0" title="${escAttr(status)}"></span>
         ${a2aBadge}
+        ${weightsPillOf(sessionWeights(sess, cw.folder))}
         <span style="${titleStyle};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1${tid || isA2aSession(sess) ? ';cursor:pointer;text-decoration:underline dotted;text-underline-offset:2px' : ''}" title="${escAttr(sess.nanoclaw_session_id)}"${tid ? ` data-view-chat-session="${sid}" data-view-chat-thread="${tid}" data-view-chat-group="${escAttr(tgrp)}"` : isA2aSession(sess) ? ` data-view-chat-session="${sid}" data-view-session-direct="${sid}" data-view-chat-group="${escAttr(tgrp)}"` : ''}>${esc(primaryName)}</span>
         <span style="display:flex;gap:2px;flex-shrink:0">${actionBtns(sid, agid, tid, primaryName, sess)}</span>
       </div>
@@ -3095,15 +3096,23 @@ function renderActiveSessionBlock(cw, { wrapField = true } = {}) {
       </div>`;
     };
     const needsSearch = otherSessions.length > 8;
+    // One coworker's sessions share its class unless a session pins another
+    // provider or privilege, so the weights filter shows only when the list
+    // mixes classes, or when a stored filter hides rows and must stay undoable.
+    const otherClasses = otherSessions.map((m) => sessionWeights(m.nanoSess, cw.folder).weights);
+    const sessionsFilter = NanoclawWeights.loadFilter('coworker-sessions');
+    const showWeightsFilter = sessionsFilter !== 'all' || new Set(otherClasses).size > 1;
+    const shownOthers = otherSessions.filter((m, i) => NanoclawWeights.matches(otherClasses[i], sessionsFilter));
     const othersHtml =
       otherSessions.length === 0
         ? ''
         : `<div style="display:flex;align-items:center;gap:6px;margin:5px 0 3px">
         <div style="font-size:8px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.04em;flex:1">Other Sessions (${otherSessions.length})</div>
+        ${showWeightsFilter ? NanoclawWeights.filterBar('coworker-sessions', sessionsFilter, otherClasses) : ''}
         ${needsSearch ? `<input type="text" id="cw-other-session-search" placeholder="filter…" style="font-size:9px;padding:1px 4px;background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:3px;width:80px">` : ''}
       </div>
       <div id="cw-other-session-list" style="display:flex;flex-direction:column;gap:3px;margin-bottom:5px;max-height:280px;overflow-y:auto">
-        ${otherSessions.map((m) => renderRow(m)).join('')}
+        ${shownOthers.map((m) => renderRow(m)).join('')}
       </div>`;
     const hiddenHtml =
       hiddenMetas.length === 0
@@ -3273,7 +3282,7 @@ function renderPanelSessionHeader(folder, nanoSess, label) {
     .map((s) => {
       const name = sessionDisplayTitle(s) || String(s.nanoclaw_session_id || '').slice(0, 16);
       const sel = s.nanoclaw_session_id === nanoSess.nanoclaw_session_id ? ' selected' : '';
-      const text = `${running(s) ? '●' : '○'} ${sessionKindPrefix(s)}- ${name}`;
+      const text = `${running(s) ? '●' : '○'} ${sessionKindPrefix(s)}- ${name}${weightsOptionTag(sessionWeights(s, folder))}`;
       return `<option value="${escAttr(s.nanoclaw_session_id)}"${sel}>${esc(text)}</option>`;
     })
     .join('');
@@ -4656,7 +4665,7 @@ async function fetchCoworkerModels(folder) {
 }
 
 function renderModelCard(m) {
-  const head = `<div class="model-card-head">${esc(m.provider)}${m.weights === 'open' ? ' · open weights only' : ''}</div>`;
+  const head = `<div class="model-card-head">${weightsPillOf(coworkerWeights(m.folder))} ${esc(m.provider)}${m.weights === 'open' ? ' · open weights only' : ''}</div>`;
   const rows = m.roles
     .map((r) => {
       const badge =
@@ -5609,7 +5618,7 @@ function updateSessionSelector() {
     });
     coworkerEntries.sort((a, b) => b.latestMs - a.latestMs);
     for (const { folder, latestMs } of coworkerEntries) {
-      const label = latestMs ? `${folder} · last ${timeAgo(latestMs)}` : folder;
+      const label = `${latestMs ? `${folder} · last ${timeAgo(latestMs)}` : folder}${weightsOptionTag(coworkerWeights(folder))}`;
       cwHtml += `<option value="${escAttr(folder)}">${esc(label)}</option>`;
     }
     coworkerSel.innerHTML = cwHtml;
@@ -5639,7 +5648,7 @@ function updateSessionSelector() {
     const humanLabel = p.nanoclaw_session_id ? sessionDisplayTitle(p) : '';
     const keyLabel = p.nanoclaw_session_id ? sessionKeyLabel(p) : '';
     const parentLabel = p.nanoclaw_session_id
-      ? `${prefix}${humanLabel}${keyLabel && keyLabel !== humanLabel ? ` · key: ${keyLabel}` : ''} · ${parentTs} (${parentAgo}) · ${p.event_count_total} ev`
+      ? `${prefix}${humanLabel}${keyLabel && keyLabel !== humanLabel ? ` · key: ${keyLabel}` : ''} · ${parentTs} (${parentAgo}) · ${p.event_count_total} ev${weightsOptionTag(sessionWeights(p, p.group_folder))}`
       : `${prefix}(no active nanoclaw session)`;
     const parentTitle = p.nanoclaw_session_id ? p.nanoclaw_session_id : '';
     const parentVal = p.nanoclaw_session_id ? `nano:${p.agent_group_id}:${p.nanoclaw_session_id}` : '';
@@ -6939,6 +6948,15 @@ function renderAdminSessions() {
           .join('') +
         `</select>`
       : '';
+  // Open/closed weights filter, counted over the full unfiltered set like nStop.
+  const weightsFilter = NanoclawWeights.loadFilter('sessions');
+  const weightsBar =
+    `<span style="color:var(--text-muted);font-size:10px;margin-left:8px">Weights:</span>` +
+    NanoclawWeights.filterBar(
+      'sessions',
+      weightsFilter,
+      adminState.sessions.map((s) => s.weights),
+    );
   const controls =
     `<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">` +
     `<span style="color:var(--text-muted);font-size:10px">Cost window:</span>` +
@@ -6953,6 +6971,7 @@ function renderAdminSessions() {
     filterBtn('all', 'All') +
     filterBtn('stopped', '⚑ Stopped (needs decision)', nStop) +
     groupFilterSelect +
+    weightsBar +
     (costUnavailable
       ? `<span title="${escAttr(String(sessionsView.unavailable))}" style="color:#94A3B8;font-size:10px;margin-left:8px">cost: ccusage unavailable</span>`
       : '') +
@@ -6979,8 +6998,13 @@ function renderAdminSessions() {
   if (sessionsView.groupFilter !== 'all') {
     rows = rows.filter((s) => s.group_folder === sessionsView.groupFilter);
   }
+  rows = rows.filter((s) => NanoclawWeights.matches(s.weights, weightsFilter));
   if (rows.length === 0) {
-    const reason = groupFilterName ? `coworker "${esc(groupFilterName)}"` : `"${esc(sessionsView.filter)}"`;
+    const reason = groupFilterName
+      ? `coworker "${esc(groupFilterName)}"`
+      : weightsFilter !== 'all'
+        ? `"${esc(weightsFilter)} weights"`
+        : `"${esc(sessionsView.filter)}"`;
     el.innerHTML = controls + `<div class="admin-empty">No sessions match ${reason}</div>`;
     return;
   }
@@ -7071,7 +7095,7 @@ function renderAdminSessions() {
     const ghCell = renderGithubOriginCell(s);
     html += `<tr>
       <td style="color:var(--text-muted)">${i}</td>
-      <td>${esc(s.group_name || s.group_folder || '-')}</td>
+      <td>${esc(s.group_name || s.group_folder || '-')} ${NanoclawWeights.pill(s.weights, s.effective_provider)}</td>
       <td style="font-size:9px;color:var(--text-muted)">${sidCell}</td>
       <td style="font-size:10px;white-space:nowrap">${ghCell}</td>
       <td style="text-align:right">${costCell}</td>
@@ -7255,8 +7279,16 @@ function renderAdminGroups() {
     el.innerHTML = '<div class="admin-empty">No registered groups</div>';
     return;
   }
-  let html = '';
+  const weightsFilter = NanoclawWeights.loadFilter('groups');
+  const groupWeights = (g) => coworkerWeights(g.folder);
+  let html = `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px;font-size:10px"><span style="color:var(--text-muted)">Weights:</span>${NanoclawWeights.filterBar(
+    'groups',
+    weightsFilter,
+    adminState.groups.map((g) => groupWeights(g).weights),
+  )}</div>`;
   for (const g of adminState.groups) {
+    const w = groupWeights(g);
+    if (!NanoclawWeights.matches(w.weights, weightsFilter)) continue;
     const containerChip = g.containerRunning
       ? '<span class="admin-chip running">Running</span>'
       : '<span class="admin-chip stopped">Stopped</span>';
@@ -7278,7 +7310,7 @@ function renderAdminGroups() {
       ? ` <span style="color:var(--text-muted)">(${g.sessionCountReal} real / ${g.sessionCountA2a} a2a)</span>`
       : '';
     html += `<div class="admin-group-card">
-      <h4>${esc(g.name || g.folder)}${mainBadge} ${containerChip} ${updateChip}${staleBadge}</h4>
+      <h4>${esc(g.name || g.folder)} ${weightsPillOf(w)}${mainBadge} ${containerChip} ${updateChip}${staleBadge}</h4>
       <div class="admin-group-meta">
         <span>Folder: <strong>${esc(g.folder)}</strong></span>
         <span title="Lifetime nanoclaw sessions (real = webhook/dashboard; a2a = coworker-to-coworker delegation, usually the majority). Not the SDK transcript count.">Sessions: ${g.sessionCount || 0}${a2aSuffix}</span>
@@ -7921,10 +7953,54 @@ function getCwCoworkers() {
       allowedMcpTools: live?.allowedMcpTools || (g.allowed_mcp_tools ? JSON.parse(g.allowed_mcp_tools) : []),
       disallowedMcpTools: live?.disallowedMcpTools || [],
       overlays: live?.overlays || (g.overlays ? JSON.parse(g.overlays) : []),
+      weights: live?.weights ?? null,
+      effectiveProvider: live?.effectiveProvider ?? null,
     });
   }
   return coworkers;
 }
+
+// Open/closed weights. The server resolves every class with spawn's rules
+// (dashboard/coworker-models.ts weightsBadge) and weights.js draws the pill and
+// the filter, so these helpers only pick which class a panel shows.
+//
+// A coworker's class comes from the live state. A session row carries its own
+// class, which differs from its coworker's when the session pins a provider or
+// runs at another privilege; a row without one (an SDK session not yet routed
+// to a NanoClaw session) shows its coworker's class.
+function coworkerWeights(folder) {
+  const live = (state.coworkers || []).find((c) => c.folder === folder);
+  return { weights: live?.weights ?? null, provider: live?.effectiveProvider ?? null };
+}
+
+function sessionWeights(sess, folder) {
+  if (sess && sess.weights) return { weights: sess.weights, provider: sess.effective_provider ?? null };
+  return coworkerWeights(folder);
+}
+
+function weightsPillOf(w) {
+  return NanoclawWeights.pill(w.weights, w.provider);
+}
+
+// The word an <option> carries for its class, since an option cannot hold a pill.
+function weightsOptionTag(w) {
+  return w.weights ? ` [${w.weights}]` : '';
+}
+
+// Each list with a weights filter redraws itself when its filter changes; the
+// filter value itself is stored per view by weights.js.
+NanoclawWeights.register('sidebar', () => renderCwSidebar());
+NanoclawWeights.register('sessions', () => renderAdminSessions());
+NanoclawWeights.register('groups', () => renderAdminGroups());
+NanoclawWeights.register('coworker-cost', () => {
+  const el = document.getElementById('metrics-tokens-content');
+  if (el && metricsState.tokenData) renderMetricsTokens(el, metricsState.tokenData);
+});
+NanoclawWeights.register('coworker-sessions', () => {
+  const tools = document.getElementById('cw-detail-tools');
+  if (tools) tools._lastHtml = null;
+  if (typeof updateCwDetail === 'function') updateCwDetail();
+});
 
 function renderCwSidebar() {
   const list = document.getElementById('cw-list');
@@ -7945,9 +8021,24 @@ function renderCwSidebar() {
         cwState.types = null; // retry on next render
       });
   }
-  const coworkers = getCwCoworkers();
-  if (coworkers.length === 0) {
+  const allCoworkers = getCwCoworkers();
+  const filterEl = document.getElementById('cw-wt-filter');
+  if (allCoworkers.length === 0) {
+    if (filterEl) filterEl.innerHTML = '';
     list.innerHTML = '<div class="cw-empty">No coworkers yet. Click "+ New" to create one.</div>';
+    return;
+  }
+  const weightsFilter = NanoclawWeights.loadFilter('sidebar');
+  if (filterEl) {
+    filterEl.innerHTML = NanoclawWeights.filterBar(
+      'sidebar',
+      weightsFilter,
+      allCoworkers.map((cw) => cw.weights),
+    );
+  }
+  const coworkers = allCoworkers.filter((cw) => NanoclawWeights.matches(cw.weights, weightsFilter));
+  if (coworkers.length === 0) {
+    list.innerHTML = `<div class="cw-empty">No ${esc(weightsFilter)}-weights coworkers.</div>`;
     return;
   }
   const statusPriority = { working: 0, active: 1, thinking: 2, error: 3, idle: 4 };
@@ -8004,6 +8095,7 @@ function renderCwSidebar() {
         ${cw.type ? `<div class="cw-item-type">${esc(cw.type)}</div>` : ''}
         ${meta ? `<div class="cw-item-meta">${esc(meta)}</div>` : ''}
       </div>
+      ${NanoclawWeights.pill(cw.weights, cw.effectiveProvider)}
       ${approvalCount > 0 ? `<div class="cw-approval-dot" title="Pending approval \u2014 ${approvalCount} action${approvalCount > 1 ? 's' : ''} waiting for admin review"></div>` : ''}
       ${unread ? '<div class="cw-unread-badge" title="Unread messages">\u25CF</div>' : ''}
     </div>`;
@@ -8148,6 +8240,8 @@ function updateCwHeader() {
   const cw = getCwCoworkers().find((c) => c.folder === cwState.selected);
   if (!cw) return;
   document.getElementById('cw-chat-name').textContent = cw.name;
+  const weightsEl = document.getElementById('cw-chat-weights');
+  if (weightsEl) weightsEl.innerHTML = NanoclawWeights.pill(cw.weights, cw.effectiveProvider);
   const badge = document.getElementById('cw-chat-status');
   badge.textContent = cw.status;
   badge.style.background =
@@ -9711,7 +9805,9 @@ function renderCwThread() {
       : t.lane
         ? '<span style="font-size:7px;background:#0ea5e9;color:#fff;padding:1px 4px;border-radius:3px;margin-right:4px;vertical-align:middle;letter-spacing:.03em">shared</span>'
         : '';
-    parentLabel.innerHTML = `${badge}${esc(labelText)}`;
+    // A shared lane spans coworkers that may differ, so only a single session gets a class.
+    const weights = t.lane ? '' : `${weightsPillOf(sessionWeights(matchingNano, cwState.selected))} `;
+    parentLabel.innerHTML = `${badge}${weights}${esc(labelText)}`;
     parentLabel.title = `${t.lane ? 'shared thread across coworkers\n' : ''}session=${sessionIdForSlug}${isA2aThread ? ' (a2a read-only)' : anchorThreadId ? `\nthread_id=${anchorThreadId}` : ''}`;
   }
   const titleEl = document.querySelector('#cw-thread-panel .cw-thread-title strong');
@@ -10280,6 +10376,7 @@ function renderOtherSessionLinks(cw, currentSession) {
           const tid = escAttr(sess.thread_id || '');
           return `<div class="other-session-row" style="display:flex;align-items:center;gap:6px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:rgba(255,255,255,0.02);font-size:9px">
           <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${statusDotCanvasColor(status)};opacity:.8;flex-shrink:0"></span>
+          ${weightsPillOf(sessionWeights(sess, cw.folder))}
           ${sessionTitleHtml(sess, { compact: true })}
           <span style="color:var(--text-muted);flex-shrink:0">${esc(cs)}${ago ? ' · ' + esc(ago) : ''}</span>
           <button class="other-session-open-btn" title="Open in Timeline"
@@ -12248,6 +12345,7 @@ async function loadMetricsTokens(period) {
     if (!res.ok) throw new Error('fetch failed');
     const data = await res.json();
     metricsState.loaded.add('tokens');
+    metricsState.tokenData = data;
     renderMetricsTokens(el, data);
   } catch {
     el.innerHTML = '<div class="admin-empty">Failed to load token metrics</div>';
@@ -12470,8 +12568,10 @@ function renderMetricsTokens(el, data) {
           cacheCreate += d.cacheCreationTokens || 0;
         }
         const models = [...new Set(cw.daily.flatMap((d) => d.modelsUsed || []))];
+        const live = (state.coworkers || []).find((c) => c.agentGroupId === cw.groupId);
         return {
           name: cw.groupName,
+          weights: live ? coworkerWeights(live.folder) : { weights: null, provider: null },
           cost,
           tokens,
           input,
@@ -12484,10 +12584,16 @@ function renderMetricsTokens(el, data) {
       })
       .sort((a, b) => b.cost - a.cost);
 
-    html += `<h4 style="margin:16px 0 8px;color:#94A3B8">By Coworker</h4>
+    const weightsFilter = NanoclawWeights.loadFilter('coworker-cost');
+    const shownSummary = cwSummary.filter((cw) => NanoclawWeights.matches(cw.weights.weights, weightsFilter));
+    html += `<h4 style="margin:16px 0 8px;color:#94A3B8;display:flex;gap:8px;align-items:center">By Coworker ${NanoclawWeights.filterBar(
+      'coworker-cost',
+      weightsFilter,
+      cwSummary.map((cw) => cw.weights.weights),
+    )}</h4>
     <table class="admin-table"><thead><tr><th>Coworker</th><th>Cost</th><th>Tokens</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Models</th><th title="Per-session peak context (histogram: &lt;25/25-50/50-75/75-90/90%+ of the model window), mean peak %, and compaction count ⟳">Context</th></tr></thead><tbody>`;
-    for (const cw of cwSummary) {
-      html += `<tr><td>${esc(cw.name)}</td><td style="color:#10B981">${fmtUsd(cw.cost)}</td><td>${fmtNum(cw.tokens)}</td><td>${fmtNum(cw.input)}</td><td>${fmtNum(cw.output)}</td><td>${fmtNum(cw.cacheRead)}</td><td><code style="font-size:10px">${esc(cw.models.join(', '))}</code></td><td>${contextCellHtml(cw.contextStats)}</td></tr>`;
+    for (const cw of shownSummary) {
+      html += `<tr><td>${esc(cw.name)} ${weightsPillOf(cw.weights)}</td><td style="color:#10B981">${fmtUsd(cw.cost)}</td><td>${fmtNum(cw.tokens)}</td><td>${fmtNum(cw.input)}</td><td>${fmtNum(cw.output)}</td><td>${fmtNum(cw.cacheRead)}</td><td><code style="font-size:10px">${esc(cw.models.join(', '))}</code></td><td>${contextCellHtml(cw.contextStats)}</td></tr>`;
     }
     html += '</tbody></table>';
   }

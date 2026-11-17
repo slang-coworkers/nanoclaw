@@ -52,7 +52,16 @@ import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approv
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy.js';
 import { rowLabelForThread } from './row-label.js';
-import { coworkerModels, type CoworkerConfigRow, type CoworkerGroupRow } from './coworker-models.js';
+import {
+  coworkerModels,
+  weightsBadge,
+  type BadgeSessionRow,
+  type CoworkerConfigRow,
+  type CoworkerGroupRow,
+  type WeightsBadge,
+  type WeightsClass,
+} from './coworker-models.js';
+import { readPrivilegeSettings, type PrivilegeSettings } from '../src/modules/session-privilege/index.js';
 import {
   codexHookEntries,
   mcpHandshake,
@@ -1272,6 +1281,10 @@ interface CoworkerState {
   disallowedMcpTools: string[];
   overlays: string[];
   lastMessageTs: string | null;
+  // The provider and open/closed class of the group's next container
+  // (coworker-models.ts weightsBadge); null for a folder with no group row.
+  effectiveProvider: string | null;
+  weights: WeightsClass | null;
   // Context indicator: token usage
   contextTokens: number | null;
   maxContextTokens: number | null;
@@ -4402,9 +4415,98 @@ function updateLiveSubagentState(event: HookEvent): void {
   });
 }
 
+/** The weights badges of one request: of a group, or of one of its sessions. */
+interface WeightsBadgeReader {
+  group(groupId: string): WeightsBadge | null;
+  session(groupId: string, sessionId: string): WeightsBadge | null;
+}
+
+/**
+ * Return a reader of weights badges (coworker-models.ts weightsBadge) for one
+ * request, resolved from the central-DB rows spawn reads: the session's
+ * `agent_provider` pin and `privilege`, the group's `agent_provider`, and its
+ * container config, under one read of the privilege settings.
+ *
+ * On first use the reader loads every group, every container config and every
+ * session that is pinned or closed in three queries, and it memoizes each
+ * (group, pin, privilege) triple, so the 5 s state broadcast and a list of
+ * thousands of sessions both cost one small read. The routes' own queries stay
+ * as they are: a DB the reader cannot read (a fixture without
+ * container_configs, a stored `weights` spawn would reject) yields null
+ * badges, never a broken list.
+ */
+function weightsBadgeReader(): WeightsBadgeReader {
+  type Rows = {
+    groups: Map<string, CoworkerGroupRow>;
+    configs: Map<string, CoworkerConfigRow>;
+    sessions: Map<string, BadgeSessionRow>;
+  };
+  let rows: Rows | null | undefined;
+  const load = (): Rows | null => {
+    if (rows !== undefined) return rows;
+    rows = null;
+    if (!db) return rows;
+    try {
+      const groups = db.prepare('SELECT id, folder, agent_provider FROM agent_groups').all() as Array<
+        CoworkerGroupRow & { id: string }
+      >;
+      const configs = db.prepare('SELECT * FROM container_configs').all() as Array<
+        CoworkerConfigRow & { agent_group_id: string }
+      >;
+      // sessions.privilege arrives with migration 950; a row from before it is open (sessionPrivilegeOf).
+      const sessionCols = new Set(
+        (db.prepare('PRAGMA table_info(sessions)').all() as Array<{ name: string }>).map((c) => c.name),
+      );
+      const hasPrivilege = sessionCols.has('privilege');
+      const sessions = db
+        .prepare(
+          hasPrivilege
+            ? "SELECT id, agent_provider, privilege FROM sessions WHERE agent_provider IS NOT NULL OR privilege = 'closed'"
+            : 'SELECT id, agent_provider FROM sessions WHERE agent_provider IS NOT NULL',
+        )
+        .all() as Array<BadgeSessionRow & { id: string }>;
+      rows = {
+        groups: new Map(groups.map((g) => [g.id, g])),
+        configs: new Map(configs.map((c) => [c.agent_group_id, c])),
+        sessions: new Map(sessions.map((r) => [r.id, r])),
+      };
+    } catch {
+      rows = null;
+    }
+    return rows;
+  };
+  // Read only when a session badge needs it, so the state broadcast (group badges only) reads no file.
+  let privilege: PrivilegeSettings | undefined;
+  const memo = new Map<string, WeightsBadge | null>();
+  const badge = (groupId: string, session: BadgeSessionRow | null): WeightsBadge | null => {
+    const key = session ? `${groupId}\u0000${session.agent_provider ?? ''}\u0000${session.privilege ?? ''}` : groupId;
+    if (memo.has(key)) return memo.get(key) ?? null;
+    const loaded = load();
+    const group = loaded?.groups.get(groupId);
+    let result: WeightsBadge | null = null;
+    if (loaded && group) {
+      try {
+        if (session) privilege ??= readPrivilegeSettings();
+        result = weightsBadge(group, loaded.configs.get(groupId), session, process.env, privilege);
+      } catch {
+        result = null;
+      }
+    }
+    memo.set(key, result);
+    return result;
+  };
+  return {
+    group: (groupId) => badge(groupId, null),
+    // A session with no row here has no pin and is open, the same as an empty row.
+    session: (groupId, sessionId) =>
+      badge(groupId, load()?.sessions.get(sessionId) ?? { agent_provider: null, privilege: 'open' }),
+  };
+}
+
 function getState(): DashboardState {
   const types = getCoworkerTypes();
   const coworkers: CoworkerState[] = [];
+  const badges = weightsBadgeReader();
 
   // Scan groups/ for spawned instances (slang_* folders)
   try {
@@ -4458,6 +4560,7 @@ function getState(): DashboardState {
       let dbAllowedMcp: string[] | null = null;
       let dbOverlays: string[] = [];
       let dbAgentGroupId: string | null = null;
+      let badge: WeightsBadge | null = null;
       let isMainGroup = false;
       if (db) {
         try {
@@ -4468,6 +4571,7 @@ function getState(): DashboardState {
             .get(folder) as any;
           if (row) {
             dbAgentGroupId = row.id || null;
+            badge = badges.group(row.id);
             name = row.name || folder;
             isMainGroup = !!row.is_admin;
             dbAllowedMcp = row.allowed_mcp_tools ? JSON.parse(row.allowed_mcp_tools) : null;
@@ -4580,6 +4684,8 @@ function getState(): DashboardState {
         disallowedMcpTools: [],
         overlays: dbOverlays,
         lastMessageTs: lastMessageTsCache.get(folder) || null,
+        effectiveProvider: badge?.effectiveProvider ?? null,
+        weights: badge?.weights ?? null,
         contextTokens: ctxInfo?.contextTokens ?? null,
         maxContextTokens: ctxInfo?.maxContext ?? null,
         contextUsagePercent: ctxInfo?.usagePercent ?? null,
@@ -4629,6 +4735,8 @@ function getState(): DashboardState {
       disallowedMcpTools: computeDisallowed(BASE_TIER_TOOLS),
       overlays: [],
       lastMessageTs: lastMessageTsCache.get(folder) || null,
+      effectiveProvider: null,
+      weights: null,
       contextTokens: null,
       maxContextTokens: null,
       contextUsagePercent: null,
@@ -7929,6 +8037,9 @@ export async function handleRequest(
         session_key: string | null;
         group_folder: string;
         agent_group_id: string | null;
+        /** The provider and open/closed class of this session's next container (weightsBadgeReader). */
+        effective_provider: string | null;
+        weights: WeightsClass | null;
         container_status: string | null;
         last_active: string | null;
         created_at: string | null;
@@ -7963,6 +8074,8 @@ export async function handleRequest(
           return null;
         }
       };
+      const badges = weightsBadgeReader();
+      const badgeOf = (nano: NanoSess | null) => (nano ? badges.session(nano.agent_group_id, nano.id) : null);
       const makeParent = (nano: NanoSess | null, folder: string): Parent => ({
         nanoclaw_session_id: nano ? nano.id : null,
         thread_id: nano ? nano.thread_id : null,
@@ -7976,6 +8089,8 @@ export async function handleRequest(
         session_key: nano ? nano.id : null,
         group_folder: folder,
         agent_group_id: nano ? nano.agent_group_id : null,
+        effective_provider: badgeOf(nano)?.effectiveProvider ?? null,
+        weights: badgeOf(nano)?.weights ?? null,
         container_status: nano ? nano.container_status : null,
         last_active: nano ? nano.last_active : null,
         created_at: nano ? nano.created_at : null,
@@ -10108,9 +10223,14 @@ export async function handleRequest(
     // trace file `<base>/<folder>__session-<id>*.html`. Resolved once outside the
     // loop; empty on installs without the archive → no trace link rendered.
     const traceBase = process.env.CLAUDE_TRACE_BASE_URL || readProjectEnvValue('CLAUDE_TRACE_BASE_URL') || '';
+    const badges = weightsBadgeReader();
     for (const s of sessions) {
       // Hermes gap-matrix row id (thread_id `hermes-<ROW>`), null otherwise.
       s.row_label = rowLabelForThread(s.thread_id);
+      // The provider and open/closed class of this session's next container.
+      const badge = s.agent_group_id && s.session_id ? badges.session(s.agent_group_id, s.session_id) : null;
+      s.effective_provider = badge?.effectiveProvider ?? null;
+      s.weights = badge?.weights ?? null;
       const c = s.session_id ? costByNano.get(s.session_id) : undefined;
       s.cost = c ? c.cost : 0;
       // Provider split of the SAME number. `cost` stays the total (every existing

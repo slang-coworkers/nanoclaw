@@ -174,6 +174,9 @@
 
     /* --- Coworkers List View --- */
     .m-cw-list { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+    .m-cw-wt-filter { padding: 6px 12px; border-bottom: 1px solid var(--border); }
+    .m-cw-wt-filter:empty { display: none; }
+    .m-cw-name .wt-pill { margin-left: 6px; }
     .m-cw-item {
       display: flex;
       align-items: center;
@@ -460,6 +463,7 @@
       text-decoration: none;
     }
   </style>
+  <link rel="stylesheet" href="weights.css">
 </head>
 <body>
   <!-- Header -->
@@ -479,6 +483,7 @@
   <div class="m-content">
     <!-- Coworkers List -->
     <div id="m-view-list" class="m-view active">
+      <div id="m-cw-wt-filter" class="m-cw-wt-filter"></div>
       <div id="m-cw-list" class="m-cw-list"></div>
     </div>
 
@@ -487,6 +492,7 @@
       <div class="m-chat-header">
         <button id="m-chat-back" class="m-back-btn">&lt; Back</button>
         <div id="m-chat-name" class="m-chat-name">—</div>
+        <span id="m-chat-weights"></span>
         <span id="m-chat-status" class="m-chat-status">idle</span>
       </div>
       <div id="m-chat-messages" class="m-chat-messages"></div>
@@ -524,6 +530,7 @@
 
   <!-- Shared live-state reconciliation (see index.html) — must precede mobile.js. -->
   <script src="state-sync.js"></script>
+  <script src="weights.js"></script>
   <script src="mobile.js"></script>
 </body>
 </html>
