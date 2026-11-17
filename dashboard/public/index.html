@@ -660,8 +660,8 @@
     .model-card .role { color: var(--text-muted); }
     .model-card .id { font-family: monospace; overflow-wrap: anywhere; }
     .model-badge { padding: 0 5px; border-radius: 3px; font-size: 0.625rem; }
-    .model-badge.open { background: #10b98115; color: #6ee7b7; }
-    .model-badge.closed { background: #f59e0b15; color: #fcd34d; }
+    .model-badge.open { background: color-mix(in srgb, var(--wt-open) 14%, transparent); color: var(--wt-open); }
+    .model-badge.closed { background: color-mix(in srgb, var(--wt-closed) 14%, transparent); color: var(--wt-closed); }
     .model-problem { color: #fca5a5; margin-top: 2px; }
 
     /* Admin code block */
@@ -1017,6 +1017,7 @@
     .cw-modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 6px; }
     .cw-modal-actions button { padding: 4px 14px; border-radius: 3px; border: none; font-family: var(--font); font-size: 0.75rem; cursor: pointer; }
   </style>
+  <link rel="stylesheet" href="weights.css">
 </head>
 <body>
   <div class="header">
@@ -1119,12 +1120,14 @@
         <button class="cw-create-btn" id="cw-import-btn" style="background:var(--accent)">Import</button>
         <button class="cw-create-btn" id="cw-create-btn">+ New</button>
       </div>
+      <div class="cw-wt-filter" id="cw-wt-filter"></div>
       <div class="cw-list" id="cw-list"></div>
     </div>
     <div class="cw-chat">
       <div class="cw-chat-header">
         <h3 id="cw-chat-name">Select a coworker</h3>
         <span class="cw-status-badge" id="cw-chat-status"></span>
+        <span id="cw-chat-weights"></span>
         <div class="cw-view-toggle" id="cw-view-toggle" style="display:none;margin-left:auto;align-items:center;gap:6px">
           <button class="cw-toggle-btn active" data-view="chat">Chat</button>
           <button class="cw-toggle-btn" data-view="approvals" id="cw-approvals-tab-btn" title="Pending actions for this coworker">Approvals<span id="cw-approvals-tab-badge" style="display:none;margin-left:4px;background:#EF4444;color:#fff;border-radius:8px;padding:0 5px;font-size:0.625rem"></span></button>
@@ -1418,6 +1421,9 @@
        module scripts below — module scripts are deferred, so this ordering
        guarantees window.NanoclawStateSync exists when app.js runs. -->
   <script src="state-sync.js"></script>
+  <!-- weights.js draws the open/closed weights pill and filter for both
+       pages; classic for the same reason as state-sync.js. -->
+  <script src="weights.js"></script>
   <!-- session-slug.js is an ESM module that attaches window.sessionSlug /
        window.sessionLabel on load. app.js reads the window.* aliases so
        it doesn't need to import — keeps the lazy-load order simple. -->

@@ -1,0 +1,89 @@
+/*
+ * Open/closed weights colours, shared by index.html and mobile.html
+ * (weights.js draws the markup). Open is the theme's green and closed its
+ * orange; the light theme uses darker shades of both so the small pill text
+ * keeps its contrast on white. Every pill also carries its word, so the class
+ * reads without colour.
+ */
+:root {
+  --wt-open: var(--green);
+  --wt-closed: var(--tl-orange);
+}
+
+:root[data-theme='light'] {
+  --wt-open: #047857;
+  --wt-closed: #c2410c;
+}
+
+.wt-pill {
+  display: inline-block;
+  flex-shrink: 0;
+  padding: 0 5px;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  font-size: 0.5625rem;
+  font-weight: bold;
+  line-height: 1.4;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.wt-pill.wt-open {
+  color: var(--wt-open);
+  background: color-mix(in srgb, var(--wt-open) 14%, transparent);
+}
+.wt-pill.wt-closed {
+  color: var(--wt-closed);
+  background: color-mix(in srgb, var(--wt-closed) 14%, transparent);
+}
+
+/* The narrowest sidebar (140 px) is narrower than the three buttons, so they wrap. */
+.wt-filter {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  align-items: center;
+}
+.wt-filter-btn {
+  padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 0.625rem;
+  cursor: pointer;
+}
+.wt-filter-btn:hover {
+  background: var(--bg-hover);
+}
+.wt-filter-btn.wt-open {
+  color: var(--wt-open);
+}
+.wt-filter-btn.wt-closed {
+  color: var(--wt-closed);
+}
+.wt-filter-btn.active {
+  border-color: currentColor;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  color: var(--text);
+}
+.wt-filter-btn.wt-open.active {
+  color: var(--wt-open);
+}
+.wt-filter-btn.wt-closed.active {
+  color: var(--wt-closed);
+}
+.wt-filter-count {
+  opacity: 0.7;
+}
+
+/* The coworker sidebar's filter row, between its header and its list. */
+.cw-wt-filter {
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.cw-wt-filter:empty {
+  display: none;
+}

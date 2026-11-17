@@ -22,6 +22,16 @@ import { fileURLToPath } from 'url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = fs.readFileSync(path.join(HERE, 'public', 'app.js'), 'utf-8');
+const WEIGHTS_JS = fs.readFileSync(path.join(HERE, 'public', 'weights.js'), 'utf-8');
+
+/** Load public/weights.js against a fake window whose localStorage is `store`. */
+function loadWeights(store: Map<string, string>): unknown {
+  const fakeWindow: Record<string, unknown> = {
+    localStorage: { getItem: (k: string) => store.get(k) ?? null, setItem: (k: string, v: string) => store.set(k, v) },
+  };
+  new Function('window', WEIGHTS_JS)(fakeWindow);
+  return fakeWindow.NanoclawWeights;
+}
 
 /** Extract one top-level `function <name>(...) { ... }` by brace-matching. */
 function extractFn(name: string): string {
@@ -55,6 +65,9 @@ interface FakeSession {
   status?: string;
   container_status?: string;
   last_active?: string;
+  // Open/closed class and provider of the session's next container (coworker-models.ts weightsBadge).
+  weights?: 'open' | 'closed' | null;
+  effective_provider?: string | null;
   ghNumber?: number;
   ghRepo?: string;
   // dash-1 set-ceiling-v2 fields (see session-cost-caps.ts buildSessionCostFields).
@@ -75,7 +88,7 @@ interface FakeEl {
   innerHTML: string;
 }
 
-function buildRenderer(): {
+function buildRenderer(weightsStore: Map<string, string> = new Map()): {
   render: (adminState: { sessions: FakeSession[] }, sessionsView: Record<string, unknown>) => string;
 } {
   // The render-layer functions, all top-level declarations in app.js that
@@ -115,6 +128,7 @@ function buildRenderer(): {
     'document',
     'lookupNanoSessById',
     'isA2aSession',
+    'NanoclawWeights',
     `${combined}\nreturn renderAdminSessions;`,
   ) as (
     adminState: unknown,
@@ -122,7 +136,9 @@ function buildRenderer(): {
     document: unknown,
     lookupNanoSessById: unknown,
     isA2aSession: unknown,
+    NanoclawWeights: unknown,
   ) => () => void;
+  const weights = loadWeights(weightsStore);
 
   return {
     render(adminState, sessionsView) {
@@ -134,6 +150,7 @@ function buildRenderer(): {
         fakeDocument,
         () => null,
         () => false,
+        weights,
       );
       renderAdminSessions();
       return el.innerHTML;
@@ -435,5 +452,50 @@ describe('renderCostCapCell — pill shows lifetime total, cost column shows per
     });
     expect(html).toContain('$12.34'); // cost column = selected period
     expect(html).toContain('$999.00'); // pill = lifetime total
+  });
+});
+
+describe('renderAdminSessions — open/closed weights', () => {
+  const row = (session_id: string, group: string, weights: 'open' | 'closed', provider: string) =>
+    session({ session_id, group_folder: group, group_name: group, weights, effective_provider: provider });
+  // s-pin is an OpenCode coworker's session pinned to Claude, so it is closed.
+  const sessions = () => [
+    row('s-oc', 'ag-oc', 'open', 'opencode'),
+    row('s-pin', 'ag-oc', 'closed', 'claude'),
+    row('s-cl', 'ag-cl', 'closed', 'claude'),
+  ];
+  const view = () => ({ period: '30d', sort: 'cost', filter: 'all', groupFilter: 'all', unavailable: null });
+
+  it('marks each row with its own class and counts every class in the filter', () => {
+    const html = buildRenderer().render({ sessions: sessions() }, view());
+    expect(html).toContain(
+      '<span class="wt-pill wt-open" title="Open-weights models only · provider opencode">open</span>',
+    );
+    expect(html).toContain(
+      '<span class="wt-pill wt-closed" title="Calls a closed-weights model · provider claude">closed</span>',
+    );
+    expect(html).toContain(
+      'data-weights-filter="sessions" data-weights-value="all" aria-pressed="true">all <span class="wt-filter-count">3</span>',
+    );
+    expect(html).toContain(
+      'data-weights-value="open" aria-pressed="false">open <span class="wt-filter-count">1</span>',
+    );
+    expect(html).toContain(
+      'data-weights-value="closed" aria-pressed="false">closed <span class="wt-filter-count">2</span>',
+    );
+  });
+
+  it('applies the stored filter, so a session pinned to a closed provider leaves the open view', () => {
+    const store = new Map([['nanoclaw-weights-filter:sessions', 'open']]);
+    const html = buildRenderer(store).render({ sessions: sessions() }, view());
+    expect(html).toContain('s-oc');
+    expect(html).not.toContain('s-pin');
+    expect(html).not.toContain('s-cl');
+  });
+
+  it('names the weights filter when it leaves no row', () => {
+    const store = new Map([['nanoclaw-weights-filter:sessions', 'open']]);
+    const html = buildRenderer(store).render({ sessions: sessions().filter((s) => s.weights === 'closed') }, view());
+    expect(html).toContain('No sessions match "open weights"');
   });
 });
