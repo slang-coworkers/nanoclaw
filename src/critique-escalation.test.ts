@@ -517,6 +517,24 @@ describe('checkCritiqueEscalation — critique calls in flight or failing on the
     expect(readEscalation()).toMatchObject({ self_heal_attempts: 1, critic_retry_nudges: 1 });
   });
 
+  it('counts a critic failure in the same second as the nudge as an answer to it', async () => {
+    const sentMs = Date.now() - 30 * 60_000;
+    const sameSecond = new Date(Math.floor(sentMs / 1000) * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base(60),
+      self_heal_attempts: 1,
+      self_heal_at: new Date(sentMs + 900 - (sentMs % 1000)).toISOString(),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(20),
+    });
+    journal([{ at: sameSecond, event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429, call: 'c1' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(String(notifyAgentMock.mock.calls[0][1])).toContain("failed on the critic's side");
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
   it('counts a call made between delivery and the sweep noticing it as an answer', async () => {
     claimedIds.add('sys-a');
     writeEscalation({

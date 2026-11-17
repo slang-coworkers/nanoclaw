@@ -1133,9 +1133,11 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   // nudge's send time (not its delivery) is the line, so a call made between
   // delivery and the sweep noticing it still counts as an answer; and each
   // failure answers one nudge only.
-  const answeredSinceMs = esc.self_heal_at ? Date.parse(esc.self_heal_at) : requestedMs;
+  // The shell records whole seconds, so the send time is cut to its second: a
+  // failure in the same second as the send counts as an answer to it.
+  const answeredSinceMs = Math.floor((esc.self_heal_at ? Date.parse(esc.self_heal_at) : requestedMs) / 1000) * 1000;
   const criticDown =
-    effort !== null && effort.lastCriticFailureMs !== null && effort.lastCriticFailureMs > answeredSinceMs;
+    effort !== null && effort.lastCriticFailureMs !== null && effort.lastCriticFailureMs >= answeredSinceMs;
   const criticOutage =
     criticDown &&
     (pastDeadline ||
