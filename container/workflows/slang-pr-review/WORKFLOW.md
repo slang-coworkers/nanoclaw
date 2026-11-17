@@ -46,7 +46,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    - Reviewer A: run `slang-pr-review-runner`'s installer (idempotent; ensures `~/.local/bin/claude` ≥2.1.x and `/workspace/agent/slang` depth-50 master).
    - Reviewer B: `agent-browser --help` (failure = container misconfigured).
    - Reviewer C: shares A's checkout + claude CLI (no separate install). Verify the clarity skills are present: `test -d /workspace/agent/slang/.claude/skills/slang-review-clarity-workflow`. Missing = checkout predates shader-slang/slang#11340; re-run A's installer to refresh, else skip Reviewer C.
-   - `pr`/`branch`: `gh auth status` must read the target repo (read-only OK). Devin draft-PR creation also needs `pull_requests: write` on the fork.
+   - `pr`/`branch`: `gh api repos/<owner>/<repo> --jq .id` on the target repo must succeed (read-only OK). Do not use `gh auth status` or `gh api rate_limit` as the check: behind the credential gateway they return 401 while repo reads work. Devin draft-PR creation also needs `pull_requests: write` on the fork.
 
 4. **Dispatch the reviewers detached, then wait** {#dispatch}
 
