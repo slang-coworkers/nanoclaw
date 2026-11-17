@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 28
+source_count: 30
 ---
 
 # Slang Parameter Binding and Layout
@@ -38,6 +38,8 @@ Regressions from #11712 cluster in `slang-parameter-binding`: the `vk::binding` 
 A duplicate-SV diagnostic is for **system values only** (post-linking `fixFieldSemanticsOfFlatStruct` legitimately re-indexes overlapping *user* semantics). The hard part is the key's **output binding space**: empty for classic stages, output CATEGORY for mesh (not param position), STREAM PARAMETER for geometry. Landmine: `inout TriangleStream<T>` is double-collected (input and output both force-resolve to Output) → spurious self-collision unless the InOut branch skips output-only-by-type params ([output-binding-space keying + inout-stream hazard](../learnings/1782911038880-entry-point-duplicate-system-value-check-output-bi.md)).
 
 E38052 "vertex shader has no output with SV_Position" (PR #10971) is an **intentional heuristic false-positive**: gated only on `stage == Vertex`, its comment names VS→GS/tess/mesh as legitimate-but-undetected and `-warnings-disable 38052` is documented, so on VS→GS it is not a clear bug ([E38052 intentional false-positive](../learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md)).
+
+**An outer (function-level) semantic silently clobbers a result-struct's field semantics (#14489).** `processEntryPointVaryingParameterDecl` (slang-parameter-binding.cpp ~2174) implements a documented "outer-most semantic wins" policy; for an entry-point RESULT, `decl` is the *function*, so a function-level `: SV_Target` becomes `state.optSemanticName` and the guard at ~2221 (`if (decl && !state.optSemanticName)`) skips EVERY struct field's own explicit semantic — `depth : SV_Depth` ends up laid out as `systemValueSemantic("SV_Target", 1)` with no diagnostic. Neither `validateEntryPoint` nor `validateSystemValueSemantic` checks for a redundant/conflicting return-level `SV_Target` when a field already carries one, so the combination is silently accepted (#14489 tracks the missing validation; related-but-distinct from #11691 emit conflict-collapse and #11855 duplicate-depth). Triage evidence gotcha: the IR struct KEY decorations still say `SV_Depth` in `-dump-ir` at every stage — the loss is in the final LAYOUT only (read the `AFTER checkUnsupportedInst` `structFieldLayout` block), and HLSL text output looks fine while SPIR-V shows `OpDecorate … Location 1` instead of `BuiltIn FragDepth` ([outer semantic clobbers entry fields — check final layout, not key decorations](../learnings/1794815615771-slang-14489-outer-semantic-silently-clobbers-entry.md); [redundant SV_Target on a struct return is silently accepted](../learnings/1794815315476-slang-14489-redundant-sv-target-on-a-struct-return.md)). User workaround: omit the function-level `: SV_Target` and let the struct members define the outputs. Repro notes: rebuild slangc first (`-v` string is configure-time stale — use `git describe`), text targets need explicit `-entry main` before `-o` (E00070 otherwise), in-tree spirv-dis/spirv-val live at build/external/spirv-tools/tools/Release/.
 
 ## Varying Locations
 
@@ -109,8 +111,10 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 
 **GPU-free, MSVC-free layout oracle:** `-target cpp` (emitted `struct S_0` backings and setter masks give the layout; `g++ -I prelude` runs it). To compare with MSVC host layout, compile `struct __attribute__((ms_struct)) S {...}` with g++/clang, memcpy to bytes, compare with the Slang masks. Backing-word initialization rules are on [[wiki/concepts/slang-compiler-frontend-and-checking.md]].
 
-**Source learnings (28):**
+**Source learnings (30):**
 - [bool size is context-dependent](../learnings/1793830159570-slang-bool-size-is-context-dependent-sizeof-bool-1.md)
+- [#14489 redundant SV_Target on a struct return is silently accepted](../learnings/1794815315476-slang-14489-redundant-sv-target-on-a-struct-return.md) — missing duplicate-semantic validation
+- [#14489 outer semantic clobbers entry-point result fields](../learnings/1794815615771-slang-14489-outer-semantic-silently-clobbers-entry.md) — outer-most-wins skips every field semantic; loss in final layout only
 - [getSimpleVal on a global emits a module-scope load (#9078)](../learnings/1791330554022-slang-ir-layout-field-keys-getsimpleval-on-a-globa.md)
 - [global in/out on CPU/CUDA gets uniform bytes](../learnings/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md)
 - [vk::binding predicate must match the layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)

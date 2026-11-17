@@ -3,7 +3,7 @@ title: "Slang Release-Build Divergences & Sanitizer Suppressions"
 type: concept
 group: slang-tooling
 tags: [build, release, lto, ld_library_path, sanitizer, debug, assert, external, lsan, liblsan, leak-measurement, slang-glslang]
-source_count: 26
+source_count: 28
 ---
 
 # Slang Release-Build Divergences & Sanitizer Suppressions
@@ -22,6 +22,8 @@ How a locally green Slang build diverges from CI or ships stale logic — LTO sy
 - **`-Og` Debug (#12140/#12223) breaks debugging;** gate it behind a new option; the default is a maintainer design gate.
 - **`SLANG_ASSERT` is `__builtin_assume` outside `_DEBUG`, and the `debug` preset here builds Release.** Never assert what you also runtime-guard, never swap a reachable guard for an assert, use `SLANG_RELEASE_ASSERT` before a dereference; verify new asserts on `-DCMAKE_BUILD_TYPE=Debug`.
 - **All-Windows-fail, all-else-pass → MSVC `/W4 /WX`** (e.g. C4458 local hides member): rename the local.
+- **A green CI build that was an sccache cache hit never compiled the TU** — before classifying a compile failure as selective/per-PR, check whether the passing "control" builds actually compiled it (~0.2s step, no cl.exe/c++ command line in the log).
+- **MSVC 14.52 windows-aarch64 crash signatures (slangc.exe 0xC0000005; cl.exe C1001 in slang-emit-hlsl-prelude.cpp:468) are runner-image noise, closed slang#14471, fixed by PR #14491's `toolset: 14.44` pin** — never file them; a stale branch showing them needs a rebase.
 - **Metal-only:** `createTexture`'s forced `mipCount = 1` reads the wrong slice for Texture1D array layers ≥ 1.
 
 ## Release-Build Divergences: LTO Symbol Leaks and LD_LIBRARY_PATH Shadowing
@@ -74,7 +76,13 @@ To exercise asserts, configure `-DCMAKE_BUILD_TYPE=Debug` and run the affected t
 
 **A pure-C++ change where ALL Windows (MSVC) builds fail but ALL Linux/macOS pass is almost always an MSVC-only warning-as-error.** On #13089 every Windows build failed with `error C2220 … warning C4458: declaration of 'workList' hides class member` (a local shadowing a struct member). Windows builds use `/W4 /WX`, so C4458 and siblings (C4456 local shadow, C4245/C4244 signed/unsigned, C4189 unused local) are hard errors GCC/Clang don't emit by default. Check new locals in methods against member names (`workList`, `builder`, `module`, `context`), grep failed Windows logs for `error C2220` plus the `warning Cxxxx`, and fix with a behavior-neutral rename ([MSVC /WX rejects C4458](../learnings/1789579281328-msvc-wx-rejects-c4458-local-hides-class-member-tha.md)).
 
-**Source learnings (26):**
+## sccache hits mask deterministic CI failures; Windows-ARM64 MSVC 14.52 crashes are closed #14471
+
+**sccache cache hits can mask a deterministic compile failure in CI logs.** Before classifying a compile failure as selective/per-PR, check whether the passing "control" builds actually compiled the TU — a cache hit shows as a ~0.2s build step with no cl.exe/c++ command line in the job log. Observed 2026-11-16: an MSVC ARM64 C1001 access violation on `slang-emit-hlsl-prelude.cpp:468` failed 3 unrelated PRs (#14483/#14488/#14490) while #14495 passed only because its TU came from the sccache cache. Corollary: a dependabot PR failing identically to code PRs is a strong systemic-vs-author signal — its diff cannot touch the failing TU ([sccache cache hits can mask deterministic compile failures in CI logs](../learnings/1794823868418-sccache-cache-hits-can-mask-deterministic-compile-.md)).
+
+**Both windows-aarch64 crash signatures from the `windows-11-vs2026-arm` runner image 20261112.217.1 (MSVC 14.52.37025 / VS18) — `slangc.exe` 0xC0000005 at `examples/cpu-shader-llvm/shader.o` AND `cl.exe` C1001 at `source/slang/slang-emit-hlsl-prelude.cpp:468` — are runner-image noise, not Slang bugs.** They are covered by closed slang#14471 (maintainer jkwak-work's investigation) and fixed by PR #14491 (merged 2026-11-14, pins `toolset: 14.44` for Windows ARM64 in `.github/actions/common-setup/action.yml`; remove when GitHub fixes the image — upstream actions/runner-images#15328). Do NOT file new issues for either signature; a PR showing them on a stale branch (behind master, no pin) needs a rebase onto master, not a toolchain fix; and a PR passing the aarch64 build via an sccache cache hit (TU never compiled) is not evidence the crash is fixed. Before filing any CI-infra issue, check the #14471 chain record and grep BOTH repos' memory — a "first-seen, 0 hits in my own log" check misses records kept in other groups' memory (slang#14499 was filed as new on 2026-11-16 and dispositioned a duplicate the same day) ([MSVC 14.52 windows-aarch64 crash signatures are closed slang#14471 — dedupe before filing](../learnings/1794824183120-msvc-14-52-windows-aarch64-crash-signatures-are-cl.md)).
+
+**Source learnings (28):**
 - [verify a count assert on a Debug build](../learnings/1791585758023-verify-a-count-assert-on-a-debug-build-slang-asser.md) — `IBackwardDifferentiable` has 6 entries, not 5.
 - [MSVC /WX rejects C4458](../learnings/1789579281328-msvc-wx-rejects-c4458-local-hides-class-member-tha.md) — all-Windows-fail = MSVC warning-as-error.
 - [CI release LTO defeats symbol hiding](../learnings/1784380337015-ci-release-lto-defeats-symbol-hiding-that-local-pr.md)
@@ -101,5 +109,7 @@ To exercise asserts, configure `-DCMAKE_BUILD_TYPE=Debug` and run the affected t
 - [render-test link target; Metal forced mipCount=1 bug](../learnings/1793437666271-render-test-createtexture-forced-mipcount-1-picks-.md)
 - [SLANG_ASSERT not before a dereference in a remedy](../learnings/1793672675596-slang-assert-is-slang-assume-in-release-don-t-put-.md) — #14202; raw-string delimiter
 - [verify a nightly sanitizer fix by the report line](../learnings/1793707333227-verifying-a-sanitizer-fix-on-the-slang-nightly-gre.md) — pre-fix nightly as control
+- [sccache hits mask deterministic compile failures in CI logs](../learnings/1794823868418-sccache-cache-hits-can-mask-deterministic-compile-.md)
+- [MSVC 14.52 windows-aarch64 crash signatures are closed #14471](../learnings/1794824183120-msvc-14-52-windows-aarch64-crash-signatures-are-cl.md)
 
 _Catalog: [[wiki/index.md]]_

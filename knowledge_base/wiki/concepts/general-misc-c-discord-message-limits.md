@@ -3,7 +3,7 @@ title: "Discord message limits (the real cap is 2000 chars, and the first error 
 type: concept
 group: general
 tags: [discord, mcp, message-limit, formatting, compliance-check, discord-read-messages, is_bot, github-search, url-encoding, github-to-discord, identity-mapping]
-source_count: 18
+source_count: 19
 ---
 
 # Discord message limits, reading replies and feedback state, and the compliance check
@@ -58,7 +58,11 @@ A Discord username is not a GitHub login, so an `author:<discord-name>` search c
 
 The maintained mapping is `memory/github-to-discord.json`, keyed by the Discord author `id`, not the username. It maps both `jhelferty-nv` and `sirspate` to Discord ID 117490599833108481, so Discord sirspate is GitHub jhelferty-nv (James Helferty); authorship corroborates it, since slang#12656 ("Add slang-package", the package-manager prototype sirspate discusses in #slang-discussion) is committed by James Helferty. Skipping the lookup produced a wrong carry: the sweeps listed "tessfactor → sirspate (slangd config file), 12 d unanswered; ping sirspate with jhelferty-nv's slang-vscode-extension#78 comment", but that 10-23 comment was sirspate's own reply, so the question was already partly answered on GitHub. So we map both handles through the file before calling a Discord question "unanswered" or planning a relay between two people [Discord sirspate = GitHub jhelferty-nv (James Helferty); check github-to-discord.json before "relay to X"](../learnings/1793262133027-discord-sirspate-github-jhelferty-nv-james-helfert.md).
 
-**Source learnings (18):**
+## Moderation policy scope: link the Khronos CoC, don't duplicate it
+
+For any Slang Discord conduct/moderation question, the Khronos CoC (https://www.khronos.org/developers/code-of-conduct, Contributor Covenant 2.1 derived) already scopes to "instant-messaging platforms", defines a 4-step escalation ladder (correction → warning → temporary ban → permanent ban), and gives reporting channels (a community-leaders email — JS-obfuscated on the page, low discoverability — plus an anonymous Google Form). The Slang Discord join gate already requires thumbs-up CoC approval, and CONTRIBUTING.md's Discord section states the CoC applies on Discord. So for "policy missing" reports the real gap is server-specific discoverability (a moderator role, an in-server report path), not policy content — prefer linking the Khronos CoC over writing a duplicate MODERATION.md. Verified live 2026-11-17 during #13457 triage ([Khronos CoC already covers Discord moderation scope — gap is discoverability](../learnings/1794892902603-khronos-coc-already-covers-discord-moderation-scop.md)).
+
+**Source learnings (19):**
 - [discord_send_message caps content at 2000 chars, not 4000](../learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md) — the first over-length error reports 4000
 - [Discord message limit is 2000 chars, not 4000 — the API error message lies on the first try](../learnings/1786006634390-discord-message-limit-is-2000-chars-not-4000-the-a.md) — split under ~1900 chars on the first attempt
 - [discord_export_from_json.py cannot read discord_read_messages output](../learnings/1792145488222-compliance-check-discord-export-from-json-py-canno.md) — `filtered` wrapper and top-level `is_bot` are not unwrapped
@@ -77,3 +81,4 @@ The maintained mapping is `memory/github-to-discord.json`, keyed by the Discord 
 - [Discord sweep: assert date edits and stop on failure before the GitHub search batch](../learnings/1793521198823-discord-sweep-assert-date-edits-and-stop-on-failur.md) — `mkq2.py` discussion dates sit inside query strings; a failed assert still ran `runq.py` and spent a GraphQL point; move `scandiff.py`/`tl.py` previous-day path
 - [type-18 + type-21 with `message_count: 0` is an empty thread, not a HUMAN-IN-WINDOW reply; it also shifts the tail-N control window](../learnings/1794040228429-discord-an-empty-thread-on-a-message-is-not-a-repl.md)
 - [unresolved Discord name → search Discussions by title (wolfyred2 = WolfyRed, #14387 still unanswered)](../learnings/1794040232391-find-a-discord-user-s-github-login-with-a-discussi.md)
+- [Khronos CoC already covers Discord moderation scope — the gap is server-specific discoverability](../learnings/1794892902603-khronos-coc-already-covers-discord-moderation-scop.md) — link it, don't write a duplicate MODERATION.md

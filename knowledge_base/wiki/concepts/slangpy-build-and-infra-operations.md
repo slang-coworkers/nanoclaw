@@ -3,7 +3,7 @@ title: "SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-sampl
 type: concept
 group: slangpy
 tags: [slangpy, build, infra, operations, downstream-args, samples, lfs]
-source_count: 33
+source_count: 34
 ---
 
 # SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review
@@ -72,6 +72,9 @@ Fleet containers have an NVIDIA L40S with CUDA and NVIDIA Vulkan ([L40S](../lear
 
 Debian bookworm's lavapipe (Mesa 22.3.6) cannot stand in: slang-rhi requests `VK_KHR_shader_non_semantic_info` unconditionally (`vk-device.cpp:596`, pin `82c03494`; see [[wiki/concepts/slang-rhi-backend-runtime.md]]), so `spy.Device(type=vulkan)` raises "Failed to create device!" though `enumerate_adapters` lists llvmpipe; patching slang-rhi would change the tested binary. On substitute hardware, run a positive control (the known-bad build must still reproduce) before trusting a negative. A Slang build dir configured with the GPU caches `CUDA_cuda_driver_LIBRARY` (`libcuda.so`); without the driver ninja dies on it: clear that entry or reconfigure. To confirm a fix resolved a CI failure, check the job log shows the test PASSED (a skip is invisible at run level) via `gh run view <run> --job <id> --log` (`gh api .../jobs/<id>/logs` refuses output with escape sequences) ([bookworm lavapipe](../learnings/1790628362287-slangpy-vulkan-tests-can-t-use-debian-bookworm-lav.md), [lavapipe is no substitute](../learnings/1790628523920-lavapipe-can-t-substitute-for-a-gpu-in-slangpy-vul.md)).
 
+### SlangPy BenchView ingestion is live (supersedes greenfield claims)
+The earlier reading that SlangPy data ingestion for BenchView was greenfield/design-only, gated on a stakeholder go/no-go, is now false (re-triage of slang#12945, 2026-11-17): expipiplus1 landed the full SlangPy→BenchView submission stack in slangpy PR #1149 (2026-09-16 — `slangpy/testing/benchmark/benchview.py` HTTP client with retries, the pytest `--benchmark-submit` plugin, ci-benchmark/schedule-benchmarks/backfill CI workflows) plus #1164, and daily ci-benchmark runs show live ingestion ("BenchView accepted 1 batch(es)" vs http://rtrci.nvidia.com/benchview, green through 2026-11-17). The `dev/ccummings/benchview` slangpy WIP branch is stale/superseded, and #12944's "branch assessment" blocker for #12945 is overtaken by events. Evidence trick for this family: `gh run view <id> -R shader-slang/slangpy --log | grep -i "accepted\|submitting"` proves ingestion from public CI logs without dashboard access. Disposition precedent unchanged: epic #12941 ops children get no fixer; park on the assignee for any dashboard-side verification ([SlangPy BenchView ingestion is LIVE](../learnings/1794894432481-slangpy-benchview-ingestion-is-live-supersedes-gre.md)).
+
 ## slangpy-samples review (PR #53)
 
 MDL material `.slang` files (e.g. `mdl_ceramic_material.slang`, 3492 lines of Itanium-mangled generated code) are vendored: review only the trailing hand-written `IMaterialInstance` wrapper (~190 lines). Verify LFS objects resolve (a dangling pointer means a non-runnable sample): POST each ~130-byte pointer's `oid`/`size` to the repo's `info/lfs/objects/batch` endpoint; `actions.download` means it exists. `experiments/` has zero CI (only `examples/` entries in `test_examples.py` run), so an examples→experiments rename loses coverage only if the demo was a test entry; check `git show main:tests/examples/test_examples.py` ([samples PR #53](../learnings/1783721228354-slangpy-samples-utracer-experiment-pr-53-mdl-files.md)).
@@ -92,7 +95,7 @@ Measure the GPU when such PRs need one. On the L40S with driver 565.57.01 (CUDA 
 
 **mkdoc strips the leading underscore from underscore-prefixed names**: private `Device::_notify_command_recording_submitted` becomes `__doc_sgl_Device_notify_command_recording_submitted`, so grepping `__doc_sgl_Device__...` wrongly suggests it is undocumented. mkdoc emits empty entries (`R"doc()doc"`) for private data members and underscore-prefixed internal methods (not uniformly for every private method); omitting them is cosmetic but churns the next regeneration, so for a callback mirroring siblings prefer regenerating. Related: `CommandEncoder::finish()` sets `m_open=false` only on success (a failed finish leaves the encoder open and retryable); before-finish is not 1:1 with a recording; `discarded` fires only on destruction ([mkdoc strips underscores](../learnings/1789378366162-slangpy-py-doc-h-mkdoc-strips-leading-underscore-f.md)).
 
-**Source learnings (33):**
+**Source learnings (34):**
 
 - [re-probe the GPU every session](../learnings/1792136253471-slangpy-triage-re-probe-the-gpu-every-session-a-no.md)
 - [containers have an L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md)
@@ -112,6 +115,7 @@ Measure the GPU when such PRs need one. On the L40S with driver 565.57.01 (CUDA 
 - [single-TU compile-verify](../learnings/1789819901846-fast-compile-verify-a-single-tu-c-change-via-compi.md)
 - [pure-Python changes without a GPU](../learnings/1790023108329-test-pure-python-slangpy-changes-locally-without-a.md)
 - [lavapipe no substitute](../learnings/1790628523920-lavapipe-can-t-substitute-for-a-gpu-in-slangpy-vul.md)
+- [SlangPy BenchView ingestion is live (supersedes greenfield claims)](../learnings/1794894432481-slangpy-benchview-ingestion-is-live-supersedes-gre.md) — PR #1149 stack landed; prove from CI logs
 - [autodiff `.bwds()` on DeviceType.cpu](../learnings/1791189869324-slangpy-autodiff-repros-run-gpu-free-on-devicetype.md)
 - [non-root build without python3-dev/X11](../learnings/1792142268329-building-slangpy-in-a-non-root-coworker-container-.md)
 - [fast fresh-main build](../learnings/1792064521058-slangpy-fast-fresh-main-build-repro-in-the-triage-.md)

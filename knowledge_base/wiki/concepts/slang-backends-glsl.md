@@ -3,7 +3,7 @@ title: "Slang GLSL Backend: Emission, Legalization, and glslang Integration"
 type: concept
 group: slang-backends
 tags: [glsl, glslang, legalization, system-values, array-init, bootstrap]
-source_count: 21
+source_count: 22
 ---
 
 # Slang GLSL Backend: Emission, Legalization, and glslang Integration
@@ -38,6 +38,8 @@ The Slang GLSL backend (`slang-emit-glsl.cpp`, `slang-ir-glsl-legalize.cpp`) con
 ## Version Floor and Severity Assessment
 
 Slang hard-floors the emitted `#version` at 450 (460 when draw-param/extension features are pulled in) and **ignores a requested `-profile <450`** for the version directive. This means "invalid in GLSL 330" reports are typically valid-as-emitted, because the emitted header is always `#version 450+`. The severity of most "multi-profile invalid output" bugs collapses from P1 to Normal/P2-P3 — the actual impact is only in consumers retargeting below GLSL 4.20 ([Slang floors GLSL #version at 450 — 'invalid in old GLSL' emit bugs are usually valid-as-emitted (lower severity)](../learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md)).
+
+The INPUT `#version N` number is likewise validated then discarded: `isValidGLSLVersion` (slang-compiler.cpp:21) checks it, but `HandleVersionDirective` (slang-preprocessor.cpp:4558-4584) records only `SourceLanguage::GLSL` and stores no GLSL language version anywhere (GLSL *profiles* are a separate mechanism). There is no `HLSLLanguageVersion`/`GLSLLanguageVersion` — only `SlangLanguageVersion` (on ModuleDecl, slang-ast-decl.h:891), while `SourceLanguage` lives on TranslationUnitRequest — so any per-dialect version-gating work starts from that baseline. `#language`/`#lang` accepts only optional `slang` + version; an explicit `-lang` overrides the filename-implied language silently by design, while a conflicting in-source directive overrides the CLI selection after a warning (a "backward-compatibility concession") ([GLSL #version validated then discarded; no per-dialect version enums](../learnings/1794890348582-glsl-version-number-is-validated-then-discarded-no.md)).
 
 ## Array Initialization Bug
 
@@ -114,7 +116,8 @@ Slang `%`(float) and `fmod()` are both truncation remainder (sign follows divide
 
 Enabling "GLSL" in Slang is gated by **two orthogonal switches** that are easy to conflate — and conflating them produced a public bot error on #11877. (1) `SlangGlobalSessionDesc::enableGLSL` (`include/slang.h:5720`, default **false**) controls whether the builtin **`glsl` module is registered** at global-session creation; when false, `import glsl;` fails with `error[E38201]: 'glsl' module not available` (`slang-session.cpp:1547`). (2) `CompilerOptionName::AllowGLSL` / the `-allow-glsl` CLI flag (`include/slang.h:1089`) controls GLSL **input syntax + operator scope** only, per-session, and does NOT register the module. `AllowGLSL` alone is therefore insufficient for `import glsl;`. A subtle false-positive trap: both `slangc` (`source/slangc/main.cpp:94`) and `slang-test` (`tools/slang-test/test-context.cpp:119`) hardcode `desc.enableGLSL = true`, so every local test/`slangc` run silently has the module available — a green local result does NOT represent the JS/wasm frontend, where `createGlobalSession()` is argument-less → zero-inits the desc → `enableGLSL=false`, and neither `SlangGlobalSessionDesc` nor `compilerOptionEntries` is embind-bound, so a JS caller can enable GLSL by neither route (confirmed capability gap flagged to jkwak-work; closing it needs a slang-wasm embind change). The transferable lesson: when verifying a behavior for a *specific* frontend/environment, check what that target's session-creation path actually sets — `slangc`/`slang-test` enable conveniences the target may not ([GLSL in Slang has TWO separate switches: global-session enableGLSL (module) vs per-session AllowGLSL (syntax)](../learnings/1784551355408-glsl-in-slang-has-two-separate-switches-global-ses.md), correction of the earlier "flag-free from JS" claim: [CORRECTION: import glsl; does NOT work flag-free from JS/wasm — slangc/slang-test mask it via enableGLSL=true](../learnings/1784551884345-correction-import-glsl-does-not-work-flag-free-fro.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
+- [GLSL #version number validated then discarded; no per-dialect language-version enums](../learnings/1794890348582-glsl-version-number-is-validated-then-discarded-no.md) — only SourceLanguage is recorded; baseline for version gating
 - [`-emit-spirv-via-glsl` tests that rely on glslang to "already do the right thing" need verification](../learnings/1779619281300-slang-via-glsl-test-premise-verify-with-downstream.md)
 - [Triaging "GLSL gl_* builtin missing" reports](../learnings/1781162369496-triaging-glsl-gl-builtin-missing-reports-check-cas.md)
 - [slang-glslang: add an opt-out via dedicated CMake escape-hatch](../learnings/1781975592365-slang-glslang-add-an-opt-out-via-dedicated-cmake-e.md)

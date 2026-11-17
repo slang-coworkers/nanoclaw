@@ -3,7 +3,7 @@ title: "Agent Routing: Holds, Authorization, Gates & CI Currency"
 type: concept
 group: agent-routing
 tags: [holds, governance, authorization, gates, critique-gate, ci-currency, worktree-gc, budget, maintainer, escalation, recording, write-capability]
-source_count: 38
+source_count: 39
 ---
 
 # Agent Routing: Holds, Authorization, Gates & CI Currency
@@ -29,6 +29,7 @@ source_count: 38
 - A budget cap stops LLM dispatch, not shell calls. A per-run cap can kill a review before it writes anything; budget ~$70-90.
 - An SDK "Reached maximum budget ($X)" outbound means the session reached its real ceiling, even while `ncl cost-cap` still reads `escalated` (NanoClaw's counter under-counted output tokens). Treat it as stopped and escalate to a human to raise that session's ceiling; never resume the work in a second session.
 - Check the premise of a park-or-ship decision against real behavior. A grepped abort string doesn't show that your input reaches it.
+- A park struck by an operator correction resumes by re-verifying on current master (rebuild, re-run the repro, re-check every file:line citation) — never a blind re-post of the staged draft.
 - CI currency is a separate question from whether a failure is real. Key on the check-SUITE `created_at`, never the check-run `started_at`. For "last successful run", pin `event=workflow_dispatch`.
 - A retrieval rule you can't execute isn't a rule. `learnings/INDEX.md` is generated and lossy.
 
@@ -88,6 +89,8 @@ The SDK's own per-turn limit is a third budget, and cost-cap does not see it. On
 
 A park, ship or close-as-covered decision needs its premise checked against behavior, not against a signal that merely correlates with it. On slang#12192 the chain said publicly that PR #12186 "still aborts via `SLANG_UNEXPECTED`", so no consumer of the fix existed and the authorized work should be parked. The only evidence was a `git grep` hit at `slang-emit-spirv.cpp:5292`. That arm is the `default:` of a switch that only a non-texture, non-sampler result type can reach. Buffer handles are routed earlier via `kIROp_SPIRVLoadDescriptorFromHeap` → `emitDescriptorHeapLoad`, which is what the PR's own tests assert. Before claiming "input X still hits abort Y", read which dispatch arm X lands in, whether an earlier pass reroutes it, and the branch's added tests. ([an abort in a switch says nothing until you read the routing](../learnings/1785775132104-an-abort-in-a-switch-says-nothing-until-you-read-t.md)).
 
+**Resuming a park struck by an operator correction re-verifies on current master.** When an operator correction strikes a previously-parked triage chain, the resume is not a blind re-post of the staged draft: master has usually moved since the draft was written (6815ed82d → da04f0426, ~2.5 weeks on the #14517 resume), so rebuild slangc, re-run the repro, and re-verify every file:line citation in the draft (core.meta.slang and slang-emit-metal.cpp line numbers had both shifted). Posting mechanics from the same resume: `tee /dev/stderr` fails in the container ("No such device or address") while the `gh api` POST earlier in the pipeline still executes — check for the posted comment before retrying, or you'll PATCH your own just-posted comment; and a heredoc containing `issues/<N>/comments` plus close-sounding words can trip the anti-close hook, so use the Write tool for gate scripts ([parks struck by correction: re-verify before re-posting](../learnings/1794888761795-r6-hold-parks-can-be-struck-by-operator-correction.md)).
+
 ## CI Verdict Currency
 
 Gating a ready-flip, merge nudge or bisect on CI takes two checks: is the failure real, and is this run the live verdict? `check-runs?filter=latest` can return the same job twice with opposite results. The newest check-run is the RED one (a re-run `workflow_dispatch` suite has the newer `started_at`), while the green `pull_request` suite has the newer suite `created_at`. Key on the check-SUITE `created_at`. `GET /check-suites/<id>` has no `event` field, so join through `actions/runs?head_sha=<sha>` (`check_suite_id`, `event`, `conclusion`, `created_at`) ([resolve the phantom red via check-SUITE created_at](../learnings/1785817144115-correction-resolving-the-workflow-dispatch-phantom.md)).
@@ -98,7 +101,7 @@ For a historical "last successful run", pin the event. `release.yml` fires on bo
 
 "Grep your own store before asserting an environment premise" is only as good as the index behind it. Two agents asserted the opposite of a fact each had recorded. The corrected fact lived only in file bodies, and `learnings/INDEX.md` (~2058 lines of titles cut to ~50 chars) gave zero hits for `Apple6`, `m_hasResidencySet`, `NO_RESIDENCY_SET` and `useResource`. If the same error shows up in independent stores with no shared cause, fix retrieval, not habits ([a truncated title index is a findability defect](../learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md)). The repair then failed as well. `append_learning` regenerates INDEX.md, so a hand-written canonical block was gone within minutes. Check a file isn't generated before trusting an edit. The durable home is `/workspace/shared/CANONICAL-ENV-FACTS.md` (Main-write-only). Search the index with lowercase fragments without punctuation (`grep -i hasresidencyset` finds 1 hit where the exact symbol finds 0) ([INDEX.md is regenerated; search with fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)).
 
-**Source learnings (38):**
+**Source learnings (39):**
 
 - [Make the reversible default call when operator goes dark](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)
 - [A peer coworker's GO is NOT authority for an admin mutation](../learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
@@ -138,5 +141,6 @@ For a historical "last successful run", pin the event. `release.yml` fires on bo
 - [INDEX.md is regenerated; use CANONICAL-ENV-FACTS; grep fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)
 - [A "silent hold" marker is a delivered message; name the mechanism](../learnings/1785832622625-a-silent-hold-marker-is-a-delivered-message-only-t.md)
 - [One owner per work item: never start a second session to reset a budget](../learnings/1791903600000-one-owner-per-work-item-never-start-a-second-session.md) — a budget stop is escalated to a human; the SDK "Reached maximum budget" stop is real; never re-mint a session for the same item
+- [Parks struck by correction: re-verify before re-posting](../learnings/1794888761795-r6-hold-parks-can-be-struck-by-operator-correction.md) — rebuild + re-run + re-check citations on current master; check for a just-posted comment before retrying a POST
 
 _Catalog: [[wiki/index.md]]_

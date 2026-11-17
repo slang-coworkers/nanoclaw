@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-596 learnings. [Catalog](../index.md)
+602 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -371,6 +371,7 @@ type: topic
 - [Forward-reference memory rot: an index hook whose child predates the claim passes every structural check](../learnings/1785784698148-forward-reference-memory-rot-an-index-hook-whose-c.md)
 - [Four errors, one shape: we verified a proxy instead of the thing](../learnings/1785775797519-four-errors-one-shape-we-verified-a-proxy-instead-.md)
 - [gh 'token invalid' is usually cosmetic — verify before escalating a credential blocker to the operator](../learnings/1789716532319-gh-token-invalid-is-usually-cosmetic-verify-before.md)
+- [gh .permissions is all-false for App tokens — don't trust it as a write-access probe](../learnings/1794890313840-gh-permissions-is-all-false-for-app-tokens-don-t-t.md)
 - [gh auth status 401 is a FALSE NEGATIVE for nv-slang-bot App token — verify via a real write, never a probe](../learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md)
 - [git log -S on a shallow clone silently returns confident false positives](../learnings/1785889287172-git-log-s-on-a-shallow-clone-silently-returns-conf.md)
 - [git push --dry-run is a false-positive for the GitHub-App workflows-permission wall](../learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md)
@@ -454,6 +455,7 @@ type: topic
 - [Purging a stale claim fixes only YOUR copy — name the copy, and sweep top-down](../learnings/1785775378784-purging-a-stale-claim-fixes-only-your-copy-name-th.md)
 - [QUALIFIER — the CLA fan-out claim is UNTESTED (cross-repo confound), not refuted; a control must share the mechanism's SCOPE](../learnings/1785889302736-qualifier-the-cla-fan-out-claim-is-untested-cross-.md)
 - [R6 has NO waiting period — label-only (supersedes the 4-day issue-wait learning)](../learnings/1793637385875-r6-has-no-waiting-period-label-only-supersedes-the.md)
+- [R6-hold parks can be struck by operator correction — resume re-verifies on current master before posting](../learnings/1794888761795-r6-hold-parks-can-be-struck-by-operator-correction.md)
 - [Rank a detector's failure by what it licenses — an exonerating false positive ends the search](../learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md)
 - [Rationale carried across a file rename is unverified rationale — re-derive it](../learnings/1785980291734-rationale-carried-across-a-file-rename-is-unverifi.md)
 - [Raw constant data in a VK_EXT_descriptor_heap heap: use RESOURCE_HEAP_DATA mapping with a plain set/binding ConstantBuffer (GPU-verified)](../learnings/1793362893935-raw-constant-data-in-a-vk-ext-descriptor-heap-heap.md)
@@ -480,6 +482,7 @@ type: topic
 - [RETRACTION — "unedited CLA badge ⇒ not signed" does NOT hold; a signature does NOT fan out to a signer's other open PRs](../learnings/1785889064695-retraction-unedited-cla-badge-not-signed-does-not-.md)
 - [RETRACTION — the silent-vs-loud taxonomy is retired; keep five mechanical rules instead](../learnings/1785961995598-retraction-the-silent-vs-loud-taxonomy-is-retired-.md)
 - [Retraction: PR #13078 was NOT ahead of #12986 — it was base-skewed like #12783/#12992](../learnings/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md)
+- [Retro-batch re-dispatch: diff the correction against the prior skip rationale](../learnings/1794893926936-retro-batch-re-dispatch-diff-the-correction-agains.md)
 - [Reviewing a comment's style is not verifying its factual claim](../learnings/1786413091170-reviewing-a-comment-s-style-is-not-verifying-its-f.md)
 - [SCOPE CORRECTION: the zero-run/green find was two-thirds already stored — grep leaves by identifier before claiming novelty](../learnings/1786321155140-scope-correction-the-zero-run-green-find-was-two-t.md)
 - [Script-gated deferral tasks must distinguish "condition not met" from "probe failed" — verify with a deliberately-failing control before arming](../learnings/1788432587694-script-gated-deferral-tasks-must-distinguish-condi.md)
@@ -558,6 +561,7 @@ type: topic
 - [Verify claimed artifacts from a CLEAN self-issued call, never from same-turn corrupted tool output](../learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md)
 - [Verify commit-presence per-sha with the contents API, not git merge-base](../learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md)
 - [Verify FileCheck CHECK directives by ordered-matching emitted output when FileCheck is absent locally](../learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
+- [Verify handed-off numbers are PRs before planning around them](../learnings/1794885464925-verify-handed-off-numbers-are-prs-before-planning-.md)
 - [Verify isDraft live before reporting "draft / needs ready-flip" on a bot PR](../learnings/1789610735922-verify-isdraft-live-before-reporting-draft-needs-r.md)
 - [Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"](../learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md)
 - [Verify language-server-only diagnostic fixes with a real-slangd LSP stdio probe](../learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md)
@@ -565,6 +569,7 @@ type: topic
 - [Verify live GitHub state before acting on a "hold/revert/change-posture" instruction — instructions can be stale](../learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md)
 - [Verify live GitHub state yourself before relaying a coworker's PR ready/merge/approval claim upward as actionable](../learnings/1789578318189-verify-live-github-state-yourself-before-relaying-.md)
 - [Verify live PR draft/ready state before reporting it — maintainers can flip it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md)
+- [Verify memo anchors with case-insensitive greps (SCREAMING_SNAKE constants)](../learnings/1794888691654-verify-memo-anchors-with-case-insensitive-greps-sc.md)
 - [Verify open-PR status before calling a worktree/branch abandoned (worktree-GC trap)](../learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md)
 - [Verify PR authorship via pulls/<n>/commits, never commits?sha=branch (post-merge false positive)](../learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md)
 - [Verify receipt of consequential a2a handoffs; reply to non-named agents via bare in_reply_to to their latest message](../learnings/1783499588128-verify-receipt-of-consequential-a2a-handoffs-reply.md)
@@ -573,6 +578,7 @@ type: topic
 - [Verify Slang LS (slangd) diagnostics with a manual stdio LSP probe, not slang-test](../learnings/1781088708789-verify-slang-ls-slangd-diagnostics-with-a-manual-s.md)
 - [Verify submodule pins at the gitlink, not the working tree](../learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md)
 - [Verify the artifact, not the hand-off — and a set can have the right members for heterogeneous reasons](../learnings/1785976380130-verify-the-artifact-not-the-hand-off-and-a-set-can.md)
+- [Verify the veto you think fired (vary the causal parameter); re-run the enumerated set before posting counts](../learnings/1794876036833-verify-the-veto-you-think-fired-vary-the-causal-pa.md)
 - [Verify triage-memo file:line claims about adjacent code before quoting in a PR](../learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md)
 - [Verify triage-memo mechanism claims against source before codifying them](../learnings/1789474315334-verify-triage-memo-mechanism-claims-against-source.md)
 - [Verify your own write capability before accepting a "file it" / "post it" instruction](../learnings/1785837463958-verify-your-own-write-capability-before-accepting-.md)

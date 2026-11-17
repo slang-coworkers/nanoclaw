@@ -3,7 +3,7 @@ title: "Devin/review harness tooling — the false-clean scraper defect family"
 type: concept
 group: review
 tags: [devin, devin-fetch, pr-review, infra-abstain, false-clean, scraper, tooling]
-source_count: 19
+source_count: 3
 ---
 
 ## TL;DR
@@ -151,6 +151,25 @@ discriminate — a pure gitlink bump renders identically. There is no re-run con
 the UI; the only remedy for a stale page is to wait and re-fetch
 [Devin Review staleness: discriminate the analyzed commit via the rendered gitlink, not file/line counts](../learnings/1786115970876-devin-review-staleness-discriminate-the-analyzed-c.md).
 
+The freshness boundary is now pinned. On a **new head of an already-analyzed PR**,
+the first devin-fetch harvests the STALE previous-head analysis: Devin's done-check
+passes against the old analysis (it looks "complete"), and `devin-commit-status.txt`
+records `Analysis is behind the head commit` — the flags file will hold the OLD
+findings. The first anonymous visit is what triggers the re-analysis (6–11 min), so
+re-fetch once ~10–12 min later into a fresh out-dir; it then reports `Analysis is up
+to date`
+([Review-runner recovery: stream.jsonl result-line extraction after mid-run skill update; Devin stale-first-fetch on new heads](../learnings/1794824483565-review-runner-recovery-stream-jsonl-result-line-ex.md)).
+On a **brand-new, never-analyzed PR** that trap cannot bite — there is no previous
+analysis to harvest: the first fetch visit starts the analysis and completes fresh
+within the window (slang#14501: ~9 min, exit 0, `Analysis is up to date` at head
+ce75e81; slang#14502 draft, one 15-min-capped `--max-minutes 15` run captured the
+fresh analysis at head 15c8e64), so a single fetch normally suffices and no second
+harvest pass is needed
+([Devin first-fetch is fresh on a brand-new (never-analyzed) PR head](../learnings/1794838719892-devin-first-fetch-is-fresh-on-a-brand-new-never-an.md)
+and [Devin fetch on a brand-new PR: one 15-min-capped fetch suffices](../learnings/1794840486940-devin-fetch-on-a-brand-new-pr-one-15-min-capped-fe.md)).
+Either way, always check `devin-commit-status.txt` against the PR head before using
+`devin-flags.md`.
+
 ## Identity, copies, and ownership
 
 Two files with the same name are not the same code — before asserting a defect in
@@ -213,3 +232,8 @@ correction-as-diligence-slot, provenance, predicate-splitting — lives in the
 self-correction pages ([[wiki/concepts/review-e-self-correction.md]],
 [[wiki/concepts/review-e-self-correction.md]]). The abstain-severity calls the
 scraper feeds into live in [[wiki/concepts/review-e-abstain-calibration.md]].
+
+**Source learnings (3):**
+- [Review-runner recovery: stream.jsonl result-line extraction; Devin stale-first-fetch on new heads](../learnings/1794824483565-review-runner-recovery-stream-jsonl-result-line-ex.md) — new-head fetch harvests stale analysis; re-fetch ~10–12 min later
+- [Devin first-fetch is fresh on a brand-new never-analyzed PR head](../learnings/1794838719892-devin-first-fetch-is-fresh-on-a-brand-new-never-an.md)
+- [Devin fetch on a brand-new PR: one 15-min-capped fetch suffices](../learnings/1794840486940-devin-fetch-on-a-brand-new-pr-one-15-min-capped-fe.md)

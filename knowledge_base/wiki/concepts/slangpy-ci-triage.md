@@ -3,7 +3,7 @@ title: "SlangPy CI, Triage, Build, and Runtime"
 type: concept
 group: slangpy
 tags: [slangpy, ci, triage, flake, build, runtime, buffer, imodule, version, infra]
-source_count: 31
+source_count: 32
 ---
 
 > **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" statement below describes the 2026-09-28 → 10-16 passthrough outage, not the fleet. Source: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
@@ -85,6 +85,8 @@ When a feature request cites file:line pointers, grep HEAD for its named symbols
 
 Case #844 (thread group size / 2D tile dispatch / groupshared) already works off `.dispatch()`: `FunctionNode.call_group_shape(shape)` (`slangpy/core/function.py`) drives `[numthreads(call_group_size,1,1)]` (32 is only a default), and the generated `compute_main` exposes `SV_DispatchThreadID`/`SV_GroupID`/`SV_GroupIndex` via `CallShapeInfo`, so one tile maps to one thread group. `groupshared` tile code without `call_group_shape` silently corrupts shared memory (missing API usage, not a bug). The `.dispatch()` + `torch.Tensor` gap (#832) errors cleanly and a ~5-line lazy-init would fix it, but mkeshavaNV directed NOT to add features to `.dispatch()` (slated for removal behind the #768 raw-dispatch redesign) [call_group_shape](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md).
 
+The 32 default is measured and costly: functional-API kernels with no `call_group_shape` emit `[numthreads(32,1,1)]` (`slangpy/core/generator.py:481,787`), and on bandwidth-bound scalar element-wise kernels the group size alone costs 1.5–3.4x — 20M floats +1 took 1132 µs at 32 vs ~735 µs at 256 on an L40S (slangpy#1271, Vulkan and CUDA), while the per-thread SlangPy index math (div/mod, strides) costs about 0, so group size is the lever. Workaround: `fn.call_group_shape(Shape((64,3)))` (import `Shape` from `slangpy.slangpy`; it is not exported from `slangpy`), which kept results correct (1133→745 µs at 20M). Benchmarking trap from the same triage: a `time.time()` loop with no sync averages in the first-call kernel compile (90–300 ms) and can flip a "float3 always faster" verdict with call order — use medians after warm-up plus `wait_for_idle`, or GPU timestamps (`create_query_pool(QueryType.timestamp)` + `fn(..., _append_to=enc)`). Also found there: `Tensor.from_numpy(plain_arr, target_slang_dtype="float3")` silently builds a wrongly-shaped tensor on an undersized buffer (`tensor.cpp:532`, no stride check), and the docs example `Tensor.view(..., dtype=)` does not exist — DeepWiki repeats it as fact, so verify DeepWiki API claims by running them ([generated kernels default to numthreads(32)](../learnings/1794401258435-slangpy-generated-kernels-default-to-numthreads-32.md)).
+
 ### CUDA codegen issues: search slang core first
 For a missing GPU-codegen capability, run `gh pr list -R shader-slang/slang --search "<topic>" --state all` before assuming a slang-rhi or slangpy fix. Case #808 (CUDA surface write format conversion): `surf*Dwrite` writes raw bytes, so float→normalized/packed conversion must be emitted at the write site by Slang's CUDA codegen (slang-rhi's `format-conversion.h` is CPU-side only); slang PR #11090 was already in flight [#808 is upstream](../learnings/1781015966794-slangpy-808-cuda-texture-format-conversion-fix-is-.md).
 
@@ -109,7 +111,7 @@ To verify early, `.github/workflows/ci-latest-slang.yml` builds slangpy `main` a
 ### CUDA constant vs param codegen
 No-GPU discriminator: compile with `slangc -target cuda -profile cs_6_0 -entry main` and grep the `.cu`. Entry-point args land in the `.param` bank (slow serial `ld.param` for runtime-indexed resource arrays); `ParameterBlock<CallData>` emits `extern "C" __constant__ GlobalParams_0 SLANG_globalParams` (fast `ld.const`); tell: `grep -c '__constant__ SLANG_globalParams' out.cu`. `RWTensor<T,N>` is a SlangPy type, so substitute `RWStructuredBuffer<float> bufs[N]` and label it mechanism-only if no benchmark ran [__constant__ vs .param](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md).
 
-**Source learnings (31):**
+**Source learnings (32):**
 
 - [Cross-repo `gh run rerun` on shader-slang/slangpy now WORKS](../learnings/1785773902337-cross-repo-gh-run-rerun-on-shader-slang-slangpy-no.md) — verify via run_attempt; classify reds by determinism
 - [SlangPy Tests red cluster = proxied bridge-pool downloads (DXC/OptiX 504, bricks.jpg)](../learnings/1794132332457-slangpy-tests-red-cluster-proxied-bridge-pool-down.md) — confirm a green on the same slangpy head; rerun `--failed`
@@ -133,6 +135,7 @@ No-GPU discriminator: compile with `slangc -target cuda -profile cs_6_0 -entry m
 - [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md) — also: park fix-forward on collaborator PRs
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM (#1024)](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md) — measure per-worker high-water first
 - [slangpy call_group_shape already provides tile/groupshared dispatch (#844)](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md) — no new .dispatch() features
+- [SlangPy generated kernels default to numthreads(32); group size is the perf lever](../learnings/1794401258435-slangpy-generated-kernels-default-to-numthreads-32.md) — up to 1.5–3.4x on scalar kernels; benchmark with sync
 - [SlangPy CI macOS build jobs run the full pytest suite incl. Metal](../learnings/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md) — read per-test results from job logs
 - [SlangPy CI: per-job test logs while a run is in progress](../learnings/1791194997507-slangpy-ci-per-job-test-logs-while-a-workflow-run-.md) — use the jobs logs API; static autodiff A/B
 - [Agent containers have no GPU since 2026-09-28 (host outage; superseded by L40S)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md) — outage window only; GPU back 10-16

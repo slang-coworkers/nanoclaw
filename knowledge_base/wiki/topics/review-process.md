@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-415 learnings. [Catalog](../index.md)
+421 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -93,6 +93,7 @@ type: topic
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
 - [Audit the change made in response to your own review the hardest — compliance reads as already-validated](../learnings/1785877575418-audit-the-change-made-in-response-to-your-own-revi.md)
 - [Before reviewing a bot fix PR, search for a community duplicate PR on the same issue](../learnings/1792078760588-before-reviewing-a-bot-fix-pr-search-for-a-communi.md)
+- [BFloat16 in SPIR-V Input/Output is spec-forbidden — never add capability tests for that arm; reviewer rounds are amnesiac](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md)
 - [Check that reused wt-* worktrees and baseline binaries still exist before a multi-day review round](../learnings/1793096667199-check-that-reused-wt-worktrees-and-baseline-binari.md)
 - [Clarity reviewer (C) can hit reproducible API-400 payload-overflow; 3rd retry may still under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md)
 - [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
@@ -133,6 +134,8 @@ type: topic
 - [Devin (Reviewer B) timeout on a fresh merge-commit head leaves stale devin-flags.md — don't cat it as fresh](../learnings/1789684201897-devin-reviewer-b-timeout-on-a-fresh-merge-commit-h.md)
 - [Devin can echo the PR body as its "AI Analysis" — that is not an independent review](../learnings/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md)
 - [Devin false-all-clear regressed: verify the fix is IN the script, not in your notes](../learnings/1786405505888-devin-false-all-clear-regressed-verify-the-fix-is-.md)
+- [Devin fetch on a brand-new PR: one 15-min-capped fetch suffices](../learnings/1794840486940-devin-fetch-on-a-brand-new-pr-one-15-min-capped-fe.md)
+- [Devin first-fetch is fresh on a brand-new (never-analyzed) PR head](../learnings/1794838719892-devin-first-fetch-is-fresh-on-a-brand-new-never-an.md)
 - [Devin re-run after a push can return STALE cached analysis — detect via renamed-symbol probe, not just commit-status](../learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md)
 - [Devin re-scrape recovery: fresh draft PR renders with NO flag anchors; escaped-JSON grep gotcha](../learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md)
 - [Devin Review done-detector races AI-analysis text render](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
@@ -248,7 +251,9 @@ type: topic
 - [Review severity: doc-vs-behavior conflict on a maintainer-owned design point is a QUESTION, not a BLOCK](../learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md)
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
 - [Review-eval verifier: judge "Connection refused" unknowns, and how to re-score them](../learnings/1793741894835-review-eval-verifier-judge-connection-refused-unkn.md)
+- [REVIEW-GUARD false-positive on "rate-limit" prose; 429-storm failure shapes and recovery](../learnings/1794897242707-review-guard-false-positive-on-rate-limit-prose-42.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
+- [Review-runner recovery: stream.jsonl result-line extraction after mid-run skill update; Devin stale-first-fetch on new heads](../learnings/1794824483565-review-runner-recovery-stream-jsonl-result-line-ex.md)
 - [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md)
 - [Reviewer A '🔴 traced not reproduced' can be real: always run it with ulimit+timeout before relaying](../learnings/1791542333563-reviewer-a-traced-not-reproduced-can-be-real-alway.md)
 - [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
@@ -304,6 +309,7 @@ type: topic
 - [Reviewer A: ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 — two consecutive guard-fails on #13410 without it](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md)
 - [Reviewer A: inner `claude --print` kills background subagents after 600s; set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790757776971-reviewer-a-inner-claude-print-kills-background-sub.md)
 - [Reviewer A: launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 AND an isolated REPO_ROOT every time, not just as recovery](../learnings/1791413704374-reviewer-a-launch-with-claude-code-print-bg-wait-c.md)
+- [Reviewer A: narration-only truncation passes the 500B guard; rc=125 mid-stream = infra kill, retry once](../learnings/1794845153917-reviewer-a-narration-only-truncation-passes-the-50.md)
 - [Reviewer A: set REPO_ROOT to a private worktree to avoid shared tmp/pr-diff.patch clobbering](../learnings/1790799086877-reviewer-a-set-repo-root-to-a-private-worktree-to-.md)
 - [Reviewer B (Devin) fails at Chrome launch in reviewer container — no dbus](../learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md)
 - [Reviewer background jobs die at turn end — keep the turn open until they finish](../learnings/1790712733292-reviewer-background-jobs-die-at-turn-end-keep-the-.md)

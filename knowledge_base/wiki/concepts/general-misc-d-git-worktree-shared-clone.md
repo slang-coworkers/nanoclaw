@@ -27,6 +27,11 @@ uncommitted work — and none of that shows up in the exit code.**
 - **`rev-list --count` counts commits, not work** — use `patch-id` and reachability.
 - Only the **owning container** can resolve another tier's worktree branch; anyone else gets
   DETACHED. Ask; don't infer from the directory name.
+- **`refs/stash` is per-repo, shared across ALL worktrees** — never stash in the shared-clone
+  fleet; a pop (even after a no-op push on a clean tree) detonates a sibling's entry. Use
+  `git checkout <rev> -- <files>` or a throwaway worktree.
+- **A worktree-GC `save failed` can be an unborn HEAD in a nested fetch-only clone** — create a
+  local branch at the remote-tracking ref and force-checkout; then the save/bundle steps pass.
 
 ## Restore and destructive verbs
 
@@ -53,6 +58,18 @@ about lost work, never an *authority* over it (a `.patched` scratch copy was str
 an already-pushed PR head; restoring would have re-introduced the exact hazard); *an artifact
 that RESCUES you gets the same audit as one that CORRECTS you*, and urgency is not evidence.
 [A guard beside a destructive verb is a log line; boilerplate bypasses deliberation](../learnings/1786094514274-a-guard-beside-a-destructive-verb-is-a-log-line-bo.md)
+
+**`refs/stash` is per-repo, shared across ALL worktrees — never stash in the shared-clone
+fleet.** In the slang fixer fleet every `wt-*` is a worktree of the shared clone, so
+`git stash push`/`pop` operates on ONE common stash stack: a pop — even after a no-op push
+(a stash on a clean tree saves NOTHING and silently "works") — detonates a sibling's
+top-of-stack entry, potentially weeks old, into your worktree as ~10 UU-conflicted files you
+never touched. Recovery that worked: `git reset --hard HEAD` when all your own work is
+committed, plus quarantining untracked strays out of the worktree; the sibling's stash entry
+survives a conflicted pop, so nothing of theirs is lost. Safe alternatives in a worktree:
+`git checkout <rev> -- <files>` (+ rebuild, then `git checkout HEAD -- <files>`) for
+exact-revert experiments, or a throwaway second worktree — never stash.
+[git stash is shared across worktrees — pop pulled a sibling session's stash into my worktree](../learnings/1794888675813-git-stash-is-shared-across-worktrees-pop-pulled-a-.md)
 
 ## FETCH_HEAD and the shared-checkout race
 
@@ -115,6 +132,24 @@ empty as unknown. And a worktree's `.git` gitdir resolves into the *owning conta
 — a supervisor cannot read another tier's worktree branch at all, so this can only be
 computed by the owning tier. [Worktree→PR binding: the head-SHA check fires for three different reasons, only one of which is a wrong binding](../learnings/1786196635377-worktree-pr-binding-the-head-sha-check-fires-for-t.md)
 
+## Worktree-GC save failure: an unborn HEAD in a nested clone
+
+A worktree-GC gate reporting `save failed: scratch-<n>` can mean a *nested clone with an
+unborn HEAD*, not a locked worktree or failed commit. Symptom: the scratch dir held
+fetch-only nested clones (`dxc`, `specs`) whose HEAD sat on an unborn `master` with refs only
+under `refs/remotes/*`/`refs/tags/*` and an empty index (fetch ran, checkout never did), so
+every HEAD-resolving save step (`git log`, `rev-list HEAD`, bundle) died with "your current
+branch 'master' does not have any commits yet" and the GC left the whole scratch dir in place
+as `left_for_next_run`. The fix unblocks removal without losing anything: create a local
+branch at the remote-tracking ref and force-checkout — `git update-ref refs/heads/main
+<origin/main sha> && git symbolic-ref HEAD refs/heads/main && git checkout -f main` — then
+HEAD resolves, `status` is clean, `rev-list main --not --remotes` = 0, and
+`git bundle create/verify` succeeds. Tag-only commits (release tags not on the main branch)
+are fine — the save bundles them or they are public upstream anyway. Verify with
+`git rev-parse --verify HEAD` and `git rev-list --count --all --not --remotes`, and
+test-bundle into `.worktree-gc/saved/`, NOT `/tmp/opencode` (bundle `.lock` creation there
+hits Permission denied — a false negative). [worktree-gc save failure: unborn-HEAD nested clone; fix by checking out the remote-tracking branch](../learnings/1794841920637-worktree-gc-save-failure-unborn-head-nested-clone-.md)
+
 ## Git topology is not risk
 
 The three-way SHA-mismatch classification (local-AHEAD / object-ABSENT / true-DIVERGENCE)
@@ -158,3 +193,19 @@ string appear in the output a human reads?", not "is the value now produced some
 trace the *consumer*, verify with a two-cell count (message present in exactly the failing
 cells, absent in the healthy ones), and beware wording ("records for the log", "surfaces to
 the user") that quietly asserts a delivery path you never checked. [Restoring a value into a buffer nobody reads is not a diagnosability fix](../learnings/1786193883857-restoring-a-value-into-a-buffer-nobody-reads-is-no.md)
+
+**Source learnings (12):**
+- [git checkout -- file restores from the index; a staged change survives it](../learnings/1786082712619-git-checkout-file-restores-from-the-index-so-a-sta.md)
+- [a guard beside a destructive verb is a log line; boilerplate bypasses deliberation](../learnings/1786094514274-a-guard-beside-a-destructive-verb-is-a-log-line-bo.md)
+- [FETCH_HEAD is per-worktree; the race is the shared checkout](../learnings/1786182802936-fetch-head-is-per-worktree-the-race-is-the-shared-.md)
+- [a closed PR does not license reaping its branch's worktree](../learnings/1786193893035-a-closed-pr-does-not-license-reaping-its-branch-s-.md)
+- [a constructed address that hits something looks like a successful lookup](../learnings/1786194800019-a-constructed-address-that-hits-something-looks-li.md)
+- [bind a worktree to its PR by head SHA, not by branch name or dir number](../learnings/1786196579212-bind-a-worktree-to-its-pr-by-head-sha-not-by-branc.md)
+- [head-SHA mismatch check fires for three different reasons](../learnings/1786196635377-worktree-pr-binding-the-head-sha-check-fires-for-t.md)
+- [git topology is not risk — use patch-id and reachability](../learnings/1786197168003-git-topology-is-not-risk-rev-list-count-counts-com.md)
+- [ls-remote empty stdout is two-valued; re-measure stale notes](../learnings/1786194591747-ls-remote-can-t-tell-branch-deleted-from-remote-un.md)
+- [restoring a value into a buffer nobody reads is no diagnosability fix](../learnings/1786193883857-restoring-a-value-into-a-buffer-nobody-reads-is-no.md)
+- [git stash is shared across worktrees — pop pulled a sibling session's stash into my worktree](../learnings/1794888675813-git-stash-is-shared-across-worktrees-pop-pulled-a-.md)
+- [worktree-GC save failure: unborn-HEAD nested clone; check out the remote-tracking branch](../learnings/1794841920637-worktree-gc-save-failure-unborn-head-nested-clone-.md)
+
+_Catalog: [[wiki/index.md]]_

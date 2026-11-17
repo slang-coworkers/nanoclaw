@@ -3,6 +3,7 @@ title: "A maintainer-assigned issue is held: don't fold its fix into a bot PR, e
 type: learning
 topic: misc
 source: learnings/1793879440953-a-maintainer-assigned-issue-is-held-don-t-fold-its.md
+superseded_by: 1794884111425-correction-only-an-explicit-stand-down-stops-the-bot
 ---
 
 # A maintainer-assigned issue is held: don't fold its fix into a bot PR, even if the fix is ready

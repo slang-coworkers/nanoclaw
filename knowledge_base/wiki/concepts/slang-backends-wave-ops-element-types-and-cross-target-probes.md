@@ -3,7 +3,7 @@ title: "Slang wave ops across element types and targets: bool gaps, WaveMatch la
 type: concept
 group: slang-backends
 tags: [wave-ops, subgroup, bool, WaveActiveBit, WaveMultiPrefixBit, WaveMaskPrefixBitXor, WaveMatch, WaveMaskMatch, __match_any_sync, OpGroupNonUniformLogical, OpGroupNonUniformPartitionNV, ElementTypeTrait, cuda, spirv, dxc, wgsl, sweep, control-column, self-check-probe, filecheck, merge-tree, E36107, E40009]
-source_count: 6
+source_count: 7
 ---
 
 # Slang wave ops across element types and targets
@@ -24,7 +24,7 @@ Slang's wave intrinsics (`hlsl.meta.slang`) dispatch per target through `__targe
 
 ## Sweeping wave intrinsics across element types and targets
 
-A sweep of wave intrinsics × element types × targets compiles each case to SPIR-V (under `SLANG_RUN_SPIRV_VALIDATION=1`), DXIL through DXC and PTX through NVRTC; generating one shader per (function, type) and running the downstream compiler is the method on [[wiki/concepts/slangc-target-coverage-and-capabilities.md]]. That sweep (#14249) is what first exposed `WaveActiveBit*(bool)` emitting `OpGroupNonUniformBitwise*` on bool and the missing CUDA `ElementTypeTrait<boolN>` ([per-function sweep beats first-error E36107](../learnings/1793734049922-per-function-sweep-beats-first-error-e36107-for-gl.md)). Add a known-good control type column: after the #14255 fix, 70 failures remained, and every one also failed for the `uint2` control (E36107 capability errors and glslang SPIR-V-version or extension errors). Without the control they look like bool bugs ([wave-op type sweeps need a control column](../learnings/1793741038958-wave-op-type-sweeps-need-a-control-column-bool-gap.md)).
+A sweep of wave intrinsics × element types × targets compiles each case to SPIR-V (under `SLANG_RUN_SPIRV_VALIDATION=1`), DXIL through DXC and PTX through NVRTC; generating one shader per (function, type) and running the downstream compiler is the method on [[wiki/concepts/slangc-target-coverage-and-capabilities.md]]. That sweep (#14249) is what first exposed `WaveActiveBit*(bool)` emitting `OpGroupNonUniformBitwise*` on bool and the missing CUDA `ElementTypeTrait<boolN>` ([per-function sweep beats first-error E36107](../learnings/1793734049922-per-function-sweep-beats-first-error-e36107-for-gl.md)). Add a known-good control type column: after the #14255 fix, 70 failures remained, and every one also failed for the `uint2` control (E36107 capability errors and glslang SPIR-V-version or extension errors). Without the control they look like bool bugs ([wave-op type sweeps need a control column](../learnings/1793741038958-wave-op-type-sweeps-need-a-control-column-bool-gap.md)). The same downstream-compile matrix sweeps any core-module intrinsic's per-type validity in about a minute without a GPU: `SLANG_RUN_SPIRV_VALIDATION=1 -target spirv-asm` runs spirv-val, `-target spirv -emit-spirv-via-glsl` runs glslang, `-target ptx` runs nvrtc, `-target shader-sharedlib` runs gcc, and `-target dxil-assembly -profile cs_6_0` runs DXC. On #14451 it found the integer `mad` overloads (`T : __BuiltinIntegerType`) keeping float-only arms — spirv `glsl450 Fma`, glsl `fma`, and `$P_fma` expanding to `U32_fma`/`I64_fma`, which the preludes never define (only F16/F32/F64). Watch for undefined `$P_*` prelude helpers: they compile in Slang and fail only downstream, and a `case glsl: __intrinsic_asm "fma"` arm inside a generic over `__BuiltinIntegerType` is invisible to type checking, so grep integer overloads for float-only GLSL.std.450 op names ([integer intrinsics: quick cross-target validity sweep](../learnings/1794377859038-slang-integer-intrinsics-quick-cross-target-validi.md)).
 
 Before keeping a fix for a side bug the sweep finds, check sibling dispatches and draft PRs. The vector `WaveMaskPrefixBitXor`→`WaveMultiPrefixBitOr` bug found in #14255 was already #14250 / PR #14254 ([control column; check sibling PRs](../learnings/1793741038958-wave-op-type-sweeps-need-a-control-column-bool-gap.md)).
 
@@ -61,7 +61,8 @@ Adding CUDA `ElementTypeTrait<bool2..4>` in #14255 fixed the NVRTC errors for bo
 - [[wiki/concepts/slang-backends-f0909b0-spirv-varyings-pointers-waveops.md]] — wave/ballot CSE on SPIR-V
 - [[wiki/concepts/slangc-target-output-and-obfuscation.md]] — running DXC locally (pass-through, `SLANG_ENABLE_DXIL=OFF` builds)
 
-**Source learnings (6):**
+**Source learnings (7):**
+- [integer intrinsics: quick cross-target validity sweep without a GPU (#14451)](../learnings/1794377859038-slang-integer-intrinsics-quick-cross-target-validi.md) — downstream-compile matrix; undefined `$P_*` helpers fail only downstream
 - [wave-op type sweeps need a control column; bool gaps span CUDA trait, SPIR-V Logical ops, DXC unsigned-only, WGSL (#14251)](../learnings/1793741038958-wave-op-type-sweeps-need-a-control-column-bool-gap.md) — generic bool→uint cast; FileCheck `-NOT` before `-DAG`; check sibling PRs
 - [wave-op bool fixes: VK runtime rows don't discriminate; DXC bool rules per op; self-check probe (#14255)](../learnings/1793744564384-wave-op-bool-fixes-vk-runtime-rows-don-t-discrimin.md) — `WaveMultiPrefixBit*` lowers to `.i32`; DXC pass-through
 - [CUDA WaveMatch: `__match_all_sync` → `__match_any_sync`; uniform input and the `uint4` splat hide both bugs (#14273)](../learnings/1793745788116-cuda-wavematch-test-with-non-uniform-values-and-ch.md) — emit path already right; render-test raw output

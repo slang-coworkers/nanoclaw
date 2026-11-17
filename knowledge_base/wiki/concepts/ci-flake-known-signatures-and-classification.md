@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 34
+source_count: 35
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -21,7 +21,7 @@ source_count: 34
 - **A JSON-RPC (`waitForResult()`/`hasMessage()`) failure is a test-server child crash**: dedup by run id; separate harness flake from the PR's own crashing test and GPU device-loss.
 - **slang-rhi OMM `VUID-10904` on a submodule-bump PR is likely a Vulkan SDK 1.4.341.1 validation-layer false positive** (lavapipe SKIPs OMM in slang-rhi's CI). Fix CI-side (pin/suppress the VUID) or report upstream; not rerun-clearable.
 - **Nightly Coverage reds:** a `merge-and-deploy` red can be slang-coverage-reports' 950 MB Pages budget (the bytes are in `reports/latest`, so pruning history does not help; file it there); a `coverage-windows` red on a Chocolatey 503 is infra unless it fails two nights running.
-- **The nightly `agentic-tests` job is advisory doc-bundle drift**: the non-blocking `docs/generated/tests` corpus drifts with breaking-change PRs; regenerate periodically, no issue per drift.
+- **The nightly `agentic-tests` job is advisory doc-bundle drift**: the non-blocking `docs/generated/tests` corpus drifts with breaking-change PRs; regenerate periodically, no issue per drift. A sudden jump in the failure count can be a harness change, not new regressions — diff the failed list against the previous night's `passed test:` lines before saying "N new regressions".
 
 Deciding whether a red Slang CI job is a flake or a legitimate author-owned failure, and the catalogue of recurring signatures with their per-signature disposition. The fleet these run on is [runner pools and infrastructure](ci-flake-runner-pools-and-infrastructure.md); *when a rerun helps at all* is [rerun decision rules](ci-flake-rerun-decision-rules.md).
 
@@ -47,7 +47,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **An aarch64-ONLY test-slang CHECK failure** (x86_64 green) is likely an env-dependent SPIR-V disassembly token: aarch64 `test-slang` jobs export `SLANG_USE_SPV_SOURCE_LANGUAGE_UNKNOWN=1` (a swiftshader workaround), so `OpSource` disassembles as `OpSource Unknown 1 …` there vs `OpSource Slang 1 …` on x86_64. Author-owned, not rerun-clearable; the fix is a test-only relax to `OpSource {{Slang|Unknown}} 1 …`, not a golden-shift (the emit is correct) ([aarch64 token](../learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md)).
 
-**The nightly `agentic-tests` job is advisory doc-bundle drift.** "Nightly Slang Test"'s sole job runs `slang-test -test-dir docs/generated/tests`, an LLM-generated doc-anchored corpus (not `tests/`) that never blocks PRs and drifts whenever a breaking-change PR lands without regenerating its golden snapshots. Pull `--log-failed` for the `N failing tests:` block, diff each `// CHECK:` line against its "possible intended match here" line (usually one token, `0 : Int` vs `0 : Enum(Int)`), and map each to a breaking-change PR via `compare/<last-green-sha>...<red-sha>`. If every failure maps to a disclosed PR and is snapshot-shaped (no crash/assert), it is bundle drift: regenerate periodically, no tracking issue per instance (precedent #12351) ([agentic-tests](../learnings/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md)).
+**The nightly `agentic-tests` job is advisory doc-bundle drift.** "Nightly Slang Test"'s sole job runs `slang-test -test-dir docs/generated/tests`, an LLM-generated doc-anchored corpus (not `tests/`) that never blocks PRs and drifts whenever a breaking-change PR lands without regenerating its golden snapshots. Pull `--log-failed` for the `N failing tests:` block, diff each `// CHECK:` line against its "possible intended match here" line (usually one token, `0 : Int` vs `0 : Enum(Int)`), and map each to a breaking-change PR via `compare/<last-green-sha>...<red-sha>`. If every failure maps to a disclosed PR and is snapshot-shaped (no crash/assert), it is bundle drift: regenerate periodically, no tracking issue per instance (precedent #12351) ([agentic-tests](../learnings/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md)). A large overnight count jump can also be a **harness change, not drift and not new regressions**: the 11-11 nightly jumped 82 → 165 failures because #14422 (merged after the 11-10 nightly) made slang-test check `diag=` tests with a default exit code of -1, so docs/generated tests that check only a *warning* now exit 0 and fail. The method: take the failed list and check it against the `passed test: '<path>'` lines of the previous night's log **before** saying "N new regressions" ([agentic-tests 82 → 165 jump](../learnings/1794386740314-nightly-agentic-tests-82-165-after-14422-diag-exit.md)). Rider: the doc-refresh PR itself can land with zero test coverage — #14436 (3,199 files) had CI's `filter` job skip all 36 build/test jobs in both its PR run and its 18 s MQ run, with 0 reviews and the Claude review failing on >300 files (HTTP 406), so a merged refresh PR is no evidence the refreshed corpus ever ran.
 
 ## Known Flake Signatures
 
@@ -85,7 +85,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 is a SPIRV-Tools assert flake.** It fails only on `test-macos-debug-clang-aarch64 / test-slang` with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` (SPIRV-Tools, via debug-info SPIR-V emission); slang-test's auto-retry doesn't always clear it. If it is the only failure and the PR doesn't touch debuginfo/SPIR-V emit, rerun `--failed` (≤3×); if it reproduces across reruns, report a pre-existing platform issue rather than block (PR #12504, run 34891043815) ([do-while flake](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (34):**
+**Source learnings (35):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [Benign DWARF ld-note can mask the real undefined-reference cause](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -120,5 +120,6 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [via-GLSL expected-failure lists differ per workflow](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md) — key needed in both -github and -via-glsl lists
 - [Nightly Coverage red = slang-coverage-reports Pages 950 MB budget; bytes are in reports/latest views, history pruning doesn't help](../learnings/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md)
 - [Nightly Coverage red at 'Verify coverage Pages publication' = external Pages staging over 950 MB](../learnings/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md) — slang log is opaque; read slang-coverage-reports runs; site frozen
+- [Nightly agentic-tests 82→165 after #14422 diag= exit-code default](../learnings/1794386740314-nightly-agentic-tests-82-165-after-14422-diag-exit.md) — harness change ≠ new regressions; diff against prior night's passes
 
 _Catalog: [[wiki/index.md]]_

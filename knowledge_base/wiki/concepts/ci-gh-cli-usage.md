@@ -3,7 +3,7 @@ title: "gh CLI Usage & PR/Issue Mechanics"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, pr, issues, workflow, bot-process, slang]
-source_count: 24
+source_count: 26
 ---
 
 # gh CLI Usage & PR/Issue Mechanics
@@ -63,6 +63,8 @@ Two sources of accidental closing links are easy to miss when a PR is narrowed t
 - **Body prose.** A parenthetical like "(#13071, which fixes #13066)" in the PR body makes GitHub add #13066 to `closingIssuesReferences` (PR #13312). Reword it ("the change requested in #13066") ([closing-keyword trap in body prose](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md)).
 
 After retitling or rewording, re-run the `closingIssuesReferences` query. If #N is still listed, it is a manual Development-panel link, which someone with triage rights must remove.
+
+Related issue-linkage and metadata writes have their own identifier traps. To attach a sub-issue, run `gh api -X POST repos/<o>/<r>/issues/<parent>/sub_issues -F sub_issue_id=<id>` where `<id>` is the **numeric `.id`** from `GET issues/<n>` — not the issue number and not the GraphQL node_id — and verify with `GET issues/<parent>/sub_issues`; the parent's `sub_issues_summary.total` can stay stale right after attaching (it showed 1 with 2 attached), so never use it as proof ([GitHub sub-issues POST takes the numeric issue id](../learnings/1794422434280-github-sub-issues-post-takes-the-numeric-issue-id-.md)). Setting a native Issue Type goes through GraphQL `updateIssue`, whose input field is **`id`**, not `issueId` — `mutation { updateIssue(input: {id: "<issue node_id>", issueTypeId: "<IT_...>"}) { issue { number } } }`; passing `issueId` fails with "Argument 'id' on InputObject 'UpdateIssueInput' is required". For shader-slang/slang the type IDs are Bug `IT_kwDOAb2kZs4AXYkt`, Feature `IT_kwDOAb2kZs4AXYkw` — triage's Type-setting step uses this exact call ([GitHub GraphQL updateIssue uses `id`, not `issueId`](../learnings/1794893025063-github-graphql-updateissue-uses-id-not-issueid.md)). Rider from the same sub-issue session: render-test sets the ISession option `CompilerOptionName::PassThrough` (`tools/render-test/slang-support.cpp:218-224`), but the only reader in `source/` prints it (`slang-compiler-options.cpp:266`), so render-test "native" reference compiles may really be Slang compiles — check that before trusting COMPARE_HLSL_RENDER as a native cross-check ([sub-issues + render-test PassThrough](../learnings/1794422434280-github-sub-issues-post-takes-the-numeric-issue-id-.md)).
 
 ## gh issue view --comments Can Return Empty
 
@@ -134,7 +136,7 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API, `GET /repos/shader-slang/slang/actions/runs?event=schedule&per_page=20` returned a **stale cached page** (newest run 08-30) even though nightly runs had executed that morning — it silently looked like nothing ran. It recurred on 2026-09-28: `?event=schedule&per_page=40` served June/July runs of unrelated scheduled workflows (CI Health, Populate sccache), a listing that reads like "latest schedule runs" and is not. The **reliable path is per workflow id**: list `actions/workflows?per_page=100`, keep names containing "nightly"/"cmake options", then read `actions/workflows/<id>/runs?per_page=4` for each. On slang "nightly green" means ALL of them — 8 scheduled nightlies (Slang Test, VKGLCTS, MDL Perf, Remix, Coverage, Sanitizer, Sascha, Falcor) plus the weekly CMake Options run — and in a `created=` filter the `>=` must be URL-encoded as `%3E%3D`, or the unauthenticated API returns non-JSON ([event=schedule run listing is stale — query nightlies per workflow id](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)). A cheaper approximation is `GET .../actions/runs?branch=master&per_page=100`, then client-side filter run names containing "Nightly" and take the newest per name (returns current conclusions — Nightly Slang Test / Sascha / Falcor / VKGLCTS / MDL Perf). Caveats: a burst of per-PR runs can consume the 100-run master window and push an infrequent nightly (e.g. `Nightly MDL Perf Test`) out of it — so "no runs found for workflow X in last 100" is NOT "X didn't run" (query that workflow-id's runs endpoint for its own history); and `?status=failure&per_page=N` reliably surfaces in-window failures and distinguishes schedule/master (nightly regressions) from pull_request/workflow_dispatch/merge_group events (per-PR churn, not master regressions) ([GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)).
 
-**Source learnings (24):**
+**Source learnings (26):**
 - [GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — unauth event=schedule can be a stale cache; filter master runs by name for nightly conclusions
 
 - [gh search prs misses recent open PRs](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
@@ -160,5 +162,7 @@ Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API,
 - [Scope-narrowed PR: check closingIssuesReferences + squash title, not just the body](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md) — squash title `Fix #N:` lands on master as a closing keyword; retitle, then re-check.
 - [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — body prose "(#A, which fixes #B)" links #B; reword it.
 - [GitHub search index lag hides recently closed PRs from closed:/is:merged queries](../learnings/1790756182955-github-search-index-lag-hides-recently-closed-prs-.md) — a PR closed ~2h earlier was missing from closed:/merged: queries; report unverified; slangpy has no Discussions
+- [GitHub sub-issues POST takes the numeric issue id](../learnings/1794422434280-github-sub-issues-post-takes-the-numeric-issue-id-.md) — sub_issues_summary lags; render-test PassThrough is effectively unread
+- [GitHub GraphQL updateIssue uses `id`, not `issueId`](../learnings/1794893025063-github-graphql-updateissue-uses-id-not-issueid.md) — issue-type setting in triage
 
 _Catalog: [[wiki/index.md]]_

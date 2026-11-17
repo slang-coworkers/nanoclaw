@@ -3,7 +3,7 @@ title: "Slang Compiler: Probe Discipline Behind Source-Read Claims, and Opaque I
 type: concept
 group: slang-grab-bag
 tags: [probe-discipline, source-read, subagent-verification, getTypeNameHint, opaque-type, debug-info, spirv, capability, layout, mcp-allowlist, ncl, cli_scope, critique-gate, worktree-gc, artifact-check, blast-radius, SLANG_ASSERT, validateAtomicOperations, unpinGenerics]
-source_count: 18
+source_count: 20
 ---
 
 # Slang Compiler: Probe Discipline Behind Source-Read Claims, and Opaque IR Type Naming
@@ -74,7 +74,13 @@ When SPIR-V NonSemantic debug info names a type `DebugTypeComposite` "unnamed"/"
 
 On WGSL at master f7e14a1a6, "negated constants are folded before emission" holds only for scalars: `static const float S; -S` emits `-5.0f`, but `static const float3 V; -V` (and `-float3(4,5,6)`) emits `(vec3<f32>(0) - vec3<f32>(1.0f, 2.0f, 3.0f))` and a `static const float2x2` emits `(f32(-1) * mat2x2<f32>(...))`, because `evalNeg` in `slang-ir-sccp.cpp` handles only scalar int/float. When a PR narrows such a claim (#13572 round 2, to "scalar or vector"), run a 5-line probe rather than trust the comment. For round-N reviews, snapshot the previous round's `bin/` and `lib/` (`cp -a`) before rebuilding the verify worktree: it is a revert-drill baseline with only that round's delta reverted (here only the new DIAGNOSTIC row discriminated). `/tmp` can be wiped overnight, taking naga-wasm setups with it ([SCCP scalar Neg](../learnings/1791812377155-probe-constants-are-folded-test-claims-sccp-folds-.md)).
 
-**Source learnings (18):**
+**Consume the outputs or DCE deletes the call you are probing.** A repro of `tex.GetDimensions(x, y)` with `x,y` never read emits nothing and looks mysteriously "fixed" — any opaque-resource call whose outputs are unused is dead-code-eliminated before emission. Always consume the results (e.g. `return a + float4(x,y,0,1)`) so the call survives to emit (hit in #14466 HLSL repro) ([GetDimensions vanishes under DCE](../learnings/1794819536412-slang-repro-gotcha-getdimensions-vanishes-under-dc.md)).
+
+## Exit-code verification: −2 internal vs −1 compile-failed
+
+To verify a PR's "clean failure" vs "internal error" claim: slangc exit −2 (internal) is `SLANG_E_ABORT` → `ToolReturnCode::InternalCompilerError` (source/core/slang-test-tool-util.h ~20), set after `CompilationAbortedDueToException` E99997 is diagnosed (source/slang/slang-end-to-end-request.cpp ~1990). Exit −1 (ordinary failed compile) is the naming trap: non-abort failures are converted to `SLANG_E_INTERNAL_FAIL` in source/slangc/main.cpp ~47-48 → `CompilationFailed`. So `SLANG_E_INTERNAL_FAIL` = −1 user-facing failure, `SLANG_E_ABORT` = −2 compiler bug; diagnostic IDs live in slang-diagnostics.lua (verified on #14519) ([exit −2 internal vs −1 compile-failed](../learnings/1794889169435-slang-exit-code-mapping-2-internal-vs-1-compile-fa.md)).
+
+**Source learnings (20):**
 - ["Internal-only" texture repro may be public via integer-format aliases](../learnings/1792045881495-slang-internal-only-texture-repro-may-be-public-vi.md) — #13629 GLSL image2D<44> segfault; getImageFormatInfo unchecked
 - [naming DescriptorHandle<T> and other opaque types in SPIR-V debug info goes in getTypeNameHint, not the emitter (#12920/#12858)](../learnings/1788756352102-naming-descriptorhandle-t-and-other-opaque-types-i.md)
 - [getTypeNameHint is shared: naming an opaque IR type churns Metal/CUDA struct names + -fspv-reflect, not just debug info — run the full suite](../learnings/1788774792668-gettypenamehint-is-shared-naming-an-opaque-ir-type.md)
@@ -90,6 +96,8 @@ On WGSL at master f7e14a1a6, "negated constants are folded before emission" hold
 - [IR validation placement: run after final folding/DCE; probe static-global, dead-branch, image-atomic and user-intrinsic shapes beyond the repro (#13518)](../learnings/1791507378245-ir-validation-placement-run-after-final-folding-dc.md)
 - [A guard keyed on a helper's default return needs that contract on the helper, and a test per newly-fixed shape](../learnings/1791926289453-a-guard-keyed-on-a-helper-s-default-return-needs-t.md) — `Generic`-keyed `continue` in `getGlobalParamAddressSpace` also fixed a PB+`-fvk-*-shift` E99997; entry-point bindings never shift; `falcor-ci` gate is not auto-retried (#13096/#13610)
 - [Probe 'constants are folded' test claims; SCCP folds only scalar Neg, not vector/matrix](../learnings/1791812377155-probe-constants-are-folded-test-claims-sccp-folds-.md) — `evalNeg` is scalar-only; vector/matrix negation reaches WGSL emit; snapshot the prior round's build for revert drills
+- [GetDimensions vanishes under DCE unless outputs are consumed](../learnings/1794819536412-slang-repro-gotcha-getdimensions-vanishes-under-dc.md) — consume results or the probed call never emits
+- [slangc exit −2 internal vs −1 compile-failed](../learnings/1794889169435-slang-exit-code-mapping-2-internal-vs-1-compile-fa.md) — `SLANG_E_INTERNAL_FAIL`=−1 user failure; `SLANG_E_ABORT`=−2 compiler bug
 - [Removing dead code before a target-only validator silently drops diagnostics — check the destination shape, not just one example](../learnings/1792349538466-removing-dead-code-before-a-target-only-validator-.md) — #13745 SPIR-V unpin+DCE lost E41403 for function-local destinations; `skipFuncParamValidation`; remedy changes 0/1510 corpus; `collectMetadata` runs before SPIR-V legalization
 - [When a fix validates IR before DCE removes it, validate the whole removed closure, not just the roots](../learnings/1792361172213-when-a-fix-validates-ir-before-dce-removes-it-vali.md) — #13745 R2 `helperLocal` reachable only from a dead export; closure remedy; FileCheck `-NOT` placement in SPIR-V asm
 - [To check code that DCE deletes, observe each round's dead set BEFORE that round removes anything](../learnings/1792365178178-to-check-code-that-dce-deletes-observe-each-round-.md) — `RemovedGlobalInstObserver` per round; first-round probe misses later rounds; in-removal observer gives a false E41403; `slang-func-ptr.h` name collision

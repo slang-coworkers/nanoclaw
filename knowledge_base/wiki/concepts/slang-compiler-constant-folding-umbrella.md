@@ -1,0 +1,40 @@
+---
+title: "Slang constant-folding umbrella (#14473) and compile-time-eval semantics"
+type: concept
+group: slang-grab-bag
+tags: [slang, constant-folding, compile-time-eval, 14473, umbrella, SCCP, tryConstantFoldExpr, BuiltinOperationIntVal, constexpr, static_assert, propagateConstExpr, integer-overflow, shift, preprocessor-if, spec-gap, skiminki-nv]
+source_count: 4
+---
+
+# Slang constant-folding umbrella (#14473) and compile-time-eval semantics
+
+shader-slang/slang tracks all compile-time-eval work under a constant-folding umbrella hierarchy (created by skiminki-nv 2026-11-13): #14473 is the top-level "Compile-time evaluation umbrella", with sub-umbrellas #14476 (integer folding correctness), #14477 (constant-value/conversion diagnostics), #14478 (missing folds; holds #14468, SCCP not folding vector/matrix arithmetic on constant operands), #14479 (link-time/spec constants; #14348 CoopMat spec-const parented there), #14480 (static_assert/constexpr), #14481 (floating-point constants), #14482 (semantics/spec).
+
+## TL;DR
+
+- Triage routing: a new constant-folding/compile-time-eval issue should name its sub-umbrella in the triage comment so leaves get slotted. Sub-umbrellas are untyped and unlabeled; the convention so far is to add a `Diagnostics`-style topic label and leave Issue Type untouched.
+- Constant-folding semantics are split across three folders that DISAGREE: the front-end IntVal folder, `tryConstantFoldExpr`, and IR SCCP. A fold-semantics fix (e.g. shift-mod-N) must touch all of them plus the diagnostic that encodes one engine's answer.
+- Both folding engines must be repro'd on a fold bug: front-end `BuiltinOperationIntVal::tryFoldImpl` (slang-ast-val.cpp) and IR SCCP (slang-ir-sccp.cpp).
+- The formal spec has NO constant-evaluation model — "compile-time constant expression" is undefined there; `#if` is admitted-undocumented. Policy gaps (int→float silent conversion) are front-end `_coerce` policy, not missing infra; SCCP has no DiagnosticSink, so const-expr conversion diagnostics belong in the front-end folder.
+- Warning infra is complete (-Wall/-Wextra/-Wpedantic, -warnings-as-errors, #pragma warning); what's missing on #14477-class asks is policy thresholds, not machinery.
+- Line anchors in older static_assert/constexpr notes drift fast; re-verify file:line before citing them publicly, and treat dispatch pointers to memory files as stale until verified.
+
+## The umbrella family and open leaves
+
+The family tree above comes from the 2026-11-17 batch triage of #14477/#14482-class issues; known open leaves as of that date: #13978 + #13986 (→#14476, both engines affected), #14211 + #14062 (→#14481); #14330 was closed/fixed via #14467 with fold remainder = #14468 ([umbrella hierarchy](../learnings/1794888326061-constant-folding-umbrella-hierarchy-on-shader-slan.md)). Watch the same false-upgrade/triage shape when slotting: dispatch pointers to memory files can cite files that don't exist (the #14473 dispatch cited a nonexistent `14473-constant-folding-umbrella.md`) — verify before relying on them ([same](../learnings/1794888326061-constant-folding-umbrella-hierarchy-on-shader-slan.md)).
+
+For constant-value/conversion diagnostics (#14477), the warning sites are already concentrated: literal warnings in `slang-parser.cpp` ~8682-9240 (IntegerLiteralTooLarge/Truncated, FloatLiteralUnrepresentable/TooSmall, FloatHexLiteralPrecisionLost; defs slang-diagnostics.lua ~4555-4600) and implicit-conversion warnings in `_coerce` (slang-check-conversion.cpp ~2884-3014: UnrecommendedImplicitConversion at cost >= 500, ImplicitConversionToDouble argument-site only and suppressed for FP literals, IntegerConstantOverflow sign-aware with a hex bit-pattern carve-out). Known policy gaps: int→float costs 400 = silent (the #12929/#12933 ask), int→half costs 500 at threshold with constant-range suppression (#12979). `OperatorShiftLeftOverflow` (#10318) is likely already implemented for literal shift counts in `slang-ir-operator-shift-overflow.cpp` (~53-62, wired from slang-lower-to-ir.cpp) — verify a repro before closing it ([family tree + diagnostics policy map](../learnings/1794888473560-constant-folding-umbrella-family-14473-tree-and-th.md)).
+
+## Three folders disagree on semantics
+
+Verified at HEAD da04f0426 for #14482/#9374: shifts are the canonical example — the front-end IntVal folder masks the count `% 64` (slang-ast-val.cpp ~2228-2243), `tryConstantFoldExpr` masks (slang-check-expr.cpp ~2718-2741), but SCCP's `evalLsh`/`evalRsh` returns 0 / saturates to -1 (slang-ir-sccp.cpp ~776-839), and warning 41030 "always zero" encodes SCCP's semantics — a third de-facto semantics inside one diagnostic. Anyone implementing #9374's shift-mod-N must touch all four sites. The `#if` preprocessor path is fully divergent from the lexer path (details on [[wiki/concepts/slang-language-preprocessor-and-lexer.md]]): `stringToInt` = `strtoll` truncated to 32-bit `int`, only `0x` recognized, shifts unguarded 32-bit signed — the root cause of #13545. The formal spec (external/spec/specification/) has no constant-evaluation model: an open gap marker at declarations.md:538 asks for a definition of "compile-time constant expression", preprocessor.md:8 admits `#if` undocumented, and types.md:111's wrap-on-overflow statement doesn't mention shifts ([three folders disagree](../learnings/1794888485621-slang-constant-folding-semantics-three-folders-dis.md)).
+
+## static_assert/constexpr anchors (#14480) drift and must be re-verified
+
+The older static_assert/constexpr learnings carry stale file:line pointers; as of 2026-11-17 (HEAD) the refreshed anchors are: the static_assert intrinsic declaration at core.meta.slang:530 (doc comment typo `@experimetal` at :525; not attribute-gated), `checkStaticAssert` at slang-emit.cpp ~720-771 called at ~2252 (post-specialization), the parser `_makeParseDecl` table at slang-parser.cpp ~11177-11210 (no static_assert entry), and `propagateConstExpr` at slang-ir-constexpr.cpp ~699 invoked from slang-lower-to-ir.cpp ~15760. Re-verify line numbers before citing them in a public comment — the earlier numbers had drifted ([line pointers refreshed](../learnings/1794888461001-static-assert-constexpr-learnings-line-pointers-re.md)). The carrier-IRFunc design and the `-emit-ir` escape are on [[wiki/concepts/slang-compiler-serialization-and-enums.md]].
+
+**Source learnings (4):**
+- [Constant-folding umbrella hierarchy (#14473 family)](../learnings/1794888326061-constant-folding-umbrella-hierarchy-on-shader-slan.md)
+- [Umbrella family tree and diagnostics policy map](../learnings/1794888473560-constant-folding-umbrella-family-14473-tree-and-th.md)
+- [Three folders disagree on shifts; spec has no model](../learnings/1794888485621-slang-constant-folding-semantics-three-folders-dis.md)
+- [static_assert/constexpr line pointers refreshed](../learnings/1794888461001-static-assert-constexpr-learnings-line-pointers-re.md)

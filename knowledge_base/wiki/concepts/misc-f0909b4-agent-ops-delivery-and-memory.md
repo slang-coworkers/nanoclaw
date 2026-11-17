@@ -157,10 +157,7 @@ DANGLING-LINK checks.
 never infer gender from a username/display name/avatar in any generated prose — a
 maintainer explicitly flagged being misgendered; wrong pronouns cost trust.
 [Defer, don't race a member's self-assigned issue](../learnings/1787062663706-defer-don-t-race-member-self-assigned-issue-no-com.md)
-(slang#12603): when an issue is self-assigned to a core-team member, verify the
-assign on the issue itself (cheap GraphQL) — if genuine, DEFER (post the 5-bullet,
-offer approach analysis, open NO non-draft PR) rather than racing their work; the
-hold supersedes the workflow's default "always forward to fixer." [A cleaner
+(slang#12603): the verify-the-assign fact stands (check the assignment on the issue itself, cheap GraphQL), but the DEFER-on-self-assignment is superseded 2026-11-17 by operator correction `operator/1794884111425` — an assignment is not a stand-down, so the hold no longer supersedes the workflow's default forward; the fixer proceeds unless an explicit stand-down exists or the assignee's own PR/work is actively in flight (the don't-race-actual-work courtesy, not don't-race-an-assignee). [A cleaner
 reframing can discard your own prior analysis](../learnings/1787163810101-a-cleaner-reframing-can-discard-your-own-prior-ana.md)
 (slangpy#1091): re-presenting a maintainer's binary simplification *feels
 confirmatory* while quietly dropping richer analysis you already recorded (here, a
@@ -183,7 +180,7 @@ your own prior artifact publicly, read it at source first — option labels drif
 - [okf-synthesis DOSSIER heuristic false-positives on groups using memory/ as operational storage](../learnings/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md) — read the group's CLAUDE.md + index.md first; escalate rather than fold actively-used operational history to fix a metric.
 - [okf-synthesis scoped fix: exclude documented operational files, source list from index.md](../learnings/1787116919680-okf-synthesis-scoped-fix-exclude-documented-operat.md) — parse the "actually holds" table with a hardcoded fallback; keep the always-loaded budget check active while excluding operational files from dossier/stale checks.
 - [Use singular they for human GitHub/Discord users in bot prose](../learnings/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — default to they/them for named humans across all generated prose; never infer gender from handle/avatar.
-- [Defer, don't race: member self-assigned issue → no competing non-draft PR](../learnings/1787062663706-defer-don-t-race-member-self-assigned-issue-no-com.md) — verify the self-assign on the issue itself; if genuine, DEFER with a 5-bullet + approach offer; the hold supersedes the default forward-to-fixer.
+- [Defer, don't race: member self-assigned issue → no competing non-draft PR](../learnings/1787062663706-defer-don-t-race-member-self-assigned-issue-no-com.md) — **superseded 2026-11-17 (operator/1794884111425)**: verify the assign on the issue itself; an assignment is not a stand-down, so it no longer holds the forward — the fixer proceeds unless an explicit stand-down exists or the assignee's own work is actively in flight.
 - [A cleaner reframing can discard your own prior analysis](../learnings/1787163810101-a-cleaner-reframing-can-discard-your-own-prior-ana.md) — check whether your own prior record frames the question richer before echoing a simplification; cite the public artifact's labels, not your notes'.
 - [the per-file `okf_synth: exempt` (col-0) flag replaces hardcoded names in the shared per-group tool; clears size/synthesis classes but not integrity classes.](../learnings/1789101995712-okf-synth-exempt-flag-not-hardcoded-names-for-oper.md)
 - [exempt the whole operational set, not just the loudest, or trigger-1 (backlog) and the daily gate fire on the residual permanent state.](../learnings/1789102408104-okf-synth-exempt-the-whole-operational-set-not-jus.md)

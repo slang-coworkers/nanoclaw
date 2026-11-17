@@ -3,7 +3,7 @@ title: "Slang specialization constants across targets: spec-constant array sizes
 type: concept
 group: slang-backends
 tags: [slang, specialization-constant, SpecializationConstant, vk-constant-id, spec-const, array-size, glsl, glslang, wgsl, metal, hlsl, cuda, dxil, spirv, OpSpecConstantOp, collectGlobalUniformParameters, numthreads, E55205, E99999, E99997, isSpecConstRateType, E31226, _initExprIsRuntimeValue, static-const, GlobalInstInlining, cloneInstAndOperands, _findOrEmitHoistableInst, legalizeBinaryOp, wgsl-override, probe-hygiene]
-source_count: 11
+source_count: 12
 ---
 
 # Slang specialization constants across targets
@@ -70,8 +70,13 @@ A global `static const` initializer must be a compile-time constant (E31226). In
 - **Keep a build from before the suspect PR** to tell a regression from restored behaviour (on #14267, `wt-14221-base` at 7f506f4c9, before #14150): some shapes "broken" by a fix had only compiled on master by accident of the regression [probe scripts](../learnings/1793748082078-slang-probe-scripts-need-timeout-ulimit-struct-sta.md). Release tarballs are a cheap alternative: `gh release download vX -R shader-slang/slang -p 'slang-X-linux-x86_64.tar.gz'`. There is no v2026.6 release; v2026.5.2 is the last before v2026.7 [global-value inliner self-dedup loop](../learnings/1793750179945-global-value-inliner-self-dedup-loop-a-specconst-c.md).
 - **Never rebuild while a full slang-test run uses the same build directory** [spec-const-rate insts](../learnings/1793755067290-spec-const-rate-ir-insts-can-never-be-inlined-into.md).
 
-**Source learnings (11):**
+## Feature map: what "specialization constant" means in Slang (#14479 umbrella)
+
+The spec-constant feature is real and full-stack: attributes `[vk_specialization_constant]`/`[SpecializationConstant]`/`[vk_constant_id(N)]` in core.meta.slang (~4531); a three-tier `ConstantFoldingKind` (CompileTime/LinkTime/SpecializationConstant, slang-check-impl.h ~2155); the `SpecConst` IR rate + hoisting for `OpSpecConstantOp` (slang-ir-util.cpp ~3396); emission across SPIR-V (`OpSpecConstant`+`SpecId`, slang-emit-spirv.cpp ~3789), GLSL (`constant_id`), Metal (function_constant) and WGSL (`override`); reflection category 10 (slang.h ~2308). Key triage distinction: the API's `SpecializationArg`/`specialize()` is generic-TYPE specialization, NOT spec-constant value binding — there is no compile-time override surface; values are injected at Vulkan pipeline creation. Link-time and spec constants share the `DeclRefIntVal` representation but resolve at different times, and intermixing is unmodeled (umbrella #14479, parked 2026-11-17) ([spec-constant feature map](../learnings/1794888369087-slang-spec-constant-feature-map-no-prior-wiki-hits.md)). The #14473 constant-folding umbrella tree is on [[wiki/concepts/slang-compiler-constant-folding-umbrella.md]].
+
+**Source learnings (12):**
 - [spec-constant array sizes: E99999 on GLSL/WGSL/Metal (no GlobalParam case), VLA on HLSL (DXC rejects), E99997 on CUDA; run `-target dxil` (#14030, #10214)](../learnings/1793292087744-slang-spec-constant-array-sizes-fail-on-every-non-.md)
+- [Spec-constant feature map: attributes, three-tier ConstantFoldingKind, per-target emission](../learnings/1794888369087-slang-spec-constant-feature-map-no-prior-wiki-hits.md) — `SpecializationArg` is generic-type specialization, not value binding
 - [glslang mints one `OpSpecConstantOp` per spelling, so out-array copies keep element 0; emit named consts; run the HLSL/CUDA check after specialization; slangc returns 255 (#14030, PR #14049)](../learnings/1793303171753-glslang-miscompiles-out-array-copies-when-a-spec-c.md)
 - [Slang: [numthreads] operands on non-spec-const targets are dangling (null type) — never read their type](../learnings/1792609336816-slang-numthreads-operands-on-non-spec-const-target.md) — `collectGlobalUniformParameters` removes the spec const but skips the decoration use; `materializeGetWorkGroupSize` cast segfaults (#13826); don't hoist spec-const makeVector on SPIR-V
 - [Global-value inliner self-dedup loop: a SpecConst clone dedups to itself and `inlineInst` clones decorations forever](../learnings/1793750179945-global-value-inliner-self-dedup-loop-a-specconst-c.md) — WGSL hang #14278; `cloneInst` guards result == original, `inlineInst` did not; SPIR-V exemption; release-tarball bisect

@@ -3,7 +3,7 @@ title: "Reading a CI Run — Census, Roll-Ups & the Retry Layers"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, ci-health, check-runs, retry, merge-queue, roll-up, slang]
-source_count: 12
+source_count: 13
 ---
 
 # Reading a CI Run — Census, Roll-Ups & the Retry Layers
@@ -21,6 +21,7 @@ Reading a run's verdict is not one measurement — it is a census over jobs, tak
 - **Workflow identity is keyed to file path** — a rename mints a new id and retires the old one; pin the id but cross-check via the path endpoint, which 404s loudly.
 - **Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions** — doing only the first still double-counts.
 - **Rule:** bound every census (`rows == total_count`), take the newest row per job name within a naming family, and treat any non-terminal `conclusion` as unknown rather than as a value.
+- **Workflow-run history is an execution audit**: paginate `actions/workflows/<id>/runs` manually to prove an ops deliverable actually ran; dispatch branch names encode purpose; the harness usually lives in the child repo.
 
 ## Reading a CI run: census, roll-ups, and the retry layers (2026-08-08 fold)
 
@@ -53,6 +54,8 @@ same live run correctly find 8 open PRs + 1 evicted merge-group carrying that fa
 blast-radius gap between "the mechanism looks deployed" and "the mechanism actually works"
 ([check-run names carry a ' / test-slang' suffix — exact-match lists must include it](../learnings/1789250441329-github-check-run-names-for-slang-test-jobs-carry-a.md)).
 
+Run history is also an **execution audit**, not just a verdict read. When triaging an ops deliverable ("execute/verify backtest/publishing"), `gh api repos/<owner>/<repo>/actions/workflows/<id>/runs?per_page=100&page=N` is public and proves whether the deliverable was actually executed, by which workflow, and when — paginate manually (`--paginate` died after page 1 with a proxy hiccup on 2026-11-17). For slang#12950 this flipped "greenfield ops ask" to "substantially executed": slangpy's `backfill-benchmark.yml` (workflow id 315364151) showed 639 dispatch runs with 273 successes, and dispatch branch names (e.g. `backfill-gap-20261022-harness`) encode the sweep's purpose. Pair it with: the deliverable harness usually lives in the CHILD repo (slangpy), not the issue's repo; run conclusions by date reveal learning-phase failures vs steady-state success; and a local checkout beats DeepWiki for recent infra (DeepWiki's slangpy index lagged the backfill files entirely) ([perf-epic ops triage via workflow-run history](../learnings/1794894327219-perf-epic-ops-triage-audit-execution-via-actions-w.md)).
+
 ## The retry layers in detail: three layers, PendingRetry, and "existence is not firing"
 
 The word "retried" collapses **three distinct retry layers** in slang CI, and the collapse is what
@@ -80,7 +83,7 @@ excluded from a failure streak rather than counted toward it. Folding a cancelle
 inflates the strongest number in a report, and the strongest number is the one an upstream reader is
 most likely to act on ([A cancelled job tested nothing — so it cannot corroborate \"retried and still failed\"](../learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md)).
 
-**Source learnings (12):**
+**Source learnings (13):**
 
 - [Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions — doing only the first still double-counts](../learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md)
 - [Two correct CI scans can disagree on failure count — reconcile the UNIT (current vs completed) before conceding or disputing](../learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md)
@@ -94,5 +97,6 @@ most likely to act on ([A cancelled job tested nothing — so it cannot corrobor
 - ["Retried" is ambiguous across THREE retry layers in slang CI — and PendingRetry means a first-pass failure is never counted](../learnings/1786137292183-retried-is-ambiguous-across-three-retry-layers-in-.md)
 - [A cancelled job tested nothing — so it cannot corroborate "retried and still failed"](../learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md)
 - [GitHub check-run names for slang test jobs carry a ' / test-slang' suffix — exact-match exclusion lists must include it](../learnings/1789250441329-github-check-run-names-for-slang-test-jobs-carry-a.md)
+- [Perf-epic ops triage: audit execution via Actions workflow-run history](../learnings/1794894327219-perf-epic-ops-triage-audit-execution-via-actions-w.md) — paginate manually; harness lives in the child repo
 
 _Catalog: [index](../index.md)_

@@ -3,6 +3,7 @@ title: "slang `bot-ok` label = author opts the bot in, including a bot PR when t
 type: learning
 topic: slang-compiler
 source: learnings/1792623822987-slang-bot-ok-label-author-opts-the-bot-in-includin.md
+superseded_by: 1794884111425-correction-only-an-explicit-stand-down-stops-the-bot
 ---
 
 # slang `bot-ok` label = author opts the bot in, including a bot PR when the fix is clear (operator, 2026-10-21)

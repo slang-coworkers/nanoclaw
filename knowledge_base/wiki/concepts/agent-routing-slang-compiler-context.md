@@ -3,7 +3,7 @@ title: "Agent Routing: Slang Compiler Context"
 type: concept
 group: agent-routing
 tags: [slang, diagnostics, parser, GPU, CI, reviewer, render-test, toolchain, IR, store-family]
-source_count: 13
+source_count: 14
 ---
 
 # Agent Routing: Slang Compiler Context
@@ -23,6 +23,7 @@ Slang compiler-specific facts that inform how the agent routing chain (triage, f
 - **Verify the LOWERED op, not surface syntax:** `InterlockedExchange` lowers to `AtomicExchange`, not `AtomicStore`; the store-of-undef peephole elides only plain `kIROp_Store` of `IRUndefined`, never Atomic/Swizzle/MatrixSwizzle stores.
 - **`render-test -render-features <name>` is a two-stage gate:** an unknown name is a loud `SLANG_FAIL` (from the pinned slang-rhi header's allow-list), an unsupported device is a silent IGNORE — so the test file and the submodule pin bump are hard-coupled and must travel together.
 - **A PR's own doc comment can be factually wrong** (#11779: module precompilation IS gated by `isFinalCodegenLink`) — trace the actual call path, don't trust the comment.
+- **A crash/invalid-code side-find whose repro involves a `property`/`__subscript` `ref` accessor maps to umbrella slang#9636** — check it before filing; don't open a new fixer chain while drafts #13152/#13153 are in flight.
 
 ## Verifying Peer Repo-State Claims Before Public Filing
 
@@ -94,9 +95,13 @@ A `-render-features <name>` COMPARE_COMPUTE line passes through two distinct gat
 2. **Device-support (runtime).** Valid name → `rhi::Feature::id` → createDevice; device lacks feature → `SLANG_E_NOT_AVAILABLE` → slang-test reports IGNORED.
 
 The "IGNORED is safe on no-GPU CI" rule presumes the name already passed gate 1. For a slang test that depends on a new slang-rhi feature, the test file and the submodule pin bump are HARD-coupled — they must travel together. Verified on shader-slang/slang#11792 (abort/`shader-abort`, slang-rhi#782) ([render-test -render-features is a TWO-stage gate: unknown name = loud SLANG_FAIL, unsupported device = silent IGNORE](../learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md)).
+## Ref-Accessor Crash Family Maps to Umbrella #9636
+
+A crash/invalid-code side-find whose repro involves a `property`/`__subscript` `ref` accessor (with `[mutating] ref { return <l-value>; }`) almost always maps to the open umbrella issue shader-slang/slang#9636 ("Use of struct property/__subscript ref() accessor produces invalid code") — check it BEFORE filing a new issue; its sibling is #12487 (Metal-abort variant, same mechanism). Dedup traps: #13871 is autodiff-specific, #10244 (closed) is interface-type-specific, #7641 is non-SPIR-V propagation. Mechanism: call sites type the ref call as `Ptr` while the accessor body is lowered returning the loaded value; symptoms vary by consumer — invalid SPIR-V under validation, slang-test SIGSEGV (exit 139) on the vk execution path with validation off (the default), a `Ptr<T>` function-param variant segfaults slangc itself, CPU/LLVM rejects at coercion. The fix path is tracked by drafts #13152/#13153 (+#13151), split from closed #12492 — don't open a new fixer chain for this family while those are in flight. #9636 also has an open maintainer policy question (gate `ref` accessors as experimental: severity/opt-out/scope); crash evidence feeds the severity choice. Verified 2026-11-16 on master cdca151fb ([ref-accessor crash side-finds map to umbrella #9636](../learnings/1794839927419-ref-accessor-crash-side-finds-map-to-umbrella-issu.md)).
 
 ---
-**Source learnings (13):**
+
+**Source learnings (14):**
 - [slang diagnostics-catalog doc_section_digest gap; verify peer repo-state claims](../learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md)
 - [Reviewer disagreement: match canonical precedent vs precedent is wrong](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
 - [Routing a decl through shared declarator machinery broadens accepted grammar](../learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
@@ -109,5 +114,6 @@ The "IGNORED is safe on no-GPU CI" rule presumes the name already passed gate 1.
 - [Slang store-family: which surface syntax hits AtomicStore/MatrixSwizzleStore](../learnings/1782442658975-slang-store-family-which-surface-syntax-hits-atomi.md)
 - [slang #11779: precompilation IS gated by isFinalCodegenLink](../learnings/1782478960515-slang-11779-precompilation-is-gated-by-isfinalcode.md)
 - [render-test -render-features is a two-stage gate](../learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md)
+- [Ref-accessor crash side-finds map to umbrella #9636](../learnings/1794839927419-ref-accessor-crash-side-finds-map-to-umbrella-issu.md) — check before filing; drafts #13152/#13153 in flight
 - [Supervisor artifact-enforcement nudge yields to operator comment-gate](../learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)
 _Catalog: [[wiki/index.md]]_

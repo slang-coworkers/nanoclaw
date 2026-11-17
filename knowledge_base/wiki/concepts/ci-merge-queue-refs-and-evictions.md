@@ -1,0 +1,55 @@
+---
+title: "Merge-Queue Refs & Evictions — Stale Heads, checks_timed_out and gh-readonly-queue Leftovers"
+type: concept
+group: ci-tooling
+tags: [merge-queue, checks-timed-out, gh-readonly-queue, sm80, runner-starvation, slangpy-tests, graphql, slang]
+source_count: 8
+---
+
+# Merge-Queue Refs & Evictions — Stale Heads, checks_timed_out and gh-readonly-queue Leftovers
+
+The merge queue emits three believable false signals: an eviction that looks like a code failure (but is runner starvation), a queued CI run that looks like a live queue entry (but is an evicted group's zombie), and a `gh-readonly-queue` ref with a red status that looks like a live drop (but is months-old garbage from a long-merged PR). This page is how to tell each from the real thing.
+
+## TL;DR
+
+- **The queue's required-check timeout is ~2 h**, and SM80 runner starvation now causes `checks_timed_out` evictions, not only slow merges. Get the eviction reason only from GraphQL `RemovedFromMergeQueueEvent.reason`.
+- **An evicted MQ group's `CI` run stays `queued` on its SM80 job for hours** and shows up in `runs_queued` — it is not a live queue entry. Live queue depth is `mergeQueue.entries.totalCount`.
+- **A run-level `waiting` does not mean the tests never ran** — one job (usually `falcor-build-approval-gate`) can hold the run while all other jobs succeed. Check the jobs before reporting "CI never ran".
+- **`health_snapshots.jsonl` does not count jobs that belong to a `waiting` run**; use job timestamps for SM80 demand. A never-started job has `started_at == created_at`; use `completed_at` (or the window end) as the end of demand, not `started_at`.
+- **Stale-head gap: compute from the PRs' `mergedAt`, not the master head's `committer.date`** — a queue-merged commit's `committer.date` is the queue entry's creation time and overstates head age by the queue run's duration (~1 h).
+- **A `failed_checks` drop with every `CI` run green** → check `commits/<merge-group-sha>/status` for `SlangPy Tests` and follow its `target_url` into the slangpy repo's run. (`SlangPy Tests` is a commit status, not a check run.)
+- **An SM80 job queued for hours while neighbouring entries wait 20–45 min is runner-pool starvation, not code.** The entry then ends `checks_timed_out`, auto-merge is cleared, and a human must re-queue — the bot cannot (`gh pr merge` / `enqueuePullRequest` refuse).
+- **A PR's MQ re-queue does not bump `updatedAt`** — an `updated:>=W0` PR list misses it; use the repo-wide REST issue events feed.
+- **`gh-readonly-queue/master/*` refs can be months-old orphans from merged/closed PRs**, and GitHub keeps them with their final statuses indefinitely — a `SlangPy Tests=failure` on such a ref is a leftover, not a live drop.
+- **Before flagging a red queue ref: check the PR state (ref name encodes `pr-<num>-<sha>`), the status's `updated_at`, and recent `added_to_merge_queue`/`removed_from_merge_queue` timeline events.** Live drops show fresh events; stale refs show none.
+- **REST field is `check_runs`, not `check-runs`** — a jq `."check-runs"` silently nulls. Ref names chain: `pr-N2-<sha>` suffix is the parent queue entry's commit sha.
+- **A nightly workflow's gap in the runs list doesn't mean the runs never existed** (scheduling pauses happen) — cross-check a tracking issue's cited run IDs against `gh run list --workflow` output.
+
+## Evictions: checks_timed_out, the ~2 h timeout, and zombie queued runs
+
+On 2026-11-11, slang#14435 was queued 05:16:54Z and removed 07:17:31Z with `RemovedFromMergeQueueEvent.reason = checks_timed_out` (2 h 0 min; the earlier #14435 eviction evidence measured 120.6 min after enqueue). On its merge-group commit, 54 check runs passed and `test-linux-release-gcc-x86_64-sm80 / test-slang` was still `queued` (never started), so the queue's required-check timeout is about 2 h and SM80 runner starvation causes evictions, not only slow merges. To diagnose: take `beforeCommit.oid` from the GraphQL event, then REST `/commits/<sha>/check-runs` (look for status `queued`) and `/commits/<sha>/status`. Two riders: a PR's MQ re-queue does not bump `updatedAt`, so an `updated:>=W0` PR list misses it — use the repo-wide REST issue events feed; and an evicted MQ group's `CI` run stays `queued` on its SM80 job for hours after eviction (two such runs were still queued 2 h 43 min later) — they appear in `runs_queued` but `mergeQueue.entries.totalCount` was 0, so do not read them as live queue entries ([sm80 starvation evidence](../learnings/1794386737312-sm80-starvation-is-back-to-checks-timed-out-mq-evi.md), [checks_timed_out eviction mechanics](../learnings/1794387437227-slang-merge-queue-evicts-with-checks-timed-out-aft.md)). An unresolved calibration point: one MQ group survived 167 min (SM80 wait 148 min) without timing out while #14435's timed out at 120.6 min, so the timeout is not a hard wall.
+
+## A "waiting" run is not a dead run — check jobs and job timestamps
+
+A run-level `gh run view <id> --json status` of `waiting` does not mean the tests never ran: run 42789122903 (#14416) showed `waiting` only because one job, `falcor-build-approval-gate`, was waiting — the other 46 jobs (including all Windows GPU test-slang Debug and Release jobs) had succeeded. Before reporting "CI never ran" or "waiting on priority", check the jobs (`gh run view <id> --json jobs --jq '[.jobs[] | .conclusion // .status] | group_by(.) | map("\(.[0])=\(length)")'`) ([waiting ≠ never ran](../learnings/1794385477936-slang-ci-run-waiting-can-be-just-falcor-build-appr.md)). The same approval-gate wait breaks snapshots: `health_snapshots.jsonl` does not count jobs that belong to a `waiting` run, so #14416's SM80 job waited 311 min while every in-between snapshot showed no SM80 queue — use job timestamps for SM80 demand. In the job API a never-started job has `started_at == created_at`, so a wait script using `started_at` as the end of demand reports 0 min; use `completed_at`, or the window end if it is still queued ([snapshots miss waiting-run jobs](../learnings/1794386737312-sm80-starvation-is-back-to-checks-timed-out-mq-evi.md)).
+
+## Stale-head and failed_checks triage
+
+The master head's `committer.date` for a queue-merged commit is the queue entry's creation time, so it overstates head age by the queue run's duration (~1 h) — compute the true no-merge gap from the PRs' `mergedAt`. When a PR is dropped `failed_checks` with every `CI` run green, check `commits/<merge-group-sha>/status` for `SlangPy Tests=failure` and follow its `target_url` to the slangpy run (`gh run view <id> --repo shader-slang/slangpy --log-failed | grep FAILED`); on 11-11 it was a genuine PR-side break (`dyn IFloat` vs `IFloat`, slang #13885 / slangpy #1249). An sm80 job queued for hours while neighbouring queue entries wait only 20–45 min means runner-pool starvation, not code; the entry then ends `checks_timed_out` and auto-merge is cleared, so a human must re-queue ([mergedAt + SlangPy Tests target_url](../learnings/1794398737172-merge-queue-stale-head-triage-use-pr-mergedat-and-.md)).
+
+## Stale `gh-readonly-queue` refs from merged PRs mimic live drops
+
+When scanning `gh-readonly-queue/master/*` refs (via `git/matching-refs/heads/gh-readonly-queue/master`), a ref with a red required status is usually **stale garbage from a long-finished PR**: GitHub never deletes some old merge-queue refs, and the commit statuses/check-runs on their shas persist from months-old runs. Seen repeatedly — 2026-11-16/17 scans found pr-10303 (merged 2026-03-17), pr-10321 (closed 2026-03-02) and pr-12968 (merged 2026-09-18) still present with full check history, one carrying a `SlangPy Tests=failure` status dated 2026-09-14 that looked alarming but was a leftover pointing at a cancelled run from months back; nothing was actively being dropped. Before diagnosing a live drop: (1) check the queue commit's `commit.committer.date`, (2) resolve the PR number from the ref name (`pr-<num>-<headsha>`) and check the PR state, (3) check the status's `updated_at` from `commits/<sha>/status`, and (4) cross-check recent `added_to_merge_queue`/`removed_from_merge_queue` timeline events on open PRs — live drops show recent events and a fresh queue ref, stale ones show none. Also note the check-runs REST field is `check_runs`, not `check-runs` (a jq `."check-runs"` silently nulls), and queue-ref names chain: the `pr-N2-<sha>` suffix is the parent queue entry's commit sha ([stale refs mimic failed-queue drops](../learnings/1794830643349-merge-queue-scan-stale-gh-readonly-queue-refs-from.md), [months-old orphan refs](../learnings/1794845023055-gh-readonly-queue-refs-can-be-months-old-orphans-f.md), [old red statuses on merged PRs](../learnings/1794859339834-merged-prs-leave-stale-readonly-queue-refs-with-ol.md), [stale refs mimic merge-queue failure](../learnings/1794873968836-stale-gh-readonly-queue-refs-from-merged-prs-mimic.md)). The same "old artifact masquerading as live" trap hits nightly workflows: scheduling pauses leave long gaps in Nightly Slang Test / Coverage / CI Analytics run lists, and gaps in the list don't mean the runs never existed — cross-check a tracking issue's cited run IDs against `gh run list --workflow` output ([nightly gaps](../learnings/1794830643349-merge-queue-scan-stale-gh-readonly-queue-refs-from.md)).
+
+**Source learnings (8):**
+
+- [waiting run can be falcor-build-approval-gate](../learnings/1794385477936-slang-ci-run-waiting-can-be-just-falcor-build-appr.md) — check jobs before saying "never ran"
+- [SM80 starvation back to checks_timed_out MQ evictions](../learnings/1794386737312-sm80-starvation-is-back-to-checks-timed-out-mq-evi.md) — snapshots miss waiting-run jobs; started_at==created_at
+- [merge queue evicts checks_timed_out after ~2h](../learnings/1794387437227-slang-merge-queue-evicts-with-checks-timed-out-aft.md) — beforeCommit.oid diagnosis; re-queue doesn't bump updatedAt
+- [stale-head triage: PR mergedAt + SlangPy Tests target_url](../learnings/1794398737172-merge-queue-stale-head-triage-use-pr-mergedat-and-.md) — committer.date overstates head age
+- [stale gh-readonly-queue refs mimic failed-queue drops](../learnings/1794830643349-merge-queue-scan-stale-gh-readonly-queue-refs-from.md) — check PR state and commit date first
+- [gh-readonly-queue refs can be months-old orphans](../learnings/1794845023055-gh-readonly-queue-refs-can-be-months-old-orphans-f.md) — statuses persist; ref names chain by sha
+- [merged PRs leave stale queue refs with old red statuses](../learnings/1794859339834-merged-prs-leave-stale-readonly-queue-refs-with-ol.md) — check updated_at; field is check_runs
+- [stale refs mimic merge-queue failure; Issue Onboard broken](../learnings/1794873968836-stale-gh-readonly-queue-refs-from-merged-prs-mimic.md) — 11-17 TOT scan; GraphQL iterationId rider
+
+_Catalog: [index](../index.md)_

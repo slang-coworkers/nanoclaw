@@ -3,7 +3,7 @@ title: "Slang Reflection API"
 type: concept
 group: slang-language-core
 tags: [reflection, reflection-json, type-layout, binding, program-layout, slang-deprecated-h, specialization-constant, slang-rhi, structured-buffer, dxc, hlsl-layout]
-source_count: 30
+source_count: 32
 ---
 
 # Slang Reflection API
@@ -97,7 +97,11 @@ They share no code: a change only in engine 1 moves reflection while SPIR-V is u
 
 **Changing what an accessor returns (PR #13535).** `TypeReflection::getElementCount()` for unsized `T[]` changed 0 → `SLANG_UNBOUNDED_SIZE`, as `slang.h` documented. Downstream uses 0 as a marker: slangpy's `is_generic()` (`num_elements()==0`), `any_generic_dims`, `builtin/array.py`, `tensorcommon.py` treat 0 as "generic/unsized" and store `int(element_count())` (`float[] a` now reads -1); slang-rhi Metal's `collectPointerFields` (`if(count==0) return; for(i<count)`) loops effectively forever. When a reflection value changes, grep slangpy and slang-rhi for the old value as a sentinel (`== 0`, `> 0`, casts), not only the accessor, and label `pr: breaking change`. `CI SlangPy Trigger Test` SKIPS bot-authored PRs; dispatch it (`workflow_dispatch pr_number=N`) ([return-value fixes matching slang.h can still break](../learnings/1791504997222-reflection-return-value-fixes-that-match-slang-h-d.md)).
 
-**Source learnings (30):**
+**Before assuming a reflection capability is missing, check slang-reflection-api.cpp.** The `spReflection*` C API is already DeclRef-aware: `SlangReflectionFunction*`/`SlangReflectionGeneric*` ARE `DeclRefBase*` handles (slang-reflection-api.cpp ~96-131), and `spReflectionGeneric_GetTypeParameterConstraint*` already queries function-level `where T : IFoo` constraints (backed by getCanonicalGenericConstraints, slang-check-decl.cpp ~20202). The real gaps (#14429 triage): `spReflectionType_GetKind` returns NONE for function-scope generic-param DeclRefTypes (only GlobalGenericParamDecl is classified, ~514-550), and the reflection-JSON TypeParameter path has TODOs for entry-point generics — which is why SlangPy string-parses full_name() for generic args (slangpy src/sgl/refl/type.cpp ~957) ([DeclRef-aware handles exist; GetKind is the gap for function-scope generic params](../learnings/1794885648296-slang-reflection-api-declref-aware-handles-generic.md)).
+
+**#14423 and #14429 are parallel designs of the same append-only ABI and must be shaped together.** #14423 (enumerate concrete variadic type-pack elements, kaizhangNV) and #14429 (query generic parameters + constraints, tangent-vector, filed 2026-11-17) both extend the `spReflectionGeneric_*` surface; #14423 is PARKED pending API-shape sign-off, and whichever is un-parked first should shape its queries coherently with the other. Implementation shortcut for the eventual fixer: `_getEntryTypes` in slang-check-portable-ray-tracing.cpp ~314-343 already enumerates the `ConcreteTypePack` bound in a `GenericAppDeclRef` exactly as #14423 wants, including the unresolved-vs-empty distinction — mirror it at the reflection layer ([reflection API design coordination: #14423 vs #14429](../learnings/1794888772263-reflection-api-design-coordination-slang-14423-vs-.md)).
+
+**Source learnings (32):**
 - [multi-EP binding bloat is real](../learnings/1790016065362-correction-entry-point-uniform-binding-bloat-acros.md) — EP offsets scope-relative
 - [two layout engines; a flag must touch both](../learnings/1789151128965-slang-layout-has-two-independent-engines-reflectio.md)
 - [new dependency must extend the cache key (#13020)](../learnings/1789172524588-threading-a-new-dependency-into-a-cached-parse-loo.md)
@@ -114,6 +118,8 @@ They share no code: a change only in engine 1 moves reflection while SPIR-V is u
 - [measure emitted AND reflection layout](../learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md)
 - [findFieldIndexByName supports module.var](../learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)
 - [slang-deprecated.h holds the ACTIVE C-API](../learnings/1782754805883-slang-include-slang-deprecated-h-holds-the-active-.md)
+- [DeclRef-aware handles + GenericReflection constraint queries exist; GetKind is the function-scope gap](../learnings/1794885648296-slang-reflection-api-declref-aware-handles-generic.md) — check slang-reflection-api.cpp before assuming a gap
+- [Reflection API design coordination: #14423 vs #14429](../learnings/1794888772263-reflection-api-design-coordination-slang-14423-vs-.md) — parallel append-only ABI designs; `_getEntryTypes` is the mirror
 - [cumulative offset is a path property (#12183)](../learnings/1784676089970-reflection-cumulative-offset-is-a-path-property-no.md)
 - [used:0 on a ParameterBlock space (#12349)](../learnings/1786583259247-reflection-used-0-on-a-parameterblock-subelementre.md)
 - [split CB keeps stale resource size attrs (#13789)](../learnings/1792522133573-isparameterlocationused-false-positive-split-const.md)

@@ -1,0 +1,47 @@
+---
+title: "Agent Routing: Send Gate — in_reply_to on Chain Delivery"
+type: concept
+group: agent-routing
+tags: [send-gate, in_reply_to, thread_id, chain-routing, delivery-markers, handoff, delegation, triage, fixer]
+source_count: 13
+---
+
+# Agent Routing: Send Gate — in_reply_to on Chain Delivery
+
+> Owns the host chain-routing send gate: why a chain-delivery marker in `send_message` demands `in_reply_to`, the working triple (`to` + `in_reply_to` + canonical `thread_id`), and its edge cases (`send_file`, marker-free status, stale templates). Routing topology and gating generally: [Message Routing & Gating](agent-routing-message-routing-and-gating.md).
+
+## TL;DR
+
+- **The gate keys on the message TEXT, not the routing table.** Any `send_message` whose body carries a chain-delivery marker (`[Triage handoff]`, `[Resolution]`, `[handoff]`, …) must carry `in_reply_to` — even for a fresh peer delegation where the routing table says `to` + explicit `thread_id` is enough. `to` + `thread_id` alone bounces with "CHAIN ROUTING REQUIRED before delivery/handoff message … missing in_reply_to".
+- **Working shape for every fresh peer handoff (verified many times, Nov 2026):** `to="<peer>"` + `in_reply_to=<id of the parent dispatch inbound>` + `thread_id="gh-issue-<owner>/<repo>-<num>"` (canonical, reused verbatim). The explicit `to=` still controls the destination, `in_reply_to` only satisfies the gate and stamps reply correlation, and `thread_id` still carries the canonical GitHub thread.
+- **Anchor `in_reply_to` on the PARENT's dispatch inbound** — the `<message id=N from=parent>` row that authorized/spawned the task — never on the peer's own message and never on an outbound id.
+- **Why: the gate treats any delivery/handoff marker as a chain reply and demands an inbound edge**; it cannot distinguish "fresh delegation with thread_id" from "reply to a chain message", so the triggering parent inbound supplies the edge while `to=`/`thread_id` route the message.
+- **Marker-free sends pass:** `[Report]`/`[Triage]` status text and `send_file` are not gated — only marker text triggers it. But `send_file`'s own `in_reply_to` must reference an INBOUND id (your own outbound id errors "no inbound message with that id") — and for both `send_message` and `send_file` that id must be from YOUR OWN session's inbox: a seq read from another session's transcript errors "no inbound message with that id in this session", and a fresh task session with no parent inbound just sends a bare `to="parent"`.
+- **Spine workflow examples that omit `in_reply_to` on handoff steps are stale vs the live gate** — the gate is authoritative; the send needs the triple regardless of the template.
+- **Without `in_reply_to` the handoff never leaves your outbox** — the peer silently never receives the task. Each gate denial is a soft-cap strike (3 escalate), so fix the call shape, don't retry blindly.
+
+## The Gate and the Working Triple
+
+The host chain-routing gate intercepts `send_message` calls whose text contains a chain-delivery marker (the canonical case is a triager's `[Triage handoff]` to slang-fixer) and refuses delivery until the call carries `in_reply_to` — `to=` plus a bare `thread_id` is not enough, even though the routing table describes fresh peer delegation as exactly that pair ([chain-delivery markers require in_reply_to](../learnings/1794885544464-send-message-chain-delivery-markers-require-in-rep.md), [peer handoff markers require both](../learnings/1794885558448-peer-handoff-markers-require-in-reply-to-and-threa.md)). This was hit repeatedly across Nov 2026 triages (#14421, #14430, #14248, #13832–#13834, #13758, #13749, #13686): every rejection is the same "CHAIN ROUTING REQUIRED … missing in_reply_to" bounce ([gate requires in_reply_to even for fresh peer delegation](../learnings/1794885571436-send-message-chain-delivery-gate-requires-in-reply.md), [handoff needs in_reply_to despite fresh delegation](../learnings/1794892891138-handoff-send-message-needs-in-reply-to-despite-bei.md), [handoff markers need in_reply_to even for fresh peer delegation](../learnings/1794892005119-handoff-markers-need-in-reply-to-even-for-fresh-pe.md)).
+
+The fix is always the same triple: keep `to="<peer>"` and the canonical `thread_id="gh-issue-<owner>/<repo>-<num>"`, and add `in_reply_to=<the parent dispatch inbound id>`. The explicit `to=` overrides the `in_reply_to` source routing, the gate is satisfied, and the thread_id still propagates correctly ([chain gate requires in_reply_to for peer handoff markers](../learnings/1794891300126-chain-gate-requires-in-reply-to-for-peer-handoff-m.md), [chain-marker peer handoffs despite the fresh-delegation routing table](../learnings/1794891489641-chain-marker-peer-handoffs-require-in-reply-to-des.md), [peer handoff markers need in_reply_to + canonical thread_id](../learnings/1794888830595-send-message-gate-peer-handoff-markers-need-in-rep.md)). Anchor the reply-correlation on the parent's inbound that dispatched the work — the gate treats the delivery marker as a chain reply and demands an inbound edge, and the triggering parent inbound provides it ([in_reply_to of the dispatch inbound](../learnings/1794892189058-chain-routing-gates-handoff-markers-require-in-rep.md)). The send_file that follows the handoff can use `thread_id` alone.
+
+## Stale Templates and Edge Cases
+
+The spine's workflow examples omit `in_reply_to` on the handoff step — they are stale vs the live gate; the gate needs proof the handoff answers a real inbound, so send the triple regardless of what the template shows ([triage handoff needs in_reply_to despite the workflow example](../learnings/1794816943247-triage-handoff-to-fixer-needs-in-reply-to-despite-.md), [triage handoff needs in_reply_to, not just thread_id](../learnings/1794891089956-triage-handoff-to-fixer-needs-in-reply-to-not-just.md)). Marker-free status (`[Triage]`, `[Report]`) passes without `in_reply_to`, and file attachments are ungated — only the marker text triggers the gate. But `send_file`'s own `in_reply_to` must reference an INBOUND id: passing your own outbound message id errors with "no inbound message with that id in this session" — omit it and pass `to` + `thread_id` ([in_reply_to of the dispatch inbound](../learnings/1794892189058-chain-routing-gates-handoff-markers-require-in-rep.md)). The same constraint bounds `send_message`'s `in_reply_to` generally: it resolves only ids in your OWN current session's inbox, so a seq number read from another session's transcript via `ncl sessions messages` (e.g. a thread session's) is not a valid value — it errors "no inbound message with that id in this session". For a parent roll-up from a fresh task session that holds no parent inbound, send a bare `to="parent"` (hit on the #13837 re-check: an `in_reply_to=25` copied from a transcript seq errored while the bare send delivered) ([send_message in_reply_to takes only ids from your own session's inbox](../learnings/1794897266613-send-message-in-reply-to-takes-only-ids-from-your-.md)).
+
+**Source learnings (13):**
+- [triage handoff needs in_reply_to despite workflow example](../learnings/1794816943247-triage-handoff-to-fixer-needs-in-reply-to-despite-.md)
+- [chain-delivery markers require in_reply_to, not just thread_id](../learnings/1794885544464-send-message-chain-delivery-markers-require-in-rep.md)
+- [peer handoff markers require in_reply_to AND thread_id](../learnings/1794885558448-peer-handoff-markers-require-in-reply-to-and-threa.md)
+- [send_message chain-delivery gate requires in_reply_to even for fresh delegation](../learnings/1794885571436-send-message-chain-delivery-gate-requires-in-reply.md)
+- [peer handoff markers need in_reply_to + canonical thread_id](../learnings/1794888830595-send-message-gate-peer-handoff-markers-need-in-rep.md)
+- [triage handoff needs in_reply_to, not just thread_id](../learnings/1794891089956-triage-handoff-to-fixer-needs-in-reply-to-not-just.md)
+- [chain gate requires in_reply_to for peer handoff markers](../learnings/1794891300126-chain-gate-requires-in-reply-to-for-peer-handoff-m.md)
+- [chain-marker peer handoffs despite fresh-delegation routing table](../learnings/1794891489641-chain-marker-peer-handoffs-require-in-reply-to-des.md)
+- [handoff markers need in_reply_to even for fresh peer delegation](../learnings/1794892005119-handoff-markers-need-in-reply-to-even-for-fresh-pe.md)
+- [handoff markers require in_reply_to of the dispatch inbound](../learnings/1794892189058-chain-routing-gates-handoff-markers-require-in-rep.md)
+- [chain-delivery markers require in_reply_to even for fresh peer delegation](../learnings/1794892329464-chain-delivery-markers-require-in-reply-to-even-fo.md)
+- [handoff send_message needs in_reply_to despite fresh delegation](../learnings/1794892891138-handoff-send-message-needs-in-reply-to-despite-bei.md)
+- [send_message in_reply_to takes only own-session inbox ids](../learnings/1794897266613-send-message-in-reply-to-takes-only-ids-from-your-.md)
+- _Catalog: [[wiki/index.md]]_
