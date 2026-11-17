@@ -499,7 +499,6 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
       activity: [] as any[],
       costCaps: [] as any[],
       ready: 0,
-      fatal: [] as string[],
       republish: 0,
     };
     const handoff = createScanHandoff({
@@ -510,7 +509,6 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
         calls.ready += 1;
       },
       onStats: () => {},
-      onFatal: (m: string) => calls.fatal.push(m),
       requestRepublish: () => {
         calls.republish += 1;
       },
@@ -565,19 +563,12 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
     expect(calls.msgTs).toHaveLength(1);
   });
 
-  it('stops applying frames after a fallback (the main thread owns the caches again)', () => {
+  it('stops applying frames once stopped (a replacement worker owns the caches)', () => {
     const { handoff, calls } = makeHandoff();
     handoff.handle({ kind: 'ready' });
     handoff.stop();
     handoff.handle({ kind: 'msgTs', changed: [['a', 't']], removed: [] });
     expect(calls.msgTs).toHaveLength(0);
-  });
-
-  it('falls back to main-thread scans when the worker reports a fatal warm-up failure', () => {
-    const { handoff, calls } = makeHandoff();
-    handoff.handle({ kind: 'fatal', message: 'warm-up did not settle 12 of 4000 paths' });
-    expect(calls.fatal).toEqual(['warm-up did not settle 12 of 4000 paths']);
-    expect(handoff.isReady()).toBe(false);
   });
 
   it('ignores malformed messages', () => {
@@ -601,7 +592,7 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
     it('applies costCaps frames that arrived before `ready` instead of discarding them', () => {
       const { handoff, calls } = makeHandoff();
       handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{"capUsd":10}', 1000]], removed: [] });
-      expect(calls.costCaps).toHaveLength(0); // main-thread fallback still owns the cache
+      expect(calls.costCaps).toHaveLength(0); // queued until `ready`
       handoff.handle({ kind: 'ready' });
       expect(calls.costCaps).toEqual([{ changed: [['sess-1', 'ag-1', '{"capUsd":10}', 1000]], removed: [] }]);
     });
@@ -638,7 +629,7 @@ describe('scan-worker handoff (codex round-2 residual A)', () => {
       expect(() => handoff.handle({ kind: 'costCaps', changed: [['sess-1', 'ag-1', '{}', 1]], removed: [] })).not.toThrow();
     });
 
-    it('stops applying costCaps frames after a fallback, same as msgTs/activity', () => {
+    it('stops applying costCaps frames once stopped, same as msgTs/activity', () => {
       const { handoff, calls } = makeHandoff();
       handoff.handle({ kind: 'ready' });
       handoff.stop();

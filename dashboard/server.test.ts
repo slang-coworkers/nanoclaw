@@ -12,6 +12,7 @@ import {
   forceOpenDbForTests,
   matchContainerName,
   matchContainerNameForRequest,
+  refreshThreadSummariesForTests,
   resetTransientDashboardStateForTests,
   resolveCoworkerTypeMetadata,
   startReadOnlyServer,
@@ -2887,6 +2888,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
 
   it('main view response includes threadSummaries for every per-thread session', async () => {
     seedThreadScenario();
+    refreshThreadSummariesForTests();
     const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
     const data = (await res.json()) as {
       threadSummaries: Record<string, { replyCount: number; lastReplyTs: string | null }>;
@@ -2924,6 +2926,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
       .run('a2a-self-1', JSON.stringify({ text: 'self-loop prompt' }), now);
     inDb.close();
     forceOpenDbForTests();
+    refreshThreadSummariesForTests();
 
     const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
     expect(res.status).toBe(200);
@@ -3158,6 +3161,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
     }
     db.close();
     forceOpenDbForTests();
+    refreshThreadSummariesForTests();
 
     const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
     const data = (await res.json()) as {
@@ -3195,6 +3199,7 @@ describe('/api/messages — Slack-style thread filtering', () => {
     ins.run('other-2', JSON.stringify({ text: 'y' }), now, 'unrelated-thread');
     inDb.close();
     forceOpenDbForTests();
+    refreshThreadSummariesForTests();
 
     const res = await fetch(`${baseUrl}/api/messages?group=thread-agent&limit=50`);
     const data = (await res.json()) as {

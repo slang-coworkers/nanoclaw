@@ -43,7 +43,9 @@
  * without any type-stripping loader, and it imports only `better-sqlite3` +
  * node builtins. Written defensively — a corrupt/locked session DB is skipped,
  * never fatal. A fatal init failure (e.g. better-sqlite3 unavailable) surfaces
- * as the Worker 'error' event so the host falls back to its main-thread scans.
+ * as the Worker 'error' event, and the host restarts the worker with backoff.
+ * The host never runs these scans itself: it serves empty caches until this
+ * worker's first publish, and the last published values while it restarts.
  */
 import { parentPort, workerData } from 'node:worker_threads';
 import { statSync } from 'node:fs';
@@ -71,13 +73,14 @@ const ACTIVITY_LOOKBACK_MS = 26 * 3600 * 1000; // query a little past the window
 // replaced/renamed looks momentarily absent); this many consecutive ones does.
 const MISSING_CONFIRMATIONS = 2;
 // Backstop so a permanently-unreadable path can't leave the warm-up pending
-// forever. It does NOT promote a partial cache to authoritative: on expiry the
-// worker reports `fatal` and the host reverts to its own main-thread scans.
-// Measured from the first SUCCESSFUL central-DB inventory.
+// forever. On expiry the worker hands off with the paths it could settle and
+// reports the rest (`unsettledPaths` in its stats): the host has no other source
+// for these caches, so a fleet missing a few unreadable files is better than an
+// empty one. Measured from the first SUCCESSFUL central-DB inventory.
 const WARMUP_MAX_MS = 120_000;
 
 // Open the central DB read-only. A failure here is fatal → Worker 'error' →
-// host falls back to its own main-thread scans.
+// the host restarts the worker with backoff.
 const central = new Database(centralDbPath, { readonly: true });
 central.pragma('busy_timeout = 2000');
 
@@ -98,12 +101,11 @@ let lastActivityPublish = 0;
 let lastStatsPublish = 0;
 
 // ---- Warm-up gate ------------------------------------------------------
-// The host STOPS its own (complete, correct) main-thread scans when it sees
-// `ready`, so we must not declare readiness — or publish anything it would
-// apply — until the very first pass has settled every inventory path. With a
-// 400-open-per-tick budget and thousands of session DBs, an ungated first
-// publish would ship the first 400 files' activity as the whole fleet's and
-// clobber the main-thread cache with it.
+// The host serves what we publish as the whole fleet's state, so we must not
+// declare readiness — or publish anything it would apply — until the very first
+// pass has settled every inventory path. With a 400-open-per-tick budget and
+// thousands of session DBs, an ungated first publish would ship the first 400
+// files' activity as the whole fleet's.
 // A path is "settled" only once a read SUCCEEDED or an absence was CONFIRMED —
 // an errored stat/open leaves it unsettled, because caching an unverified empty
 // result and counting it as done is exactly how a partial cache gets declared
@@ -115,7 +117,8 @@ const attemptedPaths = new Set();
 // the first per-tick slice of the fleet.
 let inventoryOkAt = 0;
 let warmedUp = false;
-let warmupFailed = false;
+// Paths still unsettled when the warm-up backstop expired (reported in stats).
+let unsettledAtHandoff = 0;
 
 // Instrumentation.
 let statCalls = 0;
@@ -310,7 +313,35 @@ function refreshFile(path, direction, table, now, budget) {
         // null, don't let it affect the ts/hours result above.
       }
     }
-  } catch {
+  } catch (e) {
+    // A DB without the messages table yet (a session that has not written its
+    // first message) is readable and empty: settle it as empty and reopen it only
+    // when it changes. Without this it never settled, and the warm-up waited for
+    // its backstop before the host got any data. Same test as
+    // isMissingSchemaError in session-db-errors.ts.
+    if (e instanceof Error && /no such (table|column)/i.test(e.message)) {
+      if (sdb) {
+        try {
+          sdb.close();
+        } catch {
+          /* ignore */
+        }
+      }
+      files.set(path, {
+        direction,
+        table,
+        mtimeMs,
+        ts: null,
+        hours: new Map(),
+        costCapRaw: null,
+        nextCheckAt: now + HOT_INTERVAL_MS,
+        lastChangedAt: now,
+        missing: false,
+        missCount: 0,
+      });
+      attemptedPaths.add(path);
+      return true;
+    }
     // Corrupt/locked read: don't cache a bogus empty result over a good one —
     // retry next tick. If we have no prior state, record an empty cold entry.
     if (sdb) {
@@ -462,6 +493,7 @@ function publishStats(now) {
     statCalls,
     dbOpens,
     lastTickMs,
+    unsettledAtHandoff,
   });
   statCalls = 0;
   dbOpens = 0;
@@ -478,19 +510,19 @@ function unsettledPathCount() {
 }
 
 /**
- * True once the initial pass has settled EVERY inventory path. Until then we
- * publish nothing and never claim `ready`.
+ * True once the initial pass has settled EVERY inventory path, or once the
+ * warm-up backstop expired. Until then we publish nothing and never claim
+ * `ready`.
  *
- * The backstop no longer promotes a partial cache to authoritative: if paths are
- * still unsettled WARMUP_MAX_MS after the first successful inventory, something
- * is durably unreadable, and handing the host a fleet snapshot that is missing
- * those files would silently drop their unread timestamps and their share of the
- * activity histogram. We report the failure instead and the host reverts to its
- * own (complete) main-thread scans.
+ * If paths are still unsettled WARMUP_MAX_MS after the first successful
+ * inventory, something is durably unreadable. We hand off anyway: the host has
+ * no other source for these caches, and without a handoff the whole fleet's
+ * unread timestamps, activity and cost caps would stay empty. The unsettled
+ * files keep being retried each tick; the count at handoff is reported in the
+ * stats and as an `error` frame, which the host logs.
  */
 function warmupComplete(now) {
   if (warmedUp) return true;
-  if (warmupFailed) return false;
   if (!inventoryOk) return false;
   const pending = unsettledPathCount();
   if (pending === 0) {
@@ -498,14 +530,15 @@ function warmupComplete(now) {
     return true;
   }
   if (now - inventoryOkAt <= WARMUP_MAX_MS) return false;
-  warmupFailed = true;
+  warmedUp = true;
+  unsettledAtHandoff = pending;
   parentPort.postMessage({
-    kind: 'fatal',
+    kind: 'error',
     message: `warm-up did not settle ${pending} of ${inventory.length * 2} session-DB paths within ${Math.round(
       WARMUP_MAX_MS / 1000,
-    )}s`,
+    )}s; publishing without them`,
   });
-  return false;
+  return true;
 }
 
 function tick() {
@@ -538,15 +571,15 @@ function tick() {
   return warm;
 }
 
-// Announce readiness only once WARM-UP has completed — the host hands off (stops
-// its own scans) on `ready`, so we must not claim readiness on a tick that threw
+// Announce readiness only once WARM-UP has completed — the host serves what
+// follows `ready` as the fleet's state, so we must not claim readiness on a tick that threw
 // (e.g. the central DB was momentarily unreadable), on a tick whose inventory
 // enumeration failed, or on a tick that has only classified the first slice of a
 // large fleet (the per-tick open budget). `ready` is posted inside tick(),
 // immediately BEFORE the first publish, so the host's handoff is complete by the
 // time the first data frame reaches it. A fatal failure to even open the central
 // DB happens above, at module load, and surfaces as the Worker 'error' event →
-// host falls back.
+// the host restarts the worker.
 let readySent = false;
 function runTick() {
   try {
