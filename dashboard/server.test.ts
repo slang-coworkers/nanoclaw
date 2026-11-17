@@ -3965,9 +3965,13 @@ describe('open/closed weights badge on coworkers and sessions', () => {
        VALUES (?, ?, ?, 0, ?, 'direct', ?)`,
     );
     // The OpenCode group takes its provider from its container config, not its own row.
+    // Both groups name weights `any`: an empty column follows the install default, and
+    // the Claude session pin below is refused on a weights=open group.
     group.run('ag-wt-oc', 'Weights OC', 'weights-probe-oc', null, now);
-    group.run('ag-wt-cl', 'Weights CL', 'weights-probe-cl', null, now);
-    db.prepare(`INSERT INTO container_configs (agent_group_id, provider) VALUES ('ag-wt-oc', 'opencode')`).run();
+    group.run('ag-wt-cl', 'Weights CL', 'weights-probe-cl', 'claude', now);
+    db.prepare(
+      `INSERT INTO container_configs (agent_group_id, provider, weights) VALUES ('ag-wt-oc', 'opencode', 'any'), ('ag-wt-cl', NULL, 'any')`,
+    ).run();
     const session = db.prepare(
       `INSERT INTO sessions (id, agent_group_id, thread_id, status, agent_provider, created_at)
        VALUES (?, ?, NULL, 'active', ?, ?)`,
