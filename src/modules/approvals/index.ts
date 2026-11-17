@@ -23,7 +23,13 @@ import { registerResponseHandler } from '../../response-registry.js';
 import { handleApprovalsResponse } from './response-handler.js';
 
 // Public API re-exports so consumers import from the module root.
-export { requestApproval, registerApprovalHandler, registerApprovalResolvedHandler, notifyAgent } from './primitive.js';
+export {
+  requestApproval,
+  registerApprovalHandler,
+  registerApprovalResolvedHandler,
+  notifyAgent,
+  notifyAgentWithId,
+} from './primitive.js';
 export type { ApprovalHandler, ApprovalHandlerContext, RequestApprovalOptions } from './primitive.js';
 // Host-sweep hook for ghosted "Reject with reason…" holds. The re-export also
 // loads reason-capture.js, registering its message-interceptor on import.

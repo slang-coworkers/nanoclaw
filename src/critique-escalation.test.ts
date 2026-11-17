@@ -45,11 +45,21 @@ vi.mock('./modules/approvals/index.js', () => ({
     resolvedHandler = h;
   },
   notifyAgent: (...args: unknown[]) => notifyAgentMock(...args),
+  notifyAgentWithId: (...args: unknown[]) => {
+    notifyAgentMock(...args);
+    return Promise.resolve(`sys-nudge-${notifyAgentMock.mock.calls.length}`);
+  },
 }));
 
 // sessionDir walks DATA_DIR (cwd-derived); mock it so nothing touches ./data.
+// Inbound message ids the runner has claimed (a processing_ack row).
+const claimedIds = new Set<string>();
 vi.mock('./session-manager.js', () => ({
   sessionDir: (agentGroupId: string, sessionId: string) => path.join(os.tmpdir(), 'unused', agentGroupId, sessionId),
+  withExistingMailboxSession: (_ag: string, _s: string, action: (m: unknown) => unknown) =>
+    Promise.resolve(
+      action({ getAckedMessageIds: (ids: readonly string[]) => new Set(ids.filter((id) => claimedIds.has(id))) }),
+    ),
 }));
 
 const recordEventMock = vi.fn();
@@ -166,6 +176,7 @@ beforeEach(() => {
   recordedKeys.clear();
   insertedEvents.length = 0;
   createGrantThrows = false;
+  claimedIds.clear();
 });
 
 afterEach(() => {
@@ -308,6 +319,93 @@ describe('checkCritiqueEscalation — human path', () => {
     writeEscalation({ requested_at: 123, reason: REASON_FAILED, resolved: 'approved' });
     await checkCritiqueEscalation(session, dir);
     expect(requestApprovalMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('checkCritiqueEscalation — nudges count once the runner claims them', () => {
+  // A provider that ends its query on a follow-up (OpenCode) reads a nudge only
+  // after its running turn ends. #14530: nudges 2 and 3 expired unread while
+  // the agent finished a 27-minute turn, and the card went out 3 s after the
+  // last one was queued.
+  const minsAgo = (m: number): string => new Date(Date.now() - m * 60_000).toISOString();
+  const base = { requested_at: 123, reason: REASON_MISSING, hit: 'PR creation' };
+
+  it('stores the nudge message id and clears the delivery stamp', async () => {
+    writeEscalation({ ...base });
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 1, self_heal_msg_id: 'sys-nudge-1' });
+    expect(readEscalation().self_heal_delivered_at).toBeNull();
+  });
+
+  it('sends no further nudge while the runner has not claimed the last one', async () => {
+    writeEscalation({ ...base, self_heal_attempts: 1, self_heal_at: minsAgo(30), self_heal_msg_id: 'sys-a' });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('starts the answer window when the claim is first seen, not when the nudge was queued', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({ ...base, self_heal_attempts: 1, self_heal_at: minsAgo(30), self_heal_msg_id: 'sys-a' });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(readEscalation()).toMatchObject({ self_heal_delivered: 1 });
+    expect(typeof readEscalation().self_heal_delivered_at).toBe('string');
+
+    writeEscalation({ ...readEscalation(), self_heal_delivered_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).toHaveBeenCalledTimes(1);
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 2, self_heal_msg_id: 'sys-nudge-1' });
+  });
+
+  it('gives the final nudge its full window before carding', async () => {
+    const final = {
+      ...base,
+      self_heal_attempts: 3,
+      self_heal_at: minsAgo(2),
+      self_heal_msg_id: 'sys-c',
+      self_heal_delivered: 3,
+      self_heal_delivered_at: minsAgo(1),
+    };
+    writeEscalation(final);
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+
+    writeEscalation({ ...final, self_heal_delivered_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    const card = requestApprovalMock.mock.calls[0][0] as { title: string; question: string };
+    expect(card.title).toContain('could not self-heal');
+    expect(card.question).toContain('received 3 of 3 nudge(s)');
+  });
+
+  it('gives the final nudge its window on a file without a message id, timed from the queue', async () => {
+    writeEscalation({ ...base, self_heal_attempts: 3, self_heal_at: new Date().toISOString() });
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+
+    writeEscalation({ ...base, self_heal_attempts: 3, self_heal_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    const card = requestApprovalMock.mock.calls[0][0] as { question: string };
+    expect(card.question).toContain('was nudged 3 time(s)');
+  });
+
+  it('cards a nudge left unclaimed for an hour, and says it was not delivered', async () => {
+    writeEscalation({
+      ...base,
+      self_heal_attempts: 2,
+      self_heal_at: minsAgo(61),
+      self_heal_msg_id: 'sys-b',
+      self_heal_delivered: 1,
+    });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    const card = requestApprovalMock.mock.calls[0][0] as { title: string; question: string };
+    expect(card.title).toContain('did not receive the critique nudge');
+    expect(card.question).toContain('its runner has received 1');
+    expect(eventKinds()).toEqual(['carded']);
   });
 });
 
