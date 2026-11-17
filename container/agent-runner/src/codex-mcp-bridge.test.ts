@@ -12,9 +12,12 @@ import {
   CODEX_REPLY_TOOL,
   CODEX_TOOL,
   canonicalToolArgs,
+  codexToolFor,
   codexToolResult,
   configToOverrides,
   criticModel,
+  handleCodex,
+  openWeightsModelError,
   progressReporter,
   threadIdNote,
 } from './codex-mcp-bridge.js';
@@ -108,6 +111,69 @@ describe('criticModel', () => {
     );
     expect(criticModel({ CODEX_MODEL: 'openai/openai/gpt-6.1-sol' })).toBe('openai/openai/gpt-6.1-sol');
     expect(criticModel({})).toBeUndefined();
+  });
+});
+
+describe('openWeightsModelError', () => {
+  // On prod the GLM fixer passed model "gpt-5.2" (the schema's own example); the
+  // bridge forwarded it and the gateway refused six retries. An open-weights group
+  // may not choose its critic model, by `model` or by a model-choosing config key.
+  const open = { NANOCLAW_MODEL_WEIGHTS: 'open', NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3' };
+
+  it('refuses a closed model, and names the critic model', () => {
+    const e = openWeightsModelError({ model: 'gpt-5.2' }, open);
+    expect(e).toContain('nvidia/moonshotai/kimi-k3');
+    expect(e).toContain('model "gpt-5.2"');
+  });
+
+  it('refuses config keys that choose the model or its provider', () => {
+    for (const config of [
+      { model: 'gpt-5.2-codex' },
+      { model_provider: 'openai' },
+      { 'model_providers.x.base_url': 'u' },
+      { profile: 'p' },
+      { review_model: 'r' },
+    ]) {
+      expect(openWeightsModelError({ config }, open)).toContain(`config.${Object.keys(config)[0]}`);
+    }
+  });
+
+  it('allows the critic model itself, other config keys, and any model in a group that is not open', () => {
+    expect(openWeightsModelError({ model: 'nvidia/moonshotai/kimi-k3' }, open)).toBeUndefined();
+    expect(openWeightsModelError({ config: { model_reasoning_effort: 'low' } }, open)).toBeUndefined();
+    expect(openWeightsModelError({}, open)).toBeUndefined();
+    expect(openWeightsModelError({ model: 'gpt-5.2' }, { NANOCLAW_MODEL_WEIGHTS: 'any' })).toBeUndefined();
+    expect(openWeightsModelError({ model: 'gpt-5.2' }, {})).toBeUndefined();
+  });
+
+  it('makes handleCodex fail before it starts an app-server', async () => {
+    const saved = { w: process.env.NANOCLAW_MODEL_WEIGHTS, c: process.env.NANOCLAW_CRITIC_MODEL };
+    Object.assign(process.env, open);
+    try {
+      await expect(handleCodex({ prompt: 'review', model: 'gpt-5.2' })).rejects.toThrow(/open-weights models only/);
+    } finally {
+      if (saved.w === undefined) delete process.env.NANOCLAW_MODEL_WEIGHTS;
+      else process.env.NANOCLAW_MODEL_WEIGHTS = saved.w;
+      if (saved.c === undefined) delete process.env.NANOCLAW_CRITIC_MODEL;
+      else process.env.NANOCLAW_CRITIC_MODEL = saved.c;
+    }
+  });
+});
+
+describe('codexToolFor', () => {
+  it('in an open-weights group, says the critic model is fixed instead of suggesting closed models', () => {
+    const tool = codexToolFor({ NANOCLAW_MODEL_WEIGHTS: 'open', NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3' });
+    const desc = (tool.inputSchema.properties.model as { description: string }).description;
+    expect(desc).toContain('nvidia/moonshotai/kimi-k3');
+    expect(desc).not.toContain('gpt-5.2');
+    expect(Object.keys(tool.inputSchema.properties).sort()).toEqual(
+      Object.keys(CODEX_TOOL.inputSchema.properties).sort(),
+    );
+  });
+
+  it('elsewhere, is the codex 0.153.4 schema unchanged', () => {
+    expect(codexToolFor({ NANOCLAW_MODEL_WEIGHTS: 'any' })).toBe(CODEX_TOOL);
+    expect(codexToolFor({})).toBe(CODEX_TOOL);
   });
 });
 
