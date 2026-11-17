@@ -125,6 +125,12 @@ const CRITIQUE_IN_FLIGHT_SECS = envInt('CRITIQUE_IN_FLIGHT_SECS', 35 * 60);
  * attempt is spent: 429 waves on the inference API have lasted 1–2 hours.
  */
 const CRITIC_OUTAGE_SECS = envInt('CRITIQUE_CRITIC_OUTAGE_SECS', 2 * 3600);
+/**
+ * The longest a self-healable escalation waits before a human is carded,
+ * counted from the gate's denial. It bounds every other wait together: calls
+ * that keep running, nudges that stay unread, and critic retries.
+ */
+const ESCALATION_DEADLINE_SECS = envInt('CRITIQUE_ESCALATION_DEADLINE_SECS', 4 * 3600);
 /** How long an admin-approved bypass stays usable before it must be re-asked. */
 const BYPASS_TTL_SECS = envInt('CRITIQUE_BYPASS_TTL_SECS', 3600);
 /**
@@ -691,17 +697,20 @@ export function isCriticFailure(error: string): boolean {
 
 /**
  * Summarize the agent's critique calls since `sinceMs` (the gate denial). A
- * call is in flight when the record holds more starts than results (rounds
- * and failures) within the last CRITIQUE_IN_FLIGHT_SECS; counting rather than
- * pairing keeps parallel calls right.
+ * call is in flight when its start (by the bridge's call id) has no round or
+ * failure yet and is younger than CRITIQUE_IN_FLIGHT_SECS; each call expires
+ * on its own start time, so overlapping calls stay right.
  */
 export function critiqueEffort(attempts: CritiqueAttempt[], sinceMs: number, nowMs = Date.now()): CritiqueEffort {
-  const recent = attempts.filter((a) => a.atMs > nowMs - CRITIQUE_IN_FLIGHT_SECS * 1000);
-  const starts = recent.filter((a) => a.event === 'start').length;
-  const results = recent.filter((a) => a.event === 'round' || a.event === 'failure').length;
+  const finished = new Set(
+    attempts.filter((a) => (a.event === 'round' || a.event === 'failure') && a.call).map((a) => a.call),
+  );
+  const inFlight = attempts.some(
+    (a) => a.event === 'start' && a.call && !finished.has(a.call) && a.atMs > nowMs - CRITIQUE_IN_FLIGHT_SECS * 1000,
+  );
   const failures = attempts.filter((a) => a.event === 'failure' && a.atMs > sinceMs && isCriticFailure(a.error));
   return {
-    inFlight: starts > results,
+    inFlight,
     criticFailures: failures.length,
     firstCriticFailureMs: failures.length ? failures[0].atMs : null,
     lastCriticFailureMs: failures.length ? failures[failures.length - 1].atMs : null,
@@ -1104,52 +1113,67 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   const cls = esc.class ?? classifyEscalation(reason);
   const attempts = esc.self_heal_attempts ?? 0;
 
+  // Every wait below ends at CRITIQUE_ESCALATION_DEADLINE_SECS after the
+  // denial, so no mix of running calls, unread nudges and critic retries can
+  // keep an escalation from a human forever.
+  const requestedMs = (esc.requested_at ?? 0) * 1000;
+  const pastDeadline = isSelfHealable(cls) && Date.now() - requestedMs >= ESCALATION_DEADLINE_SECS * 1000;
+
   // ── 5. A critique call is running: its result decides, so wait for it.
-  const effort = isSelfHealable(cls)
-    ? critiqueEffort(readCritiqueAttempts(session, dirOverride), (esc.requested_at ?? 0) * 1000)
-    : null;
-  if (effort?.inFlight) return;
+  const effort = isSelfHealable(cls) ? critiqueEffort(readCritiqueAttempts(session, dirOverride), requestedMs) : null;
+  if (effort?.inFlight && !pastDeadline) return;
 
-  // ── 6. The agent is still inside its window to answer the last nudge — which
-  // also holds the card after the final nudge, so the last ask gets the same
-  // time as the others.
-  const window = isSelfHealable(cls) && attempts > 0 ? await nudgeWindow(session, esc, dirOverride) : 'over';
-  if (window === 'open') return;
+  // ── 6. The agent is still inside its window to answer the last nudge,
+  // counted or retry — which also holds the card after the final nudge, so the
+  // last ask gets the same time as the others.
+  const nudged = Boolean(esc.self_heal_msg_id || esc.self_heal_at);
+  const window = isSelfHealable(cls) && nudged ? await nudgeWindow(session, esc, dirOverride) : 'over';
+  if (window === 'open' && !pastDeadline) return;
 
-  // ── 7. The agent ran the critique after its last nudge and the critic
-  // failed: it complied, so no attempt is spent. Ask it to retry, until the
-  // critic has failed for CRITIC_OUTAGE_SECS, then a human decides.
-  const answeredSinceMs = esc.self_heal_delivered_at
-    ? Date.parse(esc.self_heal_delivered_at)
-    : (esc.requested_at ?? 0) * 1000;
+  // ── 7. The agent ran the critique after the last nudge was sent and the
+  // critic failed: it complied, so no attempt is spent. Ask it to retry, until
+  // the critic has failed for CRITIC_OUTAGE_SECS, then a human decides. The
+  // nudge's send time (not its delivery) is the line, so a call made between
+  // delivery and the sweep noticing it still counts as an answer; and each
+  // failure answers one nudge only.
+  const answeredSinceMs = esc.self_heal_at ? Date.parse(esc.self_heal_at) : requestedMs;
   const criticDown =
     effort !== null && effort.lastCriticFailureMs !== null && effort.lastCriticFailureMs > answeredSinceMs;
   const criticOutage =
     criticDown &&
-    effort.firstCriticFailureMs !== null &&
-    Date.now() - effort.firstCriticFailureMs >= CRITIC_OUTAGE_SECS * 1000;
+    (pastDeadline ||
+      (effort.firstCriticFailureMs !== null && Date.now() - effort.firstCriticFailureMs >= CRITIC_OUTAGE_SECS * 1000));
   if (criticDown && !criticOutage && window !== 'undelivered') {
     const retries = (esc.critic_retry_nudges ?? 0) + 1;
+    const msgId = systemMessageId();
     patchEscalationFile(
       session,
-      { class: cls, self_heal_at: new Date().toISOString(), critic_retry_nudges: retries },
+      {
+        class: cls,
+        self_heal_at: new Date().toISOString(),
+        self_heal_msg_id: msgId,
+        self_heal_delivered_at: null,
+        critic_retry_nudges: retries,
+      },
       dirOverride,
     );
     await record(session, { ...esc, class: cls }, 'self_heal', {
       attempt: attempts || null,
       reason: `critic failed: ${effort.lastCriticError}`,
     });
-    const msgId = await notifyAgentWithId(
-      session,
-      criticRetryDirective({ reason, hit, error: effort.lastCriticError }),
-    );
-    patchEscalationFile(session, { self_heal_msg_id: msgId, self_heal_delivered_at: null }, dirOverride);
+    await notifyAgentWithId(session, criticRetryDirective({ reason, hit, error: effort.lastCriticError }), msgId);
     log.info('Critique-gate critic-retry nudge', { sessionId: session.id, retries, error: effort.lastCriticError });
     return;
   }
 
   // ── 8. Self-heal: drive the agent to run the critique. Gate stays SHUT.
-  if (isSelfHealable(cls) && attempts < MAX_SELF_HEAL_ATTEMPTS && window !== 'undelivered' && !criticOutage) {
+  if (
+    isSelfHealable(cls) &&
+    attempts < MAX_SELF_HEAL_ATTEMPTS &&
+    window !== 'undelivered' &&
+    !criticOutage &&
+    !pastDeadline
+  ) {
     const attempt = attempts + 1;
     // The nudge's id is stored with the attempt, before the send: if the send
     // fails, the attempt waits on its own (undelivered) id, not on the previous
@@ -1182,7 +1206,8 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
   const target = pr ? `${pr.repo}#${pr.pr_number}` : (session.thread_id ?? 'no PR mapped');
   const prUrl = pr ? `https://github.com/${pr.repo}/pull/${pr.pr_number}` : null;
   const exhausted =
-    isSelfHealable(cls) && (attempts >= MAX_SELF_HEAL_ATTEMPTS || window === 'undelivered' || criticOutage);
+    isSelfHealable(cls) &&
+    (attempts >= MAX_SELF_HEAL_ATTEMPTS || window === 'undelivered' || criticOutage || pastDeadline);
   const title = criticOutage
     ? `Critique gate — ${target}: critic unavailable`
     : window === 'undelivered'
@@ -1209,6 +1234,9 @@ export async function checkCritiqueEscalation(session: Session, dirOverride?: st
           : `**${session.agent_group_id}** ran the critique and it returned **must-fix**, then tried to ${hit} anyway.`,
     ...(effort && effort.criticFailures > 0 && !criticOutage
       ? [``, `Critic failures since the gate denied: ${effort.criticFailures} (last: ${effort.lastCriticError}).`]
+      : []),
+    ...(pastDeadline
+      ? [``, `The escalation has been open ${Math.round((Date.now() - requestedMs) / 3_600_000)} h, past its deadline.`]
       : []),
     ``,
     `- **Target:** ${prUrl ?? target}`,

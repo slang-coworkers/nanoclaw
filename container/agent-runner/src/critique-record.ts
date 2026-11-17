@@ -43,6 +43,7 @@ export async function recordCritiqueRound(
   input: Record<string, unknown>,
   result: { threadId: string; text: string },
   env: NodeJS.ProcessEnv = process.env,
+  callId?: string,
 ): Promise<void> {
   await runRecorder(
     {
@@ -50,6 +51,7 @@ export async function recordCritiqueRound(
       tool_name: `mcp__codex__${tool}`,
       tool_input: input,
       tool_response: JSON.stringify({ threadId: result.threadId, content: result.text }),
+      ...(callId ? { tool_use_id: callId } : {}),
     },
     env,
   );
@@ -60,23 +62,22 @@ export async function recordCritiqueRound(
  * with the bridge's error text). Neither counts as a round. The host's
  * escalation sweep reads them to tell an agent that never tried the critique
  * from one whose critique is still running or whose critic is failing (for
- * example, rate-limited with 429s).
+ * example, rate-limited with 429s). `callId` is one id per bridge call, carried
+ * as the payload's tool_use_id on its start, failure and round, so the host
+ * matches each start to its result.
  */
 export async function recordCritiqueAttempt(
   tool: 'codex' | 'codex-reply',
   input: Record<string, unknown>,
   outcome: { started: true } | { error: string },
+  callId: string,
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<void> {
+  const base = { tool_name: `mcp__codex__${tool}`, tool_input: input, tool_use_id: callId };
   await runRecorder(
     'error' in outcome
-      ? {
-          hook_event_name: 'PostToolUseFailure',
-          tool_name: `mcp__codex__${tool}`,
-          tool_input: input,
-          error: outcome.error,
-        }
-      : { hook_event_name: 'PreToolUse', tool_name: `mcp__codex__${tool}`, tool_input: input },
+      ? { hook_event_name: 'PostToolUseFailure', ...base, error: outcome.error }
+      : { hook_event_name: 'PreToolUse', ...base },
     env,
   );
 }

@@ -27,6 +27,8 @@
  *
  * Protocol traffic is stdout; everything logged here goes to stderr.
  */
+import { randomUUID } from 'crypto';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -591,10 +593,11 @@ export function createBridgeServer(): Server {
     const onActivity = progressReporter(req.params._meta?.progressToken, (n) => extra.sendNotification(n));
     const tool = name as 'codex' | 'codex-reply';
     const known = name === 'codex' || name === 'codex-reply';
+    const callId = randomUUID();
     // Start and failure go to the attempts record (critique-record.ts): the
     // host waits for a critique still running and tells a failing critic from
     // an agent that never tried.
-    if (known) await recordCritiqueAttempt(tool, args, { started: true });
+    if (known) await recordCritiqueAttempt(tool, args, { started: true }, callId);
     try {
       const r =
         name === 'codex'
@@ -605,12 +608,12 @@ export function createBridgeServer(): Server {
       if (!r) return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] };
       // One critique round per successful call, recorded before the answer so
       // the agent's next delivery sees it (critique-record.ts).
-      await recordCritiqueRound(tool, args, r);
+      await recordCritiqueRound(tool, args, r, process.env, callId);
       return codexToolResult(r);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log(`${name} failed: ${msg}`);
-      if (known) await recordCritiqueAttempt(tool, args, { error: msg });
+      if (known) await recordCritiqueAttempt(tool, args, { error: msg }, callId);
       return { isError: true, content: [{ type: 'text', text: `codex bridge: ${msg}` }] };
     }
   });

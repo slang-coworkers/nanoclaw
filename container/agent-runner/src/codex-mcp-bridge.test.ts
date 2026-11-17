@@ -370,7 +370,7 @@ describe('codex MCP bridge over stdio', () => {
   // Codex 0.160 reports a failed turn as turn/completed with status "failed";
   // the bridge used to answer it as a successful critique with an empty verdict.
   it('a failed turn is an error result carrying codex error, and records no critique round', async () => {
-    const recorded = (): Array<{ hook_event_name: string; error?: string }> =>
+    const recorded = (): Array<{ hook_event_name: string; error?: string; tool_use_id?: string }> =>
       readFileSync(recordFile, 'utf8')
         .trim()
         .split('\n')
@@ -386,6 +386,9 @@ describe('codex MCP bridge over stdio', () => {
     const added = recorded().slice(before);
     expect(added.map((p) => p.hook_event_name)).toEqual(['PreToolUse', 'PostToolUseFailure']);
     expect(added[1].error).toContain('fake model rejected the request');
+    // One call id on both, so the host can match the start to its result.
+    expect(added[0].tool_use_id).toBeTruthy();
+    expect(added[1].tool_use_id).toBe(added[0].tool_use_id);
   });
 
   it('an interrupted turn is an error result', async () => {

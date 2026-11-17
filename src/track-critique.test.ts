@@ -175,9 +175,9 @@ describe('track-critique records call starts and failures from the codex bridge'
   };
   const input = { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS };
 
-  it('appends a start line and records no round', () => {
-    run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__codex__codex', tool_input: input });
-    expect(journal()).toEqual([expect.objectContaining({ event: 'start', stage: 'PLAN_REVIEW' })]);
+  it('appends a start line with the call id and records no round', () => {
+    run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__codex__codex', tool_input: input, tool_use_id: 'c-7' });
+    expect(journal()).toEqual([expect.objectContaining({ event: 'start', stage: 'PLAN_REVIEW', call: 'c-7' })]);
     expect(readState().critique_rounds).toBeUndefined();
   });
 

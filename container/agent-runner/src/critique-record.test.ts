@@ -65,17 +65,23 @@ describe('recordCritiqueAttempt', () => {
 
   it('hands track-critique.sh a PreToolUse payload when a call starts', async () => {
     const input = { prompt: 'STAGE: PLAN_REVIEW\nreview this' };
-    await recordCritiqueAttempt('codex', input, { started: true }, env());
+    await recordCritiqueAttempt('codex', input, { started: true }, 'call-1', env());
     const payload = JSON.parse(fs.readFileSync(seen, 'utf-8').trim());
-    expect(payload).toEqual({ hook_event_name: 'PreToolUse', tool_name: 'mcp__codex__codex', tool_input: input });
+    expect(payload).toEqual({
+      hook_event_name: 'PreToolUse',
+      tool_name: 'mcp__codex__codex',
+      tool_input: input,
+      tool_use_id: 'call-1',
+    });
   });
 
   it('hands track-critique.sh a PostToolUseFailure payload with the error when a call fails', async () => {
     const error = 'exceeded retry limit, last status: 429 Too Many Requests';
-    await recordCritiqueAttempt('codex-reply', { threadId: 't', prompt: 'p' }, { error }, env());
+    await recordCritiqueAttempt('codex-reply', { threadId: 't', prompt: 'p' }, { error }, 'call-2', env());
     expect(JSON.parse(fs.readFileSync(seen, 'utf-8').trim())).toMatchObject({
       hook_event_name: 'PostToolUseFailure',
       tool_name: 'mcp__codex__codex-reply',
+      tool_use_id: 'call-2',
       error,
     });
   });

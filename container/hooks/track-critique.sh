@@ -59,6 +59,9 @@ ATTEMPTS="$(dirname "$STATE")/critique-attempts.jsonl"
 STAGE=$(grep -m1 -oE 'STAGE:[[:space:]]*[A-Z_]+' <<< "$PROMPT" 2>/dev/null | sed -E 's/^STAGE:[[:space:]]*//' || true)
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+# One id per bridge call, on its start, failure and round, so the host can
+# match each start to its result.
+CALL=$(echo "$INPUT" | jq -r '.tool_use_id // empty' 2>/dev/null || true)
 
 # The codex bridge also reports when a call starts and when it fails
 # (critique-record.ts). Neither is a round, but both go to the attempts
@@ -69,8 +72,8 @@ if [ "$EVENT" = "PreToolUse" ] || [ "$EVENT" = "PostToolUseFailure" ]; then
   KIND=start
   [ "$EVENT" = "PostToolUseFailure" ] && KIND=failure
   ERR=$(echo "$INPUT" | jq -r '.error // empty' 2>/dev/null | head -c 300 || true)
-  jq -cn --arg at "$NOW" --arg e "$KIND" --arg s "$STAGE" --arg err "$ERR" \
-    '{at: $at, event: $e, stage: $s} + (if $err == "" then {} else {error: $err} end)' >> "$ATTEMPTS" 2>/dev/null || true
+  jq -cn --arg at "$NOW" --arg e "$KIND" --arg s "$STAGE" --arg err "$ERR" --arg c "$CALL" \
+    '{at: $at, event: $e, stage: $s, call: $c} + (if $err == "" then {} else {error: $err} end)' >> "$ATTEMPTS" 2>/dev/null || true
   exit 0
 fi
 
@@ -296,8 +299,8 @@ fi
 # rewrites it when a new task starts, which can be seconds after the round. So
 # every recorded round is also appended to critique-attempts.jsonl, which no
 # reset touches. One short line per append keeps concurrent writers whole.
-jq -cn --arg at "$NOW" --arg s "${STAGE:-$REPLY_STAGE}" --arg v "$VERDICT" \
-  '{at: $at, event: "round", stage: $s, verdict: $v}' >> "$ATTEMPTS" 2>/dev/null || true
+jq -cn --arg at "$NOW" --arg s "${STAGE:-$REPLY_STAGE}" --arg v "$VERDICT" --arg c "$CALL" \
+  '{at: $at, event: "round", stage: $s, verdict: $v, call: $c}' >> "$ATTEMPTS" 2>/dev/null || true
 
 # Surface a context reminder so the agent knows the round was recorded.
 ROUNDS=$(jq -r '.critique_rounds' "$STATE")
