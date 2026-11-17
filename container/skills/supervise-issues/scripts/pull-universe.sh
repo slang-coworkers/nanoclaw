@@ -349,7 +349,8 @@ if cache is not None:
         t = thread_by_key[key]
         fetch_plan.setdefault(t["repo"], []).append(t)
     print(f"pull-universe: cached pull — {sum(len(v) for v in fetch_plan.values())} of {len(threads)} "
-          f"chains to refetch ({len(cache.changed)} changed on GitHub, sync errors: {cache.sync_errors or 'none'})",
+          f"chains to refetch ({len(cache.changed)} changed on GitHub, sync errors: {cache.sync_errors or 'none'}, "
+          f"unreachable: {cache.unreachable or 'none'})",
           file=sys.stderr)
 
 for repo, repo_threads in fetch_plan.items():
@@ -810,6 +811,7 @@ if cache is not None:
             "closed": skipped_closed,
             "changed_on_github": len(cache.changed),
             "sync_errors": cache.sync_errors,
+            "unreachable": cache.unreachable,
             "issues_fetched": len(fetched_keys),
             "prs_fetched": len(pr_attempted),
             "outbound_reads": len(outbound_read),
