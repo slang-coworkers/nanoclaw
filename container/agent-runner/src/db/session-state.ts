@@ -72,6 +72,48 @@ export function clearContinuation(providerName: string): void {
   deleteValue(continuationKey(providerName));
 }
 
+/** The provider's stored continuation and when it was last written, or undefined if unset. */
+export function getContinuationRecord(providerName: string): { continuation: string; updatedAt: string } | undefined {
+  const row = getAgentMailbox().operations.getState(continuationKey(providerName));
+  return row ? { continuation: row.value, updatedAt: row.updatedAt } : undefined;
+}
+
+/**
+ * What the runner did with another provider's conversation when this session
+ * started without one of its own (see provider-handoff.ts): where it archived
+ * it, when that conversation was last used, and whether the new conversation
+ * has been told. Keyed by provider and continuation, so a later switch away
+ * from a different conversation is handled on its own.
+ */
+export interface ProviderHandoffRecord {
+  path: string | null;
+  lastUsedAt: string | null;
+  noted: boolean;
+}
+
+function providerHandoffKey(providerName: string, continuation: string): string {
+  return `handoff:${providerName.toLowerCase()}:${continuation}`;
+}
+
+export function getProviderHandoff(providerName: string, continuation: string): ProviderHandoffRecord | undefined {
+  const raw = getValue(providerHandoffKey(providerName, continuation));
+  if (raw === undefined) return undefined;
+  try {
+    const parsed = JSON.parse(raw) as Partial<ProviderHandoffRecord>;
+    return {
+      path: typeof parsed.path === 'string' ? parsed.path : null,
+      lastUsedAt: typeof parsed.lastUsedAt === 'string' ? parsed.lastUsedAt : null,
+      noted: parsed.noted === true,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+export function setProviderHandoff(providerName: string, continuation: string, record: ProviderHandoffRecord): void {
+  setValue(providerHandoffKey(providerName, continuation), JSON.stringify(record));
+}
+
 /**
  * Milliseconds since this continuation was last written, or null if unset or
  * unparseable.

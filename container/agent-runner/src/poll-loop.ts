@@ -57,6 +57,7 @@ import {
   type CostCeilingAdjustmentReceipt,
   type CostReconcileReceipt,
 } from './db/session-state.js';
+import { markProviderHandoffNoted, prepareProviderHandoff, type PendingProviderHandoff } from './provider-handoff.js';
 import { getConfig } from './config.js';
 import { probeCodexMcpServer } from './codex-mcp-server.js';
 import { priceUsage } from './pricing.js';
@@ -3509,6 +3510,23 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     log(`Resuming agent session ${continuation}`);
   }
 
+  // A session that starts here without a conversation of its own may hold one on
+  // another provider (a group moved from Claude to OpenCode). That conversation
+  // does not continue here, so we keep it readable and tell the new conversation
+  // where it is, once (provider-handoff.ts).
+  let pendingHandoff: PendingProviderHandoff | null = null;
+  if (!continuation) {
+    try {
+      pendingHandoff = prepareProviderHandoff({
+        currentProvider: config.providerName,
+        assistantName: process.env.NANOCLAW_ASSISTANT_NAME || undefined,
+        log,
+      });
+    } catch (error) {
+      log(`Provider handoff skipped: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
   // Clear leftover 'processing' acks from a previous crashed container.
   // This lets the new container re-process those messages.
   clearStaleProcessingAcks();
@@ -3736,6 +3754,13 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       pendingCostNudge = undefined;
     }
 
+    // The first turn of a conversation that replaced another provider's carries
+    // the handoff note. A fresh-session task batch is not that conversation.
+    const handoffThisTurn = !newSessionBatch ? pendingHandoff : null;
+    if (handoffThisTurn) {
+      prompt = `<system>${handoffThisTurn.note}</system>\n\n${prompt}`;
+    }
+
     // Non-native providers: run intent router on the initial prompt too.
     // Claude SDK fires UserPromptSubmit hooks natively; for Codex/OpenCode
     // we call the same bridge so workflow classification applies to every
@@ -3833,6 +3858,12 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         config.stopHooks ?? null,
         config.provider.followUpEndsQuery === true,
       );
+      // The provider took the turn that carried the handoff note; later starts
+      // must not repeat it. A turn that threw keeps it for the next start.
+      if (handoffThisTurn) {
+        markProviderHandoffNoted(handoffThisTurn);
+        pendingHandoff = null;
+      }
       // Don't overwrite the stored chat continuation with a task's ephemeral session.
       if (!newSessionBatch && queryResult.continuation && queryResult.continuation !== continuation) {
         continuation = queryResult.continuation;

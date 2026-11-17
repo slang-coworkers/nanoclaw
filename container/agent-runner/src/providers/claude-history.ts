@@ -33,6 +33,12 @@ export interface ClaudeContinuationRotationInput {
   log(message: string): void;
 }
 
+export interface ClaudeContinuationArchiveInput {
+  continuation: string;
+  assistantName?: string;
+  log(message: string): void;
+}
+
 interface ClaudeArchivePlan {
   relativePath: string;
   content: string;
@@ -83,9 +89,68 @@ export function newestClaudeTranscript(): string | null {
 
 /** Archive a transcript as markdown into the conversations directory. Never throws. */
 export function archiveClaudeTranscript(input: ClaudeArchiveInput, fx: ClaudeHistoryClock): boolean {
+  return writeTranscriptArchive(input, fx) !== null;
+}
+
+/**
+ * Write the conversation behind a stored Claude continuation as markdown into
+ * the conversations directory, and return the archive's path. Returns null when
+ * the transcript is gone, too large to convert at start-up, or empty. Never
+ * throws.
+ *
+ * The runner calls this through the runtime contract when a session starts on
+ * another provider: the Claude conversation does not continue there, so we keep
+ * it readable instead. Consider a slang-fixer session that ran on Claude until
+ * 2026-10-30 and starts on OpenCode on 2026-11-17: its 5 MB transcript becomes
+ * `conversations/2026-11-17-claude-<continuation>.md`, and the new conversation
+ * is told where it is. The `.jsonl` stays where it is, so a switch back to
+ * Claude still resumes it.
+ */
+export function archiveClaudeContinuation(
+  input: ClaudeContinuationArchiveInput,
+  fx: ClaudeHistoryClock,
+): string | null {
+  const transcriptPath = findContinuationFile(
+    path.join(claudeConfigDirectory(), 'projects'),
+    `${input.continuation}.jsonl`,
+  );
+  if (typeof transcriptPath !== 'string') {
+    input.log(`No transcript found for continuation ${input.continuation}`);
+    return null;
+  }
+  let size: number;
+  try {
+    size = fs.statSync(transcriptPath).size;
+  } catch {
+    return null;
+  }
+  // The archive is written before the first turn, so a very large transcript
+  // would hold up start-up; it stays on disk unconverted instead.
+  const maxBytes = Number(process.env.CONTINUATION_ARCHIVE_MAX_BYTES) || 64 * 1024 * 1024;
+  if (size > maxBytes) {
+    input.log(
+      `Transcript ${transcriptPath} is ${(size / 1_048_576).toFixed(1)}MB, over the ` +
+        `${(maxBytes / 1_048_576).toFixed(0)}MB archive limit — not archived`,
+    );
+    return null;
+  }
+  return writeTranscriptArchive(
+    {
+      transcriptPath,
+      sessionId: input.continuation,
+      assistantName: input.assistantName,
+      log: input.log,
+      name: `claude-${input.continuation}`,
+    },
+    fx,
+  );
+}
+
+/** Write the archive and return its path, or null when nothing was written. Never throws. */
+function writeTranscriptArchive(input: ClaudeArchiveInput & { name?: string }, fx: ClaudeHistoryClock): string | null {
   if (!input.transcriptPath || !fs.existsSync(input.transcriptPath)) {
     input.log('No transcript found for archiving');
-    return false;
+    return null;
   }
 
   try {
@@ -100,20 +165,26 @@ export function archiveClaudeTranscript(input: ClaudeArchiveInput, fx: ClaudeHis
       }
     }
     const plan = planTranscriptArchive(
-      { transcriptContent, sessionsIndexContent, sessionId: input.sessionId, assistantName: input.assistantName },
+      {
+        transcriptContent,
+        sessionsIndexContent,
+        sessionId: input.sessionId,
+        assistantName: input.assistantName,
+        name: input.name,
+      },
       fx,
     );
-    if (!plan) return false;
+    if (!plan) return null;
 
     const conversationsDir = process.env.NANOCLAW_CONVERSATIONS_DIR || '/workspace/agent/conversations';
     const target = resolveContainedPath(conversationsDir, plan.relativePath, 'Archive planner returned unsafe path');
     fs.mkdirSync(conversationsDir, { recursive: true });
     writeArchivePlan(target, plan);
     input.log(`Archived conversation to ${plan.relativePath}`);
-    return true;
+    return target;
   } catch (error) {
     input.log(`Failed to archive transcript: ${error instanceof Error ? error.message : String(error)}`);
-    return false;
+    return null;
   }
 }
 
@@ -123,6 +194,8 @@ function planTranscriptArchive(
     sessionsIndexContent?: string;
     sessionId?: string;
     assistantName?: string;
+    /** File name after the date prefix; derived from the summary or the clock when absent. */
+    name?: string;
   },
   fx: ClaudeHistoryClock,
 ): ClaudeArchivePlan | null {
@@ -141,16 +214,18 @@ function planTranscriptArchive(
     }
   }
 
-  const name = summary
-    ? summary
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 50)
-    : `conversation-${new Date(fx.now()).getHours().toString().padStart(2, '0')}${new Date(fx.now())
-        .getMinutes()
-        .toString()
-        .padStart(2, '0')}`;
+  const name = input.name
+    ? sanitizeArchiveName(input.name)
+    : summary
+      ? summary
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .slice(0, 50)
+      : `conversation-${new Date(fx.now()).getHours().toString().padStart(2, '0')}${new Date(fx.now())
+          .getMinutes()
+          .toString()
+          .padStart(2, '0')}`;
   const filenameDate = new Date(fx.now());
   const headerDate = new Date(fx.now());
   return {
@@ -158,6 +233,14 @@ function planTranscriptArchive(
     content: formatTranscriptMarkdown(messages, summary, input.assistantName, headerDate),
     write: 'replace',
   };
+}
+
+function sanitizeArchiveName(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
 }
 
 function parseTranscript(content: string): ParsedMessage[] {
