@@ -272,6 +272,15 @@ else
   ' "$STATE" > "$STATE.tmp" && mv "$STATE.tmp" "$STATE"
 fi
 
+# The host's escalation sweep asks whether a critique round ran after a gate
+# denial. workflow-state.json cannot answer that reliably: workflow-state-reset.sh
+# rewrites it when a new task starts, which can be seconds after the round. So
+# every recorded round is also appended to critique-attempts.jsonl, which no
+# reset touches. One short line per append keeps concurrent writers whole.
+ATTEMPTS="$(dirname "$STATE")/critique-attempts.jsonl"
+jq -cn --arg at "$NOW" --arg s "${STAGE:-$REPLY_STAGE}" --arg v "$VERDICT" \
+  '{at: $at, event: "round", stage: $s, verdict: $v}' >> "$ATTEMPTS" 2>/dev/null || true
+
 # Surface a context reminder so the agent knows the round was recorded.
 ROUNDS=$(jq -r '.critique_rounds' "$STATE")
 STAGE_DONE=$(jq -r '(.critique_stages // {}) | to_entries | map("\(.key)=\(.value)") | join(", ") | if . == "" then "none" else . end' "$STATE" 2>/dev/null || echo "none")

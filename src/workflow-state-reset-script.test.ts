@@ -43,6 +43,48 @@ describe('workflow-state-reset.sh', () => {
     expect(JSON.parse(fs.readFileSync(state, 'utf-8'))).toMatchObject({ plan_written: true, critique_rounds: 2 });
   });
 
+  const minutesAgo = (m: number): string => new Date(Date.now() - m * 60_000).toISOString().replace(/\.\d+Z$/, 'Z');
+  const notification =
+    '<context timezone="UTC" />\n<system-notification id="7" time="Nov 17, 2026, 3:51 PM">CRITIQUE GATE BLOCKED your PR creation (attempt 2 of 3).</system-notification>';
+  const writeState = (s: object): void => fs.writeFileSync(state, JSON.stringify(s));
+  const rounds = (): number => JSON.parse(fs.readFileSync(state, 'utf-8')).critique_rounds;
+
+  it('measures idle time from the latest critique round, not from the task start', () => {
+    writeState({ critique_rounds: 2, started_at: minutesAgo(60), last_critique_at: minutesAgo(1) });
+    run({ prompt: 'keep going' });
+    expect(rounds()).toBe(2);
+  });
+
+  it('measures idle time from the latest edit, not from the task start', () => {
+    writeState({ critique_rounds: 2, started_at: minutesAgo(60), last_edit_at: minutesAgo(2) });
+    run({ prompt: 'keep going' });
+    expect(rounds()).toBe(2);
+  });
+
+  it('starts a new task after 10 minutes with no edit or critique round', () => {
+    writeState({ critique_rounds: 2, started_at: minutesAgo(60), last_edit_at: minutesAgo(30) });
+    run({ prompt: 'keep going' });
+    expect(rounds()).toBe(0);
+  });
+
+  it('never resets on a prompt that carries only host notifications', () => {
+    writeState({ critique_rounds: 2, started_at: minutesAgo(60) });
+    run({ prompt: notification });
+    expect(rounds()).toBe(2);
+  });
+
+  it('resets on a scheduled task after 10 idle minutes, even beside a notification', () => {
+    writeState({ critique_rounds: 2, started_at: minutesAgo(60) });
+    run({ prompt: `${notification}\n<task time="Nov 17, 2026, 3:52 PM">check open PRs</task>` });
+    expect(rounds()).toBe(0);
+  });
+
+  it('resets on a routed message that arrives beside a notification', () => {
+    writeState({ critique_rounds: 2, started_at: minutesAgo(1) });
+    run({ prompt: `${notification}\n<message id="9" from="parent">round 2</message>` });
+    expect(rounds()).toBe(0);
+  });
+
   it('keeps the state for a follow-up within the task', () => {
     run({ prompt: '<system>re-send your answer wrapped</system>' });
     expect(JSON.parse(fs.readFileSync(state, 'utf-8')).critique_rounds).toBe(2);

@@ -76,7 +76,7 @@ import {
   requestApproval,
 } from '../approvals/index.js';
 
-import { classifyEscalation, isSelfHealable, selfHealDirective, type EscalationClass } from './classify.js';
+import { classifyEscalation, isSelfHealable, namedStage, selfHealDirective, type EscalationClass } from './classify.js';
 
 const BYPASS_ACTION = 'critique_gate_bypass';
 
@@ -511,24 +511,105 @@ async function pendingCardFor(sessionId: string): Promise<{ approval_id: string 
 
 /**
  * Has the underlying requirement been satisfied since the escalation was
- * raised? A critique round recorded after `requested_at` means the agent did
- * the thing the gate was asking for, so the escalation — and any card raised
- * for it — is moot.
+ * raised? A critique round of the stage the denial named, recorded after
+ * `requested_at`, means the agent did the thing the gate was asking for, so
+ * the escalation — and any card raised for it — is moot. For a must-fix
+ * denial the round must also return approve. A round of another stage does
+ * not clear it.
  *
  * This check was missing entirely: nothing retracted a card when its cause
  * disappeared, so cards accumulated as permanent queue residue. One of prod's
  * two outstanding cards on 2026-08-05 was in exactly this state — its session
  * had recorded an OUTPUT_REVIEW approve 37 minutes after the card went out.
+ *
+ * The rounds come from the attempts journal, because workflow-state.json is
+ * task state: workflow-state-reset.sh rewrites it when a new task starts, and a
+ * reset that lands between two sweeps erases the round before the host sees
+ * it. A container that predates the journal writes none; for it the state's
+ * `last_critique_at`, which carries no stage, is the only evidence.
  */
 export function isRequirementCleared(session: Session, esc: EscalationFile, dirOverride?: string): boolean {
   const requestedAt = esc.requested_at ?? 0;
   if (!requestedAt) return false;
-  const state = readWorkflowState(session, dirOverride);
-  const last = state.last_critique_at;
-  if (typeof last !== 'string') return false;
-  const lastMs = Date.parse(last);
-  if (!Number.isFinite(lastMs)) return false;
-  return Math.floor(lastMs / 1000) > requestedAt;
+  const after = (ms: number): boolean => Number.isFinite(ms) && Math.floor(ms / 1000) > requestedAt;
+  const reason = typeof esc.reason === 'string' ? esc.reason : '';
+  const stage = namedStage(reason);
+  const needApprove = classifyEscalation(reason) === 'failed';
+  const journal = readCritiqueAttempts(session, dirOverride);
+  if (journal.length > 0) {
+    const rounds = journal.filter((a) => a.event === 'round' && after(a.atMs) && (stage === null || a.stage === stage));
+    // For a must-fix denial the latest round of the stage decides: an approve
+    // followed by another must-fix has not cleared it.
+    return needApprove ? rounds.length > 0 && rounds[rounds.length - 1].verdict === 'approve' : rounds.length > 0;
+  }
+  const last = readWorkflowState(session, dirOverride).last_critique_at;
+  return typeof last === 'string' && after(Date.parse(last));
+}
+
+/** One line of the container's critique-attempts journal. */
+export interface CritiqueAttempt {
+  /** 'round': track-critique.sh recorded a critique round. */
+  event: string;
+  atMs: number;
+  /** The stage the round covered ('' when unknown). */
+  stage: string;
+  /** The round's verdict ('' when none was parsed). */
+  verdict: string;
+}
+
+/**
+ * How much of the attempts journal the sweep reads. A line is ~100 bytes and a
+ * busy fixer session records a few hundred rounds over its life, so the tail
+ * holds every attempt an open escalation can care about.
+ */
+const ATTEMPTS_TAIL_BYTES = 256 * 1024;
+/** How far ahead of the host clock a journal line may be dated (container clock skew). */
+const JOURNAL_CLOCK_SKEW_MS = 5 * 60_000;
+
+/**
+ * Read the tail of the session's critique-attempts journal
+ * (`.claude/critique-attempts.jsonl`, appended by track-critique.sh), oldest
+ * first. A line that does not parse is skipped: two appends racing can tear
+ * one, and one lost line cannot make an escalation clear wrongly.
+ */
+export function readCritiqueAttempts(session: Session, dirOverride?: string): CritiqueAttempt[] {
+  const file = path.join(claudeDir(session, dirOverride), 'critique-attempts.jsonl');
+  let text: string;
+  try {
+    const fd = fs.openSync(file, 'r');
+    try {
+      const size = fs.fstatSync(fd).size;
+      const start = Math.max(0, size - ATTEMPTS_TAIL_BYTES);
+      const buf = Buffer.alloc(size - start);
+      fs.readSync(fd, buf, 0, buf.length, start);
+      text = buf.toString('utf-8');
+      // A tail read starts mid-line; drop the partial first line.
+      if (start > 0) text = text.slice(text.indexOf('\n') + 1);
+    } finally {
+      fs.closeSync(fd);
+    }
+  } catch {
+    return []; // No journal yet.
+  }
+  const attempts: CritiqueAttempt[] = [];
+  const latestMs = Date.now() + JOURNAL_CLOCK_SKEW_MS;
+  const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) continue;
+    const raw = parsed as Record<string, unknown>;
+    const atMs = typeof raw.at === 'string' ? Date.parse(raw.at) : NaN;
+    // A future time is not a record of something that happened.
+    if (typeof raw.event !== 'string' || !Number.isFinite(atMs) || atMs > latestMs) continue;
+    attempts.push({ event: raw.event, atMs, stage: str(raw.stage), verdict: str(raw.verdict) });
+  }
+  return attempts;
 }
 
 /**
