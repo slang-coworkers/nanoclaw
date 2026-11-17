@@ -38,8 +38,10 @@
   background: color-mix(in srgb, var(--wt-closed) 14%, transparent);
 }
 
+/* The narrowest sidebar (140 px) is narrower than the three buttons, so they wrap. */
 .wt-filter {
   display: inline-flex;
+  flex-wrap: wrap;
   gap: 2px;
   align-items: center;
 }
