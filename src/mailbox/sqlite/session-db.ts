@@ -64,6 +64,34 @@ export function openOutboundDbWritable(dbPath: string): Database.Database {
 /** Alias: open outbound DB read-write. Only safe to call when no container is running. */
 export const openOutboundDbRw = openOutboundDbWritable;
 
+/**
+ * Roll back the hot rollback journal that a writer killed mid-transaction left
+ * beside `dbPath`, and return true when one was rolled back.
+ *
+ * Session DBs use `journal_mode = DELETE`, so a writer that dies inside a write
+ * transaction leaves `<db>-journal` holding the pages it changed. SQLite undoes
+ * them on the next open that may write; a read-only connection is refused
+ * instead ("attempt to write a readonly database"). The host reads outbound.db
+ * read-only only, so after its container is killed mid-write every host read of
+ * that session fails until something opens the file read-write. This is that
+ * open: the first read through a read-write connection performs the rollback.
+ * SQLite rolls back only a journal that no live connection holds a lock on, so a
+ * writer that is still running is never undone. Call it only when no container is
+ * running for the session: the host then is the one writer of outbound.db.
+ */
+export function rollBackHotJournal(dbPath: string): boolean {
+  const journal = `${dbPath}-journal`;
+  if (!fs.existsSync(journal) || fs.statSync(journal).size === 0) return false;
+  const db = new Database(dbPath);
+  try {
+    db.pragma('busy_timeout = 5000');
+    db.prepare('SELECT count(*) FROM sqlite_master').get();
+  } finally {
+    db.close();
+  }
+  return !fs.existsSync(journal);
+}
+
 export function upsertSessionRouting(
   db: Database.Database,
   routing: { channel_type: string | null; platform_id: string | null; thread_id: string | null },
