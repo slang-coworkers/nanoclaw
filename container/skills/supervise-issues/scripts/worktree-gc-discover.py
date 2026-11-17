@@ -34,6 +34,10 @@ container, `--agent` in tests):
   trash      what the executor already moved into `.worktree-gc/trash/` and
              still has to delete
 
+A checkout lists in `dependents` every other checkout that would break without
+it: one that borrows its objects (`git clone --shared`), one of its live linked
+worktrees, or one whose submodule `.git` files point into its git directory.
+
 Before it lists anything it repairs worktrees that were moved by hand. Consider
 an agent that runs `git worktree add wt-tmp-13546` and then
 `mv wt-tmp-13546 wt-13546-verify`: the administrative directory still points
@@ -78,6 +82,8 @@ ACTIVE_WORK_FRESH_S = DAY_S
 RUN_ENTRY_SCAN_DEPTH = 2
 RUN_ENTRY_SCAN_LIMIT = 500
 NESTED_REPO_DEPTH = 3
+SUBMODULE_DEPTH = 3  # nested submodules followed this deep when looking for borrowed git directories
+GITMODULES_PATH = re.compile(r"^\s*path\s*=\s*(.+?)\s*$")
 
 
 def git(args: list[str], cwd: str, timeout: float = 20) -> subprocess.CompletedProcess:
@@ -376,6 +382,9 @@ def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin:
     if name in held:
         running_why.append("process cwd or open file")
     repo_dir = path if shape == "clone" else owner
+    # Where this checkout's repository data lives; submodules initialized in it keep
+    # their repositories under `<git_dir>/modules/`.
+    git_dir = {"worktree": admin, "clone": os.path.join(path, ".git"), "bare": path}.get(shape)
     return {
         "dir": name,
         "path": path,
@@ -391,8 +400,40 @@ def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin:
         "running": bool(running_why),
         "running_why": running_why,
         "branch": branch,
+        "git_dir": git_dir or "",
         "dependents": [],
     }
+
+
+def gitmodules_paths(tree: str) -> list[str]:
+    """Submodule paths `tree/.gitmodules` declares, relative to `tree`; absolute
+    paths and ones that climb out with `..` are ignored."""
+    paths = []
+    try:
+        with open(os.path.join(tree, ".gitmodules"), errors="replace") as f:
+            for line in f:
+                m = GITMODULES_PATH.match(line)
+                if m and not os.path.isabs(m.group(1)) and ".." not in m.group(1).split("/"):
+                    paths.append(m.group(1))
+    except OSError:
+        pass
+    return paths
+
+
+def submodule_gitdirs(tree: str) -> list[str]:
+    """The git directories the initialized submodules of `tree` use, nested ones
+    included down to SUBMODULE_DEPTH: each submodule's `.git` file names one."""
+    found, frontier = [], [(tree, 0)]
+    while frontier:
+        d, depth = frontier.pop()
+        for rel in gitmodules_paths(d):
+            sub = os.path.join(d, rel)
+            target = read_gitfile(sub)
+            if target:
+                found.append(real(target))
+            if depth + 1 < SUBMODULE_DEPTH:
+                frontier.append((sub, depth + 1))
+    return found
 
 
 def run_entry_last_use(path: str) -> float:
@@ -510,6 +551,32 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             if holder is not None and holder is not rec:
                 holder["dependents"].append(rec["dir"])
         rec["dependents"].extend(os.path.basename(t) for t in live_worktrees_of(rec["path"]))
+
+    # A checkout whose git directory holds another checkout's submodule repositories
+    # cannot go first either. Consider `cp -a wt-A/external wt-B/`: every submodule
+    # `.git` file in wt-B still names `slang/.git/worktrees/wt-A/modules/...`, and
+    # reaping wt-A prunes that directory, leaving wt-B's submodules dangling. The
+    # holder is the checkout whose git directory is the nearest ancestor of the
+    # submodule's git directory (a linked worktree's administrative directory sits
+    # inside its owner's `.git/worktrees/`, so nearest wins over the owner), else
+    # whatever entry the path lies in.
+    by_git_dir = {real(rec["git_dir"]): rec for rec in checkouts.values() if rec.get("git_dir")}
+
+    def git_dir_holder(target: str) -> dict | None:
+        d = target
+        while True:
+            if d in by_git_dir:
+                return by_git_dir[d]
+            parent = os.path.dirname(d)
+            if parent == d:
+                return holder_of(target)
+            d = parent
+
+    for rec in list(checkouts.values()):
+        for target in submodule_gitdirs(rec["path"]):
+            holder = git_dir_holder(target)
+            if holder is not None and holder is not rec and rec["dir"] not in holder["dependents"]:
+                holder["dependents"].append(rec["dir"])
 
     trash_dir = os.path.join(state_dir, "trash")
     try:

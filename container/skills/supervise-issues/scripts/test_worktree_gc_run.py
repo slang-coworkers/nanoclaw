@@ -483,5 +483,94 @@ class GateTest(unittest.TestCase):
         self.assertEqual(self.s.report()["plan"]["counts"]["REAP"], 0, self.s.report())
 
 
+    # --- Submodules borrowed from another checkout -------------------------------
+    # eval-slang-reviewer on 2026-11-17: reviewers copied `external/` between
+    # checkouts, so submodule `.git` files in one tree named another tree's
+    # `slang/.git/worktrees/<donor>/modules/...`. Reaping the donor pruned that
+    # directory; every save of a copy then died in `git add -A` / `git status`
+    # with "not a git repository", hour after hour.
+
+    def base_with_submodule(self):
+        """Give the slang base a submodule at external/sub, as slang has many."""
+        sub = self.s.tmp / "subsrc"
+        git(self.s.tmp, "init", "-q", "-b", "main", str(sub), days_ago=OLD_DAYS)
+        (sub / "s.txt").write_text("s\n")
+        git(sub, "add", "-A")
+        git(sub, "commit", "-qm", "s", days_ago=OLD_DAYS)
+        git(self.slang, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(sub), "external/sub")
+        git(self.slang, "commit", "-qm", "sub", days_ago=OLD_DAYS)
+
+    def donor_with_initialized_submodule(self, name):
+        donor = self.s.worktree(self.slang, name)
+        git(donor, "-c", "protocol.file.allow=always", "submodule", "update", "-q", "--init")
+        # The donor's submodule moves on and is edited, so a copy's gitlink no longer
+        # matches its checkout and git must open the submodule to compare them.
+        sub = donor / "external" / "sub"
+        (sub / "s2.txt").write_text("moved\n")
+        git(sub, "add", "-A")
+        git(sub, "commit", "-qm", "moved", days_ago=OLD_DAYS)
+        (sub / "s.txt").write_text("dirty\n")
+        return donor
+
+    def copy_submodule(self, donor, tree):
+        shutil.rmtree(tree / "external" / "sub")
+        shutil.copytree(donor / "external" / "sub", tree / "external" / "sub", symlinks=True)
+
+    def reap_by_hand(self, tree):
+        """What a pre-fix run did to a donor: move it away and prune its record."""
+        shutil.move(str(tree), str(self.s.tmp / f"gone-{tree.name}"))
+        git(self.slang, "worktree", "prune")
+
+    def test_checkout_whose_admin_dir_holds_another_checkouts_submodules_goes_last(self):
+        self.base_with_submodule()
+        donor = self.donor_with_initialized_submodule("wt-11125-r1")
+        copy = self.s.worktree(self.slang, "wt-11541-r1")
+        self.copy_submodule(donor, copy)
+        (copy / "f.txt").write_text("review notes\n")
+        self.s.age_all()
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertTrue(donor.exists(), self.s.report())
+        self.assertFalse(copy.exists(), self.s.report())
+        self.assertIn("wip/reap/wt-11541-r1", self.saved_branches(self.slang))
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(donor.exists(), self.s.report())
+
+    def test_worktree_with_a_dangling_submodule_is_saved_and_reaped(self):
+        self.base_with_submodule()
+        donor = self.donor_with_initialized_submodule("wt-11125-r1")
+        copy = self.s.worktree(self.slang, "wt-11541-r1")
+        self.copy_submodule(donor, copy)
+        (copy / "f.txt").write_text("review notes\n")
+        (copy / "notes.md").write_text("untracked\n")
+        self.reap_by_hand(donor)
+        self.s.age_all()
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(copy.exists(), self.s.report())
+        saved = git(self.slang, "show", "--stat", "--format=%s", "wip/reap/wt-11541-r1").stdout
+        self.assertIn("f.txt", saved)
+        self.assertIn("notes.md", saved)
+        self.assertNotIn("external/sub", saved)
+
+    def test_clone_with_a_dangling_submodule_is_bundled_and_reaped(self):
+        self.base_with_submodule()
+        donor = self.donor_with_initialized_submodule("wt-11125-r1")
+        clone = self.s.clone(self.slang, "wt-13000-revA")
+        self.copy_submodule(donor, clone)
+        (clone / "f.txt").write_text("local fix\n")
+        self.reap_by_hand(donor)
+        self.s.age_all()
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(clone.exists(), self.s.report())
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("wt-13000-revA.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+
 if __name__ == "__main__":
     unittest.main()
