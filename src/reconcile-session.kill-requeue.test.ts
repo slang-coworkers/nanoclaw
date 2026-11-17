@@ -20,6 +20,7 @@
  *     and a cost stop never claims the rows it holds back.
  */
 import Database from 'better-sqlite3';
+import { spawnSync } from 'child_process';
 import fs from 'fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -365,4 +366,52 @@ describe('kills for an outside reason', () => {
     expect(requestWake).toHaveBeenCalledTimes(1);
     expect(trigger('m-1')).toMatchObject({ status: 'pending', tries: 0 });
   });
+
+  it('a container killed in the middle of an outbound write still gets its session woken', async () => {
+    // The kill landed inside a write transaction on outbound.db and left a hot
+    // journal. The host reads outbound.db read-only, and a read-only connection
+    // cannot roll that journal back, so before the fix every pass failed and the
+    // session was never woken again (prod: the Orchestrator's dashboard session).
+    seedTrigger('m-1', { ack: 'processing', ackAtMs: Date.now() - 30_000 });
+    killWriterMidTransaction(outboundDbPath(AG, SID));
+    expect(fs.statSync(`${outboundDbPath(AG, SID)}-journal`).size).toBeGreaterThan(0);
+
+    await reconcileSession(SID);
+
+    expect(fs.existsSync(`${outboundDbPath(AG, SID)}-journal`)).toBe(false);
+    expect(requestWake).toHaveBeenCalledTimes(1);
+    expect(trigger('m-1')).toMatchObject({ status: 'pending', tries: 0 });
+    // The dead writer's uncommitted rows are gone; its committed claim survives.
+    expect(processingClaims()).toEqual(['m-1']);
+  });
+
+  it('leaves the journal of a container that is still running alone', async () => {
+    containerWorking();
+    seedTrigger('m-1', { ack: 'processing', ackAtMs: Date.now() - 30_000 });
+    killWriterMidTransaction(outboundDbPath(AG, SID));
+
+    await reconcileSession(SID);
+
+    // Only a pass with no live container may roll the journal back.
+    expect(fs.statSync(`${outboundDbPath(AG, SID)}-journal`).size).toBeGreaterThan(0);
+  });
 });
+
+/**
+ * Leave a real hot journal on `dbPath`: a separate process opens a write
+ * transaction, changes enough rows that pages spill to the file, and is
+ * SIGKILLed before it commits, as a container is when the host kills it mid-write.
+ */
+function killWriterMidTransaction(dbPath: string): void {
+  const script = `
+    const Database = require('better-sqlite3');
+    const db = new Database(process.argv[1]);
+    db.pragma('cache_size = 1');
+    db.exec('BEGIN IMMEDIATE');
+    const ins = db.prepare('INSERT INTO messages_out (id, kind, timestamp, content) VALUES (?, ?, ?, ?)');
+    for (let i = 0; i < 400; i++) ins.run('lost-' + i, 'chat', '2026-11-17T03:05:00Z', 'x'.repeat(400));
+    process.kill(process.pid, 'SIGKILL');
+  `;
+  const r = spawnSync(process.execPath, ['-e', script, dbPath], { cwd: process.cwd() });
+  expect(r.signal).toBe('SIGKILL');
+}
