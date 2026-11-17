@@ -6,15 +6,40 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 850 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 318 |
-| `nv-slang` | slang project spine, skills, workflows | 223 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 871 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 322 |
+| `nv-slang` | slang project spine, skills, workflows | 226 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 135 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 112 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-17
+
+### nv-main (21 PRs)
+- **#2446** `Keep a session's old conversation readable after a provider switch`
+- **#2447** `onecli-gateway: a GitHub 401 on an uncovered path is not an outage`
+- **#2449** `Refresh the GitHub /rate_limit App secret with the others`
+- **#2450** `Serve /rate_limit from the already-granted old catch-all secret`
+- **#2451** `Record the slang_maintainer prepend and MCP allow-lists of record`
+- **#2453** `Add ncl groups coworker-type set to switch a group's type`
+- **#2454** `Keep critique rounds visible to the host across task resets`
+- **#2455** `Count a critique-gate nudge only once the agent's runner claims it`
+- **#2456** `Tell a failing critic apart from an agent that skipped the critique`
+_+12 more: #2445, #2444, #2441, #2440, #2438, #2437, #2435, #2433, #2432, #2430, #2429, #2428_
+
+### nv-dashboard (4 PRs)
+- **#2434** `dashboard: run the per-session cost scan in a worker thread`
+- **#2439** `dashboard: open/closed weights pill and filter on every coworker and session panel`
+- **#2442** `dashboard: run thread summaries, context, task and fleet scans off the main thread`
+- **#2443** `Name the weights the badge tests mean`
+
+### nv-slang (3 PRs)
+- **#2431** `slang-github-webhook: route new issues; only an explicit stand-down holds`
+- **#2448** `slang-pr-review workflow: check GitHub by reading the target repo`
+- **#2452** `slang-maintainer-tools: Discord is read-only`
 
 ## 📅 2026-11-16
 
