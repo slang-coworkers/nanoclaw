@@ -2439,6 +2439,33 @@ export function ensurePrDescriptionGate(settingsFile: string): void {
   }
 }
 
+export const SOURCE_COMMENT_GATE_CMD = 'bash /app/hooks/gate-source-comments.sh';
+
+/**
+ * Register gate-source-comments.sh as a PreToolUse Bash hook in a group's
+ * settings.json, once. A `git commit` may not add a source comment that carries
+ * process or history (issue and PR numbers, "before this change") or the deprecated
+ * `ConstRef` term; the rule in the prompt does not change what an agent writes, a
+ * refusal at commit time does. Wired like the description gate: for every group,
+ * outside the dashboard hook block. No-op when the script or the settings file is absent.
+ */
+export function ensureSourceCommentGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-source-comments.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    'Bash',
+    'gate-source-comments.sh',
+    SOURCE_COMMENT_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
 export const EVAL_SANDBOX_GATE_CMD = 'bash /app/hooks/gate-eval-sandbox.sh';
 // The hook refuses three MCP tools and Pi's MCP script tool by name and
 // classifies Bash commands; the matcher lists exactly those so unrelated tool
@@ -2993,6 +3020,7 @@ export async function buildMounts(
   // dashboard block above so DASHBOARD_PORT=0 cannot switch it off. Codex groups
   // run it from their managed hook file (container/codex-hooks.toml).
   if (defaultSurfaces) ensurePrDescriptionGate(settingsFile);
+  if (defaultSurfaces) ensureSourceCommentGate(settingsFile);
   // gate-eval-sandbox.sh: an evaluation copy of a coworker (overlay `eval-sandbox`)
   // may write only to the evaluation fork. Self-scoped by the overlay marker, so
   // every Claude-surface group carries the registration and only eval groups feel it.
