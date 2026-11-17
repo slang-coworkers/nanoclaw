@@ -12,9 +12,11 @@ import {
   CODEX_REPLY_TOOL,
   CODEX_TOOL,
   canonicalToolArgs,
+  codexToolResult,
   configToOverrides,
   criticModel,
   progressReporter,
+  threadIdNote,
 } from './codex-mcp-bridge.js';
 
 // The bridge must be a drop-in for codex 0.153.4's `codex mcp-server`: same two
@@ -162,6 +164,17 @@ describe('codex MCP bridge over stdio', () => {
     expect(r.content[0].text).toBe('VERDICT: approve');
     expect(r.structuredContent?.threadId).toBe('thread-1');
     expect(r.structuredContent?.content).toBe('VERDICT: approve');
+    // What each engine shows the model. OpenCode 1.18 joins the text items with a
+    // blank line and drops structuredContent; Claude Code 2.1 shows
+    // structuredContent as JSON. The thread id must reach the model in both, and
+    // the message must stay first, so its sentinel lines lead.
+    const openCodeView = r.content
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text)
+      .join('\n\n');
+    expect(openCodeView.startsWith('VERDICT: approve\n\n')).toBe(true);
+    expect(openCodeView).toContain('codex threadId: thread-1');
+    expect(JSON.stringify(r.structuredContent)).toContain('"threadId":"thread-1"');
     const received = readFileSync(logFile, 'utf8')
       .trim()
       .split('\n')
@@ -275,6 +288,50 @@ describe('codex MCP bridge over stdio', () => {
     expect(r.isError).toBeFalsy();
     expect(r.content[0].text).toBe('VERDICT: approve');
     expect(progressSeen).toBeGreaterThan(1);
+  });
+
+  // Codex 0.160 reports a failed turn as turn/completed with status "failed";
+  // the bridge used to answer it as a successful critique with an empty verdict.
+  it('a failed turn is an error result carrying codex error, and records no critique round', async () => {
+    const recordedBefore = readFileSync(recordFile, 'utf8').trim().split('\n').length;
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'TURN_FAILS', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('fake model rejected the request');
+    expect(readFileSync(recordFile, 'utf8').trim().split('\n').length).toBe(recordedBefore);
+  });
+
+  it('an interrupted turn is an error result', async () => {
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'TURN_INTERRUPTED', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('interrupted');
+  });
+
+  it('a turn/failed from codex before 0.160 is still an error result', async () => {
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'LEGACY_TURN_FAILED', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('fake model rejected the request');
+  });
+});
+
+describe('codexToolResult', () => {
+  it('keeps the message as its own first text item and names the thread in a second', () => {
+    expect(codexToolResult({ threadId: 't-9', text: '### Verdict\napprove' })).toEqual({
+      content: [
+        { type: 'text', text: '### Verdict\napprove' },
+        { type: 'text', text: threadIdNote('t-9') },
+      ],
+      structuredContent: { threadId: 't-9', content: '### Verdict\napprove' },
+    });
+    expect(threadIdNote('t-9')).toContain('t-9');
   });
 });
 

@@ -40,6 +40,7 @@ import {
   startCodexTurn,
   startOrResumeCodexThread,
   tomlBasicString,
+  turnCompletedError,
   type AppServer,
   type JsonRpcNotification,
   type ThreadParams,
@@ -221,7 +222,9 @@ export interface TurnResult {
 
 /**
  * Start one turn and collect the agent's final message. Resolves on the turn's
- * own `turn/completed`, rejects on `turn/failed`, process exit or timeout.
+ * own `turn/completed`; rejects with codex's error when that `turn/completed`
+ * reports a failed or interrupted turn (turnCompletedError), and on
+ * `turn/failed`, process exit or timeout.
  *
  * Only notifications on `params.threadId` make up the result. When the critic
  * spawns a sub-agent (for example to recall prior learnings), the sub-agent's
@@ -267,9 +270,12 @@ export function runTurn(
           if (item?.type === 'agentMessage' && typeof item.text === 'string' && item.text) finalText = item.text;
           break;
         }
-        case 'turn/completed':
-          finish(() => resolve({ text: finalText || deltas, items }));
+        case 'turn/completed': {
+          const failure = turnCompletedError(p);
+          finish(() => (failure ? reject(new Error(failure)) : resolve({ text: finalText || deltas, items })));
           break;
+        }
+        // Codex versions before 0.160 reported a failure with `turn/failed`.
         case 'turn/failed': {
           const e = p.error as { message?: string } | undefined;
           finish(() => reject(new Error(e?.message || 'codex turn failed')));
@@ -483,6 +489,37 @@ export function canonicalToolArgs(
 
 // ── MCP server ──────────────────────────────────────────────────────────────────────────────────
 
+/** The text item that names a call's codex thread (see codexToolResult). */
+export function threadIdNote(threadId: string): string {
+  return `codex threadId: ${threadId} (pass it as threadId to codex-reply to continue this thread)`;
+}
+
+/**
+ * Return the MCP result of a successful codex call: the agent's final message as
+ * the first text item, a second text item naming the thread (threadIdNote), and
+ * `structuredContent` `{threadId, content}` as codex's own `codex mcp-server` returned.
+ *
+ * The two engines show the model different parts of this result. Claude Code
+ * shows `structuredContent` serialized as JSON when it is present, so the thread
+ * id travels as its `threadId` field. OpenCode shows only the text items, joined
+ * by a blank line, and drops `structuredContent`; without the second item an
+ * OpenCode agent never learns the thread id and cannot call `codex-reply`. The
+ * message stays a text item of its own, so its sentinel lines remain at the top
+ * of what the model reads.
+ */
+export function codexToolResult(r: { threadId: string; text: string }): {
+  content: Array<{ type: 'text'; text: string }>;
+  structuredContent: { threadId: string; content: string };
+} {
+  return {
+    content: [
+      { type: 'text', text: r.text },
+      { type: 'text', text: threadIdNote(r.threadId) },
+    ],
+    structuredContent: { threadId: r.threadId, content: r.text },
+  };
+}
+
 export function createBridgeServer(): Server {
   const server = new Server({ name: 'codex-mcp-bridge', version: '1.0.0' }, { capabilities: { tools: {} } });
   server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [CODEX_TOOL, CODEX_REPLY_TOOL] }));
@@ -505,12 +542,7 @@ export function createBridgeServer(): Server {
       // One critique round per successful call, recorded before the answer so
       // the agent's next delivery sees it (critique-record.ts).
       await recordCritiqueRound(name as 'codex' | 'codex-reply', args, r);
-      // Same shape codex's own server returned: the agent's final message as text, and the
-      // thread id in structured content so `codex-reply` can continue the conversation.
-      return {
-        content: [{ type: 'text', text: r.text }],
-        structuredContent: { threadId: r.threadId, content: r.text },
-      };
+      return codexToolResult(r);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log(`${name} failed: ${msg}`);

@@ -7,14 +7,18 @@
  * something to read. Turn and item notifications carry `threadId` and `turnId`,
  * as codex 0.160's protocol requires. Behaviour knobs via env:
  *   FAKE_CODEX_REPLY      text of the agent message (default "VERDICT: approve")
- *   FAKE_CODEX_FAIL_TURN  when set, the turn fails with this message
  *   FAKE_CODEX_LOG        append every received line to this file (assertions)
  * and via the turn's input text:
- *   SPAWN_SUBAGENT        before the parent's answer, a sub-agent thread runs a
- *                         whole turn (message + turn/completed) on this server,
- *                         as codex's `spawn_agent` does
+ *   SPAWN_SUBAGENT        a sub-agent thread runs a whole turn (message +
+ *                         turn/completed) on this server, as codex's
+ *                         `spawn_agent` does, and the parent answers 200 ms later
  *   SLOW_TURN             the turn streams reasoning for about a second before
  *                         it answers
+ *   TURN_FAILS            the turn fails the way codex 0.160 reports it: a retry
+ *                         `error`, the final `error` (willRetry false), then
+ *                         `turn/completed` with status "failed" and turn.error
+ *   TURN_INTERRUPTED      `turn/completed` with status "interrupted", error null
+ *   LEGACY_TURN_FAILED    `turn/failed`, as codex versions before 0.160 sent
  */
 import { appendFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
@@ -61,18 +65,42 @@ function answer(threadId: string, turnId: string, text: string): void {
   send({ method: 'turn/completed', params: { threadId, turn: { id: turnId, status: 'completed', items: [] } } });
 }
 
-async function runTurn(threadId: string, params: Record<string, unknown>): Promise<void> {
-  const fail = process.env.FAKE_CODEX_FAIL_TURN;
-  if (fail) {
-    send({ method: 'turn/failed', params: { threadId, error: { message: fail } } });
-    return;
+/** The model endpoint's error as codex 0.160 relays it (captured from a real failed turn). */
+const FAKE_TURN_ERROR = '{"error": {"message": "fake model rejected the request", "type": "invalid_request_error"}}';
+
+/** End `turnId` without an answer, in the shapes codex 0.160 sends (see the knobs above). */
+function endTurnWithoutAnswer(threadId: string, turnId: string, input: string): boolean {
+  const turn = (status: string, error: unknown) => ({ id: turnId, items: [], status, error });
+  if (input.includes('LEGACY_TURN_FAILED')) {
+    send({ method: 'turn/failed', params: { threadId, error: { message: FAKE_TURN_ERROR } } });
+    return true;
   }
+  if (input.includes('TURN_FAILS')) {
+    const error = { message: FAKE_TURN_ERROR, codexErrorInfo: 'other', additionalDetails: null };
+    send({ method: 'turn/started', params: { threadId, turn: turn('inProgress', null) } });
+    send({ method: 'error', params: { error: { message: 'Reconnecting... 1/5' }, willRetry: true, threadId, turnId } });
+    send({ method: 'error', params: { error, willRetry: false, threadId, turnId } });
+    send({ method: 'turn/completed', params: { threadId, turn: turn('failed', error) } });
+    return true;
+  }
+  if (input.includes('TURN_INTERRUPTED')) {
+    send({ method: 'turn/started', params: { threadId, turn: turn('inProgress', null) } });
+    send({ method: 'turn/completed', params: { threadId, turn: turn('interrupted', null) } });
+    return true;
+  }
+  return false;
+}
+
+async function runTurn(threadId: string, params: Record<string, unknown>): Promise<void> {
   const input = (params.input as Array<{ text?: string }> | undefined)?.[0]?.text ?? '';
+  if (endTurnWithoutAnswer(threadId, 't1', input)) return;
   const reply = (process.env.FAKE_CODEX_REPLY ?? 'VERDICT: approve') + (input.includes('ROUND: 2') ? ' (round 2)' : '');
   if (input.includes('SPAWN_SUBAGENT')) {
     const child = `${threadId}-subagent`;
     send({ method: 'thread/started', params: { thread: { id: child, parentThreadId: threadId } } });
     answer(child, `${child}-t1`, 'Recall complete. Four relevant items found.');
+    // The parent answers later, as on prod (minutes after its sub-agent ended).
+    await sleep(200);
   }
   if (input.includes('SLOW_TURN')) {
     for (let i = 0; i < 10; i += 1) {
