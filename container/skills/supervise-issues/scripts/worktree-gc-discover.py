@@ -12,9 +12,9 @@ container, `--agent` in tests):
   checkouts  every git worktree registered with a base clone
              (`<agent>/{slang,slangpy,slang-rhi}`), whatever its name, plus
              every top-level `wt-*` directory, the naming convention for
-             per-task checkouts, and every top-level scratch directory
-             (worktree-gc.py's SCRATCH_DIR_PATTERNS) that is itself a checkout,
-             whatever its git shape:
+             per-task checkouts, and every other top-level directory that is
+             itself a checkout, whatever its name (worktree-gc.py's
+             `is_durable_dir` names excepted), whatever its git shape:
                worktree  a linked worktree whose administrative directory
                          exists (owner = the repository that registered it)
                clone     a standalone clone: `.git` is a directory
@@ -25,11 +25,15 @@ container, `--agent` in tests):
              agent keep run output
   scratch    every other top-level scratch directory, with the git
              repositories found inside it (`git_inside`), which the executor
-             saves before it removes the directory; a bare clone such as
-             `bare-13387.git` is its own `git_inside` entry
+             saves before it removes the directory, and every top-level bare
+             repository, whatever its name; a bare clone such as
+             `bare-13387.git` or `r0-origin.git` is its own `git_inside` entry
   wt files   every top-level regular file named `wt-*` (build logs)
   trash      what the executor already moved into `.worktree-gc/trash/` and
              still has to delete
+
+Every record carries `declared_keep` when the group named it in
+`.worktree-gc/keep` (worktree-gc.py's KEEP_FILE); the classifier keeps those.
 
 Before it lists anything it repairs worktrees that were moved by hand. Consider
 an agent that runs `git worktree add wt-tmp-13546` and then
@@ -334,6 +338,18 @@ def repositories_inside(path: str) -> list[dict]:
     return sorted(found, key=lambda r: r["path"])
 
 
+def checkout_kind(name: str, shape: str, number: str) -> str:
+    """primary, scratch or reference (see worktree-gc.py). Only a standalone clone
+    can be a reference clone: a linked worktree or an orphan was made per task by
+    `git worktree add`, and a per-task name or an issue/PR number marks a clone
+    as made for one task too."""
+    if PRIMARY_NAME.match(name):
+        return "primary"
+    if shape != "clone" or number or name.startswith("wt-") or wg.is_scratch_dir(name):
+        return "scratch"
+    return "reference"
+
+
 def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin: str | None,
                     branch: str, locked: bool, held: set[str], now: float) -> dict:
     name = os.path.basename(path)
@@ -359,7 +375,7 @@ def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin:
         "base": base,
         "repo": repo_slug(repo_dir, agent) if repo_dir and os.path.isdir(repo_dir) else "",
         "number": m.group(1) if m else "",
-        "kind": "primary" if PRIMARY_NAME.match(name) else "scratch",
+        "kind": checkout_kind(name, shape, m.group(1) if m else ""),
         "idle_days": round((now - last_use(shape, path, admin)) / DAY_S, 2),
         "has_build": os.path.isdir(os.path.join(path, "build")),
         "running": bool(running_why),
@@ -392,10 +408,26 @@ def run_entry_last_use(path: str) -> float:
     return newest
 
 
+def declared_keep(state_dir: str) -> set[str]:
+    """Names the group listed in `<state_dir>/keep`: one per line, a top-level
+    name or `runs/<name>`, `#` starting a comment."""
+    keep: set[str] = set()
+    try:
+        with open(os.path.join(state_dir, wg.KEEP_FILE), errors="replace") as f:
+            for line in f:
+                name = line.split("#", 1)[0].strip().rstrip("/")
+                if name:
+                    keep.add(name)
+    except OSError:
+        pass
+    return keep
+
+
 def discover(agent: str, state_dir: str, now: float) -> dict:
     agent = os.path.abspath(agent)
     repaired = repair_moved_worktrees(agent)
     held = processes_holding(agent)
+    keep = declared_keep(state_dir)
 
     checkouts: dict[str, dict] = {}
     for base in BASES:
@@ -416,7 +448,7 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
     for name in sorted(os.listdir(agent)):
         p = os.path.join(agent, name)
         per_task = name.startswith("wt-") or wg.is_scratch_dir(name)
-        if not per_task or os.path.islink(p) or real(p) in checkouts:
+        if os.path.islink(p) or real(p) in checkouts:
             continue
         if os.path.isfile(p):
             if name.startswith("wt-"):
@@ -425,7 +457,11 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             continue
         if not os.path.isdir(p):
             continue
+        # A per-task name is managed whatever it holds; any other name only when
+        # it is itself a git repository and not the agent's durable state.
         shape = git_shape(p)
+        if not per_task and (shape is None or name in BASES or wg.is_durable_dir(name)):
+            continue
         if shape and shape[0] != "bare":
             kind, owner, admin = shape
             branch = "" if kind == "orphan" else git(["symbolic-ref", "-q", "--short", "HEAD"], p).stdout.strip()
@@ -457,6 +493,7 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             "idle_days": round((now - run_entry_last_use(p)) / DAY_S, 2),
             "running": f"runs/{name}" in held,
             "dependents": [],
+            "declared_keep": f"runs/{name}" in keep,
         }
 
     # A checkout or run entry that another checkout borrows objects from
@@ -478,6 +515,11 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             if holder is not None and holder is not rec:
                 holder["dependents"].append(rec["dir"])
         rec["dependents"].extend(os.path.basename(t) for t in live_worktrees_of(rec["path"]))
+
+    for rec in checkouts.values():
+        rec["declared_keep"] = rec["dir"] in keep
+    for rec in [*scratch.values(), *wt_files]:
+        rec["declared_keep"] = rec["name"] in keep
 
     trash_dir = os.path.join(state_dir, "trash")
     try:

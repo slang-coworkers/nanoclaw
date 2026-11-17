@@ -248,6 +248,52 @@ class TestShapes(unittest.TestCase):
         self.assertEqual(out["summary"]["shapes"], {"clone": 2, "worktree": 1})
 
 
+class TestReferenceAndKeep(unittest.TestCase):
+    """A top-level clone whose name carries no issue number is a reference clone:
+    nothing says when its task is done, so only long idleness retires it, and a
+    group can keep any entry for good by listing it in `.worktree-gc/keep`."""
+
+    def test_reference_clone_is_kept_until_long_idle(self):
+        used = wt("spec", kind="reference", shape="clone", pr="", issue="", fs_idle=wg.REFERENCE_IDLE_DAYS)
+        self.assertEqual(wg.classify(used, set()), "KEEP")
+        self.assertIn("reference clone", used["gc_reason"])
+        idle = wt("spec", kind="reference", shape="clone", pr="", issue="", fs_idle=wg.REFERENCE_IDLE_DAYS + 1)
+        self.assertEqual(wg.classify(idle, set()), "REAP")
+
+    def test_reference_clone_never_enters_stale_open(self):
+        w = wt("slang-bisect", kind="reference", shape="clone", pr="OPEN", idle=90, fs_idle=10)
+        self.assertEqual(wg.classify(w, set()), "KEEP")
+
+    def test_declared_keep_wins_over_every_reap_rule(self):
+        for w in (wt("spec", kind="reference", shape="clone", fs_idle=400),
+                  wt("wt-1-verify", kind="scratch", pr="MERGED", fs_idle=90),
+                  wt("wt-slang-1", pr="CLOSED", fs_idle=90)):
+            w["declared_keep"] = True
+            self.assertEqual(wg.classify(w, set()), "KEEP", w["dir"])
+            self.assertIn(".worktree-gc/keep", w["gc_reason"])
+
+    def test_declared_keep_never_expires(self):
+        e = {"name": "review-1", "idle_days": wg.RUNS_RETENTION_DAYS + 30, "running": False, "dependents": [],
+             "declared_keep": True}
+        self.assertFalse(wg.expired_entry(e))
+
+    def test_kind_and_keep_counts_in_summary(self):
+        kept = wt("spec", kind="reference", shape="clone")
+        kept["declared_keep"] = True
+        out = wg.select({"free_gb": 500, "total_gb": 1000, "running_dirs": [],
+                         "worktrees": [wt("a"), wt("b", kind="scratch"), kept]})
+        self.assertEqual(out["summary"]["kinds"], {"primary": 1, "scratch": 1, "reference": 1})
+        self.assertEqual(out["summary"]["declared_keep"], 1)
+        self.assertEqual(out["summary"]["thresholds"]["REFERENCE_IDLE_DAYS"], wg.REFERENCE_IDLE_DAYS)
+
+    def test_durable_directories(self):
+        for name in ("memory", "tools", "tasks", "conversations", "runs", "active-work", "plugins", "venv-1181",
+                     ".worktree-gc", ".claude"):
+            self.assertTrue(wg.is_durable_dir(name), name)
+        for name in ("spec", "slang-bisect", "nanoclaw-kb", "rev-1179-base"):
+            self.assertFalse(wg.is_durable_dir(name), name)
+
+
 class TestRunsRetention(unittest.TestCase):
     def run_entry(self, name, idle, running=False, dependents=()):
         return {"name": name, "idle_days": idle, "running": running, "dependents": list(dependents)}

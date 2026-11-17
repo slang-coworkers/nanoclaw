@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """worktree-gc.py — deterministic worktree reclaim classifier.
 
-Every tier (fixer, reviewer, triager, slangpy-*) runs `worktree-gc-run.sh` as a
-gated task inside its own container; that script collects facts with
+Every group whose directory holds per-task work runs `worktree-gc-run.sh` as the
+gate of its hourly `worktree-gc` task inside its own container (the host keeps
+that task on every such group: src/modules/worktree-gc/index.ts); that script
+collects facts with
 `worktree-gc-discover.py`, resolves issue/PR state with `gh`, and hands the set
 to this module. The supervisor's §8 only reads the reports. The thresholds below
 are the single source of truth: SKILL.md / reference.md / worktree-gc-run.sh
 reference them by name (the run script reads them from `summary.thresholds`)
 and never restate the numbers.
 
-A checkout is any per-task tree the discovery found: a linked worktree, a
-standalone clone, an orphan (a `.git` file whose administrative directory git
-has pruned) or a plain directory under a `wt-*` name. The tiers below apply to
-every shape; `shape` only matters where the executor could not save the tree
-before removing it (see `classify`).
+A checkout is any tree the discovery found: a linked worktree, a standalone
+clone, an orphan (a `.git` file whose administrative directory git has pruned)
+or a plain directory under a `wt-*` name. The tiers below apply to every shape;
+`shape` only matters where the executor could not save the tree before removing
+it (see `classify`).
 
 Four tiers:
 
@@ -21,21 +23,32 @@ Four tiers:
               `wip/reap/<name>` branch). Primary fix trees whose PR is
               MERGED/CLOSED, or whose issue is CLOSED with no PR; primary trees
               with no PR idle > NOPR_IDLE_DAYS; every scratch tree whose PR is
-              MERGED/CLOSED or that is idle > SCRATCH_IDLE_DAYS.
+              MERGED/CLOSED or that is idle > SCRATCH_IDLE_DAYS; every reference
+              clone idle > REFERENCE_IDLE_DAYS.
   STALE-OPEN  primary tree whose PR is OPEN but idle > STALE_OPEN_IDLE_DAYS:
               reclaim the regenerable `build/` in place, never the worktree.
-  KEEP        anything with a running session, anything touched within
+  KEEP        anything with a running session, anything the group declared in
+              `.worktree-gc/keep` (KEEP_FILE), anything touched within
               MIN_IDLE_DAYS, scratch trees still in use, open PRs still active,
+              reference clones used within REFERENCE_IDLE_DAYS,
               any checkout another checkout borrows objects from or that owns a
               live linked worktree (`dependents`), and any tree whose work the
               executor has no way to save: a plain directory, or an orphan
               whose repository is gone.
   NO-PR       primary tree, issue OPEN, no PR yet, not idle enough to reap.
 
-`kind` tells primary from scratch. A primary tree is a tier's fix checkout
-(`wt-slang-<n>`, `wt-slangpy-<n>`, `wt-slang-pr-<n>`, …); everything else —
-`wt-<n>-verify`, `wt-<n>-master`, `wt-<n>-revA`, `wt-clarity-*`, nested or
-freehand names — is scratch that holds no work the PR does not already hold.
+`kind` is one of three. A primary tree is a tier's fix checkout (`wt-slang-<n>`,
+`wt-slangpy-<n>`, `wt-slang-pr-<n>`, …). A scratch tree is every other `wt-*`
+or per-task-named checkout (`wt-<n>-verify`, `wt-<n>-master`, `wt-<n>-revA`,
+`wt-clarity-*`, `review-<n>`), and every other top-level checkout whose name
+carries an issue or PR number (`slang-13742-pr`, `falcor-13876`,
+`rev-1179-base`); it holds no work the PR does not already hold. A reference
+clone is a top-level checkout whose name carries no number (`spec`,
+`SPIRV-Tools`, `slang-bisect`): a repository the agent cloned to read or bisect,
+with no issue to say when it is done, so only long idleness retires it. A group
+that wants one kept for good lists its directory name in `.worktree-gc/keep`.
+Every removal is preceded by the executor's save, so a reaped reference clone
+comes back with a fresh clone plus the saved bundle or branch.
 `idle_days` is filesystem idleness (index, build log, directory mtimes);
 `pr_idle_days` is GitHub idleness of the open PR.
 
@@ -100,6 +113,7 @@ import sys
 STALE_OPEN_IDLE_DAYS = 14   # open PR untouched longer than this → STALE-OPEN (build/ reclaimed)
 SCRATCH_IDLE_DAYS = 2       # scratch tree idle longer than this → REAP
 NOPR_IDLE_DAYS = 30         # primary tree with no PR idle longer than this → REAP
+REFERENCE_IDLE_DAYS = 60    # reference clone (no number in its name) idle longer than this → REAP
 MIN_IDLE_DAYS = 1           # nothing touched within this many days is reaped or reclaimed
 PRESSURE_GATE_PCT = 25      # free below this share of the volume → idle KEEP builds join the reclaim list
 PRESSURE_IDLE_DAYS = 7      # under pressure, a KEEP build whose PR is idle > this is reclaimable
@@ -112,12 +126,29 @@ ESCALATE_PCT = 10           # free below this share of the volume after a run �
 
 FINAL_PR_STATES = ("MERGED", "CLOSED")
 
+# `.worktree-gc/keep` in the group directory: one top-level name per line
+# (`runs/<name>` for a run entry), `#` starts a comment. Whatever it names is KEEP
+# and never expires, whatever its kind or age.
+KEEP_FILE = "keep"
+
+# Top-level directories that are the agent's durable state, never per-task work,
+# whatever they hold. The base clones are durable too; discovery owns their names
+# (BASES) because it walks their worktrees.
+DURABLE_DIRS = ("memory", "tools", "tasks", "conversations", "runs", "active-work", "plugins")
+
+
+def is_durable_dir(name):
+    """Is a top-level directory the agent's durable state: a DURABLE_DIRS name, a
+    `venv-*` environment, or a hidden directory (`.worktree-gc`, `.claude`)?"""
+    return name in DURABLE_DIRS or name.startswith(("venv-", "."))
+
+
 # Top-level per-task scratch directories, as agents name them: a per-task word and
 # the issue/PR number (`review-14416`, `review-14416-r2-devin`, `B-13514-r2`,
 # `pr12249-review`, `ci-1181`), a bare clone a review cloned its checkouts from
 # (`bare-13387.git`), or a directory named as disposable (`scratch-…`, `repro-…`,
-# `tmp-…`). Full-match regexes; durable directories (`memory`, `tools`, `tasks`,
-# `conversations`, the base clones, `venv-*`) match none of them.
+# `tmp-…`). Full-match regexes; durable directories (`is_durable_dir`, the base
+# clones) match none of them.
 PER_TASK_WORDS = (
     "review", "reviewA", "reviewB", "reviewC", "reviewerA", "reviewerB", "reviewerC",
     "revA", "revB", "revC", "runA", "runB", "runC", "A", "B", "C", "devin", "pr",
@@ -150,7 +181,8 @@ def classify(wt, running_dirs):
     pr = (wt.get("pr_state") or "").upper()
     running = wt.get("dir") in running_dirs or bool(wt.get("running"))
     idle = _idle(wt)
-    scratch = (wt.get("kind") or "primary") == "scratch"
+    kind = wt.get("kind") or "primary"
+    scratch = kind == "scratch"
 
     def tier(name, why):
         wt["gc_reason"] = why
@@ -163,12 +195,19 @@ def classify(wt, running_dirs):
         return tier("KEEP", "used by " + ", ".join(sorted(dependents)))
     if running:
         return tier("KEEP", "running session")
+    if wt.get("declared_keep"):
+        return tier("KEEP", f"declared in .worktree-gc/{KEEP_FILE}")
     if shape == "plain":
         return tier("KEEP", "not a git checkout; nothing can save its contents")
     if shape == "orphan" and not wt.get("owner_exists"):
         return tier("KEEP", "orphaned and its repository is gone; nothing can save its contents")
     if idle is not None and idle < MIN_IDLE_DAYS:
         return tier("KEEP", f"touched {idle:g}d ago")
+
+    if kind == "reference":
+        if idle is not None and idle > REFERENCE_IDLE_DAYS:
+            return tier("REAP", f"reference clone, idle {idle:g}d")
+        return tier("KEEP", "reference clone, used " + (f"{idle:g}d ago" if idle is not None else "at an unknown time"))
 
     if scratch:
         if pr in FINAL_PR_STATES:
@@ -194,14 +233,16 @@ def classify(wt, running_dirs):
 
 def expired_entry(entry):
     """Is this per-task output (a `runs/` entry, a scratch directory, a `wt-*`
-    file) past RUNS_RETENTION_DAYS, held by no process and borrowed from by no
-    checkout? An entry without a measured idleness is kept."""
+    file) past RUNS_RETENTION_DAYS, held by no process, borrowed from by no
+    checkout and not declared in KEEP_FILE? An entry without a measured
+    idleness is kept."""
     idle = _idle(entry)
     return (
         idle is not None
         and idle > RUNS_RETENTION_DAYS
         and not entry.get("running")
         and not entry.get("dependents")
+        and not entry.get("declared_keep")
     )
 
 
@@ -270,9 +311,11 @@ def select(payload):
     runs_expired = expired(runs)
     scratch_expired = expired(scratch_dirs)
     files_expired = expired(wt_files)
-    shapes = {}
+    shapes, kinds = {}, {}
     for w in worktrees:
         shapes[w.get("shape") or "worktree"] = shapes.get(w.get("shape") or "worktree", 0) + 1
+        kinds[w.get("kind") or "primary"] = kinds.get(w.get("kind") or "primary", 0) + 1
+    declared_keep = sum(1 for e in [*worktrees, *runs, *scratch_dirs, *wt_files] if e.get("declared_keep"))
 
     summary = {
         "free_gb": free,
@@ -283,6 +326,8 @@ def select(payload):
         "critical": critical,
         "counts": {k: len(v) for k, v in tiers.items()},
         "shapes": shapes,
+        "kinds": kinds,
+        "declared_keep": declared_keep,
         "runs_count": len(runs),
         "runs_expired_count": len(runs_expired),
         "scratch_dirs_count": len(scratch_dirs),
@@ -299,6 +344,7 @@ def select(payload):
             "STALE_OPEN_IDLE_DAYS": STALE_OPEN_IDLE_DAYS,
             "SCRATCH_IDLE_DAYS": SCRATCH_IDLE_DAYS,
             "NOPR_IDLE_DAYS": NOPR_IDLE_DAYS,
+            "REFERENCE_IDLE_DAYS": REFERENCE_IDLE_DAYS,
             "MIN_IDLE_DAYS": MIN_IDLE_DAYS,
             "PRESSURE_GATE_PCT": PRESSURE_GATE_PCT,
             "PRESSURE_IDLE_DAYS": PRESSURE_IDLE_DAYS,

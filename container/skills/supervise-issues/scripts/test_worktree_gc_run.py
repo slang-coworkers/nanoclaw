@@ -395,5 +395,98 @@ class GateTest(unittest.TestCase):
         self.assertTrue((self.s.agent / "wt-notes").exists())
 
 
+    # --- Top-level checkouts with no per-task name ------------------------------
+    # Prod on 2026-11-17 held checkouts the GC never saw because their names match
+    # no convention: rev-1179-base, slang-13742-pr, falcor-13876, r0-origin.git,
+    # spec, SPIRV-Tools. Discovery now finds every top-level git repository.
+
+    def other_clone(self, name, days):
+        """A standalone clone of a repository that is not one of the bases."""
+        src = self.s.tmp / "upstream"
+        if not src.exists():
+            git(self.s.tmp, "init", "-q", "-b", "main", str(src), days_ago=days)
+            (src / "r.txt").write_text("r\n")
+            git(src, "add", "-A")
+            git(src, "commit", "-qm", "init", days_ago=days)
+        git(self.s.agent, "clone", "-q", str(src), name, days_ago=days)
+        return self.s.agent / name
+
+    def test_numbered_checkouts_without_a_per_task_name_are_scratch_and_reaped(self):
+        rev = self.s.clone(self.slang, "rev-1179-base")
+        falcor = self.other_clone("falcor-13876", OLD_DAYS)
+        (falcor / "r.txt").write_text("local repro edit\n")
+        pr = self.s.agent / "slang-13742-pr"
+        git(self.slang, "worktree", "add", "-q", "--detach", str(self.s.tmp / "elsewhere"), days_ago=OLD_DAYS)
+        shutil.move(str(self.s.tmp / "elsewhere"), str(pr))  # moved by hand: an orphan until repaired
+        self.s.age_all()
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertEqual(out["data"]["reaped"], 3, self.s.report())
+        for tree in (rev, falcor, pr):
+            self.assertFalse(tree.exists(), tree.name)
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("falcor-13876.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+        self.assertEqual(self.s.report()["plan"]["kinds"], {"scratch": 3}, self.s.report())
+
+    def test_bare_repository_with_any_name_expires_after_saving(self):
+        bare = self.s.agent / "r0-origin.git"
+        git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), bare.name, days_ago=30)
+        sh("git", "--git-dir", str(bare), "branch", "-q", "review-head", "master")
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertEqual(out["data"]["scratch_expired"], 1, self.s.report())
+        self.assertFalse(bare.exists())
+
+    def test_reference_clone_is_kept_until_long_idle_then_saved_and_reaped(self):
+        spec = self.other_clone("spec", 30)
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["reaped"], 0, self.s.report())
+        self.assertTrue(spec.exists())
+        self.assertEqual(self.s.report()["plan"]["kinds"], {"reference": 1}, self.s.report())
+
+        old = self.other_clone("SPIRV-Tools", 70)
+        (old / "local.txt").write_text("unpushed\n")
+        git(old, "add", "-A")
+        git(old, "commit", "-qm", "local work", days_ago=70)
+        self.s.age_all(70)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(old.exists())
+        # File mtimes do not count for a clone; its own HEAD reflog says it was used 30 days ago.
+        self.assertTrue(spec.exists())
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("SPIRV-Tools.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+
+    def test_declared_keep_is_never_collected(self):
+        kb = self.other_clone("nanoclaw-kb", 400)
+        wt = self.s.worktree(self.slang, "wt-1234-verify")
+        (self.s.agent / "review-14416").mkdir()
+        (self.s.agent / "runs").mkdir()
+        (self.s.agent / "runs" / "A-14412-r1").mkdir()
+        state = self.s.agent / ".worktree-gc"
+        state.mkdir()
+        (state / "keep").write_text("# reference repos this group reads\nnanoclaw-kb\nwt-1234-verify/\n"
+                                    "review-14416  # kept for the postmortem\nruns/A-14412-r1\n")
+        self.s.age_all(400)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        for path in (kb, wt, self.s.agent / "review-14416", self.s.agent / "runs" / "A-14412-r1"):
+            self.assertTrue(path.exists(), path.name)
+        self.assertEqual(self.s.report()["plan"]["declared_keep"], 4, self.s.report())
+
+    def test_durable_directories_are_never_collected_even_as_repositories(self):
+        for name in ("memory", "tools", "plugins"):
+            git(self.s.agent, "init", "-q", "-b", "main", name, days_ago=400)
+            (self.s.agent / name / "x.md").write_text("x\n")
+        self.s.age_all(400)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        for name in ("memory", "tools", "plugins"):
+            self.assertTrue((self.s.agent / name).exists(), name)
+        self.assertEqual(self.s.report()["plan"]["counts"]["REAP"], 0, self.s.report())
+
+
 if __name__ == "__main__":
     unittest.main()

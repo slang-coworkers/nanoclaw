@@ -294,9 +294,14 @@ the next run wake for the full pass unless `_meta` shows a tick within 12 h.
 
 ## Worktree GC (Step 8)
 
-Every tier (slang-fixer, slang-reviewer, slang-triager, slangpy-fixer, slangpy-reviewer,
-slangpy-triager) runs `scripts/worktree-gc-run.sh` as the pre-task gate of an hourly task inside
-its own container, where its group directory is writable. The script collects facts with
+Every group whose directory holds checkouts, `wt-*` build logs or run output runs
+`scripts/worktree-gc-run.sh` as the pre-task gate of an hourly `worktree-gc` task inside its own
+container, where its group directory is writable. Nobody creates that task by hand: the host's
+coverage pass (`src/modules/worktree-gc/index.ts`, hourly) gives the task to every such group from
+the facts on disk, recreates it when it is deleted and rewrites it when it drifts from its one
+definition, `tasks/worktree-gc.md` (schedule, gate script and wake prompt). A paused task stays
+paused (the operator's decision), and a paused group gets no task until it is unpaused, since no
+container can run for it. The script collects facts with
 `scripts/worktree-gc-discover.py`, resolves issue/PR state with `gh`, classifies with
 `scripts/worktree-gc.py`, acts within the gate's time box, and writes
 `/workspace/agent/.worktree-gc/last-run.json` plus a line in `history.log`. It wakes the agent
@@ -304,19 +309,37 @@ only when an action errored or less than `ESCALATE_PCT` of the volume is free; a
 skip is listed under `skipped` and does not wake anyone.
 
 What it covers: every worktree registered with a base clone (`slang`, `slangpy`, `slang-rhi`),
-and every top-level `wt-*` directory whatever its git shape — a linked worktree (of a base or of
+every top-level `wt-*` directory whatever its git shape — a linked worktree (of a base or of
 another clone), a standalone clone (`git clone --shared slang wt-<n>-revA`, a verify clone from
-GitHub), or an orphan (a `.git` file whose administrative directory is gone). A worktree that was
-renamed by hand is re-linked with `git worktree repair` before any prune, so renaming no longer
-orphans it.
+GitHub), or an orphan (a `.git` file whose administrative directory is gone) — and every other
+top-level git checkout whatever its name (`rev-1179-base`, `slang-13742-pr`, `spec`). Only the
+durable directories (`is_durable_dir` in `worktree-gc.py`: `memory`, `tools`, `tasks`,
+`conversations`, `runs`, `active-work`, `plugins`, `venv-*`, hidden ones) and the base clones are
+never collected. A worktree that was renamed by hand is re-linked with `git worktree repair`
+before any prune, so renaming no longer orphans it.
+
+Each checkout has a kind:
+
+- **primary**: a tier's fix tree (`wt-slang-<n>`, `wt-slangpy-<n>`, `wt-slang-pr-<n>`, `wt-<n>`);
+- **scratch**: any other `wt-*` or per-task-named checkout, any linked worktree or orphan, and any
+  other checkout whose name carries an issue or PR number (`falcor-13876`, `slang-pr13537`);
+- **reference**: a standalone clone whose name carries no number (`spec`, `SPIRV-Tools`,
+  `slang-bisect`). Nothing says when its task is done, so only idleness past
+  `REFERENCE_IDLE_DAYS` retires it, after the usual save; the agent clones it again when it needs
+  it.
+
+A group keeps any entry for good by listing it in `/workspace/agent/.worktree-gc/keep` (one
+top-level name per line, `runs/<name>` for a run entry, `#` for comments). A listed entry is KEEP
+and never expires; the report counts them under `plan.declared_keep`. Use it for a clone the
+group's own instructions expect to find (an eval bank, a knowledge-base repository).
 
 Tiers (thresholds live in `worktree-gc.py`; reference them by name):
 
 | Tier | What | Action |
 |---|---|---|
-| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree (`wt-<n>-verify`, `-master`, `-revA`, `wt-clarity-*`, any non-primary name) whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
+| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree whose PR is final or that is idle > `SCRATCH_IDLE_DAYS`; reference clone idle > `REFERENCE_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
 | STALE-OPEN | primary tree, PR OPEN but idle > `STALE_OPEN_IDLE_DAYS` | `rm -rf <worktree>/build` only; tree, branch and PR stay |
-| KEEP | running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a checkout another checkout borrows objects from (`--shared` alternates) or that owns a live worktree, a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
+| KEEP | running session, an entry listed in `.worktree-gc/keep`, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a reference clone used within `REFERENCE_IDLE_DAYS`, a checkout another checkout borrows objects from (`--shared` alternates) or that owns a live worktree, a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
 | NO-PR | primary tree, issue open, no PR yet | nothing until idle > `NOPR_IDLE_DAYS` |
 
 Idleness is the agent's last use. For a linked worktree that is its directory, `.git` file,
@@ -343,27 +366,38 @@ and borrowed from by no clone, then renamed into the trash. It covers:
   points `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` at, and the agent's own verify builds and probes);
 - top-level directories named like per-task scratch (`SCRATCH_DIR_PATTERNS` in
   `worktree-gc.py`: `review-<n>…`, `devin-<n>…`, `B-<n>…`, `revB-<n>…`, `pr<n>-review`,
-  `bare-<n>.git`, `scratch-…`, `repro-…`, `tmp-…`). Every git repository inside is saved first,
-  by shape as above; a bare clone keeps the commits its alternate does not have in a bundle;
+  `bare-<n>.git`, `scratch-…`, `repro-…`, `tmp-…`), and every top-level bare repository whatever
+  its name (`r0-origin.git`). Every git repository inside is saved first, by shape as above; a
+  bare clone keeps the commits its alternate does not have in a bundle;
 - top-level regular files named `wt-*` (the build and configure logs agents write next to a
   checkout).
 
-Durable directories (`memory`, `tools`, `tasks`, `conversations`, the base clones, `venv-*`)
-match no pattern. To keep scratch out of the GC's reach, give it a name outside the list.
+Durable directories match no pattern. To keep an entry out of the GC's reach, list it in
+`.worktree-gc/keep`.
 
-Create or repair a tier's task (host shell):
+Coverage (what step 8 reads): each host pass writes `data/shared/worktree-gc/coverage.json`,
+`/workspace/shared/worktree-gc/coverage.json` in every container, because only the host sees
+every group directory. It holds `at`, `stale_after`, one entry per group that holds GC work
+(`folder`, `status`, `action`, `series_id`, `task_status`, `report_at`, `report_age_hours`,
+`report_errors`, `report_skipped`, `free_gb`), `gaps` (the folders whose status needs the
+operator) and `residue` (group directories with GC work but no agent group: deleted-group
+leftovers, never deleted automatically). Statuses, worst first:
 
-```bash
-./bin/ncl tasks create --group <ag-id> --name worktree-gc --recurrence "7 * * * *" \
-  --script 'exec bash /app/skills/supervise-issues/scripts/worktree-gc-run.sh --gate' \
-  --prompt 'The worktree GC gate woke you: data.errors > 0 or less than 10% of the volume is free. Read /workspace/agent/.worktree-gc/last-run.json; fix what blocks a removal (a locked worktree, a failed commit) or, below 10% free, report disk pressure to the orchestrator with the free figure.'
-```
+| Status | Meaning | Gap |
+|---|---|---|
+| `coverage-failed` | the host pass threw for this group (host log has the error) | yes |
+| `task-paused` | the group's `worktree-gc` series is paused; nothing is collected | yes |
+| `not-firing` | the series is live but the report is missing or older than `REPORT_STALE_MS` | yes |
+| `errors` | the last run listed errors | yes |
+| `first-run-pending` | the host created the task this pass; it fires at the next `:07` | no |
+| `paused` | the group is paused; its checkouts wait until it is unpaused | no |
+| `ok` | the series is live and the report is fresh and clean | no |
 
-One-time catch-up on a tier (host shell, runs the same script without the time box):
+One-time catch-up on a group (host shell, runs the same script without the time box):
 
 ```bash
 docker run --rm --entrypoint bash -e GH_TOKEN="$(gh auth token)" \
-  -v /ephemeral/prod-groups/<folder>:/workspace/agent -v "$PWD/container/skills:/app/skills:ro" \
+  -v "$(readlink -f groups/<folder>)":/workspace/agent -v "$PWD/container/skills:/app/skills:ro" \
   nanoclaw-agent:prod /app/skills/supervise-issues/scripts/worktree-gc-run.sh --sweep
 ```
 
@@ -373,10 +407,10 @@ The worktree GC is the only disk lever available from inside a container. The do
 `/ephemeral/docker` (image layers + build cache) is `drwx--x--- root`: a container cannot list or
 prune it. A daily host timer (`nanoclaw-docker-gc.timer`, `~/.config/nanoclaw/docker-gc.sh`) prunes
 dangling images and build cache; tagged-but-unused images need an operator's deliberate
-`docker image prune -a`. When less than 10% of the volume is free and the tiers' reports show nothing left
+`docker image prune -a`. When less than 10% of the volume is free and the groups' reports show nothing left
 to reclaim, say so explicitly:
 
-> Disk pressure: `worktree-vol` NN GB free; the tiers' GC reports show MM GB left to reclaim. The
+> Disk pressure: `worktree-vol` NN GB free; the groups' GC reports show MM GB left to reclaim. The
 > remaining lever is docker images/build-cache under `/ephemeral/docker`, which needs a host-side
 > `docker image prune -a` (operator-only; verify no idle group needs its `ag-*` image first).
 

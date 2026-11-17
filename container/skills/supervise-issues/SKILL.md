@@ -59,10 +59,11 @@ These hold across every step below; the steps reference them by number rather th
 - **R7 — Deliver once, `to="orchestrator-dashboard"`, verbatim from the on-disk tracker.** One
   session, one complete board, posted as the last step. Inline board first, file second. (A
   delegated supervisor uses `to="parent"`.) See reference.md → *Delivery*.
-- **R8 — Never remove worktrees or builds from the supervisor session.** Each tier reclaims its
-  own through its hourly `worktree-gc` task (`scripts/worktree-gc-run.sh`, zero tokens). You read
-  the reports and escalate; you do not dispatch removals and never reap on the `prunable` flag
-  your read-only mount shows.
+- **R8 — Never remove worktrees or builds from the supervisor session.** Every group that holds
+  checkouts reclaims its own through its hourly `worktree-gc` task (`scripts/worktree-gc-run.sh`,
+  zero tokens); the host gives that task to every such group and repairs it. You read the
+  coverage and escalate; you do not dispatch removals, never create or edit the task, and never
+  reap on the `prunable` flag your read-only mount shows.
 - **R9 — Read CI yourself; nudge the fixer to rebase, never re-dispatch CI.** The orchestrator
   computes each PR-bearing chain's CI from its own container (`gh` works there) — no dependency on
   the babysitter, which keeps its own separate rerun/eviction job. Our PRs sit in draft and drive
@@ -287,16 +288,17 @@ and for `not_planned` closes without a PR.
 
 ### 8. Worktree GC check
 
-Each tier reclaims its own worktrees hourly (R8). Your job is the readout:
+Every group that holds checkouts reclaims its own hourly (R8). Your job is the readout:
 
-1. Read `/workspace/extra/ephemeral/prod-groups/*/.worktree-gc/last-run.json`.
-2. Put `worktree-vol: <N>GB free` (`df -BG --output=avail /workspace/extra/ephemeral`) and the
-   per-tier counts (`reaped`, `build_reclaimed`, `runs_expired`, `left_for_next_run`) in the
-   rollup, and name any tree a report lists under `skipped` (it holds work the GC cannot save).
-3. Escalate to the operator when less than 10% of the volume is free, when a tier's report is
-   older than 24 h or missing (its task is not firing: `ncl tasks list --group <tier>`), or when a
-   report lists `errors`. Below 10%, name the operator-only docker reclaim (reference.md →
-   *Worktree GC*).
+1. Read `/workspace/shared/worktree-gc/coverage.json`, the host's view of every group directory
+   (most are not mounted here). Its fields and statuses are in reference.md → *Worktree GC*.
+2. Put `worktree-vol: <N>GB free` (`df -BG --output=avail /workspace/extra/ephemeral`, and the
+   `free_gb` the root-volume groups report) and the per-group `status` counts in the rollup;
+   name every group whose report lists `report_skipped` (a tree that holds work the GC cannot
+   save) and every `residue` folder.
+3. Escalate to the operator each folder in `gaps`, with its status, and the file itself when it
+   is missing or the current time is past its `stale_after` (the host's coverage pass stopped).
+   Below 10% free, name the operator-only docker reclaim (reference.md → *Worktree GC*).
 
 Never dispatch removals to coworkers and never delete anything yourself.
 

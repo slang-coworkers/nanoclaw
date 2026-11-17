@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
-# worktree-gc-run.sh — reclaim this tier's own per-task checkouts, scratch and run output.
-# Runs INSIDE the tier's container (rw mount of its group directory), as the
-# pre-task gate of the tier's hourly `worktree-gc` task, or by hand with --sweep.
+# worktree-gc-run.sh — reclaim this group's own checkouts, scratch and run output.
+# Runs INSIDE the group's container (rw mount of its group directory), as the
+# pre-task gate of the group's hourly `worktree-gc` task (the host keeps that task on
+# every group that holds such work; tasks/worktree-gc.md defines it), or by hand
+# with --sweep.
 #
 # Steps:
-#   1. discover  worktree-gc-discover.py lists every per-task checkout (worktrees
-#                registered with /workspace/agent/{slang,slangpy,slang-rhi}, and every
-#                top-level wt-* directory whatever its git shape: linked worktree,
-#                standalone clone, orphan, plain), every runs/ entry, every top-level
-#                scratch directory and wt-* file, and the trash.
+#   1. discover  worktree-gc-discover.py lists every checkout (worktrees registered
+#                with /workspace/agent/{slang,slangpy,slang-rhi}, every top-level wt-*
+#                directory whatever its git shape: linked worktree, standalone clone,
+#                orphan, plain, and every other top-level git checkout whatever its
+#                name), every runs/ entry, every top-level scratch directory, bare
+#                repository and wt-* file, the group's .worktree-gc/keep list, and
+#                the trash.
 #   2. resolve   issue/PR state with one gh GraphQL batch of up to 40 numbers per call.
 #   3. classify  worktree-gc.py, the single source of thresholds.
 #   4. act       REAP → save unsaved work, then rename the checkout into
@@ -402,7 +406,8 @@ fi
 FREE_AFTER=$(free_gb)
 SUMMARY="$(python3 -c "
 import json,sys; p=json.load(open(sys.argv[1])); s=p['summary']
-print(json.dumps({'counts': s['counts'], 'shapes': s['shapes'], 'reclaim_count': s['reclaim_count'],
+print(json.dumps({'counts': s['counts'], 'shapes': s['shapes'], 'kinds': s['kinds'],
+                  'declared_keep': s['declared_keep'], 'reclaim_count': s['reclaim_count'],
                   'runs_expired_count': s['runs_expired_count'], 'scratch_expired_count': s['scratch_expired_count'],
                   'files_expired_count': s['files_expired_count'], 'free_pct': s['free_pct'],
                   'under_pressure': s['under_pressure'], **p['discovery']}))" "$WORK/plan.json")"
@@ -431,6 +436,7 @@ if [ "$MODE" = dry ]; then
 import json, sys
 p=json.load(open(sys.argv[1])); s=p['summary']
 print('free_gb', s['free_gb'], 'of', s['total_gb'], '=', s['free_pct'], '% | counts', s['counts'], '| shapes', s['shapes'],
+      '| kinds', s['kinds'], '| declared keep', s['declared_keep'],
       '| build-reclaim', s['reclaim_count'], '| runs expired', s['runs_expired_count'], 'of', s['runs_count'],
       '| scratch dirs expired', s['scratch_expired_count'], 'of', s['scratch_dirs_count'],
       '| wt-* files expired', s['files_expired_count'], 'of', s['wt_files_count'])
