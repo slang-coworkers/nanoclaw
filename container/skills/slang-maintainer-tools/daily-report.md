@@ -27,7 +27,7 @@ Discussions: `github_get_discussions` owner=shader-slang, repo=slang, first=10
 
 ### 3. Discord (7 channels, parallel)
 
-`discord_read_messages` limit=50 for each configured channel.
+`discord_read_messages` limit=50 for each configured channel. Read only: never reply in a channel or thread; unanswered questions and missing bug details go into the report (see SKILL.md, "Discord is read-only").
 
 ### 4. Slack
 
