@@ -16,6 +16,7 @@ import {
   codexToolResult,
   configToOverrides,
   criticModel,
+  CANCELLED,
   criticRetryPolicy,
   handleCodex,
   openWeightsModelError,
@@ -427,6 +428,36 @@ describe('codex MCP bridge over stdio', () => {
     expect(added[3].tool_use_id).toBe(added[2].tool_use_id);
   });
 
+  // A reply whose thread had to be resumed registered the resumed server, and a
+  // failed turn left that dead server registered: the next attempt reused it.
+  it('retries a reply through two rate-limited turns, each on a fresh server', async () => {
+    const first = (await client.callTool({ name: 'codex', arguments: { prompt: 'open a thread', cwd: binDir } })) as {
+      structuredContent?: { threadId: string };
+    };
+    const threadId = first.structuredContent?.threadId;
+    expect(threadId).toBeTruthy();
+    const before = readFileSync(recordFile, 'utf8').trim().split('\n').length;
+    const r = (await client.callTool({
+      name: 'codex-reply',
+      arguments: { threadId, prompt: 'ROUND: 2 RATE_LIMITED_TWICE r3' },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toContain('VERDICT: approve');
+    const events = readFileSync(recordFile, 'utf8')
+      .trim()
+      .split('\n')
+      .slice(before)
+      .map((l) => (JSON.parse(l) as { hook_event_name: string }).hook_event_name);
+    expect(events).toEqual([
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUse',
+    ]);
+  });
+
   it('gives up when the retry budget runs out, and names the retries', async () => {
     const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'RATE_LIMITED_ALWAYS', cwd: binDir } })) as {
       isError?: boolean;
@@ -507,6 +538,10 @@ describe('retryableCriticError', () => {
     expect(retryableCriticError('codex turn timed out after 1800s')).toBeUndefined();
     expect(retryableCriticError('codex: `prompt` is required')).toBeUndefined();
     expect(retryableCriticError('unexpected status 403 Forbidden')).toBeUndefined();
+    // Only codex's status counts, not a number elsewhere in the text.
+    expect(retryableCriticError('unexpected status 403 Forbidden: {"detail":"upstream 503"}')).toBeUndefined();
+    expect(retryableCriticError('cannot read /tmp/429/review.md')).toBeUndefined();
+    expect(retryableCriticError('codex app-server exited (code=0) before the turn completed')).toBeUndefined();
   });
 });
 
@@ -541,16 +576,50 @@ describe('withCriticRetry', () => {
     expect(calls).toBe(1);
   });
 
-  it('stops when the client cancels the call', async () => {
+  it('ends with CANCELLED, not the critic error, when the client cancels during a call', async () => {
     const abort = new AbortController();
     let calls = 0;
     const run = async (): Promise<string> => {
       calls += 1;
       abort.abort();
-      throw new Error('429 Too Many Requests');
+      throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
     };
-    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow('429');
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow(CANCELLED);
     expect(calls).toBe(1);
+  });
+
+  it('ends with CANCELLED when the client cancels during the wait', async () => {
+    const abort = new AbortController();
+    let calls = 0;
+    const retries: string[] = [];
+    const run = async (): Promise<string> => {
+      calls += 1;
+      throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+    };
+    const slow = new ModelRetryBackoff({ budgetMs: 60_000, baseDelayMs: 10_000 });
+    const pending = withCriticRetry(run, {
+      backoff: slow,
+      signal: abort.signal,
+      onRetry: async (e) => {
+        retries.push(e);
+        setTimeout(() => abort.abort(), 5);
+      },
+    });
+    await expect(pending).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(1);
+    expect(retries).toHaveLength(1);
+  });
+
+  it('does not start a call the client already cancelled', async () => {
+    const abort = new AbortController();
+    abort.abort();
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      return 'ok';
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(0);
   });
 
   it('reads its policy from CODEX_MCP_RETRY_*, with the OpenCode defaults', () => {

@@ -23,10 +23,11 @@
  *                         429 …`); later turns with the tag answer. The marker
  *                         file sits next to FAKE_CODEX_LOG, so it survives the
  *                         new app-server a retry starts.
+ *   RATE_LIMITED_TWICE <tag>  as RATE_LIMITED_ONCE, for the first two turns
  *   RATE_LIMITED_ALWAYS   every turn fails with that rate-limit error
  *   LEGACY_TURN_FAILED    `turn/failed`, as codex versions before 0.160 sent
  */
-import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 const argv = process.argv.slice(2);
@@ -80,11 +81,12 @@ const FAKE_RATE_LIMIT_ERROR = 'exceeded retry limit, last status: 429 Too Many R
 /** True when this turn should fail with FAKE_RATE_LIMIT_ERROR (see the RATE_LIMITED_* knobs). */
 function rateLimited(input: string): boolean {
   if (input.includes('RATE_LIMITED_ALWAYS')) return true;
-  const tag = input.match(/RATE_LIMITED_ONCE\s+(\w+)/)?.[1];
-  if (!tag || !process.env.FAKE_CODEX_LOG) return false;
-  const marker = `${process.env.FAKE_CODEX_LOG}.rate-limited-${tag}`;
-  if (existsSync(marker)) return false;
-  writeFileSync(marker, '');
+  const m = input.match(/RATE_LIMITED_(ONCE|TWICE)\s+(\w+)/);
+  if (!m || !process.env.FAKE_CODEX_LOG) return false;
+  const marker = `${process.env.FAKE_CODEX_LOG}.rate-limited-${m[2]}`;
+  const failed = existsSync(marker) ? Number(readFileSync(marker, 'utf8')) : 0;
+  if (failed >= (m[1] === 'ONCE' ? 1 : 2)) return false;
+  writeFileSync(marker, String(failed + 1));
   return true;
 }
 
