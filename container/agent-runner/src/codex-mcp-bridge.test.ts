@@ -535,6 +535,7 @@ describe('retryableCriticError', () => {
     });
     expect(retryableCriticError('unexpected status 503 Service Unavailable')).toEqual({});
     expect(retryableCriticError('stream disconnected before completion')).toEqual({});
+    expect(retryableCriticError('service temporarily unavailable')).toEqual({});
     expect(retryableCriticError('codex turn timed out after 1800s')).toBeUndefined();
     expect(retryableCriticError('codex: `prompt` is required')).toBeUndefined();
     expect(retryableCriticError('unexpected status 403 Forbidden')).toBeUndefined();

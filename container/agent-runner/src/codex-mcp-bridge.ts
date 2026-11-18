@@ -631,7 +631,7 @@ export function retryableCriticError(message: string): RetryableModelError | und
   const status = Number(message.match(/(?:last|unexpected) status:? (\d{3})\b/i)?.[1]);
   if (status === 429 || (!status && /too many requests/i.test(message))) return { statusCode: 429 };
   if (status === 500 || status === 502 || status === 503 || status === 504) return {};
-  if (!status && /stream disconnected|overloaded|ECONNRESET/i.test(message)) return {};
+  if (!status && /stream disconnected|overloaded|temporarily unavailable|ECONNRESET/i.test(message)) return {};
   return undefined;
 }
 
