@@ -2,7 +2,9 @@
 """Tests for hermes_queue.py, the dispatch-tick core (docs/hermes-port/autopilot.md §2.2, §4).
 
 Real fixtures: the box's ledger (fixtures/ledger.md: P0-LOOP merged, LOOP-F35 in flight) and
-the repo's dispatch-plan.md + gap-matrix.md. Synthetic ledgers pin the WIP, gating and
+frozen copies of the 64-row dispatch-plan.md + gap-matrix.md (fixtures/), so the rule tests
+stay put when the live plan in docs/hermes-port gains rows; LiveDocs checks that the live
+plan and matrix still pass the coverage check. Synthetic ledgers pin the WIP, gating and
 never-twice rules. Run: python3 -m unittest ops/nemoclaw-coworkers/autopilot/test_hermes_queue.py
 """
 
@@ -23,8 +25,9 @@ sys.path.insert(0, str(HERE))
 import hermes_queue as hq
 
 DOCS = HERE.parents[2] / "docs" / "hermes-port"
-PLAN = (DOCS / "dispatch-plan.md").read_text(encoding="utf-8")
-MATRIX = (DOCS / "gap-matrix.md").read_text(encoding="utf-8")
+FIX = HERE / "fixtures"
+PLAN = (FIX / "dispatch-plan.md").read_text(encoding="utf-8")
+MATRIX = (FIX / "gap-matrix.md").read_text(encoding="utf-8")
 LEDGER = (HERE / "fixtures" / "ledger.md").read_text(encoding="utf-8")
 NOW = "2026-09-09T12:00:00Z"
 
@@ -175,6 +178,85 @@ class PlanParse(unittest.TestCase):
         cov = hq.coverage_check(hq.parse_plan(broken), self.matrix)
         self.assertFalse(cov["ok"])
         self.assertTrue(any("MEM-F44" in p for p in cov["problems"]), cov["problems"])
+
+
+class LiveDocs(unittest.TestCase):
+    """The committed docs/hermes-port plan and matrix are what the box dispatches from (deploy.sh mirrors them), run
+    against a ledger shaped like the box's: every matrix row covered once, carried criteria landing on a plan row or
+    a ledger follow-up row, and the rows added by ruling (each closed in the ledger) never dispatched again."""
+
+    PLAN = (DOCS / "dispatch-plan.md").read_text(encoding="utf-8")
+    MATRIX = (DOCS / "gap-matrix.md").read_text(encoding="utf-8")
+    ADDED = ("ING-F66", "UPG-F67", "UPG-F68", "UPG-F69", "UNIFY-F70")
+    LEDGER = HEADER + (
+        "| FLEET-F62 | 2026-09-16 | 2026-09-17 | #40 | PASS | merged 1a2b3c4 https://github.com/o/r/pull/40 | |\n"
+        "| OSH-F63 | 2026-09-18 | 2026-09-19 | #50 | PASS | merged 5d6e7f8 https://github.com/o/r/pull/50 | |\n"
+        "| ING-F66 | 2026-10-03 | 2026-10-04 | #76 | PASS | merged 9e061d3 https://github.com/o/r/pull/76 | |\n"
+        "| UPG-F67 | 2026-10-05 | 2026-10-06 | #79 | FAIL | blocked: STOP (closed unmerged) | |\n"
+        "| UPG-F68 | 2026-10-14 | 2026-10-15 | #85 | FAIL | blocked: RETIRED (carried onto UPG-F69) | |\n"
+        "| UPG-F69 | 2026-10-24 | 2026-10-24 | #87 | PASS | merged d2802d7 https://github.com/o/r/pull/87 | |\n"
+        "| UPG-F69.a | 2026-10-28 | 2026-10-29 | #88 | PASS | merged b68cfe8 https://github.com/o/r/pull/88 | |\n"
+        "| UNIFY-F70 | 2026-11-10 | 2026-11-10 | #94 | PASS | merged 2b6ad60f42 https://github.com/o/r/pull/94 | |\n"
+        "| UNIFY-F70.b | 2026-11-13 | 2026-11-13 | #95 | PASS | merged bf6a649 https://github.com/o/r/pull/95 | |\n"
+        "\n## Carried criteria\n\n"
+        "| criterion | from row | to row | reason | decided | status |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| AC-UPG-F68-1 | UPG-F68 | UPG-F69 | the retired row's acceptance moves to the v0.22.5 replay | user 2026-10-27 | covered (#87) |\n"
+        "| AC-FLEET-F62.h-1 | FLEET-F62.h | UPG-F69 | proven on the v0.22.5 replay | user 2026-10-27 | open |\n"
+        "| AC-UPG-F69-7 | UPG-F69 | UPG-F69.a | the follow-up row carries it | user 2026-10-28 | open |\n"
+    )
+
+    def state(self, **config):
+        pins = {"plan_sha256": hq.sha256_text(self.PLAN), "matrix_sha256": hq.sha256_text(self.MATRIX)}
+        return hq.build_state(self.PLAN, self.MATRIX, self.LEDGER, config={**pins, **config}, now="2026-11-18T10:00:00Z")
+
+    def test_live_plan_and_matrix_pass_the_coverage_check(self):
+        plan = hq.parse_plan(self.PLAN)
+        matrix = hq.parse_matrix(self.MATRIX)
+        cov = hq.coverage_check(plan, matrix)
+        self.assertTrue(cov["ok"], cov["problems"][:5])
+        self.assertEqual(cov["total"], len(matrix["rows"]))
+        for rid in self.ADDED:
+            self.assertEqual((plan["rows"][rid]["batch"], matrix["rows"][rid]["disposition"]), ("6", "BUILD"), rid)
+
+    def test_live_tables_keep_their_header_width(self):
+        """A bare `|` inside a cell (a code span such as `a|b` included) splits it on GitHub and shifts every later cell;
+        each row of every table in the live plan and matrix has its header's cell count."""
+        for text in (self.PLAN, self.MATRIX):
+            width = None
+            for line in text.split("\n"):
+                if not line.startswith("|"):
+                    width = None
+                    continue
+                cells = hq.split_cells(line)
+                if width is None:
+                    width = len(cells)
+                elif not hq.is_separator(cells):
+                    self.assertEqual(len(cells), width, line[:80])
+
+    def test_live_tick_lands_carried_criteria_and_never_redispatches_the_rows_added_by_ruling(self):
+        # every row outside batch 6 is held in paused_rows, so the free WIP slots meet batch 6 alone
+        others = [rid for rid, row in hq.parse_plan(self.PLAN)["rows"].items() if row["batch"] != "6"]
+        st = self.state(paused=False, paused_rows=others)
+        self.assertTrue(st["coverage"]["ok"], st["coverage"]["problems"][:5])
+        self.assertIsNone(st["dispatch_paused"])
+        kinds = {a["kind"] for a in st["alerts"]}
+        self.assertFalse(kinds & {"plan-changed", "ledger-unknown-id", "carried-criterion-unknown-row", "plan-violation"}, kinds)
+        self.assertEqual(st["coverage"]["open_carried_criteria"], 2)
+        self.assertEqual(set(st["follow_up_rows"]), {"UPG-F69.a", "UNIFY-F70.b"})
+        # batch 6 is open (FLEET-F62 and OSH-F63 merged): a batch-6 row with no ledger row is eligible, the added rows are not
+        self.assertTrue(st["gating"]["batch5_merged"] and st["gating"]["osh_f63_first_pass"], st["gating"])
+        self.assertIn("OSH-F64", st["queue"]["eligible"])
+        self.assertEqual([e["id"] for e in st["eligible_next"]], ["OSH-F64"])
+        self.assertFalse(set(st["queue"]["eligible"]) & set(self.ADDED), st["queue"]["eligible"])
+        self.assertFalse(set(st["in_flight"]) & set(self.ADDED), st["in_flight"])
+        self.assertTrue({"ING-F66", "UPG-F69", "UNIFY-F70"} <= set(st["merged"]), st["merged"])
+        self.assertTrue({"UPG-F67", "UPG-F68"} <= set(st["blocked"]), st["blocked"])
+
+    def test_live_tick_honours_config_paused(self):
+        st = self.state(paused=True)
+        self.assertEqual(st["dispatch_paused"], "config.paused")
+        self.assertEqual(st["eligible_next"], [])
 
 
 class MatrixParse(unittest.TestCase):
@@ -1225,7 +1307,7 @@ class UpstreamAsks(unittest.TestCase):
 
 class Cli(unittest.TestCase):
     def test_upstream_asks_flag_is_optional_and_a_missing_file_is_an_empty_table(self):
-        base = [sys.executable, str(HERE / "hermes_queue.py"), "--plan", str(DOCS / "dispatch-plan.md"), "--matrix", str(DOCS / "gap-matrix.md"),
+        base = [sys.executable, str(HERE / "hermes_queue.py"), "--plan", str(FIX / "dispatch-plan.md"), "--matrix", str(FIX / "gap-matrix.md"),
                 "--ledger", str(HERE / "fixtures" / "ledger.md"), "--now", NOW, "--json"]
         with tempfile.TemporaryDirectory() as d:
             asks = Path(d) / "upstream-asks.md"
@@ -1239,7 +1321,7 @@ class Cli(unittest.TestCase):
 
     def test_json_flag_and_exit_code(self):
         p = subprocess.run(
-            [sys.executable, str(HERE / "hermes_queue.py"), "--plan", str(DOCS / "dispatch-plan.md"), "--matrix", str(DOCS / "gap-matrix.md"),
+            [sys.executable, str(HERE / "hermes_queue.py"), "--plan", str(FIX / "dispatch-plan.md"), "--matrix", str(FIX / "gap-matrix.md"),
              "--ledger", str(HERE / "fixtures" / "ledger.md"), "--now", NOW, "--json"],
             capture_output=True, text=True, check=False,
         )

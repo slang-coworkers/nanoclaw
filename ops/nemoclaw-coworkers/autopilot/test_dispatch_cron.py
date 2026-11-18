@@ -13,6 +13,7 @@ Run: python3 -m unittest discover -s ops/nemoclaw-coworkers/autopilot -p 'test_*
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -23,7 +24,6 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DOCS = HERE.parents[2] / "docs" / "hermes-port"
 SCRIPT = HERE / "dispatch-cron.sh"
 NOW = "2026-09-09T21:00:00Z"
 API = "http://127.0.0.1:3937/api/chat/send"
@@ -109,8 +109,8 @@ class DispatchCronTest(unittest.TestCase):
         hermes = self.root / "data" / "shared" / "hermes"
         self.ap = hermes / "autopilot"
         self.ap.mkdir(parents=True)
-        shutil.copy(DOCS / "dispatch-plan.md", hermes / "dispatch-plan.md")
-        shutil.copy(DOCS / "gap-matrix.md", hermes / "gap-matrix.md")
+        shutil.copy(HERE / "fixtures" / "dispatch-plan.md", hermes / "dispatch-plan.md")
+        shutil.copy(HERE / "fixtures" / "gap-matrix.md", hermes / "gap-matrix.md")
         (self.ap / "config.json").write_text('{"wip": 3, "paused": false}\n')
         reports = self.root / "groups" / "orchestrator" / "reports"
         reports.mkdir(parents=True)
@@ -199,6 +199,23 @@ class DispatchCronTest(unittest.TestCase):
         self.assertIn("dispatch paused (config.paused)", proc.stdout)
         self.assertEqual(self.posts(), [])
         self.assertEqual(self.book().get("dispatched", []), [])
+
+    def test_live_docs_staged_and_pinned_run_the_tick_without_a_plan_pause(self):
+        """The committed docs/hermes-port pair, staged where deploy.sh mirrors it and pinned by sha256 the way the
+        box's config.json pins it: the tick reads them, passes the hash and coverage checks and dispatches."""
+        docs = HERE.parents[2] / "docs" / "hermes-port"
+        hermes = self.root / "data" / "shared" / "hermes"
+        pins = {}
+        for name, key in (("dispatch-plan.md", "plan_sha256"), ("gap-matrix.md", "matrix_sha256")):
+            shutil.copy(docs / name, hermes / name)
+            pins[key] = hashlib.sha256((hermes / name).read_bytes()).hexdigest()
+        (self.ap / "config.json").write_text(json.dumps({"wip": 3, "paused": False, **pins}) + "\n")
+        proc = self.run_cron("--dry-run")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("plan-changed", proc.stdout)
+        self.assertNotIn("dispatch paused", proc.stdout)
+        self.assertIn(f"DRY-RUN POST {API}", proc.stdout)
+        self.assertEqual(self.posts(), [])
 
     def test_unreachable_api_records_nothing_and_exits_1(self):
         proc = self.run_cron(CURL_FAIL="1")

@@ -21,7 +21,6 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-DOCS = HERE.parents[2] / "docs" / "hermes-port"
 NOW = "2026-09-09T21:00:00Z"
 HEAD = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 
@@ -134,8 +133,8 @@ class PullStateTest(unittest.TestCase):
         (self.bin / "gh.fixtures.json").write_text(json.dumps(self.fixtures))
         env = {
             **os.environ,
-            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(DOCS / "dispatch-plan.md"),
-            "MATRIX": str(DOCS / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
+            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(HERE / "fixtures" / "dispatch-plan.md"),
+            "MATRIX": str(HERE / "fixtures" / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
             "GH": str(self.bin / "gh"), "NOW_OVERRIDE": NOW, "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
             **env_extra,
         }
@@ -396,8 +395,8 @@ class PullStateTest(unittest.TestCase):
         (self.bin / "gh.fixtures.json").write_text(json.dumps(self.fixtures))
         env = {
             **os.environ,
-            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(DOCS / "dispatch-plan.md"),
-            "MATRIX": str(DOCS / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
+            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(HERE / "fixtures" / "dispatch-plan.md"),
+            "MATRIX": str(HERE / "fixtures" / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
             "GH": str(self.bin / "gh"), "NOW_OVERRIDE": NOW, "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
         }
         shutil.copy(HERE / "pull-state.sh", self.ap / "pull-state.sh")
@@ -419,8 +418,8 @@ class PullStateTest(unittest.TestCase):
         (self.bin / "gh.fixtures.json").write_text(json.dumps(self.fixtures))
         env = {
             **os.environ,
-            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(DOCS / "dispatch-plan.md"),
-            "MATRIX": str(DOCS / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
+            "AUTOPILOT_DIR": str(self.ap), "LEDGER": str(self.ledger), "PLAN": str(HERE / "fixtures" / "dispatch-plan.md"),
+            "MATRIX": str(HERE / "fixtures" / "gap-matrix.md"), "ALERTS": str(self.alerts), "NCL": str(self.bin / "ncl"),
             "GH": str(self.bin / "gh"), "NOW_OVERRIDE": NOW, "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
             **env_extra,
         }
