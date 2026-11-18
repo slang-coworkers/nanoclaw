@@ -3,6 +3,7 @@ title: "gh api job logs silently empty without --allow-escape-sequences"
 type: learning
 topic: misc
 source: learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md
+superseded_by: 1792254266846-gh-api-job-logs-silently-fail-without-allow-escape
 ---
 
 # gh api job logs silently empty without --allow-escape-sequences

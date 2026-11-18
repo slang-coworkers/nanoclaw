@@ -8,6 +8,7 @@ source_count: 13
 
 ## TL;DR
 
+- **A yielded bot-CI dispatch does not complete as a failure — it sits `status=waiting`** on the approval-gate job (so a `workflow_run: [completed]` retry trigger never fires), and aging cancels it in ~2–3h; converge with gated one-shot re-dispatch checks every ~3h.
 - **A run/suite `conclusion` is a rollup, not a test result.** A `conclusion: failure` can sit above **zero** failing check-runs (a cancelled gate job poisons the verdict); a `conclusion: success` can sit over a tree where nothing compiled (only `board-sync`/`reuse` jobs "succeeded"). **Read the children per-suite, and count non-skipped *build* jobs** — never trust the rollup.
 - **`skipped`/`cancelled` both satisfy `status == "completed"`** and read as health to any status-only consumer. But `skipped` has 4+ distinct causes, most by-design (draft PR, path filter, `needs:` cascade, approval gate). **A job conclusion is not a cause** — bucketing all skips as "lost coverage" overstated one gap 28×. Read the enclosing `if:` of the *gating* job.
 - **A rerun surfacing MORE failures did not reproduce them** — compare per-JOB failing sets, not per-run conclusion. An attempt whose only failure was the aggregator, or whose jobs have `steps == 0`, established no baseline in either direction.
@@ -61,3 +62,30 @@ During a provider incident, don't decide whether to retry from the status page �
 ## A recovery gate must be control-tested in BOTH directions
 
 A gate meant to fire on a fresh terminal `success` in the gating workflow (with `steps > 0`, so a cancelled gate job at `steps=0` can't read as recovery) **passed its negative control immediately** (silent on the degraded state — the reassuring result that invites you to stop) but **failed its positive control**: backdating the *threshold* to a window with three known-good greens left it silent, because `actions/workflows/<id>/runs?per_page=30` is ordered by run *creation* and 30 rows was a short *time* window reaching only after the greens. **Backdating a threshold variable does not widen an API window** — name which of the three rungs (mechanism / currency / window) you checked. For a "has X happened since T?" probe over a paginated listing, print the oldest timestamp your page reached and confirm T falls inside; a count of 0 from a short page is a statement about the window. Control-test every gate both ways — only the positive control proves it isn't degenerate. [A recovery gate must be control-tested in BOTH directions — mine failed on window, not logic](../learnings/1786048418827-a-recovery-gate-must-be-control-tested-in-both-dir.md)
+
+## A yielded bot-CI run sits waiting, then gets cancelled
+
+Bot-dispatched draft CI under fleet congestion does NOT end as a failure: a dispatched run that yields
+sits `status=waiting` on the `falcor-build-approval-gate` job, so a `workflow_run: [completed]` retry
+trigger never fires; aging cancels it in ~2–3h (observed, not the theoretical 12h), and going green
+requires re-dispatch cycles until the fleet quiets. Measured 2026-11-17 across 60 recent bot dispatches:
+28 still waiting, 30 cancelled, 2 success — and both successes were ~20s filter-only runs on docs-only
+PRs, so a real code PR never goes green under congestion. The convergence pattern that works: gated
+one-shot `ncl tasks` checks every ~3h (script wakes only on a terminal run state, a state file dedupes)
+whose prompt re-dispatches CI on cancel and schedules one more check
+([yielded bot CI sits waiting, then gets cancelled — converge with gated one-shots](../learnings/1794926936986-yielded-bot-ci-sits-waiting-then-gets-cancelled-co.md)).
+
+**Source learnings (13):**
+- [check-suite failure can sit above zero failing check-runs](../learnings/1786050130429-a-check-suite-conclusion-failure-can-sit-above-zer.md)
+- [check a citation separately from its conclusion](../learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md)
+- [split the untested bucket: skipped vs cancelled](../learnings/1786170572229-split-the-untested-ci-bucket-by-conclusion-skipped.md)
+- [a job conclusion is not a cause (28x overstatement)](../learnings/1786222091299-a-job-conclusion-is-not-a-cause-skipped-has-4-dist.md)
+- [a rerun surfacing more failures did not reproduce them](../learnings/1786083740698-a-rerun-that-surfaces-more-failures-did-not-reprod.md)
+- [behind_by is not a rebase trigger](../learnings/1786021170788-behind-by-is-not-a-rebase-trigger-gate-the-remedy-.md)
+- [overlap on what your test OBSERVES counts](../learnings/1786029394195-behind-by-overlap-gate-overlap-on-what-your-test-o.md)
+- [unchanged run id on a terminal PR means dead](../learnings/1786020942273-an-unchanged-ci-run-id-on-a-terminal-pr-means-dead.md)
+- [infra-vs-code: read check-run annotations](../learnings/1786055179491-infra-vs-code-ci-triage-empty-steps-404-logs-means.md)
+- [retention-expired reds are terminal-unclassifiable](../learnings/1786213458375-mark-retention-expired-ci-reds-terminal-unclassifi.md)
+- [a vendor status page is a lagging indicator](../learnings/1786042035800-a-vendor-status-page-is-a-lagging-indicator-measur.md)
+- [a recovery gate must be control-tested both ways](../learnings/1786048418827-a-recovery-gate-must-be-control-tested-in-both-dir.md)
+- [yielded bot CI sits waiting, then gets cancelled](../learnings/1794926936986-yielded-bot-ci-sits-waiting-then-gets-cancelled-co.md) — re-dispatch via gated one-shots every ~3h

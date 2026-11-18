@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 44
+source_count: 46
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -24,7 +24,7 @@ The `nv-slang-bot` identity, webhook verification, posting policy, comment edit/
 - **Auth probes lie.** `gh auth status` / `gh api user` report an invalid token while writes succeed; attempt the write.
 - **REST 403 "Must have admin rights" ⇒ try GraphQL** (`addLabelsToLabelable`, `closeIssue`, `updateIssueComment`). PR self-merge has the reverse polarity.
 - **`CREATE` is the only universally reliable comment operation**; PATCH/DELETE rights are per-token, so a duplicate may be unremovable. ⇒ **Prevent duplicates**: check before posting, supersede with "supersedes `<id>`" when an edit fails, verify the returned id after an edit.
-- **One tier per state.** On held-no-PR only the triager touches the issue. Filing an upstream issue mints a duplicate triage session; detect it before mutating.
+- **One tier per state.** On held-no-PR only the triager touches the issue. Filing an upstream issue mints a duplicate triage session; detect it before mutating. A filing batch's own `issue_opened` self-echoes are the same hazard — during the echo window, match the batch chain page by title, not by issue-number grep.
 - **A draft PR is not a public footprint**: a draft-held chain still needs the 5-bullet on the issue.
 - **The drafts-only gate binds the bot, not maintainers.** Check the `ready_for_review` actor; never convert a maintainer's flip back.
 - **Attribute PR ownership by `author`**, never a `[codex]` title or `codex/*` branch.
@@ -90,6 +90,9 @@ Cleanup is unreliable, so each is prevented upstream:
 - **Held-no-PR belongs to triage.** On a design-gated refusal or won't-fix only the triager touches the issue, by editing its comment. On #12051 a fixer's self-posted hold landed 32 s after the triager's; the fixer pings the triager instead ([held-no-PR is triage's](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)).
 - **Auto-route forks.** The UserPromptSubmit auto-route hook can spawn a parallel fork running the same workflow (#11751: three bot comments, and it opened the PR). Verify issue/PR state before assuming it won't act; cross-identity DELETE 403s, so expect a leftover `[bot]` duplicate ([auto-route fork](../learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md)).
 - **Filing an upstream issue.** When a `slangpy-<n>/upstream-slang` session runs `gh issue create`, the `issue_opened` webhook mints a second triage session on `gh-issue-shader-slang/slang-<n>` in the same minute (#12070, #12071), though the escalation session usually already did the whole triage. The webhook session detects this (newest comment is the bot's from that minute, `.gh-comments/OWNER-REPO-N.id` exists, or a fixer branch/PR is up), adds only an independent HEAD re-verification reported up, and re-posts only if HEAD changed the verdict ([upstream filing → duplicate triage](../learnings/1783886221663-slang-escalation-session-that-files-an-upstream-is.md)).
+- **Self-echo `issue_opened` of our own filing batch: the number-grep false-empties.** When an `issue_opened` webhook names `nv-slang-bot` as author AND a filing batch in our own memory went Terminal within the last ~hours, treat it as a self-echo FIRST: read the batch chain page (glob `memory/**/*batch-<date>*.md` or the filing session's state page) and match by title/subject, not by number. The pre-dispatch "grep memory for the issue number" check returns a false empty during the echo window — the batch page's numbers section (the only thing a number-grep can hit) is written only when the batch completes, and the "these are our own filings, do NOT dispatch" rule is keyed by draft titles. Three of six self-echo webhooks from the 2026-11-17 Discord drafts batch (#14541–#14546) were misrouted to fresh per-issue triage chains by parallel orchestrator sessions this way ([Self-echo issue_opened after a filing batch: number-grep false-empties, read the batch page by title](../learnings/1794917671609-self-echo-issue-opened-after-a-filing-batch-number.md)). The late-stand-down remediation protocol those misrouted chains executed (delete own comment, cancel the one-shot recheck, terminal state page, report the timeline) is recorded on [Message Routing & Gating](agent-routing-message-routing-and-gating.md).
+
+- **Receiving side: a triage dispatch for a number from our own recent filing batch is a misroute — stand down, don't triage.** A "New issue to triage" dispatch for a number filed by our own group within the last hours is almost certainly the `issue_opened` webhook of our own filing, not a fresh request — and the misroute is often detectable from the dispatch's own text: phrasing like "one of #14541–#14546 filed by your group's own filing-batch session" is a stand-down clue, not an authorization. If triage already started (as on #14545, dispatched 2 min after our own 11:38Z filing and full-triaged before the stand-down), the remediation pattern that worked: (1) stand-down message to the fixer on the same `thread_id`, (2) delete your own just-posted bot comment — after verifying 0 reactions / no human activity on it, (3) update the state pages, (4) disclose everything to parent. Cross-check `memory/issues/` batch pages before starting, but note the number-grep can false-empty during the echo window (bullet above) — match by title ([triage dispatch for an issue number from our own filing batch = misroute, stand down](../learnings/1794915914086-triage-dispatch-for-an-issue-number-from-our-own-r.md)).
 
 ## REST vs GraphQL, and misleading auth probes
 
@@ -130,7 +133,7 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 
 "Ours" (route to a fixer) versus author-owned (re-confirm silently) is decided by `author`. `nv-slang-bot[bot]`, usually on `fix/issue-*`, is ours; a human author is theirs even with a `[codex]` title or `codex/*` branch. PR #11850 (`[codex] Add hash-set pool hysteresis`, red `check-formatting`) belonged to a maintainer: no route, no "nudge the driver" line ([ownership by author](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)).
 
-**Source learnings (44):**
+**Source learnings (46):**
 - [Step-9 edit-if-self overwrites a peer's comment](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md) — #13817; `userContentEdits`.
 - [Don't link other repos' issues/PRs](../learnings/1792634844580-github-posts-don-t-link-other-repos-issues-prs-unl.md) — mimalloc#1075 re-pinged.
 - [Triager and fixer both post 5-bullets](../learnings/1793323955473-triager-and-fixer-can-both-post-status-5-bullets-o.md) — #14063; check `.[-1]`.
@@ -175,3 +178,5 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 - [Milestones are public](../learnings/1793286449078-issue-milestones-are-public-not-confidential-proje.md) — `> file` adds `\n`.
 - [Step-9 script: empty comments array yields "null null"](../learnings/1794888393504-step-9-comment-posting-script-empty-comments-array.md) — #14478; count with `length`.
 - [Closing a PR: temp-file and silent-drop gotchas](../learnings/1794856327780-closing-a-pr-with-a-comment-temp-file-and-silent-d.md) — #13966; POST the comment separately.
+- [Self-echo issue_opened after a filing batch: number-grep false-empties](../learnings/1794917671609-self-echo-issue-opened-after-a-filing-batch-number.md) — match the batch page by title, not number, in the echo window
+- [Triage dispatch for an issue number from our own filing batch = misroute, stand down](../learnings/1794915914086-triage-dispatch-for-an-issue-number-from-our-own-r.md) — #14545: batch phrasing in the dispatch is a stand-down clue; remediate (stand-down → delete own comment → state pages → disclose).

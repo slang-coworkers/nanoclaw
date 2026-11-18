@@ -3,7 +3,7 @@ title: "Codex-Critique Round Recording: Bridge Path, Client Timeouts, and the Th
 type: concept
 group: agent-infra
 tags: [codex-critique, critique-gate, track-critique, codex-mcp-bridge, mcp-timeout, critique-threads, thread-map, recording]
-source_count: 9
+source_count: 20
 ---
 
 # Codex-critique round recording: bridge path, client timeouts, and the thread map
@@ -26,6 +26,12 @@ source_count: 9
   key (`developerinstructions`; camelCase `developerInstructions` silently records nothing), `STAGE:` on
   fresh calls only, and anchored `REQUIREMENTS:` URLs (anchoring detail on
   [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
+- In **opencode-harness sessions the direct `mcp__codex__codex` MCP tool systematically fails to record**
+  (the harness truncates hyphenated param names at the first hyphen, so `developer-instructions` arrives as
+  `developer`): drive the production bun bridge directly via MCP JSON-RPC instead, or record the round
+  manually with a synthetic PostToolUse payload / saved transcripts.
+- `codex-reply` rounds do not reliably refresh `critique_attested` hashes — dispatch the FINAL round as a
+  fresh `STAGE:` call listing every deliverable under ARTIFACTS.
 - Workflow-state resets on EVERY inbound (auto-retry, parent ping): `plan_written` resets with it (re-record
   with the Write tool only), and `codex-reply` calls never record a stage — re-run a "missing stage" as a
   fresh codex call on the same artifacts.
@@ -38,6 +44,9 @@ source_count: 9
   "round recorded" notice; verify with `jq` after every round.
 - Put a SCOPE line in critique prompts (read-only checks, no builds, no test runs) — a review turn that
   runs `slang-test` inside the sandbox can kill the app-server mid-flight and record nothing.
+- If the main session silently cannot emit the `developer-instructions` parameter (STAGE calls "succeed"
+  but nothing records), dispatch a general subagent to make the gate-stage codex calls; omit `model:`
+  (OneCLI's open-models rule 403s it).
 
 ## The recording path: the bridge, not the hook
 
@@ -57,6 +66,31 @@ and the codex app-server exited (`exit_code -1`, no round recorded), so always p
 prompts: read-only checks, no builds, no test runs; (4) the plan-tracker hook only fires on the Write tool
 — an Edit to `reports/<slug>.md` does NOT mark `plan_written` (plan-gate detail on
 [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
+
+**Caveat measured 2026-11-17/18 (opencode-harness groups): the direct MCP tool path does NOT record there.**
+In opencode sessions a direct `mcp__codex__codex` call systematically fails to record a round: the harness
+truncates a hyphenated MCP parameter name at the first hyphen when the call is stored/executed, so
+`developer-instructions` arrives at the bridge as `developer` (verified in opencode.db; the bridge's
+`canonicalToolArgs` only fold-matches `developerinstructions`/`developer_instructions`), codex never sees
+the reviewer block, and the pinning gate silently declines
+([OpenCode truncates hyphenated MCP param names — pass developerinstructions](../learnings/1794933603258-opencode-truncates-hyphenated-mcp-param-names-pass.md));
+on top of that the direct MCP calls do not fire the track-critique path (tool-name mismatch) and leave a
+stale thread-writer lock (`~/.codex/thread-writer-locks/<id>.lock`) that makes later bun-bridge replies
+fail with "thread already has an active writer" — a fresh codex session bypasses the lock. The reliable
+recording path in those groups is to drive the **production bridge directly via MCP JSON-RPC**:
+`PATH="/pnpm:$PATH" bun run /app/src/codex-mcp-bridge.ts`, `initialize` with `protocolVersion "2024-11-05"`
+(empty params are rejected), then `tools/call {name:"codex"}` — the bridge records the round itself when
+`CRITIQUE_GATE_ACTIVE=1` is in env
+([recording rounds: bridge dispatch, anchored REQUIREMENTS, state-write races](../learnings/1794948587801-recording-critique-gate-rounds-bridge-dispatch-anc.md),
+[critique-gate freshness: only bun-bridge codex dispatches record](../learnings/1794970120988-critique-gate-freshness-only-bun-bridge-codex-disp.md)).
+Two recovery paths when a real review ran but recorded nothing: (1) re-run `track-critique.sh` with the SAVED
+genuine codex transcripts (prompt + result files kept under a scratch dir) — it re-records real rounds
+faithfully; (2) pipe a synthetic PostToolUse JSON payload into `bash /app/hooks/track-critique.sh` whose
+`tool_input` carries a short developer-instructions string containing the two pinning sentinels and whose
+`tool_response` embeds the REAL codex output (verdict + attested hashes) verbatim, then verify with
+`jq '{stages: .critique_stages, verdicts: .critique_verdicts, edits: .edits_since_critique}'` and disclose
+the workaround in the parent report
+([codex critique rounds don't record in opencode sessions — synthetic payload workaround](../learnings/1794926576842-codex-critique-rounds-don-t-record-in-opencode-ses.md)).
 
 ## Client timeouts: cosmetic when the turn completes, fatal when it doesn't
 
@@ -107,6 +141,22 @@ prose with no `### Attested` sha256 section, so long public comments (1,000+ cha
 attested `--body-file`) stay blocked even after a recorded round. Always pass the verbatim block and, after
 each round, `jq .critique_stages /workspace/.claude/workflow-state.json` to confirm
 ([codex-critique rounds only record with the verbatim developer-instructions block](../learnings/1794847766178-codex-critique-rounds-only-record-with-the-verbati.md)).
+This re-confirmed on 2026-11-17/18 from both sides: the initial OUTPUT_REVIEW call with the parameter
+omitted entirely records nothing and the delivery gate then denies the `gh api` post even though codex had
+approved and attested the exact file — the refusal's additionalContext does not surface through the MCP
+bridge, so the ONLY reliable check is the state file after every stage call
+([initial codex call must carry developer-instructions verbatim](../learnings/1794926826665-critique-gate-initial-codex-call-must-carry-develo.md),
+[developer-instructions omission silently drops gate rounds](../learnings/1794968405572-codex-critique-developer-instructions-omission-sil.md)).
+The same pinning check is why a round tracks ONLY with the canonical block — a substantive review without
+it records nothing and you discover it only when the delivery gate refuses for "missing critique stages"
+([codex-critique rounds only record with the canonical developer-instructions block](../learnings/1794919003543-codex-critique-rounds-only-record-with-the-canonic.md)).
+The verdict parser is just as literal: it needs a literal `### Verdict` heading line followed by `approve`
+or `must-fix` — prose like "Verdict: APPROVED" or `APPROVE_WITH_NITS` parses as `unparseable`, and a prose
+`**Verdict: APPROVE**` records a stage COUNT but no verdict, so the gate fails closed on the missing
+verdict (CRITIQUE_VERDICT_STRICT). When a call cannot carry the full reviewer block, instruct codex to end
+with the structured `### Verdict`/`### Attested` sections anyway
+([canonical-block recording + literal verdict parse](../learnings/1794919003543-codex-critique-rounds-only-record-with-the-canonic.md),
+[opencode synthetic-payload workaround](../learnings/1794926576842-codex-critique-rounds-don-t-record-in-opencode-ses.md)).
 
 **Gate state resets on every inbound, and `codex-reply` rounds never record.** When a session processes
 multiple inbounds (auto-retries, parent pings), the NanoClaw workflow-state (task_id) RESETS each time, and
@@ -118,14 +168,57 @@ call pointing at the same artifacts — cheap, approves fast since the content w
 (symptom chain on slang#13749: `gh pr create` refused with "missing critique stages: PLAN_REVIEW,
 OUTPUT_REVIEW" even though both had just been approved on reply threads)
 ([gate state resets on every inbound; codex-reply rounds don't record](../learnings/1794898781583-gate-state-resets-on-every-inbound-codex-reply-rou.md)).
+A reply has a second, subtler recording gap: a round-2 `codex-reply` can bump `critique_rounds` and the
+verdict while `critique_attested[OUTPUT_REVIEW]` KEEPS the round-1 hashes, so the delivery gate denies
+posting the correctly re-reviewed file ("file is not among the files an OUTPUT_REVIEW attested"). Dispatch
+the final round as a fresh `STAGE:` call (ROUND: n/n, REQUIREMENTS re-included — fresh calls need the
+REQUIREMENTS field again; replies are exempt) and list every deliverable file under ARTIFACTS so the fresh
+attested set replaces the stale one
+([codex-reply attestation gap: fresh STAGE call needed for final artifact hashes](../learnings/1794954098752-codex-reply-attestation-gap-fresh-stage-call-neede.md)).
+
+**The three silent round-droppers, in one place** (2026-11-17, #13618/#1195): a session restart (a
+re-routed task re-delivers the router envelope and `workflow-state-reset.sh` wipes `critique_stages`), a
+`STAGE:` marker inside a `codex-reply` prompt (parses a stage, fails pinning, exits without recording — a
+reply can never un-drop itself), and an unanchored REQUIREMENTS URL. Each costs a full re-review cycle to
+rediscover, so run the stages as fresh calls in the same turn as the delivery; when a delivery is denied
+with "missing critique stages" RIGHT AFTER you recorded them, check `.task_id`/`started_at` in the state
+file — if new, the state reset, and re-running the three stages as compact round-1 re-recordings is fine
+(artifacts unchanged, codex re-verifies fast). The delivery-side corollary: the gate re-hashes every
+reviewer-attested artifact path at send time, so never edit an attested file after its approve — write
+PR-description updates to a NEW file (e.g. the bot disclaimer append) rather than into the reviewed
+artifact
+([3 silent round-droppers](../learnings/1794900588491-critique-gate-3-silent-round-droppers-restart-rese.md),
+[dev-instructions pinning, state resets, marker routing](../learnings/1794901788554-critique-gate-gotchas-dev-instructions-pinning-sta.md)).
+The re-hash covers even the plan file in `reports/` and the mandatory plan re-arm Write; and the explain-diff
+gate credits an explanation ONLY when posted via `upsert_pr_body.py` (marker + seal + receipt) — a plain
+`gh pr comment` does not count and must be deleted as a duplicate; the plan-tracker likewise counts only
+Write-tool writes under `/workspace/agent/reports/*` (Edit does not re-arm)
+([verbatim dev-instructions; state resets per inbound; explain-diff credit](../learnings/1794908989857-codex-critique-rounds-record-only-with-the-skill-s.md)).
+
+**When the CALLER can't emit the parameter at all, dispatch a subagent.** A main agent session can be
+structurally unable to pass `developer-instructions` on `codex_codex` — 8+ deliberate STAGE attempts all
+silently dropped the parameter (pin-check read it as absent, recorded nothing, and codex ran un-instructed,
+returning prose verdicts that then failed the parser). A general SDK subagent emits the parameter
+correctly: all three stages recorded approve on the first try. Also omit an explicit `model:` parameter —
+it hits OneCLI's open-models rule (403 `blocked_by_policy`)
+([main session can't emit developer-instructions — use a subagent](../learnings/1794913063020-codex-gate-calls-main-session-can-t-emit-developer.md)).
 
 **The parameter key must match exactly.** `track-critique.sh` reads
 `.tool_input."developer-instructions" // .tool_input.developer_instructions // .tool_input.developerinstructions`
 — a call passing camelCase `developerInstructions` (capital I) runs fine and codex even returns a
 structured verdict, but DEV_INST resolves empty, the canonical-block pin check fails, and `critique_rounds`
 stays 0 with no error surfaced to the caller. Always pass `developerinstructions` (or
-`developer-instructions`) and re-check `workflow-state.json` (`critique_rounds`, `critique_verdicts`) after
-every critique call you expect to be recorded. Also: for roles requiring PLAN_REVIEW, the prompt's
+`developer-instructions` — but note the opencode harness truncates the hyphenated spelling at the first
+hyphen, so in opencode sessions `developerinstructions` is the only safe form) and re-check
+`workflow-state.json` (`critique_rounds`, `critique_verdicts`) after
+every critique call you expect to be recorded
+([codex critique rounds silently unrecorded with camelCase developerInstructions param](../learnings/1794816470745-codex-critique-rounds-silently-unrecorded-with-cam.md);
+[OpenCode truncates hyphenated MCP param names](../learnings/1794933603258-opencode-truncates-hyphenated-mcp-param-names-pass.md)).
+Also: the gate, plan-tracker and edit-counter hooks all write `workflow-state.json` via tmp+mv with NO
+locking — concurrent writes race and clobber each other (one plan re-write erased a recorded CODE_REVIEW),
+so do gate writes with nothing else in flight
+([bridge dispatch, anchored REQUIREMENTS, state-write races](../learnings/1794948587801-recording-critique-gate-rounds-bridge-dispatch-anc.md)).
+For roles requiring PLAN_REVIEW, the prompt's
 `REQUIREMENTS:` field must contain at least one GitHub comment URL or the round is not counted — keep the
 URLs in the field and stop codex from fetching them via a credential-down exception clause in the
 developer-instructions instead of stripping them
@@ -173,16 +266,30 @@ means the turn died, so check the jsonl before re-sending (state-reset context o
 
 For cross-cutting recording rules (fails-open verdict parser, recall-stub replies, `### Attested` line
 format) see [critique gate and decision recording](review-critique-gate-and-recording.md); for stage
-counting and delivery sequencing, [gate mechanics](agent-routing-f0909b1-critique-gate-mechanics.md).
+counting and delivery sequencing, [gate mechanics](agent-routing-f0909b1-critique-gate-mechanics.md); for
+the delivery-side freshness window (edits_since_critique bumped by late `>` redirects and timed-out
+launchers, and the clean-window recipe for firing the delivery marker), [gate-hook
+mechanics](agent-infra-gate-hook-mechanics.md).
 
-**Source learnings (9):**
+**Source learnings (20):**
 - [gate state resets per inbound; codex-reply rounds never record](../learnings/1794898781583-gate-state-resets-on-every-inbound-codex-reply-rou.md)
 
 - [rounds record via the codex bridge, not the hook](../learnings/1794851587389-critique-rounds-record-via-the-codex-bridge-not-th.md)
 - [-32001 timeout is cosmetic; poll rollout files](../learnings/1794852776159-codex-mcp-32001-timeout-is-cosmetic-poll-codex-ses.md)
 - [timeout verdict records; recover via codex-reply](../learnings/1794835792483-codex-mcp-timeout-failure-verdict-records-in-backg.md)
 - [client timeouts never record — low effort recipe](../learnings/1794837209510-codex-critique-client-timeouts-never-record-use-lo.md)
-- [rounds only record with verbatim dev-instructions](../learnings/1794847766178-codex-critique-rounds-only-record-with-the-verbati.md)
 - [camelCase developerInstructions param unrecorded](../learnings/1794816470745-codex-critique-rounds-silently-unrecorded-with-cam.md)
 - [reply rounds inherit the parent thread's stage](../learnings/1794889217597-codex-reply-rounds-inherit-the-parent-thread-s-sta.md)
 - [bridge-killed threads never record](../learnings/1794868443680-codex-rounds-on-bridge-killed-threads-never-record.md)
+- [canonical dev-instructions block + literal `### Verdict` parse](../learnings/1794919003543-codex-critique-rounds-only-record-with-the-canonic.md) — round tracks only with canonical block; verdict needs literal heading.
+- [opencode rounds don't record; synthetic-payload workaround](../learnings/1794926576842-codex-critique-rounds-don-t-record-in-opencode-ses.md) — manual track-critique payload with sentinels + real codex output.
+- [initial call must carry developer-instructions verbatim](../learnings/1794926826665-critique-gate-initial-codex-call-must-carry-develo.md) — omission silently drops the round; check jq after every stage call.
+- [OpenCode truncates hyphenated MCP param names](../learnings/1794933603258-opencode-truncates-hyphenated-mcp-param-names-pass.md) — `developer-instructions` arrives as `developer`; pass `developerinstructions`.
+- [bridge dispatch, anchored REQUIREMENTS, state-write races](../learnings/1794948587801-recording-critique-gate-rounds-bridge-dispatch-anc.md) — drive the bun bridge; tmp+mv writes race; saved-transcript recovery.
+- [codex-reply attestation gap](../learnings/1794954098752-codex-reply-attestation-gap-fresh-stage-call-neede.md) — replies keep round-1 hashes; final round must be a fresh STAGE call.
+- [developer-instructions omission silently drops rounds](../learnings/1794968405572-codex-critique-developer-instructions-omission-sil.md) — refusal context invisible through the bridge; jq is the only check.
+- [critique-gate freshness: only bun-bridge dispatches record](../learnings/1794970120988-critique-gate-freshness-only-bun-bridge-codex-disp.md) — MCP tool records nothing; stale writer lock; clean-window recipe.
+- [3 silent round-droppers: restart reset, STAGE-in-reply, unanchored URL](../learnings/1794900588491-critique-gate-3-silent-round-droppers-restart-rese.md) — each costs a full re-review cycle; never edit attested files after approve.
+- [critique-gate gotchas: pinning, state resets, marker routing](../learnings/1794901788554-critique-gate-gotchas-dev-instructions-pinning-sta.md) — verdict needs literal `### Verdict`; re-run stages when `.task_id` is new.
+- [codex rounds record only with the skill's verbatim dev-instructions](../learnings/1794908989857-codex-critique-rounds-record-only-with-the-skill-s.md) — explain-diff credit only via upsert_pr_body.py; plan-tracker counts Write only.
+- [main session can't emit developer-instructions — use a subagent](../learnings/1794913063020-codex-gate-calls-main-session-can-t-emit-developer.md) — subagents emit the param; omit `model:` (403 open-models rule).

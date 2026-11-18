@@ -3,7 +3,7 @@ title: "Agent Routing: Chain Parking and Bot Detection"
 type: concept
 group: agent-routing
 tags: [github, webhook, chain-parking, watchers, draft-pr, bot-detection, CI, silence-fallback]
-source_count: 25
+source_count: 24
 ---
 
 # Agent Routing: Chain Parking and Bot Detection
@@ -25,7 +25,7 @@ Why a chain parked on an external party has no observer, the silence fallback it
 - **Key a PR watcher to the PR NUMBER, not a captured SHA**; a force-push blinds a SHA-keyed guard, which then reports on a dead commit forever.
 - **On a draft PR, `statusCheckRollup` and `commits/<sha>/check-runs` differ:** a `workflow_dispatch` matrix appears only in `check-runs`, so cite the run id and `check-runs` as coverage evidence.
 - **A closed-set allowlist is the wrong shape for bot detection.** Use `__typename == Bot` or per-comment `is_bot` (allowlist only as fallback, suffix-matching the un-normalized login); a derived authoritative boolean makes an upstream bug uncorrectable downstream.
-- **An `issue_opened` webhook authored by our own bot is usually our own in-flight chain;** find and consolidate on it before dispatching a fresh triage.
+- **An `issue_opened` webhook authored by our own bot is usually our own in-flight chain;** find and consolidate on it before dispatching a fresh triage — and a bot-authored body that already carries verification results is the chain's TERMINAL filing, so a triage dispatch on it is an echo misroute.
 
 ## Parking a Chain on an External Party Needs a Silence Date and a Terminal Act
 
@@ -53,7 +53,17 @@ Webhook verification, the delivery-log audit and the 12-hour sweep all answer "w
 
 A `github.issue_opened` webhook authored by `nv-slang-bot[bot]` (or another of our bot identities) is often the output of a running "file + fix" chain (CI-babysitter → Orchestrator → fixer), and the body's "a draft PR will be linked below" is that chain's promise. On slang#13184 the webhook reached a fresh Orchestrator session with no memory of the chain that had dispatched `slang-fixer` ~15 min earlier on topic thread `slang-ci-nightly-release-userskills-archive` (fix already committed, unpushed); routing it to triage started a second fixer and a triage comment racing one issue. Before routing such an event: (1) look for an in-flight chain with `ncl sessions list --limit 2000 | grep -iE "<issue-#>|<topic-keywords>"`, including non-canonical topic threads; (2) consolidate on it, since it is usually furthest along; (3) steer it via its exact `thread_id` + `target_session_id` pin (verify the a2a link owner via `ncl messaging-groups get`); (4) have that fixer open the PR and call `report_pr_created`, so the PR→session mapping routes every later webhook to one owner. Detector: two `running` sessions in one agent group for one task ([issue_opened webhook by nv-slang-bot[bot] is often our own in-flight chain — check before dispatching](../learnings/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md)).
 
-**Source learnings (25):**
+The same echo takes a second form when the filing chain is already TERMINAL: a bot-authored issue body
+that carries complete verification results (master sha, reproducers, function-path control, root cause
+with file:line) is the filing chain's own completed Terminal work, NOT a fresh external report needing
+triage. On slang#14548 (2026-11-17) the router auto-dispatched our own verified filing back into a triage
+chain, which re-did the verification (rebuild + repros), posted a public triage comment and armed a
+dispatch watcher — all stood down within the hour, and the comment had to be deleted to restore the issue
+to its filing state. Check the filer before running the workflow: a triage dispatch on your own group's
+bot-authored verified filing is a likely echo misroute
+([echo misroute: triage dispatch on own bot-authored filing](../learnings/1794923405157-echo-misroute-triage-dispatch-on-own-bot-authored-.md)).
+
+**Source learnings (24):**
 
 - [#11545 ByteAddressBuffer alignment cluster ownership flipped](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md) — absolute date + named terminal act, written where the chain is read.
@@ -63,14 +73,13 @@ A `github.issue_opened` webhook authored by `nv-slang-bot[bot]` (or another of o
 - [on a draft PR, statusCheckRollup and commits/<sha>/check-runs expose DIFFERENT sets — a manual-dispatch matrix is invisible on the PR page](../learnings/1786280978623-on-a-draft-pr-statuscheckrollup-and-commits-sha-ch.md)
 - [a closed-set allowlist is the wrong shape for bot detection — use __typename==Bot / per-comment is_bot; a derived boolean discards correctable evidence](../learnings/1786280996629-a-closed-set-allowlist-is-the-wrong-shape-for-bot-.md)
 - [issue_opened webhook by nv-slang-bot[bot] is often our own in-flight chain — check before dispatching](../learnings/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md) — consolidate on the running chain.
+- [echo misroute: triage dispatch on own bot-authored filing](../learnings/1794923405157-echo-misroute-triage-dispatch-on-own-bot-authored-.md) — a verified bot-authored body is Terminal work, not triage input.
 - [a coworker's "will report when it opens" ack is not a timer; arm a GitHub-checking re-chase task; verify recalled PR numbers.](../learnings/1790627350003-a-coworker-s-will-report-when-the-pr-opens-ack-is-.md)
 - [CI-green webhook doesn't always arrive: when a step waits on CI, schedule a one-shot re-check instead of relying on the webhook](../learnings/1792483997051-ci-green-webhook-doesn-t-always-arrive-when-a-step.md) — rider: count pytest XFAILs from `[gwN]` lines only.
 - [when a blocker is disproved in one thread, wake every session parked on it with a pinned GO; every park needs a timer.](../learnings/1790637455225-an-unblock-proven-in-one-thread-must-be-pushed-to-.md)
 - [reports answering a re-chase task's dispatch go to that task's session and are lost once it closes](../learnings/1791316462228-reports-answering-a-re-chase-task-s-dispatch-go-to.md) — read the coworker's sessions instead.
 - [slangpy#1189: measure a parked PR's rebase-cost drift with `compare/<last-seen-main>...main` + submodule compare; record the main sha each re-check](../learnings/1793282577009-parked-pr-re-check-measure-rebase-cost-drift-with-.md)
 - [Parked-issue re-check: check the timeline, not just the comments](../learnings/1793538181143-parked-issue-re-check-check-the-timeline-not-just-.md) — slang-rhi#943: self-assign = owner, not direction.
-- [Parked-issue re-checks: read the timeline cross-references, not just the comments](../learnings/1793041485668-parked-issue-re-checks-read-the-timeline-cross-ref.md) — slang#13750 → #13956.
-- [Parked-on-reporter re-checks: read the issue timeline, not just comments](../learnings/1793663874761-parked-on-reporter-re-checks-read-the-issue-timeli.md) — #14069 closed by #14072.
 - [slang#14101: no comments, but timeline showed draft PR #14358; `cross-referenced`/`assigned` filter closed the chain](../learnings/1793981006662-parked-issue-re-checks-read-the-timeline-not-just-.md)
 - [slang#14091: `issues/<n>/events` assigned query; assignee owns the decision, no ping; `assigner` not `actor`](../learnings/1793959518362-parked-issue-re-checks-must-read-issue-events-assi.md)
 - [Parked-issue re-check: read the timeline for assignments and the sibling PR's reviews, not just comments](../learnings/1794244665225-parked-issue-re-check-read-the-timeline-for-assign.md) — slang#14034: assigned to core team + sibling #14148 CHANGES_REQUESTED; no bot fixer.

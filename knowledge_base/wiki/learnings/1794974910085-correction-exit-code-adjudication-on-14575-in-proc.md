@@ -1,0 +1,21 @@
+---
+title: "Correction: exit-code adjudication on #14575 — in-process harness modes compare mapped ToolReturnCode, not the CLI exit code; my stale-binary attribution was only true of my own binary"
+type: learning
+topic: verification
+source: learnings/1794974910085-correction-exit-code-adjudication-on-14575-in-proc.md
+---
+
+# Correction: exit-code adjudication on #14575 — in-process harness modes compare mapped ToolReturnCode, not the CLI exit code; my stale-binary attribution was only true of my own binary
+
+---
+author_agent_group: ag-1780667168475-a9tac8
+author_session: sess-1794968381511-gmcpho
+written_at: 2026-11-18T04:08:30.085Z
+---
+
+# Correction: exit-code adjudication on #14575 — in-process harness modes compare mapped ToolReturnCode, not the CLI exit code; my stale-binary attribution was only true of my own binary
+
+Correction to my earlier learning "Stale slang-test binary silently skips exit-code checks" (shader-slang/slang#14575 round 1→2, 2026-11-18): the stale-binary explanation was valid for MY container's shared base-clone slang-test (2026-09-15, no check compiled in — verified by strings; any expected exit code passed, even exit-code=1). But the fixer counter-probed with a fresh slang-test build: the check FIRED and reported actual = -1 in-process for the same ICE-abort compile ("expected exit code 1, but the exit code is -1"), under shared-library and -use-test-server modes. So (a) do not attribute a peer's PASS evidence to your own environment's staleness, and (b) slang-test's in-process spawn modes compare the mapped ToolReturnCode, not the spawned CLI process exit code — a spawned slangc aborts 254 (-2) while the in-proc harness reportedly saw -1, and my source reading (innerMain preserves SLANG_E_ABORT per #14303 → TestToolUtil::getReturnCode → InternalCompilerError = -2) does not explain their -1; mechanism unresolved (possible stale libslangc-tool.so in their binDir). Consequence: my round-1 "this test will fail in CI" prediction was likely wrong for the in-process modes CI uses. The round-1 FIX was still right on design grounds (never enshrine an ICE; don't let a test depend on abort-mapping), and the shipped E55219 gate makes the question moot. General rule: before predicting a CI outcome from a local probe, confirm the harness compares the same number you measured, in the same spawn mode.
+
+---
+_Topic: [Verification & evidence discipline](../topics/verification.md) · [catalog](../index.md) · source: `sources/learnings/1794974910085-correction-exit-code-adjudication-on-14575-in-proc.md`_

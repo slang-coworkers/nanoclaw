@@ -3,7 +3,7 @@ title: "Build tooling: testing a PR's effect locally, shared-clone hazards, and 
 type: concept
 group: ci
 tags: [ci, build, git, worktree, merge-base, shared-clone, subagent, setsid]
-source_count: 20
+source_count: 22
 ---
 
 # Build Tooling: Testing a PR's Effect Locally, Shared-Clone Hazards, and Detaching Long Builds
@@ -20,6 +20,8 @@ source_count: 20
 - **VS2019 (MSVC 19.29) has no CI job but is still a documented preset.** It ICEs (C1001) on `constexpr std::to_array<const char*>` over string literals; probe MSVC versions on Compiler Explorer (`vcpp_v19_29_VS16_11_x64`), deduping `#ifndef`-guarded headers except the X-macro `slang-image-format-defs.h`.
 - **GCC TSan starts only some of the time in this container** (high-entropy ASLR vs `libtsan.so.2`; most starts die before `main()`, every ASLR mitigation is EPERM / read-only). Link with `-no-pie` (about 20% of starts succeed) and run in a `timeout` retry loop. Build with TSan by importing non-instrumented generators via `SLANG_GENERATORS_PATH`, put a prebuilt `libslang-llvm.so` on `LD_LIBRARY_PATH`, and verify a `SKIP_SANITIZERS` boundary with `nm -D <lib>.so | grep __tsan_` + `ldd`. An uninstrumented library costs TSan false *negatives* (only intercepted calls are seen), not positives. For a `source/core` mutex bug, link a tiny repro against `libcore.a` and read glibc mutex internals.
 - **Slang CI runs a Debug slang-test**, so a plain `tests/` regression guards a `_DEBUG`-only assert; no release-level assert is needed.
+- **For a small disposition delta on an already-reviewed PR, delta-only confirmation is the right scope** — verify each finding at its `file:line` in the diff, build the delta yourself, run targeted suites; no full A/B/C re-dispatch.
+- **LLVM CPU-path repros need the Debug slangc** — the sandbox's Release build lacks `libslang-llvm.so`, so `-emit-cpu-via-llvm` dies with E00028 and masquerades as a regression.
 
 ---
 
@@ -55,6 +57,14 @@ The container has only GCC 12, but the Compiler Explorer REST API accepts unauth
 **The same method answers MSVC-version questions, and VS2019 has no CI.** On slang#14069 (CE, 2026-10-29), `constexpr auto x = std::to_array<const char*>({"a", "bc"});` in a function body crashes cl 19.29 (VS 16.11, toolset 14.29.30133) with ICE C1001 at the closing `});`, at /Od and /O2; 19.30 (VS2022 17.0) and later compile it, so the boundary is 19.30, not 19.38. `std::to_array<StructWithConstCharPtrMember>({...})`, `constexpr const char* x[] = {...};` and CTAD `constexpr std::array x{...};` are fine on 19.29, and VS 16.10 rejects `/std:c++20` and lacks `std::to_array`. CI dropped VS2019 (`cmake-options.yml:96-97`, windows-2019 runner retired) while CMakePresets keeps `vs2019` and `docs/building.md` shows it, so VS2019-only breaks reach users unseen. For an MSVC amalgamation, treat `#ifndef X / #define X` guarded headers as once-only (Slang core headers use guards, not `#pragma once`; without dedup `unit-test-string.cpp` grew to 17 MB as `slang.h` was inlined 59 times; with it ~640 KB), but never dedupe `include/slang-image-format-defs.h`, an unguarded X-macro header. MSVC ids look like `vcpp_v19_29_VS16_11_x64`, and CE can execute MSVC builds (`filters.execute=true`, `compilerOptions.executorRequest=true`) ([MSVC 19.29 ICE C1001 on constexpr std::to_array](../learnings/1793318072513-msvc-19-29-vs2019-16-11-ice-c1001-on-constexpr-std.md)).
 
 **A real GCC 14+ locally: micromamba in user space.** `curl -sSL https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C /tmp/mm bin/micromamba`, then `MAMBA_ROOT_PREFIX=/tmp/mmroot /tmp/mm/bin/micromamba create -y -p /tmp/gcc14 -c conda-forge --ssl-verify "$SSL_CERT_FILE" gxx_linux-64=14`; the `--ssl-verify` flag is required because the OneCLI proxy's CA otherwise fails the repodata download. A full Slang build works with `-DCMAKE_C_COMPILER=/tmp/gcc14/bin/x86_64-conda-linux-gnu-gcc -DCMAKE_CXX_COMPILER=/tmp/gcc14/bin/x86_64-conda-linux-gnu-g++` (Ninja, RelWithDebInfo), tests with `LD_LIBRARY_PATH=/tmp/gcc14/lib`. An out-of-tree build dir fakes two `slang-unit-test-tool/` results: `optixMultipleDefinition` fails because OptiX headers are looked up three directories above the binary at `<root>/external/optix-dev` (`slang-nvrtc-compiler.cpp:858`), and `CapabilityGeneratorFailsOnError` is ignored because it needs `<build>/generators/<cfg>/bin`; copy `<build>/RelWithDebInfo` and `<build>/generators` under `<root>/build/` for a like-for-like run ([real GCC 14+ via micromamba](../learnings/1792602621339-get-a-real-gcc-14-in-a-slang-coworker-container-vi.md)).
+
+## Delta-only re-confirmation: verify the delta directly instead of re-dispatching reviewers
+
+For a small disposition delta on an already-reviewed PR (PR #14549, final verdict APPROVE_WITH_NITS), the right scope is delta-only confirmation: direct diff verification (every finding checkable at its `file:line`), your own build of the delta, and the targeted suites — no A/B/C reviewer re-dispatch. Both bug fixes verified that way (a diagnostic restore guarded by `IsErrorExpr`; repeated squaring + `wrapAdd` exponent). The same session pinned four operational gotchas: **(1)** when re-running a detached build after a failed attempt, DELETE the stale exit-status file first or the wait loop breaks instantly on the old code; **(2)** an out-of-dir build needs `cmake --build <dir> --config Release` — `cmake --build --preset release -- <dir>` silently treats the dir as a ninja target ("unknown target 'build-static'"); **(3)** `tests/preprocessor/duplicate-include/a.slang` kills test servers (SIGABRT) under parallel in-suite load and passes standalone — a unit run showing server-loss failures plus a `testServerProtocolErrorInnocentTestIsNotBlamed` self-test failure is ONE contention event, not two regressions: run the named test standalone in both builds before flagging; **(4)** slang-test prints "no tests run" for a nonexistent directory rather than erroring (`tests/constants/` doesn't exist — a claimed "constants 77/77" referred to something else). [PR #14549 delta confirmation: delta-only verification recipe; stale exit-file and out-of-dir cmake gotchas; duplicate-include server-kill is contention](../learnings/1794947648844-pr-14549-delta-confirmation-delta-only-verificatio.md)
+
+## LLVM CPU-path repros need the Debug build
+
+The group sandbox's Release slangc has no `libslang-llvm.so` (`build/Release/lib/` lacks it), so any `-emit-cpu-via-llvm` / `llvm-host-ir` compile dies early with E00028 "unable to generate code for target" — easily misread as a real regression. `build/Debug/lib/libslang-llvm.so` exists: use `build/Debug/bin/slangc` for all LLVM-path repros (in-tree tests use `-target llvm-host-ir -emit-cpu-via-llvm -whole-program`, see tests/llvm/; issue #14569). [LLVM CPU repro needs Debug build; handoff messages need in_reply_to](../learnings/1794962446679-llvm-cpu-repro-needs-debug-build-handoff-messages-.md)
 
 ## A build failure in a shared clone is not evidence about your patch
 
@@ -95,7 +105,7 @@ For a `_DEBUG`-only assert (e.g. `checkIRDuplicate`'s "duplicate global instruct
 
 The container has no 32-bit libc headers, so a header including `<cstdint>` cannot be compiled for i386. A standalone mimic of the header wrapper that avoids `<cstdint>` (using `long long` and friends) still verifies 32-bit layout `static_assert`s with `clang++ -target i386-linux-gnu -fsyntax-only` ([i386 -fsyntax-only layout check](../learnings/1791828331890-track-critique-attested-parser-rejects-backtick-wr.md)).
 
-**Source learnings (20):**
+**Source learnings (22):**
 - [Test a PR's effect by extracting its merge-base delta](../learnings/1786000108097-test-a-pr-s-effect-by-extracting-its-merge-base-de.md) — apply→build→measure→revert; live-fix control
 - [A green CI on a fix PR is silent about a slice its tests do not construct](../learnings/1786000256187-a-green-ci-on-a-fix-pr-is-silent-about-a-slice-its.md) — name the axis no test exercises
 - [MSVC /WX C4456 shadow: Linux Debug build can't catch it](../learnings/1789493968162-msvc-wx-c4456-shadow-linux-debug-build-can-t-catch.md) — `-Wshadow` TU recompile; prove detector live
@@ -116,3 +126,5 @@ The container has no 32-bit libc headers, so a header including `<cstdint>` cann
 - [Get a real GCC 14+ via micromamba (no apt)](../learnings/1792602621339-get-a-real-gcc-14-in-a-slang-coworker-container-vi.md) — `--ssl-verify`; out-of-tree dir fakes 2 results
 - [TU-only compile drill: -fsyntax-only hides -Wunused-function](../learnings/1793209364198-tu-only-compile-drill-for-slang-fsyntax-only-hides.md) — `-c -o` with `-iquote`
 - [MSVC 19.29 ICE C1001 on constexpr std::to_array<const char*>](../learnings/1793318072513-msvc-19-29-vs2019-16-11-ice-c1001-on-constexpr-std.md) — boundary 19.30; VS2019 CI retired (#14069)
+- [PR #14549 delta confirmation: delta-only verification recipe](../learnings/1794947648844-pr-14549-delta-confirmation-delta-only-verificatio.md) — stale exit-file, out-of-dir cmake, duplicate-include server-kill is contention.
+- [LLVM CPU repro needs Debug build; handoff messages need in_reply_to](../learnings/1794962446679-llvm-cpu-repro-needs-debug-build-handoff-messages-.md) — Release lacks libslang-llvm.so; marker sends need in_reply_to.

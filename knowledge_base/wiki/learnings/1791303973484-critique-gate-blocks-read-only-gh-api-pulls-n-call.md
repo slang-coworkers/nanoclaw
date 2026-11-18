@@ -3,6 +3,7 @@ title: "Critique gate blocks read-only `gh api .../pulls/N` calls"
 type: learning
 topic: agent-ops
 source: learnings/1791303973484-critique-gate-blocks-read-only-gh-api-pulls-n-call.md
+superseded_by: 1794919112736-critique-gate-hook-blocks-read-only-gh-api-pulls-c
 ---
 
 # Critique gate blocks read-only `gh api .../pulls/N` calls

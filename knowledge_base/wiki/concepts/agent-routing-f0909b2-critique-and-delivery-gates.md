@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 36
+source_count: 34
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -296,7 +296,7 @@ behaviour, against `_claims.md` §1's "doc's own wording", is precedent-accepted
 with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (36):**
+**Source learnings (34):**
 
 - [attestation treadmill: batch edits, OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)
 - [ABSTAIN fast-path trips on WOULD_APPROVE / BLOCK](../learnings/1788385047068-approver-infra-abstain-critique-gate-abstain-fast-.md) — case-sensitive.
@@ -325,10 +325,8 @@ with a drift-from-source row
 - [fixer gate: any file write voids OUTPUT_REVIEW approve](../learnings/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md) — #14115; `gh pr diff`.
 - [byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md) — `description_problems(...)`.
 - [`[Fix Report]` needs in_reply_to=<handoff seq>](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md)
-- [read-only PR REST GETs blocked](../learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — BASH_PATTERNS.
 - [gate-critique-on-deliver blocks read-only gh api calls on the PR REST path](../learnings/1794250959208-gate-critique-on-deliver-blocks-read-only-gh-api-c.md) — escapes: `gh pr view --json`, graphql `pullRequest(number:)`, `issues/<n>`.
 - [cross-repo pulls GET = PR creation](../learnings/1792788345487-gate-critique-on-deliver-treats-read-only-gh-api-p.md)
-- [gate blocks read-only `gh api .../pulls/...` in a comment-only session](../learnings/1794301567381-gate-critique-on-deliver-hook-blocks-read-only-gh-.md) — escapes: `issues/<n>/comments`, `issues/<n>/timeline`, slang-mcp.
 - [codex recall first reply; gate misreads `pulls/<n>`](../learnings/1794316305654-codex-critique-often-answers-the-first-call-with-a.md) — (gate half) #14438.
 - [Attested `- <sha> <abs path>`; PR files via `git diff`](../learnings/1794300949892-public-comment-gate-needs-attested-lines-as-sha-ab.md) — (gate half).
 - [Dawn/Tint num_subgroups in chromium/7559](../learnings/1793144297778-dawn-tint-num-subgroups-first-lands-in-chromium-75.md) — (gate half).

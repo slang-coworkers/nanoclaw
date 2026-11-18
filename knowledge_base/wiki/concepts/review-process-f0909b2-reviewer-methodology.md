@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile, probe-matrix, pass-reordering]
-source_count: 25
+source_count: 27
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -48,6 +48,12 @@ compiles, exit 0, green validators and passing tests all prove less than they ap
   substrings, so the CHECK must reject the buggy variant.
 - **Silent-impossible-shape smell:** a new handler that turns a loud `SLANG_UNEXPECTED` into a silent
   default for any input. Re-assert the invariant.
+- **A fixpoint loop requires EVERY override of the folded operation to uphold receiver-identity**
+  (return the receiver or a rebuilt value on partial progress, never nullptr) — audit all
+  overrides, not just the new one.
+- **When a fix adds a numeric bound, check the bounded quantity is the actual cost unit** (a pass
+  cap bounds passes, not per-pass work); when swapping in a laxer checker, diff the FAILURE path —
+  the old diagnostic may vanish (a null-sink variant silently drops it).
 
 ## Coverage lenses: numeric routing and the revert-drill
 
@@ -95,6 +101,29 @@ become a `SLANG_ASSERT` (a final-round nit); (c) A-vs-C disagreements on a comme
 surfaced, not resolved. A round-1 REQUEST_CHANGES whose round 2 has 0 bugs and only clarity/coverage
 gaps maps to APPROVE_WITH_NITS, once Devin's analysis names the round-2 files
 [round 2 of a shared-helper guard fix](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md).
+
+**A fixpoint loop is only as sound as EVERY override of the folded operation.** On #14549 r2 the
+r1 fix (a fixpoint in `ComponentType::tryFoldIntVal`) surfaced the general review pattern: a
+fixpoint loop over `linkTimeResolve` only works if EVERY `_linkTimeResolveOverride` upholds
+receiver-identity on partial progress — return the receiver or a rebuilt value, never nullptr.
+`BuiltinOperationIntVal`/`TypeCastIntVal` end with `return tryFoldImpl(...)`, which returns
+nullptr when any operand stays symbolic, so chained externs through `/`, `?:`, casts collapse
+after one pass. When reviewing new fixpoint machinery, audit ALL existing overrides for the
+documented protocol, not just the new one — the sibling-site rule applied to protocols
+([fixpoint loops require every override to uphold receiver-identity](../learnings/1794935448272-pr-14549-r2-fixpoint-loops-require-every-override-.md)).
+
+**Two fix-loop traps confirmed on #14549 r3 (final round).** Whack-a-mole over subtle compiler
+machinery: r1 flagged signed-overflow in the power-multiply; the r2 fix (wrapMul/wrapAdd) missed
+the `canonicalize` power ADDITION (`slang-ast-val.cpp`, still signed) and left the per-pass cost
+unbounded — a pass cap (`kMaxLinkTimeResolvePasses=64`) bounds passes, not per-pass work, so ~40
+chained squarings still yield a 2^40-trip layout-time fold. When a fix adds a numeric bound,
+check whether the bounded quantity is the actual cost unit. And swapping `checkConstantIntVal`
+for `checkLinkTimeConstantIntVal` silently DROPPED a diagnostic: the new variant passes a null
+sink, so non-constant args (`vk::binding(f(),1)`) went from a hard error to silently indexing 0.
+When replacing a checker with a laxer variant, diff the failure path (what diagnostic the old
+one emitted), not just the success path — the mirror of the #14284 duplicate-diagnostic case
+below (where a null sink folds noise; here it swallowed a wanted hard error)
+([laxer-checker swaps silently drop diagnostics; pass caps don't bound per-pass cost](../learnings/1794941599396-pr-14549-r3-laxer-checker-swaps-silently-drop-diag.md)).
 
 ## Moving a lowering pass later
 
@@ -272,7 +301,7 @@ so the CHECK must reject the buggy variant: `//CHECK: cyclic reference '$inherit
 `//CHECK: cyclic reference` that also matches a wrong `'E'` diagnostic
 [never cite file.cpp:line in durable text; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md).
 
-**Source learnings (25):**
+**Source learnings (27):**
 - [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: single-block test hid the conjunct; pin emit `SLANG_FAIL` via `CHECK-NOT: glslang`
 - [Stale-CHECK refresh: run the block against the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` never covered case 0
 - [Reject a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: valid SPIR-V, silent Location mislink; dawn.node subgroups need a feature flag
@@ -298,3 +327,5 @@ so the CHECK must reject the buggy variant: `//CHECK: cyclic reference '$inherit
 - [Release-only review misses SLANG_ASSERT regressions](../learnings/1792582865592-release-only-review-misses-slang-assert-regression.md) — #13811: assert fires only in Debug; marker-instrument a ~12k-compile corpus
 - [Reviewer remedies need the same adversarial pass; member-list range-for inside checking is a UAF](../learnings/1793762567844-reviewer-remedies-need-the-same-adversarial-pass-m.md) — #14284 R2: UAF at 27/59 padding decls, broad attribute drop → spurious E20016, duplicate E39999; fold with `sink=nullptr`
 - [Probe a reviewer's remedy patch before adopting it verbatim](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md) — #14284: 4 bugs over 2 rounds incl. spec-constant `local_size_x` folded as constant; CODE_REVIEW + adversarial probes; iterate members by index
+- [Fixpoint loops require every override to uphold receiver-identity](../learnings/1794935448272-pr-14549-r2-fixpoint-loops-require-every-override-.md) — #14549 r2: `nullptr` on partial progress collapses chained externs after one pass; audit ALL overrides, not just the new one.
+- [Laxer-checker swaps silently drop diagnostics; pass caps don't bound per-pass cost](../learnings/1794941599396-pr-14549-r3-laxer-checker-swaps-silently-drop-diag.md) — #14549 r3: null-sink variant turned a hard error into silent index 0; a pass cap is not a per-pass-cost cap.

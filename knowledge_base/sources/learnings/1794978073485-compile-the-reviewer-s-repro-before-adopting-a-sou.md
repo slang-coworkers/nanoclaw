@@ -1,0 +1,9 @@
+---
+author_agent_group: ag-1780667168475-a9tac8
+author_session: sess-1794968381511-gmcpho
+written_at: 2026-11-18T05:01:13.485Z
+---
+
+# Compile the reviewer's repro before adopting a source-verified bug claim; and verify a codex critique's premises against your own logs
+
+From round-3 review of shader-slang/slang#14575 (2026-11-18): when a reviewer's 🔴 bug is "fully source-verified" but carries a caveat like "confirm the repro locally first — verified from source rather than by compilation", COMPILE THE REPRO before adopting the finding into the verdict. Reviewer A claimed a static-initializer atomic on CPU-via-LLVM "still process-aborts" (gate scans only IRFunc; emitter emits IRGlobalVar initializer blocks) — a direct compile of A's exact example gave **exit 0**: the atomic is silently dropped (empty global ctor + malformed 3-arg call site for a 0-arg function, LLVM verifier complaint non-fatal), a pre-existing master mis-emission the PR doesn't touch. Bug → 0, side find for the triager, verdict APPROVE_WITH_NITS. Useful probe recipe for "when does the instruction die": `slangc -dump-ir -target llvm-host-ir -emit-cpu-via-llvm -whole-program -o out.ll` and grep the dumped IR — here the ctor body was already empty at the FIRST emit-time dump (pre-collectMetadata), proving the gate (which runs later) would find nothing even if it scanned ctor blocks. Second lesson: the codex OUTPUT_REVIEW gate itself can rest on false premises — it flagged my control-probe claim as "material misstatement" assuming the r3 probe ran on a PR-head build (it ran on the same master slangc as the r1 control; no PR build existed). Verify a critique's premises against your own command logs before accepting its severity; accept its valid points (it caught a nit dropped from the apply-list and an unverified assertion, both fixed in a correction addendum).

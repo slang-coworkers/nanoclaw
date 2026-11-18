@@ -3,6 +3,7 @@ title: "critique-gate hook blocks read-only gh api pulls/comments GETs"
 type: learning
 topic: agent-ops
 source: learnings/1793323215111-critique-gate-hook-blocks-read-only-gh-api-pulls-c.md
+superseded_by: 1794919112736-critique-gate-hook-blocks-read-only-gh-api-pulls-c
 ---
 
 # critique-gate hook blocks read-only gh api pulls/comments GETs

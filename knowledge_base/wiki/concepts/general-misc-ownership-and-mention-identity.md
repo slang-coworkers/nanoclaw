@@ -3,7 +3,7 @@ title: "Ownership and Mention Identity"
 type: concept
 group: general-misc
 tags: [github, ownership, attribution, mention, stand-down, verification, authorship]
-source_count: 33
+source_count: 31
 ---
 
 # Ownership and Mention Identity
@@ -66,7 +66,7 @@ Validate rather than compete: apply the PR on a throwaway branch (`gh pr diff N 
 
 On slangpy#1231 a scheduled "no reporter PR after 72 h → hand to fixer" became a review: the reporter had opened #1234 ten minutes after our invite, but our index recorded #1233 (hence linkage from `gh pr list --author` plus a `Fixes #N` body grep). Its CI sat at `action_required`, the real blocker, so the Next-action names the shepherd and requested reviewers. Building the head (`--target slangpy_ext`, new test, repro, vulkan/cuda/cpu sweep) turned "a PR exists" into evidence, which that pre-ruling chain posted as non-blocking notes on the issue ([reporter PR on GPU](../learnings/1792422129310-before-a-scheduled-fixer-handoff-on-a-reporter-pat.md)). ccummingsNV's CHANGES_REQUESTED ("doubles name lookups per dispatch") then moved on our GPU run of the PR's own benchmark, twice per device on main and on the locally merged PR (restore with `checkout --detach <base>`). The built-in 3-decimal ms table is too coarse for µs dispatches, so a pytest plugin outside the worktree logged per-iteration means; outliers moved a 10-sample mean ~25%, so compare medians. GitHub does not clear a CHANGES_REQUESTED on an old head when new commits land ([perf CHANGES_REQUESTED](../learnings/1792681690533-answer-a-maintainer-s-perf-changes-requested-on-a-.md)).
 
-**Source learnings (33):**
+**Source learnings (31):**
 - [verify @-mention identity against PR/commit author before posting to GitHub](../learnings/1783355490728-verify-mention-identity-against-pr-commit-author-b.md) — public error
 - [a relayed authorization can carry a fabricated maintainer attribution into public GitHub artifacts — audit the bytes](../learnings/1784656869644-a-relayed-authorization-can-carry-a-fabricated-mai.md) — live bytes
 - [verify PR authorship via pulls/<n>/commits, never commits?sha=branch](../learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md) — ancestry
@@ -86,11 +86,9 @@ On slangpy#1231 a scheduled "no reporter PR after 72 h → hand to fixer" became
 - [Parked issue self-assigned by a maintainer: fixer handoff becomes conditional](../learnings/1792674358775-parked-issue-self-assigned-by-a-maintainer-fixer-h.md) — #13638
 - [Answer a maintainer's perf CHANGES_REQUESTED on a reporter PR by running the PR's own benchmark against main on our GPU](../learnings/1792681690533-answer-a-maintainer-s-perf-changes-requested-on-a-.md) — medians
 - [slang#13878: a maintainer assigning another human is human ownership; close the chain, no fixer handoff, edit our comment to name the assignee](../learnings/1793030545714-parked-issue-re-check-a-maintainer-assigning-a-hum.md)
-- [Parked-issue re-checks: read the timeline, not just the comments](../learnings/1793041485668-parked-issue-re-checks-read-the-timeline-cross-ref.md) — slang#13750
 - [one-shot re-check prompts can be overtaken by events — diff live GitHub state before picking a branch](../learnings/1793102591047-one-shot-re-check-prompts-can-be-overtaken-by-even.md) — slang#13876
 - [slang#14019: reporter PR #14022 opened 98 s before the triage comment; timeline `cross-referenced` check in fixer Setup and before the triage post](../learnings/1793284881331-check-the-issue-timeline-for-a-contributor-pr-befo.md)
 - [#13870: reassignment + `SPF:*` + `slang 202c` labels + milestone, no comment; a routing hint, not a decision; `updatedAt` > last comment ⇒ read the timeline](../learnings/1793286193023-maintainer-direction-can-arrive-as-labels-assignee.md)
-- [Parked-on-reporter re-checks: read the issue timeline, not just comments](../learnings/1793663874761-parked-on-reporter-re-checks-read-the-issue-timeli.md) — #14069
 - [R6-hold re-checks: check the timeline for a merged reporter PR before posting](../learnings/1793661430992-r6-hold-re-checks-check-the-timeline-for-a-merged-.md) — #14066
 - [Parked-issue re-check: scan the reporter's own PR list, not only the issue timeline](../learnings/1793637251147-parked-issue-re-check-scan-the-reporter-s-own-pr-l.md) — #14135
 - [Before building a bot fix, check for a reporter-opened PR that fixes the same issue](../learnings/1793622493442-before-building-a-bot-fix-check-for-a-reporter-ope.md) — slang#14153

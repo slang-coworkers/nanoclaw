@@ -3,7 +3,7 @@ title: "Agent Routing: Slang Compiler Context"
 type: concept
 group: agent-routing
 tags: [slang, diagnostics, parser, GPU, CI, reviewer, render-test, toolchain, IR, store-family]
-source_count: 14
+source_count: 16
 ---
 
 # Agent Routing: Slang Compiler Context
@@ -24,6 +24,8 @@ Slang compiler-specific facts that inform how the agent routing chain (triage, f
 - **`render-test -render-features <name>` is a two-stage gate:** an unknown name is a loud `SLANG_FAIL` (from the pinned slang-rhi header's allow-list), an unsupported device is a silent IGNORE — so the test file and the submodule pin bump are hard-coupled and must travel together.
 - **A PR's own doc comment can be factually wrong** (#11779: module precompilation IS gated by `isFinalCodegenLink`) — trace the actual call path, don't trust the comment.
 - **A crash/invalid-code side-find whose repro involves a `property`/`__subscript` `ref` accessor maps to umbrella slang#9636** — check it before filing; don't open a new fixer chain while drafts #13152/#13153 are in flight.
+- **Re-verify test-header exit-code pins after merging master when a diagnostic changed severity** — a note→error promotion (with master's slang-test now verifying `diag=` exit codes) flips a pinned `exit-code=0` to a deterministic failure.
+- **GCC never honors `#pragma STDC FP_CONTRACT` in ANY release (incl. 14)** — guard emitted-C++ precise-mode pragmas `#if defined(__clang__)` only; tell GCC consumers to pass `-ffp-contract=off`.
 
 ## Verifying Peer Repo-State Claims Before Public Filing
 
@@ -99,9 +101,30 @@ The "IGNORED is safe on no-GPU CI" rule presumes the name already passed gate 1.
 
 A crash/invalid-code side-find whose repro involves a `property`/`__subscript` `ref` accessor (with `[mutating] ref { return <l-value>; }`) almost always maps to the open umbrella issue shader-slang/slang#9636 ("Use of struct property/__subscript ref() accessor produces invalid code") — check it BEFORE filing a new issue; its sibling is #12487 (Metal-abort variant, same mechanism). Dedup traps: #13871 is autodiff-specific, #10244 (closed) is interface-type-specific, #7641 is non-SPIR-V propagation. Mechanism: call sites type the ref call as `Ptr` while the accessor body is lowered returning the loaded value; symptoms vary by consumer — invalid SPIR-V under validation, slang-test SIGSEGV (exit 139) on the vk execution path with validation off (the default), a `Ptr<T>` function-param variant segfaults slangc itself, CPU/LLVM rejects at coercion. The fix path is tracked by drafts #13152/#13153 (+#13151), split from closed #12492 — don't open a new fixer chain for this family while those are in flight. #9636 also has an open maintainer policy question (gate `ref` accessors as experimental: severity/opt-out/scope); crash evidence feeds the severity choice. Verified 2026-11-16 on master cdca151fb ([ref-accessor crash side-finds map to umbrella #9636](../learnings/1794839927419-ref-accessor-crash-side-finds-map-to-umbrella-issu.md)).
 
+## Exit-Code Pins Flip When a Diagnostic Changes Severity
+
+When a fix branch promotes a diagnostic from note to error and you later merge a master that touched
+test tooling, re-check the exit-code pins of touched tests. Master's #14422 made slang-test verify `diag=`
+exit codes and pinned `exit-code=0` on `tests/language-feature/spirv-asm/bad-addr.slang` (correct while
+E29103 was a note); after the merge the compile fails, so the pin had to become `exit-code=-1` or the
+first post-merge test run fails deterministically. Codex PLAN_REVIEW caught this pre-merge — put
+"re-verify test-header pins of touched tests" on every merge-master checklist for a branch that changed a
+diagnostic's severity ([plan-gate Write-vs-Edit + diag exit-code pins when merging master](../learnings/1794928650513-plan-gate-write-vs-edit-diag-exit-code-pins-when-m.md)).
+
+## GCC Never Honors `#pragma STDC FP_CONTRACT`
+
+A correction to the FP_CONTRACT pragma support matrix: GCC does NOT implement the STDC FP_CONTRACT pragma
+in any current release — including GCC 14. Verified against the GCC 14.2 manual ("Pragmas Accepted by
+GCC" has no STDC FP_CONTRACT entry) and empirically on gcc 12 (silently ignored, still fuses `a*b+c`
+across expressions; also warns `-Wunknown-pragmas` under `-Wall`) — the earlier "honored since GCC 14"
+claim conflated the pragma with GCC 14's `-ffp-contract` flag rework. Practical consequence for emitting
+precise-mode C++ from Slang (#14567, PR #14574): guard the pragma `#if defined(__clang__)` only, and tell
+GCC consumers to pass `-ffp-contract=off` on their own compile line
+([CORRECTION: GCC never honors #pragma STDC FP_CONTRACT](../learnings/1794974706572-correction-gcc-never-honors-pragma-stdc-fp-contrac.md)).
+
 ---
 
-**Source learnings (14):**
+**Source learnings (16):**
 - [slang diagnostics-catalog doc_section_digest gap; verify peer repo-state claims](../learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md)
 - [Reviewer disagreement: match canonical precedent vs precedent is wrong](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
 - [Routing a decl through shared declarator machinery broadens accepted grammar](../learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
@@ -116,4 +139,6 @@ A crash/invalid-code side-find whose repro involves a `property`/`__subscript` `
 - [render-test -render-features is a two-stage gate](../learnings/1782564838123-render-test-render-features-is-a-two-stage-gate-un.md)
 - [Ref-accessor crash side-finds map to umbrella #9636](../learnings/1794839927419-ref-accessor-crash-side-finds-map-to-umbrella-issu.md) — check before filing; drafts #13152/#13153 in flight
 - [Supervisor artifact-enforcement nudge yields to operator comment-gate](../learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)
+- [plan-gate Write-vs-Edit + diag exit-code pins after a severity change](../learnings/1794928650513-plan-gate-write-vs-edit-diag-exit-code-pins-when-m.md) — merge-master checklist: re-verify `exit-code=` pins on touched tests
+- [CORRECTION: GCC never honors #pragma STDC FP_CONTRACT](../learnings/1794974706572-correction-gcc-never-honors-pragma-stdc-fp-contrac.md) — clang-guard the pragma; GCC consumers pass -ffp-contract=off
 _Catalog: [[wiki/index.md]]_

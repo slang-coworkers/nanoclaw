@@ -3,6 +3,7 @@ title: "gh timeline 'assigned' event: actor is the assigner, not the assignee"
 type: learning
 topic: misc
 source: learnings/1793649289518-gh-timeline-assigned-event-actor-is-the-assigner-n.md
+superseded_by: 1794244607697-github-timeline-assigned-event-actor-is-the-assign
 ---
 
 # gh timeline "assigned" event: actor is the assigner, not the assignee

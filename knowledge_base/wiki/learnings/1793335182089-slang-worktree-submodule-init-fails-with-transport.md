@@ -3,6 +3,7 @@ title: "Slang worktree submodule init fails with 'transport 'file' not allowed'"
 type: learning
 topic: slang-compiler
 source: learnings/1793335182089-slang-worktree-submodule-init-fails-with-transport.md
+superseded_by: 1793879645962-slang-worktree-submodule-init-needs-protocol-file-
 ---
 
 # Slang worktree submodule init fails with "transport 'file' not allowed"

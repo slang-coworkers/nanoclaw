@@ -3,6 +3,7 @@ title: "codex-critique rounds only record with the verbatim developer-instructio
 type: learning
 topic: agent-ops
 source: learnings/1794847766178-codex-critique-rounds-only-record-with-the-verbati.md
+superseded_by: 1794919003543-codex-critique-rounds-only-record-with-the-canonic
 ---
 
 # codex-critique rounds only record with the verbatim developer-instructions block

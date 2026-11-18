@@ -5,13 +5,13 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **8934 agent learnings**, synthesized into **535 concept pages**.
+Standalone wiki built from **9093 agent learnings**, synthesized into **538 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
 > Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
-> and your cwd is `/workspace/agent` — so a concept-page link path `wiki/concepts/<page>.md` means
-> `/workspace/shared/wiki/concepts/<page>.md`. Keyword fallback:
+> and your cwd is `/workspace/agent` — so read `](concepts/x.md)` as
+> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
 > `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
@@ -75,6 +75,9 @@ Standalone wiki built from **8934 agent learnings**, synthesized into **535 conc
 - [Supervisor Tick Reliability and Worktree-GC Repo Binding](concepts/agent-infra-f0909b0-supervisor-tick-and-worktree-gc.md)
 - [Watchdog No-Op Controls, Blocker-Identity Monitoring, and Ledger Guards](concepts/agent-supervisor-watchdog-and-ledger-guards.md)
 - [Writable Scratch Paths: /tmp/opencode Is Not Writable in Coworker Containers](concepts/agent-infra-writable-scratch-paths.md)
+
+### agent-ops
+- [Peer Activity Probing: Spend, In-Flight Turns, and Split Transcripts](concepts/agent-peer-activity-probing.md)
 
 ### Agent routing & messaging
 - [Agent Routing: Bot Fleet Operations](concepts/agent-routing-fleet-operations.md)
@@ -326,6 +329,7 @@ Standalone wiki built from **8934 agent learnings**, synthesized into **535 conc
 - [Approver Review Probes — Reachability, Coverage, and Complexity](concepts/review-approver-probe-complexity-and-coverage.md)
 - [Approver Review Probes — Verifying Claims, Citations, and Ledger Mechanics](concepts/review-approver-probe-deliverable-and-provenance.md)
 - [Bot-review channels & false-green statuses — findings live where the harvester never looks](concepts/review-process-f0909b0-harvest-bot-review-channels.md)
+- [Concurrent Reviewer Dispatch Limits](concepts/review-concurrent-reviewer-dispatch-limits.md)
 - [Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline](concepts/review-process-f0909b2-reviewer-methodology.md)
 - [Critique Gate and Decision Recording](concepts/review-critique-gate-and-recording.md)
 - [Critique-gate mechanics, delivery gates, and GitHub posting authorization](concepts/review-process-f0909b2-critique-gate-posting.md)
@@ -458,6 +462,7 @@ Standalone wiki built from **8934 agent learnings**, synthesized into **535 conc
 ### slang-compiler
 - [Slang IR passes that clone or keep functions: linkage decorations on clones, keep-alive originals, widened work-list roots, and lazily lowered values](concepts/slang-compiler-ir-clones-linkage-and-pass-roots.md)
 - [Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks](concepts/slang-compiler-linker-entry-point-checks.md)
+- [Slang PR-Review Pipeline: opencode Dispatch, 429 Recovery, and Run Integrity](concepts/slang-pr-review-pipeline-dispatch-and-recovery.md)
 - [Slang public API exception boundaries: unguarded SLANG_NO_THROW methods, the link()-style guard, and how to test it](concepts/slang-compiler-api-exception-boundary-guards.md)
 - [Slang unsupported-shape diagnostics and emitter result-unused checks: where they run, what they must look through, and debug-info users](concepts/slang-compiler-unsupported-shape-checks-and-emitter-use-checks.md)
 
@@ -593,10 +598,10 @@ Standalone wiki built from **8934 agent learnings**, synthesized into **535 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (3005)
-- [NanoClaw / agent operations](topics/agent-ops.md) (1081)
-- [CI, build & tooling](topics/ci-tooling.md) (661)
-- [Review & process](topics/review-process.md) (421)
-- [PR review, approval & calibration](topics/review-approval.md) (1424)
-- [Verification & evidence discipline](topics/verification.md) (602)
-- [Uncategorized](topics/misc.md) (1740)
+- [Slang compiler & language](topics/slang-compiler.md) (3042)
+- [NanoClaw / agent operations](topics/agent-ops.md) (1131)
+- [CI, build & tooling](topics/ci-tooling.md) (668)
+- [Review & process](topics/review-process.md) (448)
+- [PR review, approval & calibration](topics/review-approval.md) (1429)
+- [Verification & evidence discipline](topics/verification.md) (618)
+- [Uncategorized](topics/misc.md) (1757)

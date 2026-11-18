@@ -3,7 +3,7 @@ title: Slang compiler internals — gates, effect tiers, layout, and platform tr
 type: concept
 group: agent-routing
 tags: [slang, ir, codegen, cuda, spirv, tests, gates, ast, layout]
-source_count: 16
+source_count: 18
 ---
 
 ## TL;DR
@@ -19,7 +19,11 @@ Compiler-technical facts surfaced by fixer/approver sessions on shader-slang/sla
 - **Shadowable keywords can't be recognized by leading-token lookahead** — tentative-parse and commit on a token no existing grammar can produce (e.g. trailing `else`).
 - **Platform traps:** `Path::isAbsolute` is platform-gated for drive/UNC (returns false for `C:\` on Linux); slang-test directive arg tokens keep their quotes; prefer `#if`-gating a platform-dependent test assert over deleting it; AST `ASTNodeType` IDs are positional with NO serialization version gate (unlike IR).
 - **A many-to-one enum collision where routing keys on the coarse enum but the consumer keys on a finer property is a latent drift ICE** (DescriptorHandle: `TextureBuffer` and `Buffer` share `DescriptorKind.UniformTexelBuffer` but lower to different IR types).
-- **A sentinel-gated helper needs a negative-invariant test** (assert out-of-domain inputs return the sentinel), not just positive-direction coverage.
+- **A sentinel-gated helper needs a negative-invariant test** (assert out-of-domain inputs return the
+  sentinel), not just positive-direction coverage.
+- **Serialized `.slang-module` files carry no AST bodies** (only IR keeps them) — cross-module body walks
+  must go IR-level; and `-experimental-feature` is passed by every bootstrap build, so gate features on
+  `loadedModulesList`, not that flag.
 
 ## Optimizations that must "prove byte-compatibility or corrupt silently"
 
@@ -51,8 +55,10 @@ Attribution matters when baselines churn: [peephole test-baseline churn from a g
 - [AST `ASTNodeType` IDs are positional with NO serialization version gate](../learnings/1788214747973-slang-ast-astnodetype-ids-are-positional-with-no-s.md) — slang-fiddle orders them as a pre-order DFS of the class hierarchy; serialized AST tags nodes by raw uint with no stable-name remap. Inserting/reordering a class mid-hierarchy silently corrupts old `.slang-module` deserialization (contrast IR, which has stable names + a module-version gate). Any add/split-AST-node refactor must resolve module compat with maintainers.
 - [CUDA/PTX 1D texture Load silently returns zero](../learnings/1787173148906-cuda-ptx-1d-texture-load-integer-coord-tex-level-1.md) — GPU-verified: the integer-coord `tex.level.1d.v4.f32.s32` fetch returns all zeros while float-coord and 2D controls work. Diagnose with a `static_assert(false)` in the 1D arm; do NOT un-gate the `#if 0` stub. The decisive experiment is a ~30-line `.cu` with positive controls, not a 20-min rebuild.
 - [Sentinel-gated helpers need a negative-invariant test](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md) — a guard reading `.isSet()`/null/empty silently depends on out-of-domain inputs returning the sentinel; a positive-only drift test that `continue`s past out-of-domain keys does not protect it. Also flag cross-enum index reuse (`CapabilityAtom(i)`/`CapabilityName(i)`) without a shared-integer-invariant comment.
+- [Serialized `.slang-module` files store NO AST function bodies](../learnings/1794912883131-codex-reply-rounds-don-t-record-serialized-modules.md) — `Fossilized_FunctionDeclBase` is empty by design (only IR keeps bodies), so an AST-level body walk sees `decl->body == null` for imported serialized helpers; signature-level checks (params/types) still work. A fix that must see bodies across serialized imports has to go IR-level — check this before designing an AST walk for cross-module behavior. Same atom: the `-experimental-feature` CLI flag is passed by EVERY standard-module bootstrap build, so it is useless as a feature gate for new checker work — gate on scanning `linkage->loadedModulesList` for the feature's actual declarations instead (follow `GenericDecl::inner`, which is not in memberDecls).
+- [Hash-stability tests need a SECOND session](../learnings/1794903195906-hash-stability-tests-need-a-second-session-same-se.md) — a same-session "hash twice, compare" check for API-level hash tests (getEntryPointHash/buildHash family, `tools/slang-unit-test/`) hits the module cache and hides pointer-valued inputs that differ across processes; create a second slang session and compare the entry-point hash byte-for-byte across sessions. Also pin: `rename(psA→"X")` vs `rename(psB→"X")` must produce different hashes for the requested entry point — the wrapper's override alone is not a distinguishing identity, the base is (`RenamedEntryPointComponentType::buildHash` hashes the override then `m_base`).
 
-**Source learnings (16):**
+**Source learnings (18):**
 - [CUDA/PTX 1D texture Load returns zero — diagnose, don't un-gate](../learnings/1787173148906-cuda-ptx-1d-texture-load-integer-coord-tex-level-1.md) — GPU-verified integer-coord 1D fetch is unsupported; fix is a per-case static_assert, not un-gating the stub.
 - [Whole-object bitcast fast path: four independent correctness gates](../learnings/1787213800352-whole-object-bitcast-fast-path-four-independent-co.md) — ABI-not-Natural layout, reject matrices/empty aggregates, alignment ≤ payload; each caught by a different check.
 - [IR-lowering default-arg crash: narrow redirect-gated fallback](../learnings/1787412153690-fixing-ir-lowering-default-arg-crash-narrow-redire.md) — optional defaultArgSource only when it differs from callee; revert-control is the decisive causation test.
@@ -69,3 +75,5 @@ Attribution matters when baselines churn: [peephole test-baseline churn from a g
 - [AST ASTNodeType IDs are positional with no serialization version gate](../learnings/1788214747973-slang-ast-astnodetype-ids-are-positional-with-no-s.md) — mid-hierarchy insert silently corrupts old module deserialization; unlike IR, no version gate.
 - [Sentinel-gated helper needs a negative-invariant test](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md) — assert out-of-domain inputs return the sentinel; positive-only coverage leaves the guard unprotected.
 - [CSE-ing read-only resource reads needs two coherent/volatile checks — field-key + by-value member type](../learnings/1789453151457-resolved-cse-ing-read-only-resource-reads-needs-tw.md) — location form (field key) and by-value form (element type member) both hide a re-read qualifier; store-between test attributes tier vs readNone.
+- [Serialized modules carry no AST bodies; -experimental-feature is not a gate](../learnings/1794912883131-codex-reply-rounds-don-t-record-serialized-modules.md) — body walks across serialized imports must go IR-level; gate features on loadedModulesList.
+- [Hash-stability tests need a second session](../learnings/1794903195906-hash-stability-tests-need-a-second-session-same-se.md) — same-session rebuild hides pointer inputs behind the module cache; renamed wrappers hash override then base.

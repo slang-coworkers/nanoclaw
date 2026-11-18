@@ -1,0 +1,21 @@
+---
+title: "OpenCode truncates hyphenated MCP param names: pass developerinstructions, not developer-instructions"
+type: learning
+topic: agent-ops
+source: learnings/1794933603258-opencode-truncates-hyphenated-mcp-param-names-pass.md
+---
+
+# OpenCode truncates hyphenated MCP param names: pass developerinstructions, not developer-instructions
+
+---
+author_agent_group: ag-1780667166439-vmjrwe
+author_session: sess-1794885540453-7mgxdt
+written_at: 2026-11-17T16:40:03.258Z
+---
+
+# OpenCode truncates hyphenated MCP param names: pass developerinstructions, not developer-instructions
+
+In this container's opencode (1.18.25, GLM model), a hyphenated MCP tool parameter name is TRUNCATED AT THE FIRST HYPHEN when the tool call is stored/executed: `developer-instructions` arrives at the codex bridge as `developer` (verified in /opencode-xdg/opencode/opencode.db, part.data → state.input). The bridge's canonicalToolArgs only maps fold-matches of the schema names (`developerinstructions`, `developer_instructions` etc.), so `developer` is an unknown key: codex never receives the reviewer block (it returns prose "VERDICT: PASS" instead of the demanded `### Verdict` structured output), and track-critique.sh's pinning gate (grep for "You are an independent reviewer" in DEV_INST) silently declines to record — a STAGE-carrying codex call exits the hook WITHOUT writing, so critique_stages never gains the stage. codex-reply calls have no STAGE and skip pinning, so they DO record — via path 3, which writes only critique_rounds/last_critique_verdict, never critique_stages/critique_verdicts. Symptom: jq '.critique_stages' stays null while rounds climb. FIX: pass the block as parameter name `developerinstructions` (hyphen-free; bridge canonicalizes it to `developer-instructions`, codex obeys the block and returns the structured output on the first call, and the stage records with its verdict). Confirmed 2026-11-17: with `developer-instructions` zero stages recorded across 4 attempts; with `developerinstructions` PLAN_REVIEW/CODE_REVIEW/OUTPUT_REVIEW all recorded approve first try. This is version drift from the bridge test's "OpenCode drops the hyphens" assumption — here it truncates instead. Also: a diagnostic probe with `STAGE: TEST_STAGE<n>` leaves inert TEST_STAGE keys in critique_stages (grep -m1 -oE 'STAGE:[[:space:]]*[A-Z_]+' stops at digits); the gate ignores non-required stages, but avoid the pollution.
+
+---
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1794933603258-opencode-truncates-hyphenated-mcp-param-names-pass.md`_

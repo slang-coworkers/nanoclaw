@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 29
+source_count: 30
 ---
 
 ## TL;DR
@@ -16,7 +16,8 @@ group toggles. For a genuinely opt-in (off-by-default) warning use the `pedantic
 tag (precedent: `vertex-shader-missing-sv-position`). Diagnostics are Lua-driven
 (`slang-diagnostics.lua`); pick a FREE code; severity is baked per definition. Any
 warning that fires inside the core module aborts `slang-bootstrap`, so prototype a
-new or widened warning against the core module first.
+new or widened warning against the core module first. Key a new advisory warning on a
+static fact (passing mode), never argument storage; never reuse a retired ID.
 
 **Lossy int→float warning family (#12929–#12933, #12979).** `IntegerLiteralExpr` folds
 unary `-`/`+`/`~` un-truncated (reduce to source width, peel `ParenExpr`); the AST
@@ -54,6 +55,8 @@ The shared-wiki claim that per-warning control is "disable-only" is STALE. `Diag
 
 **A new or widened warning that fires inside the core module breaks the build.** `Session::addBuiltinSource` (`slang-global-session.cpp:~1248`) calls `SLANG_UNEXPECTED("Compiling the core module should not yield any warnings")` on any sink output, so `slang-bootstrap` aborts on the first hit in `core.meta`/`hlsl.meta`/`diff.meta`. Prototype a widened diagnostic against the core module first; to count every hit in one run, comment out that `SLANG_UNEXPECTED` in a throwaway worktree. Example: widening E30515 (generic-param-shadows-outer) to value params (`isGenericParam`) hits exactly `core.meta.slang:2242`, where `__generic<$(ptrTypeParameterList)>` redeclares `Access access` inside `extension<Access access> Ptr<void, access>` ([core-module bootstrap aborts on any warning](../learnings/1792436239104-core-module-bootstrap-aborts-on-any-warning-worktr.md)).
 
+**Key a new advisory warning on a static fact, never on a guessed dynamic one — the #13836 ref→inout forwarding case.** shader-slang/slang#13836 (ref-param storage exclusivity) wants a warning when a `__ref` param is forwarded to an `out`/`inout` param (suggesting a local-temp bounce, per the maintainer direction on the issue). That design survives #14460's removal of E30709/E30710 only if the check keys on the *parameter's passing mode* (a `Ref*` mode means storage is possibly-aliased by signature — a static fact) rather than on argument storage (a barrier-blind guess, exactly #14460's false-positive class). Package such advisory warnings in an opt-in group (`all`/`pedantic`) per docs/diagnostics.md — that guidance exists because warnings-as-errors builds broke — and never reuse retired diagnostic IDs (30709/30710 are retired around `slang-diagnostics.lua:4043`). Insertion point: the param loop in `CheckInvokeExprWithCheckedOperands`, `slang-check-expr.cpp:4436-4451` ([#13836 ref→inout forwarding warning: key on param passing mode, not argument storage](../learnings/1794900398941-13836-ref-inout-forwarding-warning-key-on-param-pa.md)).
+
 ## The lossy int→float literal-checking traps
 
 **Literal folding is un-truncated.** The parser folds unary `-`/`+`/`~` INTO `IntegerLiteralExpr`, keeping the un-truncated 64-bit payload until IR lowering, so `-0xffffffff` (a `uint`) reaches the checker as −4294967295 though its value is `1u`. Reduce the payload to the source width (sound for a literal: negation/bitwise-not commute with truncation mod 2^width), peel `ParenExpr`, and use two's-complement *magnitude* for negatives. `tryFoldIntegerConstantExpression` evaluates in 64 bits WITHOUT per-op wrapping, so a folded *binary* expression can differ from runtime (`(uint(0xffffffff)+2)/3` folds to 1431655765, runtime `0u`) — gate representability checks to bare literals ([IntegerLiteralExpr folds unary ops (un-truncated); folder is un-wrapped](../learnings/1788812664549-integerliteralexpr-folds-unary-ops-un-truncated-fo.md)).
@@ -90,7 +93,7 @@ The shared-wiki claim that per-warning control is "disable-only" is STALE. `Diag
 
 **Internal-symbol unit tests go in `slang-static-unit-test`.** To call a non-`SLANG_API` `source/slang` entry point (`readSerializedModuleSerializationVersion`, IR/AST builders), don't conclude "needs a SLANG_API shim + sign-off": `slang-unit-test` is a shared library reaching only exported symbols, while `slang-static-unit-test` links the compiler statically for exactly this — no ABI change (precedent `unit-test-ir-dce.cpp`), and its typed fossil accessor dissolves the "brittle byte-poke" objection ([slang-static-unit-test is the module for testing non-exported source/slang symbols](../learnings/1788679074455-slang-static-unit-test-is-the-module-for-testing-n.md)). That target landed recently, so a PR forked before it lacks it — confirm at the PR ref (`gh api .../contents/tools/slang-static-unit-test?ref=<pr-head>`); any claim that a target, file or helper is *present* must be checked at the exact reviewed ref ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (29):**
+**Source learnings (30):**
 
 - [GLSL diag tests need SIMPLE_EX](../learnings/1792703656968-slang-test-glsl-diagnostic-tests-lang-glsl-must-pr.md) — `-lang glsl` must precede the file; `#version` adds 2 diags
 - [Slang HAS opt-in warnings](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — WarningLevel ladder; `pedantic` for off-by-default
@@ -121,3 +124,4 @@ The shared-wiki claim that per-warning control is "disable-only" is STALE. `Diag
 - [annotations are substring matches](../learnings/1793094492688-slang-diagnostic-test-annotations-are-substring-ma.md) — tag severity; separate files per prefix
 - [.hlsl tests gitignored; call-paren carets](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — `git add -f`; caret on last `(`
 - [E55204 error + span entries](../learnings/1794137172205-exhaustive-diagnostic-test-annotate-both-the-error.md) — span-only annotation fails exhaustive mode (#14412)
+- [#13836 ref→inout forwarding warning: key on param passing mode](../learnings/1794900398941-13836-ref-inout-forwarding-warning-key-on-param-pa.md) — static fact not argument storage; opt-in group; never reuse retired IDs

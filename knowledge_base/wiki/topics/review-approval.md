@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1424 learnings. [Catalog](../index.md)
+1429 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1400,6 +1400,8 @@ type: topic
 - [CORRECTION — [approver/challenger-miss] the fetch-integrity rule I attached was wrong in mechanism; byte-count is an EMPTY control, not a REF control](../learnings/1785857200738-correction-approver-challenger-miss-the-fetch-inte.md)
 - [CORRECTION: an #if 0 chain can have an #elif — a grep that omits #elif inverts the dead/live verdict](../learnings/1785781716720-correction-an-if-0-chain-can-have-an-elif-a-grep-t.md)
 - [Critique finding can be accurate-but-intentional; verify the resolver before acting](../learnings/1787306565821-critique-finding-can-be-accurate-but-intentional-v.md)
+- [Critique gate keyword-matches [Fix Report] in verdicts; MEMBER issue-body policy tension](../learnings/1794935349519-critique-gate-keyword-matches-fix-report-in-verdic.md)
+- [Critique REQUIREMENTS URLs need a #anchor or the round silently does not record](../learnings/1794899321120-critique-requirements-urls-need-a-anchor-or-the-ro.md)
 - [Critique-gate DECISION_REVIEW can raise a severity-classification disagreement that is an escalation, not a self-resolve](../learnings/1787324124929-critique-gate-decision-review-can-raise-a-severity.md)
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [Dampen repeat approver re-dispatch on a churning size-capped PR](../learnings/1786519685407-dampen-repeat-approver-re-dispatch-on-a-churning-s.md)
@@ -1411,10 +1413,12 @@ type: topic
 - [Independent critique catches regressions a green exhaustive test pass misses — don't equate them](../learnings/1790033016436-independent-critique-catches-regressions-a-green-e.md)
 - [learnings INDEX rows are generated from the FILENAME SLUG so a retraction cannot be patched in — title the mechanism not the verdict](../learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md)
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md)
+- [NanoClaw workflow-state wipe on restart + track-critique hook misses **Verdict** format](../learnings/1794913228992-nanoclaw-workflow-state-wipe-on-restart-track-crit.md)
 - [Never instruct the pr-approver to post to GitHub](../learnings/1786489442083-never-instruct-the-pr-approver-to-post-to-github.md)
 - [Never push after a maintainer approves — even a comment-only commit auto-dismisses the approval](../learnings/1784048274524-never-push-after-a-maintainer-approves-even-a-comm.md)
 - [Never reword a maintainer's existing code comment; a push dismisses their approval](../learnings/1790967953965-never-reword-a-maintainer-s-existing-code-comment-.md)
 - [pr-approver harvest misses pulls-N-comments where inline findings live](../learnings/1786277284242-pr-approver-harvest-misses-pulls-n-comments-where-.md)
+- [PR-review verdict calibration: 0 bugs + 1 gap → APPROVE_WITH_NITS when the gap is coverage-only on a traced-sound fix](../learnings/1794902853662-pr-review-verdict-calibration-0-bugs-1-gap-approve.md)
 - [Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right](../learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md)
 - [Pushing to an auto-merge-armed PR dismisses the approval but GitHub still enqueues it](../learnings/1792025781326-pushing-to-an-auto-merge-armed-pr-dismisses-the-ap.md)
 - [Rebase onto current origin/master BEFORE the CODE critique, not after the fix is "done"](../learnings/1787661100185-rebase-onto-current-origin-master-before-the-code-.md)
@@ -1430,4 +1434,5 @@ type: topic
 - [Two agents citing the same commit while holding different HEADs manufactures a false disagreement](../learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md)
 - [Verdict-bearing zeros and ones need a four-leg test — counts are semantically blind in both directions](../learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md)
 - [When the probe is irreversible, documentation agreement is the correct stopping point](../learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md)
+- [Workflow-state resets on every inbound; record critiques and deliver in the same turn](../learnings/1794899983608-workflow-state-resets-on-every-inbound-record-crit.md)
 - [Your status report is as unaudited as your code — run the critique on the report, not just the artifacts](../learnings/1786033775232-your-status-report-is-as-unaudited-as-your-code-ru.md)

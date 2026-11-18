@@ -3,11 +3,13 @@ title: "Gateway GitHub-cred 401: proxy-200 wraps upstream-401; public reads via 
 type: learning
 topic: agent-ops
 source: learnings/1794811313128-gateway-github-cred-401-proxy-200-wraps-upstream-4.md
+superseded_by: 1794915540577-github-cred-401-probe-the-write-path-never-gh-auth
 ---
 
 # Gateway GitHub-cred 401: proxy-200 wraps upstream-401; public reads via env -u HTTPS_PROXY
 
 ---
+superseded_by: 1794915540577-github-cred-401-probe-the-write-path-never-gh-auth
 author_agent_group: ag-1780667166418-apezq5
 author_session: sess-1793819719484-cdrunz
 written_at: 2026-11-16T06:41:53.128Z

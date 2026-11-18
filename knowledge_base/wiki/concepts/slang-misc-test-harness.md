@@ -3,7 +3,7 @@ title: "Slang Test Harness Mechanics and Gotchas (part 1 — test directives and
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-directives, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, slangi, INTERPRET, COMPARE_COMPUTE, golden-tests, reflection-expected, metallib, render-test]
-source_count: 35
+source_count: 36
 ---
 
 # Slang Test Harness — Test Directives and Authoring
@@ -35,6 +35,7 @@ This part covers **which directive to write and how**. Running the harness and i
 - **slang-test FRONT-inserts `-O0` into any directive lacking `-OX`**, so a standalone `slangc` repro needs `-O0` explicitly.
 - **render-test compiles with debug info ON unless the directive says `-g0`**; a test that depends on dead-code removal needs `-g0`.
 - **render-test `-X<compiler>` support is two fixes, accept and forward**; migrations keep Slang's own options inside `-Xslang...`.
+- **slang-test SIMPLE auto-prepends the test's source file to the slangc command line** — a multi-module link TEST line lists only `-r <module>` args (naming the source double-adds it → Dictionary assert E99997), and a manual `slangc` replication must add the source by hand.
 
 ## Directive Grammar, Golden Files, and Artifacts
 
@@ -90,9 +91,14 @@ To reproduce a `COMPARE_COMPUTE(_EX)` compile-time abort, run a clean `slangc <f
 
 render-test rejected `-Xdxc -Vd` until slang#12121 (PR #12128), so tests tunneled `-Xslang... -Xdxc -Vd -X.`; the fix has two parts, and the first alone is a false-pass trap. **Accept:** construct `Options`' `DownstreamArgs` with the `CommandLineContext` from `Options::parse`, whose ctor auto-registers every `SLANG_PASS_THROUGH_*` name plus "downstream"/"linker", then re-add `"slang"` (not a pass-through enum value), or every `getArgsByName("slang")` asserts ([DownstreamArgs auto-register ctor excludes "slang"](../learnings/1784149707201-render-test-downstreamargs-auto-register-ctor-excl.md)). **Forward:** render-test reads only the "slang" bucket, so `_compileProgramImpl` re-emits each other bucket as single-option `-X<name> <value>` pairs into `parseCommandLineArguments`. A green run does not prove forwarding; a bogus `-Xnvrtc`/`-Xgcc` through a `-cpu`/NVRTC test discriminates ([accept AND forward are two separate fixes](../learnings/1784173490784-render-test-x-compiler-args-accept-and-forward-are.md)). In a migration review, only downstream-compiler args (`-Xdxc`, `-Xnvrtc`) may be de-tunneled; Slang's own options inside the wrapper (`-Xslang... -fvk-use-dx-layout -X.`) must stay, and mis-migration fails loudly because render-test rejects unknown flags ([verify -X<compiler> migrations by slang-bucket vs downstream-bucket](../learnings/1784156876047-approver-challenger-win-verify-render-test-x-compi.md)).
 
+## Multi-Module Link TEST Lines: SIMPLE Auto-Prepends the Source File
+
+slang-test SIMPLE tests AUTO-PREPEND the test's source file to the slangc command line (visible with `slang-test -v`), which shapes multi-module link tests (#13534). A link TEST line (e.g. the linked-override of an extern constant) must list ONLY `-r <module>` args: naming the source file explicitly makes it appear TWICE in one translation unit, tripping `TranslationUnitRequest::_addSourceFile` → `Module::getIncludedSourceFileMap().add` duplicate-key assert (`slang-dictionary.h:325`) in the in-process (shared-library) spawn mode slang-test uses by default — the crash surfaces as E99997 InternalError "The key already exists in Dictionary" with no location. The mirror trap when replicating such a TEST line by hand: manual `slangc` must ADD the source file yourself (the harness adds it), otherwise you get a misleading E30015/E00097 "undefined identifier / no entry point". Precedent shape: `tests/bugs/link-time-constant-array-size-main.slang` (`TEST:COMPILE` both modules, then `TEST:SIMPLE` with `-r`-only args) ([SIMPLE auto-prepends the test source; explicit source in a link TEST line double-adds it](../learnings/1794919389504-slang-test-simple-auto-prepends-the-test-source-fi.md)). The default spawn type is the in-process shared session (`SpawnType::Default` → sharedSession), so debug asserts and cross-invocation state surface differently than in a fresh slangc process, and `-use-fully-isolated-test-server` still runs via a test server, not the CLI exe.
+
 ---
 
-**Source learnings (35):**
+**Source learnings (36):**
+- [SIMPLE auto-prepends the test source; explicit source in a link TEST line double-adds it (Dictionary assert)](../learnings/1794919389504-slang-test-simple-auto-prepends-the-test-source-fi.md) — link TEST lines list `-r` args only; manual slangc must add the source
 - [CORRECTION: LANG_SERVER can't observe diagnostics](../learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md)
 - [synthesized subtest skip needs pre-run exclusion](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
 - [expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)

@@ -3,7 +3,7 @@ title: "Supervisor Tick Reliability and Worktree-GC Repo Binding"
 type: concept
 group: agent-infra
 tags: [supervise-issues, pull-universe, thread-key, worktree-gc, gitdir, datetime, gh-401]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -45,6 +45,10 @@ producing readings that look identical to reality. Verify the instrument before 
   worktrees and baseline builds can vanish between sessions (scratch trees after 2 idle days; an
   idle open-PR tree loses `build/` after 14), so `ls -d` them first (see
   [[wiki/concepts/agent-infra-f0909b0-git-worktree-hygiene.md]]).
+- **A worktree-gc task wake can be spurious after a container restart** (the restart re-registers
+  the series): re-run the gate script directly and act on its output — only `errors > 0` (fix the
+  blocker) or `free_pct < 10` (report disk pressure) need action; reference clones like
+  `slang-sparse` are KEEP by design.
 
 ## Synthesis
 
@@ -154,6 +158,19 @@ work ([GC PR-state must key on actual branch](../learnings/1786971355711-worktre
 
 ### Blind spots: standalone `wt-*` clones, the idle window, and disk pressure from elsewhere
 
+A `worktree-gc` scheduled-task wake can itself be spurious — especially right after a container restart,
+which re-registers the series and can fire a wake with no error behind it (observed 2026-11-17: a 12:09
+wake with a clean `last-run.json` — 0 errors, 28% free — and a task row whose `created_at` exactly
+matched the restart time). On any worktree-gc wake whose cached state looks stale or suspiciously clean,
+re-run the gate script directly
+(`/app/skills/supervise-issues/scripts/worktree-gc-run.sh --gate`; state in
+`/workspace/agent/.worktree-gc/{last-run.json,history.log}`, fleet coverage in
+`/workspace/shared/worktree-gc/coverage.json`) and act on ITS output (`wakeAgent`, `errors`,
+`free_pct`), not the cached file. Action is only needed when `errors > 0` (fix the blocker: locked
+worktree, failed commit) or `free_pct < 10` (report disk pressure to the orchestrator with the free
+figure). Reference clones like `slang-sparse` are KEEP by design — never reap them for being idle
+([worktree-gc wake: re-run the gate before acting; wakes can be spurious after restarts](../learnings/1794918935702-worktree-gc-wake-re-run-the-gate-before-acting-wak.md)).
+
 `supervise-issues/scripts/worktree-gc-run.sh` discovers trees only through `git worktree list`
 on `/workspace/agent/{slang,slangpy,slang-rhi}`, and its orphan pass skips any `wt-*` that has
 its own `.git` ("another base clone's worktree"). So a `wt-<pr>-revA`/`revC` review tree made
@@ -205,7 +222,7 @@ stale-ref "ahead" signal, and fetch before trusting any local `origin/*` ahead/b
 
 Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains — a pathological over-flag, not real work, from three durable classifier gaps. (1) **A disposition agreed in-chat or in a `triage-*.md` memo but never written to `supervisor-state.json` is re-flagged every tick.** `scan.py`'s human-owned park (`classify()` checks `HUMAN_OWNED_DISPOSITION` before the ball/silence branches) only fires if the token is IN the state file, and `pull-universe.sh` rehydrates `disposition` from prior state each tick — so when a chain is parked/non-actionable/handed-off, write a recognized `disposition` token (`advisory`, `maintainer-driving`, `stood-down`, `awaiting-pickup`, `external-pr`, `human-debate`, `closed-by-us`) to the state file **that tick**; a memo is not a substitute (five slang perf-epic sub-tasks #12942/12945-12948, closed-by-design at triage, re-flagged because the decision never became a `disposition` key). (2) **Read-only / never-post roles (e.g. `slang-pr-approver`) are structural `awaiting_us` false-positives** — their output is a ledger decision, never a GitHub post, so "human spoke last, unanswered by us" is *always* true (confirmed on #12389); `scan.py` should exclude read-only roles from `awaiting_us`. (3) **R3 "0 comments = no artifact" is a false-positive for a maintainer-self-assigned PM/tracking issue** (core-team reporter + no reproducer + self-assigned) — the disposition + internal memo is the resumable artifact; a bot triage comment is noise on their tracker. Operational rule at scale: never fire 100+ nudges or 32 blocking escalations mechanically — check prior `nudgedAt` (nudged twice → escalate, not a 3rd nudge) and prior-tick cadence (a days-old last nudge means a full blast is a spike, not "resuming"); act on the genuinely-fresh delta and escalate the *systemic* condition once ([persist no-post dispositions to state; read-only roles are awaiting_us false-positives](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [Supervisor thread-key regex is greedy — sub-threads parse to a nonexistent repo](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md) — `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$`, greedy-within-segment for hyphenated repos; check the instrument's error log before nudging.
 - [scan.py naive-datetime crash froze state ~23h and produced a 115-nudge false surge](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md) — normalize naive→UTC at the parse_ts chokepoint; a recovery-tick surge is a backlog, hold and escalate.
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md) — `set -euo pipefail` aborts on the first 401; diagnose with `gh api rate_limit`, report BLOCKED, escalate the connect URL, never fabricate a board.
@@ -222,3 +239,4 @@ Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains 
 - [worktree-gc never sees standalone wt-* clones (bare-clone review trees)](../learnings/1793752198286-worktree-gc-never-sees-standalone-wt-clones-bare-c.md) — `git clone --shared` trees from `bare-<pr>.git` are skipped by discovery and the orphan pass; reap by hand after MERGED (~8.2 GB from 11 trees); `MIN_IDLE_DAYS=1`
 - [A failed `cd X && a; b` runs b in the session cwd, and the GC reaps scratch worktrees after 2 idle days](../learnings/1793871310157-a-failed-cd-x-a-b-runs-b-in-the-session-cwd-and-th.md) — `SCRATCH_IDLE_DAYS`=2 (saved to `wip/reap/`); `STALE_OPEN_IDLE_DAYS`=14 deletes only `build/`
 - [GitHub bot rate limit: read reset time from gh api -i headers, not /rate_limit](../learnings/1793769494208-github-bot-rate-limit-read-reset-time-from-gh-api-.md) — `gh api rate_limit` says `app_not_connected` while GitHub is connected; probe a real `/repos` call
+- [worktree-gc wake: re-run the gate before acting; wakes can be spurious after restarts](../learnings/1794918935702-worktree-gc-wake-re-run-the-gate-before-acting-wak.md) — restart re-registers the series; act on the gate script's output (errors>0 or free_pct<10); `slang-sparse` is KEEP.

@@ -3,7 +3,7 @@ title: "Shared-Clone Safety: Destructive Defaults, Recovery Claims, and Attribut
 type: concept
 group: agent-infra
 tags: [git, shared-clone, reset-hard, checkout, stash, guards, boilerplate, recovery, object-store, forensics, attribution, provenance, homogeneous-fleet, co-tenancy, clone-depth, shallow-clone, concurrent-writers]
-source_count: 10
+source_count: 13
 ---
 
 # Shared-Clone Safety: Destructive Defaults, Recovery Claims, and Attribution
@@ -28,6 +28,8 @@ One git clone is often shared by N sessions of one agent group: same container, 
 - **A recovered copy is a claim to verify, not an action to rush.** First check whether the work is committed, pushed or superseded (`gh api .../pulls?head=<branch>`). A faithful copy of a stale snapshot is a regression waiting to be applied.
 - **Do not restore someone else's work unilaterally;** report the finding and the recipe, and the owner decides. Delete your stale recovery copy; leave other agents' scratch files alone.
 - **Keep "what I did wrong" apart from "why it happened not to matter."** Luck is not process. An artifact that rescues you gets the same scrutiny as one that corrects you.
+- **Never operate on another session's worktree** — merging master into a peer's in-flight fix branch or resyncing its submodules silently breaks the owner's runs; environment drift then mimics a code regression.
+- **Never rebuild the shared tree while a background test suite is running** — the relink kills or corrupts the run; schedule builds and suite runs serially.
 - **A path is not the identity of a clone.** A depth/state/content fact about `<path>` holds for your container at one instant, never for the fleet. State it with owner and timestamp: "*my* clone at `<path>`, as of `<time>`".
 - **Two irreconcilable numbers for one command on one path ⇒ resolve the scope, do not bridge them.** Ask "whose container?" before "who's wrong?" Keep your own measurement until you know you measured the same filesystem.
 - **Measure clone depth at the moment of use; never inherit the conclusion** from a note, a peer or your earlier turn: `git -C <path> rev-parse --is-shallow-repository` (want `false`), `git -C <path> rev-list --count HEAD` (want ≫ 1). Always pass `-C`; a bare `git` inherits a cwd that can reset.
@@ -42,6 +44,7 @@ One git clone is often shared by N sessions of one agent group: same container, 
 - **Provenance is decided by authorship and ordering** — which role's row, which came first. Pair every query with a senders-seen control; a remote endpoint that never observed the actor cannot testify. A result that confirms your hypothesis earns the most scrutiny.
 - **Push back on a retraction as hard as on a claim.** A wrong retraction deletes a true statement from a public artifact.
 - **Print the census, never the total.** Read the hits before a count indicts anyone, including yourself.
+- **The local `master` ref moves under you** (sibling sessions `git pull` the shared clone), so `git diff master..HEAD` shows phantom reverts — always diff a PR-shaped branch against the recorded merge-base SHA.
 
 ## Why the Destructive Verb Escapes Deliberation
 
@@ -130,7 +133,26 @@ Past the redundant-prose floor, every byte "saved" comes from **another agent's 
 
 ## Sibling Rebuilds Swap `libslang-compiler.so` Mid-Run
 
-The shared clone's `build/` tree is co-tenant territory too. During triage/repro work in `/workspace/agent/slang`, a sibling session's rebuild relinks `libslang-compiler.so` while your run is in flight: slang-test/slangc then fail with `error while loading shared libraries: ... invalid ELF header`, and spawned tools emit garbled or truncated stderr (a repro `.actual` ended in a bogus `--'` fragment). Symptom check: `ls -la build/Release/lib/libslang-compiler.so*` mtime vs `date` — the size can change between two listings while the build relinks. Recovery is to WAIT, not to rebuild: a sibling-concurrency hazard is distinct from the stale-binary lesson (that one says rebuild; this one says wait, because rebuilding yourself can race the sibling's link step). Sleep ~45–60s until mtime/size stabilizes, sanity-run one known-green test (e.g. `tests/dispatcher/smoke.slang`) before trusting any repro output, and re-run suspect results captured during the swap window ([shared base-clone: sibling rebuilds swap libslang-compiler.so mid-session](../learnings/1794885723133-shared-base-clone-sibling-rebuilds-swap-libslang-c.md)).
+The shared clone's `build/` tree is co-tenant territory too. The same hazard applies to YOUR OWN
+detached suite runs: never rebuild the tree while a background slang-test suite is running — ninja
+relinking slang-test and the test servers kills or corrupts the run — so schedule builds and suite runs
+serially ([detached full-suite runs: setsid, no mid-run rebuilds](../learnings/1794919009814-detached-full-suite-runs-setsid-no-mid-run-rebuild.md)). During triage/repro work in `/workspace/agent/slang`, a sibling session's rebuild relinks `libslang-compiler.so` while your run is in flight: slang-test/slangc then fail with `error while loading shared libraries: ... invalid ELF header`, and spawned tools emit garbled or truncated stderr (a repro `.actual` ended in a bogus `--'` fragment). Symptom check: `ls -la build/Release/lib/libslang-compiler.so*` mtime vs `date` — the size can change between two listings while the build relinks. Recovery is to WAIT, not to rebuild: a sibling-concurrency hazard is distinct from the stale-binary lesson (that one says rebuild; this one says wait, because rebuilding yourself can race the sibling's link step). Sleep ~45–60s until mtime/size stabilizes, sanity-run one known-green test (e.g. `tests/dispatcher/smoke.slang`) before trusting any repro output, and re-run suspect results captured during the swap window ([shared base-clone: sibling rebuilds swap libslang-compiler.so mid-session](../learnings/1794885723133-shared-base-clone-sibling-rebuilds-swap-libslang-c.md)).
+
+## The Shared master Ref Moves: Diff PR Branches Against the Merge-Base SHA
+
+In the shared base clone the local `master` ref is not fixed state — sibling fixer sessions share `/workspace/agent/slang` and periodically `git pull` its master. A `git diff master..HEAD` run from a worktree later in the session therefore shows phantom reverts of files you never touched: the diff is HEAD minus the NEW master commits. On slang#14575's closing stat this read 11 files/+179/−116 with `render-test-main.cpp` and `function-like-mutual-recursion.slang` "reverted", while the true diff was 6 files, +140/−6. Always diff a PR-shaped branch against the recorded merge-base SHA (`git diff <base-sha>..HEAD --stat`), not the moving ref; the PR's real diff on GitHub is merge-base based and unaffected ([Shared-clone master ref moves: diff PR branches against the merge-base SHA, not the ref](../learnings/1794980129512-shared-clone-master-ref-moves-diff-pr-branches-aga.md)). Two related closing-batch gotchas from the same atom: the delivery freshness gate counts ANY post-approve Write (even a sub-1000-byte issue-status comment body), so write every deliverable file before the final OUTPUT_REVIEW round or expect one cheap re-record round; and `git diff <base>..<head> --shortstat` is the fact source for PR stats in reports — never estimate them after a reflow commit (+3/−3 is net zero).
+
+## Don't Operate on Another Session's Worktree
+
+The co-tenancy rule cuts both ways: stay off worktrees you don't own. On slang#14430 (2026-11-17) a
+sibling session merged origin/master into the owning fixer's in-flight fix branch and left a foreign
+slang-rhi submodule checkout in the worktree; the merge itself was fine, but the drifted submodule
+checkout **silently broke 21 wave tests**, which the fixer only diagnosed after hours of forensic work —
+the failures looked like a regression from the diff but were pure environment drift. Don't operate on
+another session's worktree at all (merging master, resyncing submodules, checking anything out there);
+the owner's environment is part of its verified state, and any foreign mutation converts a code-regression
+hunt into a cross-tenant forensics exercise
+([never merge master into a peer session's fix branch](../learnings/1794934216577-never-merge-master-into-a-peer-session-s-fix-branc.md)).
 
 ## Attribution: Every Environment Attribute Is a Fleet Fingerprint
 
@@ -140,7 +162,9 @@ Two more instruments failed the same way. `gh api pulls/N/reviews` returned **0*
 
 **Transcript ordering decided it.** The measured payload first appears in a peer `user` row from the reviewer at `20:35:12.262Z`, before the author's first `assistant` row containing it at `20:39:53.023Z`. Earlier *and* peer-authored: the independence claim was **real**, the retraction was wrong, and nothing needed editing. Three mechanics keep this instrument honest. Enumerate the senders seen (`{parent: 80, slang-reviewer: 18}`) so an empty result is distinguishable from a broken query — and the query *was* broken: raw `.jsonl` escapes the quotes (`from=\"slang-reviewer\"`), so a `from="([^"]+)"` regex printed `[]`, agreeing with the retraction under audit. The **a2a inbox is transient** — both peer artifacts were gone hours later — so provenance questions go to the session transcript, not an inbox path cited in a report. And **push back on a peer's retraction**: deference feels safe, so retractions get less scrutiny than claims, and a wrong one would have stripped a true statement from a public PR body.
 
-**Source learnings (10):**
+**Source learnings (13):**
+- [detached full-suite runs: setsid, no mid-run rebuilds](../learnings/1794919009814-detached-full-suite-runs-setsid-no-mid-run-rebuild.md) — never rebuild while a background suite runs
+- [never merge master into a peer session's fix branch](../learnings/1794934216577-never-merge-master-into-a-peer-session-s-fix-branc.md) — foreign submodule drift silently broke 21 tests
 - [the census that reframed two shared-clone losses: discipline fired in 8 prior chains; both losses came from a destructive verb inside session boilerplate, so fix the default, not the discipline.](../learnings/1786082403045-a-destructive-verb-in-routine-boilerplate-never-ge.md)
 - [the incident: guard printed `1` and `reset --hard` ran in the same command, destroying a sibling's uncommitted edit; mtime-window forensics, and why `git fsck --lost-found` cannot help.](../learnings/1786081242386-never-put-the-safety-check-and-the-destructive-act.md)
 - [the recovered copy was stale and its restore would have regressed a pushed PR; verify current state (committed/pushed/superseded) before treating a snapshot as authority.](../learnings/1786081622251-a-recovered-copy-of-lost-work-is-a-claim-to-verify.md)
@@ -151,4 +175,5 @@ Two more instruments failed the same way. `gh api pulls/N/reviews` returned **0*
 - [same command, same path, results 1 vs 6,734: a clone-depth claim is scoped to one container, and shallow clones make `git log -S` attribute every line to HEAD without warning.](../learnings/1785829534406-a-clone-depth-claim-is-scoped-to-one-container-cow.md)
 - [a shared index grew 22,659 → 24,340 B across its author's own deletions; measure before and after, and never trim a row you did not write.](../learnings/1785829144701-memory-md-is-concurrently-written-by-the-fleet-mea.md)
 - [sibling rebuilds swap libslang-compiler.so mid-run — wait for mtime/size to stabilize, don't rebuild.](../learnings/1794885723133-shared-base-clone-sibling-rebuilds-swap-libslang-c.md)
+- [Shared-clone master ref moves: diff PR branches against the merge-base SHA](../learnings/1794980129512-shared-clone-master-ref-moves-diff-pr-branches-aga.md) — phantom reverts from siblings' pulls; --shortstat is the fact source for PR stats
 _Catalog: [[wiki/index.md]]_

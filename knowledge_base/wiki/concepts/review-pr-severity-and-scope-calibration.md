@@ -3,7 +3,7 @@ title: "PR Review Severity and Scope Calibration"
 type: concept
 group: review-process
 tags: [pr-review, severity-calibration, human-calibration, re-review-scope, coverage, maintainer-intent, false-positives, base-rate]
-source_count: 15
+source_count: 16
 ---
 
 # PR Review Severity and Scope Calibration
@@ -22,6 +22,7 @@ source_count: 15
 - **Coverage shape matters**: a test can pass while never entering the branch the fix changed (single-element vs wholesale array copy).
 - **A flagged correctness gap in the mechanism the PR changes is in-scope**, never a follow-up; codegen review is execution-first (compile the shape + SPIR-V validation).
 - **When a maintainer keeps calling a bot PR a rewrite, concede early** — stand down without restating the design.
+- **0 bugs + 1 gap is not a mechanical verdict.** Coverage-only gap on a traced-sound fix → APPROVE_WITH_NITS (log the judgment call + re-open condition); a gap on untested-path behavior change, or one contradicting a self-check claim → REQUEST_CHANGES.
 - **A nudge is justified by deviation from the repo's base rate, never an absolute day count.** The draft interval resets the clock; read the timeline actor before reporting a dismissed approval.
 
 ## Overview
@@ -64,6 +65,10 @@ When a brief scopes you to "confirm these facts about the bug," the unasked ques
 
 **In-band sentinels inside a validator are a bug class of their own:** if the validator's null test and the consumer's are computed from different values (raw field vs derived address), a crafted input satisfies one and not the other — check that they match exactly. **Model the arithmetic instead of trusting the algebra:** a 20-line script over realistic offsets with two controls (genuine nulls still map to the sentinel; ordinary forward pointers don't collide) turns "looks constructible" into "constructible at D = 0, 4, 12, 28, 32, 160, 3840, …", which licenses publishing a confirmed defect. Credit the origin: that thread was found by a review bot, and the public text must say so; re-deriving someone else's finding and presenting it as yours is the same defect as re-deriving their control and framing it as a refutation of them ([read the fix PR's open review threads, not just the issue's facts](../learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md)).
 
+## Verdict mapping for 0-bugs-plus-gaps profiles is judged, not mechanical
+
+The same profile (0 bugs, 1 gap) mapped to APPROVE_WITH_NITS on #14529-r1 and REQUEST_CHANGES on #14507-r1, so the verdict comes from the gap's nature, not the counts. Working calibration (#14531 r1): if the gap is **test-coverage-only** on a fix whose mechanism Reviewer A traced sound, and there is no maintainer direction to enforce — issue-body requirements are *issue requirements*, not maintainer direction, so they don't force REQUEST_CHANGES — follow the most recent same-shape precedent → APPROVE_WITH_NITS, and log the judgment call in the verdict plus the re-open condition ("if the added negative test reveals the diagnostic does not fire through route X, re-open — that's a real funnel gap"). If the fix **alters behavior on untested paths** (#14507), or the gap contradicts a self-check claim that a requirement is fully met when it is materially wrong, lean REQUEST_CHANGES. Always surface the self-check disagreement as a finding either way ([PR-review verdict calibration: 0 bugs + 1 gap → APPROVE_WITH_NITS when the gap is coverage-only on a traced-sound fix](../learnings/1794902853662-pr-review-verdict-calibration-0-bugs-1-gap-approve.md)).
+
 ## Before Nudging a Stalled PR, Compute the Repo Base Rate and Read the Timeline Actor
 
 A "PR has been awaiting review for N days" premise fails several ways that look identical to a real stall, and the right output is often "post nothing"; on shader-slang/slang#12179 (2026-08-04) the conclusion flipped from "nudge warranted" to "post nothing" once each premise was checked [before nudging a stalled PR, compute the repo base rate and check the draft interval](../learnings/1785838727264-before-nudging-a-stalled-pr-compute-the-repo-base-.md):
@@ -86,7 +91,7 @@ The deferral line is **not** size but **"is this a correctness gap in the mechan
 
 **The scope decision can also be "stop entirely".** When a maintainer repeatedly says "this isn't what I asked for" and signals a reboot on a stronger model, concede rather than grind a fix list; each round burns budget and goodwill. A fidelity gate (e.g. a codex PLAN_REVIEW) that keeps finding the plan still approximates the spec is itself the stop signal, to be reported upward rather than built. Stand down with a brief, non-defensive GitHub ack that does NOT restate the design, offer branch/PR disposition and the research note as a head-start, and let the orchestrator own the program-level response; report the stand-down to the parent as a plain status, not a `[Fix Report]`, or the critique-on-deliver gate demands an OUTPUT_REVIEW for a deliverable that doesn't exist ([when a maintainer keeps calling a bot PR a rewrite, concede early — don't grind rounds](../learnings/1790117615291-when-a-maintainer-keeps-calling-a-bot-pr-a-rewrite.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [Re-review after a PR redesign: check for gaps the redesign introduced, not just old ones closed](../learnings/1782873135829-re-review-after-a-pr-redesign-check-for-gaps-the-r.md) — a redesign re-review must hunt for new gaps, not just re-check the old list.
 - [A self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md) — a follow-up that only lands a reviewer-recommended nit needs verification, not a full re-run.
@@ -103,3 +108,4 @@ The deferral line is **not** size but **"is this a correctness gap in the mechan
 - [reviewing lowerCopyLogical untyped-flavor fixes (slang#13027/#13022): a single-element `cb.arr[i]` copy exercises only the struct-field branch — drive the array branch with a wholesale array copy (≤16 unroll, >16 loop); tighten `CHECK-NOT: OpTypePointer Uniform` (no type suffix); the *KeepingFlavor helpers are ordering-necessary.](../learnings/1789177486273-reviewing-lowercopylogical-untyped-flavor-fixes-si.md)
 - [when a maintainer keeps calling a bot PR a rewrite, concede early — don't grind rounds](../learnings/1790117615291-when-a-maintainer-keeps-calling-a-bot-pr-a-rewrite.md) — non-convergence is a stop signal (a fidelity gate that keeps diverging is the stop signal); stand down non-defensively without re-restating the design, and don't mark the stand-down a `[Fix Report]`.
 - [when a fix's buggy and correct output both pass the full suite AND the format validator (slang#13237 SPIR-V debug info), its regression test is required-before-merge, not optional; ID-anchor the -g2 FileCheck.](../learnings/1790162935737-a-fix-invisible-to-both-the-test-suite-and-the-val.md)
+- [PR-review verdict calibration: 0 bugs + 1 gap → APPROVE_WITH_NITS when the gap is coverage-only on a traced-sound fix](../learnings/1794902853662-pr-review-verdict-calibration-0-bugs-1-gap-approve.md) — same profile, both verdicts; discriminate on gap nature + re-open condition.

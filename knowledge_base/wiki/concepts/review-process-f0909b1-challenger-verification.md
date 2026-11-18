@@ -3,7 +3,7 @@ title: The Step-3 challenger — verifying reviewer findings against source befo
 type: concept
 group: review-process
 tags: [approver, challenger, false-positive, verify, block, source-trace, pre-existing, mechanism, inheritance, reachability]
-source_count: 14
+source_count: 17
 ---
 
 ## TL;DR
@@ -32,6 +32,13 @@ Recurring verification failures and the probes that catch them:
 - **Include-resolution and CI-blindness:** an "include won't resolve" claim must enumerate ALL
   include dirs (PUBLIC/INTERFACE propagated), and diff-scoped reviewers structurally miss companion
   tests in unchanged files.
+- **A "the checker misses shape X" finding is first probed for liveness** — compile the
+  reviewer's example unreferenced, then referenced; a gap whose only repro is dead code (making
+  it live trips an earlier hard error) is moot.
+- **A reviewer-claimed regression gets a master-control build and your own probe before any
+  fix** — the reviewer's minimal probe may use a spelling that dodges the pre-existing error.
+- **A reviewer's file:line citation earns trust; a named SYMBOL earns a grep** before it
+  lands in shipped text — phantom symbols propagate into comments and PR risk lines.
 
 **The invariant that outranks all of it:** a challenger's verification can only ADD CAUTION. It may
 never UPGRADE a doc's 🔴 to WOULD_APPROVE, and it may not record BLOCK on a finding it has DISPROVEN.
@@ -130,6 +137,49 @@ into "continue" must be checked for what downstream states it newly makes reacha
 on the approver-decision-policy page)
 ([verifying a Devin bug as false requires opening the exact rule](../learnings/1787684744187-approver-challenger-miss-verifying-a-devin-bug-as-.md)).
 
+## Dead-code probes, master-control builds, and phantom symbols
+
+**A "the checker misses shape X" finding can rest on a dead-code-only example — probe it live
+before accepting it.** On slang#14547 r2 Reviewer A's top finding ("interface-typed reference
+receivers silently escape W30712") was mechanically correct — the unreferenced body
+`void viaIface(__ref ICounter c) { c.bump(); }` compiles clean and stays un-warned — but the
+shape is unreachable in valid code: passing a concrete argument dies with E30077 (concrete type
+to interface-typed output parameter), and making the shape live via an existential box
+(`ICounter box = cc; viaIface(box);`) fires the pre-existing E52010 "ref parameter incompatible
+with dynamic dispatch" at the declaration itself (probes at base 2a91af5b7, Release slangc). The
+fixer refuted it this way and an independent probe confirmed in ~2 minutes. Adjudication rule
+for any coverage-gap finding: first ask whether a VALID program can contain the shape live —
+compile the reviewer's example unreferenced, then referenced. A gap whose only repro is dead
+code, where making it live trips an earlier hard error, is moot; the right disposition is a
+contract-comment sentence naming the rejecting diagnostic, not a check case
+([coverage-gap findings can be dead-code-only: probe the reviewer example unreferenced, then live](../learnings/1794932565753-coverage-gap-findings-can-be-dead-code-only-probe-.md)).
+
+**A reviewer-claimed regression gets a master-control binary and your own probe BEFORE any fix.**
+On slang#14430 round 2 a reviewer's orchestrator probe claimed the PR made `HitObject::MakeHit`
+fail at `sm_6_9 -capability ser_dxr` where master was "clean". Building master (818012112) in a
+control worktree and running an independent probe with the real user spelling (`-profile sm_6_9`
++ raygen entry → maps to lib_6_9) showed the E41011 errors are PRE-EXISTING on master — the
+reviewer's minimal probe had used a spelling that dodged them, and two of its five findings
+then dissolved under measurement (the "widening" was the callee's own inferred set propagating,
+which is the parity behavior itself). The 7-minute control build (64 cores, warm sccache)
+settled in one pass what hours of source-reading speculation could not: any peer-review finding
+that claims a behavior delta gets a master-control build and a probe in the real user's spelling
+before any code change, and a finding that cannot name a failing case gets no code changes
+([reviewer-claimed regressions: build the master control and run your own probes first](../learnings/1794934175134-reviewer-claimed-regressions-build-the-master-cont.md)).
+
+**A reviewer's symbol name is a lead, not an address — grep it before it ships.** Reviewer and
+bot reports can cite PHANTOM SYMBOLS: on slang#13509/PR #14550 a peer reviewer's combined report
+attributed a witness hazard to "TryUnifyWitnesses (slang-check-constraint.cpp:3591-3595)" — no
+such symbol exists anywhere in `source/` (the real subtype-witness unification is inline in
+`TryUnifyVals`, which also compares the witnesses' OWN `getSup()` operands, not the recorded
+constraint — the named mechanism was doubly wrong). The phantom name propagated into a code
+comment and the PR risk line before an independent grep (0 hits) caught it, costing an extra
+commit and review round. Rule: a reviewer's `file:line` citation earns trust; a reviewer's
+*symbol name* earns a `grep -rn "<symbol>" source/` before it lands in anything shipped — and
+the same applies to your own citations when tracing consumers of an API family: verify each
+named consumer by reading it, not by trusting the summary that named it
+([verify reviewer-cited symbol names by grep before shipping them](../learnings/1794938687145-verify-reviewer-cited-symbol-names-by-grep-before-.md)).
+
 ## Falsify the "clean" prior; audit CI-blindness and companion tests
 
 A bot "no bugs" is a prior conditioned on the bot having read the change correctly — falsify that
@@ -182,7 +232,7 @@ reviewDecision,mergeStateStatus` (here CHANGES_REQUESTED / BLOCKED). A clean aut
 overrides a live human changes-request ⇒ CHALLENGER_CONCERN / ABSTAIN
 ([bot-authored (Devin-only) PR: check reviewDecision/mergeStateStatus, not just the newest review state](../learnings/1787880881103-approver-challenger-miss-bot-authored-devin-only-p.md)).
 
-**Source learnings (14):**
+**Source learnings (17):**
 
 - [Reviewer finding on a mechanically-touched line: check attribution before block-vs-abstain-vs-approve](../learnings/1786694508257-approver-challenger-miss-reviewer-finding-on-a-mec.md) — slangpy#1108; a real Major on a `.get()`-stripped line was pre-existing; INTRODUCED vs byte-identical is the classifier; pre-existing ⇒ OPEN_GAP, not BLOCK.
 - [A self-contradicting Devin fallback 🔴 still forces ABSTAIN, not BLOCK or approval — verify by building at head](../learnings/1786983473416-approver-challenger-miss-a-self-contradicting-devi.md) — slang#12503; `import glsl;` never exposes internal members (isDeclVisibleFromScope); disproof justifies ABSTAIN, not upgrade.
@@ -198,3 +248,6 @@ overrides a live human changes-request ⇒ CHALLENGER_CONCERN / ABSTAIN
 - [Devin phantom-🔴 on comment/test-only PRs whose body narrates a fix that landed elsewhere](../learnings/1787860968707-approver-challenger-miss-devin-phantom-on-comment-.md) — slang#12116; confirm every `+` code line is a `//` comment + CI green + the "fix elsewhere" merged; ⇒ CHALLENGER_CONCERN.
 - [Bot-authored (Devin-only) PR: check reviewDecision/mergeStateStatus, not just the newest review state](../learnings/1787880881103-approver-challenger-miss-bot-authored-devin-only-p.md) — slang#12186; an APPROVE predated a maintainer CHANGES_REQUESTED; the aggregate was BLOCKED ⇒ ABSTAIN.
 - [A RELEASE-fatal assert on a layout-transparent property is OPEN_GAP not BLOCK](../learnings/1786979180337-approver-challenger-calibration-a-release-fatal-as.md) — slang#12539; enumerate PRODUCERS for reachability; SLANG_ASSERT→SLANG_RELEASE_ASSERT trades UB for a defined abort; also expand accordion findings, never clear-or-block on an unread finding.
+- [Coverage-gap findings can be dead-code-only: probe the reviewer example unreferenced, then live](../learnings/1794932565753-coverage-gap-findings-can-be-dead-code-only-probe-.md) — #14547 r2: making the shape live trips an earlier hard error ⇒ the gap is moot; contract-comment it.
+- [Reviewer-claimed regressions: build the master control and run your own probes first](../learnings/1794934175134-reviewer-claimed-regressions-build-the-master-cont.md) — #14430 r2: the E41011s were pre-existing on master; the reviewer's probe spelling dodged them; no failing case ⇒ no code change.
+- [Verify reviewer-cited symbol names by grep before shipping them](../learnings/1794938687145-verify-reviewer-cited-symbol-names-by-grep-before-.md) — #13509/PR #14550: "TryUnifyWitnesses" never existed; a symbol name earns a grep, a file:line citation earns trust.

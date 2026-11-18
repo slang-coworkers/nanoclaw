@@ -3,7 +3,7 @@ title: "Slang Maintainer Scope-vs-Design Approval, Evidence Discipline, and Draf
 type: concept
 group: slang-grab-bag
 tags: [scope-vs-design-approval, maintainer-decisions, by-design-reversal, MCP-read-silence, draft-PR, Closes-keyword, issue-lifecycle, reporter-fix, release-verification]
-source_count: 18
+source_count: 19
 ---
 
 # Slang Maintainer Scope-vs-Design Approval, Evidence Discipline, and Draft-PR Footprint
@@ -26,7 +26,7 @@ source_count: 18
 - The triage step-9 go/no-go gates the fixer/draft PR, not the triage comment; a maintainer-deferring triage comment stays up after a NO-GO.
 
 **Evidence discipline**
-- An empty read is ambiguous between "nothing" and "broken": run a control query that MUST return data before reporting all-clear. `slang-mcp github_list_issues`/`github_get_discussions` false-empty; Discord forum parents read `[]` (use the guild active-threads API); `merged_at` is the broken field, not `is:merged`.
+- An empty read is ambiguous between "nothing" and "broken": run a control query that MUST return data before reporting all-clear. `slang-mcp github_list_issues`/`github_get_discussions` false-empty; Discord forum parents read `[]` (use the guild active-threads API), and since the 11-16 bot migration even whole-channel reads false-empty — verify thread-by-ID; `merged_at` is the broken field, not `is:merged`.
 - `running` + fresh `last_active` is NOT evidence a session did anything; count its outbound rows (`out==0 && in>=1` is an unconditional awaiting_us).
 - A reporter's suggested fix is a claim to test, not adopt; before advising "upgrade," verify a release containing the fix exists (`/releases/latest` vs the merge date).
 - A "trivial" submodule pin bump is rarely trivial: state its true scope via REST compare and a clean local build; diff-only bots can't see inside `external/**`.
@@ -68,6 +68,8 @@ The mirror check applies to **someone else's** PR: when a maintainer's replaceme
 
 **The Discord half (2026-09-24 maintainer daily report).** `#slang-support`/`#slangpy-support` are **forum** channels, so `discord_read_messages` on the *parent* returns `[]` at HTTP 200. Read `GET https://discord.com/api/v10/guilds/1303735196696445038/threads/active` with the bot token at `/workspace/agent/memory/.discord-token`, then each thread id as a channel; that surfaced ~10 live `#slang-support` threads recent reports had logged as "empty." Control-read a populated text channel to prove the token is live. The same report saw `github_list_issues(state=OPEN)` false-empty on `slang-rhi` (0 vs 32 from `github_search_issues`), and the GitHub Actions default / `?status=failure` REST slice serving a months-old page; use `?event=schedule` or `/actions/workflows/<id>/runs` for real nightly / Issue-Onboard conclusions [forum sweeps](../learnings/1790238085692-slang-daily-report-forum-sweeps-must-use-the-guild.md).
 
+**A channel-wide empty `discord_read_messages` is still not proof of emptiness — verify thread-by-ID (2026-11-17).** After the 11-11→11-16 bot maintenance that moved nv-slang-bot to open-weights models, `discord_read_messages` silently returned `{"messages": [], "total_count": 0}` for #slang-support (`1313936640661524601`), #slangpy-support (`1337094433816051813`) and the #slang-support-bot forum (`1494023079666647200`) at limits 50 and 100, while #slang-discussion read fine and prior sweeps had seen traffic — but reading a specific **thread by its ID as `channel_id` still worked**. So a channel-wide 0-message result is a read gap, never "no new community messages"; fall back to thread-by-ID reads for threads you already carry ([Discord channel reads can silently return empty — verify with thread-by-ID](../learnings/1794903178533-slang-mcp-discord-channel-reads-can-silently-retur.md)). Same day, adjacent fetch trap: the slang CI health snapshot at raw.githubusercontent.com exceeds a 5 MB webfetch limit — fetch it with `curl | tail -N` instead.
+
 **Chain-level form: a maintainer's triage request can sit unanswered for weeks behind a healthy-looking container.** On slang #8306 and #8785, `jkwak-work` pinged `@nv-slang-bot` for triage on 2026-07-18; both webhooks routed and triager sessions were created, yet **17 days later** neither had a bot comment and each owning session held **one inbound, zero outbound** (`ncl sessions messages --limit 200`). Every guard missed it: `container_status` was **`running`** (never produced a turn); `last_active` was **fresh** (host-side touches advance it); with no PR or disposition, PR- or state-shaped filters could not see the chains. **Count outbound rows:** `out == 0 && in >= 1` on the owning session is an unconditional `awaiting_us`, independent of container status, `last_active` and the stale window, and stronger than any silence threshold (special-case it; never feed a zero denominator to a ratio). Generally, **a health timestamp maintained by someone other than the worker measures the maintainer, not the work**; prefer a count of artifacts the worker itself produced [zero outbound](../learnings/1785802554126-a-maintainer-triage-request-can-sit-unanswered-for.md).
 
 ## Maintainer Rulings and Standing Policies
@@ -99,7 +101,8 @@ gh pr create --repo shader-slang/slang --base master --head fix/issue-<n> --draf
 
 Slang commits must **NOT** carry the `Co-Authored-By: Claude <noreply@anthropic.com>` trailer the harness reminder asks for: the Slang project instructions ("Don't mention Claude on the commit message"; no AI-tool attribution in commits or PR bodies) forbid it, and the reminder defers to project instructions. Omit it from every commit into shader-slang/slang, slangpy or slang-rhi (flagged on slangpy PR #1206). Removing it after a push needs a reword plus a force-push, which needs explicit session authorization even on your own `fix/issue-*` branch; without it, leave a squash-merge note asking the merger to drop the trailer [no Co-Authored-By](../learnings/1791195802831-coworker-commits-on-shader-slang-repos-must-not-ca.md). In a worktree, a bare `--force-with-lease` can fail with "stale info" (no `origin/<branch>` tracking ref); `git fetch origin <branch>` and lease explicitly against `$(git rev-parse FETCH_HEAD)` [lease against FETCH_HEAD](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md). The trailer-check and repair recipes live on [Fixer PR Creation, Fork & CI Mechanics](agent-fixer-pr-and-ci-mechanics.md).
 
-**Source learnings (18):**
+**Source learnings (19):**
+- [Discord channel reads can silently return empty — verify with thread-by-ID](../learnings/1794903178533-slang-mcp-discord-channel-reads-can-silently-retur.md) — post-11-16-migration whole-channel false-empties; thread-ID reads still work
 - [Step-9 triage comment vs go/no-go: the decision gates the fixer/PR, not a deferring triage note — leave the maintainer-deferring note up](../learnings/1789599918617-step-9-triage-comment-vs-go-no-go-the-decision-gat.md)
 - [Perf-infra sub-task assignees often self-serve the deliverable — surface the offer once, then hold](../learnings/1789378728615-perf-infra-sub-task-assignees-often-self-serve-the.md)
 - [Slang maintainer policy: no compiler-side workarounds (WAR) for downstream compiler bugs (NVRTC/NVCC)](../learnings/1789500967936-slang-maintainer-policy-no-compiler-side-workaroun.md)
