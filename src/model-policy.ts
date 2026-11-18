@@ -19,7 +19,9 @@
  *
  * Resolution, per role: the group's own value (container_configs), else the
  * open-weights default when the group is `weights=open`, else the install's
- * setting for that provider. A group with `weights=open` must resolve every
+ * setting for that provider. A group whose `weights` column is empty follows
+ * the install default (installDefaultWeights), which is `open` unless the
+ * install sets NANOCLAW_DEFAULT_WEIGHTS=any. A group with `weights=open` must resolve every
  * role to an open-weights model; modelPolicyViolations names any role that
  * does not, and spawn refuses the group rather than run it on a closed model.
  *
@@ -66,8 +68,10 @@ export const MODEL_POLICY_ENV_KEYS = [
   'ANTHROPIC_DEFAULT_HAIKU_MODEL',
   'ANTHROPIC_MODEL',
   'CODEX_MODEL',
+  'DEFAULT_AGENT_PROVIDER',
   'INTENT_ROUTER_OPENAI_MODEL',
   'NANOCLAW_DEFAULT_MODEL',
+  'NANOCLAW_DEFAULT_WEIGHTS',
   'NANOCLAW_OPEN_CRITIC_MODEL',
   'NANOCLAW_OPEN_MODEL',
   'NANOCLAW_OPEN_ROUTER_MODEL',
@@ -104,11 +108,51 @@ const OPEN_WEIGHTS_PREFIXES = [
 const ROUTER_DEFAULT = 'openai/openai/gpt-6-luna'; // the intent-router hook's own default
 const CRITIC_DEFAULT = 'openai/openai/gpt-6.1-sol'; // the codex config.toml template default
 
-/** Return `weights` as stored, defaulting to "any"; reject anything else. */
-export function parseModelWeights(value: string | null | undefined): ModelWeights {
-  if (value === null || value === undefined || value === '' || value === 'any') return 'any';
-  if (value === 'open') return 'open';
+/**
+ * Return a group's weights: its stored value, or the install default when the
+ * column is empty; reject anything but "any" and "open".
+ */
+export function parseModelWeights(value: string | null | undefined, env: Env = process.env): ModelWeights {
+  if (value === null || value === undefined || value === '') return installDefaultWeights(env);
+  if (value === 'any' || value === 'open') return value;
   throw new Error(`weights must be "any" or "open", not "${value}"`);
+}
+
+/**
+ * The weights of every group whose `weights` column is empty:
+ * NANOCLAW_DEFAULT_WEIGHTS when set, else `open`. An install whose operator
+ * chose Claude as the default provider (DEFAULT_AGENT_PROVIDER=claude, which
+ * setup writes) gets `any` instead, because the Claude provider runs Claude
+ * models only and an open default would stop every default group from starting.
+ */
+export function installDefaultWeights(env: Env = process.env): ModelWeights {
+  const set = (env.NANOCLAW_DEFAULT_WEIGHTS ?? '').trim().toLowerCase();
+  if (set === 'any' || set === 'open') return set;
+  if (set) throw new Error(`NANOCLAW_DEFAULT_WEIGHTS must be "any" or "open", not "${set}"`);
+  return (env.DEFAULT_AGENT_PROVIDER ?? '').trim().toLowerCase() === 'claude' ? 'any' : 'open';
+}
+
+/**
+ * The provider of every group with no provider of its own (no session pin, no
+ * `agent_groups.agent_provider`, no `container_configs.provider`):
+ * DEFAULT_AGENT_PROVIDER when set, else OpenCode when the default weights are
+ * open and Claude when they are any. With nothing set, a default group runs on
+ * OpenCode with open-weights models.
+ */
+export function installDefaultProvider(env: Env = process.env): string {
+  const set = (env.DEFAULT_AGENT_PROVIDER ?? '').trim().toLowerCase();
+  if (set) return set;
+  return installDefaultWeights(env) === 'open' ? 'opencode' : 'claude';
+}
+
+/**
+ * The weights a new group records when its creator names its provider but no
+ * weights: `any` for Claude, which runs Claude models only, and nothing (the
+ * install default) for every other provider. Without it, a group created on
+ * Claude would inherit an open default and fail the policy at its first spawn.
+ */
+export function creationWeights(provider: string | null | undefined): ModelWeights | null {
+  return provider?.toLowerCase() === 'claude' ? 'any' : null;
 }
 
 /** The OpenCode provider prefix of model ids (the runner's default is "anthropic"). */
@@ -204,7 +248,7 @@ export function isOpenWeightsRole(resolved: ResolvedModels, role: ModelRole, env
 
 /** Resolve all four roles for one group. */
 export function resolveGroupModels(provider: string, row: ModelPolicyRow, env: Env = process.env): ResolvedModels {
-  const weights = parseModelWeights(row.weights);
+  const weights = parseModelWeights(row.weights, env);
   const resolved: ResolvedModels = { provider, weights };
   for (const role of MODEL_ROLES) {
     const own = row[MODEL_ROLE_COLUMNS[role]];
@@ -240,26 +284,75 @@ export function modelPolicyViolations(resolved: ResolvedModels, env: Env = proce
   return problems;
 }
 
-/** The env one container needs so each role uses its resolved model. */
-export function modelPolicyEnv(resolved: ResolvedModels): Record<string, string> {
-  const env: Record<string, string> = { NANOCLAW_MODEL_WEIGHTS: resolved.weights };
-  const { provider, main, small, router, critic } = resolved;
-  if (critic) env.NANOCLAW_CRITIC_MODEL = critic;
+/**
+ * Return the Claude Code settings of an open-weights container: every model
+ * variable Claude Code reads names one of the group's open models, and Claude
+ * Code's non-essential traffic is off.
+ *
+ * The host forwards the install's Claude settings (ANTHROPIC_MODEL, the
+ * Opus/Sonnet/Haiku defaults, ANTHROPIC_FALLBACK_MODEL) from its .env into
+ * every container (forkContainerEnv in container-runner.ts), because a Claude
+ * group needs them. An OpenCode, Codex or Pi group with weights=open does not
+ * run Claude Code itself, but a skill may start the `claude` CLI inside it, and
+ * that CLI would then ask for the install's Claude model first. Consider an
+ * OpenCode group with main model `openai/nvidia/zai-org/glm-5.3`: the main,
+ * Opus, Sonnet and subagent variables become `nvidia/zai-org/glm-5.3` (the
+ * endpoint's id, without OpenCode's provider prefix), and the Haiku,
+ * small-fast and fallback variables become the small model
+ * `nvidia/zai-org/glm-5.3-flash`, so the fallback differs from the main model
+ * as the Claude SDK requires. CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC turns
+ * off telemetry, error reporting and update checks, which go to closed-vendor
+ * hosts.
+ */
+function openWeightsClaudeCodeEnv(resolved: ResolvedModels, env: Env): Record<string, string> {
+  const { provider, main, small } = resolved;
+  // resolveGroupModels gives every role of a weights=open group a model.
+  if (!main || !small) throw new Error('an open-weights group resolves a main and a small model');
+  const mainId = endpointModelId(provider, 'main', main, env);
+  const smallId = endpointModelId(provider, 'small', small, env);
+  return {
+    ANTHROPIC_MODEL: mainId,
+    ANTHROPIC_DEFAULT_OPUS_MODEL: mainId,
+    ANTHROPIC_DEFAULT_SONNET_MODEL: mainId,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: smallId,
+    ANTHROPIC_SMALL_FAST_MODEL: smallId,
+    CLAUDE_CODE_SUBAGENT_MODEL: mainId,
+    ANTHROPIC_FALLBACK_MODEL: smallId,
+    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+  };
+}
+
+/**
+ * The env one container needs so each role uses its resolved model. `env` is
+ * the install's settings, read for OpenCode's provider prefix.
+ */
+export function modelPolicyEnv(resolved: ResolvedModels, env: Env = process.env): Record<string, string> {
+  const out: Record<string, string> = { NANOCLAW_MODEL_WEIGHTS: resolved.weights };
+  const { provider, weights, main, small, router, critic } = resolved;
+  if (critic) out.NANOCLAW_CRITIC_MODEL = critic;
+  // The Codex tool inside a container starts every turn on CODEX_MODEL unless the caller names a
+  // model, and an install keeps a closed model there for its closed groups. An open-weights group
+  // therefore gets its critic model as CODEX_MODEL, so a plain `codex` call stays on open weights.
+  // A Codex group already sets CODEX_MODEL from its own main model below.
+  if (weights === 'open' && critic && provider !== 'codex') out.CODEX_MODEL = critic;
+  // modelPolicyViolations refuses a Claude group with weights=open, so an
+  // open-weights container never runs the Claude provider.
+  if (weights === 'open' && provider !== 'claude') Object.assign(out, openWeightsClaudeCodeEnv(resolved, env));
   if (provider === 'claude') {
     // One Claude setting serves the small model and the router.
-    if (small) env.ANTHROPIC_DEFAULT_HAIKU_MODEL = small;
-    return env;
+    if (small) out.ANTHROPIC_DEFAULT_HAIKU_MODEL = small;
+    return out;
   }
-  if (router) env.INTENT_ROUTER_OPENAI_MODEL = router;
+  if (router) out.INTENT_ROUTER_OPENAI_MODEL = router;
   if (provider === 'opencode') {
-    if (main) env.OPENCODE_MODEL = main;
-    if (small) env.OPENCODE_SMALL_MODEL = small;
+    if (main) out.OPENCODE_MODEL = main;
+    if (small) out.OPENCODE_SMALL_MODEL = small;
   } else if (provider === 'codex') {
-    if (main) env.CODEX_MODEL = main;
+    if (main) out.CODEX_MODEL = main;
   } else if (provider === 'pi') {
-    if (main) env.PI_MODEL = main;
+    if (main) out.PI_MODEL = main;
   }
-  return env;
+  return out;
 }
 
 /**

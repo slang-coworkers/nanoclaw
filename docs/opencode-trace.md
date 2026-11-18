@@ -33,6 +33,16 @@ A request or reply body is not changed. A body larger than 4 MiB is cut in the f
 | `NANOCLAW_OPENCODE_TRACE_MAX_BODY_BYTES` | The largest body kept in a record. The default is 4 MiB.               |
 | `NANOCLAW_OPENCODE_TRACE_DIR`            | Where the files go. The default is `/workspace/agent/.opencode-trace`. |
 
+## Viewing traces
+
+`scripts/opencode-trace-html.py` turns a trace file into one HTML page. The page shows the conversation of the main agent, then every model call with its reply, its status and its time. It does not show the headers.
+
+- The trace page (`:8081`, the claude-trace page) lists OpenCode sessions next to the Claude Code sessions. Every 15 minutes, `ops/claude-trace-www/refresh-claude-trace-www.sh` makes a page for each trace from the last 2 days that changed.
+- The transcripts page (`:8080`) has an "OpenCode transcript" part on each session page. `scripts/build-transcripts-archive.ts` makes it when it builds the archive, every 6 hours.
+- To make one page by hand: `python3 scripts/opencode-trace-html.py groups/<folder>/.opencode-trace/session-<id>.jsonl`. The page goes next to the trace, with the same name and `.html`.
+
+A page holds the same prompts and replies as the trace. Keep it behind the same access.
+
 ## Disk use
 
 `scripts/claude-trace-gc.py` removes old files of both trace folders. They share one size limit.

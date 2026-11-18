@@ -31,6 +31,7 @@ import {
 import { PROJECT_DOC_MAX_BYTES, ProjectDocTooLargeError } from './claude-composer/doc-size-cap.js';
 import { renderProjectDoc, type CapDiagnostics } from './claude-composer/project-doc.js';
 import {
+  CONTAINER_BUILD_JOBS,
   CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
   CONTAINER_IMAGE_BASE,
@@ -42,6 +43,7 @@ import {
   GROUPS_DIR,
   IDLE_TIMEOUT,
   INSTALL_SLUG,
+  MAX_BUSY_CONTAINERS,
   MAX_MESSAGES_PER_PROMPT,
   MCP_PROXY_PORT,
   TIMEZONE,
@@ -54,9 +56,9 @@ import {
   resolveGroupTimezone,
   sanitizeStoredMcpServers,
 } from './container-config.js';
-import { getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
-import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
-import { privilegeEnforced, rowForPrivilege, sessionPrivilegeOf } from './modules/session-privilege/index.js';
+import { getAllContainerConfigs, getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
+import { installDefaultProvider, modelPolicyEnv, modelPolicyViolations } from './model-policy.js';
+import { privilegeEnforced, resolveSessionModels, sessionPrivilegeOf } from './modules/session-privilege/index.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
@@ -139,6 +141,7 @@ import {
   type VolumeMount,
 } from './providers/provider-container-registry.js';
 import {
+  heartbeatMtimeMs,
   heartbeatPath,
   markContainerRunning,
   markContainerStopped,
@@ -147,6 +150,7 @@ import {
   writeSessionContext,
   writeSessionRouting,
 } from './session-manager.js';
+import { BUSY_WINDOW_MS, STARTUP_GRACE_MS, SpawnAdmission, isBusyContainer } from './spawn-admission.js';
 import type { AgentGroup, Session } from './types.js';
 
 /**
@@ -401,6 +405,80 @@ const spawnedClaudeMdHash = new Map<string, string>();
  * double-replies.
  */
 const wakePromises = new Map<string, Promise<boolean>>();
+
+/**
+ * The busy-container limit every new spawn passes (see `src/spawn-admission.ts`).
+ * `admittedSpawns` holds the sessions admitted and not yet registered in
+ * `activeContainers`, so two wakes that pass the limit together are both counted
+ * while they compose their containers.
+ */
+let spawnAdmission = new SpawnAdmission(MAX_BUSY_CONTAINERS);
+let busyWindows = { busyWindowMs: BUSY_WINDOW_MS, startupGraceMs: STARTUP_GRACE_MS };
+const admittedSpawns = new Set<string>();
+
+/** Replace the spawn limit and its time windows; tests only. */
+export function _setSpawnAdmissionForTesting(
+  options: { limit?: number; busyWindowMs?: number; startupGraceMs?: number; waiterTtlMs?: number } = {},
+): void {
+  spawnAdmission = new SpawnAdmission(options.limit ?? MAX_BUSY_CONTAINERS, options.waiterTtlMs);
+  busyWindows = {
+    busyWindowMs: options.busyWindowMs ?? BUSY_WINDOW_MS,
+    startupGraceMs: options.startupGraceMs ?? STARTUP_GRACE_MS,
+  };
+  admittedSpawns.clear();
+}
+
+/**
+ * Count the containers that hold a slot under the busy limit at `nowMs`:
+ * registered containers that `isBusyContainer` calls busy, spawns admitted but
+ * not yet registered, and survivors waiting for a claim-fenced adoption (alive,
+ * but not in the registry). Each session counts once.
+ */
+function busyContainerCount(nowMs: number): number {
+  const busy = new Set<string>([...admittedSpawns, ...pendingAdoptions]);
+  for (const [sessionId, runtime] of activeContainers) {
+    if (busy.has(sessionId)) continue;
+    const activity = {
+      startedAtMs: runtime.startedAtMs,
+      adopted: runtime.adopted,
+      heartbeatMs: heartbeatMtimeMs(runtime.handle.key.agentGroupId, sessionId),
+    };
+    if (isBusyContainer(activity, nowMs, busyWindows)) busy.add(sessionId);
+  }
+  return busy.size;
+}
+
+/**
+ * Ask the busy limit whether `session` may spawn a container now. A held wake
+ * is logged once when it joins the queue and once when it is admitted, so a
+ * burst shows up in the log without a line per session per sweep tick.
+ */
+function admitSpawn(session: Session): boolean {
+  const nowMs = Date.now();
+  const busy = busyContainerCount(nowMs);
+  const decision = spawnAdmission.admit(session.id, busy, nowMs);
+  if (decision.admitted) {
+    if (decision.waitedMs !== undefined) {
+      log.info('Spawning held session — a busy slot is free', {
+        sessionId: session.id,
+        waitedMs: decision.waitedMs,
+        busy,
+        limit: spawnAdmission.limit,
+      });
+    }
+    return true;
+  }
+  const fields = {
+    sessionId: session.id,
+    busy,
+    limit: spawnAdmission.limit,
+    position: decision.position,
+    held: spawnAdmission.held,
+  };
+  if (decision.firstHold) log.info('Holding wake — busy-container limit reached; the sweep retries it', fields);
+  else log.debug('Wake still held at the busy-container limit', fields);
+  return false;
+}
 
 /**
  * Compose CLAUDE.md from the lego coworker model: spine fragments + skills +
@@ -1219,6 +1297,7 @@ async function wakeGuarded(session: Session): Promise<boolean> {
   const current = await getSession(session.id);
   if (current && current.status === 'closed') {
     log.debug('Skipping wake of closed session', { sessionId: session.id });
+    spawnAdmission.forget(session.id);
     return false;
   }
   // Operator kill switch. This is THE choke point every wake path funnels
@@ -1237,7 +1316,16 @@ async function wakeGuarded(session: Session): Promise<boolean> {
       sessionId: session.id,
       agentGroupId: session.agent_group_id,
     });
+    spawnAdmission.forget(session.id);
     return false;
+  }
+  // Busy-container limit. Same choke point, same contract as the pause above:
+  // a held wake returns false, its messages stay pending, and the sweep's
+  // due-message wake asks again next tick. A survivor awaiting adoption is
+  // already running, so reclaiming it is not a new spawn and skips the limit.
+  if (!pendingAdoptions.has(session.id)) {
+    if (!admitSpawn(session)) return false;
+    admittedSpawns.add(session.id);
   }
   try {
     await spawnContainer(session);
@@ -1245,8 +1333,22 @@ async function wakeGuarded(session: Session): Promise<boolean> {
     // eslint-disable-next-line no-catch-all/no-catch-all -- wakeContainer's contract is never-throws
   } catch (err) {
     log.warn('wakeContainer failed — host-sweep will retry', { sessionId: session.id, err });
+    logPolicyRefusal(session.id, err);
     return false;
+  } finally {
+    admittedSpawns.delete(session.id);
   }
+}
+
+/** A start the driver refuses on policy fails the same way on every retry; say so at error level. */
+function logPolicyRefusal(sessionId: string, err: unknown): void {
+  const failure = err as { kind?: unknown; detail?: unknown } | null;
+  if (failure?.kind !== 'denied-by-policy' && failure?.kind !== 'spec-invalid') return;
+  log.error('Container start refused — every retry fails the same way until the cause is fixed', {
+    sessionId,
+    kind: failure.kind,
+    detail: failure.detail,
+  });
 }
 
 async function spawnContainer(session: Session): Promise<void> {
@@ -1324,6 +1426,10 @@ async function spawnContainer(session: Session): Promise<void> {
   // the config object, threaded through provider resolution, buildMounts,
   // and buildContainerArgs so we don't re-read.
   const containerConfig = await materializeContainerJson(agentGroup.id);
+  // Not awaited: a rebuild can take minutes, and callers (the sweep, inbound
+  // routing) wait on this spawn. This container may start on the old image;
+  // the next spawn gets the new one.
+  void refreshStaleGroupImage(agentGroup.id, containerConfig.imageTag);
 
   // initGroupFilesystem must scaffold for the provider the container will
   // actually run, so this resolves through the same call as the contribution.
@@ -2416,6 +2522,40 @@ export function ensureReviewLengthGate(settingsFile: string): void {
   }
 }
 
+export const GITHUB_COMMENT_BODY_GATE_CMD = 'bash /app/hooks/gate-github-comment-body.sh';
+// Every tool call that can post a GitHub body: Bash (`gh issue|pr comment|review|create|edit`,
+// `gh api` to an issue, pull request, comment or review endpoint) and the GitHub MCP comment
+// and review tools. The prod MCP servers have no comment tool (slang-mcp's only GitHub write
+// is github_create_or_update_file), so on prod the hook runs on Bash alone.
+export const GITHUB_COMMENT_BODY_GATE_MATCHER =
+  'Bash|mcp__github__add_issue_comment|mcp__github__create_pending_pull_request_review|mcp__github__add_comment_to_pending_review|mcp__github__submit_pending_pull_request_review|mcp__github__create_and_submit_pull_request_review';
+
+/**
+ * Register gate-github-comment-body.sh as a PreToolUse hook in a group's settings.json.
+ *
+ * The hook refuses a GitHub body that would post broken: the literal text `@<path>` (gh reads
+ * a file only for --body-file and `gh api -F key=@<path>`) or a memo's YAML frontmatter. It is
+ * not an overlay gate, so every Claude-surface group carries it; OpenCode and Pi groups run it
+ * from the same settings.json through their hook bridges. Idempotent; registered outside the
+ * dashboard hook block.
+ */
+export function ensureGithubCommentBodyGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-github-comment-body.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    GITHUB_COMMENT_BODY_GATE_MATCHER,
+    'gate-github-comment-body.sh',
+    GITHUB_COMMENT_BODY_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
 export async function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -2877,6 +3017,9 @@ export async function buildMounts(
   // reviews under the character cap (summary plus inline comments). Marker-scoped
   // like the eval-sandbox gate, so the registration is universal and inert elsewhere.
   if (defaultSurfaces) ensureReviewLengthGate(settingsFile);
+  // gate-github-comment-body.sh: a GitHub comment, review or issue/PR body is never the
+  // literal text `@<path>` nor a memo's YAML frontmatter. Registered for every group.
+  if (defaultSurfaces) ensureGithubCommentBodyGate(settingsFile);
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.
@@ -3288,9 +3431,10 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
   // would call a closed model does not start. The policy's keys go in one lane
   // only: the provider's contribution (e.g. OPENCODE_SMALL_MODEL from the host
   // .env) would otherwise win the collision and undo the group's setting.
-  const models = resolveGroupModels(
-    input.provider ?? 'claude',
-    rowForPrivilege((await getContainerConfig(agentGroup.id)) ?? {}, sessionPrivilegeOf(session)),
+  const models = resolveSessionModels(
+    input.provider ?? installDefaultProvider(),
+    (await getContainerConfig(agentGroup.id)) ?? {},
+    session,
   );
   const policyProblems = modelPolicyViolations(models);
   if (policyProblems.length > 0) {
@@ -3476,6 +3620,9 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // validates a hand-edited DB value.
   env.TZ = await resolveGroupTimezone(agentGroup.id);
   if (provider) env.AGENT_PROVIDER = provider;
+  // Read by `cmake --build`: each build that passes no -j takes a fair share
+  // of the host's cores, not all of them (config.ts resolveContainerBuildJobs).
+  if (CONTAINER_BUILD_JOBS !== undefined) env.CMAKE_BUILD_PARALLEL_LEVEL = String(CONTAINER_BUILD_JOBS);
 
   // claude-trace: point the SDK's executable at the wrapper mounted by
   // buildMounts. Unlike stock claude-trace (a require-hook, JS-only), this
@@ -3603,6 +3750,8 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PR_DESCRIPTION_GATE',
     'PR_DESCRIPTION_MAX_CHARS',
     'PR_DESCRIPTION_MAX_SECTION_LINES',
+    // gate-github-comment-body.sh off switch, read inside the container.
+    'GITHUB_COMMENT_BODY_GATE',
     // Mailbox history GC + outbound.db free-page reclaim, run by the runner on
     // its own file (defaults: 30 d, 256 MB live cap). Forwarded so one host
     // setting governs both sides — e.g. `0` turns the runner side off too.
@@ -3815,8 +3964,20 @@ exec bun run /app/src/index.ts`;
 // Argument lists, not shell strings: DATA_DIR is the install folder, which may hold spaces.
 const execFileAsync = promisify(execFile);
 
-/** The last build started for each agent group, while it runs. */
-const groupImageBuilds = new Map<string, Promise<void>>();
+// One image job per group at a time: the stale check, `--rebuild` and
+// install_packages all write the same tag through the same Dockerfile path.
+const groupImageJobs = new Map<string, Promise<void>>();
+
+function runGroupImageJob(agentGroupId: string, job: () => Promise<void>): Promise<void> {
+  const next = (groupImageJobs.get(agentGroupId) ?? Promise.resolve()).catch(() => undefined).then(job);
+  groupImageJobs.set(agentGroupId, next);
+  void next
+    .finally(() => {
+      if (groupImageJobs.get(agentGroupId) === next) groupImageJobs.delete(agentGroupId);
+    })
+    .catch(() => undefined);
+  return next;
+}
 
 /**
  * Build a per-agent-group Docker image with the group's apt and npm packages, tagged
@@ -3825,22 +3986,15 @@ const groupImageBuilds = new Map<string, Promise<void>>();
  * Builds of one group run one after another, in call order. Each build reads the package lists
  * when it starts, so the build that started last also ends last and its image keeps the tag. The
  * in-process callers can overlap: an approved `install_packages`, `ncl groups restart --rebuild`,
- * and the wake-path repair of a missing image. scripts/rebuild-derived-images.ts runs in its own
- * process, outside this queue.
+ * the stale-image refresh, and the wake-path repair of a missing image. scripts/rebuild-derived-images.ts
+ * runs in its own process, outside this queue.
  *
  * By default the build also pins the group to the new image. `pin: false` leaves
  * `container_configs.image_tag` as it is; the wake-path repair uses it, because a pin change made
  * while a long build runs must not be undone when the build ends.
  */
 export function buildAgentGroupImage(agentGroupId: string, opts: { pin?: boolean } = {}): Promise<void> {
-  const previous = groupImageBuilds.get(agentGroupId) ?? Promise.resolve();
-  const build = previous.catch(() => {}).then(() => buildAgentGroupImageNow(agentGroupId, opts.pin ?? true));
-  groupImageBuilds.set(agentGroupId, build);
-  const forget = () => {
-    if (groupImageBuilds.get(agentGroupId) === build) groupImageBuilds.delete(agentGroupId);
-  };
-  build.then(forget, forget);
-  return build;
+  return runGroupImageJob(agentGroupId, () => buildAgentGroupImageNow(agentGroupId, { pin: opts.pin ?? true }));
 }
 
 /**
@@ -3851,7 +4005,102 @@ export function repairDerivedImage(agentGroupId: string): Promise<void> {
   return buildAgentGroupImage(agentGroupId, { pin: false });
 }
 
-async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Promise<void> {
+const DERIVED_FROM_LABEL = 'dev.nanoclaw.derived-from';
+
+/** Agent image id a group's rebuild last failed on, so each spawn does not retry the same failing build. */
+const failedGroupImageRefreshes = new Map<string, string>();
+const queuedGroupImageRefreshes = new Map<string, Promise<void>>();
+
+async function inspectImage(ref: string, format: string): Promise<string | null> {
+  try {
+    // Bounded: a hung daemon must not hold the group's job queue forever.
+    const { stdout } = await execFileAsync(CONTAINER_RUNTIME_BIN, ['image', 'inspect', '--format', format, ref], {
+      timeout: 30_000,
+    });
+    return stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Rebuild a group's own image when it was layered onto an older agent image.
+ * Updates and setup rebuild only the agent image, and spawn prefers the group's
+ * pin, so the group would keep the old tools and agent-runner dependencies
+ * under new agent-runner source. Never throws: on failure the group keeps its
+ * current image, as it did before this check existed.
+ */
+export function refreshStaleGroupImage(agentGroupId: string, imageTag: string | null | undefined): Promise<void> {
+  const derivedTag = `${CONTAINER_IMAGE_BASE}:${agentGroupId}`;
+  // A pin to any other image is the operator's choice, not something this host built.
+  if (imageTag !== derivedTag) return Promise.resolve();
+  // A check that has not started yet reads the newest state anyway, so share it.
+  const queued = queuedGroupImageRefreshes.get(agentGroupId);
+  if (queued) return queued;
+  const refresh = refreshGroupImageNow(agentGroupId, derivedTag).finally(() => {
+    if (queuedGroupImageRefreshes.get(agentGroupId) === refresh) queuedGroupImageRefreshes.delete(agentGroupId);
+  });
+  queuedGroupImageRefreshes.set(agentGroupId, refresh);
+  return refresh;
+}
+
+async function refreshGroupImageNow(agentGroupId: string, derivedTag: string): Promise<void> {
+  try {
+    if (!getSessionDriver().capabilities().imageBuild) return;
+    await runGroupImageJob(agentGroupId, async () => {
+      queuedGroupImageRefreshes.delete(agentGroupId);
+      // Re-read: a queued job can run after the operator re-pinned the group.
+      const row = await getContainerConfig(agentGroupId);
+      if (row?.image_tag !== derivedTag) return;
+      // All packages removed but the pin kept: the build would refuse on every
+      // agent image change, so the group keeps its image as before this check.
+      if (
+        (JSON.parse(row.packages_apt) as string[]).length === 0 &&
+        (JSON.parse(row.packages_npm) as string[]).length === 0
+      ) {
+        return;
+      }
+      const baseId = await inspectImage(CONTAINER_IMAGE, '{{.Id}}');
+      if (!baseId) return;
+      const builtOn = await inspectImage(derivedTag, `{{index .Config.Labels "${DERIVED_FROM_LABEL}"}}`);
+      if (builtOn === baseId || failedGroupImageRefreshes.get(agentGroupId) === baseId) return;
+      log.info('Group image was built on an older agent image, rebuilding it', {
+        agentGroupId,
+        imageTag: derivedTag,
+        builtOn,
+        baseId,
+      });
+      try {
+        // The pin already names this tag; writing it again could undo a re-pin made during the build.
+        await buildAgentGroupImageNow(agentGroupId, { pin: false });
+        failedGroupImageRefreshes.delete(agentGroupId);
+      } catch (err) {
+        failedGroupImageRefreshes.set(agentGroupId, baseId);
+        throw err;
+      }
+    });
+  } catch (err) {
+    log.warn('Could not rebuild the group image on the current agent image; the group keeps its old image', {
+      agentGroupId,
+      fix: `ncl groups restart --id ${agentGroupId} --rebuild`,
+      err,
+    });
+  }
+}
+
+/** Startup pass, so groups are usually current before their first message after an update. */
+export async function refreshStaleGroupImages(): Promise<void> {
+  let rows: Awaited<ReturnType<typeof getAllContainerConfigs>>;
+  try {
+    rows = await getAllContainerConfigs();
+  } catch (err) {
+    log.warn('Could not list group images to check', { err });
+    return;
+  }
+  for (const row of rows) await refreshStaleGroupImage(row.agent_group_id, row.image_tag);
+}
+
+async function buildAgentGroupImageNow(agentGroupId: string, { pin = true } = {}): Promise<void> {
   const agentGroup = await getAgentGroup(agentGroupId);
   if (!agentGroup) throw new Error('Agent group not found');
 
@@ -3874,19 +4123,8 @@ async function buildAgentGroupImageNow(agentGroupId: string, pin: boolean): Prom
   // can tell which base a group's packages were layered onto — the image id
   // rather than a RepoDigest, because a locally built base has no RepoDigest at
   // all and an id is unambiguous either way.
-  let baseId = '';
-  try {
-    const { stdout } = await execFileAsync(CONTAINER_RUNTIME_BIN, [
-      'image',
-      'inspect',
-      '--format',
-      '{{.Id}}',
-      CONTAINER_IMAGE,
-    ]);
-    baseId = stdout.trim();
-  } catch {
-    // Non-fatal: the build below fails on its own if the base is really absent.
-  }
+  // Empty is non-fatal: the build below fails on its own if the base is really absent.
+  const baseId = (await inspectImage(CONTAINER_IMAGE, '{{.Id}}')) ?? '';
 
   let dockerfile = `FROM ${CONTAINER_IMAGE}\nUSER root\n`;
   if (aptPackages.length > 0) {

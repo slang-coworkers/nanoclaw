@@ -24,6 +24,14 @@
  *   the skill moved from `base-common.skills` to the `implement` workflow's
  *   `uses.skills`, because only a coworker whose workflow opens PRs can act on it,
  *   and none of the in-tree types declares a workflow.
+ * - the Recall rule moved out of `workspace.md` into its own `context/recall.md`,
+ *   which base-common lists right after `workspace.md` and flat `main` lists first
+ *   in its context. Typed documents carry it as `### Recall rule` after Workspace;
+ *   `main` carries it verbatim as `## Recall rule`, and `main-body.md`'s Memory
+ *   bullet links to it instead of restating the procedure. The fragment is
+ *   digest-pinned, and `main-body.md` is declared as a rewrite.
+ * - flat `main` gains `### GPU`: the type has listed `invariants/gpu.md` since the
+ *   GPU fact landed, and its goldens were regenerated for the first time since.
  *
  * Because a re-order moves whole blocks, the bound is stated on LINES: the multiset
  * of lines in the shipped golden equals the pre golden's multiset plus the declared
@@ -49,6 +57,7 @@ const FRAGMENT_DIGESTS: Record<string, string> = {
   'decision-table.md': '66ea8a0e1438a818',
   'report-formats.md': 'd1c3c15359a95792',
   'chain-reporting.md': 'a10b38b57f0bb269',
+  'recall.md': 'c7c3b4a4162d9b78',
 };
 /**
  * The one Skills line the typed pre goldens carry and the shipped goldens do not,
@@ -88,9 +97,16 @@ const REWRITTEN_AFTER_FREEZE: readonly {
   {
     file: 'context/workspace.md',
     frozen: 'workspace.post-trim.md',
-    digest: 'b9d0270a9d83651f',
+    digest: 'c6b83847e0919a1e',
     typed: true,
     flat: false,
+  },
+  {
+    file: 'identity/main-body.md',
+    frozen: 'main-body.post-trim.md',
+    digest: '46087ded3094e5bb',
+    typed: false,
+    flat: true,
   },
   {
     file: 'tool-instructions/ncl-group.md',
@@ -149,6 +165,22 @@ function gpuFragment(): string {
   expect(digest(text), 'gpu.md differs from the reviewed bytes').toBe(GPU_FRAGMENT_DIGEST);
   return text;
 }
+/**
+ * The resident `/onecli-gateway` instruction, whose body gained its GitHub
+ * partial-coverage paragraph after the freeze. The live body is digest-pinned like
+ * the fragments above; the frozen body is the copy `anchor-retarget.test.ts` reads.
+ */
+const ONECLI_INSTRUCTIONS = path.join(process.cwd(), 'container', 'skills', 'onecli-gateway', 'instructions.md');
+const ONECLI_INSTRUCTIONS_DIGEST = '1a5167741104f7c0';
+function onecliInstructions(): { live: string; frozen: string } {
+  const live = fs.readFileSync(ONECLI_INSTRUCTIONS, 'utf-8');
+  expect(digest(live), 'onecli-gateway instructions.md differs from the reviewed bytes').toBe(
+    ONECLI_INSTRUCTIONS_DIGEST,
+  );
+  const frozen = fs.readFileSync(path.join(FROZEN_FRAGMENT_DIR, 'onecli-gateway-instructions.post-trim.md'), 'utf-8');
+  expect(frozen, 'the frozen onecli-gateway instructions match the live file — retire this entry').not.toBe(live);
+  return { live, frozen };
+}
 function fragment(name: string): string {
   const text = fs.readFileSync(path.join(SPINE_DIR, name), 'utf-8');
   expect(digest(text), `${name} differs from the reviewed bytes`).toBe(FRAGMENT_DIGESTS[name]);
@@ -194,7 +226,7 @@ describe('composed-document section re-order is bounded to the declared set', ()
   const chainOld = () => normalized(fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8'));
 
   for (const name of TYPED) {
-    it(`${name}: same lines as before plus Rules, the GitHub heading and the merged rewrites, minus the contract heading and the explain-diff-html skill line`, () => {
+    it(`${name}: same lines as before plus Rules, the GitHub heading, the Recall rule, the onecli GitHub paragraph and the merged rewrites, minus the contract heading and the explain-diff-html skill line`, () => {
       const before = fs.readFileSync(path.join(PRE_DIR, `${name}.md`), 'utf-8');
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Typed composition re-levels each fragment so its top heading is `###`.
@@ -205,7 +237,9 @@ describe('composed-document section re-order is bounded to the declared set', ()
           rules(),
           chainNew(),
           normalized(gpuFragment()),
+          normalized(fragment('recall.md')),
           ...typedRewrites.map((r) => normalized(r.live)),
+          onecliInstructions().live,
         ].join('\n'),
       );
       const removed = lines(
@@ -213,6 +247,7 @@ describe('composed-document section re-order is bounded to the declared set', ()
           '## NanoClaw Runtime Contract',
           chainOld(),
           ...typedRewrites.map((r) => normalized(r.frozen)),
+          onecliInstructions().frozen,
           REMOVED_SKILL_LINE,
         ].join('\n'),
       );
@@ -238,16 +273,26 @@ describe('composed-document section re-order is bounded to the declared set', ()
   }
 
   for (const name of FLAT) {
-    it(`${name}: differs from before only by the chain-reporting, scheduling, agents and interactive rewrites`, () => {
+    it(`${name}: differs from before only by the chain-reporting, scheduling, agents, interactive and main-body rewrites, the Recall rule, the GPU fact and the onecli GitHub paragraph`, () => {
       const before = fs.readFileSync(path.join(PRE_DIR, `${name}.md`), 'utf-8');
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Flat bodies render fragments verbatim, so the fragment's own heading levels apply.
       const flatRewrites = REWRITTEN_AFTER_FREEZE.filter((e) => e.flat).map(rewritten);
       const added = lines(
-        [fragment('chain-reporting.md').trim(), ...flatRewrites.map((r) => r.live.trim())].join('\n'),
+        [
+          fragment('chain-reporting.md').trim(),
+          fragment('recall.md').trim(),
+          gpuFragment().trim(),
+          ...flatRewrites.map((r) => r.live.trim()),
+          onecliInstructions().live.trim(),
+        ].join('\n'),
       );
       const removed = lines(
-        [fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8').trim(), ...flatRewrites.map((r) => r.frozen.trim())].join('\n'),
+        [
+          fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8').trim(),
+          ...flatRewrites.map((r) => r.frozen.trim()),
+          onecliInstructions().frozen.trim(),
+        ].join('\n'),
       );
       const strip = (m: Map<string, number>) => {
         m.delete('');

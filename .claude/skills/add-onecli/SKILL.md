@@ -50,6 +50,8 @@ This integration supports exactly the gateway version pinned in `.claude/skills/
 pnpm exec tsx .claude/skills/add-onecli/scripts/setup.ts
 ```
 
+Setup gives OneCLI's database its own random password in `~/.onecli/.env`. A local gateway still on the compose default gets one in place: its data stays, and OneCLI restarts once. To do only that on an existing install, run `pnpm exec tsx .claude/skills/add-onecli/scripts/postgres-password.ts`.
+
 ## Provider credentials
 
 Provider skills such as `/add-opencode` store model credentials here through the
@@ -80,6 +82,46 @@ command arguments, or the container environment.
 - Unattended ChatGPT token refresh is not yet verified on the pinned gateway;
   see [ChatGPT OAuth refresh](references/chatgpt-oauth-refresh.md) for the
   manual reauthentication path.
+
+## Approvals and access on 1.45
+
+The pinned gateway has no hand-written rules. Access is set per agent:
+
+- **App connections** (catalog apps such as Gmail or Vercel): each tool is
+  Allow, Ask or Never. Set it in the console (the agent's page, **Manage
+  permissions** on the connection) or with
+  `onecli agents grants attach-connection --id <agent-id> --connection-id <connection-id> --allow <tool>,<tool> --ask <tool>`;
+  `onecli apps permission-definition --provider <provider>` lists the tool
+  IDs. An Ask tool is held and NanoClaw sends the approval card. Once you pick
+  tools, every tool you did not list, and every tool added to the catalog
+  later, is Never. Full access (attach with no `--allow` or `--ask`) keeps new
+  tools allowed; setting every tool back to Allow in the console after
+  customizing does not. The gateway knows a tool only by its host, method and
+  path pattern, and it checks Allow tools first, then Ask, then Never. A
+  request that fits any Allow tool's pattern goes through even when it is also
+  a tool you set to Ask or Never, and one that fits an Ask tool is held even
+  when its own tool is Never. Patterns overlap often, because one ending in
+  `*` also matches deeper paths: with GitHub's `get_repo` (`GET /repos/*/*`)
+  on Allow, `list_issues` (`GET /repos/*/*/issues`) on Ask is never held, and
+  the GraphQL query and mutation tools are both `POST /graphql`.
+  `permission-definition` shows only tool IDs; each tool's patterns are in
+  OneCLI's [app catalog](https://github.com/onecli/onecli/tree/v1.45.0/packages/api/src/apps/app-permissions).
+  Check them before you rely on an Ask or a Never.
+- **Plain vault keys** (HubSpot, Dial, Exa, any host with no catalog app): on
+  or off per agent, nothing more. Use `attach-secret` (above) or the switch on
+  the agent's page. The key's host and path patterns decide which requests get
+  the key, not whether a request is allowed. There is no Ask, no method match
+  and no block rule, so a call made with a plain key cannot be held for
+  approval.
+- **Connect links do not attach.** A key saved through the link an agent shows
+  after `credential_not_found` belongs to no agent; the retry fails with
+  `access_restricted` until you attach it. A new app account saved through an
+  `app_not_connected` link opens an agent-access dialog with every agent off:
+  turn on the agent that asked.
+- **Hand-written project rules** (host, method and path with allow, ask or
+  block) are gone: the old rule endpoints and the CLI's `rules` and `policy
+  rules` commands answer 410 Gone. OneCLI 2.x self-hosted has such rules again
+  as org policy, but NanoClaw does not support 2.x yet.
 
 ## Validate
 
