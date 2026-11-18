@@ -27,6 +27,8 @@
  *
  * Protocol traffic is stdout; everything logged here goes to stderr.
  */
+import { randomUUID } from 'crypto';
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -35,18 +37,34 @@ import {
   attachCodexAutoApproval,
   initializeCodexAppServer,
   killCodexAppServer,
+  notificationThreadId,
   spawnCodexAppServer,
   startCodexTurn,
   startOrResumeCodexThread,
   tomlBasicString,
+  turnCompletedError,
   type AppServer,
   type JsonRpcNotification,
   type ThreadParams,
 } from './providers/codex-app-server.js';
-import { recordCritiqueRound } from './critique-record.js';
+import { recordCritiqueAttempt, recordCritiqueRound } from './critique-record.js';
+import {
+  ModelRetryBackoff,
+  modelRetryPolicyFromEnv,
+  waitWithActivity,
+  type ModelRetryPolicy,
+  type RetryableModelError,
+} from './providers/opencode-retry.js';
 
 function log(msg: string): void {
   console.error(`[codex-mcp-bridge] ${msg}`);
+}
+
+/** The error a critic call ends with when the client cancels it. */
+export const CANCELLED = 'codex call cancelled by the client';
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }
 
 /** Env var the runner sets: JSON array of `-c key=value` overrides computed in the runner's env. */
@@ -59,6 +77,9 @@ export const THREAD_IDLE_MS =
   Number(process.env.CODEX_MCP_THREAD_IDLE_MS) > 0 ? Number(process.env.CODEX_MCP_THREAD_IDLE_MS) : 15 * 60_000;
 /** Live app-servers kept at once; the least recently used one is evicted (its thread can still be resumed). */
 export const MAX_LIVE_THREADS = 4;
+/** Shortest gap between two MCP progress notifications for one call (see progressReporter). */
+export const PROGRESS_INTERVAL_MS =
+  Number(process.env.CODEX_MCP_PROGRESS_INTERVAL_MS) > 0 ? Number(process.env.CODEX_MCP_PROGRESS_INTERVAL_MS) : 30_000;
 
 // ── tool schema: byte-for-byte what codex 0.153.4's `codex mcp-server` advertised ──────────────
 
@@ -172,6 +193,41 @@ export function runnerOverrides(env: NodeJS.ProcessEnv = process.env): string[] 
   }
 }
 
+// ── progress ────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Return a callback that sends an MCP progress notification for the call that
+ * carries `progressToken`, at most once per `intervalMs`, or undefined when the
+ * client sent no token.
+ *
+ * A critique turn runs for minutes (5 to 15 on prod), and OpenCode's MCP
+ * request timeout is 330 s. OpenCode calls tools with `resetTimeoutOnProgress`,
+ * so each progress notification restarts that clock: the call then times out
+ * only after 330 s with no codex activity at all, and TURN_TIMEOUT_MS stays the
+ * bound on the whole turn. Without it OpenCode gave up on every long critique,
+ * the agent called again, and the abandoned turn ran on beside the new one.
+ */
+export function progressReporter(
+  progressToken: string | number | undefined,
+  send: (n: {
+    method: 'notifications/progress';
+    params: { progressToken: string | number; progress: number };
+  }) => Promise<void>,
+  intervalMs: number = PROGRESS_INTERVAL_MS,
+  now: () => number = Date.now,
+): (() => void) | undefined {
+  if (progressToken === undefined) return undefined;
+  let progress = 0;
+  let last = -Infinity;
+  return () => {
+    const t = now();
+    if (t - last < intervalMs) return;
+    last = t;
+    progress += 1;
+    send({ method: 'notifications/progress', params: { progressToken, progress } }).catch(() => undefined);
+  };
+}
+
 // ── turn collection ─────────────────────────────────────────────────────────────────────────────
 
 export interface TurnResult {
@@ -181,13 +237,23 @@ export interface TurnResult {
 }
 
 /**
- * Start one turn and collect the agent's final message. Resolves on
- * `turn/completed`, rejects on `turn/failed`, process exit or timeout.
+ * Start one turn and collect the agent's final message. Resolves on the turn's
+ * own `turn/completed`; rejects with codex's error when that `turn/completed`
+ * reports a failed or interrupted turn (turnCompletedError), and on
+ * `turn/failed`, process exit or timeout.
+ *
+ * Only notifications on `params.threadId` make up the result. When the critic
+ * spawns a sub-agent (for example to recall prior learnings), the sub-agent's
+ * message and `turn/completed` arrive on this app-server under the sub-agent's
+ * thread id; they count as activity (`onActivity`) but never complete the
+ * parent's turn or replace its message.
  */
 export function runTurn(
   server: AppServer,
   params: { threadId: string; inputText: string; model?: string; cwd?: string },
   timeoutMs: number = TURN_TIMEOUT_MS,
+  onActivity?: () => void,
+  signal?: AbortSignal,
 ): Promise<TurnResult> {
   return new Promise<TurnResult>((resolve, reject) => {
     let deltas = '';
@@ -201,11 +267,17 @@ export function runTurn(
       const idx = server.notificationHandlers.indexOf(handler);
       if (idx >= 0) server.notificationHandlers.splice(idx, 1);
       server.process.off('exit', onExit);
+      signal?.removeEventListener('abort', onAbort);
       fn();
     };
+    // The client cancelled the call: end the turn now. The caller's failure
+    // path evicts the thread, which stops the app-server and its work.
+    const onAbort = (): void => finish(() => reject(new Error(CANCELLED)));
     const onExit = (code: number | null): void =>
       finish(() => reject(new Error(`codex app-server exited (code=${code}) before the turn completed`)));
     const handler = (n: JsonRpcNotification): void => {
+      onActivity?.();
+      if (notificationThreadId(n) !== params.threadId) return;
       const p = (n.params ?? {}) as Record<string, unknown>;
       switch (n.method) {
         case 'item/agentMessage/delta': {
@@ -219,9 +291,12 @@ export function runTurn(
           if (item?.type === 'agentMessage' && typeof item.text === 'string' && item.text) finalText = item.text;
           break;
         }
-        case 'turn/completed':
-          finish(() => resolve({ text: finalText || deltas, items }));
+        case 'turn/completed': {
+          const failure = turnCompletedError(p);
+          finish(() => (failure ? reject(new Error(failure)) : resolve({ text: finalText || deltas, items })));
           break;
+        }
+        // Codex versions before 0.160 reported a failure with `turn/failed`.
         case 'turn/failed': {
           const e = p.error as { message?: string } | undefined;
           finish(() => reject(new Error(e?.message || 'codex turn failed')));
@@ -237,6 +312,8 @@ export function runTurn(
     );
     server.notificationHandlers.push(handler);
     server.process.on('exit', onExit);
+    if (signal?.aborted) return onAbort();
+    signal?.addEventListener('abort', onAbort, { once: true });
     startCodexTurn(server, params).catch((err: unknown) =>
       finish(() => reject(err instanceof Error ? err : new Error(String(err)))),
     );
@@ -305,8 +382,70 @@ export function criticModel(env: NodeJS.ProcessEnv = process.env): string | unde
   return env.NANOCLAW_CRITIC_MODEL || env.CODEX_MODEL || undefined;
 }
 
-export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: string; text: string }> {
+/** Codex config keys that choose the model, or the provider that serves it. */
+const MODEL_CHOOSING_CONFIG_KEYS = [
+  'model',
+  'review_model',
+  'model_provider',
+  'model_providers',
+  'profile',
+  'profiles',
+];
+
+/**
+ * Return why a `codex` call may not run in this container, or undefined when it may.
+ *
+ * In an open-weights group (NANOCLAW_MODEL_WEIGHTS=open) the host's model policy fixes the
+ * critic model (NANOCLAW_CRITIC_MODEL), and the gateway refuses every closed model. A caller
+ * that names another model, directly or through a model-choosing `config` key, would only get
+ * six refused retries and a failed critique. On prod the GLM fixer passed `model: "gpt-5.2"`,
+ * the example in this tool's own schema. So the bridge refuses such a call at once and names
+ * the critic model; a group that is not open keeps the free choice codex has always offered.
+ */
+export function openWeightsModelError(
+  args: Pick<CodexToolArgs, 'model' | 'config'>,
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  if (env.NANOCLAW_MODEL_WEIGHTS !== 'open') return undefined;
+  const critic = criticModel(env);
+  const chosen: string[] = [];
+  if (args.model && args.model !== critic) chosen.push(`model "${args.model}"`);
+  for (const key of Object.keys(args.config ?? {})) {
+    if (MODEL_CHOOSING_CONFIG_KEYS.some((k) => key === k || key.startsWith(`${k}.`))) chosen.push(`config.${key}`);
+  }
+  if (chosen.length === 0) return undefined;
+  return (
+    `codex: this group runs open-weights models only, so its critic model is fixed` +
+    `${critic ? ` at ${critic}` : ''}; leave out ${chosen.join(' and ')}.`
+  );
+}
+
+/**
+ * Return the `codex` tool as this container advertises it. In an open-weights group the
+ * `model` field says that the critic model is fixed, instead of suggesting closed models;
+ * every other group gets the codex 0.153.4 schema unchanged.
+ */
+export function codexToolFor(env: NodeJS.ProcessEnv = process.env): typeof CODEX_TOOL {
+  if (env.NANOCLAW_MODEL_WEIGHTS !== 'open') return CODEX_TOOL;
+  const critic = criticModel(env);
+  const model = {
+    type: 'string',
+    description: `Leave unset. This group runs open-weights models only; the critic model is fixed${critic ? ` at ${critic}` : ''}.`,
+  };
+  return {
+    ...CODEX_TOOL,
+    inputSchema: { ...CODEX_TOOL.inputSchema, properties: { ...CODEX_TOOL.inputSchema.properties, model } },
+  } as unknown as typeof CODEX_TOOL;
+}
+
+export async function handleCodex(
+  args: CodexToolArgs,
+  onActivity?: () => void,
+  signal?: AbortSignal,
+): Promise<{ threadId: string; text: string }> {
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim()) throw new Error('codex: `prompt` is required');
+  const refused = openWeightsModelError(args);
+  if (refused) throw new Error(refused);
   const overrides = [...runnerOverrides(), ...configToOverrides(args.config)];
   if (args.model) overrides.push(`model=${tomlBasicString(args.model)}`);
   const cwd = args.cwd || process.env.CODEX_MCP_CWD || process.cwd();
@@ -331,12 +470,18 @@ export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: stri
   touch(threadId, t);
   const started = Date.now();
   try {
-    const r = await runTurn(server, {
-      threadId,
-      inputText: inputWithDeveloperInstructions(args.prompt, args['developer-instructions']),
-      ...(model ? { model } : {}),
-      cwd,
-    });
+    const r = await runTurn(
+      server,
+      {
+        threadId,
+        inputText: inputWithDeveloperInstructions(args.prompt, args['developer-instructions']),
+        ...(model ? { model } : {}),
+        cwd,
+      },
+      TURN_TIMEOUT_MS,
+      onActivity,
+      signal,
+    );
     log(
       `thread ${threadId}: turn done in ${Math.round((Date.now() - started) / 1000)}s, ${r.items} item(s), ${r.text.length} chars`,
     );
@@ -348,7 +493,11 @@ export async function handleCodex(args: CodexToolArgs): Promise<{ threadId: stri
   }
 }
 
-export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId: string; text: string }> {
+export async function handleCodexReply(
+  args: CodexReplyArgs,
+  onActivity?: () => void,
+  signal?: AbortSignal,
+): Promise<{ threadId: string; text: string }> {
   const threadId = (args?.threadId || args?.conversationId || '').trim();
   if (!threadId) throw new Error('codex-reply: `threadId` is required');
   if (!args || typeof args.prompt !== 'string' || !args.prompt.trim())
@@ -360,8 +509,9 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
     const server = await bootAppServer(overrides);
     const cwd = process.env.CODEX_MCP_CWD || process.cwd();
     const model = criticModel();
+    let resumed: string | undefined;
     try {
-      const resumed = await startOrResumeCodexThread(server, threadId, {
+      resumed = await startOrResumeCodexThread(server, threadId, {
         cwd,
         sandbox: 'danger-full-access',
         approvalPolicy: 'never',
@@ -371,22 +521,32 @@ export async function handleCodexReply(args: CodexReplyArgs): Promise<{ threadId
       t = { server, overrides, model, cwd, lastUsed: Date.now(), timer: setTimeout(() => undefined, 0) };
       live.set(resumed, t);
       touch(resumed, t);
-      const r = await runTurn(server, { threadId: resumed, inputText: args.prompt, ...(model ? { model } : {}), cwd });
+      const r = await runTurn(
+        server,
+        { threadId: resumed, inputText: args.prompt, ...(model ? { model } : {}), cwd },
+        TURN_TIMEOUT_MS,
+        onActivity,
+        signal,
+      );
       touch(resumed, t);
       return { threadId: resumed, text: r.text };
     } catch (err) {
-      killCodexAppServer(server);
+      // Unregister the thread with its server: a registered dead server would
+      // be reused by the next call (or retry) on this thread.
+      if (resumed !== undefined && live.get(resumed) === t) evict(resumed, `reply failed: ${errorText(err)}`);
+      else killCodexAppServer(server);
       throw err;
     }
   }
   touch(threadId, t);
   try {
-    const r = await runTurn(t.server, {
-      threadId,
-      inputText: args.prompt,
-      ...(t.model ? { model: t.model } : {}),
-      cwd: t.cwd,
-    });
+    const r = await runTurn(
+      t.server,
+      { threadId, inputText: args.prompt, ...(t.model ? { model: t.model } : {}), cwd: t.cwd },
+      TURN_TIMEOUT_MS,
+      onActivity,
+      signal,
+    );
     touch(threadId, t);
     return { threadId, text: r.text };
   } catch (err) {
@@ -419,36 +579,161 @@ export function canonicalToolArgs(
 
 // ── MCP server ──────────────────────────────────────────────────────────────────────────────────
 
+/** The text item that names a call's codex thread (see codexToolResult). */
+export function threadIdNote(threadId: string): string {
+  return `codex threadId: ${threadId} (pass it as threadId to codex-reply to continue this thread)`;
+}
+
+/**
+ * Return the MCP result of a successful codex call: the agent's final message as
+ * the first text item, a second text item naming the thread (threadIdNote), and
+ * `structuredContent` `{threadId, content}` as codex's own `codex mcp-server` returned.
+ *
+ * The two engines show the model different parts of this result. Claude Code
+ * shows `structuredContent` serialized as JSON when it is present, so the thread
+ * id travels as its `threadId` field. OpenCode shows only the text items, joined
+ * by a blank line, and drops `structuredContent`; without the second item an
+ * OpenCode agent never learns the thread id and cannot call `codex-reply`. The
+ * message stays a text item of its own, so its sentinel lines remain at the top
+ * of what the model reads.
+ */
+export function codexToolResult(r: { threadId: string; text: string }): {
+  content: Array<{ type: 'text'; text: string }>;
+  structuredContent: { threadId: string; content: string };
+} {
+  return {
+    content: [
+      { type: 'text', text: r.text },
+      { type: 'text', text: threadIdNote(r.threadId) },
+    ],
+    structuredContent: { threadId: r.threadId, content: r.text },
+  };
+}
+
+/**
+ * Return the retry facts of a failed critic call when the failure is the
+ * model endpoint's and passes with time, or undefined when it is not.
+ *
+ * Codex retries a failed model request itself, a few times within seconds,
+ * then fails the turn with its last status, for example
+ * `exceeded retry limit, last status: 429 Too Many Requests`. That covers a
+ * blip, not the endpoint's per-IP rate-limit waves, which refuse calls for
+ * minutes: on 2026-11-17 they failed 255 critiques, and each failure blocked a
+ * fixer at the critique gate. A rate limit, an overload, a 500/502/503/504 or a
+ * dropped stream is retryable. The bridge's own turn timeout is not (a retry
+ * would run another 30 minutes), nor is an error the caller caused.
+ */
+export function retryableCriticError(message: string): RetryableModelError | undefined {
+  // Codex names the endpoint's status as "last status: N" (its retries ran
+  // out) or "unexpected status N". Reading only that status keeps a number
+  // elsewhere in the text, such as a 403 whose body mentions 503, from
+  // passing for the endpoint's answer.
+  const status = Number(message.match(/(?:last|unexpected) status:? (\d{3})\b/i)?.[1]);
+  if (status === 429 || (!status && /too many requests/i.test(message))) return { statusCode: 429 };
+  if (status === 500 || status === 502 || status === 503 || status === 504) return {};
+  if (!status && /stream disconnected|overloaded|temporarily unavailable|ECONNRESET/i.test(message)) return {};
+  return undefined;
+}
+
+/**
+ * The critic's retry policy: `CODEX_MCP_RETRY_BUDGET_MS` and
+ * `CODEX_MCP_RETRY_BASE_MS`, with the defaults of the OpenCode turn retry
+ * (30 s doubling to 4 min, with jitter, for up to 10 min).
+ */
+export function criticRetryPolicy(env: NodeJS.ProcessEnv = process.env): ModelRetryPolicy {
+  return modelRetryPolicyFromEnv(env, { budget: 'CODEX_MCP_RETRY_BUDGET_MS', base: 'CODEX_MCP_RETRY_BASE_MS' });
+}
+
+/**
+ * Run a critic call, and after a retryable failure (retryableCriticError) wait
+ * on `backoff` and run it again, until it succeeds, fails another way, the
+ * backoff gives up, or `signal` aborts (the client cancelled the call).
+ *
+ * A retry runs the whole call again: `codex` on a new thread, `codex-reply` on
+ * the thread resumed from disk. The critic only reads, so a repeated review has
+ * no side effect beyond what an agent's own second call would have: a
+ * `codex-reply` whose failed turn already holds the prompt sees it twice. While
+ * it waits, `onActivity` keeps sending progress, so a client whose request
+ * timeout resets on progress (OpenCode, 330 s) keeps waiting. `onRetry` runs
+ * before each wait. A cancel, before an attempt, during one (the turn ends)
+ * or during a wait, ends the call with CANCELLED, which is not a critic
+ * failure. The last error names how many retries ran.
+ */
+export async function withCriticRetry<T>(
+  run: () => Promise<T>,
+  opts: {
+    backoff: ModelRetryBackoff;
+    signal: AbortSignal;
+    onActivity?: () => void;
+    onRetry?: (error: string, waitMs: number) => Promise<void>;
+  },
+): Promise<T> {
+  for (;;) {
+    if (opts.signal.aborted) throw new Error(CANCELLED);
+    try {
+      return await run();
+    } catch (err) {
+      const msg = errorText(err);
+      if (opts.signal.aborted) throw new Error(CANCELLED);
+      const retryable = retryableCriticError(msg);
+      const waitMs = retryable ? opts.backoff.next(retryable) : undefined;
+      if (waitMs === undefined) {
+        if (opts.backoff.retries === 0) throw err;
+        throw new Error(`${msg} (after ${opts.backoff.retries} retries)`);
+      }
+      await opts.onRetry?.(msg, waitMs);
+      for await (const _ of waitWithActivity(waitMs, opts.signal)) opts.onActivity?.();
+    }
+  }
+}
+
 export function createBridgeServer(): Server {
   const server = new Server({ name: 'codex-mcp-bridge', version: '1.0.0' }, { capabilities: { tools: {} } });
-  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [CODEX_TOOL, CODEX_REPLY_TOOL] }));
-  server.setRequestHandler(CallToolRequestSchema, async (req) => {
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: [codexToolFor(), CODEX_REPLY_TOOL] }));
+  server.setRequestHandler(CallToolRequestSchema, async (req, extra) => {
     const name = req.params.name;
     const raw = (req.params.arguments ?? {}) as Record<string, unknown>;
     const args = canonicalToolArgs(
       raw,
       (name === 'codex-reply' ? CODEX_REPLY_TOOL : CODEX_TOOL).inputSchema.properties as Record<string, unknown>,
     );
+    const onActivity = progressReporter(req.params._meta?.progressToken, (n) => extra.sendNotification(n));
+    const run =
+      name === 'codex'
+        ? () => handleCodex(args as unknown as CodexToolArgs, onActivity, extra.signal)
+        : name === 'codex-reply'
+          ? () => handleCodexReply(args as unknown as CodexReplyArgs, onActivity, extra.signal)
+          : undefined;
+    if (!run) return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] };
+    const tool = name as 'codex' | 'codex-reply';
+    // Each run gets its own call id on its start, failure and round
+    // (critique-record.ts): the host waits for a critique still running and
+    // tells a failing critic from an agent that never tried. A scheduled retry
+    // records its start before the wait, so the host sees it as running.
+    let callId = randomUUID();
+    await recordCritiqueAttempt(tool, args, { started: true }, callId);
     try {
-      const r =
-        name === 'codex'
-          ? await handleCodex(args as unknown as CodexToolArgs)
-          : name === 'codex-reply'
-            ? await handleCodexReply(args as unknown as CodexReplyArgs)
-            : null;
-      if (!r) return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] };
+      const r = await withCriticRetry(run, {
+        backoff: new ModelRetryBackoff(criticRetryPolicy()),
+        signal: extra.signal,
+        onActivity,
+        onRetry: async (error, waitMs) => {
+          log(`${name} failed: ${error}; retrying in ${Math.round(waitMs / 1000)}s`);
+          await recordCritiqueAttempt(tool, args, { error }, callId);
+          callId = randomUUID();
+          await recordCritiqueAttempt(tool, args, { started: true }, callId);
+        },
+      });
+      // A review the client cancelled never reaches the agent, so it is no round.
+      if (extra.signal.aborted) throw new Error(CANCELLED);
       // One critique round per successful call, recorded before the answer so
       // the agent's next delivery sees it (critique-record.ts).
-      await recordCritiqueRound(name as 'codex' | 'codex-reply', args, r);
-      // Same shape codex's own server returned: the agent's final message as text, and the
-      // thread id in structured content so `codex-reply` can continue the conversation.
-      return {
-        content: [{ type: 'text', text: r.text }],
-        structuredContent: { threadId: r.threadId, content: r.text },
-      };
+      await recordCritiqueRound(tool, args, r, process.env, callId);
+      return codexToolResult(r);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       log(`${name} failed: ${msg}`);
+      await recordCritiqueAttempt(tool, args, { error: msg }, callId);
       return { isError: true, content: [{ type: 'text', text: `codex bridge: ${msg}` }] };
     }
   });

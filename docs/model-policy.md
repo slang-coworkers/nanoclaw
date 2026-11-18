@@ -11,6 +11,23 @@ Each coworker uses up to four models. You can set each one for one group, and yo
 
 A Claude group uses one setting for its small model and its router.
 
+## The install default
+
+A group that names no provider and no weights of its own runs on the install default. By default it is OpenCode with open-weights models.
+
+| `.env` setting | Effect |
+|---|---|
+| (none) | OpenCode, `weights=open` |
+| `NANOCLAW_DEFAULT_WEIGHTS=any` | Claude, no open-weights rule |
+| `NANOCLAW_DEFAULT_WEIGHTS=open` | OpenCode, `weights=open` |
+| `DEFAULT_AGENT_PROVIDER=<provider>` | That provider. With `claude` and no `NANOCLAW_DEFAULT_WEIGHTS`, the weights are `any`, because Claude runs Claude models only |
+
+`ncl groups config update --weights ""` sets a group back to the default weights; `--weights any` keeps a group off the open-weights rule whatever the default is. A group created on Claude (`--agent-provider claude`, a subagent of a Claude group) records `weights=any` when it is created.
+
+The host logs the default and the groups that follow it at each start. It does not start when `NANOCLAW_DEFAULT_WEIGHTS` holds another value than `any` or `open`, and it logs an error when the default breaks the policy (for example `DEFAULT_AGENT_PROVIDER=claude` with `NANOCLAW_DEFAULT_WEIGHTS=open`).
+
+Groups that existed before the open default keep what they ran on: the upgrade (migration 952) writes `provider=claude` into each group that named no provider, and `weights=any` into each group with no weights.
+
 ## Commands
 
 ```bash
@@ -39,8 +56,9 @@ ncl groups restart --id <group-id>
 
 - A model is open-weights when its id starts with an open family prefix, for example `nvidia/zai-org/`. Set `NANOCLAW_OPEN_WEIGHTS_PREFIXES` (comma-separated) to change the list. A model that matches no prefix counts as closed.
 - A group with `--weights open` must resolve each role to an open-weights model. The command refuses a closed model, and the host does not start such a group. The error names each closed role.
-- A Claude group cannot use `--weights open`, because its SDK and its router call Claude models. Switch it to OpenCode first.
+- A Claude group cannot use `--weights open`, because its SDK and its router call Claude models. Switch it to OpenCode first. For the same reason, `ncl groups update --agent-provider claude` is refused for a group under `weights=open`; set `--weights any` first.
 - OpenCode needs its provider prefix on model ids (`openai/nvidia/zai-org/glm-5.3`). The policy adds the prefix to a bare id.
+- The host passes the install's Claude settings from `.env` to every container. In a `--weights open` group, the policy replaces each Claude Code model setting with an open model, so a `claude` CLI that a skill starts there asks for an open model: `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL` and `CLAUDE_CODE_SUBAGENT_MODEL` get the `main` model, and `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_SMALL_FAST_MODEL` and `ANTHROPIC_FALLBACK_MODEL` get the `small` model (ids without OpenCode's prefix). `CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1` stops Claude Code's telemetry, error reports and update checks. Other groups keep the install's settings.
 - Changes take effect at the next container start (`ncl groups restart`).
 
 ## Moving every coworker to open weights

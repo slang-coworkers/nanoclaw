@@ -20,7 +20,7 @@ import {
 } from './onecli-provider-credentials.js';
 import { readEnvFile } from '../env.js';
 import { openWeightsModelGlobs } from '../model-policy.js';
-import { ensureOpenModelRule } from './onecli-model-rule.js';
+import { ensureOpenModelRule, inferenceHostsOf } from './onecli-model-rule.js';
 import { log } from '../log.js';
 
 import {
@@ -49,17 +49,8 @@ const anthropicBaseUrl = process.env.ANTHROPIC_BASE_URL || env.ANTHROPIC_BASE_UR
 
 /** The inference hosts this install sends model requests to: the host of each base URL it sets. */
 function inferenceHosts(): string[] {
-  const urls = (['ANTHROPIC_BASE_URL', 'OPENCODE_BASE_URL', 'CODEX_BASE_URL'] as const).map(
-    (key) => process.env[key] || env[key],
-  );
-  const hosts = urls.flatMap((url) => {
-    try {
-      return url ? [new URL(url).hostname] : [];
-    } catch {
-      return [];
-    }
-  });
-  return [...new Set(hosts)];
+  const keys = ['ANTHROPIC_BASE_URL', 'OPENCODE_BASE_URL', 'CODEX_BASE_URL'] as const;
+  return inferenceHostsOf(Object.fromEntries(keys.map((key) => [key, process.env[key] || env[key]])));
 }
 
 // The open-models-only rule is checked at most this often per agent, so a busy sweep does not

@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 
 import { OpenCodeProvider } from './opencode.js';
-import { buildOpenCodeConfig } from './opencode-config.js';
+import { buildOpenCodeConfig, cloneClaudeMdPaths, withCloneClaudeMdInstructions } from './opencode-config.js';
 import {
   prepareOpenCodeMemory,
   openCodeInstructionsPath,
@@ -170,5 +170,83 @@ describe('buildOpenCodeConfig instructions', () => {
     const config = buildOpenCodeConfig({});
     expect(config.instructions).toContain('/workspace/agent/CLAUDE.md');
     expect(config.instructions).toContain('/workspace/agent/CLAUDE.local.md');
+  });
+});
+
+// A folder under the agent directory shaped like a checkout. `git` is 'clone'
+// for a `.git` directory and 'worktree' for a linked worktree's `.git` file.
+function checkout(
+  name: string,
+  opts: { git?: 'clone' | 'worktree'; origin?: string; files?: Array<'CLAUDE.md' | 'AGENTS.md'> } = {},
+): string {
+  const root = path.join(dir, name);
+  fs.mkdirSync(root);
+  if ((opts.git ?? 'clone') === 'clone') {
+    fs.mkdirSync(path.join(root, '.git'));
+    const remote = opts.origin === undefined ? '' : `[remote "origin"]\n\turl = ${opts.origin}\n`;
+    fs.writeFileSync(path.join(root, '.git', 'config'), `[core]\n\tbare = false\n${remote}`);
+  } else {
+    fs.writeFileSync(path.join(root, '.git'), `gitdir: ${dir}/tool/.git/worktrees/${name}\n`);
+  }
+  for (const file of opts.files ?? ['CLAUDE.md', 'AGENTS.md']) {
+    fs.writeFileSync(path.join(root, file), `# ${file}\n\n@AGENTS.md\n`);
+  }
+  return root;
+}
+
+describe('cloneClaudeMdPaths', () => {
+  it('adds the CLAUDE.md of a clone that also has AGENTS.md', () => {
+    checkout('tool', { origin: 'https://github.com/acme/tool.git' });
+    expect(cloneClaudeMdPaths(dir)).toEqual([path.join(dir, 'tool', 'CLAUDE.md')]);
+  });
+
+  it('skips a linked worktree, whose guide is the same text as its clone', () => {
+    checkout('tool', { origin: 'https://github.com/acme/tool.git' });
+    checkout('wt-tool-456', { git: 'worktree' });
+    expect(cloneClaudeMdPaths(dir)).toEqual([path.join(dir, 'tool', 'CLAUDE.md')]);
+  });
+
+  it('skips a clone with only CLAUDE.md, which OpenCode finds without help', () => {
+    checkout('tool', { origin: 'https://github.com/acme/tool.git', files: ['CLAUDE.md'] });
+    expect(cloneClaudeMdPaths(dir)).toEqual([]);
+  });
+
+  it('skips a clone whose AGENTS.md links to its CLAUDE.md', () => {
+    const root = checkout('tool', { origin: 'https://github.com/acme/tool.git', files: ['CLAUDE.md'] });
+    fs.symlinkSync('CLAUDE.md', path.join(root, 'AGENTS.md'));
+    expect(cloneClaudeMdPaths(dir)).toEqual([]);
+  });
+
+  it('loads the guide once when per-task copies of the repository sit beside the clone', () => {
+    checkout('tool', { origin: 'https://github.com/acme/tool.git' });
+    checkout('tool-bisect', { origin: 'https://x-access-token:secret@github.com/acme/tool' });
+    checkout('wt-122', { origin: path.join(dir, 'tool') });
+    checkout('wt-123', { origin: path.join(dir, 'bare-123.git') });
+    checkout('wt-124', { origin: `file://${dir}/bare-124.git` });
+    checkout('scratch');
+    checkout('other', { origin: 'git@github.com:acme/other.git' });
+    expect(cloneClaudeMdPaths(dir)).toEqual([
+      path.join(dir, 'other', 'CLAUDE.md'),
+      path.join(dir, 'tool', 'CLAUDE.md'),
+    ]);
+  });
+
+  it('returns nothing when the agent directory does not exist', () => {
+    expect(cloneClaudeMdPaths(path.join(dir, 'missing'))).toEqual([]);
+  });
+});
+
+describe('withCloneClaudeMdInstructions', () => {
+  it('adds the clone guides after the group instructions, as paths OpenCode reads as is', () => {
+    checkout('tool', { origin: 'https://github.com/acme/tool.git' });
+    const config = buildOpenCodeConfig({});
+    const spawned = withCloneClaudeMdInstructions(config, dir);
+    expect(spawned.instructions).toEqual([...(config.instructions as string[]), path.join(dir, 'tool', 'CLAUDE.md')]);
+    expect(config.instructions).not.toContain(path.join(dir, 'tool', 'CLAUDE.md'));
+  });
+
+  it('returns the config unchanged when no clone qualifies', () => {
+    const config = buildOpenCodeConfig({});
+    expect(withCloneClaudeMdInstructions(config, dir)).toBe(config);
   });
 });

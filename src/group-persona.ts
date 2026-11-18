@@ -88,8 +88,8 @@ export function stageGroupPersona(groupDir: string, instructions: string): boole
 }
 
 /**
- * Read one standing-instructions file without following symlinks, reporting
- * PRESENCE separately from content.
+ * Read one standing-instructions file without following symlinks or blocking,
+ * reporting PRESENCE separately from content.
  *
  * `present` distinguishes "no such path" from "a path exists but yields no
  * usable instructions" (empty, whitespace-only, a directory, a symlink). Callers
@@ -106,8 +106,14 @@ export function stageGroupPersona(groupDir: string, instructions: string): boole
 export function readStandingInstructionsFile(file: string): { present: boolean; content: string | null } {
   let fd: number | undefined;
   try {
-    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-    if (!fs.fstatSync(fd).isFile()) return { present: true, content: null };
+    // O_NONBLOCK: the group folder is agent-writable, and a blocking open of a
+    // writer-less FIFO here would stall the host on every spawn. The isFile
+    // check below then refuses anything that is not a regular file.
+    fd = fs.openSync(file, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+    if (!fs.fstatSync(fd).isFile()) {
+      log.warn('Group standing instructions are not a regular file; omitting persona', { file });
+      return { present: true, content: null };
+    }
     const content = fs.readFileSync(fd, 'utf-8').trim();
     return { present: true, content: content || null };
   } catch (err) {

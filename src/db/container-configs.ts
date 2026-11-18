@@ -1,4 +1,4 @@
-import { DEFAULT_AGENT_PROVIDER } from '../config.js';
+import { creationWeights, type ModelWeights } from '../model-policy.js';
 import type { ContainerConfigRow } from '../types.js';
 import { getDb } from './connection.js';
 
@@ -33,46 +33,53 @@ export async function createContainerConfig(config: ContainerConfigRow): Promise
     `INSERT INTO container_configs (
         agent_group_id, provider, model, effort, image_tag, assistant_name,
         max_messages_per_prompt, skills, mcp_servers, packages_apt, packages_npm,
-        additional_mounts, cli_scope, timezone, speed, updated_at
+        additional_mounts, cli_scope, timezone, speed, weights, updated_at
       ) VALUES (
         @agent_group_id, @provider, @model, @effort, @image_tag, @assistant_name,
         @max_messages_per_prompt, @skills, @mcp_servers, @packages_apt, @packages_npm,
-        @additional_mounts, @cli_scope, @timezone, @speed, @updated_at
+        @additional_mounts, @cli_scope, @timezone, @speed, @weights, @updated_at
       )`,
-    config,
+    { weights: null, ...config },
   );
 }
 
 /**
- * Create a config row if one doesn't exist, stamping the provider. Idempotent —
- * no-ops if the row already exists, so an existing group's provider is never
- * overwritten (load-bearing: this is how the global default stays "new groups
- * only" for groups that already have a row).
+ * Create a config row if one doesn't exist. Idempotent: an existing row is
+ * never touched, so this never changes the provider or weights of a group that
+ * already has a row.
  *
- * An absent `provider` takes the instance default (`DEFAULT_AGENT_PROVIDER`);
- * `claude` and an absent value that resolves to claude are stored as NULL — the
- * column means "follows the built-in default", matching pre-feature rows.
+ * `provider` is the creator's explicit pick (a subagent's parent provider, the
+ * operator's pick at setup), stored as given, Claude included. Without a pick
+ * the column stays empty and the group follows the install default
+ * (installDefaultProvider) at every spawn. `weights` works the same way. When
+ * the creator names no weights, a group whose named provider is Claude records
+ * `any` (creationWeights), because Claude runs Claude models only and would
+ * fail an open install default at its first spawn. The named provider is the
+ * one the group will run on: its own `agent_groups.agent_provider`, which
+ * outranks this row, else the pick.
+ *
+ * Consider `ncl groups create --agent-provider claude` on an install with the
+ * open default: the group row says claude, so this row gets weights `any`, and
+ * the group starts on Claude. A group created with no provider gets an empty
+ * row and starts on OpenCode with open-weights models.
  */
-export async function ensureContainerConfig(agentGroupId: string, provider?: string | null): Promise<void> {
-  // Single chokepoint for the instance default: a fresh row with no explicit
-  // provider is stamped with DEFAULT_AGENT_PROVIDER, so every new-group creation
-  // path inherits it without each having to remember. INSERT OR IGNORE keeps an
-  // EXISTING row untouched — so this stays "new groups only" for any group that
-  // already has a config row (backfillContainerConfigs seeds one for every group
-  // at host startup; a non-claude default would only reach a row-less *legacy*
-  // group if a creation script reused it before that first backfill ran). Callers
-  // that know the provider (subagent → parent's, spawn → resolved) pass it
-  // explicitly and override the default.
-  // `claude` (the built-in default) and casing normalize to NULL/lowercase so the
-  // column matches what resolution lowercases to.
-  const normalized = (provider ?? DEFAULT_AGENT_PROVIDER).toLowerCase();
-  const stamped = normalized && normalized !== 'claude' ? normalized : null;
+export async function ensureContainerConfig(
+  agentGroupId: string,
+  provider?: string | null,
+  weights?: ModelWeights | null,
+): Promise<void> {
+  const pick = provider ? provider.toLowerCase() : null;
+  const group = await getDb().get<{ agent_provider: string | null }>(
+    'SELECT agent_provider FROM agent_groups WHERE id = ?',
+    agentGroupId,
+  );
   await getDb().run(
-    `INSERT INTO container_configs (agent_group_id, provider, updated_at)
-       VALUES (?, ?, ?)
+    `INSERT INTO container_configs (agent_group_id, provider, weights, updated_at)
+       VALUES (?, ?, ?, ?)
        ON CONFLICT (agent_group_id) DO NOTHING`,
     agentGroupId,
-    stamped,
+    pick,
+    weights ?? creationWeights(group?.agent_provider || pick),
     new Date().toISOString(),
   );
 }

@@ -16,7 +16,7 @@ vi.mock('../../config.js', async () => {
 
 const TEST_DIR = '/tmp/nanoclaw-test-cli-model-policy';
 
-import { closeDb, createAgentGroup, initTestDb, runMigrations } from '../../db/index.js';
+import { closeDb, createAgentGroup, getAgentGroup, initTestDb, runMigrations } from '../../db/index.js';
 import { ensureContainerConfig, getContainerConfig } from '../../db/container-configs.js';
 import { dispatch } from '../dispatch.js';
 import './groups.js';
@@ -56,7 +56,7 @@ beforeEach(async () => {
   fs.mkdirSync(TEST_DIR, { recursive: true });
   await runMigrations(await initTestDb());
   const at = new Date().toISOString();
-  await createAgentGroup({ id: 'ag-claude', name: 'c', folder: 'c', agent_provider: null, created_at: at });
+  await createAgentGroup({ id: 'ag-claude', name: 'c', folder: 'c', agent_provider: 'claude', created_at: at });
   await createAgentGroup({ id: 'ag-open', name: 'o', folder: 'o', agent_provider: 'opencode', created_at: at });
   await ensureContainerConfig('ag-claude');
   await ensureContainerConfig('ag-open');
@@ -88,7 +88,8 @@ describe('--weights open', () => {
     const res = await update('ag-claude', { weights: 'open' });
     expect(res.ok).toBe(false);
     expect(message(res)).toContain('--agent-provider opencode');
-    expect((await getContainerConfig('ag-claude'))!.weights).toBeNull();
+    // Created on Claude, so the row records weights=any (creationWeights).
+    expect((await getContainerConfig('ag-claude'))!.weights).toBe('any');
   });
 
   it('refuses a closed model for a role of an open group and names the role', async () => {
@@ -99,13 +100,18 @@ describe('--weights open', () => {
     expect((await update('ag-open', { critic_model: 'nvidia/deepseek-ai/deepseek-v4.1-flash-1017' })).ok).toBe(true);
   });
 
-  it('clears with "any" and "" back to the install defaults', async () => {
+  it('stores "any" as the group\'s own setting, and "" follows the install default', async () => {
     await update('ag-open', { weights: 'open', small_model: 'nvidia/zai-org/glm-5.3-flash' });
     expect((await update('ag-open', { weights: 'any', small_model: '' })).ok).toBe(true);
-    const row = (await getContainerConfig('ag-open'))!;
-    expect(row.weights).toBeNull();
+    let row = (await getContainerConfig('ag-open'))!;
+    expect(row.weights).toBe('any');
     expect(row.small_model).toBeNull();
     expect((await get('ag-open')).models.main.model).toBe(ENV.OPENCODE_MODEL);
+
+    expect((await update('ag-open', { weights: '' })).ok).toBe(true);
+    row = (await getContainerConfig('ag-open'))!;
+    expect(row.weights).toBeNull();
+    expect((await get('ag-open')).weights).toBe('open');
   });
 });
 
@@ -113,6 +119,33 @@ it('refuses --router-model for a Claude group, whose router is its small model',
   const res = await update('ag-claude', { router_model: 'aws/anthropic/x' });
   expect(res.ok).toBe(false);
   expect(message(res)).toContain('--small-model');
+});
+
+describe('groups update --agent-provider', () => {
+  const setProvider = (id: string, provider: string) =>
+    dispatch(
+      { id: `p-${Math.random()}`, command: 'groups-update', args: { id, agent_provider: provider } },
+      { caller: 'host' },
+    );
+
+  it('refuses Claude for a group under the open install default, and names the command that lifts the rule', async () => {
+    await createAgentGroup({ id: 'ag-new', name: 'n', folder: 'n', agent_provider: null, created_at: 'x' });
+    await ensureContainerConfig('ag-new');
+    const res = await setProvider('ag-new', 'claude');
+    expect(res.ok).toBe(false);
+    expect(message(res)).toContain('ncl groups config update --id ag-new --weights any');
+    expect((await getAgentGroup('ag-new'))!.agent_provider).toBeNull();
+
+    expect((await update('ag-new', { weights: 'any' })).ok).toBe(true);
+    expect((await setProvider('ag-new', 'claude')).ok).toBe(true);
+    expect((await get('ag-new')).agent_provider).toBe('claude');
+  });
+
+  it('reports the install default as the provider of a group that names none', async () => {
+    await createAgentGroup({ id: 'ag-new', name: 'n', folder: 'n', agent_provider: null, created_at: 'x' });
+    await ensureContainerConfig('ag-new');
+    expect(await get('ag-new')).toMatchObject({ agent_provider: 'opencode', weights: 'open' });
+  });
 });
 
 it('rejects a weights value other than any or open', async () => {

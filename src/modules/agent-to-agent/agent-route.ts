@@ -41,7 +41,7 @@ import { readSessionCostCapStatus } from '../../cli/session-cost-cap.js';
 import { notifyAgent, requestApproval } from '../approvals/index.js';
 import { mayDeliverInto, sessionPrivilegeOf } from '../session-privilege/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
-import { A2A_MESSAGE_GATE_ACTION, ITEM_OWNER_DENY_PREFIX, a2aSend } from './guard.js';
+import { A2A_MESSAGE_GATE_ACTION, ITEM_OWNER_DENY_PREFIX, UNKNOWN_GH_THREAD_DENY_PREFIX, a2aSend } from './guard.js';
 import { findItemOwnerConflict } from './item-ownership.js';
 
 /**
@@ -595,6 +595,11 @@ async function routeAgentMessageOnce(
       await refuseSecondItemSession(msg, session, targetAgentGroupId, routeThread);
       return true;
     }
+    if (decision.reason.startsWith(UNKNOWN_GH_THREAD_DENY_PREFIX)) {
+      // Deterministic too: the same thread id is refused on every retry.
+      await refuseUnknownGhThread(msg, session, targetAgentGroupId, decision.reason);
+      return true;
+    }
     throw new GuardDenyError(decision.reason);
   }
 
@@ -659,6 +664,34 @@ async function refuseSecondItemSession(
     `${item} already has a ${targetName} session ${owners.join('; ')}. ` +
       'A second session for the same item is not allowed. ' +
       'Send to that session (target_session_id) or ask the operator to raise its ceiling.',
+  );
+}
+
+/**
+ * The sender addressed a fresh session on a GitHub thread id that is malformed
+ * or names a repo no GitHub event has come from (gh-thread-check.ts). Tell the
+ * sender once, with the reason, so it can resend on the item's canonical thread
+ * instead of starting a session outside the chain.
+ */
+async function refuseUnknownGhThread(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+  reason: string,
+): Promise<void> {
+  const targetName = (await getAgentGroup(targetAgentGroupId))?.name ?? targetAgentGroupId;
+  const detail = reason.slice(UNKNOWN_GH_THREAD_DENY_PREFIX.length).trim();
+  log.warn('a2a fresh session on an unknown GitHub thread refused', {
+    from: session.agent_group_id,
+    to: targetAgentGroupId,
+    msgId: msg.id,
+    reason: detail,
+  });
+  await notifyAgent(
+    session,
+    `Your message to ${targetName} was not delivered: ${detail}. ` +
+      "Resend it on the item's canonical thread, gh-issue-<owner>/<repo>-<number> as the webhook writes it, " +
+      'or leave thread_id empty to stay on your own thread.',
   );
 }
 

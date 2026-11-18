@@ -72,6 +72,15 @@ export function heartbeatPath(agentGroupId: string, sessionId: string): string {
   return path.join(sessionDir(agentGroupId, sessionId), '.heartbeat');
 }
 
+/** mtime of the session's heartbeat file in ms, or 0 when the file is absent. */
+export function heartbeatMtimeMs(agentGroupId: string, sessionId: string): number {
+  try {
+    return fs.statSync(heartbeatPath(agentGroupId, sessionId)).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
+
 function mailboxKey(agentGroupId: string, sessionId: string) {
   return { agentGroupId, sessionId };
 }
@@ -352,6 +361,28 @@ export async function writeSessionRouting(agentGroupId: string, sessionId: strin
 }
 
 /**
+ * Throw when `sessionId` belongs to an agent group other than `agentGroupId`.
+ *
+ * A session's mailbox lives under its own group's folder, and every reader —
+ * the sweep, the wake, the container mount — finds it through the session
+ * row's `agent_group_id`. A write addressed to another group's folder would
+ * provision a second mailbox under that folder, and no reader ever looks
+ * there. Consider an Orchestrator agent running
+ * `ncl groups restart --id <slang-fixer> --message "Resume …"`: the on-wake
+ * notice landed in `v2-sessions/<slang-fixer>/<orchestrator session>/` and sat
+ * pending for four months. A session with no central row is left alone, since
+ * the documented `rm -rf` reset and tests write by id alone.
+ */
+async function assertMailboxOwner(agentGroupId: string, sessionId: string): Promise<void> {
+  const owner = await getSession(sessionId);
+  if (owner && owner.agent_group_id !== agentGroupId) {
+    throw new Error(
+      `writeSessionMessage: session ${sessionId} belongs to agent group ${owner.agent_group_id}, not ${agentGroupId}`,
+    );
+  }
+}
+
+/**
  * Write a message to a session's inbound mailbox. Host-only.
  */
 export async function writeSessionMessage(
@@ -368,10 +399,11 @@ export async function writeSessionMessage(
     processAfter?: string | null;
     recurrence?: string | null;
     /**
-     * true = this message should wake the agent (the default); false = accumulate
-     * as context only, don't wake. Host's countDueMessages gates on this
-     * column; the container still reads all prior messages as context when
-     * a triggering message does arrive.
+     * true = this message should wake the agent; false = accumulate as context
+     * only, don't wake. Host's countDueMessages gates on this column; the
+     * container still reads all prior messages as context when a triggering
+     * message does arrive. Omitted, the mailbox model decides: a trigger for
+     * every kind except `system` (see `inboundTrigger` in mailbox/model.ts).
      */
     trigger?: boolean;
     /**
@@ -387,6 +419,8 @@ export async function writeSessionMessage(
     onWake?: boolean;
   },
 ): Promise<void> {
+  await assertMailboxOwner(agentGroupId, sessionId);
+
   // Documented reset: operators `rm -rf` a session folder to clear a stuck
   // session. The sessions row survives, so the next message takes the
   // existing-session path and lands here with a missing mailbox — the open
@@ -409,7 +443,7 @@ export async function writeSessionMessage(
       content,
       processAfter: message.processAfter ?? null,
       recurrence: message.recurrence ?? null,
-      trigger: message.trigger ?? true,
+      trigger: message.trigger,
       sourceSessionId: message.sourceSessionId ?? null,
       onWake: message.onWake ?? false,
     });

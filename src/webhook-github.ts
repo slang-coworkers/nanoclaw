@@ -169,6 +169,10 @@ export interface GitHubPrReviewableEvent {
   /** PR head sha. Required to park under the CI gate (the head CI must pass on)
    * and to key the parked row's debounce. Empty when unknown (gate skipped). */
   headSha?: string;
+  /** `pull_request.updated_at` as `Date#toISOString()`. Required to park: it
+   * orders this event against the one already parked for the PR, so a late or
+   * redelivered older event cannot replace a newer head. Empty when unknown. */
+  prUpdatedAt?: string;
   /**
    * The privilege of the account that triggered the event (src/modules/session-privilege):
    * `closed` for an approved person, `open` for any other person. Absent for an
@@ -182,7 +186,15 @@ export interface GitHubPrReviewableEvent {
  * for the JSON response shape and ops log filtering.
  */
 export type DeliveryOutcome =
-  'local' | 'forwarded' | 'dropped' | 'skipped' | 'no-session' | 'no-admin-group' | 'parked' | 'released';
+  | 'local'
+  | 'forwarded'
+  | 'dropped'
+  | 'skipped'
+  | 'no-session'
+  | 'no-admin-group'
+  | 'parked'
+  | 'superseded'
+  | 'released';
 
 /**
  * Internal helper: write an event payload to the admin (orchestrator) agent
@@ -758,17 +770,22 @@ export async function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent):
   // CI gate: park instead of deliver. A reviewable event does not mint an
   // approver session until a required CI check_suite reports success for this
   // head (see the check_suite success handler → releaseParkedReviewable). The
-  // parked row is keyed on (repo, pr) with last-writer-wins, so a burst of
-  // synchronize pushes collapses to one decision on the settled+green head —
-  // this is the debounce that replaces the per-push re-fire (delivery-id rowId).
-  // Requires a head sha to know which CI to wait on; without one we fall through
-  // to immediate delivery rather than park a PR we could never release.
-  if (APPROVER_CI_GATE && event.headSha) {
-    await parkReviewable(getDb(), {
+  // parked row is keyed on (repo, pr) and the newest event by updated_at wins,
+  // so a burst of synchronize pushes collapses to one decision on the
+  // settled+green head — this is the debounce that replaces the per-push
+  // re-fire (delivery-id rowId) — and a late or redelivered older event cannot
+  // move the park back to an older head (parkReviewable).
+  // Requires a head sha to know which CI to wait on, and the PR's updated_at to
+  // order the event; GitHub sends both on every pull_request event. Without
+  // either we fall through to immediate delivery rather than park a PR we
+  // could never release or could not order.
+  if (APPROVER_CI_GATE && event.headSha && event.prUpdatedAt) {
+    const parked = await parkReviewable(getDb(), {
       repo: event.repo,
       prNumber: event.prNumber,
       headSha: event.headSha,
       reason: event.reason,
+      prUpdatedAt: event.prUpdatedAt,
       rawEventJson: JSON.stringify({
         repo: event.repo,
         prNumber: event.prNumber,
@@ -782,7 +799,9 @@ export async function deliverGitHubPrReviewable(event: GitHubPrReviewableEvent):
         headSha: event.headSha,
       }),
     });
-    return 'parked';
+    // A failed park write is logged by parkReviewable; the event is neither
+    // parked nor delivered.
+    return parked === 'failed' ? 'dropped' : parked;
   }
 
   const eventContent = JSON.stringify({

@@ -5,6 +5,7 @@
  * insertRecurrence) live beside the SQLite task implementation.
  */
 import Database from 'better-sqlite3';
+import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { describe, it, expect, afterEach } from 'vitest';
@@ -14,6 +15,8 @@ import {
   getInboundSourceSessionId,
   getNextDueAt,
   migrateMessagesInTable,
+  openOutboundDb,
+  rollBackHotJournal,
   syncProcessingAcks,
 } from './session-db.js';
 
@@ -237,5 +240,67 @@ describe('getNextDueAt', () => {
     expect(next).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
     expect(Math.abs(Date.parse(next!.replace(' ', 'T') + 'Z') - (Date.now() + 600_000))).toBeLessThan(5_000);
     db.close();
+  });
+});
+
+describe('rollBackHotJournal', () => {
+  const OUT = path.join(TEST_DIR, 'outbound.db');
+
+  /**
+   * Leave a real hot journal: a separate process opens a write transaction,
+   * changes enough rows that pages spill to the file, and is SIGKILLed before it
+   * commits, as a container is when the host restarts it mid-write.
+   */
+  function killWriterMidTransaction(dbPath: string): void {
+    const script = `
+      const Database = require('better-sqlite3');
+      const db = new Database(process.argv[1]);
+      db.pragma('cache_size = 1');
+      db.exec('BEGIN IMMEDIATE');
+      const ins = db.prepare('INSERT INTO messages_out (id, kind, timestamp, content) VALUES (?, ?, ?, ?)');
+      for (let i = 0; i < 400; i++) ins.run('lost-' + i, 'chat', '2026-11-17T03:05:00Z', 'x'.repeat(400));
+      process.kill(process.pid, 'SIGKILL');
+    `;
+    const r = spawnSync(process.execPath, ['-e', script, dbPath], { cwd: process.cwd() });
+    expect(r.signal).toBe('SIGKILL');
+  }
+
+  function seedOutbound(): void {
+    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    ensureSchema(OUT, 'outbound');
+    const db = new Database(OUT);
+    db.prepare(
+      "INSERT INTO messages_out (id, kind, timestamp, content) VALUES ('kept', 'chat', '2026-11-17T03:00:00Z', '{}')",
+    ).run();
+    db.close();
+  }
+
+  const countRows = () => {
+    const db = openOutboundDb(OUT);
+    try {
+      return (db.prepare('SELECT count(*) AS n FROM messages_out').get() as { n: number }).n;
+    } finally {
+      db.close();
+    }
+  };
+
+  it('rolls back the journal a killed writer left, so read-only host reads work again', () => {
+    seedOutbound();
+    killWriterMidTransaction(OUT);
+    expect(fs.statSync(`${OUT}-journal`).size).toBeGreaterThan(0);
+    // The host's read-only open cannot roll it back: every read fails.
+    expect(countRows).toThrow(/readonly database/);
+
+    expect(rollBackHotJournal(OUT)).toBe(true);
+    expect(fs.existsSync(`${OUT}-journal`)).toBe(false);
+    // The uncommitted rows are gone and the committed one survives.
+    expect(countRows()).toBe(1);
+  });
+
+  it('does nothing when there is no journal', () => {
+    seedOutbound();
+    expect(rollBackHotJournal(OUT)).toBe(false);
+    expect(countRows()).toBe(1);
   });
 });

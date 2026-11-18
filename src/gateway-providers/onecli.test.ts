@@ -40,7 +40,10 @@ vi.mock('@onecli-sh/sdk', () => ({
 }));
 // Per run, so parallel runs never share one data directory.
 const modelRule = vi.hoisted(() => ({ ensure: vi.fn(async (): Promise<string> => 'installed') }));
-vi.mock('./onecli-model-rule.js', () => ({ ensureOpenModelRule: modelRule.ensure }));
+vi.mock('./onecli-model-rule.js', async (original) => ({
+  ...(await original<typeof import('./onecli-model-rule.js')>()),
+  ensureOpenModelRule: modelRule.ensure,
+}));
 
 const { ADAPTER_DATA } = vi.hoisted(() => ({
   ADAPTER_DATA: `/tmp/nanoclaw-onecli-adapter-${process.pid}-${Date.now()}`,

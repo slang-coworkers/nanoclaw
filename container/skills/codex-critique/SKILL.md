@@ -8,7 +8,7 @@ allowed-tools: Read, Grep, Glob, Bash(git diff:*), mcp__codex__codex, mcp__codex
 
 # Codex Critique
 
-You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process, fresh session, with its git pinned read-only (below). Pass file paths, not contents. Capture `threadId` — needed for rounds 2/3 via `mcp__codex__codex-reply`.
+You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process, fresh session, with its git pinned read-only (below). Pass file paths, not contents. Capture `threadId` — needed for rounds 2/3 via `mcp__codex__codex-reply`. The result names it in one of two forms: the `threadId` field when the result reads as JSON, or the last line `codex threadId: <id>` after the critique. Pass that id, never a session or task id of your own.
 
 **IMPORTANT: Always pass `sandbox: "danger-full-access"`.** Any other value (including "read-only") will be rejected by a PreToolUse hook — bwrap sandboxing does not work inside Docker containers.
 
