@@ -481,10 +481,10 @@ describe('extractRouting — session routing outranks the message', () => {
 
     const r = extractRouting(getPendingMessages());
     expect(r.channelType).toBe('telegram');
-    expect(r.platformId).toBe('telegram:42');  });
+    expect(r.platformId).toBe('telegram:42');
+  });
 });
 
-describe('embedded payloads cannot break out of their block', () => {
 describe('embedded payloads cannot break out of their block', () => {
   // JSON.stringify escapes quotes and control characters, never '<' or '>'.
   // Every one of these insertions sat inside an XML-ish block unescaped, so a
