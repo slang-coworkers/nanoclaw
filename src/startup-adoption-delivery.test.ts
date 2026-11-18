@@ -58,6 +58,9 @@ vi.mock('./container-runner.js', () => ({
   isContainerRunning: vi.fn().mockReturnValue(true),
   killContainer: vi.fn(),
   buildAgentGroupImage: vi.fn().mockResolvedValue(undefined),
+  // Upstream #4431: a startup pass that rebuilds group images layered onto an
+  // older agent image. Mocked here like the other boot hooks main() awaits.
+  refreshStaleGroupImages: vi.fn().mockResolvedValue(undefined),
 }));
 // The ncl command itself is not under test: dispatch answers every request.
 vi.mock('./cli/dispatch.js', () => ({
