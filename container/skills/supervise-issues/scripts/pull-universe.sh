@@ -10,9 +10,22 @@
 #
 # Usage:
 #   bash scripts/pull-universe.sh [--state /path/to/supervisor-state.json] [--include-closed]
+#                                 [--cache-dir DIR [--budget-s N]]
+#
+# --cache-dir switches to the incremental pull the hourly gate uses
+# (supervise-gate.py): GitHub data is refetched only for chains that changed
+# since the last pull, and a session's last outbound only when it can have
+# moved; everything else comes from DIR (bookkeeping in universe_cache.py).
+# --budget-s bounds the refetching: once it is spent, the remaining chains keep
+# their cached data, are marked `"cache_cold": true`, and are refetched first
+# next run. Without --cache-dir the pull is the full one, as before.
 #
 # Requires: ncl, gh, python3
 set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Sub-second start time: --budget-s counts from here, so Step 1's ncl calls are inside it.
+START_EPOCH=$(python3 -c 'import time; print(time.time())')
 
 # Scratch dir for passing large JSON blobs between steps via files instead of
 # argv (argv overflows "Argument list too long" once the chain universe grows
@@ -22,10 +35,14 @@ trap 'rm -rf "$TMPD"' EXIT
 
 STATE_FILE=""
 INCLUDE_CLOSED=false
+CACHE_DIR=""
+BUDGET_S=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --state) STATE_FILE="$2"; shift 2 ;;
     --include-closed) INCLUDE_CLOSED=true; shift ;;
+    --cache-dir) CACHE_DIR="$2"; shift 2 ;;
+    --budget-s) BUDGET_S="$2"; shift 2 ;;
     *) shift ;;
   esac
 done
@@ -57,16 +74,17 @@ for s in data:
 json.dump(gh, sys.stdout)
 ' <<<"$ALL_SESSIONS")
 
-# --- 1b. Stamp each gh-issue session with its live cost-cap status (ncl,
-#         local — same cost class as the per-chain `ncl sessions messages`
-#         calls in Step 4b, not a GitHub round-trip). scan.py's classify()
-#         short-circuits a nudge for a session that's deliberately `stopped`
-#         pending a human cost decision (dashboard Continue/Stop), instead of
-#         reading the resulting long silence as ordinary staleness — see
-#         scan.py::any_session_cost_stopped. `cost_status` is 'unknown' when
-#         the session predates cost-cap or the `ncl cost-cap status` call
-#         itself fails; scan.py treats 'unknown' exactly like "no signal"
-#         (never cost_stopped). ---
+# --- 1b. Stamp each gh-issue session with its live cost-cap status. scan.py's
+#         classify() short-circuits a nudge for a session that's deliberately
+#         `stopped` pending a human cost decision (dashboard Continue/Stop),
+#         instead of reading the resulting long silence as ordinary staleness —
+#         see scan.py::any_session_cost_stopped. One `ncl cost-cap stopped`
+#         call returns the live stopped set (the predicate the dashboard's
+#         stopped filter uses), so every session is 'stopped' or 'ok' from a
+#         single mailbox round-trip. A per-session `ncl cost-cap status` loop
+#         costs one round-trip per session — over an hour for the 5,500+
+#         gh-issue sessions on prod. When the call fails, every session is
+#         'unknown', which scan.py treats as "no signal" (never cost_stopped). ---
 printf '%s' "$GH_SESSIONS" > "$TMPD/gh_sessions_precost.json"
 GH_SESSIONS=$(python3 - "$TMPD/gh_sessions_precost.json" <<'PY'
 import json
@@ -77,25 +95,33 @@ with open(sys.argv[1]) as f:
     sessions = json.load(f)
 
 
-def cost_status(session_id):
+def stopped_session_ids():
+    """Ids of the sessions that are cost-stopped right now, or None when the call fails."""
     try:
         r = subprocess.run(
-            ["ncl", "cost-cap", "status", "--session", session_id, "--json"],
-            capture_output=True, text=True, timeout=15)
+            ["ncl", "cost-cap", "stopped", "--json"],
+            capture_output=True, text=True, timeout=60)
         if r.returncode != 0 or not r.stdout.strip():
-            return "unknown"
+            return None
         parsed = json.loads(r.stdout)
-        data = parsed.get("data") if isinstance(parsed, dict) else None
-        status = (data or {}).get("status")
-        return status if isinstance(status, str) and status else "unknown"
+        rows = (parsed.get("data") or {}).get("stopped") if isinstance(parsed, dict) else None
+        if not isinstance(rows, list):
+            return None
+        return {row.get("session_id") for row in rows if isinstance(row, dict) and row.get("session_id")}
     except Exception:
-        return "unknown"
+        return None
 
 
+stopped_ids = stopped_session_ids()
+if stopped_ids is None:
+    print("pull-universe: ncl cost-cap stopped failed; cost_status is 'unknown' for every session",
+          file=sys.stderr)
 stopped = 0
 for s in sessions:
-    sid = s.get("id")
-    status = cost_status(sid) if sid else "unknown"
+    if stopped_ids is None or not s.get("id"):
+        status = "unknown"
+    else:
+        status = "stopped" if s["id"] in stopped_ids else "ok"
     s["cost_status"] = status
     if status == "stopped":
         stopped += 1
@@ -144,16 +170,49 @@ if [[ -n "$STATE_FILE" && -f "$STATE_FILE" ]]; then
 fi
 printf '%s' "$STATE" > "$TMPD/state.json"
 
-INCLUDE_CLOSED="$INCLUDE_CLOSED" python3 - "$TMPD/threads.json" "$TMPD/state.json" <<'PY' > "$TMPD/chains.json"
-import json, sys, subprocess, re, os
+# Read the big blobs from files (not argv) to avoid "Argument list too long".
+# Step 4b reads each session's last_active / container_status from here for
+# the cached pull; Step 5 puts the same file in the payload.
+printf '%s' "$GH_SESSIONS" > "$TMPD/gh_sessions.json"
+
+CACHE_DIR="$CACHE_DIR" BUDGET_S="$BUDGET_S" START_EPOCH="$START_EPOCH" PU_LIB_DIR="$HERE" \
+INCLUDE_CLOSED="$INCLUDE_CLOSED" python3 - "$TMPD/threads.json" "$TMPD/state.json" "$TMPD/gh_sessions.json" <<'PY' > "$TMPD/chains.json"
+import json, sys, subprocess, re, os, time
+from concurrent.futures import ThreadPoolExecutor
 
 with open(sys.argv[1]) as _f:
     threads = json.load(_f)
 with open(sys.argv[2]) as _f:
     prior_state = json.load(_f)
+with open(sys.argv[3]) as _f:
+    sessions_by_id = {s["id"]: s for s in json.load(_f) if s.get("id")}
 include_closed = os.environ["INCLUDE_CLOSED"] == "true"
 bot_logins = {"nv-slang-bot[bot]", "nv-slang-bot"}
 BATCH_SIZE = 50
+
+# --- Cached pull (--cache-dir): the time box. The GitHub refetch stops starting
+# new calls at GITHUB_SHARE of --budget-s and the outbound rereads at
+# OUTBOUND_SHARE; the rest of the box covers the calls still in flight (each one
+# has its own timeout) and writing the cache. ---
+CACHE_DIR = os.environ.get("CACHE_DIR") or ""
+BUDGET_S = float(os.environ.get("BUDGET_S") or 0)
+START = float(os.environ.get("START_EPOCH") or time.time())
+GITHUB_SHARE = 0.6
+OUTBOUND_SHARE = 0.9
+OUTBOUND_JOBS = 8
+
+
+def budget_spent(share):
+    """True once `share` of the --budget-s time box is used; never true without a budget."""
+    return BUDGET_S > 0 and time.time() - START >= BUDGET_S * share
+
+
+cache = None
+if CACHE_DIR:
+    sys.path.insert(0, os.environ["PU_LIB_DIR"])
+    from datetime import datetime, timezone
+    import universe_cache
+    cache = universe_cache.UniverseCache(CACHE_DIR, datetime.now(timezone.utc))
 
 def run(cmd, default=""):
     try:
@@ -241,27 +300,32 @@ def ncl_last_outbound(sess_ids):
     latest_text = None
     latest_kind = None
     for sid in sess_ids:
-        out = run(["ncl", "sessions", "messages", "--id", sid,
-                   "--limit", "10", "--reverse", "--full", "--json"])
-        if not out:
-            continue
-        try:
-            data = json.loads(out)
-            msgs = data.get("data") or data if isinstance(data, list) else data.get("data", [])
-            if isinstance(msgs, list):
-                # Rows arrive newest-first; take the first 'out' row per session.
-                for m in msgs:
-                    if m.get("direction") != "out":
-                        continue
-                    ts = m.get("timestamp")
-                    if ts and (latest is None or ts > latest):
-                        latest = ts
-                        latest_text = m.get("text")
-                        latest_kind = m.get("kind")
-                    break
-        except (json.JSONDecodeError, TypeError):
-            pass
+        ts, text, kind = session_last_outbound(sid) or (None, None, None)
+        if ts and (latest is None or ts > latest):
+            latest, latest_text, latest_kind = ts, text, kind
     return latest, latest_text, latest_kind
+
+def session_last_outbound(sid):
+    """(ts, text, kind) of the newest outbound row among one session's 10 newest
+    rows — (None, None, None) when none of them is outbound — or None when the
+    read itself failed, so the cached pull never records a failed read as
+    "no outbound"."""
+    out = run(["ncl", "sessions", "messages", "--id", sid,
+               "--limit", "10", "--reverse", "--full", "--json"])
+    if not out:
+        return None
+    try:
+        data = json.loads(out)
+        msgs = data.get("data") or data if isinstance(data, list) else data.get("data", [])
+    except (json.JSONDecodeError, TypeError, AttributeError):
+        return None
+    if not isinstance(msgs, list):
+        return None
+    # Rows arrive newest-first; take the first 'out' row.
+    for m in msgs:
+        if isinstance(m, dict) and m.get("direction") == "out":
+            return m.get("timestamp"), m.get("text"), m.get("kind")
+    return None, None, None
 
 # Group threads by repo
 by_repo = {}
@@ -274,9 +338,26 @@ for t in threads:
 issue_data = {}
 gh_calls = 0
 
-for repo, repo_threads in by_repo.items():
+# The full pull fetches every chain. The cached pull fetches only the chains
+# UniverseCache.plan_github names, most urgent first, until GITHUB_SHARE of the
+# budget is spent; the rest are filled from the cache after this loop.
+fetch_plan = by_repo
+if cache is not None:
+    thread_by_key = {f"{t['repo']}:{t['issue']}": t for t in threads}
+    fetch_plan = {}
+    for key in cache.plan_github(threads, {sid: s.get("last_active") for sid, s in sessions_by_id.items()}):
+        t = thread_by_key[key]
+        fetch_plan.setdefault(t["repo"], []).append(t)
+    print(f"pull-universe: cached pull — {sum(len(v) for v in fetch_plan.values())} of {len(threads)} "
+          f"chains to refetch ({len(cache.changed)} changed on GitHub, sync errors: {cache.sync_errors or 'none'}, "
+          f"unreachable: {cache.unreachable or 'none'})",
+          file=sys.stderr)
+
+for repo, repo_threads in fetch_plan.items():
     owner, name = repo.split("/", 1)
     for batch_start in range(0, len(repo_threads), BATCH_SIZE):
+        if budget_spent(GITHUB_SHARE):
+            break
         batch = repo_threads[batch_start:batch_start + BATCH_SIZE]
         # Build aliased query fragments.
         # Use issueOrPullRequest (a union), NOT issue(number:) — a chain can be
@@ -324,6 +405,8 @@ for repo, repo_threads in by_repo.items():
             # Fallback: individual REST calls for this batch
             print(f"pull-universe: graphql fallback for {repo} batch {batch_start}", file=sys.stderr)
             for t in batch:
+                if budget_spent(GITHUB_SHARE):
+                    break
                 try:
                     r = subprocess.run(
                         ["gh", "issue", "view", str(t["issue"]), "--repo", repo,
@@ -332,7 +415,10 @@ for repo, repo_threads in by_repo.items():
                     state = r.stdout.strip() if r.returncode == 0 else "OPEN"
                 except Exception:
                     state = "OPEN"
-                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": [], "self_pr": None}
+                # `degraded`: a state-only stub without comments or PRs; the
+                # cached pull keeps such a chain out of the gate's decision.
+                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": [], "self_pr": None,
+                                                      "degraded": True}
                 gh_calls += 1
             continue
 
@@ -341,6 +427,8 @@ for repo, repo_threads in by_repo.items():
             alias = f"i{t['issue']}"
             node = repo_data.get(alias)
             if not node:
+                if budget_spent(GITHUB_SHARE):
+                    continue  # past the time box: leave it unfetched, keep parsing the batch
                 # A salvaged partial batch leaves misses as null nodes; a single
                 # REST issue-view recovers just this one without poisoning the rest.
                 try:
@@ -351,7 +439,8 @@ for repo, repo_threads in by_repo.items():
                     state = r.stdout.strip() if r.returncode == 0 else "OPEN"
                 except Exception:
                     state = "OPEN"
-                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": [], "self_pr": None}
+                issue_data[f"{repo}:{t['issue']}"] = {"state": state, "comments": [], "prs": [], "self_pr": None,
+                                                      "degraded": True}
                 gh_calls += 1
                 continue
 
@@ -395,35 +484,60 @@ for repo, repo_threads in by_repo.items():
 
 print(f"pull-universe: issue batch done — {len(issue_data)} issues, {gh_calls} graphql calls", file=sys.stderr)
 
+# The cached pull fills each chain it did not refetch from the cache. A chain
+# with neither (never fetched, and the time box ran out) stays absent here and
+# Step 4b marks it cache_cold.
+fetched_keys = set(issue_data)
+if cache is not None:
+    for t in threads:
+        key = f"{t['repo']}:{t['issue']}"
+        if key not in issue_data:
+            cached = cache.cached_issue(key)
+            if cached is not None:
+                issue_data[key] = cached
+
+
+def chain_bot_pr(idata, issue):
+    """The chain's PR: the chain number itself when it is a PR (self_pr), else
+    the cross-referenced bot PR on a fix/issue-<num> branch, else None."""
+    bot_pr = idata.get("self_pr")
+    if not bot_pr:
+        for pr in idata.get("prs", []):
+            head = pr.get("headRefName", "")
+            if head == f"fix/issue-{issue}" or head.startswith(f"fix/issue-{issue}-"):
+                return pr
+    return bot_pr
+
+
 # --- Step 4a: Batch PR details (comments, reviews, last commit) ---
-# Collect all PR numbers we need details for
+# Collect all PR numbers we need details for. The cached pull asks only for the
+# PRs of the chains it refetched in Step 3; the others come from the cache.
 pr_nums_by_repo = {}
 for repo, repo_threads in by_repo.items():
     for t in repo_threads:
-        idata = issue_data.get(f"{repo}:{t['issue']}", {})
+        key = f"{repo}:{t['issue']}"
+        if cache is not None and key not in fetched_keys:
+            continue
+        idata = issue_data.get(key, {})
         state = idata.get("state", "OPEN")
         is_open = state == "OPEN"
         if not is_open and not include_closed:
             continue
-        # Find our PR: a chain keyed on a PR number IS that PR (self_pr);
-        # otherwise a cross-referenced bot PR (fix/issue-* branch).
-        bot_pr = idata.get("self_pr")
-        if not bot_pr:
-            for pr in idata.get("prs", []):
-                head = pr.get("headRefName", "")
-                if head == f"fix/issue-{t['issue']}" or head.startswith(f"fix/issue-{t['issue']}-"):
-                    bot_pr = pr
-                    break
+        bot_pr = chain_bot_pr(idata, t["issue"])
         if bot_pr:
             pr_nums_by_repo.setdefault(repo, set()).add(bot_pr["number"])
 
 pr_details = {}  # "repo:pr_num" -> {comments, reviews, last_commit_date}
+pr_attempted = set()  # "repo:pr_num" whose batch ran, found or not
 
 for repo, pr_nums in pr_nums_by_repo.items():
     owner, name = repo.split("/", 1)
     pr_list = sorted(pr_nums)
     for batch_start in range(0, len(pr_list), BATCH_SIZE):
+        if budget_spent(GITHUB_SHARE):
+            break
         batch = pr_list[batch_start:batch_start + BATCH_SIZE]
+        pr_attempted.update(f"{repo}:{num}" for num in batch)
         fragments = []
         for num in batch:
             alias = f"pr{num}"
@@ -492,6 +606,88 @@ for repo, pr_nums in pr_nums_by_repo.items():
 
 print(f"pull-universe: PR batch done — {len(pr_details)} PRs, {gh_calls} total graphql calls", file=sys.stderr)
 
+# --- Cached pull: store what Step 3/4a fetched, and decide which chains are
+# cold. A refetched chain is current only if its PR's batch also ran; one whose
+# PR batch was cut by the time box stays dirty for the next run. ---
+cold_keys = set()
+if cache is not None:
+    for key in fetched_keys:
+        t_repo, t_issue = key.rsplit(":", 1)
+        idata = issue_data[key]
+        bot_pr = chain_bot_pr(idata, int(t_issue))
+        cache.record_issue(key, idata, bot_pr)
+        pr_key = f"{t_repo}:{bot_pr['number']}" if bot_pr else None
+        pr_cut = pr_key is not None and pr_key not in pr_attempted and (
+            idata.get("state", "OPEN") == "OPEN" or include_closed)
+        # A degraded stub is not retried every run (a malformed repo name
+        # degrades every time); it stays cold until the MAX_AGE_S refetch.
+        if pr_cut:
+            cache.dirty.add(key)
+        else:
+            cache.dirty.discard(key)
+    for key, details in pr_details.items():
+        cache.record_pr(key, details)
+    for t in threads:
+        key = f"{t['repo']}:{t['issue']}"
+        idata = issue_data.get(key)
+        if idata is None or idata.get("degraded") or key in cache.dirty:
+            cold_keys.add(key)
+            continue
+        bot_pr = chain_bot_pr(idata, t["issue"])
+        if bot_pr:
+            pr_key = f"{t['repo']}:{bot_pr['number']}"
+            if pr_key not in pr_details:
+                cached_pr = cache.cached_pr(pr_key)
+                if cached_pr is not None:
+                    pr_details[pr_key] = cached_pr
+
+# --- Cached pull: reread the last outbound of every session of an open,
+# non-cold chain whose cached read may be out of date (UniverseCache.
+# outbound_is_current), most recently active first, OUTBOUND_JOBS at a time,
+# until OUTBOUND_SHARE of the budget is spent. ---
+outbound_read = set()  # session ids read this run
+if cache is not None:
+    to_read = {}
+    for t in threads:
+        key = f"{t['repo']}:{t['issue']}"
+        idata = issue_data.get(key)
+        if key in cold_keys or idata is None:
+            continue
+        if idata.get("state", "OPEN") != "OPEN" and not include_closed:
+            continue
+        for sid in t["sessions"]:
+            s = sessions_by_id.get(sid) or {"id": sid}
+            if not cache.outbound_is_current(s):
+                to_read[sid] = s
+    queue = sorted(to_read.values(), key=lambda s: s.get("last_active") or "", reverse=True)
+    with ThreadPoolExecutor(max_workers=OUTBOUND_JOBS) as pool:
+        for start in range(0, len(queue), OUTBOUND_JOBS):
+            if budget_spent(OUTBOUND_SHARE):
+                break
+            chunk = queue[start:start + OUTBOUND_JOBS]
+            for s, read in zip(chunk, pool.map(lambda s: session_last_outbound(s["id"]), chunk)):
+                if read is None:
+                    continue  # the read failed: the session stays out of date
+                cache.record_outbound(s, read[0], read[1])
+                outbound_read.add(s["id"])
+    print(f"pull-universe: cached pull — reread {len(outbound_read)} of {len(queue)} out-of-date "
+          f"session outbound(s)", file=sys.stderr)
+
+
+def cached_chain_outbound(sess_ids):
+    """(ts, text, cold) for a chain from the outbound cache: the newest outbound
+    across its sessions, and whether any session's read is missing or out of date."""
+    latest, latest_text, cold = None, None, False
+    for sid in sess_ids:
+        s = sessions_by_id.get(sid) or {"id": sid}
+        read = cache.cached_outbound(sid)
+        if read is None or (sid not in outbound_read and not cache.outbound_is_current(s)):
+            cold = True
+        if read is not None and read[0] and (latest is None or read[0] > latest):
+            latest, latest_text = read
+    return latest, latest_text, cold
+
+
 # --- Step 4b: Assemble chain JSON from pre-fetched data ---
 chains = {}
 skipped_closed = 0
@@ -527,15 +723,7 @@ for i, t in enumerate(threads):
         "pending_ask_user": False,
     }
 
-    # The chain's PR: a chain keyed on a PR number IS that PR (self_pr);
-    # otherwise a cross-referenced bot PR (fix/issue-* branch).
-    bot_pr = idata.get("self_pr")
-    if not bot_pr:
-        for pr in idata.get("prs", []):
-            head = pr.get("headRefName", "")
-            if head == f"fix/issue-{issue}" or head.startswith(f"fix/issue-{issue}-"):
-                bot_pr = pr
-                break
+    bot_pr = chain_bot_pr(idata, issue)
 
     if bot_pr:
         body = bot_pr.get("body", "")
@@ -588,7 +776,14 @@ for i, t in enumerate(threads):
     # Last outbound from our sessions (ncl — local, not GH). Keep the newest
     # outbound's text so we can derive an error class (a bounced a2a handoff
     # shows up as an error-shaped last outbound — the #12097 shape).
-    lo_ts, lo_text, _lo_kind = ncl_last_outbound(sess_ids)
+    if cache is None:
+        lo_ts, lo_text, _lo_kind = ncl_last_outbound(sess_ids)
+    else:
+        lo_ts, lo_text, outbound_cold = cached_chain_outbound(sess_ids)
+        if outbound_cold or f"{repo}:{issue}" in cold_keys:
+            # Built from missing or out-of-date data: classify it, but the gate
+            # leaves it out of its wake decision until a later run warms it.
+            chain["cache_cold"] = True
     chain["our_last_outbound"] = lo_ts
     chain["last_outbound_text"] = lo_text
     chain["last_outbound_error_class"] = classify_error_text(lo_text)
@@ -603,16 +798,37 @@ for i, t in enumerate(threads):
 
     chains[thread] = chain
 
+if cache is not None:
+    cold_chains = sum(1 for c in chains.values() if c.get("cache_cold"))
+    cache.save(
+        live_keys=[f"{t['repo']}:{t['issue']}" for t in threads],
+        live_sessions=list(sessions_by_id),
+        report={
+            "at": cache.now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "elapsed_s": round(time.time() - START, 1),
+            "budget_s": BUDGET_S,
+            "chains": total,
+            "closed": skipped_closed,
+            "changed_on_github": len(cache.changed),
+            "sync_errors": cache.sync_errors,
+            "unreachable": cache.unreachable,
+            "issues_fetched": len(fetched_keys),
+            "prs_fetched": len(pr_attempted),
+            "outbound_reads": len(outbound_read),
+            "dirty_left": len(cache.dirty),
+            "cold_chains": cold_chains,
+        })
+    print(f"pull-universe: cached pull — {cold_chains} cold chain(s), {len(cache.dirty)} left dirty, "
+          f"{round(time.time() - START, 1)}s", file=sys.stderr)
+
 print(f"pull-universe: done — {total} chains, {skipped_closed} closed (skipped detail), {gh_calls} GH API calls total", file=sys.stderr)
 json.dump(chains, sys.stdout)
 PY
 
 # --- 5. Assemble the full scan.py input ---
 # STATE was already loaded and written to $TMPD/state.json before Step 4b (so
-# disposition could be rehydrated per chain); reuse that same file here.
-
-# Read the big blobs from files (not argv) to avoid "Argument list too long".
-printf '%s' "$GH_SESSIONS" > "$TMPD/gh_sessions.json"
+# disposition could be rehydrated per chain); reuse that same file here, and
+# the sessions file written before Step 3.
 
 NOW="$NOW" python3 - "$TMPD/gh_sessions.json" "$TMPD/chains.json" "$TMPD/state.json" <<'PY'
 import json, sys, os

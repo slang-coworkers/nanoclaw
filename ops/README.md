@@ -5,11 +5,12 @@ was version-controlled** — they existed only on the prod box, at
 `/usr/local/bin/` and `/var/lib/grafana/dashboards/`. That is how the defect
 described below survived eight days without anyone noticing.
 
-| File | Deployed to | Owner |
-|---|---|---|
-| `metrics/nanoclaw-metrics.py` | `/usr/local/bin/nanoclaw-metrics.py` | root, run as `telegraf` |
-| `metrics/nanoclaw-metrics.service` | `/etc/systemd/system/` | systemd, `Type=oneshot`, every 60s |
-| `grafana/nanoclaw-coworkers.json` | `/var/lib/grafana/dashboards/` | provisioned, `updateIntervalSeconds: 30` |
+| File                                           | Deployed to                          | Owner                                    |
+| ---------------------------------------------- | ------------------------------------ | ---------------------------------------- |
+| `metrics/nanoclaw-metrics.py`                  | `/usr/local/bin/nanoclaw-metrics.py` | root, run as `telegraf`                  |
+| `metrics/nanoclaw-metrics.service`             | `/etc/systemd/system/`               | systemd, `Type=oneshot`, every 60s       |
+| `grafana/nanoclaw-coworkers.json`              | `/var/lib/grafana/dashboards/`       | provisioned, `updateIntervalSeconds: 30` |
+| `claude-trace-www/refresh-claude-trace-www.sh` | `~/.config/nanoclaw/`                | ubuntu cron, every 15 min; serves :8081  |
 
 ## The stack
 
@@ -53,7 +54,7 @@ if isinstance(v2, int) and not isinstance(v2, bool):   # floats silently dropped
 
 `issuePartition.winRate` is a float. The moment it stopped being a whole number
 the field simply stopped being written — and because InfluxDB's `last()` returns
-the most recent point *however old*, the final value (`0`, written
+the most recent point _however old_, the final value (`0`, written
 **2026-08-03T13:09Z**) kept rendering as the current win rate until
 **2026-08-11**. Nothing went red. The real value throughout was ~0.52.
 
@@ -134,16 +135,16 @@ while the new process runs perfectly well. The crash-loop rule therefore fires o
 breaker backoff) or down, or on `breaker_attempt >= 2` while the host is down.
 
 **No-data policy.** Host down, crash loop and sweep stopped read fields written on every collector run
-and use `noDataState: OK`. Missing host telemetry is owned by *metrics collector not reporting*, which
+and use `noDataState: OK`. Missing host telemetry is owned by _metrics collector not reporting_, which
 counts `nanoclaw_host.host_up_n` points (`noDataState: Alerting`). That covers both a stopped collector
 and one whose host section throws every run while its `nanoclaw_collector` heartbeat continues, and one
 cause pages once.
 
 The dashboard gained a row **"Incident signals"** (last row) and an alert-list panel.
 
-| File | Deployed to | Notes |
-|---|---|---|
-| `grafana/alerting/nanoclaw-alerts.yaml` | `/etc/grafana/provisioning/alerting/` | 14 rules in folder *NanoClaw* (host down, crash loop, restarts, sweep slow / stalled, wake failures, quarantine, webhook port, inbox parked, mailbox > 1 GB, codex tool missing, gateway stops, gateway probe misses, collector stale). No contact point is provisioned yet (see the file header). Read at Grafana start: `sudo systemctl restart grafana-server`. |
+| File                                    | Deployed to                           | Notes                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `grafana/alerting/nanoclaw-alerts.yaml` | `/etc/grafana/provisioning/alerting/` | 14 rules in folder _NanoClaw_ (host down, crash loop, restarts, sweep slow / stalled, wake failures, quarantine, webhook port, inbox parked, mailbox > 1 GB, codex tool missing, gateway stops, gateway probe misses, collector stale). No contact point is provisioned yet (see the file header). Read at Grafana start: `sudo systemctl restart grafana-server`. |
 
 The Slack destination is the environment variable **`NANOCLAW_ALERT_SLACK_WEBHOOK`** for the
 grafana-server process (`/etc/default/grafana-server`). Until it is set the rules still evaluate

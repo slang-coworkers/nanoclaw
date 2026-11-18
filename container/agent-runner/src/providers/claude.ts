@@ -5,7 +5,7 @@ import path from 'path';
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
 import { detectIssueClose, issueCloseRefusal } from '../issue-close.js';
-import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/container-state.js';
+import { clearContainerToolInFlight, declaredToolTimeoutMs, setContainerToolInFlight } from '../db/container-state.js';
 import { BUILTIN_MCP_SERVER, isMcpToolAllowed, parseMcpPolicy, type McpPolicy } from '../mcp-policy.js';
 import type { MemorySessionHookRegistration } from '../memory/session-hook.js';
 import { resolveEnvInherit } from './codex-app-server.js';
@@ -666,12 +666,8 @@ function createPreToolUseHook(policy: McpPolicy): HookCallback {
         return { decision: 'block', stopReason: refusal } as unknown as ReturnType<HookCallback>;
       }
     }
-    // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
-    // tool: no declared timeout.
-    const declaredTimeoutMs =
-      toolName === 'Bash' && typeof i.tool_input?.timeout === 'number' ? (i.tool_input.timeout as number) : null;
     try {
-      setContainerToolInFlight(toolName, declaredTimeoutMs);
+      setContainerToolInFlight(toolName, declaredToolTimeoutMs(toolName, i.tool_input));
     } catch (err) {
       log(`PreToolUse: failed to record container_state: ${err instanceof Error ? err.message : String(err)}`);
     }

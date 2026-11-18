@@ -134,6 +134,39 @@ describe('discoverAdditionalDirectories', () => {
     }
   });
 
+  it('skips per-task standalone clones (wt-*) but keeps the project clone', () => {
+    // The reviewer isolates each review with `git clone --shared slang wt-<pr>-revA`;
+    // production had 121 such clones, each a full copy of slang's `.claude/`, and
+    // the boot refresh fast-forwarded every one of them.
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'nc-add-'));
+    try {
+      const clone = path.join(cwd, 'slang');
+      mkClaude(clone);
+      fs.mkdirSync(path.join(clone, '.git'));
+      for (const name of ['wt-14452-revA', 'wt-14452-revC', 'wt-13970-verify']) {
+        const d = path.join(cwd, name);
+        mkClaude(d);
+        fs.mkdirSync(path.join(d, '.git'));
+      }
+      expect(discoverAdditionalDirectories([cwd], cwd)).toEqual([clone]);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a wt-* directory of a host-mounted base (the convention is per group dir)', () => {
+    const extra = fs.mkdtempSync(path.join(os.tmpdir(), 'nc-extra-'));
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'nc-cwd-'));
+    try {
+      const ext = path.join(extra, 'wt-shared');
+      fs.mkdirSync(ext);
+      expect(discoverAdditionalDirectories([extra, cwd], cwd)).toContain(ext);
+    } finally {
+      fs.rmSync(extra, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('collapses the real shape: 1 clone + 54 worktrees → just the clone', () => {
     const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'nc-add-'));
     try {

@@ -6,6 +6,9 @@ import { describe, expect, it } from 'vitest';
 import {
   MODEL_POLICY_ENV_KEYS,
   containerJsonModel,
+  creationWeights,
+  installDefaultProvider,
+  installDefaultWeights,
   isOpenWeightsModel,
   openWeightsModelGlobs,
   isOpenWeightsRole,
@@ -26,6 +29,9 @@ const ENV = {
   OPENCODE_SMALL_MODEL: 'openai/openai/openai/gpt-6-luna',
   PI_MODEL: 'aws/anthropic/bedrock-claude-sonnet-5-5',
 };
+// A group without the open-weights rule. An empty `weights` column follows the install default,
+// which is open unless the install says otherwise, so a test of "no rule" names `any`.
+const ANY = { weights: 'any' } as const;
 
 describe('open-weights classification', () => {
   it('counts the open families as open and everything else as closed', () => {
@@ -44,16 +50,18 @@ describe('open-weights classification', () => {
     ).toBe(true);
   });
 
-  it('accepts only "any" and "open" as weights', () => {
-    expect(parseModelWeights(null)).toBe('any');
-    expect(parseModelWeights('open')).toBe('open');
+  it('accepts only "any" and "open" as weights, and reads an empty value as the install default', () => {
+    expect(parseModelWeights('any', ENV)).toBe('any');
+    expect(parseModelWeights('open', ENV)).toBe('open');
+    expect(parseModelWeights(null, ENV)).toBe('open');
+    expect(parseModelWeights('', { NANOCLAW_DEFAULT_WEIGHTS: 'any' })).toBe('any');
     expect(() => parseModelWeights('closed')).toThrow('weights must be');
   });
 });
 
-describe('a group with no policy keeps what each provider used before', () => {
+describe('a group under weights=any keeps what each provider used before', () => {
   it('claude: the SDK model, and Haiku for the small model and the router', () => {
-    expect(resolveGroupModels('claude', {}, ENV)).toEqual({
+    expect(resolveGroupModels('claude', ANY, ENV)).toEqual({
       provider: 'claude',
       weights: 'any',
       main: ENV.ANTHROPIC_MODEL,
@@ -64,7 +72,7 @@ describe('a group with no policy keeps what each provider used before', () => {
   });
 
   it('opencode: its own settings, the luna router, and the install critic', () => {
-    expect(resolveGroupModels('opencode', {}, ENV)).toEqual({
+    expect(resolveGroupModels('opencode', ANY, ENV)).toEqual({
       provider: 'opencode',
       weights: 'any',
       main: ENV.OPENCODE_MODEL,
@@ -75,7 +83,49 @@ describe('a group with no policy keeps what each provider used before', () => {
   });
 
   it('codex ignores NANOCLAW_DEFAULT_MODEL, as its runner always did', () => {
-    expect(resolveGroupModels('codex', {}, { ...ENV, NANOCLAW_DEFAULT_MODEL: 'claude-x' }).main).toBe(ENV.CODEX_MODEL);
+    expect(resolveGroupModels('codex', ANY, { ...ENV, NANOCLAW_DEFAULT_MODEL: 'claude-x' }).main).toBe(ENV.CODEX_MODEL);
+  });
+});
+
+describe('the install default', () => {
+  it('is OpenCode with open weights when the install sets nothing', () => {
+    expect(installDefaultWeights(ENV)).toBe('open');
+    expect(installDefaultProvider(ENV)).toBe('opencode');
+    // A group that names nothing runs the open defaults, and the policy lets it start.
+    const r = resolveGroupModels(installDefaultProvider(ENV), {}, ENV);
+    expect(r).toMatchObject({ provider: 'opencode', weights: 'open', main: 'openai/nvidia/zai-org/glm-5.3' });
+    expect(modelPolicyViolations(r, ENV)).toEqual([]);
+  });
+
+  it('is Claude without the rule when NANOCLAW_DEFAULT_WEIGHTS=any', () => {
+    const env = { ...ENV, NANOCLAW_DEFAULT_WEIGHTS: 'any' };
+    expect(installDefaultWeights(env)).toBe('any');
+    expect(installDefaultProvider(env)).toBe('claude');
+    expect(resolveGroupModels('claude', {}, env).weights).toBe('any');
+  });
+
+  it('keeps an install that chose Claude (DEFAULT_AGENT_PROVIDER=claude) off the open rule', () => {
+    const env = { ...ENV, DEFAULT_AGENT_PROVIDER: 'claude' };
+    expect(installDefaultProvider(env)).toBe('claude');
+    expect(installDefaultWeights(env)).toBe('any');
+    // An explicit setting wins, even when the pair breaks the policy (the startup check reports it).
+    expect(installDefaultWeights({ ...env, NANOCLAW_DEFAULT_WEIGHTS: 'open' })).toBe('open');
+    // Another chosen provider keeps the open default.
+    expect(installDefaultWeights({ ...ENV, DEFAULT_AGENT_PROVIDER: 'codex' })).toBe('open');
+    expect(installDefaultProvider({ ...ENV, DEFAULT_AGENT_PROVIDER: 'Codex' })).toBe('codex');
+  });
+
+  it('refuses a weights setting other than any or open', () => {
+    expect(() => installDefaultWeights({ NANOCLAW_DEFAULT_WEIGHTS: 'closed' })).toThrow(
+      'NANOCLAW_DEFAULT_WEIGHTS must be "any" or "open", not "closed"',
+    );
+  });
+
+  it('gives a group created on Claude weights=any, and leaves other new groups on the default', () => {
+    expect(creationWeights('claude')).toBe('any');
+    expect(creationWeights('Claude')).toBe('any');
+    expect(creationWeights('opencode')).toBeNull();
+    expect(creationWeights(null)).toBeNull();
   });
 });
 
@@ -154,24 +204,88 @@ describe('weights=open', () => {
 
 describe('container env', () => {
   it('writes the variables each provider reads', () => {
-    expect(modelPolicyEnv(resolveGroupModels('opencode', { weights: 'open' }, ENV))).toEqual({
+    expect(modelPolicyEnv(resolveGroupModels('opencode', { weights: 'open' }, ENV), ENV)).toEqual({
       NANOCLAW_MODEL_WEIGHTS: 'open',
       NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3',
       INTENT_ROUTER_OPENAI_MODEL: 'nvidia/zai-org/glm-5.3-flash',
       OPENCODE_MODEL: 'openai/nvidia/zai-org/glm-5.3',
       OPENCODE_SMALL_MODEL: 'openai/nvidia/zai-org/glm-5.3-flash',
+      CODEX_MODEL: 'nvidia/moonshotai/kimi-k3',
+      ANTHROPIC_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_OPUS_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_SONNET_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      ANTHROPIC_SMALL_FAST_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_SUBAGENT_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_FALLBACK_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
     });
-    expect(modelPolicyEnv(resolveGroupModels('codex', { model: 'nvidia/moonshotai/kimi-k3' }, ENV))).toEqual({
+    expect(modelPolicyEnv(resolveGroupModels('codex', { ...ANY, model: 'nvidia/moonshotai/kimi-k3' }, ENV))).toEqual({
       NANOCLAW_MODEL_WEIGHTS: 'any',
       NANOCLAW_CRITIC_MODEL: ENV.CODEX_MODEL,
       INTENT_ROUTER_OPENAI_MODEL: 'openai/openai/gpt-6-luna',
       CODEX_MODEL: 'nvidia/moonshotai/kimi-k3',
     });
-    expect(modelPolicyEnv(resolveGroupModels('claude', { small_model: 'aws/anthropic/x' }, ENV))).toEqual({
+    expect(modelPolicyEnv(resolveGroupModels('claude', { ...ANY, small_model: 'aws/anthropic/x' }, ENV))).toEqual({
       NANOCLAW_MODEL_WEIGHTS: 'any',
       NANOCLAW_CRITIC_MODEL: ENV.CODEX_MODEL,
       ANTHROPIC_DEFAULT_HAIKU_MODEL: 'aws/anthropic/x',
     });
+  });
+
+  it('points every Claude Code model variable of an open-weights group at its open models', () => {
+    // Consider a skill that starts the `claude` CLI inside an open-weights group: the host forwards
+    // the install's Claude settings into every container, so without these overrides the CLI would
+    // ask for a closed model first, and fall back to another closed one.
+    const claudeKeys = [
+      'ANTHROPIC_MODEL',
+      'ANTHROPIC_DEFAULT_OPUS_MODEL',
+      'ANTHROPIC_DEFAULT_SONNET_MODEL',
+      'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+      'ANTHROPIC_SMALL_FAST_MODEL',
+      'CLAUDE_CODE_SUBAGENT_MODEL',
+      'ANTHROPIC_FALLBACK_MODEL',
+    ];
+    for (const provider of ['opencode', 'codex', 'pi']) {
+      const env = modelPolicyEnv(resolveGroupModels(provider, { weights: 'open' }, ENV), ENV);
+      for (const key of claudeKeys) {
+        expect(isOpenWeightsModel(env[key], ENV), `${provider} ${key}=${env[key]}`).toBe(true);
+      }
+      expect(env.ANTHROPIC_FALLBACK_MODEL).not.toBe(env.ANTHROPIC_MODEL);
+      expect(env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBe('1');
+    }
+    // A group's own open models win over the open defaults, without OpenCode's provider prefix.
+    const own = modelPolicyEnv(
+      resolveGroupModels(
+        'opencode',
+        { weights: 'open', model: 'nvidia/moonshotai/kimi-k3', small_model: 'nvidia/qwen/qwen4-small' },
+        ENV,
+      ),
+      ENV,
+    );
+    expect(own.ANTHROPIC_MODEL).toBe('nvidia/moonshotai/kimi-k3');
+    expect(own.ANTHROPIC_DEFAULT_HAIKU_MODEL).toBe('nvidia/qwen/qwen4-small');
+    // Closed groups keep the install's Claude settings: the policy writes none of them, except the
+    // Claude provider's own small model.
+    for (const provider of ['opencode', 'codex', 'pi', 'claude']) {
+      const env = modelPolicyEnv(resolveGroupModels(provider, ANY, ENV), ENV);
+      for (const key of [
+        ...claudeKeys.filter((k) => k !== 'ANTHROPIC_DEFAULT_HAIKU_MODEL'),
+        'CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC',
+      ]) {
+        expect(env[key], `${provider} ${key}`).toBeUndefined();
+      }
+    }
+    expect(modelPolicyEnv(resolveGroupModels('opencode', ANY, ENV), ENV).ANTHROPIC_DEFAULT_HAIKU_MODEL).toBeUndefined();
+  });
+
+  it('keeps the closed Codex default away from an open-weights group, and leaves a closed group alone', () => {
+    const open = modelPolicyEnv(resolveGroupModels('opencode', { weights: 'open' }, ENV));
+    expect(open.CODEX_MODEL).toBe('nvidia/moonshotai/kimi-k3');
+    expect(isOpenWeightsModel(open.CODEX_MODEL, ENV)).toBe(true);
+    // The same install's closed groups keep the install's own Codex model.
+    expect(modelPolicyEnv(resolveGroupModels('opencode', ANY, ENV)).CODEX_MODEL).toBeUndefined();
+    expect(modelPolicyEnv(resolveGroupModels('claude', ANY, ENV)).CODEX_MODEL).toBeUndefined();
   });
 });
 

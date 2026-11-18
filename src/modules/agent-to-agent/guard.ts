@@ -26,6 +26,11 @@
  * per-session cost caps were routed around (#13406). Policy: raise the owner's
  * ceiling or don't run; there is no approval path for a second session. The
  * deny precedes the policy hold, so no grant can satisfy it.
+ *
+ * Known GitHub thread: a fresh session on a `gh-issue-`/`gh-pr-` thread that is
+ * malformed or names a repo GitHub never reported an issue or PR from is DENIED
+ * the same way, before the one-owner check (gh-thread-check.ts). Such a thread
+ * comes from a hand-typed id, and its session would sit outside the item's chain.
  */
 import { isAncestorGroup } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
@@ -33,6 +38,7 @@ import { getContainerConfig } from '../../db/container-configs.js';
 import { ALLOW, DENY, HOLD, defineGuardedAction } from '../../guard/index.js';
 import { hasDestination } from './db/agent-destinations.js';
 import { getMessagePolicy } from './db/agent-message-policies.js';
+import { findUnknownGhThread } from './gh-thread-check.js';
 import { findItemOwnerConflict } from './item-ownership.js';
 
 /**
@@ -44,6 +50,9 @@ export const A2A_MESSAGE_GATE_ACTION = 'a2a_message_gate';
 
 /** Reason prefix of the one-owner-per-item deny — the router keys its sender notice on it. */
 export const ITEM_OWNER_DENY_PREFIX = 'one owner per item:';
+
+/** Reason prefix of the unknown-GitHub-thread deny — the router keys its sender notice on it. */
+export const UNKNOWN_GH_THREAD_DENY_PREFIX = 'unknown GitHub thread:';
 
 export const agentsCreate = defineGuardedAction({
   action: 'agents.create',
@@ -111,6 +120,8 @@ export const a2aSend = defineGuardedAction({
       return DENY(`target agent group ${to} not found for message ${String(input.payload.id)}`);
     }
     if (input.resource?.route === 'fresh') {
+      const unknownThread = await findUnknownGhThread(input.resource.thread);
+      if (unknownThread) return DENY(`${UNKNOWN_GH_THREAD_DENY_PREFIX} ${unknownThread}`);
       const conflict = await findItemOwnerConflict(to, input.resource.thread);
       if (conflict) {
         return DENY(
