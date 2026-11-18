@@ -26,6 +26,30 @@ cd "$PROJECT_ROOT"
 # > 0 makes this script exit 1.
 FAILED=0
 
+# A fetched skill is installed into a staging directory and renamed into place;
+# no file of the live copy is ever rewritten. Agents run skill scripts straight
+# from container/skills/ (mounted read-only at /app/skills), and bash reads the
+# script it runs from the open file as it goes. `gh skill install --force` into
+# the live directory rewrote each file in place, so a review that was running
+# during the hourly refresh went on reading its script from the old offset in
+# the new bytes and died with a syntax error. After a rename, a process that has
+# the old file open keeps the old inode until it exits.
+STAGING="$PROJECT_ROOT/.fetch-skills-staging.$$"
+trap 'rm -rf "$STAGING"' EXIT
+
+# Replace the directory $2 with the directory $1 by two renames, then delete the
+# old copy. Between the renames the name is missing for a moment; a process
+# already running a file of the old copy is not affected.
+replace_skill_dir() {
+  local staged="$1" live="$2" old="$STAGING/.old"
+  rm -rf "$old"
+  if [ -e "$live" ] || [ -L "$live" ]; then
+    mv "$live" "$old"
+  fi
+  mv "$staged" "$live"
+  rm -rf "$old"
+}
+
 fail_skill() {
   echo "  ✗ $1"
   FAILED=$((FAILED + 1))
@@ -218,9 +242,12 @@ for skill in $(jq -r 'keys[]' "$MANIFEST"); do
   attempt=1
   max_attempts=3
   installed=0
+  stage="$STAGING/$skill"
   while [ $attempt -le $max_attempts ]; do
+    rm -rf "$stage"
+    mkdir -p "$stage"
     set +e
-    output=$(gh skill install "$repo" "$skill@$ref" --dir "$SKILLS_DIR" --force 2>&1)
+    output=$(gh skill install "$repo" "$skill@$ref" --dir "$stage" --force 2>&1)
     rc=$?
     set -e
     if [ $rc -eq 0 ] && echo "$output" | grep -q "Installed"; then
@@ -241,7 +268,11 @@ for skill in $(jq -r 'keys[]' "$MANIFEST"); do
     fi
     attempt=$((attempt + 1))
   done
-  if [ $installed -eq 1 ]; then
+  if [ $installed -eq 1 ] && [ ! -f "$stage/$skill/SKILL.md" ]; then
+    fail_skill "$skill: gh reported the install but wrote no $skill/SKILL.md"
+    printf '%s\n' "$output" | sed 's/^/    | /'
+  elif [ $installed -eq 1 ]; then
+    replace_skill_dir "$stage/$skill" "$SKILLS_DIR/$skill"
     FETCHED=$((FETCHED + 1))
   else
     # Previously this printed a warning and the script still exited 0 — which is

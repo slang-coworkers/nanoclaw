@@ -26,6 +26,7 @@ import {
 import { getSessionDriver } from '../../drivers/index.js';
 import { assertValidGroupFolder, groupFolderExistsOnDisk } from '../../group-folder.js';
 import { initGroupFilesystem } from '../../group-init.js';
+import { reservedMountClass } from '../../modules/mount-security/index.js';
 import { getProviderHostContract } from '../../provider-contracts/registry.js';
 import {
   MODEL_ROLES,
@@ -35,6 +36,11 @@ import {
   resolveGroupModels,
 } from '../../model-policy.js';
 import { resolveProviderName } from '../../providers/provider-name.js';
+import {
+  formatCoworkerTypeSwitchPlan,
+  planCoworkerTypeSwitch,
+  type CoworkerTypeSwitchPlan,
+} from '../../coworker-type-switch.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
 import { decideCoworkerType } from '../../templates/coworker-type.js';
 import { templateApprovalDetail } from '../../templates/approval-detail.js';
@@ -135,7 +141,7 @@ registerResource({
       name: 'agent_provider',
       type: 'string',
       description:
-        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → "claude").',
+        'Agent runtime provider (e.g. "claude", "codex", "opencode"). Set via the dashboard UI or `update`. Takes precedence over container_configs.provider in the resolution chain (session → agent_group → container_config → install default, which is "opencode" with open-weights models unless NANOCLAW_DEFAULT_WEIGHTS=any or DEFAULT_AGENT_PROVIDER says otherwise). A change is checked against the model policy: a Claude group needs `ncl groups config update --weights any` first.',
       updatable: true,
     },
     {
@@ -160,6 +166,29 @@ registerResource({
   // the container_config a working group needs; the generic single-table
   // DELETE violates FK constraints (#2525).
   operations: { list: 'open', get: 'open', update: 'approval' },
+  // A provider change is checked against the model policy the way spawn checks
+  // it, so a change that would stop the group from starting (Claude on a
+  // weights=open group, for example) is refused here instead of at the next
+  // spawn. Only the policy can refuse it, and only for weights=open, so the
+  // message names the command that lifts the rule.
+  preUpdate: async (updates, current) => {
+    if (!('agent_provider' in updates)) return;
+    const id = String(current.id);
+    const row = await getContainerConfig(id);
+    const provider = resolveProviderName({
+      override: undefined,
+      session: undefined,
+      group: updates.agent_provider as string | null | undefined,
+      config: row?.provider,
+    });
+    const problems = modelPolicyViolations(resolveGroupModels(provider, row ?? {}));
+    if (problems.length > 0) {
+      throw new Error(
+        `Model policy: ${problems.join('; ')}. The group is weights=open; to run it on ${provider}, ` +
+          `first run \`ncl groups config update --id ${id} --weights any\`.`,
+      );
+    }
+  },
   customOperations: {
     connect: {
       access: 'open',
@@ -185,9 +214,8 @@ registerResource({
         const group = await getAgentGroup(id);
         if (!group) throw new Error(`No agent group ${id}`);
         // Same resolver the spawn path uses, so the displayed policy is the
-        // enforced policy. Reporting a stored NULL as "unrestricted, nothing
-        // blocked" was wrong for every non-admin group: the runtime falls back
-        // to the coworker-type manifest, which restricts.
+        // enforced policy (src/mcp-allowlist.ts: only an explicit stored list
+        // restricts; a stored NULL inherits, which restricts nothing).
         const resolved = resolveMcpAllowlist(group);
         // Discovery is already done by the proxy at server start; this only reads
         // the cache, so it needs no MCP handshake of its own.
@@ -234,9 +262,10 @@ registerResource({
         'change is enforced on direct MCP servers too. ' +
         '--id <agent-group-id> --tools \'["mcp__server__tool", …]\' for an explicit list, ' +
         "--tools '[]' to allow no configurable MCP tool at all, " +
-        '--tools inherit to fall back to the coworker-type manifest (the default), ' +
-        '--tools unrestricted to allow every discovered tool. ' +
-        "NOTE: 'inherit' is NOT 'unrestricted' — it restricts to the type manifest. " +
+        '--tools inherit to clear the stored list (the default state, which restricts nothing: the ' +
+        'coworker-type manifest is a composition input, never a permission grant), ' +
+        '--tools unrestricted to allow every discovered tool explicitly. ' +
+        "NOTE: only an explicit list restricts, so 'inherit' lifts any restriction the group had. " +
         'An agent may never change its OWN allow-list.',
       handler: async (args, ctx) => {
         const id = String(args.id ?? '');
@@ -342,6 +371,82 @@ registerResource({
         };
       },
     },
+    'coworker-type set': {
+      access: 'approval',
+      // Same principal rules as `mcp-tools set`: a type change rewrites what the
+      // group may do (workflows, invariants, MCP servers), so it never comes from
+      // the group itself and is held for approval when an agent asks.
+      denySelfTarget: true,
+      description:
+        "Switch an existing agent group's coworker type. Without --yes, prints the plan: the skills, " +
+        'workflows, invariants, overlays and MCP servers that change, and the composed CLAUDE.md before and ' +
+        'after. With --yes, applies it and RESTARTS the running containers of the group so they compose as ' +
+        'the new type (group-init then mirrors the new skill scope and prunes catalog skills the type no ' +
+        'longer claims). --id <agent-group-id> --type <coworker type>. Refused for an admin/immortal group, ' +
+        'for a type that does not resolve, composes flat or grants immortality, for a type of another project, ' +
+        'and (on --yes) while a running session is inside a turn. The explicit MCP allow-list, standing ' +
+        'instructions, memory and sessions are untouched. An agent may never change its OWN type.',
+      handler: async (args, ctx) => {
+        const id = String(args.id ?? '');
+        if (!id) throw new Error('--id is required');
+        const type = args.type === undefined ? '' : String(args.type);
+        if (!type.trim()) throw new Error('--type is required');
+
+        if (ctx?.caller === 'agent' && ctx.agentGroupId === id) {
+          throw new Error(
+            'An agent cannot change its own coworker type. Ask the admin/Main group to make this change.',
+          );
+        }
+        if (ctx?.caller === 'agent') {
+          const caller = await getAgentGroup(ctx.agentGroupId);
+          if (!caller?.is_admin) {
+            throw new Error("Only an admin agent group may change another group's coworker type.");
+          }
+        }
+
+        const group = await getAgentGroup(id);
+        if (!group) throw new Error(`No agent group ${id}`);
+
+        const plan = await planCoworkerTypeSwitch(group, type);
+        if (!args.yes) {
+          return { applied: false, plan, next: 'Re-run with --yes to apply.' };
+        }
+        if (plan.blockers.length > 0) {
+          throw new Error(`coworker type switch blocked: ${plan.blockers.join('; ')}`);
+        }
+
+        await updateAgentGroup(id, { coworker_type: plan.to });
+
+        // Restart rather than wait for the stale-CLAUDE.md sweep: the sweep
+        // compares documents, but a type switch also changes the MCP servers and
+        // overlays a container booted with, which only a respawn picks up.
+        // Deferred so the response frame is durable first (see post-response.ts).
+        const wakeMessage =
+          `[system] Your coworker type changed from ${plan.from ?? 'untyped'} to ${plan.to}, and your container ` +
+          'was restarted so your instructions, workflows and skills match it. Re-read your instructions before ' +
+          'continuing.';
+        if (plan.running_sessions.length > 0) {
+          enqueuePostResponseEffect(`coworker-type-set:restart:${id}`, () => {
+            restartAgentGroupContainers(id, 'coworker type changed', wakeMessage);
+          });
+        }
+        return {
+          applied: true,
+          plan,
+          containers_pending_restart: plan.running_sessions,
+          note:
+            plan.running_sessions.length > 0
+              ? `${plan.running_sessions.length} container(s) are being restarted to compose as ${plan.to}.`
+              : `No containers are running; the group composes as ${plan.to} at its next spawn.`,
+        };
+      },
+      formatHuman: (data) => {
+        const d = data as { applied: boolean; plan: CoworkerTypeSwitchPlan; note?: string; next?: string };
+        const lines = formatCoworkerTypeSwitchPlan(d.plan);
+        lines.push(d.applied ? `Applied. ${d.note ?? ''}`.trim() : (d.next ?? ''));
+        return lines.join('\n');
+      },
+    },
     create: {
       access: 'approval',
       // A bare `--template <ref>` tells the approver nothing about the MCP servers
@@ -362,7 +467,7 @@ registerResource({
         'Optional --timezone <IANA id> sets the group timezone (template task schedules fire in it); like --name, it applies only when a group is created — both are ignored on the in-place update of an existing group. ' +
         "Optional --coworker-type <type> composes the agent as that lego type: for a template it overrides the template's own " +
         'declared default, and pass --coworker-type "" to stamp untyped regardless of what the template asks for; for a bare ' +
-        "create it sets the new group's type, and an existing group with another type is refused (the type is set only at create). A type " +
+        "create it sets the new group's type, and an existing group with another type is refused (switch an existing group's type with `coworker-type set`). A type " +
         'that does not resolve here fails the create, and a flat type (e.g. main) is refused.',
       handler: async (args) => {
         const timezone = parseTimezoneFlag(args.timezone) ?? undefined;
@@ -430,12 +535,13 @@ registerResource({
         // not duplicated.
         const existing = await getAgentGroupByFolder(folder);
         if (existing) {
-          // The type is set only at create, and `groups update` cannot change
-          // it, so a different type on a reused folder is refused, not ignored.
+          // `create` sets the type only for a new group, and a type change has its
+          // own planned verb, so a different type on a reused folder is refused,
+          // not ignored.
           if (typeDecision && (existing.coworker_type ?? null) !== typeDecision.coworkerType) {
             throw new Error(
               `group '${folder}' already exists with coworker type ${JSON.stringify(existing.coworker_type ?? null)}; ` +
-                '--coworker-type applies only when a group is created',
+                '--coworker-type applies only when a group is created; use `ncl groups coworker-type set` to switch it',
             );
           }
           await initGroupFilesystem(existing); // ensure a reused group is fully configured too (idempotent; also repairs a missing workspace folder)
@@ -612,7 +718,8 @@ registerResource({
       access: 'approval',
       description:
         'Restart containers for a group. Use --id <group-id> [--rebuild] [--message <text>]. ' +
-        'From inside a container, --id is auto-filled and only the calling session is restarted. ' +
+        'From inside a container, --id defaults to your own group and only the calling session is restarted; ' +
+        "naming another group (global scope only) restarts that group's running containers, as from the host. " +
         '--rebuild rebuilds the container image first (required for package changes). ' +
         '--message sets an on-wake instruction for the fresh container to act on when it starts — ' +
         'use this when you need to continue after the restart (e.g. verify a new tool works, notify the user). ' +
@@ -638,8 +745,15 @@ registerResource({
         }
         const message = args.message as string | undefined;
 
-        // From an agent: scope to the calling session only
-        if (ctx.caller === 'agent') {
+        // From an agent naming its own group: scope to the calling session
+        // only. The calling session belongs to the caller's group, so the
+        // on-wake notice below lands in that session's own mailbox. An agent
+        // naming ANOTHER group (only a global-scope caller can; group scope
+        // pins --id) gets the host behaviour below: that group's running
+        // containers restart. Writing the notice to (other group, calling
+        // session) instead provisioned a mailbox nothing reads and killed the
+        // caller's own container rather than the target's.
+        if (ctx.caller === 'agent' && id === ctx.agentGroupId) {
           if (message) {
             await writeSessionMessage(id, ctx.sessionId, {
               id: `restart-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -667,7 +781,8 @@ registerResource({
           return { restarted: 1, rebuilt: !!args.rebuild };
         }
 
-        // From the host: restart all running containers in the group
+        // From the host, or an agent naming another group: restart all running
+        // containers in the group.
         const count = await restartAgentGroupContainers(id, 'restarted via ncl', message);
         return { restarted: count, rebuilt: !!args.rebuild };
       },
@@ -686,15 +801,19 @@ registerResource({
         if (!row) throw new Error(`No container config for group: ${id}`);
         const presented = presentConfig(row);
 
-        // Enrich with agent_provider from agent_groups — the tier that wins the
-        // resolution chain (session → agent_group → container_config → claude),
-        // so it is what the group actually runs on. Reported as "claude" when
-        // the column is null, matching the chain's default rather than implying
-        // the column is set. (`container_configs.provider` is the next tier
-        // down, NOT a model provider: the Codex model provider comes from
-        // CODEX_MODEL_PROVIDER in the config.toml template, not from this row.)
+        // Enrich with agent_provider: the provider the group runs on, resolved
+        // through the group tiers (agent_group → container_config → install
+        // default) as spawn resolves it, so an empty column reports the
+        // default rather than implying the column is set. (The Codex model
+        // provider is not this: it comes from CODEX_MODEL_PROVIDER in the
+        // config.toml template.)
         const agentGroup = await getAgentGroup(id);
-        const agentProvider = agentGroup?.agent_provider ?? 'claude';
+        const agentProvider = resolveProviderName({
+          override: undefined,
+          session: undefined,
+          group: agentGroup?.agent_provider,
+          config: row.provider,
+        });
 
         // Derive effective_model when container_configs.model is null. For Codex,
         // the model is set via CODEX_MODEL env var on the host process and baked
@@ -732,7 +851,7 @@ registerResource({
         'Update container config scalar fields. Changes are saved but do NOT take effect until you run `ncl groups restart`. ' +
         'Use --id <group-id> and any of: --provider, --model, --effort, --speed, --image-tag, --assistant-name, --max-messages-per-prompt, --cli-scope, ' +
         '--small-model, --router-model, --critic-model, --weights. ' +
-        '--weights open makes the group use open-weights models only: unset roles take the open defaults (GLM for the doer, GLM flash for the small model and router, Kimi for the critic), and a role set to a closed model is refused; --weights any (or "") removes the rule. The model flags take "" to clear back to the install default. ' +
+        '--weights open makes the group use open-weights models only: unset roles take the open defaults (GLM for the doer, GLM flash for the small model and router, Kimi for the critic), and a role set to a closed model is refused; --weights any removes the rule, and "" follows the install default (NANOCLAW_DEFAULT_WEIGHTS: open unless set to any). The model flags take "" to clear back to the install default. ' +
         '--speed must be one of the speed tiers the group\'s provider declares (Claude: "standard", "fast"), or "" to follow the install default; a provider that declares none accepts only "". ' +
         '--timezone (IANA id like "Europe/Lisbon"; "" clears back to the install default; scheduled-task times follow it immediately, message display after restart).',
       handler: async (args) => {
@@ -794,8 +913,10 @@ registerResource({
           if (args[key] !== undefined) updates[key] = (args[key] as string) || null;
         }
         if (args.weights !== undefined) {
-          const weights = parseModelWeights(args.weights as string);
-          updates.weights = weights === 'any' ? null : weights;
+          // Stored as given: "any" and "open" are the group's own setting, and
+          // "" (stored as NULL) follows the install default, which may be open.
+          const weights = String(args.weights);
+          updates.weights = weights === '' ? null : parseModelWeights(weights);
         }
         if (args.image_tag !== undefined) updates.image_tag = args.image_tag as string;
         if (args.assistant_name !== undefined) updates.assistant_name = args.assistant_name as string;
@@ -990,6 +1111,16 @@ registerResource({
 
         const row = await getContainerConfig(id);
         if (!row) throw new Error(`No container config for group: ${id}`);
+
+        // Stored, a path the driver reserves would make it refuse every start of the group.
+        // A copy is fine advice for install content, never for keys and certificates.
+        const reserved = await reservedMountClass(id, hostPath);
+        if (reserved === 'install-surface') {
+          throw new Error(`${hostPath} is NanoClaw's own ${reserved} content; only NanoClaw mounts it. Mount a copy.`);
+        }
+        if (reserved) {
+          throw new Error(`${hostPath} holds NanoClaw's ${reserved} keys or certificates; only NanoClaw mounts it.`);
+        }
 
         const mount: AdditionalMountConfig = {
           hostPath,

@@ -40,18 +40,18 @@ def load_gh_graphql():
     return mod
 
 
-def load_cost_status():
-    """Extract cost_status() from pull-universe.sh's Step 1b heredoc (the
-    per-session cost-cap stamping step) into a module with a controllable
-    `subprocess`, mirroring load_gh_graphql()'s extraction style."""
+def load_stopped_session_ids():
+    """Extract stopped_session_ids() from pull-universe.sh's Step 1b heredoc (the
+    cost-cap stamping step) into a module with a controllable `subprocess`,
+    mirroring load_gh_graphql()'s extraction style."""
     src = SCRIPT.read_text()
-    start = src.index("def cost_status(session_id):")
-    end = src.index("stopped = 0")
+    start = src.index("def stopped_session_ids():")
+    end = src.index("stopped_ids = stopped_session_ids()")
     mod = types.ModuleType("pu_cost_status")
     # json is a real import the function relies on.
     import json as _json
     mod.json = _json
-    exec(compile(src[start:end], "cost_status", "exec"), mod.__dict__)  # noqa: S102
+    exec(compile(src[start:end], "stopped_session_ids", "exec"), mod.__dict__)  # noqa: S102
     return mod
 
 
@@ -115,57 +115,59 @@ class GraphqlSalvage(unittest.TestCase):
 
 
 class CostStatusStamping(unittest.TestCase):
-    """Step 1b stamps `cost_status` onto every gh-issue session via `ncl
-    cost-cap status`, so scan.py can distinguish a session that's merely idle
-    from one deliberately `stopped` pending a human cost decision (see
-    scan.py::any_session_cost_stopped). The live ncl round-trip needs a
-    running container (covered by the skill's own smoke run); these tests pin
-    the pure parsing/fallback logic — every non-clean-success path must
-    degrade to 'unknown', never raise — plus the wiring order structurally."""
+    """Step 1b stamps `cost_status` onto every gh-issue session from ONE `ncl
+    cost-cap stopped` call, so scan.py can distinguish a session that's merely
+    idle from one deliberately `stopped` pending a human cost decision (see
+    scan.py::any_session_cost_stopped). A per-session `ncl cost-cap status` loop
+    costs one mailbox round-trip per session (over an hour on prod). These tests
+    pin the parsing/fallback logic — every non-clean-success path must degrade
+    to None (every session 'unknown'), never raise — plus the wiring order."""
+
+    STOPPED = ('{"ok": true, "data": {"count": 2, "stopped": ['
+               '{"session_id": "sess-1", "status": "stopped"},'
+               '{"session_id": "sess-2", "status": "stopped"}]}}')
 
     def setUp(self):
-        self.mod = load_cost_status()
+        self.mod = load_stopped_session_ids()
+        self.calls = []
 
     def _patch(self, completed=None, raises=None):
-        if raises is not None:
-            def run(*_a, **_k):
+        def run(cmd, *_a, **_k):
+            self.calls.append(cmd)
+            if raises is not None:
                 raise raises
-            self.mod.subprocess = types.SimpleNamespace(run=run)
-        else:
-            self.mod.subprocess = types.SimpleNamespace(run=lambda *a, **k: completed)
+            return completed
+        self.mod.subprocess = types.SimpleNamespace(run=run)
 
-    def test_stopped_status_is_reported(self):
-        self._patch(FakeCompleted(0, '{"data": {"status": "stopped"}}'))
-        self.assertEqual(self.mod.cost_status("sess-1"), "stopped")
+    def test_stopped_set_is_read_from_one_call(self):
+        self._patch(FakeCompleted(0, self.STOPPED))
+        self.assertEqual(self.mod.stopped_session_ids(), {"sess-1", "sess-2"})
+        self.assertEqual(self.calls, [["ncl", "cost-cap", "stopped", "--json"]])
 
-    def test_ok_status_is_reported(self):
-        self._patch(FakeCompleted(0, '{"data": {"status": "ok"}}'))
-        self.assertEqual(self.mod.cost_status("sess-1"), "ok")
+    def test_empty_stopped_set(self):
+        self._patch(FakeCompleted(0, '{"data": {"count": 0, "stopped": []}}'))
+        self.assertEqual(self.mod.stopped_session_ids(), set())
 
-    def test_nonzero_returncode_is_unknown(self):
+    def test_nonzero_returncode_is_none(self):
         self._patch(FakeCompleted(1, ""))
-        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+        self.assertIsNone(self.mod.stopped_session_ids())
 
-    def test_empty_stdout_is_unknown(self):
+    def test_empty_stdout_is_none(self):
         self._patch(FakeCompleted(0, "   "))
-        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+        self.assertIsNone(self.mod.stopped_session_ids())
 
-    def test_unparseable_json_is_unknown(self):
+    def test_unparseable_json_is_none(self):
         self._patch(FakeCompleted(0, "not json"))
-        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+        self.assertIsNone(self.mod.stopped_session_ids())
 
-    def test_missing_status_field_is_unknown(self):
+    def test_missing_stopped_list_is_none(self):
         self._patch(FakeCompleted(0, '{"data": {}}'))
-        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+        self.assertIsNone(self.mod.stopped_session_ids())
 
-    def test_missing_data_field_is_unknown(self):
-        self._patch(FakeCompleted(0, '{"ok": true}'))
-        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
-
-    def test_subprocess_exception_is_unknown(self):
+    def test_subprocess_exception_is_none(self):
         # e.g. a subprocess.TimeoutExpired — must degrade, never crash the pull.
         self._patch(raises=RuntimeError("boom"))
-        self.assertEqual(self.mod.cost_status("sess-1"), "unknown")
+        self.assertIsNone(self.mod.stopped_session_ids())
 
     def test_step1b_runs_before_thread_grouping_and_feeds_final_payload(self):
         # Structural assertion: Step 1b reassigns GH_SESSIONS with cost_status

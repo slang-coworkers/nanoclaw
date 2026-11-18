@@ -9,6 +9,7 @@ import path from 'path';
 
 import { backfillAgentsSymlinks } from './agents-symlink-backfill.js';
 import { backfillContainerConfigs } from './backfill-container-configs.js';
+import { checkInstallDefault } from './install-default-check.js';
 import {
   CENTRAL_DB_PATH,
   DASHBOARD_INGRESS_HOST,
@@ -23,6 +24,7 @@ import { resolveShutdownDeadlineMs, runShutdownSteps, type ShutdownResult } from
 import {
   abortGatewaySessionObservers,
   adoptRunningSessions,
+  refreshStaleGroupImages,
   resumeGatewaySessionAdmission,
   stopGatewaySessionsForUnavailability,
 } from './container-runner.js';
@@ -177,6 +179,11 @@ async function main(): Promise<void> {
   if (db.dialect === 'sqlite') await backfillContainerConfigs();
   else log.info('Skipping local container.json backfill for non-local central DB');
 
+  // 1c-ter. The install default provider and weights (src/model-policy.ts):
+  // refuse to start on an unreadable NANOCLAW_DEFAULT_WEIGHTS, and log which
+  // groups follow the default. After the backfill, so every group has its row.
+  await checkInstallDefault();
+
   // 1c-bis. Backfill AGENTS.md / .agents symlinks for codex-mode skill
   // discovery. group-init.ts creates these for new groups; this catches
   // older groups created before that scaffolding existed. Idempotent —
@@ -187,14 +194,16 @@ async function main(): Promise<void> {
     log.warn('agents-symlink-backfill threw', { err: String(err) });
   }
 
-  // Reset stale container_status from a previous host run BEFORE the reconcile
-  // below. On an unclean shutdown, sessions are left at container_status
-  // 'running'/'idle'; no container is actually alive this early in startup
-  // (the runtime + spawns happen in section 2), so the rows are stale. The
-  // reconcile's live-session preflight keys on this column, so without the
-  // reset it would spuriously abort on every first restart after a crash.
-  // Idempotent and safe to run here — duplicated cheaply below is harmless,
-  // but doing it first is what makes the auto-reconcile reliable.
+  // This is the one startup reset of container_status. A 'running' or 'idle'
+  // row here was written by the previous host process, and this process has
+  // not started or adopted any container yet, so every such row is stale.
+  // After this line the column follows this process's container lifecycle
+  // only: adoption (step 5) marks each survivor it claims 'running', a spawn
+  // marks its session 'running', and a container's exit marks it 'stopped'.
+  // The active delivery poll drains exactly the 'running' rows, so a second
+  // reset after adoption would leave every adopted container on the 60 s
+  // sweep. The gh-session reconcile below keys its live-session preflight on
+  // this column, so the reset also has to run before it.
   await getDb().run("UPDATE sessions SET container_status = 'stopped' WHERE container_status IN ('running', 'idle')");
 
   // 1c-ter. Reconcile split gh-issue/gh-pr coworker sessions. Older installs
@@ -424,10 +433,6 @@ async function main(): Promise<void> {
   configureContainerTokenStore({ path: path.join(process.cwd(), 'data', '.mcp-container-tokens.json') });
   await adoptRunningSessions();
   releaseInbound();
-  // Reset stale container_status from previous host runs. Kept AFTER adoption so
-  // it only clears rows adoption did not claim; repeated from the pre-reconcile
-  // reset above as the canonical post-runtime reset — idempotent.
-  await getDb().run("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'");
 
   // 6. Start registered host modules. Imports only registered callbacks; the
   // actual work begins here, after DB + delivery are ready and before polls.
@@ -451,6 +456,10 @@ async function main(): Promise<void> {
   await startCliServer();
 
   log.info('NanoClaw running');
+
+  // In the background, one group at a time: after an update the agent image is
+  // new but groups with extra packages still run images built on the old one.
+  void refreshStaleGroupImages();
 }
 
 /**

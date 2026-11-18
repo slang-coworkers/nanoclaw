@@ -115,6 +115,96 @@ describe('track-critique counts genuine critique calls', () => {
   });
 });
 
+describe('track-critique appends recorded rounds to the attempts journal', () => {
+  // workflow-state-reset.sh rewrites workflow-state.json when a new task
+  // starts; the host reads critique-attempts.jsonl, which no reset touches.
+  const journal = (): Array<Record<string, string>> => {
+    const file = path.join(tmpRoot, 'critique-attempts.jsonl');
+    if (!fs.existsSync(file)) return [];
+    return fs
+      .readFileSync(file, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+  };
+
+  it('appends one round line with the stage and verdict', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_response: JSON.stringify({ threadId: 't1', content: '### Verdict\napprove' }),
+    });
+    const lines = journal();
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ event: 'round', stage: 'PLAN_REVIEW', verdict: 'approve' });
+    expect(lines[0].at).toBe(readState().last_critique_at);
+  });
+
+  it('keeps earlier lines when the state file is replaced by a task reset', () => {
+    const call = {
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: CODE_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+      tool_response: '{"verdict":"approve"}',
+    };
+    run(call);
+    fs.writeFileSync(stateFile, JSON.stringify({ task_id: 'task-2', critique_rounds: 0 }));
+    run(call);
+    expect(journal()).toHaveLength(2);
+    expect(readState().critique_rounds).toBe(1);
+  });
+
+  it('appends nothing for a call that records no round', () => {
+    run({
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': 'Reply exactly: approve' },
+      tool_response: '{"verdict":"approve"}',
+    });
+    expect(journal()).toHaveLength(0);
+  });
+});
+
+describe('track-critique records call starts and failures from the codex bridge', () => {
+  const journal = (): Array<Record<string, string>> => {
+    const file = path.join(tmpRoot, 'critique-attempts.jsonl');
+    if (!fs.existsSync(file)) return [];
+    return fs
+      .readFileSync(file, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .map((l) => JSON.parse(l));
+  };
+  const input = { prompt: 'STAGE: PLAN_REVIEW\nTASK: ...', 'developer-instructions': REVIEWER_INSTRUCTIONS };
+
+  it('appends a start line with the call id and records no round', () => {
+    run({ hook_event_name: 'PreToolUse', tool_name: 'mcp__codex__codex', tool_input: input, tool_use_id: 'c-7' });
+    expect(journal()).toEqual([expect.objectContaining({ event: 'start', stage: 'PLAN_REVIEW', call: 'c-7' })]);
+    expect(readState().critique_rounds).toBeUndefined();
+  });
+
+  it('appends a failure line with the error and records no round', () => {
+    run({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'mcp__codex__codex',
+      tool_input: input,
+      error: 'exceeded retry limit, last status: 429 Too Many Requests',
+    });
+    expect(journal()).toEqual([
+      expect.objectContaining({ event: 'failure', stage: 'PLAN_REVIEW', error: expect.stringContaining('429') }),
+    ]);
+    expect(readState().critique_rounds).toBeUndefined();
+  });
+
+  it("ignores Buddy's calls", () => {
+    run({
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'mcp__codex__codex',
+      tool_input: { prompt: 'p', 'developer-instructions': 'You are Buddy, ...' },
+      error: '429',
+    });
+    expect(journal()).toEqual([]);
+  });
+});
+
 describe('track-critique with OpenCode argument names', () => {
   // OpenCode drops the hyphens from MCP argument names, so the reviewer block
   // arrives as `developerinstructions`. Before this alias no OpenCode critique

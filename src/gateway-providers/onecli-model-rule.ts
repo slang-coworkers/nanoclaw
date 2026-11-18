@@ -1,7 +1,7 @@
 /**
  * The OneCLI rules that keep closed models away from an open session.
  *
- * An open session runs on the OneCLI agent `<group id>`. For that agent the gateway holds three
+ * An open session runs on the OneCLI agent `<group id>`. For that agent the gateway holds four
  * block rules:
  *
  * - `open-models-only (<id>)` refuses every POST, PUT or PATCH to the inference host whose JSON
@@ -10,7 +10,11 @@
  *   from the URL, where a body `model` field could name an open model while the URL selects a
  *   closed one;
  * - `open-models-only (<id>) query` refuses a request of any method whose `model` query parameter
- *   names no open model. A WebSocket handshake is a GET that carries its model there.
+ *   names no open model. A WebSocket handshake is a GET that carries its model there;
+ * - `open-models-only (<id>) closed hosts` refuses every request to a host of a closed-model
+ *   vendor (`CLOSED_VENDOR_HOSTS`), on every method and path. The first three rules read the
+ *   model on the inference host only, so without this one a client in the container, such as a
+ *   nested Claude Code, reaches the vendor's own API with its telemetry and directory calls.
  *
  * The gateway matches a rule against the canonical path, so `/%6Dodel/info` and `//model/info`
  * meet the `routes` rule as `/model/info` does.
@@ -35,6 +39,45 @@ export function openModelRuleName(identifier: string): string {
   return `${OPEN_MODEL_RULE_PREFIX} (${identifier})`;
 }
 
+/**
+ * The inference hosts an install sends model requests to: the host of each model base URL it sets.
+ * The rule names these hosts, so a model request to any other host is outside it. The host and the
+ * `scripts/open-model-rules.ts` script both read the list here.
+ */
+export function inferenceHostsOf(env: Record<string, string | undefined>): string[] {
+  const hosts = (['ANTHROPIC_BASE_URL', 'OPENCODE_BASE_URL', 'CODEX_BASE_URL'] as const).flatMap((key) => {
+    try {
+      return env[key] ? [new URL(env[key]!).hostname] : [];
+    } catch {
+      return [];
+    }
+  });
+  return [...new Set(hosts)];
+}
+
+/**
+ * The hosts of the closed-model vendors (Anthropic, Claude, OpenAI, ChatGPT), which an open session
+ * never calls. The gateway (`host_matches` in OneCLI's `connect.rs`) splits a pattern at its `*`
+ * and compares the prefix and the suffix without case, so `*.anthropic.com` meets every subdomain
+ * but not `anthropic.com` itself. Each domain is listed both ways for that reason. The two API
+ * hosts are also listed by exact name, because an exact name is the one form that every gateway
+ * version matches.
+ */
+export const CLOSED_VENDOR_HOSTS: readonly string[] = [
+  'anthropic.com',
+  '*.anthropic.com',
+  'api.anthropic.com',
+  'claude.ai',
+  '*.claude.ai',
+  'claude.com',
+  '*.claude.com',
+  'openai.com',
+  '*.openai.com',
+  'api.openai.com',
+  'chatgpt.com',
+  '*.chatgpt.com',
+];
+
 /** The methods whose body can name a model. The gateway reads a body for exactly these. */
 const BODY_METHODS = ['POST', 'PUT', 'PATCH'] as const;
 type BodyMethod = (typeof BODY_METHODS)[number];
@@ -58,7 +101,11 @@ interface RuleBody {
   conditions: Array<{ target: 'body' | 'query'; key: 'model'; operator: 'not_in'; value: string }>;
 }
 
-/** The rules the gateway must hold for one open agent: the body rule, the routes rule, the query rule. */
+/**
+ * The rules the gateway must hold for one open agent: the body, routes and query rules on the
+ * inference hosts, and the closed-hosts rule on `CLOSED_VENDOR_HOSTS`, which does not depend on
+ * `hosts`.
+ */
 export function desiredOpenModelRules(
   identifier: string,
   agentId: string,
@@ -94,6 +141,13 @@ export function desiredOpenModelRules(
       name: `${openModelRuleName(identifier)} query`,
       targets: sorted.map((hostPattern) => ({ kind: 'network' as const, hostPattern })),
       conditions: [{ target: 'query', key: 'model', operator: 'not_in', value: globs.join(',') }],
+    },
+    {
+      ...base,
+      name: `${openModelRuleName(identifier)} closed hosts`,
+      // A target with no method and no path holds for every method and every path of its host.
+      targets: CLOSED_VENDOR_HOSTS.map((hostPattern) => ({ kind: 'network' as const, hostPattern })),
+      conditions: [],
     },
   ];
 }
@@ -135,11 +189,12 @@ function holdsRule(rule: Json, want: RuleBody): boolean {
 }
 
 /**
- * Make the gateway refuse closed models from the OneCLI agent `identifier`, and return what
- * happened: `unchanged` when the published rules already say so, `installed` after a write and a
- * publish, `unsupported` when the gateway has no policy API. A gateway that has the API but not the
- * matcher refuses the rule (422), and that is an error: an open session must not start without
- * the boundary. After a publish the live rules are read back, and a mismatch is an error too.
+ * Make the gateway refuse closed models and the closed-model vendors' hosts to the OneCLI agent
+ * `identifier` (`desiredOpenModelRules`), and return what happened: `unchanged` when the published
+ * rules already say so, `installed` after a write and a publish, `unsupported` when the gateway has
+ * no policy API. A gateway that has the API but not the matcher refuses the rule (422), and that is
+ * an error: an open session must not start without the boundary. After a publish the live rules
+ * are read back, and a mismatch is an error too.
  *
  * The open-models-only rules lead the project's order, because the gateway applies the first rule
  * that matches, and an earlier allow rule for the same host would otherwise win. The rules of

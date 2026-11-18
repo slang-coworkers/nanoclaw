@@ -10,7 +10,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb } from '../mailbox/sqlite/connection.js';
-import { getPendingMessages, markProcessing } from './messages-in.js';
+import { getPendingMessages, isControlRow, markProcessing } from './messages-in.js';
 
 beforeEach(() => {
   initTestSessionDb();
@@ -51,6 +51,39 @@ function insertContextRow(id: string, seq: number, text: string): void {
   insertMessage(id, seq, 'chat', { text, sender: 'Ambient User', senderId: 'telegram:U1' }, { trigger: 0 });
 }
 
+describe('control rows bypass the per-prompt cap', () => {
+  it('cost_override rows behind 16 older wake rows are all returned, on top of the capped window', () => {
+    for (let i = 1; i <= 16; i++) insertMessage(`event-${i}`, i * 2, 'webhook', { event: 'github.pr_mention' });
+    insertMessage('continue-1', 34, 'cost_override', { decision: 'continue', epochKey: '0' });
+    insertMessage('continue-2', 36, 'cost_override', { decision: 'continue', epochKey: '0' });
+    insertMessage('chat-late', 38, 'chat', { sender: 'A', text: 'later' });
+
+    const batch = getPendingMessages();
+    // The ten oldest wake rows fill the window; both controls ride along.
+    expect(batch.map((m) => m.id)).toEqual([
+      ...Array.from({ length: CAP }, (_, i) => `event-${i + 1}`),
+      'continue-1',
+      'continue-2',
+    ]);
+  });
+
+  it('a control row does not take a turn-input slot', () => {
+    insertMessage('continue-1', 2, 'cost_override', { decision: 'continue', epochKey: '0' });
+    for (let i = 1; i <= CAP; i++) insertMessage(`chat-${i}`, 2 + i * 2, 'chat', { sender: 'A', text: `m${i}` });
+
+    const batch = getPendingMessages();
+    expect(batch).toHaveLength(CAP + 1);
+    expect(batch.filter((m) => m.kind === 'chat')).toHaveLength(CAP);
+  });
+
+  it('isControlRow names cost_override and nothing else', () => {
+    expect(isControlRow({ kind: 'cost_override' })).toBe(true);
+    for (const kind of ['chat', 'chat-sdk', 'task', 'webhook', 'system'] as const) {
+      expect(isControlRow({ kind })).toBe(false);
+    }
+  });
+});
+
 describe('trigger=1 rows never crowded out', () => {
   it('a due task row survives 12 newer context rows at cap 10', () => {
     insertMessage('task-1', 2, 'task', { prompt: 'daily digest' });
@@ -64,9 +97,17 @@ describe('trigger=1 rows never crowded out', () => {
     // Oldest-first: the task row (lowest seq) leads the batch.
     expect(batch[0].id).toBe('task-1');
     // Remaining slots hold the NEWEST 9 context rows (ctx-1..3 dropped).
-    expect(batch.slice(1).map((m) => m.id)).toEqual(
-      ['ctx-4', 'ctx-5', 'ctx-6', 'ctx-7', 'ctx-8', 'ctx-9', 'ctx-10', 'ctx-11', 'ctx-12'],
-    );
+    expect(batch.slice(1).map((m) => m.id)).toEqual([
+      'ctx-4',
+      'ctx-5',
+      'ctx-6',
+      'ctx-7',
+      'ctx-8',
+      'ctx-9',
+      'ctx-10',
+      'ctx-11',
+      'ctx-12',
+    ]);
   });
 
   it('trigger=1 rows are all included even when they interleave with newer context', () => {
@@ -153,9 +194,7 @@ describe('existing selection semantics preserved', () => {
     insertMessage('due-task', 2, 'task', { prompt: 'now' });
     insertMessage('later-task', 4, 'task', { prompt: 'later' }, { processAfter: future });
     insertContextRow('ctx-1', 6, 'ambient');
-    getInboundDb()
-      .prepare(`UPDATE messages_in SET process_after = ? WHERE id = 'ctx-1'`)
-      .run(future);
+    getInboundDb().prepare(`UPDATE messages_in SET process_after = ? WHERE id = 'ctx-1'`).run(future);
 
     const batch = getPendingMessages();
     expect(batch.map((m) => m.id)).toEqual(['due-task']);
