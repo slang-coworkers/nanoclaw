@@ -1,13 +1,18 @@
 /**
- * Pure aggregation + percentile math behind `ncl cost-cap sessions`. No DB, no
- * network — `fetchSessionCosts` (the one HTTP part) is covered by the verb's own
- * error paths elsewhere; here we pin the math a coworker relies on to turn the
- * distribution into a ceiling.
+ * Aggregation + percentile math behind `ncl cost-cap sessions` (the numbers a
+ * coworker turns into a ceiling), and the one HTTP part, `fetchSessionCosts`:
+ * its distinct timeout / refused / 401 failures are exercised against real
+ * loopback sockets so the error shapes are Node's own, not hand-built stand-ins.
  */
+import { createServer, type Server } from 'http';
+import type { AddressInfo } from 'net';
 import { describe, it, expect, vi, afterEach } from 'vitest';
 
 import {
   aggregateSessionCosts,
+  DashboardCostApiError,
+  DEFAULT_DASHBOARD_TIMEOUT_MS,
+  describeSnapshotFreshness,
   fetchSessionCosts,
   filterStoppedSessions,
   listStoppedSessions,
@@ -139,21 +144,157 @@ describe('fetchSessionCosts — transport + costUnavailable threading + error su
     expect((await fetchSessionCosts('7d')).costUnavailable).toBeNull();
   });
 
-  it('throws a clear error when the dashboard is unreachable', async () => {
-    stubFetch(() => {
-      throw new Error('ECONNREFUSED');
-    });
-    await expect(fetchSessionCosts('30d')).rejects.toThrow(/could not reach the dashboard cost API/);
+  it('reports the dashboard snapshot freshness, and null when the dashboard does not send it', async () => {
+    const costSnapshot = {
+      generation: 7,
+      computedAt: '2026-11-17T06:31:08.519Z',
+      ageSec: 42,
+      stale: false,
+      lastError: null,
+    };
+    stubFetch(() => ({ ok: true, json: async () => ({ sessions: [], costSnapshot }) }));
+    expect((await fetchSessionCosts('30d')).snapshot).toEqual(costSnapshot);
+    stubFetch(() => ({ ok: true, json: async () => ({ sessions: [] }) }));
+    expect((await fetchSessionCosts('30d')).snapshot).toBeNull();
+    stubFetch(() => ({ ok: true, json: async () => ({ sessions: [], costSnapshot: { generation: 'x' } }) }));
+    expect((await fetchSessionCosts('30d')).snapshot).toBeNull();
   });
 
-  it('throws on a non-ok response (and names 401 specifically)', async () => {
-    stubFetch(() => ({ ok: false, status: 401, statusText: 'Unauthorized' }));
-    await expect(fetchSessionCosts('30d')).rejects.toThrow(/401/);
+  it('waits 30s by default, and the caller can change it', async () => {
+    const spy = vi.spyOn(AbortSignal, 'timeout');
+    stubFetch(() => ({ ok: true, json: async () => ({ sessions: [] }) }));
+    await fetchSessionCosts('30d');
+    expect(DEFAULT_DASHBOARD_TIMEOUT_MS).toBe(30_000);
+    expect(spy).toHaveBeenLastCalledWith(30_000);
+    await fetchSessionCosts('30d', { timeoutMs: 90_000 });
+    expect(spy).toHaveBeenLastCalledWith(90_000);
+    spy.mockRestore();
+  });
+
+  it('wraps any other transport failure as "unreachable" with a hint', async () => {
+    stubFetch(() => {
+      throw new Error('socket hang up');
+    });
+    const err = await fetchSessionCosts('30d').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DashboardCostApiError);
+    expect(err).toMatchObject({ kind: 'unreachable' });
+    expect((err as Error).message).toMatch(/could not reach the dashboard cost API.*socket hang up/);
+    expect((err as Error).message).toMatch(/\nhint: /);
   });
 
   it('throws on an unexpected shape (no sessions array)', async () => {
     stubFetch(() => ({ ok: true, json: async () => ({ nope: true }) }));
     await expect(fetchSessionCosts('30d')).rejects.toThrow(/unexpected shape/);
+  });
+});
+
+describe('fetchSessionCosts — timeout, refused and 401 each get their own error and hint (real sockets)', () => {
+  // fetchSessionCosts always dials 127.0.0.1:DASHBOARD_PORT. Each test sends that
+  // request to its own loopback server instead, through the real fetch, so the
+  // failure is the genuine undici error shape.
+  const realFetch = globalThis.fetch;
+  let server: Server | null = null;
+  let calls = 0;
+
+  afterEach(async () => {
+    vi.unstubAllGlobals();
+    calls = 0;
+    if (server) {
+      server.closeAllConnections();
+      await new Promise<void>((r) => server!.close(() => r()));
+      server = null;
+    }
+  });
+
+  async function listen(handler: Parameters<typeof createServer>[1]): Promise<number> {
+    server = createServer(handler);
+    await new Promise<void>((r) => server!.listen(0, '127.0.0.1', () => r()));
+    return (server!.address() as AddressInfo).port;
+  }
+
+  function routeTo(port: number): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: unknown, init?: RequestInit) => {
+        calls++;
+        return realFetch(`http://127.0.0.1:${port}/api/sessions?period=30d`, init);
+      }),
+    );
+  }
+
+  it('a dashboard that accepts but does not answer is a timeout, not "unreachable"', async () => {
+    const port = await listen(() => {
+      /* accept the request and never answer, like a blocked event loop */
+    });
+    routeTo(port);
+    const err = await fetchSessionCosts('30d', { timeoutMs: 200 }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DashboardCostApiError);
+    expect(err).toMatchObject({ kind: 'timeout' });
+    expect((err as Error).message).toMatch(/did not answer within 200ms/);
+    expect((err as DashboardCostApiError).hint).toMatch(/busy.*--timeout/);
+    expect(calls).toBe(1); // no retry
+  });
+
+  it('a closed port is "connection refused", with a hint to start the dashboard', async () => {
+    const port = await listen(() => {});
+    server!.close();
+    server = null;
+    routeTo(port);
+    const err = await fetchSessionCosts('30d').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DashboardCostApiError);
+    expect(err).toMatchObject({ kind: 'refused' });
+    expect((err as Error).message).toMatch(/connection refused/);
+    expect((err as DashboardCostApiError).hint).toMatch(/nothing listens on port .*nanoclaw-dashboard/);
+    expect(calls).toBe(1); // no retry
+  });
+
+  it('a 401 says the secrets differ', async () => {
+    const port = await listen((_req, res) => {
+      res.writeHead(401, { 'Content-Type': 'application/json' });
+      res.end('{"error":"unauthorized"}');
+    });
+    routeTo(port);
+    const err = await fetchSessionCosts('30d').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DashboardCostApiError);
+    expect(err).toMatchObject({ kind: 'unauthorized' });
+    expect((err as Error).message).toMatch(/401 Unauthorized/);
+    expect((err as DashboardCostApiError).hint).toMatch(/DASHBOARD_SECRET/);
+  });
+
+  it('a 503 is reported with its status and no guessed hint', async () => {
+    const port = await listen((_req, res) => {
+      res.writeHead(503);
+      res.end();
+    });
+    routeTo(port);
+    const err = await fetchSessionCosts('30d').catch((e: unknown) => e);
+    expect(err).toMatchObject({ kind: 'http', hint: null });
+    expect((err as Error).message).toMatch(/503/);
+  });
+});
+
+describe('describeSnapshotFreshness — one line on how old the costs are', () => {
+  const base = { generation: 3, computedAt: '2026-11-17T06:00:00.000Z', stale: false, lastError: null };
+
+  it('fresh', () => {
+    expect(describeSnapshotFreshness({ ...base, ageSec: 42 })).toBe('cost snapshot: computed 42s ago');
+    expect(describeSnapshotFreshness({ ...base, ageSec: 600 })).toBe('cost snapshot: computed 10 min ago');
+  });
+
+  it('stale, with the last refresh error', () => {
+    expect(describeSnapshotFreshness({ ...base, ageSec: 3 * 3600, stale: true, lastError: 'database is locked' })).toBe(
+      '⚠ cost snapshot is STALE: computed 3.0 h ago; last refresh error: database is locked',
+    );
+  });
+
+  it('no snapshot yet', () => {
+    expect(describeSnapshotFreshness({ ...base, generation: 0, ageSec: null, computedAt: null, stale: true })).toMatch(
+      /none computed yet/,
+    );
+  });
+
+  it('a dashboard that does not report freshness', () => {
+    expect(describeSnapshotFreshness(null)).toMatch(/not reported/);
   });
 });
 

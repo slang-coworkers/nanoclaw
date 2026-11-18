@@ -28,7 +28,7 @@ Messaging mechanics live in [Sending messages](#sending-messages); these are the
 ## Memory
 
 - Per-group: `/workspace/agent/memory/` — the OKF tree described in Runtime Contract › Memory.
-- Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Recall via a subagent (`/workspace/shared/wiki/index.md` catalog → ≤2 `/workspace/shared/wiki/concepts/<page>.md`, `limit=60` each); never read an index inline. `/workspace/shared/learnings/INDEX.md` is the raw atom log, not a reading surface. Write via `append_learning`.
+- Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Read them only through the [Recall rule](#recall-rule) below. Write via `append_learning`.
 - `/workspace/shared/` is **read-write for Main only** — coworkers read it but can't write directly.
 
 ## Constraints
@@ -78,6 +78,16 @@ The `conversations/` folder in your workspace holds searchable transcripts of pa
 - Credentials stay in the gateway: never run `gh auth login` or any client-side login that stores a token in the container, and never request a real token through chat or MCP environment settings. Connecting GitHub or another app needs no new MCP server — use an existing HTTP client or the user's requested CLI (`gh`), and install a missing CLI only through the normal package-approval flow.
 - To connect an account run `ncl groups connect --host <API hostname>` and show its exact `connect_url`. `action: operator_console` requires operator configuration; `oauth` is a consent flow; `action_required` is not a connection, credential grant, or request approval. If unsupported, report the capability gap — never substitute a new MCP server, a local login, or guessed host commands.
 - Report success only after a credentialed request succeeds; never invent an authorization link or claim a pending request completed. A bare 403 does not say whether the destination, credential grant, policy, or upstream service denied it, and a 401 does not prove injection failed (the injected token may be invalid). The `connect_url` display and error-handling rules are in Resident Skill Instructions › `/onecli-gateway`.
+
+## Recall rule
+
+Before investigating or changing anything, spawn one `Agent` subagent with this prompt (substitute `<task>`); never read these files inline:
+
+```
+Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it (a small catalog of concept pages; links are relative to /workspace/shared, so `](wiki/concepts/x.md)` means `/workspace/shared/wiki/concepts/x.md`), pick at most 2 concept pages relevant to <task>, read each with limit=60 (every page opens with a `## TL;DR`), and follow their links to cited learnings if needed. If no concept fits, Grep /workspace/shared/wiki/ for keywords. IF NO wiki/ dir: Grep /workspace/shared/learnings/ for keywords and read at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
+```
+
+Never read `/workspace/shared/learnings/INDEX.md` — it is the raw atom log (one line per learning, thousands of lines), not a reading surface.
 
 ## Sending messages
 
@@ -300,6 +310,10 @@ Four invariants govern every message you send in a chain.
 
 A human landing on the issue or PR must be able to see where the chain stands and pick it up: every chain keeps a **resumable GitHub artifact** (an open PR, a comment on the PR, or a comment on the issue) at all times, in progress or parked. Propagate the canonical `thread_id` **unchanged** across every tier; post the 5-bullet on **every** state change (edit your own last comment in place, post a fresh delta when someone else commented since); treat a human comment as a **live inbound** — even on a chain you already closed. A silent close, or a silent no-op on a closed chain, is the failure this rule exists to prevent.
 
+### GPU
+
+**GPU: the prod coworker fleet runs on an NVIDIA L40S — every prod coworker container has CUDA and NVIDIA Vulkan. Your `Environment:` line is the live measurement for THIS container; trust it. Confirm with `nvidia-smi -L` (`vulkaninfo` may be absent). When a task needs real GPU execution (slang-test `-api vk`/`cuda`, SlangPy vulkan/cuda devices), run it on the GPU; GPU-free compile checks add to that, they do not replace it. If `nvidia-smi` fails on a GPU host, report it to the operator as an infra problem. Never record 'no GPU' as a fact.**
+
 ## Resident Skill Instructions
 
 ### `/onecli-gateway`
@@ -311,6 +325,8 @@ Your HTTP requests go through the OneCLI proxy, which injects real credentials a
 Use any method: curl, Python, a CLI tool, whatever fits. If a tool checks for credentials locally, pass any placeholder value — the proxy replaces it with real credentials at request time.
 
 If you get a `401`/`403`/`app_not_connected`, the error response contains a `connect_url` — you MUST show it to the user as a bare URL on its own line (no angle brackets, no markdown link syntax) so they can click to connect. Run `/onecli-gateway` for the full error-handling flow. Never ask the user for API keys or tokens.
+
+GitHub is the exception when the gateway already holds GitHub credentials for some paths. If reading the repository you will write to succeeds (`gh api repos/<owner>/<repo> --jq .id`), a `401`/`app_not_connected` from `gh auth status`, `gh api rate_limit` or another repository only means that path is not covered: it is not an outage, so do not show a connect link and do not wait on it. Check GitHub access only with that repository read.
 
 ## MCP Servers
 

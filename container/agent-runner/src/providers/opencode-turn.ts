@@ -1,5 +1,7 @@
 import { randomBytes } from 'crypto';
 
+import { OUTPUT_LIMIT_FINISH } from './opencode-output-limit.js';
+import { retryableModelError } from './opencode-retry.js';
 import { TurnTokenTally } from './turn-accounting.js';
 import type { TurnModelTokens } from './types.js';
 
@@ -15,6 +17,8 @@ export interface OpenCodeMessage {
     parentID?: string;
     summary?: boolean;
     error?: unknown;
+    /** Why an assistant step ended: `stop`, `tool-calls`, `length` (cut off at the output token limit), … */
+    finish?: string;
     time: { created: number; completed?: number };
     /** The model that served an assistant message. */
     modelID?: string;
@@ -29,6 +33,10 @@ export interface OpenCodeTurnResult {
   isError?: boolean;
   /** The turn's tokens by model, subagent sessions included. */
   tokens: TurnModelTokens[];
+  /** The native error that ended a failed turn (the assistant message's `error`), for the retry decision. */
+  error?: unknown;
+  /** True when the turn's last step was cut off at the output token limit (opencode-output-limit.ts). */
+  truncated?: boolean;
 }
 
 /** The configured model as OpenCode's prompt API names it. */
@@ -146,13 +154,22 @@ export async function acquireOpenCodeTurn(runtime: object, signal: AbortSignal):
   return release;
 }
 
-let messageCounter = 0;
-export function createOpenCodeMessageId(): string {
-  const time = (BigInt(Date.now()) * 4096n + BigInt(messageCounter++ % 4096)) & ((1n << 48n) - 1n);
-  // OpenCode's native IDs use a 12-hex time/counter prefix and 14 base62 characters.
+let idCounter = 0;
+/**
+ * Return a new OpenCode id for `prefix` (`msg` for a message, `prt` for a
+ * part) in OpenCode's ascending format: a 12-hex time and counter, then 14
+ * base62 characters. OpenCode orders a message's parts by id, so an id made
+ * at `timestamp` sorts after every id OpenCode made before that millisecond.
+ */
+export function createOpenCodeId(prefix: 'msg' | 'prt', timestamp = Date.now()): string {
+  const time = (BigInt(timestamp) * 4096n + BigInt(idCounter++ % 4096)) & ((1n << 48n) - 1n);
   const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
   const suffix = Array.from(randomBytes(14), (byte) => alphabet[byte % alphabet.length]).join('');
-  return `msg_${time.toString(16).padStart(12, '0')}${suffix}`;
+  return `${prefix}_${time.toString(16).padStart(12, '0')}${suffix}`;
+}
+
+export function createOpenCodeMessageId(): string {
+  return createOpenCodeId('msg');
 }
 
 export function openCodeError(error: unknown): Error {
@@ -199,7 +216,7 @@ export async function* executeOpenCodeTurn(options: {
   prepare?(): void | Promise<void>;
   discard(): void;
 }): AsyncGenerator<
-  { type: 'activity' } | { type: 'text'; text: string } | { type: 'error'; message: string; retryable: false },
+  { type: 'activity' } | { type: 'text'; text: string } | { type: 'error'; message: string; retryable: boolean },
   OpenCodeTurnResult
 > {
   const { client, pump, sessionId, signal } = options;
@@ -311,16 +328,18 @@ export async function* executeOpenCodeTurn(options: {
     await addSubagentTokens(client, pump, sessionId, turnStartedAt, tally, signal);
     const tokens = tally.rows();
     if (response.data.info.error) {
-      const message = openCodeError(response.data.info.error).message;
-      yield { type: 'error', message, retryable: false };
+      const error = response.data.info.error;
+      const message = openCodeError(error).message;
+      yield { type: 'error', message, retryable: retryableModelError(error) !== undefined };
       // Completed earlier steps went out as text events above. The result has
       // no text, so core sends its fixed failure notice and does not retry the
-      // failed turn. Diagnostics stay in the error event for logs: response
-      // bodies may contain message markup that must never be interpreted as a
-      // model-authored deliverable.
-      return { text: null, isError: true, tokens };
+      // failed turn; the provider may retry it first (opencode-retry.ts), and
+      // reads the native error from the result to decide. Diagnostics stay in
+      // the error event for logs: response bodies may contain message markup
+      // that must never be interpreted as a model-authored deliverable.
+      return { text: null, isError: true, tokens, error };
     }
-    return { text: turnText.final, tokens };
+    return { text: turnText.final, tokens, truncated: response.data.info.finish === OUTPUT_LIMIT_FINISH };
   } catch (error) {
     // The calls made before the failure were billed. Read their tokens back and
     // hand them on with the error, so the provider charges them before it

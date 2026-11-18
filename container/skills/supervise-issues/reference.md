@@ -34,6 +34,9 @@ This eliminates the sampling gap — every `gh-issue-*` session is fetched and c
 issues are filtered out automatically (the script reads `issue_open` from `gh issue view`). Use
 this as the default path; fall back to manual assembly only if the script fails (e.g. `gh` auth).
 
+The hourly gate runs the same script with `--cache-dir` (the *cached pull*, see *Hourly gate*): it
+refetches only what changed since the gate's last pull. The tick itself always runs the full pull.
+
 **Enrichment is partial-tolerant (why the board no longer collapses to "N/M PRs").** The batched
 GraphQL resolver uses `issueOrPullRequest(number:)`, not `issue(number:)` — a chain can be keyed on
 a number that is actually a **PR** (a large fraction of active chains are), and `issue(number:)` is
@@ -62,7 +65,7 @@ its module docstring carries the full contract:
 | `now` | ISO-8601 (with `Z`) tick time |
 | `bot_logins` | optional; default `["nv-slang-bot[bot]", "nv-slang-bot"]` (App + user PAT — both are "us") |
 | `state` | prior `supervisor-state.json` (`{}` on first run) |
-| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows, each also stamped with `cost_status` (`'ok'`\|`'warn'`\|`'escalated'`\|`'stopped'`\|`'unknown'`) via `ncl cost-cap status --session <id>` |
+| `sessions` | the `gh-issue-`-filtered `ncl sessions list` rows, each also stamped with `cost_status` (`'stopped'`\|`'ok'`, or `'unknown'` for all when the call fails) from one `ncl cost-cap stopped` call |
 | `chains` | per `gh-issue-…` thread: `{repo, issue, sessions[], our_last_outbound, our_last_push, pr:{number,state,isDraft,fixes_issue}, comments:[{author,at,is_bot,kind}], pending_ask_user, disposition?}` |
 
 Output: `{rows, summary, state}`. Each row → `state` (`awaiting_us`/`awaiting_human`/`silent`/
@@ -193,7 +196,7 @@ liveness signals: `container_status` (from `ncl sessions list`) only tracks whet
 in-flight turn and refuses to spend further without necessarily exiting — and
 `last_outbound_error_class` infers a *bounced handoff* from outbound text, a different failure mode
 entirely. Neither one would have caught this case, which is exactly why `cost_status` is its own field
-(`pull-universe.sh` stamps it per session via `ncl cost-cap status --session <id>`, sourced from the
+(`pull-universe.sh` stamps it on every session from one `ncl cost-cap stopped` call, sourced from the
 same `outbound.db` `session_state.cost_cap` row the dashboard's cost-approval card reads) rather than
 overloading either existing signal.
 
@@ -256,40 +259,152 @@ PRs and for `not_planned` closes without a PR (maintainer wontfix — note and c
    `gh pr close <ours> --repo <owner>/<repo> --comment "Superseded by #<theirs> … Postmortem captured as <title>."`
 4. **Record** `postmortem = {done, supersededByPr, learningTitle, at}` and drop the chain.
 
+## Hourly gate (Scheduling)
+
+`scripts/supervise-gate.py` is the pre-task gate of the hourly supervise task. Constants live in the
+script: `FULL_PASS_EVERY_S` (12 h), `PULL_BUDGET_S` (150), `PULL_HARD_S` (230), `FAILURE_WAKE_AFTER`
+(3); the task script carries `# nanoclaw-task-timeout: 300`.
+
+| Step | Rule |
+|---|---|
+| Pull | `pull-universe.sh --state memory/supervisor-state.json --cache-dir .supervise-gate/cache --budget-s 150`, in its own process group. Past `PULL_HARD_S` the group is killed and the run is *degraded*. |
+| Classify | `scan.py`'s `run()` in-process — the tick's own rules. The gate never writes `supervisor-state.json`. |
+| Flags | `<thread>\|nudge` for `action == 'nudge'`, `<thread>\|escalate` for `escalate == true`. A row whose chain carries `cache_cold` raises no flag. |
+| Presented | The flags the last wake showed a tick. The gate wakes only for a flag not in that set; a flag that clears leaves it, so the chain wakes the agent again if it stalls again. A tick that judges a flag a false positive and sends nothing is not woken for it every hour; the next full pass shows it again. |
+| Full pass | Due when 12 h have passed since the later of the gate's last wake and `_meta.ran_at` (else `_meta.at`) in `supervisor-state.json`, so a hand-run tick counts. |
+| Degraded | A failed or killed pull, or a failed scan: no flags, `presented` kept, `failures` + 1. The `FAILURE_WAKE_AFTER`-th degraded run in a row wakes the agent once; the full pass fires on time regardless. |
+| Output | One JSON line on stdout, exit 0, always: `{"wakeAgent": bool, "data": {reasons, nudge, escalate, already_presented, hours_since_last_tick, chains: {in_flight, must_nudge, escalate, cold}, degraded, record}}`. The runner's contract is `container/agent-runner/src/scheduling/task-script.ts` (last stdout line, boolean `wakeAgent`, exit 0; anything else counts as a failed run and backs the series off). |
+
+**The cached pull** (`universe_cache.py`, `pull-universe.sh --cache-dir`). GitHub data is refetched
+for a chain when the repo's change listing (`GET /repos/{repo}/issues?state=all&since=…`, issues and
+PRs) names its number, its PR's number, or a PR whose body references it; when it was never fetched;
+and, for an open chain, at least every 24 h. A session's last outbound is reread unless the cached
+read was taken while the container was stopped and `last_active` has not moved: the host stamps
+`last_active` when it queues an inbound or starts the container, never on an outbound, so a running
+container is reread every time. The refetch stops at 60% of `--budget-s` for GitHub and 90% for the
+outbound reads (8 at a time). A chain built from missing or out-of-date data carries
+`cache_cold: true`; the first runs after a deploy (or after the cache is deleted) warm the cache
+most-recently-active first, and the full pass covers cold chains meanwhile.
+
+Files under `/workspace/agent/.supervise-gate/`: `state.json` (`last_wake_at`, `presented`,
+`failures`), `last-run.json` (every flag, the cold chains, the pull report), `history.log` (one line
+per run), `cache/` (`github.json`, `outbound.json`, `report.json`), `last/` (payload, scan output and
+pull log of the latest run). Deleting `cache/` forces a cold rebuild; deleting `state.json` makes
+the next run wake for the full pass unless `_meta` shows a tick within 12 h.
+
 ## Worktree GC (Step 8)
 
-Every tier (slang-fixer, slang-reviewer, slang-triager, slangpy-fixer, slangpy-reviewer,
-slangpy-triager) runs `scripts/worktree-gc-run.sh` as the pre-task gate of an hourly task inside
-its own container, where its group directory is writable. The script discovers the tier's
-worktrees, measures idleness, resolves issue/PR state with `gh`, classifies with
+Every group whose directory holds checkouts, `wt-*` build logs or run output runs
+`scripts/worktree-gc-run.sh` as the pre-task gate of an hourly `worktree-gc` task inside its own
+container, where its group directory is writable. Nobody creates that task by hand: the host's
+coverage pass (`src/modules/worktree-gc/index.ts`, hourly) gives the task to every such group from
+the facts on disk, recreates it when it is deleted and rewrites it when it drifts from its one
+definition, `tasks/worktree-gc.md` (schedule, gate script and wake prompt). A paused task stays
+paused (the operator's decision), and a paused group gets no task until it is unpaused, since no
+container can run for it. The script collects facts with
+`scripts/worktree-gc-discover.py`, resolves issue/PR state with `gh`, classifies with
 `scripts/worktree-gc.py`, acts within the gate's time box, and writes
 `/workspace/agent/.worktree-gc/last-run.json` plus a line in `history.log`. It wakes the agent
-only when an action errored or less than 10% of the volume is free.
+only when an action errored or less than `ESCALATE_PCT` of the volume is free; a tree it had to
+skip is listed under `skipped` and does not wake anyone.
+
+What it covers: every worktree registered with a base clone (`slang`, `slangpy`, `slang-rhi`),
+every top-level `wt-*` directory whatever its git shape — a linked worktree (of a base or of
+another clone), a standalone clone (`git clone --shared slang wt-<n>-revA`, a verify clone from
+GitHub), or an orphan (a `.git` file whose administrative directory is gone) — and every other
+top-level git checkout whatever its name (`rev-1179-base`, `slang-13742-pr`, `spec`). Only the
+durable directories (`is_durable_dir` in `worktree-gc.py`: `memory`, `tools`, `tasks`,
+`conversations`, `runs`, `active-work`, `plugins`, `venv-*`, hidden ones) and the base clones are
+never collected. A worktree that was renamed by hand is re-linked with `git worktree repair`
+before any prune, so renaming no longer orphans it.
+
+Each checkout has a kind:
+
+- **primary**: a tier's fix tree (`wt-slang-<n>`, `wt-slangpy-<n>`, `wt-slang-pr-<n>`, `wt-<n>`);
+- **scratch**: any other `wt-*` or per-task-named checkout, any linked worktree or orphan, and any
+  other checkout whose name carries an issue or PR number (`falcor-13876`, `slang-pr13537`);
+- **reference**: a standalone clone or bare repository whose name carries no number (`spec`,
+  `SPIRV-Tools`, `slang-playground`, `r0-origin.git`). It is always KEEP ("reference clone") and
+  never removed automatically: nothing would clone it again (the boot refresh only fast-forwards
+  clones that exist), and its git history is no measure of use, since a group can read it every
+  day without moving HEAD. A sha in a name is not a number: `slang-69ad6c1` is scratch as a linked
+  worktree and a reference as a standalone clone.
+
+Every run lists the reference clones under `references` in `last-run.json`: `name`, `shape`,
+`size_gb`, `size_measured_at`, `idle_days` and `dormant_large`. Sizes come from `du` within the
+gate's time budget and are reused for `REFERENCE_SIZE_TTL_H` (24 h, in `worktree-gc-run.sh`); one
+not yet measured has `size_gb: null`. `dormant_large` marks a clone at least `REFERENCE_LARGE_GB`
+that has been idle `REFERENCE_DORMANT_DAYS` (`worktree-gc.py`); the operator decides whether to
+remove it or its build.
 
 Tiers (thresholds live in `worktree-gc.py`; reference them by name):
 
 | Tier | What | Action |
 |---|---|---|
-| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree (`wt-<n>-verify`, `-master`, `-revA`, `wt-clarity-*`, any non-primary name) whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | uncommitted work committed to a local `wip/reap/<name>` branch, then `git worktree remove --force`; `active-work/<slug>` removed |
+| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | unsaved work saved (below), then the tree is renamed into `.worktree-gc/trash/` and its worktree record pruned; `active-work/<slug>` removed; the trash is deleted over the following runs |
 | STALE-OPEN | primary tree, PR OPEN but idle > `STALE_OPEN_IDLE_DAYS` | `rm -rf <worktree>/build` only; tree, branch and PR stay |
-| KEEP | running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
+| KEEP | every reference clone, running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use, a checkout another checkout borrows objects from (`--shared` alternates), that owns a live worktree, or whose git directory holds another checkout's submodule repositories (a copied `external/` whose `.git` files name `slang/.git/worktrees/<donor>/modules/...`), a plain `wt-*` directory with no `.git`, an orphan whose repository is gone | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
 | NO-PR | primary tree, issue open, no PR yet | nothing until idle > `NOPR_IDLE_DAYS` |
 
-Resume a reaped tree with `git worktree add <dir> wip/reap/<dir>` from the base clone.
+Idleness is the agent's last use. For a linked worktree that is its directory, `.git` file,
+index, HEAD and build logs. A standalone clone is also fast-forwarded by the boot refresh
+(`container/agent-runner/src/refresh-clones.ts`), which rewrites its files and index, so for a
+clone only its HEAD reflog entries other than the refresh's own `pull --ff-only --quiet`, its
+`.git/HEAD` and its build logs count.
 
-Create or repair a tier's task (host shell):
+How unsaved work is kept, and how to get it back:
 
-```bash
-./bin/ncl tasks create --group <ag-id> --name worktree-gc --recurrence "7 * * * *" \
-  --script 'exec bash /app/skills/supervise-issues/scripts/worktree-gc-run.sh --gate' \
-  --prompt 'The worktree GC gate woke you: data.errors > 0 or less than 10% of the volume is free. Read /workspace/agent/.worktree-gc/last-run.json; fix what blocks a removal (a locked worktree, a failed commit) or, below 10% free, report disk pressure to the orchestrator with the free figure.'
-```
+| Shape | Saved as | Restore |
+|---|---|---|
+| worktree | uncommitted changes committed; HEAD as branch `wip/reap/<name>` in the owning repository | `git worktree add <dir> wip/reap/<name>` from that repository |
+| clone | uncommitted changes committed; commits no remote-tracking ref holds written to `.worktree-gc/saved/<name>.<stamp>.bundle` (nothing when every commit is on a remote) | `git fetch <bundle> HEAD:refs/heads/<branch>` in any clone of the repository |
+| orphan | the tree, minus ignored files and nested repositories, as a parentless commit on branch `wip/reap/<name>` in the repository its `.git` file names | `git worktree add <dir> wip/reap/<name>` |
 
-One-time catch-up on a tier (host shell, runs the same script without the time box):
+Untracked content above `SAVE_MAX_MB` is never committed: that tree is skipped and listed under
+`skipped`. Changes inside submodule working trees are third-party content and are not saved: every
+save step ignores submodules (status with `--ignore-submodules=all`, `add` excluding every gitlink
+path), so a submodule whose git directory is gone never blocks the save of its tree.
+
+Per-task output expires by one rule: idle longer than `RUNS_RETENTION_DAYS`, held by no process,
+and borrowed from by no clone, then renamed into the trash. It covers:
+
+- entries of `/workspace/agent/runs/` (the review runners' run directories, which the reviewer
+  points `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` at, and the agent's own verify builds and probes);
+- top-level directories named like per-task scratch (`SCRATCH_DIR_PATTERNS` in
+  `worktree-gc.py`: `review-<n>…`, `devin-<n>…`, `B-<n>…`, `revB-<n>…`, `pr<n>-review`,
+  `bare-<n>.git`, `scratch-…`, `repro-…`, `tmp-…`), and every other top-level bare repository
+  whose name carries a number (`origin-13388.git`). Every git repository inside is saved first,
+  by shape as above; a
+  bare clone keeps the commits its alternate does not have in a bundle;
+- top-level regular files named `wt-*` (the build and configure logs agents write next to a
+  checkout).
+
+Durable directories match no pattern.
+
+Coverage (what step 8 reads): each host pass writes `data/shared/worktree-gc/coverage.json`,
+`/workspace/shared/worktree-gc/coverage.json` in every container, because only the host sees
+every group directory. It holds `at`, `stale_after`, one entry per group that holds GC work
+(`folder`, `status`, `action`, `series_id`, `task_status`, `report_at`, `report_age_hours`,
+`report_errors`, `report_skipped`, `free_gb`, and `references` copied from the report), `gaps`
+(the folders whose status needs the operator), `dormant_references` (`<folder>/<name>` of every
+reference clone marked `dormant_large`) and `residue` (group directories with GC work but no
+agent group: deleted-group leftovers, never deleted automatically). Statuses, worst first:
+
+| Status | Meaning | Gap |
+|---|---|---|
+| `coverage-failed` | the host pass threw for this group (host log has the error) | yes |
+| `task-paused` | the group's `worktree-gc` series is paused; nothing is collected | yes |
+| `not-firing` | the series is live but the report is missing or older than `REPORT_STALE_MS` | yes |
+| `errors` | the last run listed errors | yes |
+| `first-run-pending` | the host created the task this pass; it fires at the next `:07` | no |
+| `paused` | the group is paused; its checkouts wait until it is unpaused | no |
+| `ok` | the series is live and the report is fresh and clean | no |
+
+One-time catch-up on a group (host shell, runs the same script without the time box):
 
 ```bash
 docker run --rm --entrypoint bash -e GH_TOKEN="$(gh auth token)" \
-  -v /ephemeral/prod-groups/<folder>:/workspace/agent -v "$PWD/container/skills:/app/skills:ro" \
+  -v "$(readlink -f groups/<folder>)":/workspace/agent -v "$PWD/container/skills:/app/skills:ro" \
   nanoclaw-agent:prod /app/skills/supervise-issues/scripts/worktree-gc-run.sh --sweep
 ```
 
@@ -299,10 +414,10 @@ The worktree GC is the only disk lever available from inside a container. The do
 `/ephemeral/docker` (image layers + build cache) is `drwx--x--- root`: a container cannot list or
 prune it. A daily host timer (`nanoclaw-docker-gc.timer`, `~/.config/nanoclaw/docker-gc.sh`) prunes
 dangling images and build cache; tagged-but-unused images need an operator's deliberate
-`docker image prune -a`. When less than 10% of the volume is free and the tiers' reports show nothing left
+`docker image prune -a`. When less than 10% of the volume is free and the groups' reports show nothing left
 to reclaim, say so explicitly:
 
-> Disk pressure: `worktree-vol` NN GB free; the tiers' GC reports show MM GB left to reclaim. The
+> Disk pressure: `worktree-vol` NN GB free; the groups' GC reports show MM GB left to reclaim. The
 > remaining lever is docker images/build-cache under `/ephemeral/docker`, which needs a host-side
 > `docker image prune -a` (operator-only; verify no idle group needs its `ag-*` image first).
 
@@ -478,6 +593,10 @@ incidents live in operator memory.
   mount nearly every worktree shows `prunable` — a wrong-namespace artifact, not a reap signal.
   Decide and dispatch to the owning fixer (a `stopped` session wakes on the inbound); reap by `gh`
   issue state + PR state (issue CLOSED → reap regardless of PR state).
+- **Hourly gate.** A fixer container killed at its ceiling left its chain with no PR, no comment
+  and no outbound; with only a 12-hour tick nothing nudged it for half a day. The gate checks every
+  hour with no model tokens and wakes a tick only for a flag no tick has seen, so a stall surfaces
+  within the hour without a false positive waking the agent every hour.
 - **R11 — re-chase cap.** A parked chain's one-shot re-chase scheduled its successor on every
   fire, and nothing cancelled it when the issue closed: on 2026-10-15 the orchestrator held ~110
   live re-chases (several for closed #13230/#13338/#13306) and chains on their 4th/7th/15th

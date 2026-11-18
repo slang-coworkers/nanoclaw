@@ -47,16 +47,25 @@ export function classifyEscalation(reason: string): EscalationClass {
 }
 
 /**
+ * The stage a denial reason names, or null when it names none (e.g. "no
+ * critique rounds recorded"). The first missing stage, else a `STAGE:` hint,
+ * else a leading stage name ("OUTPUT_REVIEW last verdict is ...").
+ */
+export function namedStage(reason: string): string | null {
+  const r = reason || '';
+  const m =
+    r.match(/^missing critique stages:\s*([A-Z_]+)/i) ??
+    r.match(/STAGE:\s*([A-Z_]+)/i) ??
+    r.match(/^([A-Z]+_REVIEW)\b/);
+  return m ? m[1].toUpperCase() : null;
+}
+
+/**
  * The stage the agent must re-run, parsed out of the reason. Falls back to
  * OUTPUT_REVIEW, which is the stage every freshness/verdict reason refers to.
  */
 export function stageToRerun(reason: string): string {
-  const r = reason || '';
-  const missing = r.match(/^missing critique stages:\s*([A-Z_]+)/i);
-  if (missing) return missing[1].toUpperCase();
-  const staged = r.match(/STAGE:\s*([A-Z_]+)/i);
-  if (staged) return staged[1].toUpperCase();
-  return 'OUTPUT_REVIEW';
+  return namedStage(reason) ?? 'OUTPUT_REVIEW';
 }
 
 /**
@@ -91,5 +100,26 @@ export function selfHealDirective(opts: {
     `through. Running the critique is the only thing that clears it. If you`,
     `genuinely cannot run it, say why in this session; after ${maxAttempts} attempts`,
     `an admin is asked to decide.`,
+  ].join('\n');
+}
+
+/**
+ * The message the host injects when the agent ran the critique and the critic
+ * itself failed (rate-limited, timed out, crashed). The agent did comply, so
+ * the nudge does not count toward the self-heal attempts; it tells the agent
+ * the failure is on the critic's side and to retry one stage at a time,
+ * because parallel stages multiply a rate limit.
+ */
+export function criticRetryDirective(opts: { reason: string; hit: string; error: string }): string {
+  const { reason, hit, error } = opts;
+  return [
+    `CRITIQUE GATE still blocks your ${hit}: your last critique call failed on the critic's side.`,
+    ``,
+    `Critic error: ${error}`,
+    `Unmet requirement: ${reason}`,
+    ``,
+    `This is not counted against you. Run \`/codex-critique\` with STAGE: ${stageToRerun(reason)} again`,
+    `now, one stage at a time, then retry the ${hit}. The gate stays shut until a critique`,
+    `round is recorded; if the critic keeps failing, an admin is asked to decide.`,
   ].join('\n');
 }

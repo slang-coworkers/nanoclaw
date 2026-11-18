@@ -107,7 +107,7 @@ Run `date` before claiming current day/time — LLM temporal arithmetic is unrel
 
 Leave a note in `/workspace/agent/` when a session ends mid-task.
 
-#### Recall rule
+### Recall rule
 
 Before investigating or changing anything, spawn one `Agent` subagent with this prompt (substitute `<task>`); never read these files inline:
 
@@ -225,3 +225,5 @@ Your HTTP requests go through the OneCLI proxy, which injects real credentials a
 Use any method: curl, Python, a CLI tool, whatever fits. If a tool checks for credentials locally, pass any placeholder value — the proxy replaces it with real credentials at request time.
 
 If you get a `401`/`403`/`app_not_connected`, the error response contains a `connect_url` — you MUST show it to the user as a bare URL on its own line (no angle brackets, no markdown link syntax) so they can click to connect. Run `/onecli-gateway` for the full error-handling flow. Never ask the user for API keys or tokens.
+
+GitHub is the exception when the gateway already holds GitHub credentials for some paths. If reading the repository you will write to succeeds (`gh api repos/<owner>/<repo> --jq .id`), a `401`/`app_not_connected` from `gh auth status`, `gh api rate_limit` or another repository only means that path is not covered: it is not an outage, so do not show a connect link and do not wait on it. Check GitHub access only with that repository read.

@@ -269,8 +269,14 @@ describe('verified OpenCode turn completion', () => {
       }),
     );
     const completed = await result;
-    // The completed step goes out as a text event; the failed turn's result has no text.
-    expect(completed.result).toEqual({ text: null, isError: true, tokens: [] });
+    // The completed step goes out as a text event; the failed turn's result has no
+    // text, and carries the native error for the provider's retry decision.
+    expect(completed.result).toEqual({
+      text: null,
+      isError: true,
+      tokens: [],
+      error: expect.objectContaining({ name: 'APIError' }),
+    });
     expect(completed.events.filter((event) => event.type === 'text')).toEqual([
       { type: 'text', text: '<message to="a">COMPLETED_STEP</message>' },
     ]);

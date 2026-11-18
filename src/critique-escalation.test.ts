@@ -20,6 +20,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Session } from './types.js';
 
 const requestApprovalMock = vi.fn().mockResolvedValue(undefined);
+let notifyThrows = false;
+let nudgeIds = 0;
 const notifyAgentMock = vi.fn();
 type ApprovalHandler = (ctx: {
   session: Session;
@@ -45,11 +47,23 @@ vi.mock('./modules/approvals/index.js', () => ({
     resolvedHandler = h;
   },
   notifyAgent: (...args: unknown[]) => notifyAgentMock(...args),
+  notifyAgentWithId: (...args: unknown[]) => {
+    notifyAgentMock(...args);
+    if (notifyThrows) return Promise.reject(new Error('mailbox unavailable'));
+    return Promise.resolve(args[2]);
+  },
+  systemMessageId: () => `sys-nudge-${++nudgeIds}`,
 }));
 
 // sessionDir walks DATA_DIR (cwd-derived); mock it so nothing touches ./data.
+// Inbound message ids the runner has claimed (a processing_ack row).
+const claimedIds = new Set<string>();
 vi.mock('./session-manager.js', () => ({
   sessionDir: (agentGroupId: string, sessionId: string) => path.join(os.tmpdir(), 'unused', agentGroupId, sessionId),
+  withExistingMailboxSession: (_ag: string, _s: string, action: (m: unknown) => unknown) =>
+    Promise.resolve(
+      action({ getAckedMessageIds: (ids: readonly string[]) => new Set(ids.filter((id) => claimedIds.has(id))) }),
+    ),
 }));
 
 const recordEventMock = vi.fn();
@@ -146,6 +160,8 @@ const {
 
 const session = { id: 'sess-esc-test', agent_group_id: 'ag-esc-test', thread_id: null } as unknown as Session;
 
+// A denial a minute ago: inside every self-heal wait, including the escalation deadline.
+const RECENT_REQUEST = Math.floor(Date.now() / 1000) - 60;
 const REASON_MISSING = 'missing critique stages: OUTPUT_REVIEW';
 const REASON_STALE =
   '13 edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state. Re-run /codex-critique with STAGE: OUTPUT_REVIEW';
@@ -166,6 +182,9 @@ beforeEach(() => {
   recordedKeys.clear();
   insertedEvents.length = 0;
   createGrantThrows = false;
+  claimedIds.clear();
+  notifyThrows = false;
+  nudgeIds = 0;
 });
 
 afterEach(() => {
@@ -196,7 +215,7 @@ describe('checkCritiqueEscalation — self-heal path', () => {
   });
 
   it('self-heals a MISSING-stages escalation instead of carding a human', async () => {
-    writeEscalation({ requested_at: 123, reason: REASON_MISSING, hit: 'PR creation' });
+    writeEscalation({ requested_at: RECENT_REQUEST, reason: REASON_MISSING, hit: 'PR creation' });
     await checkCritiqueEscalation(session, dir);
 
     expect(requestApprovalMock).not.toHaveBeenCalled();
@@ -216,7 +235,7 @@ describe('checkCritiqueEscalation — self-heal path', () => {
   });
 
   it('self-heals a STALE escalation too', async () => {
-    writeEscalation({ requested_at: 123, reason: REASON_STALE, hit: 'PR creation' });
+    writeEscalation({ requested_at: RECENT_REQUEST, reason: REASON_STALE, hit: 'PR creation' });
     await checkCritiqueEscalation(session, dir);
     expect(requestApprovalMock).not.toHaveBeenCalled();
     expect(readEscalation().class).toBe('stale');
@@ -224,7 +243,7 @@ describe('checkCritiqueEscalation — self-heal path', () => {
 
   it('does not re-nudge inside the cooldown window', async () => {
     writeEscalation({
-      requested_at: 123,
+      requested_at: RECENT_REQUEST,
       reason: REASON_MISSING,
       hit: 'PR creation',
       self_heal_attempts: 1,
@@ -237,7 +256,7 @@ describe('checkCritiqueEscalation — self-heal path', () => {
 
   it('re-nudges once the cooldown has elapsed', async () => {
     writeEscalation({
-      requested_at: 123,
+      requested_at: RECENT_REQUEST,
       reason: REASON_MISSING,
       hit: 'PR creation',
       self_heal_attempts: 1,
@@ -250,7 +269,7 @@ describe('checkCritiqueEscalation — self-heal path', () => {
 
   it('escalates to a human once self-heal attempts are exhausted — it never opens the gate', async () => {
     writeEscalation({
-      requested_at: 123,
+      requested_at: RECENT_REQUEST,
       reason: REASON_MISSING,
       hit: 'PR creation',
       self_heal_attempts: 3,
@@ -269,7 +288,7 @@ describe('checkCritiqueEscalation — self-heal path', () => {
 describe('checkCritiqueEscalation — human path', () => {
   it('cards a FAILED critique (must-fix) immediately, without self-healing', async () => {
     prForSession = { repo: 'shader-slang/slang', pr_number: 12186 };
-    writeEscalation({ requested_at: 123, reason: REASON_FAILED, hit: 'PR creation', denials: 3 });
+    writeEscalation({ requested_at: RECENT_REQUEST, reason: REASON_FAILED, hit: 'PR creation', denials: 3 });
     await checkCritiqueEscalation(session, dir);
 
     expect(notifyAgentMock).not.toHaveBeenCalled();
@@ -292,22 +311,282 @@ describe('checkCritiqueEscalation — human path', () => {
   });
 
   it('cards only once (forwarded_at makes it idempotent)', async () => {
-    writeEscalation({ requested_at: 123, reason: REASON_FAILED, hit: 'PR creation' });
+    writeEscalation({ requested_at: RECENT_REQUEST, reason: REASON_FAILED, hit: 'PR creation' });
     await checkCritiqueEscalation(session, dir);
     await checkCritiqueEscalation(session, dir);
     expect(requestApprovalMock).toHaveBeenCalledTimes(1);
   });
 
   it('falls back to a human for an unrecognized reason', async () => {
-    writeEscalation({ requested_at: 123, reason: 'something nobody has seen before', hit: 'delivery' });
+    writeEscalation({ requested_at: RECENT_REQUEST, reason: 'something nobody has seen before', hit: 'delivery' });
     await checkCritiqueEscalation(session, dir);
     expect(requestApprovalMock).toHaveBeenCalledTimes(1);
   });
 
   it('ignores already-resolved escalations', async () => {
-    writeEscalation({ requested_at: 123, reason: REASON_FAILED, resolved: 'approved' });
+    writeEscalation({ requested_at: RECENT_REQUEST, reason: REASON_FAILED, resolved: 'approved' });
     await checkCritiqueEscalation(session, dir);
     expect(requestApprovalMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('checkCritiqueEscalation — nudges count once the runner claims them', () => {
+  // A provider that ends its query on a follow-up (OpenCode) reads a nudge only
+  // after its running turn ends. #14530: nudges 2 and 3 expired unread while
+  // the agent finished a 27-minute turn, and the card went out 3 s after the
+  // last one was queued.
+  const minsAgo = (m: number): string => new Date(Date.now() - m * 60_000).toISOString();
+  const base = { requested_at: RECENT_REQUEST, reason: REASON_MISSING, hit: 'PR creation' };
+
+  it('stores the nudge message id and clears the delivery stamp', async () => {
+    writeEscalation({ ...base });
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 1, self_heal_msg_id: 'sys-nudge-1' });
+    expect(readEscalation().self_heal_delivered_at).toBeNull();
+  });
+
+  it('sends no further nudge while the runner has not claimed the last one', async () => {
+    writeEscalation({ ...base, self_heal_attempts: 1, self_heal_at: minsAgo(30), self_heal_msg_id: 'sys-a' });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('starts the answer window when the claim is first seen, not when the nudge was queued', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({ ...base, self_heal_attempts: 1, self_heal_at: minsAgo(30), self_heal_msg_id: 'sys-a' });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(readEscalation()).toMatchObject({ self_heal_delivered: 1 });
+    expect(typeof readEscalation().self_heal_delivered_at).toBe('string');
+
+    writeEscalation({ ...readEscalation(), self_heal_delivered_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).toHaveBeenCalledTimes(1);
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 2, self_heal_msg_id: 'sys-nudge-1' });
+  });
+
+  it('gives the final nudge its full window before carding', async () => {
+    const final = {
+      ...base,
+      self_heal_attempts: 3,
+      self_heal_at: minsAgo(2),
+      self_heal_msg_id: 'sys-c',
+      self_heal_delivered: 3,
+      self_heal_delivered_at: minsAgo(1),
+    };
+    writeEscalation(final);
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+
+    writeEscalation({ ...final, self_heal_delivered_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    const card = requestApprovalMock.mock.calls[0][0] as { title: string; question: string };
+    expect(card.title).toContain('could not self-heal');
+    expect(card.question).toContain('received 3 of 3 nudge(s)');
+  });
+
+  it('gives the final nudge its window on a file without a message id, timed from the queue', async () => {
+    writeEscalation({ ...base, self_heal_attempts: 3, self_heal_at: new Date().toISOString() });
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+
+    writeEscalation({ ...base, self_heal_attempts: 3, self_heal_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    const card = requestApprovalMock.mock.calls[0][0] as { question: string };
+    expect(card.question).toContain('was nudged 3 time(s)');
+  });
+
+  it('keeps the new nudge id when the send fails, so the attempt does not inherit an expired window', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base,
+      self_heal_attempts: 1,
+      self_heal_at: minsAgo(30),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(20),
+    });
+    notifyThrows = true;
+    await expect(checkCritiqueEscalation(session, dir)).rejects.toThrow('mailbox unavailable');
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 2, self_heal_msg_id: 'sys-nudge-1' });
+    expect(readEscalation().self_heal_delivered_at).toBeNull();
+
+    notifyThrows = false;
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(readEscalation().self_heal_attempts).toBe(2);
+  });
+
+  it('cards a nudge left unclaimed for an hour, and says it was not delivered', async () => {
+    writeEscalation({
+      ...base,
+      self_heal_attempts: 2,
+      self_heal_at: minsAgo(61),
+      self_heal_msg_id: 'sys-b',
+      self_heal_delivered: 1,
+    });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    const card = requestApprovalMock.mock.calls[0][0] as { title: string; question: string };
+    expect(card.title).toContain('did not receive the critique nudge');
+    expect(card.question).toContain('its runner has received 1');
+    expect(eventKinds()).toEqual(['carded']);
+  });
+});
+
+describe('checkCritiqueEscalation — critique calls in flight or failing on the critic', () => {
+  // #14532 / #14536: the agent ran PLAN_REVIEW 6 and 12 times; every call
+  // failed with "codex bridge: exceeded retry limit, last status: 429", and the
+  // card said the agent "was asked 3 times and has not".
+  const minsAgo = (m: number): string => new Date(Date.now() - m * 60_000).toISOString();
+  const secsAgo = (m: number): number => Math.floor((Date.now() - m * 60_000) / 1000);
+  const ERR_429 = 'exceeded retry limit, last status: 429 Too Many Requests';
+  const journal = (lines: object[]): void =>
+    fs.writeFileSync(path.join(dir, 'critique-attempts.jsonl'), lines.map((l) => JSON.stringify(l)).join('\n') + '\n');
+  const base = (requestedMinsAgo: number) => ({
+    requested_at: secsAgo(requestedMinsAgo),
+    reason: 'missing critique stages: PLAN_REVIEW',
+    hit: 'PR creation',
+  });
+
+  it('waits while a critique call is still running', async () => {
+    writeEscalation(base(20));
+    journal([{ at: minsAgo(3), event: 'start', stage: 'PLAN_REVIEW', call: 'c1' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+  });
+
+  it('matches starts to results by call id, so an overlapping call stays in flight', async () => {
+    writeEscalation(base(60));
+    journal([
+      { at: minsAgo(40), event: 'start', call: 'a' },
+      { at: minsAgo(6), event: 'failure', stage: 'PLAN_REVIEW', error: 'codex: `prompt` is required', call: 'a' },
+      { at: minsAgo(4), event: 'start', call: 'b' },
+    ]);
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+  });
+
+  it('cards at the escalation deadline even while calls keep running', async () => {
+    writeEscalation({ ...base(250), self_heal_attempts: 1, self_heal_at: minsAgo(200) });
+    journal([{ at: minsAgo(2), event: 'start', call: 'z' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    expect((requestApprovalMock.mock.calls[0][0] as { question: string }).question).toContain('past its deadline');
+  });
+
+  it('stops waiting for a start whose result never came within the bridge timeout', async () => {
+    writeEscalation(base(60));
+    journal([{ at: minsAgo(40), event: 'start', stage: 'PLAN_REVIEW', call: 'c1' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('asks for a retry without spending an attempt when the critic failed', async () => {
+    writeEscalation(base(20));
+    journal([
+      { at: minsAgo(18), event: 'start', stage: 'PLAN_REVIEW' },
+      { at: minsAgo(15), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 },
+    ]);
+    await checkCritiqueEscalation(session, dir);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(notifyAgentMock).toHaveBeenCalledTimes(1);
+    const directive = String(notifyAgentMock.mock.calls[0][1]);
+    expect(directive).toContain("failed on the critic's side");
+    expect(directive).toContain('429');
+    expect(directive).toContain('not counted against you');
+    const esc = readEscalation();
+    expect(esc.self_heal_attempts).toBeUndefined();
+    expect(esc).toMatchObject({ critic_retry_nudges: 1, self_heal_msg_id: 'sys-nudge-1' });
+
+    // Later sweeps wait for the retry to be read and answered; the same
+    // failure never sends a second retry.
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).toHaveBeenCalledTimes(1);
+    claimedIds.add('sys-nudge-1');
+    await checkCritiqueEscalation(session, dir);
+    writeEscalation({ ...readEscalation(), self_heal_delivered_at: minsAgo(11) });
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).toHaveBeenCalledTimes(2);
+    expect(String(notifyAgentMock.mock.calls[1][1])).toContain('attempt 1 of 3');
+    expect(readEscalation()).toMatchObject({ self_heal_attempts: 1, critic_retry_nudges: 1 });
+  });
+
+  it('counts a critic failure in the same second as the nudge as an answer to it', async () => {
+    const sentMs = Date.now() - 30 * 60_000;
+    const sameSecond = new Date(Math.floor(sentMs / 1000) * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base(60),
+      self_heal_attempts: 1,
+      self_heal_at: new Date(sentMs + 900 - (sentMs % 1000)).toISOString(),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(20),
+    });
+    journal([{ at: sameSecond, event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429, call: 'c1' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(String(notifyAgentMock.mock.calls[0][1])).toContain("failed on the critic's side");
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('counts a call made between delivery and the sweep noticing it as an answer', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base(60),
+      self_heal_attempts: 1,
+      self_heal_at: minsAgo(30),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(15),
+    });
+    journal([{ at: minsAgo(20), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429, call: 'c1' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(String(notifyAgentMock.mock.calls[0][1])).toContain("failed on the critic's side");
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('counts the nudge when the agent made no critique call after receiving it', async () => {
+    claimedIds.add('sys-a');
+    writeEscalation({
+      ...base(60),
+      self_heal_attempts: 1,
+      self_heal_at: minsAgo(40),
+      self_heal_msg_id: 'sys-a',
+      self_heal_delivered: 1,
+      self_heal_delivered_at: minsAgo(30),
+    });
+    journal([{ at: minsAgo(45), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().self_heal_attempts).toBe(2);
+    expect(String(notifyAgentMock.mock.calls[0][1])).toContain('attempt 2 of 3');
+  });
+
+  it('treats a call the agent got wrong as a missed critique, not a critic failure', async () => {
+    writeEscalation(base(20));
+    journal([{ at: minsAgo(15), event: 'failure', stage: 'PLAN_REVIEW', error: 'codex: `prompt` is required' }]);
+    await checkCritiqueEscalation(session, dir);
+    expect(readEscalation().self_heal_attempts).toBe(1);
+  });
+
+  it('cards "critic unavailable" once the critic has failed for two hours', async () => {
+    writeEscalation({ ...base(150), critic_retry_nudges: 5 });
+    journal([
+      { at: minsAgo(140), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 },
+      { at: minsAgo(5), event: 'failure', stage: 'PLAN_REVIEW', error: ERR_429 },
+    ]);
+    await checkCritiqueEscalation(session, dir);
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+    const card = requestApprovalMock.mock.calls[0][0] as { title: string; question: string };
+    expect(card.title).toContain('critic unavailable');
+    expect(card.question).toContain('the critic has failed 2 time(s)');
+    expect(card.question).toContain('429');
   });
 });
 
@@ -318,6 +597,66 @@ describe('auto-retraction', () => {
     expect(isRequirementCleared(session, { requested_at: 1785932550 }, dir)).toBe(true);
     expect(isRequirementCleared(session, { requested_at: 1785999999 }, dir)).toBe(false);
     expect(isRequirementCleared(session, {}, dir)).toBe(false);
+  });
+
+  it('clears from a round in the attempts journal after a task reset rewrote the state', async () => {
+    // The #14530 shape: the round lands at 15:47:12, a new task rewrites
+    // workflow-state.json at 15:47:49, the next sweep runs at 15:48:05.
+    writeState({ task_id: 'task-2', critique_rounds: 0, started_at: '2026-11-17T15:47:49Z' });
+    fs.writeFileSync(
+      path.join(dir, 'critique-attempts.jsonl'),
+      '{"at":"2026-11-17T15:47:12Z","event":"round","stage":"PLAN_REVIEW","verdict":"approve"}\n',
+    );
+    const requestedAt = Date.parse('2026-11-17T15:40:10Z') / 1000;
+    expect(isRequirementCleared(session, { requested_at: requestedAt }, dir)).toBe(true);
+    expect(isRequirementCleared(session, { requested_at: requestedAt + 3600 }, dir)).toBe(false);
+
+    writeEscalation({ requested_at: requestedAt, reason: 'missing critique stages: PLAN_REVIEW', hit: 'PR creation' });
+    await checkCritiqueEscalation(session, dir);
+    expect(eventKinds()).toContain('self_healed');
+    expect(notifyAgentMock).not.toHaveBeenCalled();
+  });
+
+  it('clears only from a round of the stage the denial named, and an approve for a must-fix', () => {
+    const at = (iso: string): number => Date.parse(iso) / 1000;
+    const journal = (lines: object[]): void =>
+      fs.writeFileSync(
+        path.join(dir, 'critique-attempts.jsonl'),
+        lines.map((l) => JSON.stringify(l)).join('\n') + '\n',
+      );
+    const missing = { requested_at: at('2026-11-17T15:40:10Z'), reason: 'missing critique stages: PLAN_REVIEW' };
+    journal([{ at: '2026-11-17T15:45:00Z', event: 'round', stage: 'CODE_REVIEW', verdict: 'approve' }]);
+    expect(isRequirementCleared(session, missing, dir)).toBe(false);
+
+    const mustFix = { requested_at: at('2026-11-17T15:40:10Z'), reason: REASON_FAILED };
+    journal([{ at: '2026-11-17T15:45:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'must-fix' }]);
+    expect(isRequirementCleared(session, mustFix, dir)).toBe(false);
+    journal([{ at: '2026-11-17T15:46:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'approve' }]);
+    expect(isRequirementCleared(session, mustFix, dir)).toBe(true);
+    journal([
+      { at: '2026-11-17T15:46:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'approve' },
+      { at: '2026-11-17T15:50:00Z', event: 'round', stage: 'OUTPUT_REVIEW', verdict: 'must-fix' },
+    ]);
+    expect(isRequirementCleared(session, mustFix, dir)).toBe(false);
+  });
+
+  it('ignores journal lines that are not objects or are dated in the future', () => {
+    writeState({});
+    const future = new Date(Date.now() + 3_600_000).toISOString();
+    fs.writeFileSync(
+      path.join(dir, 'critique-attempts.jsonl'),
+      ['null', '[1]', '"x"', JSON.stringify({ at: future, event: 'round', stage: 'OUTPUT_REVIEW' }), ''].join('\n'),
+    );
+    expect(isRequirementCleared(session, { requested_at: 1785932550, reason: REASON_MISSING }, dir)).toBe(false);
+  });
+
+  it('skips torn journal lines and reads only round events as rounds', () => {
+    writeState({});
+    fs.writeFileSync(
+      path.join(dir, 'critique-attempts.jsonl'),
+      ['{"at":"2026-11-17T16:00:00Z","event":"other"}', '{"at":"2026-11-17T16:0', ''].join('\n'),
+    );
+    expect(isRequirementCleared(session, { requested_at: Date.parse('2026-11-17T15:00:00Z') / 1000 }, dir)).toBe(false);
   });
 
   it('retracts a carded escalation once the requirement is satisfied', async () => {

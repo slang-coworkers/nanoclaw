@@ -9,8 +9,14 @@ import {
   claudeToolInput,
   claudeToolName,
   installOpenCodeHookBridge,
+  settingsSessionHooks,
+  type OpenCodeTodoClient,
 } from './opencode-hook-bridge.js';
 import { claudeToolResponse, type HookSettings } from '../settings-hooks.js';
+import { createOpenCodeId } from './opencode-turn.js';
+import { registerAgentMailbox, resetAgentMailboxForTesting } from '../mailbox/index.js';
+import { closeSessionDb, initTestSessionDb } from '../mailbox/sqlite/connection.js';
+import { SqliteAgentMailbox } from '../mailbox/sqlite/index.js';
 
 // Fork-owned. OpenCode never reads the Claude Code hook settings the host
 // writes, so without this bridge every gate (critique, plan, eval sandbox, PR
@@ -26,10 +32,18 @@ function script(name: string, body: string): string {
   return file;
 }
 
+// The OpenCode process registers the SQLite mailbox through the plugin file's
+// barrel import; the tests register it over in-memory session databases.
+let outbound: ReturnType<typeof initTestSessionDb>['outbound'];
 beforeEach(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'oc-hook-bridge-'));
+  resetAgentMailboxForTesting();
+  registerAgentMailbox(() => new SqliteAgentMailbox());
+  outbound = initTestSessionDb().outbound;
 });
 afterEach(() => {
+  closeSessionDb();
+  resetAgentMailboxForTesting();
   fs.rmSync(dir, { recursive: true, force: true });
   delete process.env.NANOCLAW_HOOK_SETTINGS;
   delete process.env.OPENCODE_CONFIG_CONTENT;
@@ -86,15 +100,30 @@ describe('failed tool parts', () => {
   });
 });
 
-describe('the OpenCode plugin', () => {
-  async function plugin(settings: HookSettings) {
-    const file = path.join(dir, 'settings.json');
-    fs.writeFileSync(file, JSON.stringify({ hooks: settings }));
-    process.env.NANOCLAW_HOOK_SETTINGS = file;
-    process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ mcp: { nanoclaw: {}, codex: {} } });
-    return NanoclawHookBridge();
-  }
+async function plugin(settings: HookSettings, client?: OpenCodeTodoClient) {
+  const file = path.join(dir, 'settings.json');
+  fs.writeFileSync(file, JSON.stringify({ hooks: settings }));
+  process.env.NANOCLAW_HOOK_SETTINGS = file;
+  process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ mcp: { nanoclaw: {}, codex: {} } });
+  return NanoclawHookBridge({ client });
+}
 
+/** A hook that appends its stdin, one JSON line, to `file`: the dashboard telemetry hook stands in like this. */
+function recorder(file: string): { command: string } {
+  return { command: `cat >> ${file}; echo >> ${file}` };
+}
+
+/** The hook inputs `recorder` saw, in order. */
+function recorded(file: string): Record<string, unknown>[] {
+  if (!fs.existsSync(file)) return [];
+  return fs
+    .readFileSync(file, 'utf-8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+}
+
+describe('the OpenCode plugin', () => {
   it('blocks a delivery marker on the NanoClaw MCP tool when the PreToolUse gate refuses it', async () => {
     const gate = script(
       'gate.sh',
@@ -195,13 +224,457 @@ describe('the OpenCode plugin', () => {
   });
 });
 
+describe('tool events inside a subagent', () => {
+  const event = (type: string, properties: Record<string, unknown>) => ({ event: { type, properties } });
+
+  it('carry the main session as session_id, the subagent as agent_id, and the call id', async () => {
+    const seen = path.join(dir, 'tools.jsonl');
+    const hooks = await plugin({
+      PreToolUse: [{ hooks: [recorder(seen)] }],
+      PostToolUse: [{ hooks: [recorder(seen)] }],
+      PostToolUseFailure: [{ hooks: [recorder(seen)] }],
+    });
+    await hooks.event(
+      event('session.created', {
+        sessionID: 'ses_child',
+        info: { id: 'ses_child', parentID: 'ses_main', agent: 'explore' },
+      }),
+    );
+    await hooks['tool.execute.before'](
+      { tool: 'bash', sessionID: 'ses_child', callID: 'call_1' },
+      { args: { command: 'ls' } },
+    );
+    await hooks['tool.execute.after'](
+      { tool: 'bash', sessionID: 'ses_child', callID: 'call_1', args: { command: 'ls' } },
+      { output: 'a\n' },
+    );
+    await hooks.event(
+      event('message.part.updated', {
+        part: {
+          type: 'tool',
+          sessionID: 'ses_child',
+          callID: 'call_2',
+          tool: 'read',
+          state: { status: 'error', input: { filePath: '/x' }, error: 'gone' },
+        },
+      }),
+    );
+    const identity = recorded(seen).map((input) => [
+      input.hook_event_name,
+      input.session_id,
+      input.agent_id,
+      input.agent_type,
+      input.tool_use_id,
+    ]);
+    expect(identity).toEqual([
+      ['PreToolUse', 'ses_main', 'ses_child', 'explore', 'call_1'],
+      ['PostToolUse', 'ses_main', 'ses_child', 'explore', 'call_1'],
+      ['PostToolUseFailure', 'ses_main', 'ses_child', 'explore', 'call_2'],
+    ]);
+  });
+
+  it('leave a main-session tool call without agent fields', async () => {
+    const seen = path.join(dir, 'tools.jsonl');
+    const hooks = await plugin({ PreToolUse: [{ hooks: [recorder(seen)] }] });
+    await hooks['tool.execute.before']({ tool: 'bash', sessionID: 'ses_main', callID: 'call_1' }, { args: {} });
+    const [input] = recorded(seen);
+    expect(input).toMatchObject({ session_id: 'ses_main', tool_use_id: 'call_1' });
+    expect(input).not.toHaveProperty('agent_id');
+    expect(input).not.toHaveProperty('agent_type');
+  });
+});
+
+describe('UserPromptSubmit context', () => {
+  const prompt = () => ({
+    message: { id: 'msg_user' },
+    parts: [{ id: createOpenCodeId('prt'), type: 'text', text: 'fix the bug' }] as Record<string, unknown>[],
+  });
+
+  it("adds a hook's plain stdout and JSON additionalContext to the prompt as one synthetic part", async () => {
+    const hooks = await plugin({
+      UserPromptSubmit: [
+        { hooks: [{ command: `echo 'Current branch: main'` }] },
+        {
+          hooks: [
+            {
+              command: `echo '{"hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"<buddy-note>re-run the tests</buddy-note>"}}'`,
+            },
+          ],
+        },
+        { hooks: [{ command: 'true' }] },
+      ],
+    });
+    const output = prompt();
+    await hooks['chat.message']({ sessionID: 'ses_main', messageID: 'msg_user' }, output);
+    expect(output.parts).toHaveLength(2);
+    const [text, context] = output.parts;
+    expect(context).toMatchObject({ sessionID: 'ses_main', messageID: 'msg_user', type: 'text', synthetic: true });
+    // The hooks' contexts join in the order the hooks are registered.
+    expect(context.text).toBe('Current branch: main\n\n<buddy-note>re-run the tests</buddy-note>');
+    // OpenCode orders a message's parts by id: the context follows the prompt.
+    expect(String(context.id).startsWith('prt_')).toBe(true);
+    expect(String(context.id) > String(text.id)).toBe(true);
+  });
+
+  it('adds nothing when the hooks print nothing, and nothing to a subagent prompt', async () => {
+    const hooks = await plugin({ UserPromptSubmit: [{ hooks: [{ command: `echo 'context'` }] }] });
+    const quiet = await plugin({ UserPromptSubmit: [{ hooks: [{ command: 'true' }] }] });
+    const output = prompt();
+    await quiet['chat.message']({ sessionID: 'ses_main' }, output);
+    expect(output.parts).toHaveLength(1);
+
+    await hooks.event({
+      event: { type: 'session.created', properties: { info: { id: 'ses_child', parentID: 'ses_main' } } },
+    });
+    const child = prompt();
+    await hooks['chat.message']({ sessionID: 'ses_child' }, child);
+    expect(child.parts).toHaveLength(1);
+  });
+});
+
+// The real gate script, run the way the host registers it, on the commands an
+// OpenCode coworker sent on prod: the bridge must refuse them before they post.
+const BODY_GATE = path.join(import.meta.dir, '..', '..', '..', 'hooks', 'gate-github-comment-body.sh');
+const hasBodyGateTools = ['python3', 'jq'].every((tool) => Bun.spawnSync(['sh', '-c', `command -v ${tool}`]).success);
+
+describe.skipIf(!hasBodyGateTools)('the GitHub comment-body gate through the bridge', () => {
+  async function gated() {
+    const file = path.join(dir, 'settings.json');
+    fs.writeFileSync(
+      file,
+      JSON.stringify({
+        hooks: {
+          PreToolUse: [
+            {
+              matcher: 'Bash|mcp__github__add_issue_comment',
+              hooks: [{ type: 'command', command: `bash ${BODY_GATE}`, timeout: 5 }],
+            },
+          ],
+        },
+      }),
+    );
+    process.env.NANOCLAW_HOOK_SETTINGS = file;
+    process.env.OPENCODE_CONFIG_CONTENT = JSON.stringify({ mcp: { nanoclaw: {}, github: {} } });
+    return NanoclawHookBridge({});
+  }
+
+  it('refuses `gh api -f body=@<path>` from the bash tool and lets `-F body=@<path>` through', async () => {
+    const body = path.join(dir, 'issue-comment-14489-final.md');
+    fs.writeFileSync(body, '**Status:** fixed.\n');
+    const hooks = await gated();
+    const bash = (command: string) =>
+      hooks['tool.execute.before'](
+        { tool: 'bash', sessionID: 's1' },
+        { args: { command, timeout: 120000, workdir: '/workspace/agent/wt-slang-14489' } },
+      );
+    await expect(
+      bash(`gh api -X PATCH repos/shader-slang/slang/issues/comments/6912309417 -f body=@${body} --jq '.html_url'`),
+    ).rejects.toThrow('GITHUB BODY IS A FILE NAME');
+    await bash(`gh api -X PATCH repos/shader-slang/slang/issues/comments/6912309417 -F body=@${body} --jq '.body'`);
+  });
+
+  it('refuses a frontmatter body through the GitHub MCP tool OpenCode names github_add_issue_comment', async () => {
+    const hooks = await gated();
+    const comment = (body: string) =>
+      hooks['tool.execute.before'](
+        { tool: 'github_add_issue_comment', sessionID: 's1' },
+        { args: { owner: 'o', repo: 'r', issue_number: 1, body } },
+      );
+    await expect(comment('---\ntype: comment\ntitle: x\n---\n\nbody\n')).rejects.toThrow(
+      'GITHUB BODY STARTS WITH YAML FRONTMATTER',
+    );
+    await comment('Thanks @jkwak-work.\n\n---\n\nDetails.\n');
+  });
+});
+
+describe('lifecycle events', () => {
+  const event = (type: string, properties: Record<string, unknown>) => ({ event: { type, properties } });
+
+  it('runs the SubagentStart and SubagentStop hooks whose matcher selects the agent type', async () => {
+    const seen = path.join(dir, 'subagent.jsonl');
+    const other = path.join(dir, 'other.jsonl');
+    const hooks = await plugin({
+      SubagentStart: [{ hooks: [recorder(seen)] }, { matcher: 'general', hooks: [recorder(other)] }],
+      SubagentStop: [{ matcher: 'explore', hooks: [recorder(seen)] }],
+    });
+    await hooks.event(
+      event('session.created', {
+        sessionID: 'ses_child',
+        info: { id: 'ses_child', parentID: 'ses_main', agent: 'explore' },
+      }),
+    );
+    await hooks.event(event('session.status', { sessionID: 'ses_child', status: { type: 'busy' } }));
+    await hooks.event(event('message.updated', { info: { id: 'msg_1', sessionID: 'ses_child', role: 'assistant' } }));
+    await hooks.event(
+      event('message.part.updated', {
+        part: { type: 'text', sessionID: 'ses_child', messageID: 'msg_1', text: 'done' },
+      }),
+    );
+    await hooks.event(event('session.idle', { sessionID: 'ses_child' }));
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'SubagentStart',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        agent_id: 'ses_child',
+        agent_type: 'explore',
+      },
+      {
+        hook_event_name: 'SubagentStop',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        agent_id: 'ses_child',
+        agent_type: 'explore',
+        stop_hook_active: false,
+        last_assistant_message: 'done',
+      },
+    ]);
+    expect(recorded(other)).toEqual([]);
+  });
+
+  it("runs no UserPromptSubmit hook for a subagent's prompt", async () => {
+    const seen = path.join(dir, 'prompt.jsonl');
+    const hooks = await plugin({ UserPromptSubmit: [{ hooks: [recorder(seen)] }] });
+    await hooks.event(
+      event('session.created', { sessionID: 'ses_child', info: { id: 'ses_child', parentID: 'ses_main' } }),
+    );
+    const parts = (t: string) => ({ parts: [{ type: 'text', text: t }] });
+    await hooks['chat.message']({ sessionID: 'ses_child' }, parts('find the call sites'));
+    await hooks['chat.message']({ sessionID: 'ses_main' }, parts('fix the bug'));
+    expect(recorded(seen).map((input) => [input.session_id, input.prompt])).toEqual([['ses_main', 'fix the bug']]);
+  });
+
+  it('adds the PreCompact stdout to the compaction prompt, then reports the compaction', async () => {
+    const seen = path.join(dir, 'compact.jsonl');
+    const hooks = await plugin({
+      PreCompact: [{ hooks: [{ command: `echo 'Keep the <message> blocks.'` }, recorder(seen)] }],
+      SessionStart: [{ matcher: 'compact', hooks: [recorder(seen)] }],
+      PostCompact: [{ matcher: 'auto', hooks: [recorder(seen)] }],
+    });
+    await hooks.event(
+      event('message.part.updated', {
+        part: { type: 'compaction', sessionID: 'ses_main', messageID: 'msg_user', auto: true },
+      }),
+    );
+    const output = { context: [] as string[] };
+    await hooks['experimental.session.compacting']({ sessionID: 'ses_main' }, output);
+    expect(output.context).toEqual(['Keep the <message> blocks.']);
+
+    await hooks.event(
+      event('message.updated', { info: { id: 'msg_sum', sessionID: 'ses_main', role: 'assistant', summary: true } }),
+    );
+    await hooks.event(
+      event('message.part.updated', {
+        part: { type: 'text', sessionID: 'ses_main', messageID: 'msg_sum', text: 'The summary.' },
+      }),
+    );
+    await hooks.event(event('session.compacted', { sessionID: 'ses_main' }));
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'PreCompact',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        trigger: 'auto',
+        custom_instructions: null,
+      },
+      { hook_event_name: 'SessionStart', cwd: '/workspace/agent', session_id: 'ses_main', source: 'compact' },
+      {
+        hook_event_name: 'PostCompact',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        trigger: 'auto',
+        compact_summary: 'The summary.',
+      },
+    ]);
+  });
+
+  function todoClient(todos: unknown): OpenCodeTodoClient & { reads: string[] } {
+    const reads: string[] = [];
+    return {
+      reads,
+      session: {
+        async todo({ path: { id } }) {
+          reads.push(id);
+          return { data: todos };
+        },
+      },
+    };
+  }
+
+  it('runs TaskCreated and TaskCompleted for a todowrite, against the stored list', async () => {
+    const seen = path.join(dir, 'tasks.jsonl');
+    const client = todoClient([{ content: 'Read the issue', status: 'in_progress', priority: 'high' }]);
+    const hooks = await plugin(
+      { TaskCreated: [{ matcher: 'ignored', hooks: [recorder(seen)] }], TaskCompleted: [{ hooks: [recorder(seen)] }] },
+      client,
+    );
+    await hooks['tool.execute.before'](
+      { tool: 'todowrite', sessionID: 'ses_main' },
+      {
+        args: {
+          todos: [
+            { content: 'Read the issue', status: 'completed', priority: 'high' },
+            { content: 'Write the test', status: 'pending', priority: 'high' },
+          ],
+        },
+      },
+    );
+    expect(client.reads).toEqual(['ses_main']);
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'TaskCompleted',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        task_id: '1',
+        task_subject: 'Read the issue',
+      },
+      {
+        hook_event_name: 'TaskCreated',
+        cwd: '/workspace/agent',
+        session_id: 'ses_main',
+        task_id: '2',
+        task_subject: 'Write the test',
+      },
+    ]);
+  });
+
+  it('refuses a todowrite whose task a TaskCreated hook blocks', async () => {
+    const hooks = await plugin(
+      { TaskCreated: [{ hooks: [{ command: `echo 'name the ticket first' >&2; exit 2` }] }] },
+      todoClient([]),
+    );
+    await expect(
+      hooks['tool.execute.before'](
+        { tool: 'todowrite', sessionID: 'ses_main' },
+        { args: { todos: [{ content: 'Fix it', status: 'pending', priority: 'low' }] } },
+      ),
+    ).rejects.toThrow('name the ticket first');
+  });
+
+  it('runs no task hooks when the server cannot say what the list was', async () => {
+    const seen = path.join(dir, 'tasks.jsonl');
+    const failing: OpenCodeTodoClient = {
+      session: {
+        async todo() {
+          throw new Error('connection refused');
+        },
+      },
+    };
+    const hooks = await plugin({ TaskCreated: [{ hooks: [recorder(seen)] }] }, failing);
+    await hooks['tool.execute.before'](
+      { tool: 'todowrite', sessionID: 'ses_main' },
+      { args: { todos: [{ content: 'Fix it', status: 'pending', priority: 'low' }] } },
+    );
+    expect(recorded(seen)).toEqual([]);
+  });
+});
+
+describe('session hooks of a query', () => {
+  it('runs SessionStart for the matching source and SessionEnd with reason other', async () => {
+    const seen = path.join(dir, 'session.jsonl');
+    const file = path.join(dir, 'settings.json');
+    const settings: HookSettings = {
+      SessionStart: [
+        { matcher: 'startup|resume', hooks: [recorder(seen)] },
+        { matcher: 'compact', hooks: [] },
+      ],
+      SessionEnd: [{ hooks: [recorder(seen)] }],
+    };
+    fs.writeFileSync(file, JSON.stringify({ hooks: settings }));
+    const hooks = settingsSessionHooks({ NANOCLAW_HOOK_SETTINGS: file });
+    await hooks.start('ses_1', 'resume', 'nvidia/zai-org/glm-5.3');
+    await hooks.end('ses_1');
+    expect(recorded(seen)).toEqual([
+      {
+        hook_event_name: 'SessionStart',
+        cwd: '/workspace/agent',
+        session_id: 'ses_1',
+        source: 'resume',
+        model: 'nvidia/zai-org/glm-5.3',
+      },
+      { hook_event_name: 'SessionEnd', cwd: '/workspace/agent', session_id: 'ses_1', reason: 'other' },
+    ]);
+  });
+});
+
+describe('the tool in flight', () => {
+  const inFlight = () =>
+    outbound.prepare('SELECT current_tool, tool_declared_timeout_ms, tool_started_at FROM container_state').get() as {
+      current_tool: string | null;
+      tool_declared_timeout_ms: number | null;
+      tool_started_at: string | null;
+    } | null;
+
+  it('records a tool that passed its gates and clears it when the tool finishes', async () => {
+    const hooks = await plugin({});
+    await hooks['tool.execute.before'](
+      { tool: 'bash', sessionID: 's1' },
+      { args: { command: 'make', timeout: 900000 } },
+    );
+    expect(inFlight()).toMatchObject({ current_tool: 'Bash', tool_declared_timeout_ms: 900000 });
+    expect(inFlight()?.tool_started_at).toBeString();
+
+    await hooks['tool.execute.after']({ tool: 'bash', sessionID: 's1', args: { command: 'make' } }, { output: 'ok' });
+    expect(inFlight()).toEqual({ current_tool: null, tool_declared_timeout_ms: null, tool_started_at: null });
+  });
+
+  it('records no declared timeout for a tool other than Bash', async () => {
+    const hooks = await plugin({});
+    await hooks['tool.execute.before']({ tool: 'nanoclaw_send_message' }, { args: { text: 'hi', timeout: 5 } });
+    expect(inFlight()).toMatchObject({ current_tool: 'mcp__nanoclaw__send_message', tool_declared_timeout_ms: null });
+  });
+
+  it('clears the record when the tool fails', async () => {
+    const hooks = await plugin({});
+    await hooks['tool.execute.before']({ tool: 'read', sessionID: 's1' }, { args: { filePath: '/nope' } });
+    expect(inFlight()?.current_tool).toBe('Read');
+    await hooks.event({
+      event: {
+        type: 'message.part.updated',
+        properties: {
+          part: {
+            type: 'tool',
+            sessionID: 's1',
+            callID: 'c1',
+            tool: 'read',
+            state: { status: 'error', error: 'gone' },
+          },
+        },
+      },
+    });
+    expect(inFlight()?.current_tool).toBeNull();
+  });
+
+  it('records nothing for a call a gate refuses', async () => {
+    const hooks = await plugin({
+      PreToolUse: [{ matcher: 'Write', hooks: [{ command: `echo 'PLAN REQUIRED' >&2; exit 2` }] }],
+    });
+    await expect(
+      hooks['tool.execute.before']({ tool: 'write', sessionID: 's1' }, { args: { filePath: '/x', content: '' } }),
+    ).rejects.toThrow('PLAN REQUIRED');
+    expect(inFlight()).toBeNull(); // no row: nothing was ever in flight
+  });
+});
+
 describe('installation', () => {
-  it('writes a plugin file that re-exports only the bridge', () => {
-    const file = installOpenCodeHookBridge(dir, '/app/src/providers/opencode-hook-bridge.ts');
+  it('writes a plugin file that registers the mailbox and re-exports only the bridge', () => {
+    const file = installOpenCodeHookBridge(
+      dir,
+      '/app/src/providers/opencode-hook-bridge.ts',
+      '/app/src/modules/index.ts',
+    );
     expect(file).toBe(path.join(dir, 'opencode', 'plugin', 'nanoclaw-hook-bridge.js'));
     expect(fs.readFileSync(file, 'utf-8')).toBe(
-      'export { NanoclawHookBridge } from "/app/src/providers/opencode-hook-bridge.ts";\n',
+      'import "/app/src/modules/index.ts";\n' +
+        'export { NanoclawHookBridge } from "/app/src/providers/opencode-hook-bridge.ts";\n',
     );
+  });
+
+  it('points the plugin file at the runner capability barrel by default', () => {
+    const file = installOpenCodeHookBridge(dir);
+    const barrel = /^import "(.+)";$/m.exec(fs.readFileSync(file, 'utf-8'))?.[1];
+    expect(barrel).toBe(path.join(import.meta.dir, '..', 'modules', 'index.ts'));
+    expect(fs.existsSync(barrel!)).toBe(true);
   });
 });
 

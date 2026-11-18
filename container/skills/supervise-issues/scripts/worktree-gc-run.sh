@@ -1,35 +1,76 @@
 #!/usr/bin/env bash
-# worktree-gc-run.sh — reclaim this tier's own git worktrees. Runs INSIDE the
-# tier's container (rw mount of its group directory), as the pre-task gate of
-# the tier's hourly `worktree-gc` task, or by hand with --sweep.
+# worktree-gc-run.sh — reclaim this group's own checkouts, scratch and run output.
+# Runs INSIDE the group's container (rw mount of its group directory), as the
+# pre-task gate of the group's hourly `worktree-gc` task (the host keeps that task on
+# every group that holds such work; tasks/worktree-gc.md defines it), or by hand
+# with --sweep.
 #
-# Steps: discover every worktree of /workspace/agent/{slang,slangpy,slang-rhi},
-# measure filesystem idleness, resolve issue/PR state with one gh GraphQL batch
-# per repo, classify with worktree-gc.py (the single source of thresholds),
-# then act: REAP → save uncommitted work to a local `wip/reap/<name>` branch and
-# remove the worktree; reclaim → delete `<worktree>/build`. Writes
-# /workspace/agent/.worktree-gc/last-run.json (what the supervisor's §8 reads)
-# and appends one line to history.log.
+# Steps:
+#   1. discover  worktree-gc-discover.py lists every checkout (worktrees registered
+#                with /workspace/agent/{slang,slangpy,slang-rhi}, every top-level wt-*
+#                directory whatever its git shape: linked worktree, standalone clone,
+#                orphan, plain, and every other top-level git checkout whatever its
+#                name), every runs/ entry, every top-level scratch directory, bare
+#                repository and wt-* file, and the trash.
+#   2. resolve   issue/PR state with one gh GraphQL batch of up to 40 numbers per call.
+#   3. classify  worktree-gc.py, the single source of thresholds.
+#   4. act       REAP → save unsaved work, then rename the checkout into
+#                .worktree-gc/trash/; reclaim → delete <checkout>/build; runs/ entries,
+#                scratch directories and wt-* files past retention → rename into the
+#                trash (a scratch directory after saving every repository inside it);
+#                finally delete trash entries.
+#   5. report    measure the reference clones it keeps (a size is reused for
+#                REFERENCE_SIZE_TTL_H), then write /workspace/agent/.worktree-gc/last-run.json
+#                (the host's coverage pass copies it for the supervisor's §8) and one
+#                history.log line.
+#
+# A reap is a rename, not a delete: it is O(1), so the gate's time box limits only
+# how many bytes are freed per run, never how many checkouts leave the group
+# directory, and a deletion cut short by the time box never leaves a half-removed
+# tree where the agent or the boot refresh can find it. The trash drains over
+# successive runs.
+#
+# Nothing moves before its save succeeded. Saving, by shape:
+#   worktree  uncommitted changes committed; HEAD kept as branch `wip/reap/<name>`
+#             in the repository that owns the worktree.
+#   clone     uncommitted changes committed; the commits no remote-tracking ref
+#             holds are written to .worktree-gc/saved/<name>.<stamp>.bundle.
+#   orphan    the tree, minus ignored files and nested repositories, committed with
+#             a scratch index as branch `wip/reap/<name>` in the repository its
+#             `.git` file names.
+#   bare      the commits not reachable from the repository it borrows objects from
+#             (`git clone --bare --shared`), written to .worktree-gc/saved/ as a bundle.
+# Untracked content above SAVE_MAX_MB is never committed: that checkout is skipped
+# and listed under `skipped` in the report. Changes inside submodule working trees
+# are third-party content and are not saved; every save step stays out of submodules
+# (see NOSUB), so one whose git directory is gone does not block the save.
 #
 # Modes:
 #   --gate     (default) time-boxed for the task runner's 30 s limit: acts for at
-#              most GATE_BUDGET_S seconds, leaves the rest for the next fire, and
-#              prints the gate JSON as the last line. wakeAgent is true only when
-#              an action errored or free space is below ESCALATE_PCT of the volume.
+#              most GATE_BUDGET_S seconds from start, leaves the rest for the next
+#              fire, and prints the gate JSON as the last line. wakeAgent is true only
+#              when an action errored or free space is below ESCALATE_PCT of the volume.
 #   --sweep    no time box; acts on the whole plan; prints the summary.
-#   --dry-run  classify and print the plan; change nothing.
-#
-# Every step is bounded and idempotent: a build removal cut short resumes next
-# fire, a half-removed worktree is finished by `git worktree prune` + rm, and a
-# `wt-*` directory that git no longer knows about is removed once idle.
+#   --dry-run  classify and print the plan; change nothing but git's own worktree
+#              bookkeeping (the repair and prune discovery always runs).
 set -uo pipefail
 
+# `git status` writes a refreshed index back whenever it can take the lock, and a
+# linked worktree's idle clock reads its index mtime. Without this, the save check on
+# a worktree that is then skipped (untracked content above SAVE_MAX_MB) restarts its
+# idle clock, so it leaves REAP for a full idle period. With optional locks off, reads
+# leave the index alone; `git add` and `git commit` still take the locks they need.
+export GIT_OPTIONAL_LOCKS=0
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-AGENT=/workspace/agent
+AGENT="${WORKTREE_GC_AGENT:-/workspace/agent}"
 STATE_DIR="$AGENT/.worktree-gc"
-BASES=(slang slangpy slang-rhi)
+TRASH="$STATE_DIR/trash"
+SAVED="$STATE_DIR/saved"
 GATE_BUDGET_S="${GATE_BUDGET_S:-18}"
-ESCALATE_PCT="${ESCALATE_PCT:-10}"   # gate wakes the agent when free is below this share of the volume
+REFERENCE_SIZE_TTL_H="${REFERENCE_SIZE_TTL_H:-24}"  # a reference clone's measured size is reused this long
+GH_BUDGET_S="${GH_BUDGET_S:-8}"        # share of the gate budget the gh lookups may use
+OP_TIMEOUT_S="${RM_TIMEOUT_S:-15}"     # cap on any one git or rm step in --gate mode
 
 MODE=gate
 for a in "$@"; do
@@ -37,100 +78,80 @@ for a in "$@"; do
     --gate) MODE=gate ;;
     --sweep) MODE=sweep ;;
     --dry-run) MODE=dry ;;
-    -h|--help) sed -n '2,25p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,50p' "$0"; exit 0 ;;
     *) echo "unknown flag: $a" >&2; exit 2 ;;
   esac
 done
 
 START=$(date +%s)
-NOW=$START
 errors=()
 actions=()
+skipped=()
 note() { echo "$*" >&2; }
-budget_left() { [ "$MODE" != gate ] || [ $(( $(date +%s) - START )) -lt "$GATE_BUDGET_S" ]; }
+remaining() { if [ "$MODE" = gate ]; then echo $(( GATE_BUDGET_S - ($(date +%s) - START) )); else echo 86400; fi; }
+budget_left() { [ "$(remaining)" -ge 1 ]; }
+op_timeout() { local r; r=$(remaining); [ "$MODE" = gate ] && [ "$r" -gt "$OP_TIMEOUT_S" ] && r=$OP_TIMEOUT_S; [ "$r" -lt 1 ] && r=1; echo "$r"; }
+stamp() { date -u +%Y%m%dT%H%M%SZ; }
 
 free_gb() { df -BG --output=avail "$AGENT" 2>/dev/null | tail -1 | tr -dc '0-9'; }
 total_gb() { df -BG --output=size "$AGENT" 2>/dev/null | tail -1 | tr -dc '0-9'; }
-repo_for() { case "$1" in slangpy) echo shader-slang/slangpy ;; slang-rhi) echo shader-slang/slang-rhi ;; *) echo shader-slang/slang ;; esac; }
-mtime() { stat -c %Y "$1" 2>/dev/null || echo 0; }
 
-# --- Discover ---------------------------------------------------------------
-# One record per worktree: base, path, name, number, kind, idle_days, has_build, running, branch (tab-separated)
-records=()
-for base in "${BASES[@]}"; do
-  B="$AGENT/$base"
-  [ -d "$B/.git" ] || continue
-  git -C "$B" worktree prune 2>/dev/null
-  while IFS= read -r wt; do
-    [ -n "$wt" ] && [ "$wt" != "$B" ] || continue
-    case "$wt" in "$AGENT"/*) ;; *) continue ;; esac
-    [ -d "$wt" ] || continue
-    name="$(basename "$wt")"
-    num="$(printf '%s' "$name" | grep -oE '(^|[^0-9])[0-9]{4,}' | head -1 | tr -dc '0-9')"
-    # A primary tree is the tier's fix checkout (wt-slang-<n>, wt-slangpy-<n>,
-    # wt-slang-rhi-<n>, wt-<repo>-pr-<n>, wt-<n>); every other name is scratch.
-    kind=scratch
-    [[ "$name" =~ ^wt-(slang|slangpy|slang-rhi)-(pr-)?[0-9]+$ || "$name" =~ ^wt-[0-9]+$ ]] && kind=primary
-    meta="$B/.git/worktrees/$name"
-    latest=$(mtime "$wt")
-    for f in "$wt/.git" "$meta/index" "$meta/HEAD" "$wt/build/.ninja_log" "$wt/build/CMakeCache.txt"; do
-      m=$(mtime "$f"); [ "$m" -gt "$latest" ] && latest=$m
-    done
-    idle=$(awk -v n="$NOW" -v m="$latest" 'BEGIN { printf "%.2f", (n-m)/86400 }')
-    has_build=false; [ -d "$wt/build" ] && has_build=true
-    running=false
-    [ -e "$meta/locked" ] && running=true
-    slug="${name#wt-}"
-    aw="$AGENT/active-work/$slug"
-    [ -d "$aw" ] && [ $(( NOW - $(mtime "$aw") )) -lt 86400 ] && running=true
-    branch="$(git -C "$wt" rev-parse --abbrev-ref HEAD 2>/dev/null)"; [ "$branch" = HEAD ] && branch=""
-    records+=("$base	$wt	$name	$num	$kind	$idle	$has_build	$running	$branch")
-  done < <(git -C "$B" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print substr($0, 10)}')
-done
+WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
+gate_failure() { echo "{\"wakeAgent\": true, \"data\": {\"error\": \"$1\"}}"; exit 0; }
 
-RECORDS="$(mktemp)"; trap 'rm -f "$RECORDS"' EXIT
-printf '%s\n' "${records[@]}" > "$RECORDS"
+# --- Discover -----------------------------------------------------------------
+python3 "$HERE/worktree-gc-discover.py" --agent "$AGENT" --state-dir "$STATE_DIR" > "$WORK/discovery.json" \
+  || gate_failure "discovery failed"
 
-# --- Resolve GitHub state (one GraphQL batch of up to 40 numbers per repo) ---
-STATES_JSON="$(python3 - "$RECORDS" <<'PY'
-import json, re, subprocess, sys, datetime
-rows=[l.rstrip("\n").split("\t") for l in open(sys.argv[1]) if l.strip()]
-repo_of={"slang":"shader-slang/slang","slangpy":"shader-slang/slangpy","slang-rhi":"shader-slang/slang-rhi"}
+# --- Resolve GitHub state (one GraphQL batch of up to 40 numbers per call) -------
+GH_DEADLINE=$(( START + GH_BUDGET_S )); [ "$MODE" = gate ] || GH_DEADLINE=0
+GH_DEADLINE="$GH_DEADLINE" python3 - "$WORK/discovery.json" > "$WORK/states.json" <<'PY' || echo '{}' > "$WORK/states.json"
+import json, os, subprocess, sys, time, datetime
+d=json.load(open(sys.argv[1]))
+deadline=float(os.environ.get("GH_DEADLINE") or 0)
 # key = (repo, number, branch): the PR is looked up under fix/issue-<n> AND the tree's own branch
-keys=sorted({(repo_of.get(r[0],"shader-slang/slang"), r[3], (r[8] if len(r)>8 else "")) for r in rows if r[3]})
+keys=sorted({(w["repo"], w["number"], w.get("branch") or "") for w in d["worktrees"] if w.get("repo") and w.get("number")})
 state={}
 def q(s): return s.replace("\\","\\\\").replace('"','\\"')
 def run(batch):
+    left = (deadline - time.time()) if deadline else 25
+    if left < 2:
+        return
     parts=[]
     for i,(repo,n,br) in enumerate(batch):
         o,r=repo.split("/")
         extra = f' own: pullRequests(headRefName:"{q(br)}", first:1, orderBy:{{field:UPDATED_AT, direction:DESC}}) {{ nodes {{ state updatedAt }} }}' if br and br!=f"fix/issue-{n}" else ""
         parts.append(f'q{i}: repository(owner:"{o}", name:"{r}") {{ issueOrPullRequest(number:{n}) {{ __typename ... on Issue {{ state updatedAt }} ... on PullRequest {{ state updatedAt }} }} prs: pullRequests(headRefName:"fix/issue-{n}", first:1, orderBy:{{field:UPDATED_AT, direction:DESC}}) {{ nodes {{ state updatedAt }} }}{extra} }}')
-    out=subprocess.run(["gh","api","graphql","-f","query={"+" ".join(parts)+"}"],capture_output=True,text=True,timeout=25)
+    try:
+        out=subprocess.run(["gh","api","graphql","-f","query={"+" ".join(parts)+"}"],capture_output=True,text=True,timeout=min(25,left),check=False)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        print(f"gh resolution cut short: {e}", file=sys.stderr)
+        return
     try: data=(json.loads(out.stdout) or {}).get("data") or {}
     except Exception: data={}
-    if not data and out.returncode!=0 and len(batch)>1:
-        for item in batch: run([item])
+    if not data and out.returncode!=0:
+        # A failed batch is retried item by item; an item that still fails stays
+        # unresolved and is classified on idleness alone.
+        if len(batch)>1:
+            for item in batch: run([item])
         return
     for i,(repo,n,br) in enumerate(batch):
-        d=data.get(f"q{i}") or {}
-        nodes=((d.get("prs") or {}).get("nodes") or []) + ((d.get("own") or {}).get("nodes") or [])
-        state[(repo,n,br)]=(d.get("issueOrPullRequest"), nodes)
-try:
-    for i in range(0,len(keys),40): run(keys[i:i+40])
-except Exception as e:
-    print(f"gh resolution failed: {e}", file=sys.stderr)
+        dd=data.get(f"q{i}") or {}
+        nodes=((dd.get("prs") or {}).get("nodes") or []) + ((dd.get("own") or {}).get("nodes") or [])
+        state[(repo,n,br)]=(dd.get("issueOrPullRequest"), nodes)
+for i in range(0,len(keys),40): run(keys[i:i+40])
 now=datetime.datetime.now(datetime.timezone.utc)
 def idle(ts):
     try: return (now-datetime.datetime.fromisoformat(ts.replace("Z","+00:00"))).days
     except Exception: return None
-out={}
 def pick(nodes):
     # an OPEN PR wins over a closed one under another head name
-    nodes=sorted(nodes, key=lambda p: (p["state"]!="OPEN", p["updatedAt"]), reverse=False)
+    nodes=sorted(nodes, key=lambda p: (p["state"]!="OPEN", p["updatedAt"]))
     return nodes[0] if nodes else None
-for repo,n,br in keys:
-    iop,prs=state.get((repo,n,br),(None,[]))
+out={}
+for key in keys:
+    if key not in state: continue
+    iop,prs=state[key]
     rec={"issue_state":"","pr_state":"","pr_idle_days":None}
     if iop:
         if iop["__typename"]=="PullRequest":
@@ -139,125 +160,372 @@ for repo,n,br in keys:
             rec["issue_state"]=iop["state"]
             pr=pick(prs)
             if pr: rec.update(pr_state=pr["state"], pr_idle_days=idle(pr["updatedAt"]))
-    out[f"{repo}#{n}#{br}"]=rec
-print(json.dumps(out))
+    out["#".join(key)]=rec
+print(json.dumps({"states": out, "unresolved": len(keys)-len(out)}))
 PY
-)" || STATES_JSON="{}"
 
 # --- Classify ---------------------------------------------------------------
 FREE_BEFORE=$(free_gb); TOTAL=$(total_gb)
-PLAN="$(GC_PY="$HERE/worktree-gc.py" python3 - "$FREE_BEFORE" "$STATES_JSON" "$MODE" "$TOTAL" "$RECORDS" <<'PY'
-import json, sys, subprocess, os
-free=int(sys.argv[1] or 0); states=json.loads(sys.argv[2] or "{}"); mode=sys.argv[3]; total=int(sys.argv[4] or 0)
-repo_of={"slang":"shader-slang/slang","slangpy":"shader-slang/slangpy","slang-rhi":"shader-slang/slang-rhi"}
+python3 - "$WORK/discovery.json" "$WORK/states.json" "${FREE_BEFORE:-0}" "${TOTAL:-0}" "$MODE" "$HERE/worktree-gc.py" > "$WORK/plan.json" <<'PY' || gate_failure "classifier failed"
+import json, subprocess, sys
+d=json.load(open(sys.argv[1])); s=json.load(open(sys.argv[2])) or {}
+states=s.get("states") or {}
+free=int(sys.argv[3] or 0); total=int(sys.argv[4] or 0); mode=sys.argv[5]
 wts=[]
-for l in open(sys.argv[5]):
-    if not l.strip(): continue
-    f=l.rstrip("\n").split("\t"); base,path,name,num,kind,idle,has_build,running=f[:8]; branch=f[8] if len(f)>8 else ""
-    st=states.get(f"{repo_of.get(base,'shader-slang/slang')}#{num}#{branch}",{}) if num else {}
-    w={"dir":name,"path":path,"base":base,"number":num,"kind":kind,"idle_days":float(idle),
-       "has_build":has_build=="true","running":running=="true",
-       "issue_state":st.get("issue_state",""),"pr_state":st.get("pr_state",""),"pr_idle_days":st.get("pr_idle_days")}
-    if mode=="sweep" and w["has_build"]:
-        try: w["build_size_gb"]=round(int(subprocess.run(["du","-sk",path+"/build"],capture_output=True,text=True).stdout.split()[0])/1048576,2)
+for w in d["worktrees"]:
+    st=states.get(f'{w.get("repo","")}#{w.get("number","")}#{w.get("branch") or ""}',{})
+    w.update(issue_state=st.get("issue_state",""), pr_state=st.get("pr_state",""), pr_idle_days=st.get("pr_idle_days"))
+    if mode=="sweep" and w.get("has_build"):
+        try: w["build_size_gb"]=round(int(subprocess.run(["du","-sk",w["path"]+"/build"],capture_output=True,text=True,check=False).stdout.split()[0])/1048576,2)
         except Exception: pass
     wts.append(w)
-gc=subprocess.run(["python3", os.environ["GC_PY"]], input=json.dumps({"free_gb":free,"total_gb":total,"running_dirs":[],"worktrees":wts}), capture_output=True, text=True)
-sys.stdout.write(gc.stdout)
+gc=subprocess.run(["python3", sys.argv[6]], input=json.dumps({"free_gb":free,"total_gb":total,"running_dirs":[],"worktrees":wts,"runs":d["runs"],"scratch_dirs":d["scratch_dirs"],"wt_files":d["wt_files"]}), capture_output=True, text=True, check=False)
+if gc.returncode!=0 or not gc.stdout.strip():
+    sys.exit(1)
+plan=json.loads(gc.stdout)
+plan["discovery"]={"repaired": d.get("repaired", []), "trash_entries": len(d.get("trash", [])), "gh_unresolved": s.get("unresolved", 0)}
+print(json.dumps(plan))
 PY
-)"
-[ -n "$PLAN" ] || { echo '{"wakeAgent": true, "data": {"error": "classifier produced no plan"}}'; exit 0; }
 
-plan_list() { printf '%s' "$PLAN" | python3 -c "
-import json,sys; p=json.load(sys.stdin); key=sys.argv[1]
-items=p['tiers']['REAP'] if key=='REAP' else p['reclaim']
-if key=='REAP': items=sorted(items, key=lambda w: -(w.get('idle_days') or 0))
-for w in items: print('\t'.join([w['base'], w['path'], w['dir'], w.get('gc_reason','')]))
-" "$1"; }
+plan_get() { python3 -c "import json,sys; p=json.load(open(sys.argv[1])); print(eval(sys.argv[2], {'p': p}))" "$WORK/plan.json" "$1"; }
+plan_list() { python3 - "$WORK/plan.json" "$1" <<'PY'
+import json, sys
+p=json.load(open(sys.argv[1])); key=sys.argv[2]
+if key=="REAP":
+    for w in sorted(p["tiers"]["REAP"], key=lambda w: -(w.get("idle_days") or 0)):
+        print("\t".join([w.get("shape") or "worktree", w["path"], w["dir"], w.get("owner") or "", w.get("gc_reason","")]))
+elif key=="reclaim":
+    for w in p["reclaim"]:
+        print("\t".join([w["path"], w["dir"], w.get("gc_reason","")]))
+elif key=="runs":
+    for r in p["runs_expired"]:
+        print("\t".join([r["path"], r["name"], str(r.get("idle_days"))]))
+elif key=="files":
+    for r in p["files_expired"]:
+        print("\t".join([r["path"], r["name"], str(r.get("idle_days"))]))
+elif key=="scratch":
+    # git_inside as `shape|path|owner` items joined by `;`
+    for r in p["scratch_expired"]:
+        inside=";".join("|".join([g["shape"], g["path"], g.get("owner") or ""]) for g in r.get("git_inside") or [])
+        print("\t".join([r["path"], r["name"], str(r.get("idle_days")), inside]))
+PY
+}
+SAVE_MAX_MB=$(plan_get 'p["summary"]["thresholds"]["SAVE_MAX_MB"]')
+ESCALATE_PCT=$(plan_get 'p["summary"]["thresholds"]["ESCALATE_PCT"]')
 
-# --- Act ----------------------------------------------------------------------
-save_then_remove() { # base path name
-  local B="$AGENT/$1" wt="$2" name="$3" head
-  if [ -n "$(git -C "$wt" status --porcelain 2>/dev/null | head -1)" ]; then
-    git -C "$wt" add -A >/dev/null 2>&1
-    git -C "$wt" -c user.name=worktree-gc -c user.email=worktree-gc@nanoclaw commit -q -m "wip(reap): $name @ $(git -C "$wt" rev-parse --short HEAD 2>/dev/null)" >/dev/null 2>&1 || true
-  fi
-  head="$(git -C "$wt" rev-parse HEAD 2>/dev/null)"
-  [ -n "$head" ] && git -C "$B" branch -f "wip/reap/$name" "$head" >/dev/null 2>&1
-  # build/ first, bounded: the bulk of the bytes, and a cut-short rm resumes next fire.
-  if [ -d "$wt/build" ]; then
-    timeout "${RM_TIMEOUT_S:-15}" rm -rf "$wt/build" 2>/dev/null
-    [ -d "$wt/build" ] && { note "partial: $name build/ still present"; return 3; }
-  fi
-  git -C "$B" worktree remove --force "$wt" >/dev/null 2>&1 || { rm -rf "$wt"; git -C "$B" worktree prune >/dev/null 2>&1; }
-  [ -d "$wt" ] && return 1
-  rm -rf "$AGENT/active-work/${name#wt-}" 2>/dev/null
-  return 0
+# --- Save ---------------------------------------------------------------------
+# Each save_* returns 0 when the tree's work is safe (SAVED_AS says where), 4 when it
+# must be skipped (SKIP_WHY says why), anything else on failure.
+COMMITTER=(-c user.name=worktree-gc -c user.email=worktree-gc@nanoclaw -c commit.gpgsign=false)
+
+# Submodules are third-party content the GC never saves, and a submodule's git
+# directory can be gone. Consider a reviewer that copies `external/` from one
+# checkout into another: each copied submodule's `.git` file still names the donor's
+# `slang/.git/worktrees/<donor>/modules/...`, and once the donor is reaped that
+# directory is pruned. `git add -A` (and a plain `git status`) then dies with "not a
+# git repository" on the copy. So every save step stays out of submodules: status
+# ignores them, `add` excludes every gitlink path, and nothing recurses.
+NOSUB=(-c submodule.recurse=false -c diff.ignoreSubmodules=all)
+
+# Print a literal exclude pathspec for every gitlink (submodule) in a checkout's
+# index, NUL-separated, for `git add -A -- . <these>`.
+gitlink_excludes() { # checkout
+  git -C "$1" ls-files -s -z 2>/dev/null | while IFS= read -r -d '' entry; do
+    [ "${entry%% *}" = 160000 ] && printf ':(exclude,literal)%s\0' "${entry#*$'\t'}"
+  done
 }
 
-reaped=0; reclaimed=0; partial=0
+bytes_mb() { awk '{s+=$1} END {print int((s+1048575)/1048576)}'; }
+
+# A timed-out git step leaves its index.lock behind; that lock is ours, and keeping it
+# would fail every later run on the same tree.
+drop_lock_after_timeout() { [ "$1" -eq 124 ] && rm -f "$(git -C "$2" rev-parse --git-path index.lock 2>/dev/null)"; return "$1"; }
+
+commit_dirty() { # checkout name
+  local wt="$1" name="$2" mb rc x
+  local -a excl=()
+  [ -n "$(timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" status --porcelain --ignore-submodules=all 2>/dev/null | head -1)" ] || return 0
+  mb=$(git -C "$wt" ls-files -z --others --exclude-standard 2>/dev/null | (cd "$wt" && xargs -0 -r stat -c %s --) 2>/dev/null | bytes_mb)
+  if [ "${mb:-0}" -gt "$SAVE_MAX_MB" ]; then SKIP_WHY="${mb} MB of untracked files exceeds SAVE_MAX_MB"; return 4; fi
+  while IFS= read -r -d '' x; do excl+=("$x"); done < <(gitlink_excludes "$wt")
+  timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" add -A -- . "${excl[@]}" >/dev/null 2>&1; rc=$?
+  drop_lock_after_timeout "$rc" "$wt" || return 1
+  timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" "${COMMITTER[@]}" commit -q --no-verify \
+    -m "wip(reap): $name @ $(git -C "$wt" rev-parse --short HEAD 2>/dev/null)" >/dev/null 2>&1; rc=$?
+  drop_lock_after_timeout "$rc" "$wt" || return 1
+}
+
+# A repository whose branch has no commit yet (`git init`, or a clone whose fetch never
+# finished) has an unborn HEAD. commit_dirty gives it a commit when its tree has
+# content, so a HEAD that is still unborn afterwards means there is nothing to save.
+unborn() { ! git -C "$1" rev-parse -q --verify HEAD >/dev/null 2>&1; }
+UNBORN_SAVED="nothing to save (no commit yet and a clean tree)"
+
+save_worktree() { # owner path name
+  local head
+  commit_dirty "$2" "$3" || return $?
+  if unborn "$2"; then SAVED_AS="$UNBORN_SAVED"; return 0; fi
+  head="$(git -C "$2" rev-parse HEAD 2>/dev/null)" || return 1
+  git -C "$1" branch -f "wip/reap/$3" "$head" >/dev/null 2>&1 || return 1
+  SAVED_AS="branch wip/reap/$3 in ${1#"$AGENT"/}"
+}
+
+save_clone() { # path name
+  local n b
+  local -a tips=(HEAD --branches)
+  commit_dirty "$1" "$2" || return $?
+  if unborn "$1"; then tips=(--branches); fi
+  n="$(timeout "$(op_timeout)" git -C "$1" rev-list --count "${tips[@]}" --not --remotes 2>/dev/null)" || return 1
+  if [ "${n:-0}" -eq 0 ]; then SAVED_AS="nothing unsaved (every commit is on a remote-tracking ref)"; return 0; fi
+  mkdir -p "$SAVED" || return 1
+  b="$SAVED/$2.$(stamp).bundle"
+  timeout "$(op_timeout)" git -C "$1" bundle create "$b" "${tips[@]}" --not --remotes >/dev/null 2>&1 \
+    || { rm -f "$b"; return 1; }
+  SAVED_AS="bundle ${b#"$AGENT"/} ($n commits)"
+}
+
+save_orphan() { # owner path name
+  local owner="$1" wt="$2" name="$3" idx="$WORK/orphan.index" mb tree commit rc
+  local -a gd=(--git-dir="$owner/.git") excl=()
+  # Nested repositories (submodules) are excluded; their `.git` files point into the
+  # pruned administrative directory, so git would otherwise add their files one by one.
+  while IFS= read -r -d '' g; do
+    [ "$g" = . ] || excl+=(":(exclude,literal)${g#./}")
+  done < <(cd "$wt" && find . \( -type d -name 'build*' -prune \) -o \( -name .git -prune -printf '%h\0' \) 2>/dev/null)
+  rm -f "$idx"
+  GIT_INDEX_FILE="$idx" git "${gd[@]}" read-tree HEAD >/dev/null 2>&1 || rm -f "$idx"
+  mb=$(GIT_INDEX_FILE="$idx" git "${NOSUB[@]}" -C "$wt" "${gd[@]}" --work-tree="$wt" ls-files -z --others --exclude-standard -- . "${excl[@]}" 2>/dev/null \
+    | (cd "$wt" && xargs -0 -r stat -c %s --) 2>/dev/null | bytes_mb)
+  if [ "${mb:-0}" -gt "$SAVE_MAX_MB" ]; then SKIP_WHY="${mb} MB of files outside the repository's tree exceeds SAVE_MAX_MB"; return 4; fi
+  GIT_INDEX_FILE="$idx" timeout "$(op_timeout)" git "${NOSUB[@]}" -C "$wt" "${gd[@]}" --work-tree="$wt" add -A -- . "${excl[@]}" >/dev/null 2>&1; rc=$?
+  [ "$rc" -eq 0 ] || return 1
+  tree="$(GIT_INDEX_FILE="$idx" git "${gd[@]}" write-tree 2>/dev/null)" || return 1
+  commit="$(git "${gd[@]}" "${COMMITTER[@]}" commit-tree "$tree" -m "wip(reap): orphaned $name (snapshot of its files)" 2>/dev/null)" || return 1
+  git "${gd[@]}" branch -f "wip/reap/$name" "$commit" >/dev/null 2>&1 || return 1
+  SAVED_AS="branch wip/reap/$name in ${owner#"$AGENT"/} (snapshot)"
+}
+
+save_bare() { # path name
+  local n b mb
+  n="$(timeout "$(op_timeout)" git --git-dir="$1" rev-list --count --all --not --alternate-refs 2>/dev/null)" || return 1
+  if [ "${n:-0}" -eq 0 ]; then SAVED_AS="nothing unsaved (every commit is in the repository it borrows objects from)"; return 0; fi
+  mkdir -p "$SAVED" || return 1
+  b="$SAVED/$2.$(stamp).bundle"
+  timeout "$(op_timeout)" git --git-dir="$1" bundle create "$b" --all --not --alternate-refs >/dev/null 2>&1 \
+    || { rm -f "$b"; return 1; }
+  mb=$(stat -c %s "$b" | bytes_mb)
+  if [ "${mb:-0}" -gt "$SAVE_MAX_MB" ]; then rm -f "$b"; SKIP_WHY="its ${mb} MB of unsaved history exceeds SAVE_MAX_MB"; return 4; fi
+  SAVED_AS="bundle ${b#"$AGENT"/} ($n commits)"
+}
+
+# Save one repository by shape; used for a checkout and for each repository inside
+# a scratch directory.
+save_repo() { # shape path name owner
+  case "$1" in
+    worktree) save_worktree "$4" "$2" "$3" ;;
+    clone) save_clone "$2" "$3" ;;
+    orphan) save_orphan "$4" "$2" "$3" ;;
+    bare) save_bare "$2" "$3" ;;
+    *) SKIP_WHY="no save procedure for shape '$1'"; return 4 ;;
+  esac
+}
+
+to_trash() { # path label
+  mkdir -p "$TRASH" && mv -T -- "$1" "$TRASH/$2.$(stamp).$$" 2>/dev/null
+}
+
+# --- Act ----------------------------------------------------------------------
+reaped=0; reclaimed=0; runs_expired=0; scratch_expired=0; files_expired=0; drained=0; left=0
 if [ "$MODE" != dry ]; then
-  while IFS=$'\t' read -r base path name reason; do
+  while IFS=$'\t' read -r shape path name owner reason; do
     [ -n "$path" ] || continue
-    budget_left || { partial=$((partial+1)); continue; }
-    if save_then_remove "$base" "$path" "$name"; then reaped=$((reaped+1)); actions+=("reap $name ($reason)")
-    elif [ $? -eq 3 ]; then partial=$((partial+1))
-    else errors+=("reap failed: $name"); fi
+    budget_left || { left=$((left+1)); continue; }
+    SAVED_AS=""; SKIP_WHY=""
+    save_repo "$shape" "$path" "$name" "$owner"
+    rc=$?
+    if [ "$rc" -eq 4 ]; then skipped+=("$name: $SKIP_WHY"); continue; fi
+    if [ "$rc" -ne 0 ]; then
+      # A save the time box cut short is retried next fire, not reported as an error.
+      if budget_left; then errors+=("save failed: $name ($shape)"); else left=$((left+1)); fi
+      continue
+    fi
+    if to_trash "$path" "$name"; then
+      [ "$shape" = worktree ] && git -C "$owner" worktree prune >/dev/null 2>&1
+      rm -rf "$AGENT/active-work/${name#wt-}" 2>/dev/null
+      reaped=$((reaped+1)); actions+=("reap $name ($shape; $reason); saved: $SAVED_AS")
+    else
+      errors+=("move to trash failed: $name")
+    fi
   done < <(plan_list REAP)
-  while IFS=$'\t' read -r base path name reason; do
+
+  while IFS=$'\t' read -r path name reason; do
     [ -n "$path" ] || continue
-    budget_left || { partial=$((partial+1)); continue; }
+    budget_left || { left=$((left+1)); continue; }
     [ -d "$path/build" ] || continue
-    timeout "${RM_TIMEOUT_S:-15}" rm -rf "$path/build" 2>/dev/null
-    if [ -d "$path/build" ]; then partial=$((partial+1)); else reclaimed=$((reclaimed+1)); actions+=("reclaim build $name ($reason)"); fi
+    timeout "$(op_timeout)" rm -rf "$path/build" 2>/dev/null
+    if [ -d "$path/build" ]; then left=$((left+1)); else reclaimed=$((reclaimed+1)); actions+=("reclaim build $name ($reason)"); fi
   done < <(plan_list reclaim)
-  # Directories git no longer tracks (a removal cut short earlier), idle a day or more.
-  for base in "${BASES[@]}"; do
-    B="$AGENT/$base"; [ -d "$B/.git" ] || continue
-    known="$(git -C "$B" worktree list --porcelain 2>/dev/null | awk '/^worktree /{print substr($0, 10)}')"
-    for d in "$AGENT"/wt-*; do
-      [ -d "$d" ] || continue
-      printf '%s\n' "$known" | grep -qx "$d" && continue
-      [ -e "$d/.git" ] && continue   # another base clone's worktree
-      [ $(( NOW - $(mtime "$d") )) -ge 86400 ] || continue
-      budget_left || { partial=$((partial+1)); continue; }
-      timeout "${RM_TIMEOUT_S:-15}" rm -rf "$d" 2>/dev/null && actions+=("remove orphan $(basename "$d")") || partial=$((partial+1))
+
+  while IFS=$'\t' read -r path name idle; do
+    [ -n "$path" ] || continue
+    budget_left || { left=$((left+1)); continue; }
+    if to_trash "$path" "runs-$name"; then runs_expired=$((runs_expired+1)); actions+=("expire runs/$name (idle ${idle}d)")
+    else errors+=("move to trash failed: runs/$name"); fi
+  done < <(plan_list runs)
+
+  # Scratch directories: save every repository inside first, then move the directory.
+  while IFS=$'\t' read -r path name idle inside; do
+    [ -n "$path" ] || continue
+    budget_left || { left=$((left+1)); continue; }
+    saved=(); rc=0; owners=()
+    IFS=';' read -r -a repos <<< "$inside"
+    for r in "${repos[@]}"; do
+      [ -n "$r" ] || continue
+      IFS='|' read -r rshape rpath rowner <<< "$r"
+      rel="${rpath#"$path"}"; label="$name$(printf '%s' "$rel" | tr '/' '-')"
+      SAVED_AS=""; SKIP_WHY=""
+      save_repo "$rshape" "$rpath" "$label" "$rowner"; rc=$?
+      [ "$rc" -eq 0 ] || break
+      saved+=("${rel:-.}: $SAVED_AS"); [ "$rshape" = worktree ] && owners+=("$rowner")
     done
-    break
-  done
+    if [ "$rc" -eq 4 ]; then skipped+=("$name: $SKIP_WHY"); continue; fi
+    if [ "$rc" -ne 0 ]; then
+      if budget_left; then errors+=("save failed: $name"); else left=$((left+1)); fi
+      continue
+    fi
+    if to_trash "$path" "$name"; then
+      for o in "${owners[@]:-}"; do [ -n "$o" ] && git -C "$o" worktree prune >/dev/null 2>&1; done
+      scratch_expired=$((scratch_expired+1))
+      actions+=("expire $name (idle ${idle}d)${saved[*]:+; saved: ${saved[*]}}")
+    else
+      errors+=("move to trash failed: $name")
+    fi
+  done < <(plan_list scratch)
+
+  while IFS=$'\t' read -r path name idle; do
+    [ -n "$path" ] || continue
+    budget_left || { left=$((left+1)); continue; }
+    if to_trash "$path" "$name"; then files_expired=$((files_expired+1))
+    else errors+=("move to trash failed: $name"); fi
+  done < <(plan_list files)
+  [ "$files_expired" -gt 0 ] && actions+=("expire $files_expired top-level wt-* file(s)")
+
+  # Drain the trash, oldest first. A deletion the time box cuts short resumes next fire.
+  if [ -d "$TRASH" ]; then
+    while IFS= read -r t; do
+      budget_left || { left=$((left+1)); continue; }
+      timeout "$(op_timeout)" rm -rf -- "$t" 2>/dev/null; rc=$?
+      if [ -e "$t" ] && [ "$rc" -ne 124 ] && budget_left; then
+        # Read-only directories (a Go module cache, say) refuse unlinking until made writable.
+        chmod -R u+w -- "$t" 2>/dev/null; timeout "$(op_timeout)" rm -rf -- "$t" 2>/dev/null
+      fi
+      if [ -e "$t" ]; then left=$((left+1)); else drained=$((drained+1)); fi
+    done < <(find "$TRASH" -mindepth 1 -maxdepth 1 -printf '%T@\t%p\n' 2>/dev/null | sort -n | cut -f2-)
+  fi
 fi
+
+# --- Reference clones -------------------------------------------------------
+# Reference clones are never removed (worktree-gc.py); the report lists each with
+# its size so the supervisor can flag a large dormant one to the operator. `du`
+# over a clone with a build tree can take many seconds, so a size measured within
+# REFERENCE_SIZE_TTL_H is taken from the previous report, and the rest are
+# measured in the time the gate has left, the oldest measurement first; one the
+# budget does not reach keeps its previous size until a later run.
+python3 - "$WORK/plan.json" "$STATE_DIR/last-run.json" "$(remaining)" "$REFERENCE_SIZE_TTL_H" "$HERE/worktree-gc.py" \
+  > "$WORK/references.json" <<'PY' || echo '[]' > "$WORK/references.json"
+import datetime, importlib.util, json, subprocess, sys, time
+plan, last, budget, ttl_h, gc_path = sys.argv[1], sys.argv[2], float(sys.argv[3]), float(sys.argv[4]), sys.argv[5]
+spec = importlib.util.spec_from_file_location("worktree_gc", gc_path)
+wg = importlib.util.module_from_spec(spec); spec.loader.exec_module(wg)
+refs = json.load(open(plan)).get("references") or []
+try:
+    before = {r["name"]: r for r in json.load(open(last)).get("references") or [] if isinstance(r, dict) and "name" in r}
+except (OSError, ValueError, AttributeError):
+    before = {}
+now = datetime.datetime.now(datetime.timezone.utc)
+deadline = time.time() + budget - 2  # leave the report its own time
+def age_h(stamp):
+    try: return (now - datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))).total_seconds() / 3600
+    except (AttributeError, ValueError): return None
+out = []
+for r in refs:
+    prev = before.get(r["name"]) or {}
+    out.append({"name": r["name"], "shape": r.get("shape"), "idle_days": r.get("idle_days"),
+                "size_gb": prev.get("size_gb"), "size_measured_at": prev.get("size_measured_at")})
+due = [o for o in out if age_h(o["size_measured_at"]) is None or age_h(o["size_measured_at"]) >= ttl_h]
+due.sort(key=lambda o: o["size_measured_at"] or "")
+paths = {r["name"]: r["path"] for r in refs}
+for o in due:
+    left = deadline - time.time()
+    if left < 1:
+        break
+    try:
+        du = subprocess.run(["du", "-sk", "--one-file-system", paths[o["name"]]], capture_output=True, text=True,
+                            timeout=left, check=False)
+        kb = int(du.stdout.split()[0])
+    except (subprocess.TimeoutExpired, OSError, ValueError, IndexError):
+        continue
+    o["size_gb"] = round(kb / 1048576, 2)
+    o["size_measured_at"] = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+for o in out:
+    o["dormant_large"] = wg.dormant_large(o)
+out.sort(key=lambda o: -(o["size_gb"] or 0))
+print(json.dumps(out))
+PY
 
 # --- Report -----------------------------------------------------------------
 FREE_AFTER=$(free_gb)
-SUMMARY="$(printf '%s' "$PLAN" | python3 -c "import json,sys; s=json.load(sys.stdin)['summary']; print(json.dumps({'counts': s['counts'], 'reclaim_count': s['reclaim_count'], 'free_pct': s['free_pct'], 'under_pressure': s['under_pressure']}))")"
+SUMMARY="$(python3 -c "
+import json,sys; p=json.load(open(sys.argv[1])); s=p['summary']
+print(json.dumps({'counts': s['counts'], 'shapes': s['shapes'], 'kinds': s['kinds'],
+                  'references_count': s['references_count'], 'reclaim_count': s['reclaim_count'],
+                  'runs_expired_count': s['runs_expired_count'], 'scratch_expired_count': s['scratch_expired_count'],
+                  'files_expired_count': s['files_expired_count'], 'free_pct': s['free_pct'],
+                  'under_pressure': s['under_pressure'], **p['discovery']}))" "$WORK/plan.json")"
 if [ "$MODE" != dry ]; then
   mkdir -p "$STATE_DIR"
-  python3 - "$STATE_DIR" "$MODE" "$FREE_BEFORE" "$FREE_AFTER" "$reaped" "$reclaimed" "$partial" "$SUMMARY" "$(printf '%s\n' "${actions[@]:-}")" "$(printf '%s\n' "${errors[@]:-}")" <<'PY'
+  python3 - "$STATE_DIR" "$MODE" "${FREE_BEFORE:-0}" "${FREE_AFTER:-0}" "$reaped" "$reclaimed" "$runs_expired" "$scratch_expired" "$files_expired" "$drained" "$left" "$SUMMARY" \
+    "$(printf '%s\n' "${actions[@]:-}")" "$(printf '%s\n' "${skipped[@]:-}")" "$(printf '%s\n' "${errors[@]:-}")" "$WORK/references.json" <<'PY'
 import json, sys, datetime, os
-d, mode, fb, fa, reaped, reclaimed, partial, summary, actions, errors = sys.argv[1:11]
+d, mode, fb, fa, reaped, reclaimed, runs_expired, scratch_expired, files_expired, drained, left, summary, actions, skipped, errors, refs = sys.argv[1:17]
+lines = lambda s: [x for x in s.split("\n") if x]
 rep = {"at": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "mode": mode,
-       "free_gb_before": int(fb or 0), "free_gb_after": int(fa or 0), "reaped": int(reaped), "build_reclaimed": int(reclaimed),
-       "left_for_next_run": int(partial), "plan": json.loads(summary),
-       "actions": [a for a in actions.split("\n") if a], "errors": [e for e in errors.split("\n") if e]}
+       "free_gb_before": int(fb or 0), "free_gb_after": int(fa or 0), "reaped": int(reaped),
+       "build_reclaimed": int(reclaimed), "runs_expired": int(runs_expired),
+       "scratch_expired": int(scratch_expired), "files_expired": int(files_expired), "trash_drained": int(drained),
+       "left_for_next_run": int(left), "plan": json.loads(summary),
+       "actions": lines(actions), "skipped": lines(skipped), "errors": lines(errors),
+       "references": json.load(open(refs))}
 json.dump(rep, open(os.path.join(d, "last-run.json"), "w"), indent=1)
 with open(os.path.join(d, "history.log"), "a") as f:
-    f.write(f"{rep['at']} {mode} free {rep['free_gb_before']}G→{rep['free_gb_after']}G reaped={reaped} build_reclaimed={reclaimed} left={partial} errors={len(rep['errors'])}\n")
+    f.write(f"{rep['at']} {mode} free {rep['free_gb_before']}G→{rep['free_gb_after']}G reaped={reaped} build_reclaimed={reclaimed} "
+            f"runs_expired={runs_expired} scratch_expired={scratch_expired} files_expired={files_expired} trash_drained={drained} left={left} skipped={len(rep['skipped'])} errors={len(rep['errors'])}\n")
 PY
 fi
 
 if [ "$MODE" = dry ]; then
-  printf '%s' "$PLAN" | python3 -c "
-import json,sys; p=json.load(sys.stdin)
-print('free_gb', p['summary']['free_gb'], 'of', p['summary']['total_gb'], '=', p['summary']['free_pct'], '% | counts', p['summary']['counts'], '| build-reclaim', p['summary']['reclaim_count'])
-for w in sorted(p['tiers']['REAP'], key=lambda w:-(w.get('idle_days') or 0)): print('REAP   ', w['dir'], '|', w.get('gc_reason'))
+  python3 - "$WORK/plan.json" "$WORK/references.json" <<'PY'
+import json, sys
+p=json.load(open(sys.argv[1])); s=p['summary']
+print('free_gb', s['free_gb'], 'of', s['total_gb'], '=', s['free_pct'], '% | counts', s['counts'], '| shapes', s['shapes'],
+      '| kinds', s['kinds'],
+      '| build-reclaim', s['reclaim_count'], '| runs expired', s['runs_expired_count'], 'of', s['runs_count'],
+      '| scratch dirs expired', s['scratch_expired_count'], 'of', s['scratch_dirs_count'],
+      '| wt-* files expired', s['files_expired_count'], 'of', s['wt_files_count'])
+for w in sorted(p['tiers']['REAP'], key=lambda w:-(w.get('idle_days') or 0)): print('REAP   ', w['dir'], f"[{w.get('shape')}]", '|', w.get('gc_reason'))
 for w in p['reclaim']: print('RECLAIM', w['dir'], '|', w.get('gc_reason'))
 for w in p['tiers']['NO-PR']: print('NO-PR  ', w['dir'], '|', w.get('gc_reason'))
-"
+for w in p['tiers']['KEEP']:
+    if w.get('shape') in ('orphan', 'plain') or w.get('dependents'): print('KEEP   ', w['dir'], f"[{w.get('shape')}]", '|', w.get('gc_reason'))
+for r in p['runs_expired']: print('EXPIRE  runs/' + r['name'], '| idle', r.get('idle_days'), 'd')
+for r in p['scratch_expired']: print('EXPIRE ', r['name'], '| idle', r.get('idle_days'), 'd', '| git:', [g['shape'] for g in r.get('git_inside') or []])
+for r in json.load(open(sys.argv[2])): print('REFER  ', r['name'], f"[{r.get('shape')}]", '| idle', r.get('idle_days'), 'd | size', r.get('size_gb'), 'GB', '| DORMANT-LARGE' if r.get('dormant_large') else '')
+PY
   exit 0
 fi
 
 wake=false
 [ ${#errors[@]} -gt 0 ] && wake=true
 [ -n "$FREE_AFTER" ] && [ -n "$TOTAL" ] && [ "$TOTAL" -gt 0 ] && [ $(( FREE_AFTER * 100 / TOTAL )) -lt "$ESCALATE_PCT" ] && wake=true
-printf '{"wakeAgent": %s, "data": {"free_gb": %s, "reaped": %d, "build_reclaimed": %d, "left_for_next_run": %d, "errors": %d, "plan": %s}}\n' \
-  "$wake" "${FREE_AFTER:-0}" "$reaped" "$reclaimed" "$partial" "${#errors[@]}" "$SUMMARY"
+printf '{"wakeAgent": %s, "data": {"free_gb": %s, "reaped": %d, "build_reclaimed": %d, "runs_expired": %d, "scratch_expired": %d, "files_expired": %d, "trash_drained": %d, "left_for_next_run": %d, "skipped": %d, "errors": %d, "plan": %s}}\n' \
+  "$wake" "${FREE_AFTER:-0}" "$reaped" "$reclaimed" "$runs_expired" "$scratch_expired" "$files_expired" "$drained" "$left" "${#skipped[@]}" "${#errors[@]}" "$SUMMARY"

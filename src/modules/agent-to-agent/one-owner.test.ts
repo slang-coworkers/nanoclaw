@@ -15,6 +15,7 @@ import { createDestination } from './db/agent-destinations.js';
 import { setMessagePolicy } from './db/agent-message-policies.js';
 import { closeDb, createAgentGroup, initTestDb, runMigrations } from '../../db/index.js';
 import { getDb } from '../../db/connection.js';
+import { recordGhThreadOrigin } from '../../db/gh-thread-origin.js';
 import { createSession } from '../../db/sessions.js';
 import { GuardDenyError } from '../../guard/index.js';
 import { inboundDbPath, outboundDbPath } from '../../mailbox/sqlite/paths.js';
@@ -138,6 +139,14 @@ describe('a2a.send — one owner per GitHub work item', () => {
     orch = await addSession(session('sess-orch', ORCH, 'system:tasks:watch-13406-owner-stop'));
     owner = await addSession(session('sess-owner', FIXER, CANONICAL, '2026-08-05T04:08:44.002Z'));
     writeCostCap(owner, { capUsd: 150, spentUsd: 295.72, status: 'escalated', ceilingUsd: 300, window: 'lifetime' });
+    // The webhook has reported an issue from shader-slang/slang, so its threads are known.
+    await recordGhThreadOrigin({
+      threadId: CANONICAL,
+      repo: 'shader-slang/slang',
+      number: 11709,
+      kind: 'issue',
+      author: 'someone',
+    });
   });
 
   afterEach(async () => {
@@ -233,5 +242,87 @@ describe('a2a.send — one owner per GitHub work item', () => {
     await routeAgentMessage(resumeMsg({ thread_id: `${CANONICAL}/fresh-budget` }), owner);
     expect(await fixerSessionsOn(`${CANONICAL}/fresh-budget`)).toHaveLength(0);
     expect(senderNotices(owner)).toHaveLength(1);
+  });
+});
+
+describe('a2a.send — a fresh session needs a known GitHub thread', () => {
+  let orch: Session;
+
+  beforeEach(async () => {
+    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    await runMigrations(await initTestDb());
+    vi.mocked(requestApproval).mockClear();
+    await createAgentGroup({ id: ORCH, name: 'Orchestrator', folder: 'main', agent_provider: null, created_at: now() });
+    await createAgentGroup({
+      id: FIXER,
+      name: 'slang-fixer',
+      folder: 'slang-fixer',
+      agent_provider: null,
+      created_at: now(),
+    });
+    await createDestination({
+      agent_group_id: ORCH,
+      local_name: 'slang-fixer',
+      target_type: 'agent',
+      target_id: FIXER,
+      created_at: now(),
+    });
+    orch = await addSession(session('sess-orch', ORCH, 'gh-issue-shader-slang/slang-12371'));
+    await recordGhThreadOrigin({
+      threadId: 'gh-issue-shader-slang/slang-12371',
+      repo: 'shader-slang/slang',
+      number: 12371,
+      kind: 'issue',
+      author: 'someone',
+    });
+  });
+
+  afterEach(async () => {
+    await closeDb();
+    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+  });
+
+  it('refuses a thread whose repo no GitHub event has come from, and tells the sender once', async () => {
+    // The prod typo: `slang/slang` for `shader-slang/slang`.
+    await routeAgentMessage(resumeMsg({ thread_id: 'gh-issue-slang/slang-12371' }), orch);
+
+    expect(await fixerSessionsOn('gh-issue-slang/slang-12371')).toHaveLength(0);
+    expect(requestApproval).not.toHaveBeenCalled();
+    expect(await pendingApprovalCount()).toBe(0);
+    expect(senderNotices(orch)).toEqual([
+      'Your message to slang-fixer was not delivered: gh-issue-slang/slang-12371 names repo slang/slang, ' +
+        'which no GitHub issue or PR event has come from (known: shader-slang/slang). ' +
+        "Resend it on the item's canonical thread, gh-issue-<owner>/<repo>-<number> as the webhook writes it, " +
+        'or leave thread_id empty to stay on your own thread.',
+    ]);
+  });
+
+  it('refuses a GitHub-prefixed thread that names no item', async () => {
+    await routeAgentMessage(resumeMsg({ thread_id: 'gh-issue-shader-slang/slang-backend-codegen-perf' }), orch);
+    await routeAgentMessage(resumeMsg({ thread_id: 'gh-pr-slang-rhi-881-review' }), orch);
+    expect(await fixerSessionsOn('gh-issue-shader-slang/slang-backend-codegen-perf')).toHaveLength(0);
+    expect(await fixerSessionsOn('gh-pr-slang-rhi-881-review')).toHaveLength(0);
+    const notices = senderNotices(orch);
+    expect(notices).toHaveLength(2);
+    expect(notices[1]).toContain('gh-pr-slang-rhi-881-review is not a GitHub item thread');
+  });
+
+  it('delivers on a known repo, on a sub-thread of it, and on non-GitHub threads', async () => {
+    await routeAgentMessage(resumeMsg({ thread_id: 'gh-issue-shader-slang/slang-12371' }), orch);
+    await routeAgentMessage(resumeMsg({ thread_id: 'gh-pr-shader-slang/slang-14502/review' }), orch);
+    await routeAgentMessage(resumeMsg({ thread_id: 'review-PR-A' }), orch);
+    expect(await fixerSessionsOn('gh-issue-shader-slang/slang-12371')).toHaveLength(1);
+    expect(await fixerSessionsOn('gh-pr-shader-slang/slang-14502/review')).toHaveLength(1);
+    expect(await fixerSessionsOn('review-PR-A')).toHaveLength(1);
+    expect(senderNotices(orch)).toHaveLength(0);
+  });
+
+  it('still delivers into an existing session on such a thread: only a fresh session is refused', async () => {
+    const legacy = await addSession(session('sess-legacy', FIXER, 'gh-issue-slang/slang-12371'));
+    await routeAgentMessage(resumeMsg({ thread_id: 'gh-issue-slang/slang-12371', target_session_id: legacy.id }), orch);
+    expect(await fixerSessionsOn('gh-issue-slang/slang-12371')).toHaveLength(1);
+    expect(readInbound(FIXER, legacy.id)).toHaveLength(1);
+    expect(senderNotices(orch)).toHaveLength(0);
   });
 });
