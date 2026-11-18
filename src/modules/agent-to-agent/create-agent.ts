@@ -45,6 +45,7 @@ import { initGroupFilesystem } from '../../group-init.js';
 import { PERSONA_PREPEND_FILE } from '../../group-persona.js';
 import { isValidGroupFolder } from '../../group-folder.js';
 import { log } from '../../log.js';
+import { resolveProviderName } from '../../providers/provider-name.js';
 import { writeSessionMessage } from '../../session-manager.js';
 import { createAgentFromTemplate, templateFolder } from '../../templates/create-agent.js';
 import { isValidTemplateRef } from '../../templates/local-dir.js';
@@ -218,9 +219,16 @@ export async function createAgent(
   // Subagent path: a child inherits its creator's EFFECTIVE provider, NOT the
   // instance-wide default — so a child is never spawned on a runtime the parent
   // can't reach (e.g. a codex-only install where claude isn't authenticated).
-  // A NULL parent resolves to claude. The operator can still flip a child
-  // later with `ncl groups config update --provider`.
-  const parentProvider = (await getContainerConfig(sourceGroup.id))?.provider ?? 'claude';
+  // The parent's provider resolves through the group tiers as at spawn: its
+  // own agent_provider, else its container config, else the install default.
+  // The operator can still flip a child later with
+  // `ncl groups update --agent-provider`.
+  const parentProvider = resolveProviderName({
+    override: undefined,
+    session: undefined,
+    group: sourceGroup.agent_provider,
+    config: (await getContainerConfig(sourceGroup.id))?.provider,
+  });
 
   if (template) {
     await createFromTemplate(template, name, localName, parentProvider, session, sourceGroup, notify, options);
@@ -431,10 +439,9 @@ async function performCreateAgent(
   // call was redundant with that and is dropped. We still do NOT pass
   // `instructions` here: the fork writes .instructions.md itself below (overlay +
   // seed), so passing it would double-write the seed.
-  // `parentProvider` comes from createAgent with a `?? 'claude'` fallback, so a
-  // claude parent pins the child to claude explicitly rather than letting
-  // ensureContainerConfig fall back to the instance-wide DEFAULT_AGENT_PROVIDER
-  // (which could be codex on a codex-default install).
+  // `parentProvider` is the parent's resolved provider, so a claude parent pins
+  // the child to claude explicitly (with weights `any`, see
+  // ensureContainerConfig) rather than leaving it on the install default.
   await initGroupFilesystem(newGroup, { provider: parentProvider });
 
   // Resolve instruction overlay — prepended to .instructions.md (the fork's

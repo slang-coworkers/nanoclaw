@@ -205,8 +205,23 @@ export function approvalCardThread(session: Session, target: MessagingGroup): st
 
 /** Send a system chat to the agent's session. Used by callers and by the response handler. */
 export async function notifyAgent(session: Session, text: string): Promise<void> {
+  await notifyAgentWithId(session, text);
+}
+
+/** A fresh id for a system chat to an agent's session. */
+export function systemMessageId(): string {
+  return `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/**
+ * Send a system chat to the agent's session, like notifyAgent, under `id`, and
+ * return the id. A caller that tracks the message (to see when the runner
+ * claims it) stores the id before sending, so a failed send leaves a record of
+ * the attempt rather than the previous message's.
+ */
+export async function notifyAgentWithId(session: Session, text: string, id = systemMessageId()): Promise<string> {
   await writeSessionMessage(session.agent_group_id, session.id, {
-    id: `sys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    id,
     kind: 'chat',
     timestamp: new Date().toISOString(),
     // System notification — channelType='system' / platformId=null so the
@@ -219,6 +234,7 @@ export async function notifyAgent(session: Session, text: string): Promise<void>
   });
   const fresh = await getSession(session.id);
   if (fresh) await requestWake(fresh, 'inbound-message');
+  return id;
 }
 
 export interface RequestApprovalOptions {

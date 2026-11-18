@@ -3,9 +3,10 @@ import path from 'path';
 
 import { AnchoredDir } from './anchored-dir.js';
 import { resolveMirroredSkillScope } from './claude-composer.js';
-import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
+import { DATA_DIR, GROUPS_DIR } from './config.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
+import { installDefaultProvider } from './model-policy.js';
 import { log } from './log.js';
 import {
   CLAUDE_DEFAULT_SETTINGS,
@@ -122,14 +123,15 @@ export async function initGroupFilesystem(
   const projectRoot = process.cwd();
   const initialized: string[] = [];
 
-  // `opts.provider` absent means "caller has no provider opinion" — for a
-  // brand-new group that resolves to the instance default, so the scaffold and
-  // the stamped config row both match it. A caller that knows the provider
-  // (subagent → parent's, spawn → resolved, setup → operator's pick) passes it
-  // explicitly — including `claude` — which pins the group and skips the
-  // default. ensureContainerConfig is INSERT OR IGNORE, so this only stamps a
-  // genuinely new group; existing rows are never touched.
-  const providerHint = (opts?.provider ?? DEFAULT_AGENT_PROVIDER).toLowerCase();
+  // `opts.provider` absent means "caller has no provider opinion": the group
+  // runs on its own `agent_provider`, else the install default, so the scaffold
+  // is prepared for that one, and the config row stays empty so the group keeps
+  // following the default. A caller that knows the provider (subagent →
+  // parent's, spawn → resolved, setup → operator's pick) passes it explicitly —
+  // including `claude` — which pins the group. ensureContainerConfig is INSERT
+  // OR IGNORE, so this only stamps a genuinely new group; existing rows are
+  // never touched.
+  const providerHint = (opts?.provider ?? group.agent_provider ?? installDefaultProvider()).toLowerCase();
 
   // Default agent surfaces apply unless the provider declares (at registration)
   // that it provides its own.
@@ -210,9 +212,9 @@ export async function initGroupFilesystem(
 
   // Ensure container_configs row exists in the DB. Idempotent — no-op if
   // the row already exists (e.g. created by backfill or group creation). On a
-  // fresh row, stamp the resolved provider hint so a new group is created on
-  // the instance default (or the caller's explicit pick).
-  await ensureContainerConfig(group.id, providerHint);
+  // fresh row, stamp only the caller's explicit pick: a group created without
+  // one follows the install default.
+  await ensureContainerConfig(group.id, opts?.provider);
   initialized.push('container_configs');
 
   // 2. data/v2-sessions/<id>/.claude-shared/ — Claude state + per-group skills

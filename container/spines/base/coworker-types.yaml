@@ -30,6 +30,14 @@ base-common:
     # (create_agent, install_packages) is attached to the `main` coworker type
     # directly and not inherited by typed coworkers.
     - container/spines/base/context/workspace.md
+    # The Recall rule has its own file because `main` lists it too, and main
+    # cannot take workspace.md, whose `/workspace/shared/` (ro) bullet is false
+    # for the one type that writes there. It follows workspace.md, which sends
+    # the reader to "the recall rule below". Authored at `##`: typed
+    # composition re-levels it to `### Recall rule` under `## Context` (the
+    # workflows cite it as **Context › Recall rule**), and flat `main` emits it
+    # verbatim as its own section.
+    - container/spines/base/context/recall.md
     - container/spines/base/context/learnings.md
     - container/spines/base/context/invocation.md
     # Both ncl-* are listed; the composer picks one based on agent_groups.cli_scope:
@@ -90,8 +98,15 @@ main:
     # ask_user_question vs send_card, install_packages/add_mcp_server admin
     # flow) and universal core + scheduling nuance. Main is flat so it can't
     # invoke `/base-nanoclaw` as a skill — the baked-in refs are its only
-    # access to tool nuance. Order: messaging first (most-used), then
-    # delegation patterns, then the rest.
+    # access to tool nuance. Order: the Recall rule first, then messaging
+    # (most-used), then delegation patterns, then the rest.
+    #
+    # The Recall rule is the step main runs before investigating anything, so
+    # it leads the context and renders as `## Recall rule` right after the
+    # runtime contract. Typed coworkers get the same file through base-common;
+    # main is flat, so it lists the file directly, and main-body.md's
+    # `## Memory` section links to it rather than restating the procedure.
+    - container/spines/base/context/recall.md
     - container/spines/base/tool-instructions/core.md
     - container/spines/base/tool-instructions/agents.md
     - container/spines/base/tool-instructions/wire-agents.md
