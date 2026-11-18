@@ -181,6 +181,19 @@ export function startHostSweep(): void {
           log.error('Closed-session mail scan failed', { err });
         }
       },
+      // Worktree GC coverage: every group whose directory holds checkouts, build
+      // logs or run output carries the canonical hourly `worktree-gc` task, and
+      // writes the host's coverage proof the supervisor's readout checks. The
+      // pass decides itself whether it is due (once an hour), so most ticks
+      // return at once. See src/modules/worktree-gc/index.ts.
+      'singleton:worktree-gc-coverage': async () => {
+        try {
+          const { reconcileWorktreeGcCoverage } = await import('./modules/worktree-gc/index.js');
+          await reconcileWorktreeGcCoverage();
+        } catch (err) {
+          log.error('Worktree GC coverage pass failed', { err });
+        }
+      },
       // Daily cost-ledger vs gateway drift check (opt-in, NANOCLAW_COST_DRIFT_CHECK).
       // Only decides whether a run is due; the run is detached and single-flight,
       // so it never holds a tick open. Read-only against every DB.
@@ -251,6 +264,7 @@ async function sweep(): Promise<void> {
   tickQueue.add('singleton:cost-ceiling-adjustments');
   tickQueue.add('singleton:cost-drift-check');
   tickQueue.add('singleton:closed-session-mail');
+  tickQueue.add('singleton:worktree-gc-coverage');
   tickQueue.add('singleton:orphan-containers');
 
   // The tick ends — and the next one is armed — only after everything this

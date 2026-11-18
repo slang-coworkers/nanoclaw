@@ -395,5 +395,182 @@ class GateTest(unittest.TestCase):
         self.assertTrue((self.s.agent / "wt-notes").exists())
 
 
+    # --- Top-level checkouts with no per-task name ------------------------------
+    # Prod on 2026-11-17 held checkouts the GC never saw because their names match
+    # no convention: rev-1179-base, slang-13742-pr, falcor-13876, r0-origin.git,
+    # spec, SPIRV-Tools. Discovery now finds every top-level git repository.
+
+    def other_clone(self, name, days):
+        """A standalone clone of a repository that is not one of the bases."""
+        src = self.s.tmp / "upstream"
+        if not src.exists():
+            git(self.s.tmp, "init", "-q", "-b", "main", str(src), days_ago=days)
+            (src / "r.txt").write_text("r\n")
+            git(src, "add", "-A")
+            git(src, "commit", "-qm", "init", days_ago=days)
+        git(self.s.agent, "clone", "-q", str(src), name, days_ago=days)
+        return self.s.agent / name
+
+    def test_numbered_checkouts_without_a_per_task_name_are_scratch_and_reaped(self):
+        rev = self.s.clone(self.slang, "rev-1179-base")
+        falcor = self.other_clone("falcor-13876", OLD_DAYS)
+        (falcor / "r.txt").write_text("local repro edit\n")
+        # A worktree of a clone that is not a base: no base registers it, so only the
+        # top-level walk finds it, and its clone stays while the worktree lives.
+        owner = self.s.clone(self.slang, "slang-11225")
+        pr = self.s.agent / "slang-13742-pr"
+        git(owner, "worktree", "add", "-q", "--detach", str(pr), days_ago=OLD_DAYS)
+        self.s.age_all()
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertEqual(out["data"]["reaped"], 3, self.s.report())
+        for tree in (rev, falcor, pr):
+            self.assertFalse(tree.exists(), tree.name)
+        self.assertTrue(owner.exists())
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("falcor-13876.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+        self.assertEqual(self.s.report()["plan"]["kinds"], {"scratch": 4}, self.s.report())
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["reaped"], 1, self.s.report())
+        self.assertFalse(owner.exists())
+
+    def test_numbered_bare_repository_expires_after_saving(self):
+        bare = self.s.agent / "origin-13388.git"
+        git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), bare.name, days_ago=30)
+        sh("git", "--git-dir", str(bare), "branch", "-q", "review-head", "master")
+        self.s.age_all(30)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertEqual(out["data"]["scratch_expired"], 1, self.s.report())
+        self.assertFalse(bare.exists())
+
+    def test_reference_clones_are_never_removed_and_are_reported_with_their_size(self):
+        # slang-playground and slang-bump on prod: read every day, HEAD unmoved for months.
+        spec = self.other_clone("spec", 400)
+        git(self.s.agent, "clone", "-q", "--bare", "--shared", str(self.slang), "r0-origin.git", days_ago=400)
+        self.s.age_all(400)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertEqual(out["data"]["reaped"] + out["data"]["scratch_expired"], 0, self.s.report())
+        self.assertTrue(spec.exists())
+        self.assertTrue((self.s.agent / "r0-origin.git").exists())
+        report = self.s.report()
+        self.assertEqual(report["plan"]["kinds"], {"reference": 2}, report)
+        refs = {r["name"]: r for r in report["references"]}
+        self.assertEqual(set(refs), {"spec", "r0-origin.git"}, report)
+        for r in refs.values():
+            self.assertIsInstance(r["size_gb"], float, r)
+            self.assertGreaterEqual(r["idle_days"], 399, r)
+            self.assertFalse(r["dormant_large"], r)  # far below REFERENCE_LARGE_GB
+        self.assertEqual(refs["r0-origin.git"]["shape"], "bare")
+
+        # A size measured within REFERENCE_SIZE_TTL_H is reused, not measured again.
+        measured = {n: r["size_measured_at"] for n, r in refs.items()}
+        self.s.run("--gate")
+        again = {r["name"]: r["size_measured_at"] for r in self.s.report()["references"]}
+        self.assertEqual(again, measured)
+
+    def test_durable_directories_are_never_collected_even_as_repositories(self):
+        for name in ("memory", "tools", "plugins"):
+            git(self.s.agent, "init", "-q", "-b", "main", name, days_ago=400)
+            (self.s.agent / name / "x.md").write_text("x\n")
+        self.s.age_all(400)
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        for name in ("memory", "tools", "plugins"):
+            self.assertTrue((self.s.agent / name).exists(), name)
+        self.assertEqual(self.s.report()["plan"]["counts"]["REAP"], 0, self.s.report())
+
+
+    # --- Submodules borrowed from another checkout -------------------------------
+    # eval-slang-reviewer on 2026-11-17: reviewers copied `external/` between
+    # checkouts, so submodule `.git` files in one tree named another tree's
+    # `slang/.git/worktrees/<donor>/modules/...`. Reaping the donor pruned that
+    # directory; every save of a copy then died in `git add -A` / `git status`
+    # with "not a git repository", hour after hour.
+
+    def base_with_submodule(self):
+        """Give the slang base a submodule at external/sub, as slang has many."""
+        sub = self.s.tmp / "subsrc"
+        git(self.s.tmp, "init", "-q", "-b", "main", str(sub), days_ago=OLD_DAYS)
+        (sub / "s.txt").write_text("s\n")
+        git(sub, "add", "-A")
+        git(sub, "commit", "-qm", "s", days_ago=OLD_DAYS)
+        git(self.slang, "-c", "protocol.file.allow=always", "submodule", "add", "-q", str(sub), "external/sub")
+        git(self.slang, "commit", "-qm", "sub", days_ago=OLD_DAYS)
+
+    def donor_with_initialized_submodule(self, name):
+        donor = self.s.worktree(self.slang, name)
+        git(donor, "-c", "protocol.file.allow=always", "submodule", "update", "-q", "--init")
+        # The donor's submodule moves on and is edited, so a copy's gitlink no longer
+        # matches its checkout and git must open the submodule to compare them.
+        sub = donor / "external" / "sub"
+        (sub / "s2.txt").write_text("moved\n")
+        git(sub, "add", "-A")
+        git(sub, "commit", "-qm", "moved", days_ago=OLD_DAYS)
+        (sub / "s.txt").write_text("dirty\n")
+        return donor
+
+    def copy_submodule(self, donor, tree):
+        shutil.rmtree(tree / "external" / "sub")
+        shutil.copytree(donor / "external" / "sub", tree / "external" / "sub", symlinks=True)
+
+    def reap_by_hand(self, tree):
+        """What a pre-fix run did to a donor: move it away and prune its record."""
+        shutil.move(str(tree), str(self.s.tmp / f"gone-{tree.name}"))
+        git(self.slang, "worktree", "prune")
+
+    def test_checkout_whose_admin_dir_holds_another_checkouts_submodules_goes_last(self):
+        self.base_with_submodule()
+        donor = self.donor_with_initialized_submodule("wt-11125-r1")
+        copy = self.s.worktree(self.slang, "wt-11541-r1")
+        self.copy_submodule(donor, copy)
+        (copy / "f.txt").write_text("review notes\n")
+        self.s.age_all()
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertTrue(donor.exists(), self.s.report())
+        self.assertFalse(copy.exists(), self.s.report())
+        self.assertIn("wip/reap/wt-11541-r1", self.saved_branches(self.slang))
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(donor.exists(), self.s.report())
+
+    def test_worktree_with_a_dangling_submodule_is_saved_and_reaped(self):
+        self.base_with_submodule()
+        donor = self.donor_with_initialized_submodule("wt-11125-r1")
+        copy = self.s.worktree(self.slang, "wt-11541-r1")
+        self.copy_submodule(donor, copy)
+        (copy / "f.txt").write_text("review notes\n")
+        (copy / "notes.md").write_text("untracked\n")
+        self.reap_by_hand(donor)
+        self.s.age_all()
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(copy.exists(), self.s.report())
+        saved = git(self.slang, "show", "--stat", "--format=%s", "wip/reap/wt-11541-r1").stdout
+        self.assertIn("f.txt", saved)
+        self.assertIn("notes.md", saved)
+        self.assertNotIn("external/sub", saved)
+
+    def test_clone_with_a_dangling_submodule_is_bundled_and_reaped(self):
+        self.base_with_submodule()
+        donor = self.donor_with_initialized_submodule("wt-11125-r1")
+        clone = self.s.clone(self.slang, "wt-13000-revA")
+        self.copy_submodule(donor, clone)
+        (clone / "f.txt").write_text("local fix\n")
+        self.reap_by_hand(donor)
+        self.s.age_all()
+
+        out = self.s.run("--gate")
+        self.assertEqual(out["data"]["errors"], 0, self.s.report())
+        self.assertFalse(clone.exists(), self.s.report())
+        bundles = list((self.s.agent / ".worktree-gc" / "saved").glob("wt-13000-revA.*.bundle"))
+        self.assertEqual(len(bundles), 1, self.s.report())
+
 if __name__ == "__main__":
     unittest.main()

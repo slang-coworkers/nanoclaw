@@ -13,7 +13,12 @@ import os from 'os';
 import path from 'path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
+import {
+  CONTAINER_BUILD_JOBS,
+  CONTAINER_CPU_LIMIT,
+  CONTAINER_MEMORY_LIMIT,
+  resolveContainerBuildJobs,
+} from './config.js';
 import type { CapDiagnostics } from './claude-composer/project-doc.js';
 import type { ContainerConfig } from './container-config.js';
 import {
@@ -82,8 +87,16 @@ describe('resolveProviderName', () => {
     expect(resolveProviderName(tiers(null, null, 'opencode'))).toBe('opencode');
   });
 
-  it('defaults to claude when nothing is set', () => {
-    expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
+  it('defaults to the install default when nothing is set', () => {
+    vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', '');
+    vi.stubEnv('DEFAULT_AGENT_PROVIDER', '');
+    try {
+      expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('opencode');
+      vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', 'any');
+      expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('lowercases the resolved name', () => {
@@ -102,7 +115,12 @@ describe('resolveProviderName', () => {
   it('treats empty string as unset (falls through)', () => {
     expect(resolveProviderName(tiers('', 'opencode', null))).toBe('opencode');
     expect(resolveProviderName(tiers(null, '', 'codex'))).toBe('codex');
-    expect(resolveProviderName(tiers(null, '', ''))).toBe('claude');
+    vi.stubEnv('DEFAULT_AGENT_PROVIDER', 'pi');
+    try {
+      expect(resolveProviderName(tiers(null, '', ''))).toBe('pi');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
@@ -521,11 +539,18 @@ describe('composeSessionSpec', () => {
     expect(spec.containers[0].env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
   });
 
+  it('caps cmake --build at a fair share of the host cores', async () => {
+    expect(CONTAINER_BUILD_JOBS).toBe(resolveContainerBuildJobs(undefined, os.availableParallelism()));
+    expect((await compose()).containers[0].env.CMAKE_BUILD_PARALLEL_LEVEL).toBe(String(CONTAINER_BUILD_JOBS));
+  });
+
   it('passes non-secret mailbox environment on the composed lane', async () => {
     expect((await compose()).containers[0].env.NANOCLAW_MAILBOX_BACKEND).toBe('sqlite');
   });
 
   it('forwards the host fallback model so the SDK never falls back to its built-in default', async () => {
+    // An install whose default is Claude: an open-weights group would get its open small model instead.
+    vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', 'any');
     vi.stubEnv('ANTHROPIC_FALLBACK_MODEL', 'aws/anthropic/bedrock-claude-sonnet-5-5');
     try {
       expect((await compose()).containers[0].env.ANTHROPIC_FALLBACK_MODEL).toBe(
@@ -1332,10 +1357,16 @@ describe('composeSessionSpec applies the per-group model policy', () => {
   });
 
   it('refuses to start a Claude group set to open weights', async () => {
-    await seedGroup('ag-policy-claude', null, 'open');
+    await seedGroup('ag-policy-claude', 'claude', 'open');
     await expect(
       composeSessionSpec({
-        agentGroup: { ...agentGroup, id: 'ag-policy-claude', name: 'ag-policy-claude', folder: 'ag-policy-claude' },
+        agentGroup: {
+          ...agentGroup,
+          id: 'ag-policy-claude',
+          name: 'ag-policy-claude',
+          folder: 'ag-policy-claude',
+          agent_provider: 'claude',
+        },
         session,
         containerName: 'nanoclaw-v2-policy-claude-1700000000000',
         mounts,
@@ -1343,6 +1374,7 @@ describe('composeSessionSpec applies the per-group model policy', () => {
         mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
         contribution: {} as never,
         gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+        provider: 'claude',
         instanceId: 'test-instance-id',
       }),
     ).rejects.toThrow('Model policy refuses to start group "ag-policy-claude"');

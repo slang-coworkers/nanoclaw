@@ -451,12 +451,13 @@ describe('groups config (host-only)', () => {
         { caller: 'host' },
       );
 
+    // A Claude group (its config row names claude): claude is the provider that declares speed tiers.
     beforeEach(async () => {
       await createAgentGroup({ id: GID, name: 's', folder: 's', agent_provider: null, created_at: now() });
-      await ensureContainerConfig(GID);
+      await ensureContainerConfig(GID, 'claude');
     });
 
-    it('accepts each tier Claude declares for a group on the default provider', async () => {
+    it('accepts each tier Claude declares for a group on the claude provider', async () => {
       for (const speed of ['standard', 'fast']) {
         expect((await setSpeed(speed)).ok).toBe(true);
         expect(await speedOf()).toBe(speed);

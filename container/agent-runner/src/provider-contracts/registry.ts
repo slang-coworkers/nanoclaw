@@ -94,11 +94,28 @@ export interface RuntimeAfterExchangeInput {
   exchange: ProviderExchange;
 }
 
+export interface RuntimeArchiveContinuationInput {
+  /** The provider's own stored continuation id for this session. */
+  continuation: string;
+  assistantName?: string;
+  log(message: string): void;
+}
+
 export interface RuntimeHistoryCallbacks {
   /** Provider-owned work after core observes a completed exchange. */
   afterExchange?(input: RuntimeAfterExchangeInput, fx: RuntimeCallbackEffects): string | null;
   /** Provider-owned trace lookup for diagnostics (`/upload-trace`). */
   readTrace?(): string | null;
+  /**
+   * Provider-owned: write the conversation behind one of this provider's stored
+   * continuations as a readable file in the conversations directory, and return
+   * the file's path, or null when no readable transcript exists. Core calls it
+   * when a session starts on a different provider, because that conversation
+   * does not continue there. It must not delete the provider's own copy, so a
+   * switch back still resumes it. A provider whose history lives elsewhere
+   * omits it.
+   */
+  archiveContinuation?(input: RuntimeArchiveContinuationInput, fx: RuntimeCallbackEffects): string | null;
 }
 
 export interface ProviderRuntimeContract {

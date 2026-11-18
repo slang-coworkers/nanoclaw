@@ -146,6 +146,15 @@ export interface ResourceDef {
    * rolled-back row.
    */
   postCommit?: (row: Record<string, unknown>) => void | Promise<void>;
+  /**
+   * Adds derived fields to the rows the generic `list` and `get` return, after
+   * the SELECT and before the dispatcher's group-scope filter. A resource whose
+   * stored column is only one input of what the row means uses this to show the
+   * outcome too: a session's `agent_provider` is a pin, and the provider it
+   * runs on also depends on its group, so `sessions` adds `effective_provider`.
+   * Must return one row per input row and keep every stored column.
+   */
+  presentRows?: (rows: Record<string, unknown>[]) => Promise<Record<string, unknown>[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,7 +223,11 @@ function genericList(def: ResourceDef) {
     // Newest first: without an ORDER BY the LIMIT silently hides the most
     // recently inserted rows once a table outgrows it (bit `sessions list`
     // past 200 sessions — a just-created session was invisible).
-    return getDb().all(`SELECT ${cols} FROM ${def.table}${where} ORDER BY ${listOrder(def)} LIMIT ?`, ...params);
+    const rows = await getDb().all<Record<string, unknown>>(
+      `SELECT ${cols} FROM ${def.table}${where} ORDER BY ${listOrder(def)} LIMIT ?`,
+      ...params,
+    );
+    return def.presentRows ? def.presentRows(rows) : rows;
   };
 }
 
@@ -223,9 +236,12 @@ function genericGet(def: ResourceDef) {
   return async (args: Record<string, unknown>) => {
     const id = args.id as string;
     if (!id) throw new Error(`${def.name} id is required`);
-    const row = await getDb().get(`SELECT ${cols} FROM ${def.table} WHERE ${def.idColumn} = ?`, id);
+    const row = await getDb().get<Record<string, unknown>>(
+      `SELECT ${cols} FROM ${def.table} WHERE ${def.idColumn} = ?`,
+      id,
+    );
     if (!row) throw new Error(`${def.name} not found: ${id}`);
-    return row;
+    return def.presentRows ? (await def.presentRows([row]))[0] : row;
   };
 }
 

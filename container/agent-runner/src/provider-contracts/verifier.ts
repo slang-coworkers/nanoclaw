@@ -102,6 +102,9 @@ function validateContract(provider: string, contract: ProviderRuntimeContract): 
     if (contract.history.readTrace !== undefined) {
       requireFunction(contract.history.readTrace, `${provider}.history.readTrace`);
     }
+    if (contract.history.archiveContinuation !== undefined) {
+      requireFunction(contract.history.archiveContinuation, `${provider}.history.archiveContinuation`);
+    }
   }
 
   assertAllowed(contract.textDelivery, ['mid-turn-complete', 'result'], `${provider}.textDelivery`);
@@ -133,8 +136,7 @@ function probeConfiguration(provider: string, contract: ProviderRuntimeContract,
   for (const capability of INPUT_CAPABILITY_NAMES) {
     const field = `${provider}.configuration.${capability}`;
     const implementation = contract.configuration[capability] as
-      | Capability<RuntimeConfigurationInputs[typeof capability]>
-      | undefined;
+      Capability<RuntimeConfigurationInputs[typeof capability]> | undefined;
     // A declared constant has nothing to respond to; only functions are probed.
     if (implementation === undefined || typeof implementation !== 'function') continue;
     const fixture = (probes[capability] ?? DEFAULT_PROBES[capability]) as ProbeFixture<typeof capability>;

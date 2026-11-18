@@ -55,6 +55,18 @@ https://www.onecli.sh/docs/guides/credential-stubs/general-app
 
 ## When a Request Fails
 
+**GitHub with partial coverage.** The gateway may inject GitHub credentials only for the paths an operator
+configured. Check GitHub access by reading the repository you will write to:
+
+```bash
+gh api repos/<owner>/<repo> --jq .id
+```
+
+If that read succeeds, a 401 or `app_not_connected` from `gh auth status`, `gh api rate_limit` or an
+unrelated repository only means that path is not covered. It is not an outage: skip the steps below, show
+no connect link, and do not gate work on those calls. A connect link would add a second, personal GitHub
+identity next to the configured one. If the repository read itself fails, follow the steps below.
+
 Check the `error` code in the response before the status. The gateway keeps
 the service's status, which can be 400, 401 or 403.
 

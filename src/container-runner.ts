@@ -31,6 +31,7 @@ import {
 import { PROJECT_DOC_MAX_BYTES, ProjectDocTooLargeError } from './claude-composer/doc-size-cap.js';
 import { renderProjectDoc, type CapDiagnostics } from './claude-composer/project-doc.js';
 import {
+  CONTAINER_BUILD_JOBS,
   CONTAINER_CPU_LIMIT,
   CONTAINER_IMAGE,
   CONTAINER_IMAGE_BASE,
@@ -56,8 +57,8 @@ import {
   sanitizeStoredMcpServers,
 } from './container-config.js';
 import { getAllContainerConfigs, getContainerConfig, updateContainerConfigScalars } from './db/container-configs.js';
-import { modelPolicyEnv, modelPolicyViolations, resolveGroupModels } from './model-policy.js';
-import { privilegeEnforced, rowForPrivilege, sessionPrivilegeOf } from './modules/session-privilege/index.js';
+import { installDefaultProvider, modelPolicyEnv, modelPolicyViolations } from './model-policy.js';
+import { privilegeEnforced, resolveSessionModels, sessionPrivilegeOf } from './modules/session-privilege/index.js';
 // Only the binary name survives here: spawn argv, mounts, kill/stop and orphan
 // reaping now live behind the driver seam (hostGatewayArgs → the driver-private
 // networkArgsFor, readonlyMountArgs → MountSpec + mountArgs, stopContainer →
@@ -3418,9 +3419,10 @@ export async function composeSessionSpec(input: ComposeSessionSpecInput): Promis
   // would call a closed model does not start. The policy's keys go in one lane
   // only: the provider's contribution (e.g. OPENCODE_SMALL_MODEL from the host
   // .env) would otherwise win the collision and undo the group's setting.
-  const models = resolveGroupModels(
-    input.provider ?? 'claude',
-    rowForPrivilege((await getContainerConfig(agentGroup.id)) ?? {}, sessionPrivilegeOf(session)),
+  const models = resolveSessionModels(
+    input.provider ?? installDefaultProvider(),
+    (await getContainerConfig(agentGroup.id)) ?? {},
+    session,
   );
   const policyProblems = modelPolicyViolations(models);
   if (policyProblems.length > 0) {
@@ -3606,6 +3608,9 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
   // validates a hand-edited DB value.
   env.TZ = await resolveGroupTimezone(agentGroup.id);
   if (provider) env.AGENT_PROVIDER = provider;
+  // Read by `cmake --build`: each build that passes no -j takes a fair share
+  // of the host's cores, not all of them (config.ts resolveContainerBuildJobs).
+  if (CONTAINER_BUILD_JOBS !== undefined) env.CMAKE_BUILD_PARALLEL_LEVEL = String(CONTAINER_BUILD_JOBS);
 
   // claude-trace: point the SDK's executable at the wrapper mounted by
   // buildMounts. Unlike stock claude-trace (a require-hook, JS-only), this

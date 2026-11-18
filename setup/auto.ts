@@ -568,7 +568,7 @@ async function main(): Promise<void> {
     !skip.has('echo-reminder') &&
     !imageSourceDecided() &&
     readAgentImagePin() &&
-    (process.env.NANOCLAW_AGENT_PROVIDER || readEnvKey('DEFAULT_AGENT_PROVIDER') || DEFAULT_AGENT_PROVIDER || 'claude')
+    (process.env.NANOCLAW_AGENT_PROVIDER || readEnvKey('DEFAULT_AGENT_PROVIDER') || DEFAULT_AGENT_PROVIDER)
       .trim()
       .toLowerCase() === 'claude'
   ) {
@@ -1459,11 +1459,7 @@ async function chooseImageSource(): Promise<ImageSource | undefined> {
   // The runtime pick happens later (the auth step), so this is the best signal
   // available: an explicit preset, else the persisted install-wide default.
   // Getting it wrong in the permissive direction is caught at that pick.
-  const plannedProvider = (
-    process.env.NANOCLAW_AGENT_PROVIDER?.trim() ||
-    DEFAULT_AGENT_PROVIDER ||
-    'claude'
-  ).toLowerCase();
+  const plannedProvider = (process.env.NANOCLAW_AGENT_PROVIDER?.trim() || DEFAULT_AGENT_PROVIDER).toLowerCase();
   if (providerImagePolicy(plannedProvider) === 'local-required') {
     p.log.info(
       brandBody(

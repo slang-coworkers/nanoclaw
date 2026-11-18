@@ -19,7 +19,9 @@
  *
  * Resolution, per role: the group's own value (container_configs), else the
  * open-weights default when the group is `weights=open`, else the install's
- * setting for that provider. A group with `weights=open` must resolve every
+ * setting for that provider. A group whose `weights` column is empty follows
+ * the install default (installDefaultWeights), which is `open` unless the
+ * install sets NANOCLAW_DEFAULT_WEIGHTS=any. A group with `weights=open` must resolve every
  * role to an open-weights model; modelPolicyViolations names any role that
  * does not, and spawn refuses the group rather than run it on a closed model.
  *
@@ -66,8 +68,10 @@ export const MODEL_POLICY_ENV_KEYS = [
   'ANTHROPIC_DEFAULT_HAIKU_MODEL',
   'ANTHROPIC_MODEL',
   'CODEX_MODEL',
+  'DEFAULT_AGENT_PROVIDER',
   'INTENT_ROUTER_OPENAI_MODEL',
   'NANOCLAW_DEFAULT_MODEL',
+  'NANOCLAW_DEFAULT_WEIGHTS',
   'NANOCLAW_OPEN_CRITIC_MODEL',
   'NANOCLAW_OPEN_MODEL',
   'NANOCLAW_OPEN_ROUTER_MODEL',
@@ -104,11 +108,51 @@ const OPEN_WEIGHTS_PREFIXES = [
 const ROUTER_DEFAULT = 'openai/openai/gpt-6-luna'; // the intent-router hook's own default
 const CRITIC_DEFAULT = 'openai/openai/gpt-6.1-sol'; // the codex config.toml template default
 
-/** Return `weights` as stored, defaulting to "any"; reject anything else. */
-export function parseModelWeights(value: string | null | undefined): ModelWeights {
-  if (value === null || value === undefined || value === '' || value === 'any') return 'any';
-  if (value === 'open') return 'open';
+/**
+ * Return a group's weights: its stored value, or the install default when the
+ * column is empty; reject anything but "any" and "open".
+ */
+export function parseModelWeights(value: string | null | undefined, env: Env = process.env): ModelWeights {
+  if (value === null || value === undefined || value === '') return installDefaultWeights(env);
+  if (value === 'any' || value === 'open') return value;
   throw new Error(`weights must be "any" or "open", not "${value}"`);
+}
+
+/**
+ * The weights of every group whose `weights` column is empty:
+ * NANOCLAW_DEFAULT_WEIGHTS when set, else `open`. An install whose operator
+ * chose Claude as the default provider (DEFAULT_AGENT_PROVIDER=claude, which
+ * setup writes) gets `any` instead, because the Claude provider runs Claude
+ * models only and an open default would stop every default group from starting.
+ */
+export function installDefaultWeights(env: Env = process.env): ModelWeights {
+  const set = (env.NANOCLAW_DEFAULT_WEIGHTS ?? '').trim().toLowerCase();
+  if (set === 'any' || set === 'open') return set;
+  if (set) throw new Error(`NANOCLAW_DEFAULT_WEIGHTS must be "any" or "open", not "${set}"`);
+  return (env.DEFAULT_AGENT_PROVIDER ?? '').trim().toLowerCase() === 'claude' ? 'any' : 'open';
+}
+
+/**
+ * The provider of every group with no provider of its own (no session pin, no
+ * `agent_groups.agent_provider`, no `container_configs.provider`):
+ * DEFAULT_AGENT_PROVIDER when set, else OpenCode when the default weights are
+ * open and Claude when they are any. With nothing set, a default group runs on
+ * OpenCode with open-weights models.
+ */
+export function installDefaultProvider(env: Env = process.env): string {
+  const set = (env.DEFAULT_AGENT_PROVIDER ?? '').trim().toLowerCase();
+  if (set) return set;
+  return installDefaultWeights(env) === 'open' ? 'opencode' : 'claude';
+}
+
+/**
+ * The weights a new group records when its creator names its provider but no
+ * weights: `any` for Claude, which runs Claude models only, and nothing (the
+ * install default) for every other provider. Without it, a group created on
+ * Claude would inherit an open default and fail the policy at its first spawn.
+ */
+export function creationWeights(provider: string | null | undefined): ModelWeights | null {
+  return provider?.toLowerCase() === 'claude' ? 'any' : null;
 }
 
 /** The OpenCode provider prefix of model ids (the runner's default is "anthropic"). */
@@ -204,7 +248,7 @@ export function isOpenWeightsRole(resolved: ResolvedModels, role: ModelRole, env
 
 /** Resolve all four roles for one group. */
 export function resolveGroupModels(provider: string, row: ModelPolicyRow, env: Env = process.env): ResolvedModels {
-  const weights = parseModelWeights(row.weights);
+  const weights = parseModelWeights(row.weights, env);
   const resolved: ResolvedModels = { provider, weights };
   for (const role of MODEL_ROLES) {
     const own = row[MODEL_ROLE_COLUMNS[role]];

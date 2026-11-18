@@ -35,10 +35,18 @@ export const DEFAULT_MODEL_RETRY_POLICY: ModelRetryPolicy = { budgetMs: 600_000,
 
 /**
  * Return the retry policy from `OPENCODE_MODEL_RETRY_BUDGET_MS` and
- * `OPENCODE_MODEL_RETRY_BASE_MS`, each a whole number of ms (the budget may be
- * 0 to turn retries off). A missing or invalid value keeps the default.
+ * `OPENCODE_MODEL_RETRY_BASE_MS` (or the variables `names` gives, for another
+ * caller of the same backoff such as the codex bridge), each a whole number of
+ * ms (the budget may be 0 to turn retries off). A missing or invalid value
+ * keeps the default.
  */
-export function modelRetryPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): ModelRetryPolicy {
+export function modelRetryPolicyFromEnv(
+  env: NodeJS.ProcessEnv = process.env,
+  names: { budget: string; base: string } = {
+    budget: 'OPENCODE_MODEL_RETRY_BUDGET_MS',
+    base: 'OPENCODE_MODEL_RETRY_BASE_MS',
+  },
+): ModelRetryPolicy {
   const read = (name: string, fallback: number, min: number): number => {
     const raw = env[name]?.trim();
     if (!raw || !/^\d+$/.test(raw)) return fallback;
@@ -46,8 +54,8 @@ export function modelRetryPolicyFromEnv(env: NodeJS.ProcessEnv = process.env): M
     return Number.isSafeInteger(value) && value >= min ? value : fallback;
   };
   return {
-    budgetMs: read('OPENCODE_MODEL_RETRY_BUDGET_MS', DEFAULT_MODEL_RETRY_POLICY.budgetMs, 0),
-    baseDelayMs: read('OPENCODE_MODEL_RETRY_BASE_MS', DEFAULT_MODEL_RETRY_POLICY.baseDelayMs, 1),
+    budgetMs: read(names.budget, DEFAULT_MODEL_RETRY_POLICY.budgetMs, 0),
+    baseDelayMs: read(names.base, DEFAULT_MODEL_RETRY_POLICY.baseDelayMs, 1),
   };
 }
 

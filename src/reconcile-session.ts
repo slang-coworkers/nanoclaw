@@ -74,6 +74,7 @@ import {
   getBouncedTriggerRow,
   markMessageFailed,
   retryWithBackoff,
+  rollBackHotJournal,
 } from './mailbox/sqlite/session-db.js';
 import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
 import { _resetSweepStatsForTesting, sweepStats } from './sweep-stats.js';
@@ -463,6 +464,13 @@ async function reconcileActiveSession(session: Session): Promise<void> {
   quietSessions.delete(session.id);
 
   try {
+    // A container killed mid-write (the CLAUDE.md restart below, an OOM, a host
+    // restart) can leave a hot journal beside outbound.db, which every read-only
+    // host read then fails on; the session would never be woken, because the
+    // container this pass starts is the only other writer. With no container
+    // running, the host is the one writer, so it rolls the journal back first.
+    if (!isContainerRunning(session.id)) recoverOutboundJournal(session);
+
     // Runaway detection (non-blocking). NEVER stops the session — on a fresh
     // runaway episode it only surfaces an admin card; a human clicking Stop is
     // the only thing that ends the session. Module-gated: no-op when the
@@ -922,6 +930,21 @@ async function refreshStaleClaudeMd(session: Session): Promise<void> {
     });
   } catch (err) {
     log.error('CLAUDE.md refresh failed for session — continuing reconcile', { sessionId: session.id, err });
+  }
+}
+
+/**
+ * Roll back a hot journal left beside this session's outbound.db by a container
+ * that was killed mid-write (see rollBackHotJournal). The caller has checked that
+ * no container is running. A failure is logged and left for the next pass.
+ */
+function recoverOutboundJournal(session: Session): void {
+  try {
+    if (rollBackHotJournal(outboundDbPath(session.agent_group_id, session.id))) {
+      log.warn('Rolled back a hot outbound journal left by a stopped container', { sessionId: session.id });
+    }
+  } catch (err) {
+    log.error('Outbound journal rollback failed — retrying next pass', { sessionId: session.id, err });
   }
 }
 

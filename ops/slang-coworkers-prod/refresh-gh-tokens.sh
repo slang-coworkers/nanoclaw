@@ -79,8 +79,11 @@ patch_git_secret() {
 }
 
 # --- api.github.com App-token secrets (raw token) ---
-# Old catch-all, now sentinel-disabled (path=/_disabled_2026-06-16/*). Still refreshed so the value stays
-# valid if it is ever restored.
+# /rate_limit — the quota endpoint that `gh api rate_limit` and health probes call; without a secret on this
+# path the gateway answers 401 "app not connected", which agents read as a GitHub outage. This is the old
+# catch-all secret (display name "GitHub (gh CLI)") with its path narrowed to /rate_limit: every agent already
+# holds a published grant for it, and a newly created secret gets no grant while OneCLI's grant write times
+# out.
 update_api_secret 70e49372-173a-41c6-8d6b-8355977b1879
 # /repos/shader-slang/* — App-token guard so the shader-slang API stays on the App (wins over the
 # nv-slang-bot USER PAT /repos/* because this is cron-refreshed = newest tuple).

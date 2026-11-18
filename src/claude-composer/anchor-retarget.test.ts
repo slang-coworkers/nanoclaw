@@ -294,11 +294,14 @@ function stripBuddyLine(fixture: string): string {
  * `normalizeFragment` would make the assertion agree with itself.
  *
  * Only `onecli-gateway` ships an `instructions.md` today; a second one turns the
- * cardinality assertion red, which is the intended prompt to update this.
+ * cardinality assertion red, which is the intended prompt to update this. Its body
+ * moved on after this transform set was frozen, so the bytes come from the frozen
+ * `onecli-gateway-instructions.post-trim.md` copy that the frozen goldens carry;
+ * `section-reorder.test.ts` bounds the later edit against the live goldens.
  */
 function residentSectionBytes(): string {
   const body = fs
-    .readFileSync(path.join(process.cwd(), 'container', 'skills', 'onecli-gateway', 'instructions.md'), 'utf-8')
+    .readFileSync(path.join(PRE_FRAGMENT_DIR, 'onecli-gateway-instructions.post-trim.md'), 'utf-8')
     .trim()
     .replace(/^# /m, '#### ');
   return `\n${RESIDENT_HEADING}\n\n### \`/onecli-gateway\`\n\n${body}\n`;

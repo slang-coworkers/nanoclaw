@@ -12,9 +12,11 @@ container, `--agent` in tests):
   checkouts  every git worktree registered with a base clone
              (`<agent>/{slang,slangpy,slang-rhi}`), whatever its name, plus
              every top-level `wt-*` directory, the naming convention for
-             per-task checkouts, and every top-level scratch directory
-             (worktree-gc.py's SCRATCH_DIR_PATTERNS) that is itself a checkout,
-             whatever its git shape:
+             per-task checkouts, and every other top-level directory that is
+             itself a checkout, whatever its name (worktree-gc.py's
+             `is_durable_dir` names excepted), whatever its git shape, and
+             every top-level bare repository whose name carries no issue
+             number (a reference clone, `bare`):
                worktree  a linked worktree whose administrative directory
                          exists (owner = the repository that registered it)
                clone     a standalone clone: `.git` is a directory
@@ -25,11 +27,16 @@ container, `--agent` in tests):
              agent keep run output
   scratch    every other top-level scratch directory, with the git
              repositories found inside it (`git_inside`), which the executor
-             saves before it removes the directory; a bare clone such as
-             `bare-13387.git` is its own `git_inside` entry
+             saves before it removes the directory, and every top-level bare
+             repository whose name is per-task or carries a number; a bare
+             clone such as `bare-13387.git` is its own `git_inside` entry
   wt files   every top-level regular file named `wt-*` (build logs)
   trash      what the executor already moved into `.worktree-gc/trash/` and
              still has to delete
+
+A checkout lists in `dependents` every other checkout that would break without
+it: one that borrows its objects (`git clone --shared`), one of its live linked
+worktrees, or one whose submodule `.git` files point into its git directory.
 
 Before it lists anything it repairs worktrees that were moved by hand. Consider
 an agent that runs `git worktree add wt-tmp-13546` and then
@@ -75,6 +82,8 @@ ACTIVE_WORK_FRESH_S = DAY_S
 RUN_ENTRY_SCAN_DEPTH = 2
 RUN_ENTRY_SCAN_LIMIT = 500
 NESTED_REPO_DEPTH = 3
+SUBMODULE_DEPTH = 3  # nested submodules followed this deep when looking for borrowed git directories
+GITMODULES_PATH = re.compile(r"^\s*path\s*=\s*(.+?)\s*$")
 
 
 def git(args: list[str], cwd: str, timeout: float = 20) -> subprocess.CompletedProcess:
@@ -236,7 +245,8 @@ def last_use(shape: str, path: str, admin: str | None) -> float:
     also fast-forwarded by the boot refresh, which rewrites its working files,
     index and FETCH_HEAD; so only signals the refresh never writes count there:
     HEAD reflog entries other than the refresh's own, the `.git/HEAD` file, and
-    build logs. An orphan has nothing but its files."""
+    build logs. A bare repository has no working files: its HEAD, packed refs
+    and reflog count. An orphan has nothing but its files."""
     marks = [build_markers(path)]
     if shape == "worktree":
         marks += [mtime(path), mtime(os.path.join(path, ".git"))]
@@ -245,6 +255,8 @@ def last_use(shape: str, path: str, admin: str | None) -> float:
     elif shape == "clone":
         git_dir = os.path.join(path, ".git")
         marks += [last_agent_reflog(git_dir), mtime(os.path.join(git_dir, "HEAD"))]
+    elif shape == "bare":
+        marks += [last_agent_reflog(path), mtime(os.path.join(path, "HEAD")), mtime(os.path.join(path, "packed-refs"))]
     else:
         marks += [mtime(path), mtime(os.path.join(path, ".git"))]
     return max(marks)
@@ -334,6 +346,26 @@ def repositories_inside(path: str) -> list[dict]:
     return sorted(found, key=lambda r: r["path"])
 
 
+def is_per_task_name(name: str) -> bool:
+    """Is a top-level name per-task by convention: a `wt-*` name, or one of
+    worktree-gc.py's SCRATCH_DIR_PATTERNS?"""
+    return name.startswith("wt-") or wg.is_scratch_dir(name)
+
+
+def checkout_kind(name: str, shape: str, number: str) -> str:
+    """primary, scratch or reference (see worktree-gc.py). Only a standalone clone
+    or a bare repository can be a reference clone: a linked worktree or an orphan
+    was made per task by `git worktree add`, and a per-task name or an issue/PR
+    number marks a repository as made for one task too. A sha in the name is not
+    a number: `slang-69ad6c1` is scratch as a linked worktree, a reference as a
+    standalone clone."""
+    if PRIMARY_NAME.match(name):
+        return "primary"
+    if shape not in ("clone", "bare") or number or is_per_task_name(name):
+        return "scratch"
+    return "reference"
+
+
 def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin: str | None,
                     branch: str, locked: bool, held: set[str], now: float) -> dict:
     name = os.path.basename(path)
@@ -350,6 +382,9 @@ def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin:
     if name in held:
         running_why.append("process cwd or open file")
     repo_dir = path if shape == "clone" else owner
+    # Where this checkout's repository data lives; submodules initialized in it keep
+    # their repositories under `<git_dir>/modules/`.
+    git_dir = {"worktree": admin, "clone": os.path.join(path, ".git"), "bare": path}.get(shape)
     return {
         "dir": name,
         "path": path,
@@ -359,14 +394,46 @@ def checkout_record(agent: str, path: str, shape: str, owner: str | None, admin:
         "base": base,
         "repo": repo_slug(repo_dir, agent) if repo_dir and os.path.isdir(repo_dir) else "",
         "number": m.group(1) if m else "",
-        "kind": "primary" if PRIMARY_NAME.match(name) else "scratch",
+        "kind": checkout_kind(name, shape, m.group(1) if m else ""),
         "idle_days": round((now - last_use(shape, path, admin)) / DAY_S, 2),
         "has_build": os.path.isdir(os.path.join(path, "build")),
         "running": bool(running_why),
         "running_why": running_why,
         "branch": branch,
+        "git_dir": git_dir or "",
         "dependents": [],
     }
+
+
+def gitmodules_paths(tree: str) -> list[str]:
+    """Submodule paths `tree/.gitmodules` declares, relative to `tree`; absolute
+    paths and ones that climb out with `..` are ignored."""
+    paths = []
+    try:
+        with open(os.path.join(tree, ".gitmodules"), errors="replace") as f:
+            for line in f:
+                m = GITMODULES_PATH.match(line)
+                if m and not os.path.isabs(m.group(1)) and ".." not in m.group(1).split("/"):
+                    paths.append(m.group(1))
+    except OSError:
+        pass
+    return paths
+
+
+def submodule_gitdirs(tree: str) -> list[str]:
+    """The git directories the initialized submodules of `tree` use, nested ones
+    included down to SUBMODULE_DEPTH: each submodule's `.git` file names one."""
+    found, frontier = [], [(tree, 0)]
+    while frontier:
+        d, depth = frontier.pop()
+        for rel in gitmodules_paths(d):
+            sub = os.path.join(d, rel)
+            target = read_gitfile(sub)
+            if target:
+                found.append(real(target))
+            if depth + 1 < SUBMODULE_DEPTH:
+                frontier.append((sub, depth + 1))
+    return found
 
 
 def run_entry_last_use(path: str) -> float:
@@ -415,8 +482,8 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
     wt_files: list[dict] = []
     for name in sorted(os.listdir(agent)):
         p = os.path.join(agent, name)
-        per_task = name.startswith("wt-") or wg.is_scratch_dir(name)
-        if not per_task or os.path.islink(p) or real(p) in checkouts:
+        per_task = is_per_task_name(name)
+        if os.path.islink(p) or real(p) in checkouts:
             continue
         if os.path.isfile(p):
             if name.startswith("wt-"):
@@ -425,8 +492,14 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             continue
         if not os.path.isdir(p):
             continue
+        # A per-task name is managed whatever it holds; any other name only when
+        # it is itself a git repository and not the agent's durable state.
         shape = git_shape(p)
-        if shape and shape[0] != "bare":
+        if not per_task and (shape is None or name in BASES or wg.is_durable_dir(name)):
+            continue
+        if shape and shape[0] == "bare" and not per_task and not NUMBER_IN_NAME.search(name):
+            checkouts[real(p)] = checkout_record(agent, p, "bare", p, None, "", False, held, now)
+        elif shape and shape[0] != "bare":
             kind, owner, admin = shape
             branch = "" if kind == "orphan" else git(["symbolic-ref", "-q", "--short", "HEAD"], p).stdout.strip()
             locked = bool(admin) and os.path.exists(os.path.join(admin, "locked"))
@@ -478,6 +551,32 @@ def discover(agent: str, state_dir: str, now: float) -> dict:
             if holder is not None and holder is not rec:
                 holder["dependents"].append(rec["dir"])
         rec["dependents"].extend(os.path.basename(t) for t in live_worktrees_of(rec["path"]))
+
+    # A checkout whose git directory holds another checkout's submodule repositories
+    # cannot go first either. Consider `cp -a wt-A/external wt-B/`: every submodule
+    # `.git` file in wt-B still names `slang/.git/worktrees/wt-A/modules/...`, and
+    # reaping wt-A prunes that directory, leaving wt-B's submodules dangling. The
+    # holder is the checkout whose git directory is the nearest ancestor of the
+    # submodule's git directory (a linked worktree's administrative directory sits
+    # inside its owner's `.git/worktrees/`, so nearest wins over the owner), else
+    # whatever entry the path lies in.
+    by_git_dir = {real(rec["git_dir"]): rec for rec in checkouts.values() if rec.get("git_dir")}
+
+    def git_dir_holder(target: str) -> dict | None:
+        d = target
+        while True:
+            if d in by_git_dir:
+                return by_git_dir[d]
+            parent = os.path.dirname(d)
+            if parent == d:
+                return holder_of(target)
+            d = parent
+
+    for rec in list(checkouts.values()):
+        for target in submodule_gitdirs(rec["path"]):
+            holder = git_dir_holder(target)
+            if holder is not None and holder is not rec and rec["dir"] not in holder["dependents"]:
+                holder["dependents"].append(rec["dir"])
 
     trash_dir = os.path.join(state_dir, "trash")
     try:

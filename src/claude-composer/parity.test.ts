@@ -137,8 +137,11 @@ describe('composed-document byte parity', () => {
       // fragment is authored at `##`, so typed composition re-levels it to
       // `### Recall rule`, a sibling of `### Workspace` (it was `####`, nested
       // under Workspace). That heading is the only line that changed here.
-      'base-common': '1746257fc3cd81ce',
-      'base-common.persona': 'edde5b978576b607',
+      //
+      // Moved a twelfth time when the resident `/onecli-gateway` instruction gained
+      // its GitHub partial-coverage paragraph (two lines in every composed doc).
+      'base-common': 'ff3beca45864bc48',
+      'base-common.persona': '0106f21d45c3f85e',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -146,8 +149,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'e5d925ba30679fe1',
-      'default.persona': 'e9d2c551f996d6a9',
+      default: '110dba32cbb9760d',
+      'default.persona': 'b05db1626bea5a86',
     };
 
     const actual: Record<string, string> = {};
