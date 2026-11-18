@@ -267,6 +267,7 @@ agent is not throttled unless the operator configures a limit:
 | --- | --- | --- |
 | `CONTAINER_CPU_LIMIT` | *(empty — unbounded)* | Passed to `--cpus` when set (e.g. `2`). |
 | `CONTAINER_MEMORY_LIMIT` | *(empty — unbounded)* | Passed to `--memory` when set (e.g. `8g`). |
+| `CONTAINER_BUILD_JOBS` | *(empty — host cores ÷ 4, at least 2)* | Set in each container as `CMAKE_BUILD_PARALLEL_LEVEL`, the job count for every `cmake --build` that passes no `-j`; `0` leaves it unset. |
 
 Only `--memory` is a container-level cap; whether it's a *hard* cap depends on
 the host having no swap (a deployment concern). On a swapless host a runaway is

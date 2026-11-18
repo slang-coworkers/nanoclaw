@@ -28,9 +28,9 @@ INPUT (stdin), a JSON object:
   "state": { ...prior supervisor-state.json... },        # last tick; {} on first run
   "sessions": [                              # ncl sessions list --json -> .data
      {"id","thread_id","container_status","last_active","agent_group_id","group_folder"?,
-      "cost_status"?}                        # 'ok'|'warn'|'escalated'|'stopped'|'unknown';
-                                              # stamped by pull-universe.sh via `ncl cost-cap
-                                              # status --session <id>`. Absent/'unknown' means
+      "cost_status"?}                        # 'stopped'|'ok' (or 'warn'|'escalated')|'unknown';
+                                              # stamped by pull-universe.sh from one `ncl
+                                              # cost-cap stopped` call. Absent/'unknown' means
                                               # no signal — NOT treated as cost_stopped.
   ],
   "chains": {                                # per gh-issue-<owner>/<repo>-<num> thread, what the agent fetched

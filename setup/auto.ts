@@ -557,18 +557,18 @@ async function main(): Promise<void> {
     }
   }
 
-  // Only for a run that never reached the sandbox-image question. Any answer
-  // to it — a browser choice, a declined handoff, a skipped or failed sign-in
-  // — is written to `.env`, and that is the one store every kind of re-entry
-  // (fail()'s retry, the sg-docker re-exec, a plain re-run) still sees. An
-  // in-memory skip entry would not survive the first two, and the question is
-  // not asked again on any of them.
+  // Only while the sandbox-image question is open: never reached, or its
+  // sign-in failed or ran out. Any answer to it — a browser choice, a
+  // declined handoff or sign-in — is written to `.env`, and that is the one
+  // store every kind of re-entry (fail()'s retry, the sg-docker re-exec, a
+  // plain re-run) still sees. An in-memory skip entry would not survive the
+  // first two, and an answered question is not asked again on any of them.
   if (
     portalEnabled() &&
     !skip.has('echo-reminder') &&
     !imageSourceDecided() &&
     readAgentImagePin() &&
-    (process.env.NANOCLAW_AGENT_PROVIDER || readEnvKey('DEFAULT_AGENT_PROVIDER') || DEFAULT_AGENT_PROVIDER || 'claude')
+    (process.env.NANOCLAW_AGENT_PROVIDER || readEnvKey('DEFAULT_AGENT_PROVIDER') || DEFAULT_AGENT_PROVIDER)
       .trim()
       .toLowerCase() === 'claude'
   ) {
@@ -1447,7 +1447,10 @@ async function askNewTemplateAgentName(
  * operator would be asked again after already signing in.
  *
  * Returns having done nothing when the question is already settled, which also
- * covers `NANOCLAW_HARDENED_IMAGE=true` passed in by a packaged flow.
+ * covers `NANOCLAW_HARDENED_IMAGE=true` passed in by a packaged flow. A
+ * sign-in that fails or runs out settles nothing, so a plain re-run and
+ * fail()'s retry of the container step ask again; the sg-docker re-exec comes
+ * after the container step and skips this.
  */
 /** Resolves to the operator's pick when the question was asked, else undefined. */
 async function chooseImageSource(): Promise<ImageSource | undefined> {
@@ -1456,11 +1459,7 @@ async function chooseImageSource(): Promise<ImageSource | undefined> {
   // The runtime pick happens later (the auth step), so this is the best signal
   // available: an explicit preset, else the persisted install-wide default.
   // Getting it wrong in the permissive direction is caught at that pick.
-  const plannedProvider = (
-    process.env.NANOCLAW_AGENT_PROVIDER?.trim() ||
-    DEFAULT_AGENT_PROVIDER ||
-    'claude'
-  ).toLowerCase();
+  const plannedProvider = (process.env.NANOCLAW_AGENT_PROVIDER?.trim() || DEFAULT_AGENT_PROVIDER).toLowerCase();
   if (providerImagePolicy(plannedProvider) === 'local-required') {
     p.log.info(
       brandBody(

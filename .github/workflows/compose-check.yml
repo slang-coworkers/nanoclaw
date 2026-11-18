@@ -116,4 +116,5 @@ jobs:
 
       - name: Container tests
         working-directory: container/agent-runner
-        run: bun test
+        # The package script adds --isolate, as ci.yml runs it; the suite leaks state across files without it.
+        run: bun run test

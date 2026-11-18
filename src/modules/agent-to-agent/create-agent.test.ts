@@ -141,6 +141,7 @@ vi.mock('../../index.js', () => ({
 // guard-wrapped create_agent delivery action — the path under test.
 import './index.js';
 import { getDeliveryAction } from '../../delivery.js';
+import { installDefaultProvider } from '../../model-policy.js';
 
 const SESSION = { id: 'sess-1', agent_group_id: 'ag-1' } as Session;
 
@@ -223,15 +224,26 @@ describe('create_agent — guard-based authorization (wrapped delivery action)',
   });
 
   it('claude creator pins the child to claude, not the instance default', async () => {
-    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' }); // parent has no explicit provider
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global', provider: 'claude' });
 
     await runCreateAgent({ name: 'Scout', instructions: 'help' });
 
     // The child inherits the parent's EFFECTIVE provider (claude), passed
-    // explicitly so it never falls through to a non-claude instance default.
+    // explicitly so it never falls through to the (open-weights) install default.
     expect(mockInitGroupFilesystem).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ provider: 'claude' }),
+    );
+  });
+
+  it('a creator that follows the install default passes that provider explicitly', async () => {
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' }); // parent names no provider
+
+    await runCreateAgent({ name: 'Scout', instructions: 'help' });
+
+    expect(mockInitGroupFilesystem).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ provider: installDefaultProvider() }),
     );
   });
 
@@ -630,7 +642,10 @@ describe('create_agent — from a template', () => {
       notify: vi.fn(),
     });
 
-    expect(mockCreateAgentFromTemplate).toHaveBeenCalledWith('sales/sdr', { name: 'SDR', provider: 'claude' });
+    expect(mockCreateAgentFromTemplate).toHaveBeenCalledWith('sales/sdr', {
+      name: 'SDR',
+      provider: installDefaultProvider(),
+    });
   });
 
   it('an approval for a plain create never covers a templated request', async () => {

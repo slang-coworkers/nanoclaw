@@ -23,7 +23,7 @@ Any task ending in a written artifact (plan, investigation, review, research mem
 ## Steps
 
 1. **Understand** — restate the ask; identify `mode`. Ambiguous scope → the **Ambiguity** principle (Personality and Principles). On restart: if a report exists at `{{report.path}}`, check for a Conclusion/Verdict section — complete → skip to Handoff; partial → resume where it stalled.
-2. **Recall** {#recall} — Recall per the **Workspace › Recall rule** with `<task>` = `{{target}}`.
+2. **Recall** {#recall} — Recall per the **Context › Recall rule** with `<task>` = `{{target}}`.
 3. **Research** — read code/issues/docs; run Grep, git log; spawn sub-agents for wide scope. Read-only. Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status at the start (use `send_message`, not `<message>`, which only dispatches from the final response).
 4. **Synthesize** {#diagnose} — organize by mode: **plan** = 2–3 approaches with trade-offs; **investigate** = classify + facts vs hypotheses; **review** = findings by severity (must-change / should-change / nit), each file:line; **research** = answer with evidence.
 5. **Deliver** {#deliver} — write to `{{report.path}}` with mode-appropriate sections (status/verdict/conclusion, facts, hypotheses, next, references). Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status when done.

@@ -6,7 +6,9 @@
  * them itself. For the other providers, two callers run the same hook scripts
  * through this module, so the scripts stay the single source of truth:
  *
- *   providers/opencode-hook-bridge.ts  tool and prompt events of an OpenCode group
+ *   providers/opencode-hook-bridge.ts  tool, prompt, subagent, task and compaction
+ *                                      events of an OpenCode group, and the
+ *                                      SessionStart and SessionEnd of its queries
  *   stop-hooks.ts                      the Stop event of every non-Claude turn
  *
  * The functions follow Claude Code's rules: how a matcher selects a tool, how
@@ -18,7 +20,20 @@ import os from 'os';
 import path from 'path';
 
 export type HookEvent =
-  'PreToolUse' | 'PostToolUse' | 'PostToolUseFailure' | 'UserPromptSubmit' | 'Stop' | 'StopFailure';
+  | 'PreToolUse'
+  | 'PostToolUse'
+  | 'PostToolUseFailure'
+  | 'UserPromptSubmit'
+  | 'Stop'
+  | 'StopFailure'
+  | 'SessionStart'
+  | 'SessionEnd'
+  | 'SubagentStart'
+  | 'SubagentStop'
+  | 'PreCompact'
+  | 'PostCompact'
+  | 'TaskCreated'
+  | 'TaskCompleted';
 
 export interface HookCommand {
   type?: string;
@@ -36,28 +51,51 @@ export type HookSettings = Partial<Record<HookEvent, HookMatcher[]>>;
 export interface HookOutcome {
   block: boolean;
   reason: string;
+  /**
+   * The context the hooks that exited 0 hand back, when there is any: their
+   * plain-text stdout, or the `hookSpecificOutput.additionalContext` of a JSON
+   * reply. Claude Code uses it for some events: a PreCompact hook's stdout
+   * becomes instructions for the compaction summary, and a UserPromptSubmit
+   * hook's is added to the prompt.
+   */
+  context?: string;
 }
 
 export const AGENT_DIR = '/workspace/agent';
 const DEFAULT_TIMEOUT_S = 60;
 
-// Claude Code applies matchers to tool events only; the other events run every entry.
-const TOOL_EVENTS: ReadonlySet<HookEvent> = new Set(['PreToolUse', 'PostToolUse', 'PostToolUseFailure']);
+// The events whose matcher Claude Code applies, each to one field: the tool
+// name for tool events, `source` for SessionStart, `reason` for SessionEnd,
+// `agent_type` for the subagent events and `trigger` for compaction. The other
+// events (UserPromptSubmit, Stop, TaskCreated, ...) run every entry.
+const MATCHER_EVENTS: ReadonlySet<HookEvent> = new Set([
+  'PreToolUse',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'SessionStart',
+  'SessionEnd',
+  'SubagentStart',
+  'SubagentStop',
+  'PreCompact',
+  'PostCompact',
+]);
 
-/** True when a Claude Code hook matcher selects `toolName` ("" and "*" select every tool). */
-export function matcherSelects(matcher: string | undefined, toolName: string): boolean {
+/** True when a Claude Code hook matcher selects `target` ("" and "*" select everything). */
+export function matcherSelects(matcher: string | undefined, target: string): boolean {
   if (!matcher || matcher === '*') return true;
   try {
-    return new RegExp(`^(?:${matcher})$`).test(toolName);
+    return new RegExp(`^(?:${matcher})$`).test(target);
   } catch {
-    return matcher === toolName;
+    return matcher === target;
   }
 }
 
 /**
  * Read a hook result the way Claude Code does: exit 2 blocks with stderr as the
- * reason; exit 0 blocks only when stdout is a JSON decision to block or deny;
- * any other exit status is a non-blocking hook error.
+ * reason; exit 0 blocks only when stdout is a JSON decision to block or deny,
+ * and otherwise hands back context: stdout that is not JSON, or a JSON reply's
+ * `hookSpecificOutput.additionalContext`; any other exit status is a
+ * non-blocking hook error.
  */
 export function hookOutcome(code: number | null, stdout: string, stderr: string): HookOutcome {
   if (code === 2) return { block: true, reason: stderr.trim() || 'Blocked by a hook.' };
@@ -66,14 +104,16 @@ export function hookOutcome(code: number | null, stdout: string, stderr: string)
   try {
     parsed = JSON.parse(stdout) as Record<string, unknown>;
   } catch {
-    return { block: false, reason: '' };
+    const context = stdout.trim();
+    return context ? { block: false, reason: '', context } : { block: false, reason: '' };
   }
   const specific = (parsed.hookSpecificOutput ?? {}) as Record<string, unknown>;
   if (parsed.decision === 'block' || specific.permissionDecision === 'deny' || parsed.continue === false) {
     const reason = parsed.reason ?? specific.permissionDecisionReason ?? parsed.stopReason;
     return { block: true, reason: typeof reason === 'string' && reason ? reason : 'Blocked by a hook.' };
   }
-  return { block: false, reason: '' };
+  const context = typeof specific.additionalContext === 'string' ? specific.additionalContext.trim() : '';
+  return context ? { block: false, reason: '', context } : { block: false, reason: '' };
 }
 
 /** Run one hook command with `payload` on stdin; resolves even on failure or timeout. */
@@ -128,23 +168,26 @@ export interface RunHookEventOptions {
 }
 
 /**
- * Run the hooks registered for `event` that select `toolName`, with `payload`
- * on stdin. Every selected hook runs, at once, and the event blocks when any of
- * them blocks, with the reasons joined: Claude Code runs hooks this way, and the
- * hook scripts are written for it. Consider an OpenCode Write that the plan gate
- * refuses: the dashboard telemetry hook registered after the gate still records
- * the call, so a refused call shows on the dashboard as it does for Claude.
+ * Run the hooks registered for `event` whose matcher selects `matchTarget`,
+ * with `payload` on stdin. The target is the field Claude Code matches for the
+ * event (the tool name, a SessionStart `source`, a subagent's `agent_type`,
+ * ...); events without matchers ignore it. Every selected hook runs, at once,
+ * and the event blocks when any of them blocks, with the reasons joined: Claude
+ * Code runs hooks this way, and the hook scripts are written for it. Consider
+ * an OpenCode Write that the plan gate refuses: the dashboard telemetry hook
+ * registered after the gate still records the call, so a refused call shows on
+ * the dashboard as it does for Claude.
  */
 export async function runHookEvent(
   settings: HookSettings,
   event: HookEvent,
-  toolName: string,
+  matchTarget: string,
   payload: Record<string, unknown>,
   options: RunHookEventOptions = {},
 ): Promise<HookOutcome> {
   const selected: HookCommand[] = [];
   for (const entry of settings[event] ?? []) {
-    if (TOOL_EVENTS.has(event) && !matcherSelects(entry.matcher, toolName)) continue;
+    if (MATCHER_EVENTS.has(event) && !matcherSelects(entry.matcher, matchTarget)) continue;
     for (const hook of entry.hooks ?? []) {
       if (hook.type && hook.type !== 'command') continue;
       if (options.skip?.test(hook.command)) continue;
@@ -152,10 +195,14 @@ export async function runHookEvent(
     }
   }
   const input = { hook_event_name: event, cwd: AGENT_DIR, ...payload };
-  const blocks = (await Promise.all(selected.map((hook) => runHookCommand(hook, input)))).filter((o) => o.block);
-  return blocks.length > 0
-    ? { block: true, reason: blocks.map((o) => o.reason).join('\n\n') }
-    : { block: false, reason: '' };
+  const outcomes = await Promise.all(selected.map((hook) => runHookCommand(hook, input)));
+  const blocks = outcomes.filter((o) => o.block);
+  if (blocks.length > 0) return { block: true, reason: blocks.map((o) => o.reason).join('\n\n') };
+  const context = outcomes
+    .map((o) => o.context)
+    .filter(Boolean)
+    .join('\n\n');
+  return context ? { block: false, reason: '', context } : { block: false, reason: '' };
 }
 
 /** The text of a tool result: bash output, or the text blocks of an MCP result. */

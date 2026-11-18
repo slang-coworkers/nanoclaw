@@ -31,7 +31,7 @@ import path from 'path';
 
 import { readEnvFile } from '../../env.js';
 import { log } from '../../log.js';
-import type { ModelPolicyRow } from '../../model-policy.js';
+import { resolveGroupModels, type ModelPolicyRow, type ResolvedModels } from '../../model-policy.js';
 import { eligibilityOfKey } from '../input-gate/eligibility-file.js';
 
 export type SessionPrivilege = 'open' | 'closed';
@@ -174,8 +174,9 @@ export function privilegeEnforced(settings: PrivilegeSettings = readPrivilegeSet
 /**
  * The model settings a session runs with: the group's row, adjusted for the
  * session's privilege. An open session runs under `weights=open`, so spawn
- * refuses to start it on a closed model. A closed session runs without the
- * rule, so the group's models and the install defaults apply, and a group set
+ * refuses to start it on a closed model. A closed session runs under
+ * `weights=any` (an empty value would mean the install default, which may be
+ * open), so the group's models and the install defaults apply, and a group set
  * to `weights=open` for its open sessions can still run closed models for its
  * approved people. With enforcement off, the row is the group's own, as before.
  */
@@ -185,5 +186,21 @@ export function rowForPrivilege(
   settings: PrivilegeSettings = readPrivilegeSettings(),
 ): ModelPolicyRow {
   if (settings.mode !== 'enforce') return row;
-  return { ...row, weights: privilege === 'open' ? 'open' : null };
+  return { ...row, weights: privilege === 'open' ? 'open' : 'any' };
+}
+
+/**
+ * The model each role of `session` resolves to when it runs on `provider`: the
+ * group's row adjusted for the session's privilege, then resolved per role.
+ * Spawn checks this against the model policy before it starts a container, and
+ * `ncl sessions update --provider` checks the same result before it stores a
+ * pin, so the command refuses exactly what spawn would refuse.
+ */
+export function resolveSessionModels(
+  provider: string,
+  row: ModelPolicyRow,
+  session: { privilege?: SessionPrivilege | null },
+  settings: PrivilegeSettings = readPrivilegeSettings(),
+): ResolvedModels {
+  return resolveGroupModels(provider, rowForPrivilege(row, sessionPrivilegeOf(session), settings));
 }

@@ -44,14 +44,34 @@ export function isLinkedGitWorktree(dir: string): boolean {
 }
 
 /**
+ * True for a per-task checkout: a top-level directory named `wt-*`, the naming
+ * convention for every checkout made for one issue or review (the supervise-issues
+ * worktree GC reaps under it, and the group instructions ask for it).
+ *
+ * A per-task checkout is a second checkout of a project the group already has a
+ * clone of, whether git made it as a linked worktree or as a standalone clone.
+ * Consider a reviewer that isolates a review with
+ * `git clone --shared slang wt-14452-revA` and runs the review in it. Registering
+ * that directory would load slang's `.claude/` and CLAUDE.md once more per review,
+ * and the boot refresh would fast-forward it, moving the checkout a review is
+ * reading. Neither is wanted for a checkout that exists to pin one PR head.
+ */
+export function isPerTaskCheckout(dir: string): boolean {
+  return path.basename(dir).startsWith('wt-');
+}
+
+/**
  * Discover directories to pass to the SDK as `additionalDirectories`:
  *   - every immediate subdir of each non-`cwd` base (host-mounted extras), and
  *   - every immediate subdir of `cwd` that carries its own `.claude/` (a cloned
- *     repo bringing skills/commands/CLAUDE.md), EXCEPT linked git worktrees.
+ *     repo bringing skills/commands/CLAUDE.md), EXCEPT linked git worktrees and
+ *     per-task checkouts.
  *
- * The SDK loads each additional directory's `.claude/agents/` and `CLAUDE.md`.
- * Skipping linked worktrees (see isLinkedGitWorktree) prevents a repo's `.claude/`
- * being registered once per worktree — the autocompaction-thrash root cause.
+ * The SDK loads each additional directory's `.claude/agents/` and `CLAUDE.md`, and
+ * the boot refresh (refresh-clones.ts) fast-forwards every clone in this list.
+ * Skipping linked worktrees (see isLinkedGitWorktree) and per-task checkouts (see
+ * isPerTaskCheckout) keeps a repo's `.claude/` registered once — the
+ * autocompaction-thrash root cause — and keeps the refresh on project clones.
  */
 export function discoverAdditionalDirectories(bases: string[], cwd: string): string[] {
   const out: string[] = [];
@@ -69,6 +89,7 @@ export function discoverAdditionalDirectories(bases: string[], cwd: string): str
       if (base === cwd) {
         if (!fs.existsSync(path.join(fullPath, '.claude'))) continue;
         if (isLinkedGitWorktree(fullPath)) continue;
+        if (isPerTaskCheckout(fullPath)) continue;
       }
       out.push(fullPath);
     }

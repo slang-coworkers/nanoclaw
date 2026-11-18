@@ -1,5 +1,7 @@
 import type { ContainerConfig } from '../container-config.js';
+import { installDefaultProvider } from '../model-policy.js';
 import type { AgentGroup, Session } from '../types.js';
+import { listProviderContainerConfigNames } from './provider-container-registry.js';
 
 /**
  * The tiers a provider pick can come from, highest first. Named rather than
@@ -31,7 +33,8 @@ export interface ProviderTiers {
 /**
  * The one rule for which provider an agent group runs on: the session's pinned
  * provider, else the group's own `agent_provider`, else the group's container
- * config, else Claude. Spawn resolves through this, and so does every host
+ * config, else the install default (`installDefaultProvider`: OpenCode with
+ * open-weights models unless the install chooses otherwise). Spawn resolves through this, and so does every host
  * command that must validate against the group's actual provider (e.g.
  * `--speed`).
  *
@@ -39,7 +42,32 @@ export interface ProviderTiers {
  * which makes a group-level provider pick silently lose to container.json.
  */
 export function resolveProviderName(tiers: ProviderTiers): string {
-  return (tiers.override || tiers.session || tiers.group || tiers.config || 'claude').toLowerCase();
+  return resolveProviderTier(tiers).provider;
+}
+
+/** The tier a provider pick came from: a stored or command tier, or the default. */
+export type ProviderTier = keyof ProviderTiers | 'default';
+
+/**
+ * `resolveProviderName`, plus the tier that supplied the answer. `ncl sessions
+ * get/list` show the tier, so an operator can see that a session runs on its
+ * pin rather than on the group's provider.
+ */
+export function resolveProviderTier(tiers: ProviderTiers): { provider: string; tier: ProviderTier } {
+  for (const tier of ['override', 'session', 'group', 'config'] as const) {
+    const value = tiers[tier];
+    if (value) return { provider: value.toLowerCase(), tier };
+  }
+  return { provider: installDefaultProvider(), tier: 'default' };
+}
+
+/**
+ * Every provider this host can spawn a container for, sorted: the providers the
+ * barrel under src/providers/ registers. A stored provider outside this list
+ * has no container contribution, so a command that stores one validates it here.
+ */
+export function knownProviderNames(): string[] {
+  return listProviderContainerConfigNames().sort();
 }
 
 /**

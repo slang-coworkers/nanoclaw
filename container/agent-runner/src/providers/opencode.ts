@@ -1,5 +1,5 @@
 import { initializeOpenCodeAuth } from './opencode-auth.js';
-import { installOpenCodeHookBridge } from './opencode-hook-bridge.js';
+import { installOpenCodeHookBridge, settingsSessionHooks, type OpenCodeSessionHooks } from './opencode-hook-bridge.js';
 import { spawn, type ChildProcess } from 'child_process';
 
 import { createOpencodeClient } from '@opencode-ai/sdk';
@@ -9,20 +9,36 @@ import { createOpencodeClient } from '@opencode-ai/sdk';
 import { createOpencodeClient as createOpencodeQuestionClient } from '@opencode-ai/sdk/v2';
 
 import { registerProvider } from './provider-registry.js';
-import type { AgentProvider, AgentQuery, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
+import type {
+  AgentProvider,
+  AgentQuery,
+  ProviderEvent,
+  ProviderOptions,
+  QueryInput,
+  TurnModelTokens,
+} from './types.js';
 import {
   buildOpenCodeConfig,
   buildOpenCodeServerEnv,
   resolveOpenCodeInference,
   resolveOpenCodePromptModel,
+  withCloneClaudeMdInstructions,
 } from './opencode-config.js';
 import { buildDeliverySentences } from '../compact-instructions.js';
 import type { ResolvedRuntimeConfiguration } from '../provider-contracts/registry.js';
 import { getTaskSeriesId } from '../db/session-routing.js';
 import { getAllDestinations } from '../destinations.js';
 import { prepareOpenCodeMemory, type OpenCodeMemorySessionHook } from './opencode-memory.js';
-import { turnAccounting } from './turn-accounting.js';
+import { mergeTurnTokens, turnAccounting } from './turn-accounting.js';
 import { applyOpenCodeTrace, recordOpenCodeEvent, stopOpenCodeTraceProxies } from './opencode-trace.js';
+import {
+  ModelRetryBackoff,
+  modelRetryPolicyFromEnv,
+  modelRetryPrompt,
+  retryableModelError,
+  waitWithActivity,
+} from './opencode-retry.js';
+import { MAX_OUTPUT_LIMIT_CONTINUES, OUTPUT_LIMIT_CONTINUE_PROMPT } from './opencode-output-limit.js';
 import {
   boundedOpenCodeCall,
   executeOpenCodeTurn,
@@ -254,7 +270,8 @@ async function ensureSharedRuntime(
       destroySharedRuntime();
     }
     // The key above names the config as built; the proxy address is added only for the server we spawn.
-    const { url, proc } = await deps.spawnServer(await applyOpenCodeTrace(config));
+    // So are the clone guides: a repository cloned after the spawn does not restart a running server.
+    const { url, proc } = await deps.spawnServer(await applyOpenCodeTrace(withCloneClaudeMdInstructions(config)));
 
     let runtime: SharedRuntime;
     // Owns the SSE subscription and its retry loop. Teardown closes the
@@ -574,6 +591,10 @@ export class OpenCodeProvider implements AgentProvider {
     private readonly options: ProviderOptions = {},
     private readonly runtime?: OpenCodeRuntimeDeps,
     private readonly configuration?: ResolvedRuntimeConfiguration,
+    // Fork: the group's SessionStart and SessionEnd hooks, run once per query
+    // (see opencode-hook-bridge.ts). The registered provider reads them from
+    // settings.json; a provider built without them runs none.
+    private readonly sessionHooks?: OpenCodeSessionHooks,
   ) {}
 
   // true: every turn renders the hook's memory into the instructions file
@@ -598,8 +619,12 @@ export class OpenCodeProvider implements AgentProvider {
 
     async function* gen(): AsyncGenerator<ProviderEvent> {
       let sessionId = input.continuation;
+      let created = false;
       let initialized = false;
       let startedAt = Date.now();
+      // Tokens of this turn's earlier prompts (a retried failure or a continued
+      // cut-off step), charged with its result.
+      let retriedTokens: TurnModelTokens[] = [];
       try {
         const runtime = self.runtime
           ? await self.runtime.getRuntime(self.options, input.cwd)
@@ -621,45 +646,95 @@ export class OpenCodeProvider implements AgentProvider {
           if (abort.signal.aborted || (!pending.length && ended)) return;
           const turn = pending.shift()!;
           if (!sessionId) {
-            const created = await boundedOpenCodeCall(
+            const createdSession = await boundedOpenCodeCall(
               (signal) => runtime.client.session.create({ signal }),
               abort.signal,
             );
-            if (created.error) throw new Error(`OpenCode failed to create session: ${JSON.stringify(created.error)}`);
-            sessionId = created.data?.id;
+            if (createdSession.error) {
+              throw new Error(`OpenCode failed to create session: ${JSON.stringify(createdSession.error)}`);
+            }
+            sessionId = createdSession.data?.id;
             if (!sessionId) throw new Error('OpenCode failed to create session (no id)');
+            created = true;
           }
           if (!initialized) {
             initialized = true;
+            await self.sessionHooks?.start(
+              sessionId,
+              created ? 'startup' : 'resume',
+              promptModel && `${promptModel.providerID}/${promptModel.modelID}`,
+            );
             yield { type: 'init', continuation: sessionId };
           }
+          // A turn that fails on a retryable model error (a 429) after
+          // OpenCode's own retries is tried again here, after a longer wait,
+          // with a note to continue rather than the prompt (opencode-retry.ts).
+          // The turn still ends in one `result` and one `usage` that charges
+          // every attempt: the poll loop runs the cost hard stop at `usage` and
+          // relies on it arriving only at a turn boundary. A turn whose last
+          // step was cut off at the output token limit is continued the same
+          // way, without a wait and at most MAX_OUTPUT_LIMIT_CONTINUES times
+          // (opencode-output-limit.ts).
+          const backoff = new ModelRetryBackoff(modelRetryPolicyFromEnv());
+          let continues = 0;
+          let text = turn;
           startedAt = Date.now();
-          const { tokens, ...result } = yield* executeOpenCodeTurn({
-            runtime,
-            client: runtime.client.session,
-            pump,
-            sessionId,
-            parts: [{ type: 'text', text: turn }],
-            model: promptModel,
-            prepare: async () => {
-              await prepareOpenCodeMemory(
-                self.memorySessionHook!,
-                input.systemContext?.instructions,
-                buildDeliverySentences(
-                  getAllDestinations().map((destination) => destination.name),
-                  getTaskSeriesId(),
-                ).join(' '),
+          retriedTokens = [];
+          while (!abort.signal.aborted) {
+            const {
+              tokens: attemptTokens,
+              error: nativeError,
+              truncated,
+              ...result
+            } = yield* executeOpenCodeTurn({
+              runtime,
+              client: runtime.client.session,
+              pump,
+              sessionId,
+              parts: [{ type: 'text', text }],
+              model: promptModel,
+              prepare: async () => {
+                await prepareOpenCodeMemory(
+                  self.memorySessionHook!,
+                  input.systemContext?.instructions,
+                  buildDeliverySentences(
+                    getAllDestinations().map((destination) => destination.name),
+                    getTaskSeriesId(),
+                  ).join(' '),
+                );
+              },
+              signal: abort.signal,
+              silenceMs: positiveIntegerEnv('OPENCODE_STREAM_SILENCE_MS', DEFAULT_STREAM_SILENCE_MS),
+              idleMs: positiveIntegerEnv('OPENCODE_IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
+              discard: () => {
+                discardDeadSharedRuntime(runtime);
+                runtime.streamRelease?.();
+              },
+            });
+            if (abort.signal.aborted) break;
+            const tokens = mergeTurnTokens(retriedTokens, attemptTokens);
+            const retryable = result.isError ? retryableModelError(nativeError) : undefined;
+            const waitMs = retryable ? backoff.next(retryable) : undefined;
+            if (retryable && waitMs !== undefined) {
+              retriedTokens = tokens;
+              log(
+                `Model error (status ${retryable.statusCode ?? 'n/a'}) after OpenCode's own retries; ` +
+                  `retry ${backoff.retries} in ${Math.round(waitMs / 1000)}s`,
               );
-            },
-            signal: abort.signal,
-            silenceMs: positiveIntegerEnv('OPENCODE_STREAM_SILENCE_MS', DEFAULT_STREAM_SILENCE_MS),
-            idleMs: positiveIntegerEnv('OPENCODE_IDLE_TIMEOUT_MS', DEFAULT_IDLE_TIMEOUT_MS),
-            discard: () => {
-              discardDeadSharedRuntime(runtime);
-              runtime.streamRelease?.();
-            },
-          });
-          if (!abort.signal.aborted) {
+              yield* waitWithActivity(waitMs, abort.signal);
+              text = modelRetryPrompt(retryable);
+              continue;
+            }
+            if (retryable) log(`Model error persists after ${backoff.retries} retries; the turn fails`);
+            if (truncated && continues < MAX_OUTPUT_LIMIT_CONTINUES) {
+              continues += 1;
+              retriedTokens = tokens;
+              log(`Step cut off at the output token limit; continue ${continues}/${MAX_OUTPUT_LIMIT_CONTINUES}`);
+              text = OUTPUT_LIMIT_CONTINUE_PROMPT;
+              continue;
+            }
+            if (truncated) log(`Step still cut off after ${continues} continues; the turn ends there`);
+            retriedTokens = [];
             const accounting = turnAccounting(tokens, {
               sessionId,
               durationMs: Date.now() - startedAt,
@@ -667,12 +742,22 @@ export class OpenCodeProvider implements AgentProvider {
             });
             yield { type: 'result', ...result, accounting };
             yield { type: 'usage', ...accounting };
+            break;
+          }
+          // Aborted while waiting to retry or during a continue: the earlier attempts were billed.
+          if (retriedTokens.length > 0) {
+            yield {
+              type: 'usage',
+              ...turnAccounting(retriedTokens, { sessionId, durationMs: Date.now() - startedAt, isError: true }),
+            };
+            retriedTokens = [];
           }
         }
       } catch (error) {
-        // A failed turn's calls were billed: charge them before the error ends the query.
-        const billed = failedTurnTokensOf(error);
-        if (billed) {
+        // A failed turn's calls were billed, earlier attempts of a retried turn
+        // included: charge them before the error ends the query.
+        const billed = mergeTurnTokens(retriedTokens, failedTurnTokensOf(error) ?? []);
+        if (billed.length > 0) {
           yield {
             type: 'usage',
             ...turnAccounting(billed, {
@@ -685,6 +770,7 @@ export class OpenCodeProvider implements AgentProvider {
         if (!abort.signal.aborted) throw error;
       } finally {
         abort.abort();
+        if (initialized && sessionId) await self.sessionHooks?.end(sessionId);
       }
     }
 
@@ -707,4 +793,7 @@ export class OpenCodeProvider implements AgentProvider {
   }
 }
 
-registerProvider('opencode', (opts, configuration) => new OpenCodeProvider(opts, undefined, configuration));
+registerProvider(
+  'opencode',
+  (opts, configuration) => new OpenCodeProvider(opts, undefined, configuration, settingsSessionHooks()),
+);

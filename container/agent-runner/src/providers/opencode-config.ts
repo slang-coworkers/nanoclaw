@@ -1,5 +1,9 @@
+import fs from 'fs';
+import path from 'path';
+
 import type { ProviderOptions } from './types.js';
 import type { ResolvedRuntimeConfiguration, RuntimeInferenceInput } from '../provider-contracts/registry.js';
+import { isPrimaryClone } from '../refresh-clones.js';
 import { mcpServersToOpenCodeConfig } from './mcp-to-opencode.js';
 import { openCodeInstructionsPath } from './opencode-memory.js';
 import { OPENCODE_CREDENTIAL_PLACEHOLDER } from './opencode-auth.js';
@@ -36,6 +40,31 @@ function parseLimitEnv(varName: string, raw: string | undefined): number | undef
     return undefined;
   }
   return Number(trimmed);
+}
+
+// The most tokens OpenCode 1.18 asks for in one response (OUTPUT_TOKEN_MAX in
+// its provider transform); OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX replaces it.
+const OPENCODE_OUTPUT_TOKEN_MAX = 32_000;
+
+/**
+ * Return the response budget OpenCode itself requests for a model, so the
+ * Chat Completions endpoint can be told the same number as
+ * `max_completion_tokens`. OpenCode computes it as the model's declared output
+ * limit capped at its own maximum, or that maximum when the model declares
+ * none: `Math.min(limit.output, OUTPUT_TOKEN_MAX) || OUTPUT_TOKEN_MAX`.
+ *
+ * Why the endpoint needs it: OpenCode sends the number only as `max_tokens`,
+ * and the NVIDIA inference endpoint ignores that field and ends every response
+ * at 4096 tokens, reasoning included. A GLM 5.3 step that reasons at length
+ * then stops with finish reason "length" and no text. With
+ * `max_completion_tokens` in the request, the same prompt ran to 14,272
+ * output tokens and a normal stop (measured on prod, 2026-11-16).
+ */
+function openCodeResponseTokens(declaredOutput: number | undefined, environment: NodeJS.ProcessEnv): number {
+  const cap =
+    parseLimitEnv('OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX', environment.OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX) ??
+    OPENCODE_OUTPUT_TOKEN_MAX;
+  return Math.min(declaredOutput ?? 0, cap) || cap;
 }
 
 export function resolveOpenCodeInference(
@@ -106,6 +135,23 @@ export function resolveOpenCodeInference(
   const modelModalities =
     requestedModalities.length > 0 ? { input: ['text', ...requestedModalities], output: ['text'] } : undefined;
 
+  // A custom base URL on the `openai` provider selects the Chat Completions
+  // transport (see `npm` below). On that transport each registered model also
+  // tells the endpoint its response budget as `max_completion_tokens`
+  // (openCodeResponseTokens); OpenCode passes unknown model options into the
+  // request body. The main model's budget follows its declared output limit;
+  // a distinct small model declares none.
+  const chatCompletions = provider === 'openai' && Boolean(proxyUrl);
+  const modelOptions = (isMainModel: boolean): Record<string, unknown> | undefined => {
+    const options: Record<string, unknown> = {
+      ...(isMainModel && effort ? { reasoningEffort: effort } : {}),
+      ...(chatCompletions
+        ? { max_completion_tokens: openCodeResponseTokens(isMainModel ? modelLimit?.output : undefined, environment) }
+        : {}),
+    };
+    return Object.keys(options).length > 0 ? options : undefined;
+  };
+
   // Native API providers also need a placeholder to become connected before
   // any HTTP request reaches the selected gateway. Model options do not depend on baseURL.
   const providerOptions: Record<string, unknown> = {
@@ -118,7 +164,7 @@ export function resolveOpenCodeInference(
       // (e.g. `openrouter`, set alongside ANTHROPIC_BASE_URL per the
       // documented OpenRouter config) ship their own native ai-sdk
       // package and must keep OpenCode's default transport resolution.
-      ...(provider === 'openai' && proxyUrl ? { npm: '@ai-sdk/openai-compatible' } : {}),
+      ...(chatCompletions ? { npm: '@ai-sdk/openai-compatible' } : {}),
       options: { apiKey: OPENCODE_CREDENTIAL_PLACEHOLDER, ...(proxyUrl ? { baseURL: proxyUrl } : {}) },
       ...(modelsToRegister.length > 0
         ? {
@@ -132,13 +178,14 @@ export function resolveOpenCodeInference(
                 // main one gets a bare entry instead, which resolves
                 // through OpenCode's own undeclared-model default.
                 const isMainModel = mid === providerModelId;
+                const options = modelOptions(isMainModel);
                 return [
                   mid,
                   {
                     id: mid,
                     name: mid,
                     tool_call: true,
-                    ...(isMainModel && effort ? { options: { reasoningEffort: effort } } : {}),
+                    ...(options ? { options } : {}),
                     ...(isMainModel && modelLimit ? { limit: modelLimit } : {}),
                     ...(isMainModel && modelModalities ? { attachment: true, modalities: modelModalities } : {}),
                   },
@@ -235,6 +282,108 @@ export function buildOpenCodeConfig(
     experimental: { mcp_timeout: MCP_REQUEST_TIMEOUT_MS },
     // The runner renders this file once per turn. Native steps, compaction
     // continuation and Task children reread it through the instructions pipeline.
+    // withCloneClaudeMdInstructions adds the guides of cloned repositories
+    // when the server spawns.
     instructions: [`${AGENT_DIR}/CLAUDE.md`, `${AGENT_DIR}/CLAUDE.local.md`, openCodeInstructionsPath()],
   };
+}
+
+/**
+ * Return `config` with the CLAUDE.md files from `cloneClaudeMdPaths` added
+ * after its existing instructions. OpenCode reads each instructions file on
+ * every model call, so a later pull of a clone reaches the next call; the
+ * list of files is fixed when the server spawns.
+ */
+export function withCloneClaudeMdInstructions(
+  config: Record<string, unknown>,
+  agentDir: string = AGENT_DIR,
+): Record<string, unknown> {
+  const guides = cloneClaudeMdPaths(agentDir);
+  if (guides.length === 0) return config;
+  return { ...config, instructions: [...(config.instructions as string[]), ...guides] };
+}
+
+/**
+ * Return the CLAUDE.md of each repository cloned directly under `agentDir`
+ * that OpenCode would otherwise skip. OpenCode reads one instructions file
+ * per folder and takes AGENTS.md before CLAUDE.md, so it skips CLAUDE.md when
+ * AGENTS.md is in the same folder. Claude Code read CLAUDE.md, and a
+ * repository that has both files often keeps its full guide in CLAUDE.md.
+ *
+ * A folder qualifies when all of these hold:
+ *   - Its `.git` is a directory. A linked worktree (`.git` is a file) is
+ *     another checkout of a clone, and its copy of the guide would load the
+ *     same text once per worktree.
+ *   - It has both files, and they are different files. With CLAUDE.md alone,
+ *     OpenCode finds it without help; when one name links to the other,
+ *     OpenCode already reads that text as AGENTS.md.
+ *   - Its `origin` is a remote URL, and no folder earlier in name order
+ *     clones a repository of the same name. Agents make per-task copies of a
+ *     repository, cloned from a local path or from the same remote, and a
+ *     group can hold many of them; the guide loads once.
+ *
+ * We add the file as is and do not expand its `@path` import lines, because
+ * an import of the sibling AGENTS.md would load that file a second time.
+ *
+ * For example, `tool/` (origin https://github.com/acme/tool.git) qualifies;
+ * `tool-bisect/` with the same origin, `wt-123/` cloned from
+ * `/workspace/agent/tool`, and the linked worktree `wt-tool-456/` do not.
+ */
+export function cloneClaudeMdPaths(agentDir: string = AGENT_DIR): string[] {
+  if (!fs.existsSync(agentDir)) return [];
+  const guideByRepository = new Map<string, string>();
+  for (const entry of fs.readdirSync(agentDir).sort()) {
+    const clone = path.join(agentDir, entry);
+    if (!isPrimaryClone(clone)) continue;
+    const claudeMd = path.join(clone, 'CLAUDE.md');
+    const agentsMd = path.join(clone, 'AGENTS.md');
+    if (!fs.existsSync(claudeMd) || !fs.existsSync(agentsMd)) continue;
+    if (fs.realpathSync(claudeMd) === fs.realpathSync(agentsMd)) continue;
+    const repository = remoteRepositoryName(originUrl(clone));
+    if (repository === undefined || guideByRepository.has(repository)) continue;
+    guideByRepository.set(repository, claudeMd);
+  }
+  return [...guideByRepository.values()];
+}
+
+/**
+ * Return the `remote.origin.url` of a clone, read from its `.git/config`, or
+ * undefined when it has none. We read the file rather than run `git config`
+ * because a group can hold hundreds of clones, and under Bun a synchronous
+ * child process can miss its exit and hang (see runHookCommand).
+ */
+function originUrl(clone: string): string | undefined {
+  let config: string;
+  try {
+    config = fs.readFileSync(path.join(clone, '.git', 'config'), 'utf-8');
+  } catch {
+    return undefined;
+  }
+  let section = '';
+  for (const raw of config.split('\n')) {
+    const line = raw.trim();
+    if (line.startsWith('[')) {
+      section = line;
+      continue;
+    }
+    const url = /^url\s*=\s*(.+)$/.exec(line);
+    if (section === '[remote "origin"]' && url) return url[1];
+  }
+  return undefined;
+}
+
+/**
+ * Return the repository name of a remote URL, such as `tool` for both
+ * `https://token@github.com/acme/tool.git` and `git@github.com:acme/tool`,
+ * or undefined for a local path. Git
+ * treats a URL with neither a `scheme:` nor a scp-style `host:` prefix, and
+ * any `file:` URL, as a path on this machine.
+ */
+function remoteRepositoryName(url: string | undefined): string | undefined {
+  if (url === undefined || url.startsWith('file:') || !/^[^/]+:/.test(url)) return undefined;
+  return url
+    .replace(/\/+$/, '')
+    .replace(/\.git$/, '')
+    .split(/[/:]/)
+    .pop();
 }

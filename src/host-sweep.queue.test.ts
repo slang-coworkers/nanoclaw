@@ -18,8 +18,12 @@ vi.mock('./reconcile-session.js', () => ({
   decideStuckAction: vi.fn(),
   parseSqliteUtc: vi.fn(),
   shouldCloseTaskSession: vi.fn(),
+  unretiredClosedSessions: vi.fn((ids: string[], limit: number) => ids.slice(0, limit)),
 }));
-vi.mock('./db/sessions.js', () => ({ getActiveSessions: vi.fn() }));
+vi.mock('./db/sessions.js', () => ({
+  getActiveSessions: vi.fn(),
+  getClosedSessionIdsInUnpausedGroups: vi.fn(),
+}));
 vi.mock('./egress-lockdown.js', () => ({ ensureEgressNetwork: vi.fn() }));
 vi.mock('./modules/approvals/index.js', () => ({ sweepAwaitingReasonRejects: vi.fn() }));
 // Fork-only singleton duties. Unmocked they reach the real modules, whose central
@@ -32,9 +36,9 @@ vi.mock('./modules/cost-drift-check/index.js', () => ({ maybeStartCostDriftCheck
 vi.mock('./container-runner.js', () => ({ stopOrphanedSessions: vi.fn(), retryPendingAdoptions: vi.fn() }));
 
 import { retryPendingAdoptions, stopOrphanedSessions } from './container-runner.js';
-import { getActiveSessions } from './db/sessions.js';
+import { getActiveSessions, getClosedSessionIdsInUnpausedGroups } from './db/sessions.js';
 import { ensureEgressNetwork } from './egress-lockdown.js';
-import { RECONCILE_CONCURRENCY, startHostSweep, stopHostSweep } from './host-sweep.js';
+import { CLOSED_SESSION_MAIL_BATCH, RECONCILE_CONCURRENCY, startHostSweep, stopHostSweep } from './host-sweep.js';
 import { sweepAwaitingReasonRejects } from './modules/approvals/index.js';
 import { reconcileCostCards } from './modules/cost-approval/index.js';
 import { reconcileCostCeilingAdjustments } from './modules/cost-ceiling-adjustment/index.js';
@@ -93,6 +97,7 @@ beforeEach(() => {
   vi.mocked(getActiveSessions)
     .mockReset()
     .mockResolvedValue([{ id: 's-1' }, { id: 's-2' }] as Awaited<ReturnType<typeof getActiveSessions>>);
+  vi.mocked(getClosedSessionIdsInUnpausedGroups).mockReset().mockResolvedValue([]);
 
   sweepCallbacks.length = 0;
   setTimeoutSpy = vi.spyOn(global, 'setTimeout').mockImplementation(((fn: () => void, ms?: number) => {
@@ -126,6 +131,19 @@ describe('sweep over the workqueue', () => {
 
     await runSweepTick();
     expect(reconcileSession).toHaveBeenCalledTimes(4);
+  });
+
+  // Closed sessions are never listed as active, so their leftover inbound mail
+  // reaches the per-session reconcile (which retires it) only through this scan.
+  it('hands closed sessions to the per-session reconcile within the same tick, a batch at a time', async () => {
+    const closed = Array.from({ length: CLOSED_SESSION_MAIL_BATCH + 5 }, (_, i) => `c-${i}`);
+    vi.mocked(getClosedSessionIdsInUnpausedGroups).mockResolvedValue(closed);
+
+    await runSweepTick();
+
+    const reconciled = order.filter((step) => step.startsWith('session:c-'));
+    expect(reconciled).toEqual(closed.slice(0, CLOSED_SESSION_MAIL_BATCH).map((id) => `session:${id}`));
+    expect(order.indexOf('session:c-0')).toBeGreaterThan(order.indexOf('session:s-2'));
   });
 
   it('a session listing failure still runs the singleton duties and re-arms', async () => {

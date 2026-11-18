@@ -5,8 +5,11 @@
  * we pin to a per-session host directory mounted at /opencode-xdg. The
  * OPENCODE_* env vars tell the CLI which provider/model to use at runtime
  * (read on the host, injected into the container). NO_PROXY / no_proxy are
- * merged with host values so the in-container OpenCode client can talk to
- * 127.0.0.1 even when HTTPS_PROXY is set by OneCLI.
+ * merged with host values so the in-container OpenCode client reaches
+ * 127.0.0.1 and the host (host.docker.internal) directly even when the OneCLI
+ * proxy variables are set. OpenCode honors HTTP_PROXY for plain http, so a list
+ * without host.docker.internal sends the MCP proxy (:8808) and the dashboard
+ * hook posts into the gateway, which cannot forward them.
  */
 import fs from 'fs';
 import path from 'path';
@@ -27,6 +30,9 @@ const PASSTHROUGH_KEYS = [
   'OPENCODE_MCP_TIMEOUT_MS',
 ] as const;
 const AUTH_MODE_KEY = 'OPENCODE_AUTH_MODE';
+
+/** Host-local destinations that bypass the proxy: the same list container-runner sets for every container. */
+const HOST_LOCAL_NO_PROXY = 'host.docker.internal,127.0.0.1,localhost';
 
 function mergeNoProxy(current: string | undefined, additions: string): string {
   if (!current?.trim()) return additions;
@@ -49,8 +55,8 @@ registerProviderContainerConfig('opencode', (ctx) => {
 
   const env: Record<string, string> = {
     XDG_DATA_HOME: '/opencode-xdg',
-    NO_PROXY: mergeNoProxy(ctx.hostEnv.NO_PROXY, '127.0.0.1,localhost'),
-    no_proxy: mergeNoProxy(ctx.hostEnv.no_proxy, '127.0.0.1,localhost'),
+    NO_PROXY: mergeNoProxy(ctx.hostEnv.NO_PROXY, HOST_LOCAL_NO_PROXY),
+    no_proxy: mergeNoProxy(ctx.hostEnv.no_proxy, HOST_LOCAL_NO_PROXY),
   };
   // The host process does not load `.env` into process.env (readEnvFile keeps
   // file values out of child processes), and the service units set no
