@@ -6,15 +6,34 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 871 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 322 |
-| `nv-slang` | slang project spine, skills, workflows | 226 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 135 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 112 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 874 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 323 |
+| `nv-slang` | slang project spine, skills, workflows | 227 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 136 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 113 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-18
+
+### nv-main (3 PRs)
+- **#2459** `Retry a rate-limited critic call instead of failing the critique`
+- **#2427** `Sync nv-main with upstream/main`
+- **#2461** `fix(ci): run Compose Check's container tests isolated`
+
+### nv-dashboard (1 PRs)
+- **#2463** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#2464** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2465** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2466** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-17
 
