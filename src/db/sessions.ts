@@ -262,6 +262,19 @@ export async function getActiveSessions(): Promise<Session[]> {
   return getDb().all<Session>("SELECT * FROM sessions WHERE status = 'active'");
 }
 
+/**
+ * Ids of closed sessions whose agent group exists and is not paused — the
+ * sessions whose leftover inbound mail the sweep retires. A paused group's
+ * closed sessions are left out until it is unpaused.
+ */
+export async function getClosedSessionIdsInUnpausedGroups(): Promise<string[]> {
+  const rows = await getDb().all<{ id: string }>(
+    `SELECT s.id FROM sessions s JOIN agent_groups g ON g.id = s.agent_group_id
+      WHERE s.status = 'closed' AND g.paused = 0`,
+  );
+  return rows.map((row) => row.id);
+}
+
 export async function getRunningSessions(): Promise<Session[]> {
   return getDb().all<Session>("SELECT * FROM sessions WHERE container_status IN ('running', 'idle')");
 }

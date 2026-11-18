@@ -210,7 +210,7 @@ do_run bash -c "cd '${HOME_DIR}/.onecli-sprint' && sudo docker compose up -d --w
 if [ "$DRY_RUN" = 0 ]; then
   ONECLI_UP=0
   for ((i=1; i<=30; i++)); do          # arithmetic loop: no dependence on `seq` succeeding
-    OLIST="$(ONECLI_API_HOST=http://172.17.0.1:10254 onecli agents list 2>/dev/null || true)"
+    OLIST="$(ONECLI_API_HOST=http://127.0.0.1:10254 onecli agents list 2>/dev/null || true)"
     [ -n "${OLIST//[[:space:]]/}" ] && { ONECLI_UP=1; break; }
     sleep 2
   done

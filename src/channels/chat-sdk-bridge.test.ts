@@ -1,4 +1,5 @@
 import http from 'http';
+import type { Socket } from 'net';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -35,6 +36,31 @@ import {
 vi.mock('../webhook-server.js', () => ({
   registerWebhookAdapter: vi.fn(),
 }));
+
+/**
+ * Holds back the callback of every setTimeout call for `ms`, for the test to
+ * run itself, and passes every other call to the real setTimeout with all its
+ * arguments. Other code shares the global: undici arms its keep-alive timer as
+ * setTimeout(onParserTimeout, delay, new WeakRef(parser)), so a pass-through
+ * that drops the trailing arguments makes that timer throw when it fires,
+ * which kills the test worker. The caller restores the spy.
+ */
+function holdTimeouts(ms: number): Array<() => void> {
+  const realSetTimeout = globalThis.setTimeout;
+  const held: Array<() => void> = [];
+  vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+    fn: (...args: unknown[]) => void,
+    delay?: number,
+    ...args: unknown[]
+  ) => {
+    if (delay === ms) {
+      held.push(() => fn(...args));
+      return 0;
+    }
+    return realSetTimeout(fn, delay, ...args);
+  }) as never);
+  return held;
+}
 
 function stubAdapter(partial: Partial<Adapter>): Adapter {
   return { name: 'stub', ...partial } as unknown as Adapter;
@@ -2002,15 +2028,7 @@ describe('createChatSdkBridge — local Gateway webhook', () => {
   it('removes the buttons anyway once a card edit has stalled for the settle time', async () => {
     const { bridge, click, editMessage } = await startDiscord('q-discord-edit-stalls', review);
     editMessage.mockImplementation(() => new Promise(() => {}) as never);
-    const realSetTimeout = globalThis.setTimeout;
-    const settleTimers: Array<() => void> = [];
-    vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, ms?: number) => {
-      if (ms === CARD_EDIT_SETTLE_MS) {
-        settleTimers.push(fn);
-        return 0;
-      }
-      return realSetTimeout(fn, ms);
-    }) as never);
+    const settleTimers = holdTimeouts(CARD_EDIT_SETTLE_MS);
     const patches = () => discordCalls().filter(([method]) => method === 'PATCH');
     try {
       await click({ id: 'clicker-1', username: 'Ann' });
@@ -2021,6 +2039,19 @@ describe('createChatSdkBridge — local Gateway webhook', () => {
     } finally {
       vi.mocked(globalThis.setTimeout).mockRestore();
       await bridge.teardown();
+    }
+  });
+
+  it('holds back only the settle timer: other timers run with their arguments', async () => {
+    const settleTimers = holdTimeouts(CARD_EDIT_SETTLE_MS);
+    try {
+      const received = await new Promise((resolve) =>
+        setTimeout((...args: unknown[]) => resolve(args), 1, 'weak-ref', 'second'),
+      );
+      expect(received).toEqual(['weak-ref', 'second']);
+      expect(settleTimers).toEqual([]);
+    } finally {
+      vi.mocked(globalThis.setTimeout).mockRestore();
     }
   });
 
@@ -2631,6 +2662,33 @@ describe('createChatSdkBridge — local Gateway webhook', () => {
       expect(status).toBe(401);
     } finally {
       await bridge.teardown();
+    }
+  });
+
+  it('teardown closes the local webhook server and ends the keep-alive connections to it', async () => {
+    const { bridge, webhookUrl } = await startGateway(BOT_TOKEN);
+    // The Gateway listener's forwards leave a keep-alive connection open, as this request does.
+    const agent = new http.Agent({ keepAlive: true });
+    try {
+      const socket = await new Promise<Socket>((resolve, reject) => {
+        const req = http.request(
+          webhookUrl,
+          { method: 'POST', agent, headers: { 'x-discord-gateway-token': BOT_TOKEN } },
+          (res) => {
+            res.resume();
+            res.on('end', () => resolve(req.socket!));
+          },
+        );
+        req.on('error', reject);
+        req.end(message);
+      });
+      const closed = new Promise<'closed'>((resolve) => socket.once('close', () => resolve('closed')));
+      await bridge.teardown();
+      const stillOpen = new Promise<'open'>((resolve) => setTimeout(() => resolve('open'), 1_000));
+      expect(await Promise.race([closed, stillOpen])).toBe('closed');
+      await expect(realFetch(webhookUrl, { method: 'POST', body: message })).rejects.toThrow();
+    } finally {
+      agent.destroy();
     }
   });
 

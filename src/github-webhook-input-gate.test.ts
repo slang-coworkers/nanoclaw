@@ -34,7 +34,7 @@ vi.mock('./webhook-github.js', () => ({
 vi.mock('./modules/pr-mapping/register-endpoint.js', () => ({ handleRegisterPr: vi.fn() }));
 vi.mock('./modules/pr-mapping/store.js', () => ({ prMappingExists: vi.fn(() => false) }));
 vi.mock('./modules/pending-reviewable/ci-check.js', () => ({ requiredCheckRunGreen: vi.fn(() => true) }));
-vi.mock('./modules/pending-reviewable/store.js', () => ({ deleteParked: vi.fn(), findParkedByHead: vi.fn() }));
+vi.mock('./modules/pending-reviewable/store.js', () => ({ findParkedByHead: vi.fn(), markParkReleased: vi.fn() }));
 vi.mock('./env.js', () => ({ readEnvFile: () => ({}) }));
 
 import { closeDb, initTestDb } from './db/connection.js';

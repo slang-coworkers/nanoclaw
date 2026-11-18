@@ -13,7 +13,12 @@ import os from 'os';
 import path from 'path';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
+import {
+  CONTAINER_BUILD_JOBS,
+  CONTAINER_CPU_LIMIT,
+  CONTAINER_MEMORY_LIMIT,
+  resolveContainerBuildJobs,
+} from './config.js';
 import type { CapDiagnostics } from './claude-composer/project-doc.js';
 import type { ContainerConfig } from './container-config.js';
 import {
@@ -82,8 +87,16 @@ describe('resolveProviderName', () => {
     expect(resolveProviderName(tiers(null, null, 'opencode'))).toBe('opencode');
   });
 
-  it('defaults to claude when nothing is set', () => {
-    expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
+  it('defaults to the install default when nothing is set', () => {
+    vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', '');
+    vi.stubEnv('DEFAULT_AGENT_PROVIDER', '');
+    try {
+      expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('opencode');
+      vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', 'any');
+      expect(resolveProviderName(tiers(null, undefined, undefined))).toBe('claude');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('lowercases the resolved name', () => {
@@ -102,7 +115,12 @@ describe('resolveProviderName', () => {
   it('treats empty string as unset (falls through)', () => {
     expect(resolveProviderName(tiers('', 'opencode', null))).toBe('opencode');
     expect(resolveProviderName(tiers(null, '', 'codex'))).toBe('codex');
-    expect(resolveProviderName(tiers(null, '', ''))).toBe('claude');
+    vi.stubEnv('DEFAULT_AGENT_PROVIDER', 'pi');
+    try {
+      expect(resolveProviderName(tiers(null, '', ''))).toBe('pi');
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
 
@@ -521,11 +539,18 @@ describe('composeSessionSpec', () => {
     expect(spec.containers[0].env.ANTHROPIC_AUTH_TOKEN).toBeUndefined();
   });
 
+  it('caps cmake --build at a fair share of the host cores', async () => {
+    expect(CONTAINER_BUILD_JOBS).toBe(resolveContainerBuildJobs(undefined, os.availableParallelism()));
+    expect((await compose()).containers[0].env.CMAKE_BUILD_PARALLEL_LEVEL).toBe(String(CONTAINER_BUILD_JOBS));
+  });
+
   it('passes non-secret mailbox environment on the composed lane', async () => {
     expect((await compose()).containers[0].env.NANOCLAW_MAILBOX_BACKEND).toBe('sqlite');
   });
 
   it('forwards the host fallback model so the SDK never falls back to its built-in default', async () => {
+    // An install whose default is Claude: an open-weights group would get its open small model instead.
+    vi.stubEnv('NANOCLAW_DEFAULT_WEIGHTS', 'any');
     vi.stubEnv('ANTHROPIC_FALLBACK_MODEL', 'aws/anthropic/bedrock-claude-sonnet-5-5');
     try {
       expect((await compose()).containers[0].env.ANTHROPIC_FALLBACK_MODEL).toBe(
@@ -545,6 +570,15 @@ describe('composeSessionSpec', () => {
       expect(env.PR_DESCRIPTION_GATE).toBe('0');
       expect(env.PR_DESCRIPTION_MAX_CHARS).toBe('1500');
       expect(env.PR_DESCRIPTION_MAX_SECTION_LINES).toBe('3');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('forwards the GitHub comment-body gate off switch into the container', async () => {
+    vi.stubEnv('GITHUB_COMMENT_BODY_GATE', '0');
+    try {
+      expect((await compose()).containers[0].env.GITHUB_COMMENT_BODY_GATE).toBe('0');
     } finally {
       vi.unstubAllEnvs();
     }
@@ -1226,10 +1260,21 @@ describe('migrateStandingInstructions', () => {
 describe('composeSessionSpec applies the per-group model policy', () => {
   // src/model-policy.ts: spawn writes each role's model into the container env,
   // in one lane only, and refuses a weights=open group that would call a closed model.
-  const saved = process.env.OPENCODE_PROVIDER;
+  // The host .env's Claude settings, which forkContainerEnv forwards into every container.
+  const HOST_CLAUDE_ENV: Record<string, string> = {
+    ANTHROPIC_MODEL: 'aws/anthropic/bedrock-claude-opus-5-5[1m]',
+    ANTHROPIC_DEFAULT_OPUS_MODEL: 'aws/anthropic/bedrock-claude-opus-5-5[1m]',
+    ANTHROPIC_DEFAULT_SONNET_MODEL: 'aws/anthropic/bedrock-claude-sonnet-5-5',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: 'azure/anthropic/claude-haiku-5-5',
+    ANTHROPIC_FALLBACK_MODEL: 'azure/anthropic/claude-opus-5-5[1m]',
+  };
+  const saved: Record<string, string | undefined> = {};
+  for (const key of ['OPENCODE_PROVIDER', ...Object.keys(HOST_CLAUDE_ENV)]) saved[key] = process.env[key];
   afterEach(() => {
-    if (saved === undefined) delete process.env.OPENCODE_PROVIDER;
-    else process.env.OPENCODE_PROVIDER = saved;
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   });
 
   async function seedGroup(id: string, provider: string | null, weights: string) {
@@ -1273,11 +1318,55 @@ describe('composeSessionSpec applies the per-group model policy', () => {
     expect(agent.contributedEnv?.OPENCODE_SMALL_MODEL).toBeUndefined();
   });
 
+  it("replaces the host's Claude model settings in an open-weights group and keeps them in a closed one", async () => {
+    process.env.OPENCODE_PROVIDER = 'openai';
+    Object.assign(process.env, HOST_CLAUDE_ENV);
+    const compose = (id: string) =>
+      composeSessionSpec({
+        agentGroup: { ...agentGroup, id, folder: id, agent_provider: 'opencode' },
+        session,
+        containerName: `nanoclaw-v2-${id}-1700000000000`,
+        mounts,
+        containerConfig,
+        mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
+        contribution: {} as never,
+        gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+        provider: 'opencode',
+        instanceId: 'test-instance-id',
+      });
+
+    await seedGroup('ag-policy-open-claude-env', 'opencode', 'open');
+    const open = (await compose('ag-policy-open-claude-env')).containers[0].env;
+    expect(open).toMatchObject({
+      ANTHROPIC_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_OPUS_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_SONNET_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      ANTHROPIC_SMALL_FAST_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_SUBAGENT_MODEL: 'nvidia/zai-org/glm-5.3',
+      ANTHROPIC_FALLBACK_MODEL: 'nvidia/zai-org/glm-5.3-flash',
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    });
+    expect(JSON.stringify(open)).not.toContain('anthropic/');
+
+    // A closed group on the same install still gets the host's Claude settings.
+    await seedGroup('ag-policy-closed-claude-env', 'opencode', 'any');
+    const closed = (await compose('ag-policy-closed-claude-env')).containers[0].env;
+    expect(closed).toMatchObject(HOST_CLAUDE_ENV);
+    expect(closed.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC).toBeUndefined();
+  });
+
   it('refuses to start a Claude group set to open weights', async () => {
-    await seedGroup('ag-policy-claude', null, 'open');
+    await seedGroup('ag-policy-claude', 'claude', 'open');
     await expect(
       composeSessionSpec({
-        agentGroup: { ...agentGroup, id: 'ag-policy-claude', name: 'ag-policy-claude', folder: 'ag-policy-claude' },
+        agentGroup: {
+          ...agentGroup,
+          id: 'ag-policy-claude',
+          name: 'ag-policy-claude',
+          folder: 'ag-policy-claude',
+          agent_provider: 'claude',
+        },
         session,
         containerName: 'nanoclaw-v2-policy-claude-1700000000000',
         mounts,
@@ -1285,6 +1374,7 @@ describe('composeSessionSpec applies the per-group model policy', () => {
         mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
         contribution: {} as never,
         gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
+        provider: 'claude',
         instanceId: 'test-instance-id',
       }),
     ).rejects.toThrow('Model policy refuses to start group "ag-policy-claude"');

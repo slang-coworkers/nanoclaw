@@ -98,7 +98,8 @@ describe('rowForPrivilege', () => {
 
   it('runs an open session under weights=open, and a closed session without the rule', () => {
     expect(rowForPrivilege({ model: 'x' }, 'open', enforce())).toEqual({ model: 'x', weights: 'open' });
-    expect(rowForPrivilege(row, 'closed', enforce())).toEqual({ model: 'nvidia/zai-org/glm-5.3', weights: null });
+    // `any`, not empty: an empty value would follow the install default, which may be open.
+    expect(rowForPrivilege(row, 'closed', enforce())).toEqual({ model: 'nvidia/zai-org/glm-5.3', weights: 'any' });
   });
 });
 

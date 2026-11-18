@@ -99,6 +99,34 @@ describe('canonical mailbox model', () => {
     });
   });
 
+  // A system row answers one tool call's own poll; the runner's poll loop drops
+  // system rows, so a system trigger stays due forever (prod: a late
+  // ask_user_question answer kept an Orchestrator session due for 47 days).
+  it('never stores a system row as a trigger, and refuses an explicit request for one', () => {
+    const write = (kind: 'system' | 'chat', trigger?: boolean) =>
+      createInboundRecord(
+        {
+          id: `in-${kind}`,
+          kind,
+          timestamp: '2026-01-01T00:00:00.000Z',
+          platformId: null,
+          channelType: null,
+          threadId: null,
+          content: '{"type":"question_response","questionId":"q-1"}',
+          processAfter: null,
+          recurrence: null,
+          ...(trigger === undefined ? {} : { trigger }),
+        },
+        2,
+      );
+
+    expect(write('system').trigger).toBe(false);
+    expect(write('system', false).trigger).toBe(false);
+    expect(() => write('system', true)).toThrow('a system inbound row cannot be a trigger');
+    expect(write('chat').trigger).toBe(true);
+    expect(write('chat', false).trigger).toBe(false);
+  });
+
   it('rejects unknown, missing, and representation-drifted fields', () => {
     const inbound = createInboundRecord(
       {

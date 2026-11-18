@@ -2,6 +2,7 @@ import {
   type Capability,
   type ProviderRuntimeContract,
   type ResolvedRuntimeConfiguration,
+  type RuntimeArchiveContinuationInput,
   type RuntimeCallbackEffects,
   type RuntimeConfigurationInputs,
 } from './registry.js';
@@ -88,6 +89,24 @@ export function registerProviderMemorySessionHook(
 /** The active provider's newest trace, for `/upload-trace`. */
 export function readProviderTrace(provider: string): string | null {
   return getProviderRuntimeContract(provider)?.history?.readTrace?.() ?? null;
+}
+
+/**
+ * Ask `provider` to write the conversation behind its stored `continuation` as
+ * a readable file, and return the file's path. Null when the provider declares
+ * no archiver or has no readable transcript. Never throws.
+ */
+export function archiveProviderContinuation(provider: string, input: RuntimeArchiveContinuationInput): string | null {
+  const archive = getProviderRuntimeContract(provider)?.history?.archiveContinuation;
+  if (!archive) return null;
+  try {
+    return archive(input, REAL_CLOCK);
+  } catch (error) {
+    input.log(
+      `Archiving the ${provider} conversation failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return null;
+  }
 }
 
 export function runProviderAfterExchange(provider: string, exchange: ProviderExchange): string | null {
