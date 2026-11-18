@@ -20,6 +20,11 @@ const dbFlag = process.argv.indexOf('--db');
 const dbPath = dbFlag > 0 ? process.argv[dbFlag + 1] : CENTRAL_DB_PATH;
 if (!dbPath) throw new Error('--db needs a path');
 const env = { ...process.env, ...readEnvFile([...MODEL_POLICY_ENV_KEYS]) };
+// A group with no provider of its own follows the install default, which provider resolution reads
+// from process.env as the host does.
+for (const key of ['DEFAULT_AGENT_PROVIDER', 'NANOCLAW_DEFAULT_WEIGHTS']) {
+  if (env[key] !== undefined) process.env[key] = env[key];
+}
 
 /** One line per role, `role=model`, with closed models marked. */
 function models(resolved: ResolvedModels, closed: readonly string[]): string {

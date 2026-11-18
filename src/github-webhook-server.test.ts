@@ -336,6 +336,33 @@ describe('webhook handler: 👀 ack + own-bot gate', () => {
     expect(readyMock.mock.calls[0][0]).toMatchObject({ prNumber: 323, reason: 'synchronize' });
   });
 
+  it("passes the head sha and the PR's updated_at, normalized, for the CI-gate park", async () => {
+    await postPullRequest({
+      action: 'synchronize',
+      repository: { full_name: 'org/repo' },
+      pull_request: {
+        number: 325,
+        draft: false,
+        updated_at: '2026-11-15T18:51:44Z',
+        head: { sha: '888aced9e4' },
+        user: { login: 'a-human' },
+      },
+    });
+    expect(readyMock.mock.calls[0][0]).toMatchObject({
+      headSha: '888aced9e4',
+      prUpdatedAt: '2026-11-15T18:51:44.000Z',
+    });
+  });
+
+  it('passes an empty updated_at when the payload has none, so the event is not parked', async () => {
+    await postPullRequest({
+      action: 'synchronize',
+      repository: { full_name: 'org/repo' },
+      pull_request: { number: 326, draft: false, head: { sha: '888aced9e4' }, user: { login: 'a-human' } },
+    });
+    expect(readyMock.mock.calls[0][0]).toMatchObject({ headSha: '888aced9e4', prUpdatedAt: '' });
+  });
+
   it('does NOT route opened/synchronize while the PR is still a draft', async () => {
     const openedDraft = await postPullRequest({
       action: 'opened',

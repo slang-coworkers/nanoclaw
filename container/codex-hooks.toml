@@ -96,6 +96,17 @@ matcher = "Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_crea
   command = "bash /app/hooks/gate-eval-sandbox.sh"
   timeout = 5
 
+# GitHub body gate: refuses a comment, review or issue/PR body that is the
+# literal text `@<path>` or opens with YAML frontmatter. The matcher is the one
+# Claude groups get (GITHUB_COMMENT_BODY_GATE_MATCHER in src/container-runner.ts,
+# kept equal by codex-hooks-gates.test.ts).
+[[hooks.PreToolUse]]
+matcher = "Bash|mcp__github__add_issue_comment|mcp__github__create_pending_pull_request_review|mcp__github__add_comment_to_pending_review|mcp__github__submit_pending_pull_request_review|mcp__github__create_and_submit_pull_request_review"
+  [[hooks.PreToolUse.hooks]]
+  type = "command"
+  command = "bash /app/hooks/gate-github-comment-body.sh"
+  timeout = 5
+
 # Plan gate. Codex reports a file edit (apply_patch) as a Bash call carrying the
 # patch, so both scripts read the files from it (hooks/lib/plan-paths.sh). Codex
 # sends no PostToolUse for a patch, so the plan is recorded at PreToolUse, and

@@ -53,7 +53,7 @@ export interface ContainerConfigRow {
   small_model?: string | null;
   router_model?: string | null;
   critic_model?: string | null;
-  /** 'open' = open-weights models only; NULL or 'any' = no rule. */
+  /** 'open' = open-weights models only; 'any' = no rule; NULL = the install default (NANOCLAW_DEFAULT_WEIGHTS). */
   weights?: string | null;
   /**
    * Session isolation tier ('container' | 'vm') — see SessionSpec.runtimeTier.

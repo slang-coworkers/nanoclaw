@@ -9,7 +9,7 @@
  * directly against the registered command guard, mocking only the cli_scope
  * lookup (as dispatch.test.ts does).
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('../../log.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
@@ -227,6 +227,57 @@ describe('cost-cap stopped — the LIVE currently-blocked set (distinct from the
     const cmd = lookup('cost-cap-stopped');
     if (!cmd) throw new Error('cost-cap-stopped not registered');
     expect(() => cmd.parseArgs({ groop: 'x' })).toThrow(/unknown flag/);
+  });
+});
+
+describe('cost-cap sessions / stopped — --timeout and snapshot freshness', () => {
+  const HOST: CallerContext = { caller: 'host' };
+  const cmdOf = (name: string) => {
+    const cmd = lookup(name);
+    if (!cmd) throw new Error(`${name} not registered`);
+    return cmd;
+  };
+
+  beforeEach(() => mockListStoppedSessions.mockReset());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('stopped passes --timeout (seconds) through as milliseconds', async () => {
+    mockListStoppedSessions.mockResolvedValue({ count: 0, group: null, costUnavailable: null, stopped: [] });
+    const cmd = cmdOf('cost-cap-stopped');
+    await cmd.handler(cmd.parseArgs({ timeout: '45' }), HOST);
+    expect(mockListStoppedSessions).toHaveBeenCalledWith({ group: undefined, timeoutMs: 45_000 });
+  });
+
+  it('rejects a --timeout outside (0, 300] seconds', async () => {
+    const cmd = cmdOf('cost-cap-sessions');
+    await expect(cmd.handler(cmd.parseArgs({ timeout: '0' }), HOST)).rejects.toThrow(/--timeout must be/);
+    await expect(cmd.handler(cmd.parseArgs({ timeout: '301' }), HOST)).rejects.toThrow(/--timeout must be/);
+  });
+
+  it('sessions returns the snapshot freshness and prints it first', async () => {
+    const costSnapshot = {
+      generation: 9,
+      computedAt: '2026-11-17T06:00:00.000Z',
+      ageSec: 720,
+      stale: true,
+      lastError: 'boom',
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({
+          sessions: [{ session_id: 's1', group_folder: 'g', group_name: 'g', agent_group_id: 'ag', cost: 5 }],
+          costSnapshot,
+        }),
+      })),
+    );
+    const cmd = cmdOf('cost-cap-sessions');
+    const data = (await cmd.handler(cmd.parseArgs({}), HOST)) as { snapshot: unknown };
+    expect(data.snapshot).toEqual(costSnapshot);
+    const text = cmd.formatHuman!(data);
+    expect(text.split('\n')[0]).toBe('⚠ cost snapshot is STALE: computed 12 min ago; last refresh error: boom');
+    expect(text).toMatch(/g: 1 sessions, total \$5\.00/);
   });
 });
 

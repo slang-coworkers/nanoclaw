@@ -7,7 +7,11 @@ import {
   resolveClaudeMcpServers,
   resolveClaudeMemoryRuntime,
 } from '../providers/claude-config.js';
-import { claudeConfigDirectory, newestClaudeTranscript } from '../providers/claude-history.js';
+import {
+  archiveClaudeContinuation,
+  claudeConfigDirectory,
+  newestClaudeTranscript,
+} from '../providers/claude-history.js';
 
 import { registerProviderContract } from '../providers/provider-registry.js';
 import {
@@ -37,8 +41,9 @@ export const claudeRuntimeContract: ProviderRuntimeContract = {
   },
   lifecycle: { memorySessionHookRegistration: writeMemorySessionHook },
   // Pre-compact archiving and continuation rotation are provider-internal
-  // (providers/claude-history.ts); core only needs the trace lookup.
-  history: { readTrace: newestClaudeTranscript },
+  // (providers/claude-history.ts). Core needs the trace lookup, and the archive
+  // of a stored conversation when the session starts on another provider.
+  history: { readTrace: newestClaudeTranscript, archiveContinuation: archiveClaudeContinuation },
   textDelivery: 'mid-turn-complete',
   // Aliases are listed with their command, as in the host contract.
   commands: {

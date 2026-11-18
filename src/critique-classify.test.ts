@@ -135,3 +135,15 @@ describe('selfHealDirective', () => {
     expect(missing).toContain('has not been recorded');
   });
 });
+
+describe('namedStage', () => {
+  it('names the stage a denial asks for, or null when it names none', async () => {
+    const { namedStage } = await import('./modules/critique-escalation/classify.js');
+    expect(namedStage('missing critique stages: PLAN_REVIEW, OUTPUT_REVIEW')).toBe('PLAN_REVIEW');
+    expect(namedStage('OUTPUT_REVIEW last verdict is "must-fix" (must be "approve"). Re-run')).toBe('OUTPUT_REVIEW');
+    expect(namedStage('2 edit(s) recorded since ... Re-run /codex-critique with STAGE: CODE_REVIEW')).toBe(
+      'CODE_REVIEW',
+    );
+    expect(namedStage('no critique rounds recorded in this session')).toBeNull();
+  });
+});

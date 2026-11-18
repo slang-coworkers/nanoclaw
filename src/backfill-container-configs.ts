@@ -48,8 +48,11 @@ export async function backfillContainerConfigs(): Promise<void> {
       }
     }
 
-    // DB agent_provider wins over file provider (matches old cascade)
-    const provider = group.agent_provider || legacy.provider || null;
+    // DB agent_provider wins over file provider (matches old cascade). A
+    // row-less group predates the open-weights install default, so the row
+    // records what it ran on before that default: Claude when nothing names a
+    // provider, and weights `any`. An empty row would move it to the default.
+    const provider = group.agent_provider || legacy.provider || 'claude';
 
     const row: ContainerConfigRow = {
       agent_group_id: group.id,
@@ -67,6 +70,7 @@ export async function backfillContainerConfigs(): Promise<void> {
       cli_scope: 'group',
       timezone: null,
       speed: null,
+      weights: 'any',
       updated_at: new Date().toISOString(),
     };
 

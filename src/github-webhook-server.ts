@@ -39,7 +39,7 @@ import {
 } from './modules/pr-mapping/register-client.js';
 import { handleRegisterPr } from './modules/pr-mapping/register-endpoint.js';
 import { requiredCheckRunGreen } from './modules/pending-reviewable/ci-check.js';
-import { deleteParked, findParkedByHead } from './modules/pending-reviewable/store.js';
+import { findParkedByHead, markParkReleased } from './modules/pending-reviewable/store.js';
 import { prMappingExists } from './modules/pr-mapping/store.js';
 import {
   deliverGitHubIssueOpened,
@@ -382,6 +382,11 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
         return { status: 400, body: { error: 'malformed payload' } };
       }
       const reviewableHead = (reviewablePr?.head as Record<string, unknown> | undefined) ?? {};
+      // The PR's updated_at orders this event for the CI-gate park. A
+      // redelivery keeps the original payload, so this is the event's own time
+      // even when it arrives hours late. Normalized so stored keys compare as
+      // strings.
+      const updatedAtMs = Date.parse(String(reviewablePr?.updated_at ?? ''));
       const outcome = await deliverGitHubPrReviewable({
         repo: repoFullName,
         prNumber: reviewablePrNumber,
@@ -393,6 +398,7 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
         eventType: String(eventType),
         deliveryId: deliveryId,
         headSha: typeof reviewableHead.sha === 'string' ? reviewableHead.sha : '',
+        prUpdatedAt: Number.isNaN(updatedAtMs) ? '' : new Date(updatedAtMs).toISOString(),
         privilege,
       });
       return { status: 200, body: { ok: true, outcome } };
@@ -599,7 +605,9 @@ async function routeGitHubDelivery(input: GitHubDeliveryInput): Promise<WebhookR
         }
       }
       const outcome = await releaseParkedReviewable(parked.rawEventJson);
-      await deleteParked(getDb(), repoFullName, parked.prNumber);
+      // Mark, not delete: the row keeps the newest updated_at seen for the PR,
+      // so an older event replayed after this review cannot park it again.
+      await markParkReleased(getDb(), repoFullName, parked.prNumber, headSha);
       return { status: 200, body: { ok: true, outcome, released: { pr: parked.prNumber, head: headSha } } };
     }
 

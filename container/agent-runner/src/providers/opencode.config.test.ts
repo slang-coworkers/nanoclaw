@@ -11,6 +11,7 @@ const ENV_KEYS = [
   'OPENCODE_MODEL_CONTEXT_LIMIT',
   'OPENCODE_MODEL_OUTPUT_LIMIT',
   'OPENCODE_MODEL_INPUT_MODALITIES',
+  'OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX',
 ] as const;
 const saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
 afterEach(() => {
@@ -263,13 +264,20 @@ describe('buildOpenCodeConfig small model scope', () => {
       id: 'main/model',
       name: 'main/model',
       tool_call: true,
+      options: { max_completion_tokens: 8192 },
       limit: { context: 65536, output: 8192 },
       attachment: true,
       modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
     });
     // A distinct small model carries neither key — an undeclared context
-    // window / modality set is the safe default it falls back to.
-    expect(all['small/model']).toEqual({ id: 'small/model', name: 'small/model', tool_call: true });
+    // window / modality set is the safe default it falls back to — and so
+    // gets OpenCode's default response budget.
+    expect(all['small/model']).toEqual({
+      id: 'small/model',
+      name: 'small/model',
+      tool_call: true,
+      options: { max_completion_tokens: 32000 },
+    });
   });
 
   it('small model unset or equal to the main model keeps the pre-existing single-entry shape', () => {
@@ -285,6 +293,7 @@ describe('buildOpenCodeConfig small model scope', () => {
         id: 'main/model',
         name: 'main/model',
         tool_call: true,
+        options: { max_completion_tokens: 8192 },
         limit: { context: 65536, output: 8192 },
         attachment: true,
         modalities: { input: ['text', 'image', 'pdf'], output: ['text'] },
@@ -320,6 +329,72 @@ describe('buildOpenCodeConfig permission', () => {
     for (const key of nonQuestionKeys) {
       expect(permission[key]).toBe('allow');
     }
+  });
+});
+
+describe('buildOpenCodeConfig response budget on the Chat Completions transport', () => {
+  // OpenCode sends its response budget only as max_tokens, which the NVIDIA
+  // endpoint ignores, ending every response at 4096 tokens; the model options
+  // carry the same budget as max_completion_tokens.
+  function chatEnv() {
+    process.env.OPENCODE_PROVIDER = 'openai';
+    process.env.OPENCODE_MODEL = 'openai/nvidia/zai-org/glm-5.3';
+    process.env.OPENCODE_SMALL_MODEL = 'openai/nvidia/zai-org/glm-5.3-flash';
+    process.env.OPENCODE_BASE_URL = 'https://inference-api.nvidia.com/v1';
+    delete process.env.OPENCODE_MODEL_CONTEXT_LIMIT;
+    delete process.env.OPENCODE_MODEL_OUTPUT_LIMIT;
+    delete process.env.OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX;
+  }
+
+  function options(config: Record<string, unknown>, provider: string, modelId: string) {
+    const entry = (config.provider as Record<string, Record<string, unknown>>)[provider];
+    return (entry.models as Record<string, Record<string, unknown>>)[modelId].options;
+  }
+
+  it("asks for OpenCode's own budget on every model when no output limit is declared", () => {
+    chatEnv();
+    const config = buildOpenCodeConfig({});
+    expect(options(config, 'openai', 'nvidia/zai-org/glm-5.3')).toEqual({ max_completion_tokens: 32000 });
+    expect(options(config, 'openai', 'nvidia/zai-org/glm-5.3-flash')).toEqual({ max_completion_tokens: 32000 });
+  });
+
+  it("follows the main model's declared output limit and OpenCode's own cap", () => {
+    chatEnv();
+    process.env.OPENCODE_MODEL_CONTEXT_LIMIT = '200000';
+    process.env.OPENCODE_MODEL_OUTPUT_LIMIT = '16384';
+    expect(options(buildOpenCodeConfig({}), 'openai', 'nvidia/zai-org/glm-5.3')).toEqual({
+      max_completion_tokens: 16384,
+    });
+    // A declared limit above OpenCode's cap is capped, as OpenCode caps max_tokens.
+    process.env.OPENCODE_MODEL_OUTPUT_LIMIT = '65536';
+    expect(options(buildOpenCodeConfig({}), 'openai', 'nvidia/zai-org/glm-5.3')).toEqual({
+      max_completion_tokens: 32000,
+    });
+    // OpenCode's own override of its cap applies here too.
+    process.env.OPENCODE_EXPERIMENTAL_OUTPUT_TOKEN_MAX = '65536';
+    expect(options(buildOpenCodeConfig({}), 'openai', 'nvidia/zai-org/glm-5.3')).toEqual({
+      max_completion_tokens: 65536,
+    });
+  });
+
+  it('keeps a reasoning effort next to the budget', () => {
+    chatEnv();
+    expect(options(buildOpenCodeConfig({ effort: 'high' }), 'openai', 'nvidia/zai-org/glm-5.3')).toEqual({
+      reasoningEffort: 'high',
+      max_completion_tokens: 32000,
+    });
+  });
+
+  it('adds nothing on other transports', () => {
+    chatEnv();
+    process.env.OPENCODE_BASE_URL = 'native';
+    delete process.env.ANTHROPIC_BASE_URL;
+    expect(options(buildOpenCodeConfig({}), 'openai', 'nvidia/zai-org/glm-5.3')).toBeUndefined();
+    process.env.OPENCODE_PROVIDER = 'openrouter';
+    process.env.OPENCODE_MODEL = 'openrouter/vendor/model';
+    delete process.env.OPENCODE_SMALL_MODEL;
+    process.env.OPENCODE_BASE_URL = 'https://openrouter.example/api/v1';
+    expect(options(buildOpenCodeConfig({}), 'openrouter', 'vendor/model')).toBeUndefined();
   });
 });
 

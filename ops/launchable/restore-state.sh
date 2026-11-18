@@ -174,7 +174,7 @@ do_run bash -c "cd '${HOME_DIR}/.onecli' && sudo docker compose up -d --wait --w
 do_run bash -c "cd '${HOME_DIR}/.onecli-sprint' && sudo docker compose up -d --wait --wait-timeout 60"
 if [ "$DRY_RUN" = 0 ]; then
   for i in $(seq 1 30); do
-    ONECLI_API_HOST=http://172.17.0.1:10254 onecli agents list 2>/dev/null | grep -q . && break
+    ONECLI_API_HOST=http://127.0.0.1:10254 onecli agents list 2>/dev/null | grep -q . && break
     sleep 2; [ "$i" = 30 ] && die "OneCLI vault empty/unreachable after 60s"
   done
 fi
@@ -213,7 +213,7 @@ Verify parity BEFORE repointing (keep OLD stopped-but-alive as rollback):
   - systemctl --user is-active ${HOST_UNIT}                              -> active
   - sudo docker ps                                                       -> agents + onecli + onecli-sprint + postgres up
   - curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:3737/      -> 200
-  - ONECLI_API_HOST=http://172.17.0.1:10254 onecli agents list          -> secrets present
+  - ONECLI_API_HOST=http://127.0.0.1:10254 onecli agents list           -> secrets present
   - dashboard coworkers/sessions/tasks counts match OLD
 Then do repoint.md (cloudflared hostname -> GitHub App webhook URL + Pomerium allowlists + lego cross-links).
 NEXT

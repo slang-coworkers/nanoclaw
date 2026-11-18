@@ -1343,6 +1343,51 @@ describe('deliverGitHubIssueOpened', () => {
 });
 
 describe('deliverGitHubPrReviewable', () => {
+  it("parks under the CI gate with the event's updated_at and reports what the park write did", async () => {
+    const parks: Array<Record<string, unknown>> = [];
+    const results = ['parked', 'superseded', 'failed'];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
+      APPROVER_CI_GATE: true,
+      CI_GATE_REQUIRED_SUITE: '',
+      ROUTE_READY_PRS_TO: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({ getDb: () => ({}) }));
+    vi.doMock('./modules/pending-reviewable/store.js', () => ({
+      parkReviewable: async (_db: unknown, p: Record<string, unknown>) => {
+        parks.push(p);
+        return results.shift();
+      },
+      deleteParked: async () => undefined,
+    }));
+
+    const { deliverGitHubPrReviewable } = await import('./webhook-github.js');
+    const event = {
+      repo: 'shader-slang/slang',
+      prNumber: 14495,
+      prUrl: '',
+      title: '',
+      author: 'a-human',
+      reason: 'synchronize',
+      rawBody: '{}',
+      eventType: 'pull_request',
+      deliveryId: 'd-sync-1',
+      headSha: '888aced9e4',
+      prUpdatedAt: '2026-11-15T18:51:44.000Z',
+    };
+
+    expect(await deliverGitHubPrReviewable(event)).toBe('parked');
+    expect(parks[0]).toMatchObject({ headSha: '888aced9e4', prUpdatedAt: '2026-11-15T18:51:44.000Z' });
+    expect(await deliverGitHubPrReviewable(event)).toBe('superseded');
+    // A failed write neither parks nor delivers the event.
+    expect(await deliverGitHubPrReviewable(event)).toBe('dropped');
+  });
+
   it('forwards to peer when ROUTE_READY_PRS_TO is set and differs from INSTANCE_SLUG', async () => {
     vi.doMock('./config.js', () => ({
       INSTANCE_FORWARD_TARGETS: { lego: peerUrl },

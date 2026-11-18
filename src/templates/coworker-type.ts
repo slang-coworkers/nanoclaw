@@ -29,11 +29,13 @@ export interface CoworkerTypeDecision {
 }
 
 /**
- * Why a candidate was refused, or null when it is good. Resolution is run in
- * full (not through container-runner's private `resolveTypeManifest`, which
- * catches and returns an empty manifest — that would defeat the check).
+ * Return why `type` may not be given to a non-admin group, or null when it may.
+ * Resolution is run in full (not through container-runner's private
+ * `resolveTypeManifest`, which catches and returns an empty manifest — that
+ * would defeat the check). Stamping a new group and switching an existing
+ * group's type (`coworker-type-switch.ts`) share this one rule set.
  */
-function refuse(projectRoot: string, type: string): string | null {
+export function coworkerTypeRefusal(projectRoot: string, type: string): string | null {
   // TWO INDEPENDENT CHECKS. They look similar and are not interchangeable —
   // conflating them fails open, which an earlier draft of this file did.
   //
@@ -91,14 +93,14 @@ export function decideCoworkerType(args: {
   if (explicit === null) return { coworkerType: null, report };
 
   if (explicit !== undefined) {
-    const problem = refuse(projectRoot, explicit);
+    const problem = coworkerTypeRefusal(projectRoot, explicit);
     if (problem) throw new Error(problem);
     return { coworkerType: explicit, report };
   }
 
   if (templateHint === undefined) return { coworkerType: null, report };
 
-  const problem = refuse(projectRoot, templateHint);
+  const problem = coworkerTypeRefusal(projectRoot, templateHint);
   if (problem) {
     report.push(`${problem} — stamping untyped`);
     return { coworkerType: null, report };

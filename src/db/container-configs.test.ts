@@ -1,11 +1,12 @@
 /**
- * ensureContainerConfig provider stamping (global-default-provider feature).
+ * ensureContainerConfig provider stamping.
  *
  * Two load-bearing guarantees:
- *   1. A fresh row is stamped with the given provider (claude → NULL), so a new
- *      group is created on the instance default.
- *   2. An existing row is never overwritten (INSERT OR IGNORE), so enabling a
- *      non-claude default never retroactively flips existing groups.
+ *   1. A fresh row records the creator's explicit pick, Claude included, and a
+ *      group created on Claude records weights=any. A row with no pick stays
+ *      empty, so the group follows the install default (OpenCode, open).
+ *   2. An existing row is never overwritten (INSERT OR IGNORE), so a later
+ *      ensure or a changed install default never rewrites it.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
@@ -14,8 +15,14 @@ import { runMigrations } from './migrations/index.js';
 import { createAgentGroup } from './agent-groups.js';
 import { ensureContainerConfig, getContainerConfig, updateContainerConfigScalars } from './container-configs.js';
 
-async function makeGroup(id: string): Promise<void> {
-  await createAgentGroup({ id, name: id, folder: id, agent_provider: null, created_at: new Date().toISOString() });
+async function makeGroup(id: string, agentProvider: string | null = null): Promise<void> {
+  await createAgentGroup({
+    id,
+    name: id,
+    folder: id,
+    agent_provider: agentProvider,
+    created_at: new Date().toISOString(),
+  });
 }
 
 describe('ensureContainerConfig provider stamping', () => {
@@ -27,23 +34,38 @@ describe('ensureContainerConfig provider stamping', () => {
     await closeDb();
   });
 
-  it('stamps a non-default provider on a fresh row; claude is stored as NULL', async () => {
+  it('records an explicit pick on a fresh row, Claude included, with weights=any for Claude', async () => {
+    const row = async (id: string) => {
+      const r = await getContainerConfig(id);
+      return { provider: r?.provider, weights: r?.weights };
+    };
     await makeGroup('ag-codex');
     await ensureContainerConfig('ag-codex', 'codex');
-    expect((await getContainerConfig('ag-codex'))?.provider).toBe('codex');
+    expect(await row('ag-codex')).toEqual({ provider: 'codex', weights: null });
 
     await makeGroup('ag-claude');
     await ensureContainerConfig('ag-claude', 'claude');
-    expect((await getContainerConfig('ag-claude'))?.provider).toBeNull();
+    expect(await row('ag-claude')).toEqual({ provider: 'claude', weights: 'any' });
 
     // Casing is normalized to match what resolution lowercases to.
-    await makeGroup('ag-cased');
-    await ensureContainerConfig('ag-cased', 'Codex');
-    expect((await getContainerConfig('ag-cased'))?.provider).toBe('codex');
-
     await makeGroup('ag-cased-claude');
     await ensureContainerConfig('ag-cased-claude', 'Claude');
-    expect((await getContainerConfig('ag-cased-claude'))?.provider).toBeNull();
+    expect(await row('ag-cased-claude')).toEqual({ provider: 'claude', weights: 'any' });
+
+    // No pick: the row stays empty and the group follows the install default.
+    await makeGroup('ag-default');
+    await ensureContainerConfig('ag-default');
+    expect(await row('ag-default')).toEqual({ provider: null, weights: null });
+
+    // The group's own provider outranks the row, so it decides the weights.
+    await makeGroup('ag-group-claude', 'claude');
+    await ensureContainerConfig('ag-group-claude', 'opencode');
+    expect(await row('ag-group-claude')).toEqual({ provider: 'opencode', weights: 'any' });
+
+    // Explicit weights win.
+    await makeGroup('ag-open');
+    await ensureContainerConfig('ag-open', 'opencode', 'open');
+    expect(await row('ag-open')).toEqual({ provider: 'opencode', weights: 'open' });
   });
 
   it('never overwrites an existing row — existing groups are not flipped', async () => {

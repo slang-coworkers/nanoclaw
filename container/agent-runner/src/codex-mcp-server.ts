@@ -233,6 +233,8 @@ export function buildCodexMcpServer(processEnv: NodeJS.ProcessEnv = process.env)
       CODEX_MCP_BRIDGE_OVERRIDES: JSON.stringify(overrides),
       ...(processEnv.CODEX_MODEL ? { CODEX_MODEL: processEnv.CODEX_MODEL } : {}),
       ...(processEnv.NANOCLAW_CRITIC_MODEL ? { NANOCLAW_CRITIC_MODEL: processEnv.NANOCLAW_CRITIC_MODEL } : {}),
+      // The bridge refuses a caller-chosen model in an open-weights group (openWeightsModelError).
+      ...(processEnv.NANOCLAW_MODEL_WEIGHTS ? { NANOCLAW_MODEL_WEIGHTS: processEnv.NANOCLAW_MODEL_WEIGHTS } : {}),
       // The bridge records each critique round with track-critique.sh
       // (critique-record.ts), which reads the gate's settings from the env.
       ...gateScriptEnv(processEnv),
