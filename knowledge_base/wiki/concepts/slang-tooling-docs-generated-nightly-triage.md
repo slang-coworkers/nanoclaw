@@ -3,7 +3,7 @@ title: "docs/generated nightly agentic suite: harness-rule fallout, building the
 type: concept
 group: slang-tooling
 tags: [slang-test, docs-generated, nightly, agentic-tests, exit-code, filecheck, triage, spirv-validation]
-source_count: 11
+source_count: 12
 ---
 
 ## TL;DR
@@ -36,6 +36,7 @@ source_count: 11
 - **A fixture sweep must also fix the generator prompts**, or regeneration brings the failures
   back (see the generated-docs page).
 - **A Nightly Coverage red can be the sibling Pages size budget**, not code.
+- **The nightly `agentic-tests` red on master is a stable, tracked failure set** (#14338, fix in unmerged draft PR #14442, 168 failures as of 2026-11-17) — compare failure-set composition across the last 5 nightlies before flagging a regression; identical composition = no new change. Same for the other recurring-infra reds: Nightly Coverage `merge-and-deploy` (Pages deploy in slang-coverage-reports) and `Check IR Version` (intermittent 403 on its comment step).
 
 ## The #14269 / #14422 exit-code rules and their nightly breaks
 
@@ -192,7 +193,21 @@ slang-coverage-reports failing its Pages deploy with `Pages size budget exceeded
 which is not a code failure
 [#14269 staled 80 nightly fixtures](../learnings/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md).
 
-**Source learnings (11):**
+Before flagging any nightly red as a regression, first establish that the failure set is not
+simply stable-and-tracked. As of 2026-11-17 the nightly "Slang Test" workflow fails every night
+on the `agentic-tests` job with a stable 168-failure set (133 "expected exit code -1, got 0" +
+24 "expected -1, got 1" + 15 "expected 0, got N") under `docs/generated/tests/`, tracked by #14338
+with the fix in unmerged draft PR #14442. The check is composition, not count: compare
+`Too many failed tests for retry(N)` and the failure-mode composition across the last 5
+nightlies (`gh run view <id> --log-failed | grep -oE "expected exit code ..."`); identical
+composition means no new change landed ([Nightly agentic-tests failure is tracked (#14338/#14442) — check failure-set stability before flagging](../learnings/1794902690520-nightly-agentic-tests-failure-is-tracked-14338-144.md)).
+Other recurring-infra reds not to flag: Nightly Coverage `merge-and-deploy` fails on a Pages
+deploy run in shader-slang/slang-coverage-reports, and `Check IR Version` intermittently 403s
+on its comment step ("at least one email address must be verified"). Stale
+`gh-readonly-queue/master` refs from months past (pr-10303, pr-10321, pr-12968) linger with old
+failing checks — only treat refs with recent check-run timestamps as live.
+
+**Source learnings (12):**
 - [slang-test exit-code rule (#14269) staled 80 nightly-only docs/generated fixtures](../learnings/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md) — PR sweep covered `tests/` only; triage by FAILED set vs previous green nightly; Nightly Coverage Pages budget red
 - [Release-regression fixture lists for docs/generated nightlies include expected-failure rows — diff against FAILED lines](../learnings/1793866800949-release-regression-fixture-lists-for-docs-generate.md) — 89 messages vs 80 FAILED; `gh pr view --json files` caps at 100
 - [docs/generated nightly exit-code break after slang-test #14269: blanket exit-code=N masks ~22 real failures](../learnings/1793866828932-docs-generated-nightly-exit-code-break-after-slang.md) — local repro command; failure categories; `.actual` files; retry-verdict noise
@@ -204,3 +219,4 @@ which is not a code failure
 - [docs/generated fixture sweeps must also fix the generator prompts; a CHECK-DAG pin can shrink a leading CHECK-NOT](../learnings/1793872226026-docs-generated-fixture-sweeps-must-also-fix-the-ge.md) — #14343 left `_common.md` and `keywords-and-builtins/_prompt.md` prescribing the old shape
 - [Prove a slang-test harness-rule PR's nightly blast radius with a one-file A/B rebuild](../learnings/1794298561895-prove-a-slang-test-harness-rule-pr-s-nightly-blast.md) — #14422 74 → 224; swap in HEAD~1 `slang-test-main.cpp`, rebuild slang-test only; `-DSLANG_ENABLE_DXIL=OFF`, keep SLANGD
 - [diag= exit codes: decide by the whole run's outcome, not the code's kind](../learnings/1794331397967-diag-exit-codes-decide-by-the-whole-run-s-outcome-.md) — warnings/notes only → 0; note with error → -1; `OptionsParser` error → 1 (#14442); `-g1` skips `[Artificial]` debug lines
+- [Nightly agentic-tests failure is tracked (#14338/#14442)](../learnings/1794902690520-nightly-agentic-tests-failure-is-tracked-14338-144.md) — stable 168-failure set; compare composition across 5 nightlies; recurring infra reds not to flag

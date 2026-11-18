@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 30
+source_count: 31
 ---
 
 # Slang Parameter Binding and Layout
@@ -26,6 +26,7 @@ source_count: 30
 - `GLSLBufferModifier` has no producer; guards on it are dead code.
 - Bitfield packing is fixed at check time and baked into modules; zero-width fields open the next backing (MSB-first getter reads -1). Oracle: `-target cpp` + g++ `ms_struct`.
 - Buffer `bool` is 4 bytes on HLSL/SPIR-V/GLSL/WGSL, 1 on Metal/CUDA/CPU/C layout; concrete `sizeof(bool)` 1, generic `sizeof(T=bool)` 4; CPU/CUDA byte-address bools: 4-byte stride, 1-byte `Load<bool>`.
+- Reflection lays pointer POINTEES out with scalar rules on every target (`_createTypeLayout`'s PtrTypeBase branch), so `-reflection-json` contradicts CUDA native-vector emit — one JSON, two layouts for the same struct (#14040).
 
 ## `vk::binding` Parameter-Binding Predicates
 
@@ -60,6 +61,8 @@ At `53b76e6d3` (#12316) the files share no header or policy helper. Duplicated r
 3. `sizeof`/`alignof` fold to target-independent AST constants (`SizeOfIntVal`, `ASTNaturalLayoutContext`), so cannot follow a per-target rule; neither does ByteAddressBuffer `Load<T>` (natural rules).
 
 Tooling: `-reflection-json` prints REFLECTION-test format; keep `command-line-slangc-reference.md` trailing spaces (CI byte-compares) ([Natural doubles as ScalarDataLayout's op](../learnings/1790635577609-slang-layout-ir-rule-natural-doubles-as-user-scala.md)).
+
+**The reflection pointer branch forces scalar pointee layout on every target (slang#14040).** `_createTypeLayout`'s `PtrTypeBase` branch (slang-type-layout.cpp:5735-5743) applies `kScalarLayoutRulesImpl_` to the pointee regardless of target, while buffer layouts go through the per-target IR layout path. For `uniform S* src` where `struct S { uint a; float2 b; uint c; }`, `-target cuda` emits native `float2 b_0;` (nvcc: b@8, c@16, size 24) but `-reflection-json` expands the pointee at `entryPoints[].scope.parameters[].type.valueType` with the SCALAR layout (a@0, b@4, c@12) — so one JSON carries two different layouts for the same struct, while the flat `entryPoints[].parameters[].type.valueType` shows bare `"S"` (the type-dedup from #13190). The same CUDA compile reports `RWStructuredBuffer<S>` per-target correctly (a@0, b@8, c@16). Consequence for the fix direction on #14040: making CUDA pointees scalar fixes emit+reflection+CPU agreement in one move; making them CUDA-aligned additionally requires changing the reflection pointer branch, not just emit. `-reflection-json` needs an output filename (stdout yields "expected an argument") [CUDA reflection-JSON reports scalar pointee layout while emitting native vectors — one JSON disagrees with itself](../learnings/1794947921393-cuda-reflection-json-reports-scalar-pointee-layout.md).
 
 Testing a rounding change needs a type whose layout differs: `IRTypeLayoutRules::getNatural()` already gives array stride alignUp(size, align) (`S{double x; int y;}`: size 12, stride 16), so only a nested struct moving later fields distinguishes — `U{S z; float w;}` (`w`@12 vs @16), `T{S a; float b[3];}` (stride 24 vs 32). The aligned-array byte-address path (`isWideAccessAligned`) needs `promisedAlignment % (stride*count) == 0` and E41301 demands a power-of-two promise, so `LoadAligned<U[2]>` (48 bytes rounded) never goes typed; pick a power-of-two size. Oracle: DXC HLSL `sizeof(T)` (v1.9.2602, `-HV 2021`) includes struct rounding (`sizeof({S; float})` = 24), run locally by a 20-line `IDxcCompiler3` driver against `build/Debug/lib/libdxcompiler.so` + `build/_deps/dxc_source-src/include` ([natural layout already rounds array strides](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md)).
 
@@ -111,7 +114,8 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 
 **GPU-free, MSVC-free layout oracle:** `-target cpp` (emitted `struct S_0` backings and setter masks give the layout; `g++ -I prelude` runs it). To compare with MSVC host layout, compile `struct __attribute__((ms_struct)) S {...}` with g++/clang, memcpy to bytes, compare with the Slang masks. Backing-word initialization rules are on [[wiki/concepts/slang-compiler-frontend-and-checking.md]].
 
-**Source learnings (30):**
+**Source learnings (31):**
+- [CUDA reflection-JSON reports scalar pointee layout while emitting native vectors (slang #14040)](../learnings/1794947921393-cuda-reflection-json-reports-scalar-pointee-layout.md) — PtrTypeBase branch forces scalar rules; one JSON, two layouts
 - [bool size is context-dependent](../learnings/1793830159570-slang-bool-size-is-context-dependent-sizeof-bool-1.md)
 - [#14489 redundant SV_Target on a struct return is silently accepted](../learnings/1794815315476-slang-14489-redundant-sv-target-on-a-struct-return.md) — missing duplicate-semantic validation
 - [#14489 outer semantic clobbers entry-point result fields](../learnings/1794815615771-slang-14489-outer-semantic-silently-clobbers-entry.md) — outer-most-wins skips every field semantic; loss in final layout only
@@ -142,3 +146,5 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 - [IR vk::offset honoured off-Vulkan](../learnings/1793400225781-ir-layout-vk-offset-was-honoured-off-vulkan-while-.md)
 - [entry-point push constants alias at Offset 0 (#9643)](../learnings/1793349219262-entry-point-push-constants-all-start-at-offset-0-w.md)
 - [per-target alignment expressibility (#14032)](../learnings/1793644718087-per-target-struct-alignment-expressibility-for-ali.md)
+
+_Catalog: [[wiki/index.md]]_

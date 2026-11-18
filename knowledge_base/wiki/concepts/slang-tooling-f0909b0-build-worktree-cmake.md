@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, A/B baselines, stale binaries"
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, a-b-baseline, stale-binary, ninja]
-source_count: 49
+source_count: 45
 ---
 
 # Slang build in worktrees: submodule init, A/B baselines, stale binaries
@@ -89,7 +89,7 @@ A master merge stales two things a targeted rebuild misses. **(1) Submodule pins
 
 A partial-target build gives the same symptom without a merge: `slangc slang-test` never builds `slang/functional.slang` ([partial build](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md); its stale-`libslang-llvm.so` finding is on [Building & regression-testing Slang's LLVM path](slang-tooling-llvm-target-build.md)), and `--target slangc slang-test slang-unit-test` gives ~15 false failures (`tests/dispatcher/smoke.slang`, `tests/functional/*`, gfx-smoke) needing the `slang` dispatcher, `slangi` and examples. A full debug build of master `7251cc60b4` on an L40S fails only the 3 `tests/cooperative-matrix/fp8-cuda*.slang (cuda)` tests (CUDA_ERROR_INVALID_PTX); otherwise compare against a same-built base-commit run. The unit-test target is `slang-unit-test`, not `slang-unit-test-tool` ([~15 false failures](../learnings/1792550944973-slang-test-false-failures-from-a-partial-build-mis.md), #13789).
 
-**Source learnings (49):**
+**Source learnings (45):**
 - [Worktrees skip submodules](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md)
 - [Per-worktree init; top-level works](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md)
 - [Init; DXIL off; detached ninja dies](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
@@ -102,7 +102,6 @@ A partial-target build gives the same symptom without a merge: `slangc slang-tes
 - [No concurrent full suites](../learnings/1790718692458-don-t-run-two-slang-test-full-suites-concurrently-.md)
 - [Copy same-pin external/ (#13429)](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [IR bump needs FULL build](../learnings/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md)
-- [Init needs protocol.file.allow](../learnings/1791581040071-new-git-worktree-of-workspace-agent-slang-submodul.md)
 - [TESTS requires SLANG_RHI](../learnings/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md)
 - [Partial build fails functional](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md)
 - [Sync submodules after merge](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md)
@@ -120,9 +119,6 @@ A partial-target build gives the same symptom without a merge: `slangc slang-tes
 - [`--jobs 16`; Release ~6 min](../learnings/1792823537201-new-slang-worktree-build-submodules-need-protocol-.md)
 - [No mid-sweep rebuild](../learnings/1792547346513-differential-compile-sweeps-never-rebuild-a-compar.md)
 - [Partial-build false failures](../learnings/1792550944973-slang-test-false-failures-from-a-partial-build-mis.md)
-- [Nested over https](../learnings/1793296016142-submodule-init-in-slang-worktrees-needs-protocol-f.md)
-- [Env-form fallback](../learnings/1793312277621-fresh-slang-worktree-submodule-init-fails-with-tra.md)
-- [`-c` works; `--depth` ignored](../learnings/1793335182089-slang-worktree-submodule-init-fails-with-transport.md)
 - [Rebuild after revert (#14307)](../learnings/1793809802346-worktree-submodules-need-protocol-file-allow-rebui.md)
 - [origin = shared clone](../learnings/1793879645962-slang-worktree-submodule-init-needs-protocol-file-.md)
 - [Post-merge status grep](../learnings/1793871310157-a-failed-cd-x-a-b-runs-b-in-the-session-cwd-and-th.md)

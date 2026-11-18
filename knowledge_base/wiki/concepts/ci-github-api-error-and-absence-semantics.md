@@ -3,7 +3,7 @@ title: "GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Class
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, job-logs, auth-401, summarizing-tools, absence-claims, controls, slang]
-source_count: 38
+source_count: 36
 ---
 
 # GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Classed Auth & Absence Controls
@@ -90,7 +90,7 @@ Several REST fields return a well-formed value answering a neighbouring question
 
 The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?filter=all` answered **HTTP 502** for runs with `run_attempt > 1` while `/actions/runs/<id>/attempts/<n>/jobs` answered 200. A sweep that swallowed the error reported "0 lost runners" for 11-04, but #14294 listed two runner losses in exactly those runs. A run re-run to green reads `conclusion: success`; the losses exist only in attempt 1. So fetch re-run runs per attempt, record any job-fetch error as a gap, and assert "runs with job data == runs listed" before claiming zero ([502 on re-run runs](../learnings/1793867735899-actions-jobs-filter-all-returns-http-502-on-re-run.md)).
 
-**Source learnings (38):**
+**Source learnings (36):**
 
 - [Never assert from a summarizing tool](../learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md) — enumerate with gh api.
 - [A 403 is not absence of the fact](../learnings/1785777155910-a-403-on-one-github-endpoint-is-not-absence-of-the.md) — try the sibling endpoint.
@@ -114,7 +114,6 @@ The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?fi
 - [Search secondary rate limit](../learnings/1791361530394-github-search-api-secondary-rate-limit-via-onecli-.md) — bare 403; throttle.
 - [reviewDecision shows required approvals](../learnings/1792399425363-reviewdecision-tells-you-whether-a-repo-requires-p.md) — null ⇒ no rule.
 - [event=schedule returns stale runs](../learnings/1791015439528-github-actions-event-schedule-filter-returns-stale.md) — filter client-side.
-- [Job logs silently empty](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md) — ANSI refusal.
 - [Job logs silently fail](../learnings/1792254266846-gh-api-job-logs-silently-fail-without-allow-escape.md) — not a 410.
 - [run view --log refuses while a job waits](../learnings/1792944223647-gh-api-job-logs-need-allow-escape-sequences-gh-run.md) — read per-job.
 - [Read the log before a premise](../learnings/1792434025872-gh-job-logs-contain-terminal-escape-sequences-read.md) — quote timestamps.
@@ -124,7 +123,6 @@ The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?fi
 - [GraphQL limit from parallel scripts](../learnings/1793003118714-fork-pr-ci-never-approved-count-filter-checksuites.md) — check every alias.
 - [REST 401 outside shader-slang](../learnings/1793003220665-ci-sweep-scripts-z1-py-pages-wipes-waiting-json-on.md) — /search/issues reads them.
 - [users/events 401; protection 403](../learnings/1793285334593-onecli-gh-users-login-events-and-branch-protection.md) — judge by `mergedBy`.
-- [Timeline "assigned" actor is the assigner](../learnings/1793649289518-gh-timeline-assigned-event-actor-is-the-assigner-n.md) — use `.assignee.login`.
 - [Timeline 'assigned' actor is the assigner (slang#14035)](../learnings/1794244607697-github-timeline-assigned-event-actor-is-the-assign.md) — select actor and assignee together; an assignment is not an A/B/C pick.
 - [Contributor fork 401; use WebFetch](../learnings/1793664053747-gh-api-on-a-contributor-fork-repo-returns-401-thro.md) — gateway limit.
 - [Fetch a failed job log while the run is in progress](../learnings/1794848874252-fetching-a-failed-github-actions-job-log-while-the.md) — per-job endpoint + --allow-escape-sequences.

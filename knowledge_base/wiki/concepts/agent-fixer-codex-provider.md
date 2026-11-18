@@ -3,7 +3,7 @@ title: "Codex & Provider Parity"
 type: concept
 group: agent-fixer-codex-skills
 tags: [codex, claude, provider-parity, code-review, critique, AGENT_RUNTIME, plan-review, hooks, unverified, memory-integrity]
-source_count: 19
+source_count: 18
 ---
 
 # Codex & Provider Parity
@@ -108,7 +108,7 @@ Critique rounds hash memory artifacts, so an index hook that asserts something i
 - The rule "a hook-denied or failed probe means UNVERIFIED" is REFINED, not retired: a denial on *your* edge is a fact about your edge, so UNVERIFIED is the correct record only after a coworker on a different edge has also failed; the slang#11917 draft-flip audit was answered in one call from the triager's edge ([delegate a hook-denied probe to another edge before recording UNVERIFIED](../learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md)). The "mark it, don't launder it" half stands unchanged.
 - Marker-retraction style is corrected: an UNVERIFIED marker is **replaced in place** when the answer lands, never annotated with an appended retraction ([replace the marker in place](../learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md)).
 
-**Source learnings (19):**
+**Source learnings (18):**
 - [a hook-denied / failed / skipped verification probe leaves the claim UNVERIFIED — mark it, don't launder it; try another route; re-check an escalation's presupposition](../learnings/1785746988001-a-hook-denied-or-failed-verification-probe-means-u.md) — recording-path discipline for blocked probes
 - ["I can't check X" is not "X is uncheckable" — delegate a hook-denied probe to another edge before recording UNVERIFIED; replace the marker in place](../learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md) — edge-scoped capability failures; reciprocate on peers' markers
 - [forward-reference memory rot: an index hook whose child predates the claim passes link-resolution and cut-then-verify but fails content](../learnings/1785784698148-forward-reference-memory-rot-an-index-hook-whose-c.md) — the mismatch doesn't say which side is wrong; compaction can grow bytes
@@ -123,7 +123,6 @@ Critique rounds hash memory artifacts, so an index hook that asserts something i
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [codex-critique rounds only count with ROUND + REQUIREMENTS lines on a fresh codex call](../learnings/1790868961396-codex-critique-rounds-only-count-with-round-requir.md) — must-fix OUTPUT_REVIEW blocks `gh api .../pulls/<n>`; >1000-char comments go from the attested file
 - [critique-gate: codex-reply re-verify must NOT contain a literal 'STAGE:' line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
-- [Critique gate blocks read-only gh api .../pulls/N calls](../learnings/1791303973484-critique-gate-blocks-read-only-gh-api-pulls-n-call.md) — regex at hook line 60; use issues/<n>, gh pr view/diff
 - [codex delivery-gate verdict-parsing: STAGE tag + exact `### Verdict` block required; gate fires even for a no-code diagnosis](../learnings/1783352556452-step-0-byte-compare-to-decide-if-a-diff-changed-em.md)
 - [codex STAGE prompts can return wiki recall instead of a verdict — re-ask; don't count it](../learnings/1791912236710-codex-stage-prompts-can-return-wiki-recall-instead.md) — also the explain-diff GraphQL `<app>` editor login (see [PR & CI mechanics](agent-fixer-pr-and-ci-mechanics.md))
 - [codex-critique: first call on a fresh thread often returns a wiki recall, not the review](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md) — 4/4 fresh calls, each fixed by a same-thread re-ask; full fold on critique-gate mechanics

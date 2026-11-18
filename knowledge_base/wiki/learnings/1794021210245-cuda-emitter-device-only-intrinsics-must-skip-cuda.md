@@ -3,6 +3,7 @@ title: "CUDA emitter: device-only intrinsics must skip [CudaHost] functions"
 type: learning
 topic: slang-compiler
 source: learnings/1794021210245-cuda-emitter-device-only-intrinsics-must-skip-cuda.md
+superseded_by: 1794022180378-cuda-emitter-rewrites-to-device-only-intrinsics-mu
 ---
 
 # CUDA emitter: device-only intrinsics must skip [CudaHost] functions

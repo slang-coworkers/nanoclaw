@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen, llvm-prebuilt, gcs, ci]
-source_count: 22
+source_count: 23
 ---
 
 ## TL;DR
@@ -43,6 +43,7 @@ doesn't compile `source/slang-llvm`, `-target host-callable` swallows an invalid
 - **Is an upstream LLVM fix in a tag?** Compare the touched file across tags (raw md5s); for a merged fix,
   `git merge-base --is-ancestor <sha> <tag>` in a blobless shallow clone, backed by `git show <tag>:<file>
   | grep <new symbol>`; a `main` fix reaches x.1.y only via `/cherry-pick`.
+- **LLVM-CPU triage: `-dump-ir` goes to STDERR** (case-insensitive greps — atomics print `atomicAdd`); `_SR...` mangled names encode module name + function, not ctors; unreferenced `static` globals can vanish between LOWER-TO-IR and the first emit-pipeline dump — diff first-vs-second dump section (#14578).
 
 ## Editing source/slang-llvm needs a from-source build (USE_SYSTEM_LLVM)
 
@@ -168,11 +169,16 @@ A Linux cold build takes ~15 minutes, so the 120-minute ceiling bites only macOS
 
 **Probe and log mechanics.** HEAD-probe with `curl -s -o /dev/null -w '%{http_code}' -I <url>`; through the proxy the first `HTTP/1.1 200` in `curl -sI` can be the CONNECT response (false 200). `gh api .../actions/jobs/<id>/logs` needs `--allow-escape-sequences`; strip ANSI codes before quoting line numbers. After `gh run rerun <run> --job <id>` the run is `in_progress` and further `--job` reruns fail with "cannot be rerun"; wait and use the new attempt's job ids ([LLVM prebuilt key change hard-fails master-ref cold builds in release.yml](../learnings/1791518829641-llvm-prebuilt-cache-key-change-can-hard-fail-maste.md), [recompute a hashFiles() cache key offline](../learnings/1791548045410-recompute-a-github-actions-hashfiles-cache-key-off.md), [LLVM prebuilt key moves at reseed: probe both keys](../learnings/1791549704518-llvm-prebuilt-cache-key-moves-at-reseed-probe-both.md), [LLVM prebuilt reseed publishes linux only](../learnings/1791563376870-llvm-prebuilt-reseed-publishes-linux-only-smoke-te.md)).
 
+## Triage gotchas on the CPU-via-LLVM path
+
+From triaging the static-initializer atomic drop (slang#14578, 2026-11-18), three durable triage facts for LLVM-CPU-path work. (1) **`-dump-ir` output goes to STDERR, not stdout** — redirecting stdout yields an empty dump (also capture `-o` target code separately), and grep dumps case-insensitively: atomics print as `atomicAdd`, not `AtomicAdd`. (2) **`_SR...` mangled names in emitted LLVM encode the module name + function, not ctors** — `_SR24static_2Dxinit_2Dxatomic4mainp0pV` is `void main()` in module "static-init-atomic" (`mangleName`, slang-mangle.cpp); a reviewer mistook it for an empty global ctor when the module had no ctor at all. Decode before naming a "ctor" in an issue. (3) **Unreferenced `static` globals (and their side-effecting initializers) can vanish between LOWER-TO-IR and the first emit-pipeline pass dump** on `-whole-program` compiles — pass-by-pass dumps show them gone by `AFTER translateEntryPointInParamToBorrow`, before `eliminateDeadCode` runs; when an init "disappears", diff the first vs second dump section, not just the late DCE passes [LLVM CPU triage gotchas: -dump-ir goes to stderr; _SR mangles encode module names; statics can vanish pre-pipeline](../learnings/1794980057555-llvm-cpu-triage-gotchas-dump-ir-goes-to-stderr-sr-.md).
+
 ## Checking Whether an Upstream LLVM Fix Has Shipped Before Planning a Bump
 
 For a "bump LLVM to a version containing upstream PR X" issue (e.g. slang#13549 / llvm#229712), check three things. **PR state:** `gh pr view <N> -R llvm/llvm-project --json state,mergedAt,mergeCommit,milestone,comments` — `gh api repos/llvm/...` REST returns 401 through the gateway, but `gh pr view` uses GraphQL and works. **Whether the fix is in a release:** before merge, fetch the touched file from raw.githubusercontent.com at each tag (`llvmorg-21.1.8`, `22.1.8`, `23.1.x`, `main`), compare md5s, and `git apply --check` the local backport on a temp tree of just those files. Once merged, ancestry of the merge SHA settles the tag: a cheap clone (`git init; git remote add origin https://github.com/llvm/llvm-project.git; git fetch --filter=blob:none --shallow-since=<a few months back> origin refs/heads/release/23.x:refs/remotes/origin/release/23.x refs/heads/main:refs/remotes/origin/main refs/tags/llvmorg-23.1.4:refs/tags/llvmorg-23.1.4`, ~25 s), then `git merge-base --is-ancestor <sha> <tag>`. A negative in a shallow clone is weak, so back it with `git show <tag>:<file> | grep <new symbol>`. A `main` fix reaches an x.1.y release only through a backport (milestone "LLVM X.Y Release" + `/cherry-pick <sha>`, per llvm/docs/GitHub.md), and `llvmorg-N-init` is the branch point, not a release ([is an LLVM main commit in a release tag](../learnings/1793197406074-check-if-an-llvm-main-commit-is-in-a-release-tag-w.md)). **Tag dates:** `git ls-remote --tags` for the list, GraphQL `ref(qualifiedName:"refs/tags/…")` committedDate for dates. Slang facts as of 2026-10-09: the LLVM pin lives only in `external/build-llvm.sh:57` and `build-llvm.ps1:58`; deleting a backport patch rekeys the prebuilts (the key globs `external/llvm-*.patch`); LLVM 23 trips `static_assert(LLVM_VERSION_MAJOR < 23)` in `slang-llvm-jit-shared-library.cpp` (the Win64 RTDyld workaround); draft #11017 bumps to 22.1.4 ([checking whether an upstream LLVM fix has shipped](../learnings/1791577897128-checking-whether-an-upstream-llvm-fix-has-shipped-.md)).
 
-**Source learnings (22):**
+**Source learnings (23):**
+- [LLVM CPU triage gotchas: -dump-ir goes to stderr; _SR mangles encode module names; statics can vanish pre-pipeline](../learnings/1794980057555-llvm-cpu-triage-gotchas-dump-ir-goes-to-stderr-sr-.md) — #14578: diff first-vs-second dump; case-insensitive greps
 - [ILLVMBuilder ABI constraint and CI testing (#13857 sNaN cluster)](../learnings/1794890998708-slang-llvm-illvmbuilder-abi-constraint-and-ci-test.md) — header changes force a slang-llvm release; cpp-only fixes are ABI-safe and CI-tested
 - [target-gating: CPU-via-LLVM is a separate emitter — producer predicate excludes isCPUTargetViaLLVM (#13228)](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
 - [emitCast int widening follows SOURCE signedness; default `-cpu` never reaches slang-emit-llvm.cpp (#13202)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md)

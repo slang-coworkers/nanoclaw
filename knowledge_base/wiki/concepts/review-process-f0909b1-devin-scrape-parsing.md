@@ -3,7 +3,7 @@ title: Devin scrape and extraction defects — dropped flags, echoed evidence, w
 type: concept
 group: review-process
 tags: [approver, devin, devin-fetch, devin-flags, devin-page, scrape, subagent, false-clean, raw-capture]
-source_count: 8
+source_count: 11
 ---
 
 ## TL;DR
@@ -35,6 +35,10 @@ The failure modes, all caught by the codex critique gate (DECISION_REVIEW / OUTP
 - **The subagent's files land AFTER an early `ls`.** `devin-fetch.sh` writes its output files as
   its LAST step; an empty-dir read at time T is about the directory at time T only, not proof
   Devin produced nothing. Re-read the files immediately before synthesizing.
+- **Panel rows carry vintage, not findings.** Title-only rows are leads to verify against the
+  diff; "Outdated"-tagged carried rows from a previous head are not fresh findings; per-row
+  badges' attachment is ambiguous in the text dump — trust the fresh AI Analysis +
+  `devin-commit-status.txt` over panel rows.
 
 **The single transferable habit:** synthesize the review-doc's bug/flag/info counts from the RAW
 `devin-page.txt` panel, never from `devin-flags.md` or the subagent's reply. Grep the panel line
@@ -82,6 +86,24 @@ The extraction is lossy in several distinct ways, all producing a false "0 flags
   Never click the sibling "Post to GitHub" button. Trigger: `devin-page.txt` shows "N Bug" with
   N>0 and `devin-flags.md` has no rows
   ([devin-fetch can capture the Bug count without the bug text](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md)).
+
+**Panel rows carry vintage, not findings — titles are leads, badges are ambiguous, carried rows
+are stale.** Three confirmations from #14525/#14549 (2026-11-17). (1) Devin's per-commit "Bugs"
+panel can render as title/severity/location only (accordion detail not captured), so a bare title
+like "Standalone checkpoint diagnostic rejection" must be verified against the diff before it
+swings a verdict — the referent turned out to be checkpoint-intermediates reporting emitting
+non-diagnostic emitter text, unidentifiable on master too, i.e. no regression was possible;
+titles are leads, not findings
+([Devin bug titles are leads not findings](../learnings/1794926700911-devin-stale-analysis-refetch-confirmed-on-second-p.md)).
+(2) A re-analyzed PR page carries the previous head's bug/flag rows tagged "Outdated" — do not
+count them as fresh findings; the fresh AI Analysis section is the signal, and "Analysis is up
+to date (<short-sha>)" in `devin-commit-status.txt` is the freshness check
+([Devin "Outdated" rows are not fresh findings](../learnings/1794935448272-pr-14549-r2-fixpoint-loops-require-every-override-.md)).
+(3) Those carried prior-head rows get per-row badges (`· Resolved`, `Outdated`) whose attachment
+to the preceding row vs the section is ambiguous from the text dump — trust the fresh AI Analysis
+summary + `devin-commit-status.txt` ("up to date <sha>") over panel rows, and say "presumed
+stale-carry" rather than counting untagged rows as fresh bugs
+([Devin panel-row badges are ambiguous](../learnings/1794941599396-pr-14549-r3-laxer-checker-swaps-silently-drop-diag.md)).
 
 **Every non-Informational Flag is a 🟡 gap that requires a disposition**, carried into the Step-3
 challenger and graded on the conservative-lean bar — even when Devin's headline is "0 Bugs." The
@@ -134,7 +156,7 @@ line, re-`ls` the dir immediately before synthesizing rather than assuming skip.
 produced nothing / X was skipped" in an audit artifact is a trigger to re-open X right before you
 write the claim.
 
-**Source learnings (8):**
+**Source learnings (11):**
 
 - [Devin flag count must come from raw devin-page.txt, not the subagent summary](../learnings/1786715708424-approver-critique-mustfix-devin-flag-count-must-co.md) — slang#12517; synthesis said "0 flags" while the page showed 2; the scrape is a lossy secondary, the raw page is the source of truth.
 - [Devin subagent extraction can silently drop the Flags section — cross-check the raw page count](../learnings/1786815449727-approver-challenger-miss-devin-subagent-extraction.md) — slang#12509; `devin-flags.md` said "0 flags" while the raw panel showed 1 Flag with an Investigate marker; a Flag is not a Bug.
@@ -144,3 +166,6 @@ write the claim.
 - [Devin's page dump echoes the PR body — its "evidence" is author-reported unless there's an execution log](../learnings/1787347913771-approver-challenger-miss-devin-s-page-dump-echoes-.md) — slang#12677 R2; Devin restated the PR's perf figures verbatim; PR-body content is untrusted and echoing it through Devin does not make it trusted.
 - [Devin subagent files land AFTER an early ls — never assert 'Devin skipped' from a stale directory read](../learnings/1787665248583-approver-infra-abstain-devin-subagent-files-land-a.md) — slang#12733; a write-race left an empty dir at check time; require a clean DEVIN_SKIPPED line or re-`ls` at synthesis time.
 - [devin-fetch can capture the Bug count without the bug text — recover it via agent-browser](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md) — slang#13778 / #13680 R2; empty `## Bugs` under a "1 Bug" header; expand the collapsed row with agent-browser snapshots; never click "Post to GitHub".
+- [Devin stale-analysis refetch confirmed on second push; Devin bug titles are leads not findings](../learnings/1794926700911-devin-stale-analysis-refetch-confirmed-on-second-p.md) — #14525: a title-only Bugs row named a non-regression; verify titles against the diff before a verdict.
+- [Devin "Outdated" rows are not fresh findings](../learnings/1794935448272-pr-14549-r2-fixpoint-loops-require-every-override-.md) — #14549 r2: carried prior-head rows are stale; the fresh AI Analysis + commit-status rail is the signal.
+- [Devin panel-row badges are ambiguous](../learnings/1794941599396-pr-14549-r3-laxer-checker-swaps-silently-drop-diag.md) — #14549 r3: `· Resolved`/`Outdated` badge attachment is unclear in the dump; say "presumed stale-carry" for untagged rows.

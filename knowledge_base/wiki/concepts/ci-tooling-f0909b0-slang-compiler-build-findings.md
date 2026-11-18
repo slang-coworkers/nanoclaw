@@ -32,6 +32,10 @@ verified firsthand against a specific HEAD and worth citing rather than re-deriv
   fails, and silently drops the flag). A from-scratch Slang build needs ~11G on the shared
   fleet volume; push + draft PR to let CI build; FIDDLE keys generated code by `__LINE__`, so you
   can't syntax-check a `.cpp` against stale generated headers if you also edited a `FIDDLE()` header.
+- **FP_CONTRACT pragma coverage is compiler-dependent (verified clang 14 / gcc 12.2 / docs):**
+  clang honors `#pragma STDC FP_CONTRACT OFF` in C and C++ (file-scope); GCC only since GCC 14 —
+  ≤13 silently ignores it and still fuses `a*b+c`; MSVC never contracts under `/fp:precise`;
+  nvcc ignores all such pragmas (CUDA had to emit `__fadd_rn`/`__fmul_rn` intrinsics instead).
 
 ## IR terminators and divergence: get the accepted set exactly right or it's a soundness bug
 
@@ -109,7 +113,11 @@ sibling clone's stale `.fiddle` headers if you also edited a `FIDDLE()` header (
 (Adding a non-`FIDDLE()` field to a FIDDLE AST class is safe only if the node is consumed before
 clone/serialization — verify the lifecycle first.)
 
-**Source learnings (7):**
+## FP_CONTRACT pragma support matrix for emitted C++ (precise mode)
+
+Making Slang's `-target cpp` output honor `-fp-mode precise` against FMA contraction (issue #14567): the source-level lever is `#pragma STDC FP_CONTRACT OFF`, but coverage is compiler-dependent. Verified on clang 14 / gcc 12.2 / per docs: clang honors the pragma in both C and C++ (file-scope; `llvm.fmuladd` → separate `fmul`+`fadd`); GCC honors it only since GCC 14 — GCC ≤13 (12 verified) silently ignores it and still fuses `a*b+c` across expressions under its default `-ffp-contract=fast` GNU mode; MSVC never contracts under its default `/fp:precise`, so it needs nothing; nvcc ignores all such pragmas, which is why the CUDA fix #14396 had to emit `__fadd_rn`/`__fmul_rn` intrinsics instead. Two verification traps: clang's C++ default is `-ffp-contract=on` and fusion happens at the FRONTEND (`llvm.fmuladd.f32` in the IR), so testing on an old clang whose x86 backend happens not to lower fmuladd to `vfmadd` can hide the contraction — check the IR, not the asm. Residual gap for GCC ≤13 users: no source-level switch exists; needs a doc note (compile with `-ffp-contract=off`). [FP_CONTRACT pragma support matrix for emitted C++ (precise mode)](../learnings/1794961582627-fp-contract-pragma-support-matrix-for-emitted-c-pr.md)
+
+**Source learnings (8):**
 
 - [slang: &buf[i] on explicit-layout structured buffer loses stride through T* param (pre-existing)](../learnings/1786991645305-slang-buf-i-on-explicit-layout-structured-buffer-l.md) — a custom-layout element address escaping through a default-layout T* mixes ArrayStride 16/4; a pre-existing operator& bug, not the __getAddress fix; verify the claim on the base compiler.
 - [test-server garble hook writes through text-mode CRT stdout — mangles \r\n\r\n on Windows](../learnings/1787044349307-test-server-garble-hook-writes-through-text-mode-c.md) — CRT FILE* text mode turns \r\n\r\n into \r\r\n\r\r\n while the reply uses raw WriteFile; explains Windows-only but not debug-only; a binary stream must not sit on a text-mode FILE*.
@@ -118,3 +126,4 @@ clone/serialization — verify the lifecycle first.)
 - [Slang divergence analysis: switch without default falls through to exit](../learnings/1787096714301-slang-divergence-analysis-switch-without-default-f.md) — no-default switch routes unmatched to breakLabel, so all-arms-diverge doesn't make it diverge; exclude switch for v1; check how each form lowers, not intuition; codex caught the over-reach.
 - [Fleet disk-full blocks Slang builds; verify via CI, and FIDDLE line-shift breaks single-file syntax checks](../learnings/1787282979852-fleet-disk-full-blocks-slang-builds-verify-via-ci-.md) — ~11G on a shared volume; push + draft PR to let CI build; FIDDLE keys by __LINE__ so stale generated headers mismatch when a FIDDLE() header is edited.
 - [exported_symbols_list must not go through check_linker_flag helpers](../learnings/1787679115155-exported-symbols-list-must-not-go-through-check-li.md) — the probe links an empty main with none of the listed symbols → ld64 errors → the helper silently drops the flag; apply -exported_symbols_list directly and let the real link catch a bad list.
+- [FP_CONTRACT pragma support matrix for emitted C++ (precise mode)](../learnings/1794961582627-fp-contract-pragma-support-matrix-for-emitted-c-pr.md) — clang honors it; GCC only ≥14; MSVC needs nothing; nvcc ignores pragmas (#14567).

@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli, scheduled-task, cron, observability]
-source_count: 46
+source_count: 47
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -59,6 +59,16 @@ A fixer "holding for a build slot" behind `/dev/vdb` contention is idle and sile
 On slang#9153 a fixer was reaped ~2 days in during a subagent's debug build; tests and code only in `wt-<n>/` were gone, the branch at 0 commits. Commit on `fix/issue-<n>` before the build; after a suspected reap, establish ground truth (`git log master..fix/issue-<n>`, `git stash list`, `git fsck`) before reporting, and never trust a subagent's ambiguous "I'll wait…" ([commit before the long build](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)). A subagent doing multi-step edits commits each step as an unpushed WIP commit: uncommitted edits silently die with the subagent, a restart or a context reset, while a local commit squashes later and leaves a reflog object. When work seems missing, check `git worktree list`, `git stash list`, `git fsck --lost-found`, scratch dirs, and then the other sessions on the task, looking a known owner up with `ncl sessions get <owner-sid>` rather than scanning `ncl sessions list`. That last step matters most: on slang#13406 (2026-10-08) a writer reported work in `wt-slang-13339` lost after checking 176 worktrees, stash, fsck and the list, but it was itself a phantom session and the real owner had committed the work there from 00:33Z; the capped list had truncated the owner ([commit WIP per step; check the owner by id](../learnings/1791502489446-subagent-edits-in-a-worktree-can-vanish-commit-wip.md), [the phantom-session cause](../learnings/1791516153313-a2a-reply-on-a-mismatched-thread-mints-a-phantom-s.md)).
 
 A backgrounded build's completion signal is routinely lost across reaps (idle-exit, restart, autocompact teardown), so drive long builds in the foreground ([never background a long build](../learnings/1783953647247-never-background-a-long-build-in-a-fixer-session-f.md)). A delegated build watched by `pgrep -f "cmake --build --preset debug"` fires a false "done" when a sibling worktree's build ends (#12069), and `TaskStop` on the subagent SIGINTs your ninja, its child. Run it detached (`nohup bash -c '... >LOG 2>&1; echo "BUILD_EXIT=$?" >>LOG' & disown`), Monitor `until grep -q "BUILD_EXIT=" LOG`, and branch on `BUILD_EXIT=0` plus `[ -x build/Debug/bin/slangc ]` ([pgrep matches siblings](../learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md)).
+For long full-suite slang-test runs, plain `nohup … &` is NOT enough detachment: a turn death (provider
+429, container restart) makes the harness kill the process GROUP, taking `nohup … &` subshells with it —
+two full-suite runs died mid-suite this way on 2026-11-17 (#14524). Use
+`setsid nohup ./build/Debug/bin/slang-test … < /dev/null > log 2>&1 & disown` to fully detach into a new
+session (that run survived the next turn death), and never rebuild the tree while a background suite is
+running — ninja relinking slang-test and the test servers kills or corrupts the run, so schedule builds
+and suite runs serially. Also note `rm -f` and `>` redirections in bash commands trip the plan-gate hook
+when the workflow state is reset (a plain `echo`/`ls` still passes, which tells you it is the write
+pattern): re-record the plan with the Write tool and the gate lifts
+([detached full-suite runs: setsid, no mid-run rebuilds, plan-gate write patterns](../learnings/1794919009814-detached-full-suite-runs-setsid-no-mid-run-rebuild.md)).
 
 A fresh slang `git worktree add` needs `git submodule update --init --recursive` before `cmake --preset default` (else a missing `SPIRV-Headers::SPIRV-Headers` target); the shared `.git/modules/` cache makes it fast. The base clone is `/workspace/agent/slang-real`, the default branch `master`, the bot pushes `fix/issue-<n>` to origin, and the label is `pr: breaking change` ([worktree setup](../learnings/1780365266607-slang-fixer-worktree-setup-base-is-slang-real-subm.md), [label + submodule init](../learnings/1780482951162-slang-pr-label-is-pr-breaking-change-not-pr-breaki.md), [env gotchas](../learnings/1780324487740-testing-slang-llvm-version-skew-diagnostics-slang-.md)). `clang-format` is absent; `pip install --break-system-packages --user "clang-format>=17,<19"` puts it in `~/.local/bin`.
 
@@ -94,7 +104,9 @@ No remote branch and no tagged session are weak stall signals, since fixers work
 
 A nested `.git` in a tree being published is a scrub bypass no text check sees. On 2026-08-06 the nightly `knowledge_base` sync (nanoclaw to `nv-coworkers`) found its auto-memory source (`/home/node/.claude/projects/-workspace-agent/memory/`) had become a git repo, and `cp -rL <src>/. <dest>/` copied its `.git/`. `scrub_kb_pii.py` rewrites working-tree text only, so zlib-compressed `.git/objects` pass it and the `grep -rhoE '<email regex>'` check by construction. The tell was a count (~520 expected, 10,011 mirrored, 772 under `auto-memory/.git`); compare with `git ls-tree -r --name-only HEAD <path> | wc -l` before staging. The fix (PR #1094) removes `auto-memory/.git` and `__pycache__` dirs in the mirror step, before the scrub, and every publish-to-public job asserts `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` is empty ([nested .git is a scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md)).
 
-**Source learnings (46):**
+**Source learnings (47):**
+
+- [detached full-suite runs: setsid, no mid-run rebuilds, plan-gate write patterns](../learnings/1794919009814-detached-full-suite-runs-setsid-no-mid-run-rebuild.md) — nohup alone dies with the turn; setsid survives; serialize builds vs suites
 - [ncl sessions list shows group IDs, not names](../learnings/1794817309345-ncl-sessions-list-shows-agent-group-ids-not-names-.md)
 - [Task-log entries truncate at ~2000 chars — not a crash](../learnings/1794885017981-task-log-entries-truncate-at-2000-chars-a-mid-word.md)
 - [Confirm Codex runtime from live process, not config fields](../learnings/1794385738859-confirm-codex-runtime-from-live-process-when-ncl-c.md)

@@ -3,7 +3,7 @@ title: Reviewer-A wrapper integrity & concurrency — INTEGRITY-FAIL, shared tmp
 type: concept
 group: review-process
 tags: [reviewer-a, integrity-fail, shared-tmp, concurrent-review, stream-jsonl, wrapper-success, in-thread-reply, delivery, slang-pr-review]
-source_count: 27
+source_count: 28
 ---
 
 ## TL;DR
@@ -37,6 +37,10 @@ recurring integrity hazards, both driven by a **shared, non-namespaced checkout*
   size floor (<500 B = failed), a content sniff, and a findings table; recover from
   `stream.jsonl` before re-running, and report `reviewers_complete:false`.
 - **Patch mode's `git commit -am` drops NEW files** → a false "no test in patch" gap.
+- **Never leave scratch files in the shared checkout while Reviewer A/C runs** — the
+  reviewers read it LIVE and will cite your probe artifacts as evidence; zz-prefix them,
+  delete on probe completion, and check unfamiliar file names in reviewer claims against
+  your own artifacts before repeating them.
 
 Liveness: **stream-static is NOT death.** Subagents run silent for minutes; gate the
 terminal test on `final-review.md` (≥500 B) or the `{"type":"result"}` record.
@@ -74,11 +78,32 @@ The mirror error is declaring A dead too early: subagents run for **minutes** wi
 
 In `compose-and-run.sh`'s *patch mode*, `git checkout -b patch-review-<ts> origin/master` → `git apply --whitespace=nowarn "$PATCH_FILE"` → `git commit -q -am …` drops every NEW file: `git apply` leaves them **untracked** and `-am` stages only tracked modifications/deletions, so the reviewed temp branch omits every `new file` hunk. Reviewer A then reports 🟡 "patch carries no regression test; tests exist in the tree but are untracked (`??`)" — the `??` is the fingerprint. Reviewer C commits the patch in a worktree and does review the tests, so A-says-no-test while C-reviews-tests means the artifact. Discount the gap, verify the tests in the patch or on the fixer's branch; the runner fix is `git add -A` before commit ([Patch-mode PR review: git commit -am drops NEW test files → false "no test in patch" gap](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)).
 
+## Scratch files in the shared checkout contaminate live review runs
+
+The reviewers read the checkout LIVE, so your own probe artifacts can enter their evidence. On
+#14554 r2 a temporary repro `zz-verify-13800.slang` (created mid-flight for a Gap-1 verification,
+deleted ~30 min later) was cited by Reviewer A's round-2 report as "a full-codegen test on master
+named after this very issue". Never leave scratch files in `/workspace/agent/slang` while
+Reviewer A/C runs; name them unmistakably (the `zz-` prefix is what made the contamination
+visible) and delete them the moment the probe finishes; and before repeating any reviewer claim
+that names a file you don't recognize from the PR diff, check whether it was your own artifact
+([reviewer scratch files contaminate live review runs](../learnings/1794946366899-reviewer-scratch-files-contaminate-live-review-run.md)).
+The same atom records the repro preconditions for structural ray-tracing tests: the checkout's
+default build does NOT produce `slang/raytracing/portable.slang-module`, so
+`import slang.raytracing.portable;` fails with E00001 and downstream errors look
+plausible-but-fake (an E38058 "does not implement an executable structural ray-tracing stage
+interface" is just the import-failure artifact). Build it first
+(`cmake --build build --config Release --target slang-portable-raytracing-module`, ~1 min), after
+which direct-name `-no-codegen` probes pass at master; full codegen (`-target spirv`) HANGS in
+Release at master (asserts off) — a fixer's "E99997 abort at
+`slang-ir-transform-params-to-constref.cpp:463`" is that same pre-existing breakage in a Debug
+build; and quote `-entry 'M<P>'` on the shell or `<P>` is parsed as redirection.
+
 ## Process delivery: not real until pushed, and reply in-thread
 
 Two maintainer-flagged failures on slang#12519. **An `Edit` is NOT a delivered change**: the author edited, posted "pushing shortly", and ended the turn; the head stayed old for ~4 hours. Run format → rebuild → verify tests → commit (amend) → push → confirm remote head == local HEAD in one session, and say "pushed as <sha>" only after `git ls-remote` confirms. **Reply IN-THREAD** via `gh api -X POST repos/<o>/<r>/pulls/<n>/comments/<review_comment_id>/replies`, not a top-level `gh pr comment`, which makes "addressed" and "acknowledged" look identical and leaves threads unresolvable. The critique gate re-fires on ANY GitHub write after N edits since the last OUTPUT_REVIEW — budget a review round before push+reply ([a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md)). Exception: a webhook can deliver an inline comment from a still-**pending** review; until submitted, `GET /repos/{o}/{r}/pulls/comments/{id}` 404s, GraphQL has no `reviewThread`, and the MCP reader omits it, so neither `/replies` nor `addPullRequestReviewThreadReply` works — reply on the PR conversation saying it answers their inline comment, or wait. Diff the webhook body against your edit to confirm it is verbatim, and re-fetch before pushing: on slang#13283 the shepherd had pushed the identical change (non-fast-forward); compare trees (`git diff --quiet mine theirs`) and reset to theirs ([a pending review's inline comment can't be replied to on its thread](../learnings/1792188156159-a-pending-github-review-s-inline-comment-can-t-be-.md)).
 
-**Source learnings (27):**
+**Source learnings (28):**
 
 - [wrapper success with a 96-byte error artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md) — size floor + content sniff; recover from stream.jsonl
 - [INTEGRITY-FAIL false positive, shared tmp](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — adjudicate by content, not self-report or headline
@@ -107,3 +132,4 @@ Two maintainer-flagged failures on slang#12519. **An `Edit` is NOT a delivered c
 - [some subagents read wrong diff (#13378)](../learnings/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md) — mtime vs run start; one A per checkout
 - [all subagents refused (#13431)](../learnings/1791205564538-reviewer-a-shares-workspace-agent-slang-tmp-with-c.md) — no review produced; worktree + REPO_ROOT
 - [pending review comment has no thread](../learnings/1792188156159-a-pending-github-review-s-inline-comment-can-t-be-.md) — reply on conversation; re-fetch before push
+- [Reviewer scratch files contaminate live review runs; build the portable RT module before structural-RT repros](../learnings/1794946366899-reviewer-scratch-files-contaminate-live-review-run.md) — #14554 r2: A cited a zz- repro as PR evidence; RT repros need `slang-portable-raytracing-module` built or E00001 fakes downstream errors.

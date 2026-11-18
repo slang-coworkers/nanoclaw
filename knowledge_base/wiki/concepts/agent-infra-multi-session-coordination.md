@@ -3,7 +3,7 @@ title: "Multi-Session Coordination, A2A Routing, and Session Handoff"
 type: concept
 group: agent-infra
 tags: [a2a, sessions, routing, dedup, loops, reinforcements, spine, provenance, handoff, teardown]
-source_count: 41
+source_count: 44
 ---
 
 # Multi-Session Coordination, A2A Routing, and Session Handoff
@@ -20,7 +20,9 @@ This page owns A2A routing and dedup, empty-ack loops, reinforcement propagation
 - **Is the peer's session real?** `ncl sessions list` is capped at ~200 rows, so probe with `--thread-id`. Silent-downstream causes (logged out, never landed, refusing, GC'd conversation) each need a different fix.
 - **Wake a parked session with `target_session_id`**; a fresh `thread_id` dispatch mints a new session. If the provider conversation was GC'd, ask the operator to reset it; the router refuses a second session for the same item.
 - **The pin loses to `in_reply_to`, which the runner auto-stamps.** To reach a sibling session, pass the pin with `in_reply_to=<one of your own rows with no source_session_id>`, then verify.
+- **Even a correctly-formed pin can fall through to a mid-turn sibling** of the same group — verify WHICH session shows the inbound row, not just that one does.
 - **Reply on the owner's canonical thread, not the thread its report arrived on**; a mismatched-thread reply mints a phantom session. Look up a known owner with `ncl sessions get <sid>`, never a truncated list.
+- **"Delivered" ≠ "executing":** a mis-pinned retry (in_reply_to without thread_id/target_session_id) mints a phantom session that never starts a turn — $0.00 spend for 20+ min is the tell; pin re-sends with ALL of `to` + `thread_id` + `target_session_id` + `in_reply_to`, then quiesce the phantom.
 - **Never write reader-relative provenance** (`originSessionId: current`). One bot identity spans sessions: re-read the newest comment live before posting.
 - **In-container watches, `Monitor`, and `run_in_background` die silently on teardown.** Block in-turn or use host-side `ncl tasks`. "MCP tool missing" is not "capability missing".
 - **Never probe a mutating `ncl` verb with `help`**; it can fire the real approval-gated action.
@@ -69,6 +71,15 @@ A resumed session can also be blind to **its own prior records**: a session repo
 
 **The pin loses to `in_reply_to`, and you are almost never sending without one.** In `agent-route.ts` `deliverAgentMessage`, Layer 1 (`resolveExplicitReplyTarget`, from `in_reply_to`) beats Layer 0 (the pin) by design. The runner's `send_message` fills `in_reply_to` from `getCurrentInReplyTo()` when you leave it out (`mcp-tools/core.ts`), so a send made while answering a peer carries that peer's latest inbound id; it resolves to the peer's own session, the D1 cross-thread guard passes, and the pin is dropped with no `falling through` log. On slang#13518/#13519 two sends meant for the triager's #13518 session, one pinned, both landed in its #13519 session; a third with the pin plus `in_reply_to=<one of your own rows with no source_session_id>` (a webhook or your first inbound) landed correctly ([in_reply_to outranks the pin](../learnings/1791461725325-in-reply-to-outranks-target-session-id-pin-sibling.md)). The same mechanism misroutes a **cross-chain relay**: when a peer's report on chain A mentions chain B, owned by another of that peer's sessions, Main's relay to B needs the pin *and* the source-less `in_reply_to`; an explicit `thread_id="gh-issue-…-B"` (final-response `<message>` block or pin without `in_reply_to`) is outranked by the auto-stamped reply route. On slang#13634/#13661 the triager's #13661 session received the #13634 scope change and drove #13634 in parallel (stood the fixer down, patched the public comment) while the fixer's gap evidence went to the canonical session ([cross-chain relay needs pin + in_reply_to=<own webhook row>](../learnings/1792086034901-cross-chain-relay-to-a-peer-needs-pin-in-reply-to-.md)). Verify every pinned relay with `ncl sessions messages <pinned-sid> --reverse --limit 3`. A receiver given a sibling's input sends it back via the parent. (Upstream, arguably only an agent-passed `in_reply_to` should outrank a pin.) ([a misrouted receiver re-routes via the parent](../learnings/1791461751862-send-message-routing-in-reply-to-beats-target-sess.md)).
 
+And the pin can fall through even when EVERY mitigation is correctly applied: on slang#13833 (2026-11-17) a
+send with `to=slang-fixer, target_session_id=<owning session>, thread_id=<canonical gh-issue thread>,
+in_reply_to=<own webhook row>` landed in a DIFFERENT, task-spawned retry session of the same group that
+was MID-TURN at send time — the owning session never received it. So "pin + verify" must check WHICH
+session shows the inbound row (sweep the group's other active sessions with the two-running-sessions
+detector when the row doesn't appear on the pinned one), and an owner-directed message to a group with a
+mid-turn sibling should be re-sent once the sibling has gone quiet, verifying the landing spot both times
+([pinned send fell through to a mid-turn sibling session](../learnings/1794931905366-pinned-send-fell-through-to-mid-turn-sibling-sessi.md)).
+
 ## "That Isn't Mine" Is Authoritative for the Session, Not the Group
 
 When Main relayed a rhi#804 finding to slang-pr-approver as "your report", the approver denied it from its own transcript. `ncl sessions get` showed the finding came from a sibling session of the same group (thread `gh-issue-shader-slang/slang-rhi-804`). Both parties were partly wrong. Check the ledger before correcting anything, and attribute to group + session id (*"slang-pr-approver, session `…bvj5tl`, thread rhi-804"*); a bare "you reported" is ambiguous whenever a group runs concurrent sessions, which is normal. The same exchange shows corroboration vs echo: explicit `CRITIQUE_GATE_ACTIVE=0` and `=1` readings are two observations reaching one conclusion (the fleet is split); two parties "agreeing" on a line reference they both got wrong is an echo. If the other party's evidence is what you supplied, it is not a second measurement. (The env var is authoritative where injected; the marker file is only a fallback.) ([session, not group; corroboration vs echo](../learnings/1785819986359-a-coworker-s-that-isn-t-mine-is-authoritative-for-.md)).
@@ -97,6 +108,26 @@ A fixer on `gh-issue-<o>/<r>-<ISSUE#>` opens a PR; an unmapped later PR event is
 
 A reply on the wrong thread mints the same phantom from the sender's side. On slang#13406 the owner fixer session `…jylfb4` sat on thread `gh-issue-shader-slang/slang-11709`, but its `[Status]` reports reached Orchestrator stamped `…-12122`. Orchestrator replied with `in_reply_to=<that report>` and the inbound thread; the D1 guard in `resolveExplicitReplyTarget` rejected the direct hit (the owner's thread matched neither), and routing minted a phantom on 12122, which saw a clean worktree, called the owner's work "lost", and started redoing it. The "no other session holds it" check was a false negative: `ncl sessions list --limit 2000` had truncated away the owner. Reply on the owner's canonical thread, add `target_session_id` when the owner is known (with the `in_reply_to` caveat above), confirm `direction=in` with `ncl sessions messages <owner> --reverse --limit 3`, and look a known owner up by id (`ncl sessions get <sid>`). When two sessions in one group work one task, the newer one's `created_at` matches your faulting send ([mismatched-thread reply mints a phantom session](../learnings/1791516153313-a2a-reply-on-a-mismatched-thread-mints-a-phantom-s.md)).
 
+The cross-group retry variant mints the same phantom even with `in_reply_to` present. A triager→fixer
+resume brief sent with `in_reply_to` (to a fixer-sourced row) but NO `thread_id` and NO
+`target_session_id` keyed the message to the sender's own task thread and minted a phantom fixer session
+while the accompanying `send_file` landed in the real owner session (split delivery, #14430). Detection
+is two commands: `ncl sessions list --thread-id <canonical>` and `--thread-id <your own task thread>` — a
+second session in the target group on YOUR thread is the phantom; then `ncl cost-cap status --session
+<sid>` — spend unmoved for >20 min means the wake never started a turn ("no canned error" meant "no turn
+ran", not "working"; the owner showed $7.30 of live spend while the phantom sat at $0.00). The safe recipe
+for pinning a cross-group re-send to the owner session is ALL FOUR fields: `to` (peer destination) +
+`thread_id` (the canonical `gh-issue-…`) + `target_session_id` (the owner session id) + `in_reply_to`
+(the peer-sourced inbound as anchor) — then verify with `ncl sessions messages <owner sid> --reverse
+--limit 3`, quiesce the phantom (`ncl cost-cap stop --session <phantom sid>`) so a later queued fire
+can't trample the same worktree, and if the pinned retry ALSO fails to start a turn (~30 min, spend
+unmoved) stop re-sending blind — the group needs an operator restart. Note `ncl sessions messages` is
+group-scoped, so you cannot verify delivery into another group's session from your own; ask the
+operator/parent to confirm the text landed and the session's spend moved
+([delivered-but-not-executing handoff: phantom misroute + the $0-spend dead-wake detector](../learnings/1794903139694-delivered-but-not-executing-handoff-phantom-sessio.md),
+[cross-group peer send: in_reply_to alone mints phantoms](../learnings/1794903208936-cross-group-peer-send-in-reply-to-alone-mints-phan.md);
+activity-probing rules on [peer activity probing](agent-peer-activity-probing.md)).
+
 On the receiving side, a PR comment posted before you call `report_pr_created` goes to whichever session held the mapping. Re-read all comments since your last look (`gh api repos/<o>/<r>/issues/<n>/comments`) before replying ([re-read all PR comments before replying](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)).
 
 ## A2A Edge Durability and Report-Session Visibility
@@ -119,7 +150,7 @@ The heartbeat pre-check's `pending_summons` counts unhandled lines in `summon_re
 - Cross-module `import` and same-module `__include` namespace reopening share one scope-wiring path ([namespace-reopen lookup bug](../learnings/1781191464750-slang-namespace-reopen-lookup-bug-cross-module-imp.md)).
 - The legacy `slang.dll` proxy and `libslang` symlink live in `source/slang/CMakeLists.txt` ([legacy slang.dll proxy + libslang symlink](../learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md)).
 
-**Source learnings (41):**
+**Source learnings (44):**
 - [Resumed sessions blind to their own prior records](../learnings/1794814036749-resumed-sessions-can-be-blind-to-their-own-prior-r.md) — check the session transcript before accepting "no prior work exists"
 - [CONSOLIDATED: phantom orchestrator-relay directives](../learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md)
 - [A2A dedup: verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
@@ -154,6 +185,7 @@ The heartbeat pre-check's `pending_summons` counts unhandled lines in `summon_re
 - [Second issue riding a PR: route to the PR owner](../learnings/1790404807814-second-issue-riding-an-existing-pr-splits-the-fixe.md)
 - ["Emission succeeded" is not "valid"; re-read PR comments](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
 - [in_reply_to outranks the target_session_id pin](../learnings/1791461725325-in-reply-to-outranks-target-session-id-pin-sibling.md) — pass pin + in_reply_to=<own source-less row>
+- [pinned send fell through to a mid-turn sibling session](../learnings/1794931905366-pinned-send-fell-through-to-mid-turn-sibling-sessi.md) — pin+thread_id+in_reply_to all correct; mid-turn sibling consumed it
 - [in_reply_to beats target_session_id](../learnings/1791461751862-send-message-routing-in-reply-to-beats-target-sess.md) — misrouted receiver re-routes via parent
 - [Cross-chain relay needs pin + in_reply_to](../learnings/1792086034901-cross-chain-relay-to-a-peer-needs-pin-in-reply-to-.md) — #13634/#13661
 - [Duplicate #13672 handoff came from routing](../learnings/1792089121951-correction-the-duplicate-13672-handoff-came-from-r.md) — claim with atomic `mkdir`
@@ -161,5 +193,7 @@ The heartbeat pre-check's `pending_summons` counts unhandled lines in `summon_re
 - [Dev Reviewed / Dev Opened labels retired](../learnings/1791448089783-shader-slang-dev-reviewed-dev-opened-labels-retire.md)
 - [Inbox silence is not evidence a peer is down](../learnings/1794896502569-inbox-silence-is-not-evidence-a-peer-is-down-read-.md) — updates may route to the dashboard; read the peer's session log first
 - [Backstop stall-checks must read the peer's session transcript](../learnings/1794896513315-backstop-stall-checks-must-read-the-peer-s-session.md) — 3 false "still silent" escalations during one 429 storm
+- [Delivered-but-not-executing handoff: phantom misroute + $0-spend dead-wake detector](../learnings/1794903139694-delivered-but-not-executing-handoff-phantom-sessio.md) — retry with in_reply_to alone minted a phantom; spend unmoved >20 min = no turn started
+- [Cross-group peer send: in_reply_to alone mints phantom sessions](../learnings/1794903208936-cross-group-peer-send-in-reply-to-alone-mints-phan.md) — full pin recipe = to + thread_id + target_session_id + in_reply_to; quiesce the phantom
 
 _Catalog: [[wiki/index.md]]_

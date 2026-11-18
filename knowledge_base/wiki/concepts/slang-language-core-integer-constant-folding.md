@@ -3,7 +3,7 @@ title: "Slang integer constant folding: signed int64 storage, un-narrowed front-
 type: concept
 group: slang-language-core
 tags: [constant-folding, sccp, intval, uint64, signedness, unsigned-compare, BuiltinOperationIntVal, tryConstantFoldExpr, evalComparisonImpl, IRIntegerValue, IntegerLiteralValue, getIntVal, IntrinsicOpModifier, trip-count, MaxIters, autodiff, primal-hoist]
-source_count: 11
+source_count: 12
 ---
 
 # Slang integer constant folding: signed int64 storage, un-narrowed front-end IntVals, and what folds
@@ -18,6 +18,7 @@ Slang folds integer constants in two places: the IR folder (SCCP, `slang-ir-sccp
 - Front-end IntVals are not narrowed to their type width (#13954). `ASTBuilder::getIntVal` stores the raw 64-bit result, so `~0u` is held as -1 and `1u - 0xFFFFFFFFu` as -4294967294. `IRBuilder::getIntValue` does narrow.
 - So an unsigned fix cannot reinterpret the stored value as uint64. Ordering compares: convert each operand to its own base type, then compare as UInt64 when either operand is unsigned. `/` and `%`: take the unsigned path only for full-width unsigned types (uint64, uintptr). Narrowing a narrow operand mixes representations and breaks a later `==`.
 - The front-end folder folds a call only when the callee has `IntrinsicOpModifier`/`ImplicitConversionModifier`, and then dispatches on the decl NAME. Core `max/min/abs/clamp` never fold (no array sizes, no `[numthreads]`, no constant `static const`); `select` fails although it is `__intrinsic_op(select)`. Workaround: `?:`.
+- IntVal `_linkTimeResolveOverride`-style folds must route arithmetic through `std::make_unsigned_t<IntegerLiteralValue>` like `tryFoldImpl` — a plain int64 power-multiply loop is signed-overflow UB (PR #14549, `PolynomialIntVal`).
 - `abs` of an unsigned value means different things per target (SPIR-V `SAbs` and LLVM `llvm.abs` are signed; the C++/CUDA preludes and WGSL return it unchanged), so it must not be constant-folded. Measured: `abs(0xFFFFFFFFu)` is 1 on vk/llvm and unchanged on cpu/cuda; glslang rejects `abs(uint)`; the CPU/CUDA preludes have no 8/16-bit `abs`.
 - SCCP folds only scalars, so a constant int64 vector `INT64_MIN / -1` reaches spirv-opt, whose CCP pass traps with SIGFPE at `-O1`. That needs a SPIRV-Tools fix, not a Slang folder fix.
 - IR side: `isSignedType` omits `IntPtrType`. Use `isIntegralType(t) && !getIntTypeSigned(t)`; `getIntTypeSigned` asserts on non-integers, bool included.
@@ -42,6 +43,8 @@ It compiles to `buf_0[0] = int(2)`, which is wrong. A generic `int a[K < 5ull ? 
 ## Front-end IntVals are not narrowed to their type (#13954)
 
 `ASTBuilder::getIntVal` stores a raw 64-bit result without narrowing it to the type width; `IRBuilder::getIntValue` does narrow. So the `uint` expression `1u - 0xFFFFFFFFu` is held as -4294967294 (its true value is 2), and `~0u` is held as -1. A signedness fix in the front-end folder therefore cannot just reinterpret the stored `IntegerLiteralValue` as uint64. Doing that flips `(1u - 0xFFFFFFFFu) < 10u` from true to false. The full slang-test suite did not catch that regression; `/code-review medium` did. The fix used for #13978 in PR #13984 converts each operand to its own base type first (TypeCastIntVal's conversion, now `_tryConvertIntegerValueToBaseType`), then compares as UInt64 when either operand is unsigned, and leaves signed-only compares unchanged [front-end IntVals are un-narrowed: unsigned compare needs per-type conversion](../learnings/1793212162251-slang-front-end-intvals-are-un-narrowed-unsigned-c.md).
+
+The same signedness discipline reaches IntVal link-time resolution: `PolynomialIntVal::_linkTimeResolveOverride`'s power-multiply loop did plain int64 math and hit signed-overflow UB (Reviewer A finding on PR #14549, `slang-ast-val.cpp:3382`). Any new `_linkTimeResolveOverride`-style fold must route its arithmetic through `std::make_unsigned_t<IntegerLiteralValue>` the way `tryFoldImpl` does (`slang-ast-val.cpp:2428-2431`), not plain int64 math ([PR #14549 review: signed-overflow UB in `PolynomialIntVal::_linkTimeResolveOverride`](../learnings/1794925827959-pr-14549-review-clean-sequential-opencode-a-c-run-.md)).
 
 The same per-type narrowing is wrong for division. While fixing #13986 (SIGFPE on `INT64_MIN / -1` in SCCP `evalDiv`/`evalRem` and in `tryConstantFoldExpr`'s `CASE(/)`), reading unsigned operands at their type width before dividing made `~0u / 1u` fold to 0xFFFFFFFF, which no longer `==` `~0u` (held as -1). A comparison escapes this because its result is a bool; a quotient feeds later folds, so it carries the mixed representation forward. The version that held up divides as unsigned only when an operand is a full-width unsigned type (`sizeInBytes == sizeof(IntegerLiteralValue)`, that is uint64 and uintptr), the only unsigned types whose canonical values are held negative. Narrow types keep their old behavior byte for byte; check that against the released slangc (`LD_LIBRARY_PATH=<release>/lib`) [don't width-read narrow unsigned operands for / and %](../learnings/1793219555782-slang-front-end-folding-don-t-width-read-narrow-un.md).
 
@@ -69,7 +72,8 @@ The PR kept the consumer correct for canonical values and did not add a guard on
 - [[wiki/concepts/slang-autodiff-ir-passes-diagnostics.md]]: primal-hoist checkpoint storage sized from `[MaxIters]`.
 - [[wiki/concepts/slang-b-language-semantics.md]]: an all-literal probe measures only the folder.
 
-**Source learnings (11):**
+**Source learnings (12):**
+- [PR #14549 review: signed-overflow UB in `PolynomialIntVal::_linkTimeResolveOverride`](../learnings/1794925827959-pr-14549-review-clean-sequential-opencode-a-c-run-.md) — link-time folds need `make_unsigned_t` arithmetic like `tryFoldImpl`
 - [Slang IR SCCP folds uint64 comparisons as signed (pre-existing miscompile)](../learnings/1793207044532-slang-ir-sccp-folds-uint64-comparisons-as-signed-p.md) — `evalComparisonImpl` signed; `x > 5ull` folds wrong; `abs` of unsigned differs per target
 - [Slang constant folders compare uint64 as signed (SCCP + front end); uint32 is safe](../learnings/1793207694541-slang-constant-folders-compare-uint64-as-signed-sc.md) — #13978; `-O0` does not avoid it; read from a buffer to check runtime
 - [Slang front-end IntVals are un-narrowed: unsigned compare needs per-type conversion](../learnings/1793212162251-slang-front-end-intvals-are-un-narrowed-unsigned-c.md) — PR #13984; raw-u64 compare regresses; `isSignedType` omits IntPtrType; `operator>(a,b)` test syntax

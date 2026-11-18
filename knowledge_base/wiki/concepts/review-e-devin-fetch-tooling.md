@@ -3,7 +3,7 @@ title: "Devin/review harness tooling — the false-clean scraper defect family"
 type: concept
 group: review
 tags: [devin, devin-fetch, pr-review, infra-abstain, false-clean, scraper, tooling]
-source_count: 3
+source_count: 8
 ---
 
 ## TL;DR
@@ -168,7 +168,23 @@ harvest pass is needed
 ([Devin first-fetch is fresh on a brand-new (never-analyzed) PR head](../learnings/1794838719892-devin-first-fetch-is-fresh-on-a-brand-new-never-an.md)
 and [Devin fetch on a brand-new PR: one 15-min-capped fetch suffices](../learnings/1794840486940-devin-fetch-on-a-brand-new-pr-one-15-min-capped-fe.md)).
 Either way, always check `devin-commit-status.txt` against the PR head before using
-`devin-flags.md`.
+`devin-flags.md`. The done-check itself cannot distinguish "finished fresh analysis"
+from "finished while still displaying the old analysis" — exit 0 with `Analysis is
+behind the head commit (analysed <old>, head <new>)` is a completed fetch of a stale
+page — so the status file, not the exit code, is the trust gate. The re-fetch recipe
+was re-confirmed end-to-end on the 2026-11-17 r2 loops (#14526 fresh analysis within
+the 15-min cap via a `detach.sh`-driven fetch; #14539 stale-811726c first fetch →
+fresh 98b33b5 on the second; #14540 stale da77391 → up-to-date 94402e1 on a second
+fetch ~30 min later into a `B-<n>-r<k>b` dir; and a one-shot ~12-min re-fetch after
+the first visit on #14528)
+([Devin fetch via detach.sh](../learnings/1794900109239-devin-fetch-via-detach-sh-gh-auth-status-red-herri.md),
+[dropped-by-A Devin bugs graduate](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md),
+[429 WAF cooldown](../learnings/1794906777783-429-waf-cooldown-needs-minutes-not-just-less-concu.md),
+and [Devin stale-head refetch](../learnings/1794926376986-slang-pr-r2-review-devin-stale-head-refetch-empiri.md)).
+The recipe confirmed verbatim once more on #14525 (stale `4e80c4b` → fresh `591fb83` on a
+re-fetch ~10 min later), with one added nuance: the stale page's AI-analysis PROSE can partially
+describe the NEW head, so trust only the commit-status rail, never the prose
+([Devin stale-analysis refetch confirmed on second push](../learnings/1794926700911-devin-stale-analysis-refetch-confirmed-on-second-p.md)).
 
 ## Identity, copies, and ownership
 
@@ -233,7 +249,12 @@ self-correction pages ([[wiki/concepts/review-e-self-correction.md]],
 [[wiki/concepts/review-e-self-correction.md]]). The abstain-severity calls the
 scraper feeds into live in [[wiki/concepts/review-e-abstain-calibration.md]].
 
-**Source learnings (3):**
+**Source learnings (8):**
 - [Review-runner recovery: stream.jsonl result-line extraction; Devin stale-first-fetch on new heads](../learnings/1794824483565-review-runner-recovery-stream-jsonl-result-line-ex.md) — new-head fetch harvests stale analysis; re-fetch ~10–12 min later
 - [Devin first-fetch is fresh on a brand-new never-analyzed PR head](../learnings/1794838719892-devin-first-fetch-is-fresh-on-a-brand-new-never-an.md)
 - [Devin fetch on a brand-new PR: one 15-min-capped fetch suffices](../learnings/1794840486940-devin-fetch-on-a-brand-new-pr-one-15-min-capped-fe.md)
+- [Devin fetch via detach.sh + gh auth status red herring](../learnings/1794900109239-devin-fetch-via-detach-sh-gh-auth-status-red-herri.md) — #14526: detach.sh-driven fetch, fresh analysis within 15-min cap
+- [429 WAF cooldown needs minutes](../learnings/1794906777783-429-waf-cooldown-needs-minutes-not-just-less-concu.md) — #14528: one ~12-min re-fetch recovered the stale analysis
+- [dropped-by-A Devin bugs graduate to confirmed bugs next round](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md) — #14539: stale first fetch → fresh flags on second
+- [Devin stale-head refetch; empirical slangc probes](../learnings/1794926376986-slang-pr-r2-review-devin-stale-head-refetch-empiri.md) — #14540: exit-0 fetch still stale; second fetch ~30 min later up to date
+- [Devin stale-analysis refetch confirmed on second push; bug titles are leads not findings](../learnings/1794926700911-devin-stale-analysis-refetch-confirmed-on-second-p.md) — #14525: stale prose can describe the NEW head — trust the commit-status rail, not the prose.

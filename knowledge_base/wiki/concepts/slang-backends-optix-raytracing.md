@@ -3,7 +3,7 @@ title: "Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics"
 type: concept
 group: slang-backends
 tags: [optix, cuda, ray-tracing, raypayload, paq, hlsl, dxc, dxil, lib-profile, rdat, noinline, ignorehit, payload-access-qualifiers, callshader, non-struct-payload]
-source_count: 16
+source_count: 17
 ---
 
 # Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics
@@ -22,6 +22,7 @@ Ray-tracing codegen in Slang spans the HLSL/DXC backend (payload access qualifie
 - `[raypayload]` text is printed only at SM >= 6.7, so FileCheck PAQ output at `lib_6_7`. IR function order is dependency order (callee first), and multi-`-entry` DXIL needs `-whole-program` to share types.
 - Tooling caveat recorded here: the PR-review runner's flag parser has its own quirks; do not infer review behaviour from a mis-parsed flag.
 - An oversized OptiX hit-attribute struct (>8 32-bit attribute registers) is mis-diagnosed as internal `E99999` instead of a user `err`; the register count is per scalar leaf and width-unaware, so verify a reporter's minimal repro empirically before trusting its byte-size reasoning.
+- **`validateEntryPoint` auto-converts semantic-less params to `uniform` on non-varying stages AFTER `checkEntryPointParamPassingMode`** — that late conversion is load-bearing: raygen `inout` payloads (lss-test.slang) compile only via the auto-uniform escape. Classify by the written modifier + `isUniformParameterType`, and note `payload` maps to BorrowIn via `HLSLPayloadModifier`.
 
 ## Ray-Payload Access Qualifiers (PAQ) for HLSL/DXC
 
@@ -94,7 +95,12 @@ An OptiX hit-attribute struct exceeding the 8 32-bit attribute-register budget i
 
 A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[shader("callable")]` entry point with an OUTPUT (`out`/`inout` param or non-void return) crashes `slangc -target cuda`/`-target metal` with an access violation and **no diagnostic**. Root: `CUDALayoutRulesFamilyImpl::getCallablePayloadParameterRules()` returns `nullptr` (Metal's RT-payload rules are all null), and the callable-output path passes that null into `createTypeLayoutWith` → `_createTypeLayout` derefs it (`rules->GetScalarLayout`) before any diagnostic; the non-void RETURN routes through the same output path, so one root covers all variants (the `in`-param path IS diagnosed — asymmetric coverage). Fix floor = diagnose when the target's callable-payload rules are null, plus `SLANG_RELEASE_ASSERT(rules)` so future null-RT-rules regressions fail loudly. Reusable technique: a Windows `EXCEPTION_ACCESS_VIOLATION` compile crash reproduces as SIGSEGV on Linux Debug slangc with a `for tgt in cuda spirv hlsl glsl metal wgsl` differential + `-dump-ir` to see the last pass ([CUDA/Metal callable-shader output crash = null RT payload layout rules](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)).
 
-**Source learnings (16):**
+## Front-End Param Classification: the auto-uniform conversion is load-bearing for raygen inout payloads (#13832)
+
+`validateEntryPoint` auto-converts semantic-less params to `uniform` on non-varying stages (raygen/amplification/intersection/compute) at slang-check-shader.cpp:2593-2628 — AFTER `checkEntryPointParamPassingMode` runs at :2285. That late conversion is load-bearing: `[shader("raygen")] void raygenShaderLSS(inout RayPayload payload, …)` in `tests/cuda/lss-test.slang` compiles today ONLY because the `inout` escapes param-mode validation via the auto-uniform path (with E38040 warnings). Any check that rejects `out`/`inout` on uniform entry-point params must classify by the WRITTEN modifier + `isUniformParameterType` type (not the auto-added modifier) and must keep the RT-stage escape intact ([entry-point param auto-uniform conversion is load-bearing for raygen inout payloads](../learnings/1794907689715-slang-entry-point-param-auto-uniform-conversion-is.md)). Adjacent classification fact: `getExplicitlyDeclaredParamPassingMode` maps `HLSLPayloadModifier` (the `payload` keyword) to BorrowIn, not just `BorrowModifier` — gate any "reject declared borrow" check on `hasModifier<BorrowModifier>()`, not the enum value.
+
+**Source learnings (17):**
+- [Entry-point param auto-uniform conversion is load-bearing for raygen inout payloads](../learnings/1794907689715-slang-entry-point-param-auto-uniform-conversion-is.md) — classify by written modifier + type; `payload` keyword maps to BorrowIn
 - [D3D `CallShader` and hit/miss/callable receivers with a non-struct payload are not wrapped (only `TraceRay` emits the marker); generated doc + DeepWiki are wrong (#13313)](../learnings/1790678832261-d3d-callshader-with-a-non-struct-payload-is-not-wr.md)
 - [Slang D3D hit-attribute params are borrow-in pointers by the time IR legalization runs](../learnings/1791357853437-slang-d3d-hit-attribute-params-are-borrow-in-point.md) — identify by HitAttributes layout, retype via getPtrTypeWithAddressSpace + FieldAddress; dump IR before designing; full-reset revert drill
 - [`[raypayload]` printed only at SM>=6.7; IR orders callee before caller; multi-`-entry` DXIL needs `-whole-program` (#13313/PR #13315)](../learnings/1790683345598-slang-hlsl-raypayload-only-printed-at-sm-6-7-ir-lo.md)

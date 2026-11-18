@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 56
+source_count: 57
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -26,6 +26,7 @@ source_count: 56
 - **No new dedicated test when the existing tests you updated already go red→green** (#14438); add one only for a case they miss.
 - **Size the fix to the feature's usage** (#14247): for a rarely used feature with a trivial workaround, offer the minimal option beside the producer-side fix.
 - **CONTRIBUTING.md's behavior-based `pr: breaking change` is canonical** over CLAUDE.md's compile-only one — the repo carries both definitions until #13498 lands a written policy.
+- **The Slang Sprint Maintainer coworker is fully read-only on Discord** — answering belongs only to `slang-discord-support` in summon threads; reporter questions go in the operator sweep report.
 
 Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
 
@@ -125,7 +126,10 @@ A rename/branding request is a governance call: park at triage as a feature requ
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; channels like #slang-discussion are read-only to it ([summon threads only](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (56):**
+**The Slang Sprint Maintainer coworker is FULLY read-only on Discord** — never post, reply, or react in any channel or forum thread, including #slang-support-bot. `discord_send_message` was removed from its allowlist (operator, 2026-11-17) after it replied in an unsummoned #slang-support-bot thread; answering on Discord belongs only to the separate `slang-discord-support` coworker, which replies when a thread author summons it — a bot answering unsummoned threads is out-of-workflow and unwanted by the community. Questions to ask reporters, or details a reporter should be asked for, go in the sweep report routed to the operator instead ([Discord is fully read-only for the Slang Maintainer coworker](../learnings/1794923038333-discord-is-fully-read-only-for-the-slang-maintaine.md)). The generalization: an MCP tool being technically available is not authorization to use it — check the role's posting scope, not just the allowlist.
+
+**Source learnings (57):**
+- [Discord is fully read-only for the Slang Maintainer coworker](../learnings/1794923038333-discord-is-fully-read-only-for-the-slang-maintaine.md) — `discord_send_message` removed from its allowlist 11-17; replies belong to slang-discord-support
 - [two conflicting breaking-change definitions until #13498](../learnings/1794892944633-slang-has-two-conflicting-breaking-change-definiti.md) — CONTRIBUTING.md behavior-based is canonical; label calls go to a maintainer
 - [#13177/#13108 arg promotion: draft PR #13583 is the lineage](../learnings/1794892944295-13177-13108-arg-promotion-draft-pr-13583-is-the-li.md) — park the pointer half until #13583 lands; #14204 superseded #13115
 - [BFloat16 I/O spec-forbidden atom: reviewer rounds are amnesiac](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md) — adjudicate round-over-round contradictions for the maintainer

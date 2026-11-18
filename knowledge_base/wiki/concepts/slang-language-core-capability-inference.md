@@ -3,7 +3,7 @@ title: "Slang capability inference: how [require] propagates through referenced 
 type: concept
 group: slang-language-core
 tags: [slang, capability, require, capability-inference, generics, GenericAppDeclRef, MemberDeclRef, CapabilityDeclReferenceVisitor, E36104, E36107, E36108, E36118, parity-testing, typealias, TypeDefDecl, E40002, E36120, declaration-order, standard-modules, caps-dump]
-source_count: 20
+source_count: 21
 ---
 
 # Slang capability inference: how [require] propagates through referenced declarations
@@ -27,6 +27,7 @@ Slang infers a function's capability requirements by walking the declarations it
 - **Pin a parity fix with twin rows:** each generic row next to its non-generic twin in one exhaustive DIAGNOSTIC_TEST, master failing exactly the generic rows. Before calling a changed diagnostic a regression, run the non-generic twin on master.
 - **A debug-only `SLANG_ASSERT` on a guard that a counting probe never hits beats a silent skip.**
 - **Where checks fire** (E36100 per function, `loadModule` E36107 per target) and core-intrinsic breaks: [capability-check scope](slang-compiler-capability-check-scope-and-core-intrinsic-changes.md).
+- **Stacked `[require]` attributes union per (target,stage) bucket and conjoin within the same target** — `[require(spirv)]` stacked over a GLSL_400 arm still demands spirv ≥1.3 (the alias contains `spirv_1_3`), so a pinned `-capability spirv_1_0` compile fails with ProfileImplicitlyUpgradedRestrictive (#14536). Pin `spirv_1_0` in tests when touching spirv require gates.
 
 ## The walk, and the generic decl-ref gap (#13579)
 
@@ -83,6 +84,10 @@ The same gap drops an interface requirement's caps through a generic parameter (
 
 Folding member-typealias caps into that field breaks code that compiles on master, because it has four consumers: (a) users of the type (`processReferencedDecl`); (b) the struct's members, which inherit it as declared caps (`getDeclaredCapabilitySet`'s AggTypeDecl shortcut, the non-static parent join in `visitFunctionDeclBase`); (c) `visitExtensionDecl` / `_checkExtensionMemberCapConflict`; (d) `visitInheritanceDecl`'s subtype-vs-supertype check. Changing (b)-(d) gives new E36100 (`extension Context { [require(hlsl)] int get(); }`; an unused struct with a metal and an hlsl alias), E36118 (`struct Context : IFoo`, `[require(hlsl)][require(metal)] IFoo`) and E36108 (a `[require(hlsl)]` method). Walking `typealias L = List<Self>` (`List<T:I>`, `Self : I`) during the struct's own `CapabilityChecked` hits the InheritanceDecl→parent cycle → fatal E40002, missed by the 10.7k-test suite and caught by `/code-review medium`. The fix charges at the use site: when `processReferencedDecl` sees an AggTypeDecl, it also feeds each direct member `TypeDefDecl`'s caps (after `ensureDecl`) to `handleProcessFunc`, leaving the struct's own set untouched — "charged to users" and "inherited by members" stay separate. Run master and fix full suites serially: concurrent A/B runs gave ~460 spurious cuda/vk failures [charge at use site](../learnings/1792554070597-slang-capability-inference-folding-member-typealia.md).
 
+## Stacked [require] attributes: unioned per bucket, conjoined within a target
+
+When a glsl.meta.slang decl carries `[require(<target-list>, GLSL_400)]` plus a stacked `[require(spirv)]`, the separate attribute does NOT make the function available at "all SPIR-V versions": stacked require attributes are unioned per (target,stage) bucket and *conjoined within the same target* (slang-check-modifier.cpp:2486 → slang-capability.cpp:786-798; the requirement check is per-bucket superset containment at slang-capability.cpp:1568). GLSL_400's alias contains `| spirv_1_3` (slang-capabilities.capdef ~2196), so the merged spirv bucket demands ≥1.3 and a pinned `-capability spirv_1_0` compile that worked on master fails with ProfileImplicitlyUpgradedRestrictive (#14536; the trace verified end-to-end by two independent reviewers) ([stacked [require(spirv)] does not restore spirv-any over a GLSL_400 alias arm](../learnings/1794909964347-stacked-require-spirv-does-not-restore-spirv-any-o.md)). Corollary: a stacked `[require(wgsl)]` under a first attribute whose target list already names wgsl is redundant (targets in the list are admitted; the alias's missing wgsl arm adds no constraint) — check capdef alias arms before writing require-gate comments. Default-profile spirv compiles (1.5) pass either way, so normal tests cannot catch the regression: pin `-capability spirv_1_0` in a test when touching spirv require gates.
+
 ## Breaking surface and verification
 
 Making a type's `[require]` visible breaks user code mostly through E36108 (dependencies not compatible on target) on public `[require(X)]` functions; E36104 appears only when the type's set is a superset of the declared target, e.g. spirv plus an extension against plain spirv [StructDecl-only misses enums](../learnings/1791937885563-slang-capability-inference-a-structdecl-only-hook-.md).
@@ -103,7 +108,8 @@ The same framing decides whether a changed diagnostic is a regression: ask "does
 
 For a guard that should be impossible, a debug-only `SLANG_ASSERT` beats a silent skip once a counting probe shows it never fires (0 of 2,337 test files on #13616) [twin rows](../learnings/1791946199459-pin-a-generic-vs-non-generic-parity-fix-with-twin-.md).
 
-**Source learnings (20):**
+**Source learnings (21):**
+- [Stacked [require(spirv)] does not restore spirv-any over a GLSL_400 alias arm](../learnings/1794909964347-stacked-require-spirv-does-not-restore-spirv-any-o.md) — same-target requires conjoin (#14536); pin `-capability spirv_1_0` in tests
 - [DIAGNOSTIC_TEST has no -NOT directive](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md) — capability half: `visitVal` skips Decl operands
 - [Fixes that skip __intrinsic_type miss standard-module generic types](../learnings/1791852083392-capability-inference-fixes-that-skip-intrinsic-typ.md) — `isFromCoreModule` drift 4/219; fast fork flags
 - [New processReferencedDecl path: ensureDecl first, hook decl-refs](../learnings/1791933462633-slang-capability-inference-a-new-processreferenced.md) — policy in CapabilityDeclReferenceVisitor

@@ -3,7 +3,7 @@ title: "Slang Code-Review Lenses"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, reviewer-a, reviewer-c, false-positives, filecheck, convergence, unreachable-path]
-source_count: 26
+source_count: 27
 ---
 
 # Slang Code-Review Lenses
@@ -27,6 +27,7 @@ Reusable "look here" heuristics for Slang compiler review: lenses that surface r
 - **FileCheck:** per-entry-point errors → separate entry points with per-entry prefixes; module-wide errors → ordered `CHECK:` lines, each pinning a distinct expected/got. Never unanchored `CHECK-DAG: <code>`. A directive token in a prose comment parses as a directive. `CHECK-COUNT-1` after a DAG block is not an exactly-one guard. A `-NOT` guards only the gap between its two neighbouring positive CHECKs. Under `-g2`, anchor on `OpExtInst` and capture IDs.
 - **`-fno-exceptions` guard PRs:** say "behaviorally equivalent", not "byte-identical" (`#if` lines shift `__LINE__`); an unreachable catch still forfeits its recovery.
 - **License-notice PRs have plural edit sites and near-zero PR-CI coverage:** the CPack `metadata` component AND the hand-assembled WASM packages in `release.yml`. MIT deps count. Ship each dep's OWN `LICENSE`/`COPYING`, never a bare SPDX template. `reuse lint` checks out without submodules.
+- **IR-pass review policies (tangent-vector):** inlining is a last resort (clone-specialize instead); verb-first pass names; whitelist recognized ops and diagnose unrecognized uses; named predicates over compound conditionals; explicit preconditions; inline-asm is opaque (use decorations); peephole identities go in the general simplifier.
 
 ## Extracted Matchers and Normalize-Before-Match
 
@@ -84,6 +85,17 @@ An associated-constant requirement with **no default** on a widely implemented i
 
 Two precision traps (non-blocking for the mechanical code) recur in `SLANG_EXCEPTION_TRY` / `#if SLANG_HAS_EXCEPTIONS` guarded-catch PRs. "Byte-identical to the exceptions-ON build" is wrong when `#if`/`#endif` lines change: they shift every later `__LINE__`, baked into `SLANG_RELEASE_ASSERT` (→ `handleAssert(__LINE__)`, `source/core/slang-common.h`) and debug line tables; say "behaviorally equivalent; only source-location/debug metadata shifts." And "the removed catch is unreachable" ≠ "dropping it loses nothing": its recovery (diagnostics, `SLANG_FAIL` fallback returns, language-server survival) is forfeited in that config. A Slang abort terminates in `handleSignal()`, not "→ exit(-1)" (`SLANG_BREAKPOINT(0)`/`__builtin_trap()` may trap first on GCC; `catch (...)` also caught non-Slang exceptions that never reach `handleSignal`). The `-fno-exceptions` build has no CI yet (`SLANG_HAS_EXCEPTIONS` is 1 unless `SLANG_DISABLE_EXCEPTIONS`), so the disabled branch is uncovered until the series lands the CMake option + compile job ([-fno-exceptions traps](../learnings/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md)). Which public `SLANG_NO_THROW` methods still lack a guard, and the `link()` form to copy, are on [[wiki/concepts/slang-compiler-api-exception-boundary-guards.md]].
 
+## Maintainer-Distilled IR-Pass Policies (tangent-vector)
+
+Durable Slang-project policies for reviewing IR passes, distilled from tangent-vector's review of the `eliminateUndefinedOpaqueHandles` PR (draft superseded by the merged #14342) — apply to every new pass [Slang reviewer policies from tangent-vector](../learnings/1794917468140-slang-reviewer-policies-from-tangent-vector-pr-rev.md):
+
+- **Inlining is a last resort.** To propagate known info from call sites into a callee, clone-specialize the callee (`specializeFunctionCalls` + a `FunctionCallSpecializeCondition`, `slang-ir-specialize-function-call.h`) instead of `inlineCall`; inlining scales linearly with call sites and can blow up exponentially.
+- **Verb-first names for passes/contexts/files** (`UndefinedOpaqueHandleEliminationContext`, `slang-ir-eliminate-undefined-opaque-handles.cpp`): a noun phrase alone doesn't say whether the pass injects/eliminates/diagnoses.
+- **Never treat "operand 0 of any inst" as semantically "accesses the resource"** — whitelist recognized ops and report unrecognized uses via a diagnostic, so a miss fails compilation instead of rewriting wrongly.
+- **Factor compound conditionals into named, documented predicates**, one control-flow branch per case; a 4-branch compound conditional is a code smell. State preconditions explicitly ("the call graph is statically known and acyclic"), not hand-waves like "shaders do not recurse".
+- **Inline-asm blocks are semantically opaque**: supply guarantees via decorations (e.g. `AssumeValidResourceOperands`) and prefer running passes earlier where semantic calls, not raw asm, are still visible. Moving code makes you responsible for its quality — a moved helper must be cleaned up, not trash.
+- **Peephole identities** like `getTexture(makeCombinedTextureSampler(t,s)) -> t` belong in the general simplifier, not a one-off pass.
+
 ## License / Redistribution-Notice Review
 
 From slang#12302 → PR #13021 and follow-up #13023 → #13040:
@@ -94,7 +106,7 @@ From slang#12302 → PR #13021 and follow-up #13023 → #13040:
 - **Per-license obligations:** MIT = reproduce the dep's copyright lines; Apache-2.0 §4(a) = include the license; §4(d) NOTICE-carry applies only if upstream ships a NOTICE (spirv-tools has none, so LICENSE-only is correct; check `ls external/<dep>/NOTICE`). A follow-up PR editing the same CPack block lands AFTER its precedent (adopt the same per-dep-vs-aggregated form), and any `.github/workflows/*` half is blocked by the bot's missing App `workflows` scope, so deliver it as a maintainer-applied `git apply` patch ([Apache §4(d), sequencing](../learnings/1789167340037-third-party-license-notice-follow-ups-apache-4-d-n.md)).
 - **No PR-CI coverage.** `COMPONENT metadata` + `EXCLUDE_FROM_ALL` rules materialize only at release-time `cpack` (`ci-slang-build.yml` installs `--component generators`; `cmake-options-build.yml` installs with no component), so a path typo or bad `RENAME` fails only at a release tag. Cheap guard: a GPU-free step running `cmake --install build --component metadata --prefix X` and asserting the files land ([install-component CI coverage](../learnings/1789164645783-slang-license-notice-prs-check-mit-deps-install-co.md)).
 
-**Source learnings (26):**
+**Source learnings (27):**
 
 - [Extracted-matcher integration gap + normalize-before-match](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md) — helper unit tests aren't integration coverage.
 - [Null-possible invariant: audit ALL identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md) — grep every raw deref of the nullable member.
@@ -122,3 +134,4 @@ From slang#12302 → PR #13021 and follow-up #13023 → #13040:
 - [Unify refactor: grep the sites NOT migrated](../learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md) — #13213 left ≥4 sites.
 - [.hlsl test files gitignored; receiver-mode lowering hunk](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — #13966: `moveIntoMutableTemp`, not `tryGetAddress`.
 - [filecheck-buffer small-digit CHECKs vacuous; implicit-`this` overloads](../learnings/1793153753122-filecheck-buffer-with-output-using-type-small-digi.md) — skip the receiver test.
+- [Slang reviewer policies from tangent-vector (PR review)](../learnings/1794917468140-slang-reviewer-policies-from-tangent-vector-pr-rev.md) — IR-pass review: no inlining as propagation, verb-first names, whitelisted ops, named predicates.

@@ -3,7 +3,7 @@ title: "Compute thread-group size: where the launch size comes from (reflection)
 type: concept
 group: slang-backends
 tags: [slang, slang-rhi, numthreads, thread-group-size, block-size, blockDim, WorkgroupSize, SV_GroupIndex, SV_DispatchThreadID, getComputeThreadGroupSize, reflection, dispatch-override, cuda, metal, cpu, launch_bounds, generic-entry-point, cuLaunchKernel, driver-api, slang-rhi-961, slang-14136]
-source_count: 7
+source_count: 8
 ---
 
 # Compute thread-group size: reflection, dispatch-time override, and what the shader sees
@@ -15,7 +15,7 @@ A Slang compute entry point declares its group size with `[numthreads(x,y,z)]`. 
 - **slang-rhi CUDA and Metal always launch with the reflected `getComputeThreadGroupSize` of the linked program.** There is no override, no `dispatchThreads`, and no per-pipeline or per-function maximum check.
 - **A generic value-param entry point is the working per-size workaround today:** `[numthreads(N,1,1)] void k<let N:int>(...)`, specialized as `k<777>`, reflects (777,1,1), launches 777 threads per block, and `WorkgroupSize()` returns 777. It costs one pipeline per size.
 - **The still-generic entry point reflects (0,1,1).** A launch from an unspecialized layout would use `blockDim.x = 0`.
-- **CPU cannot honour a host override.** Slang's CPU codegen bakes the group loop into `<entry>_Group`, so treat CPU like D3D12/Vulkan (size fixed in the shader).
+- **CPU cannot honour a host override.** Slang's CPU codegen bakes the group loop into `<entry>_Group`, so treat CPU like D3D12/Vulkan (size fixed in the shader). The CPU dispatch is single-threaded today (one kernel call for the whole grid on the submitting thread); the fork-join seam is slang-rhi's global task pool (slang-rhi#974).
 - **CUDA launches any block up to the FUNCTION limit, which can be below the device's 1024.** Validate against `cuFuncGetAttribute(CU_FUNC_ATTRIBUTE_MAX_THREADS_PER_BLOCK)`, not `DeviceLimits`. `__launch_bounds__(N)` (PR #14149) caps it at N; a larger launch fails with `CUDA_ERROR_INVALID_VALUE`, which slang-rhi Debug turns into a SIGABRT of the whole slang-test run (use `-use-test-server`).
 - **Surplus attribute arguments are not diagnosed** (only too few, E31001), so a per-attribute arg-count `SLANG_ASSERT` fires as E99997 in Debug, e.g. `[numthreads(64,1,1,1)]`. Fix generically at the matching site.
 - **Under a different launch size, `WorkgroupSize()` keeps the `[numthreads]` constant on CUDA and Metal**, because it is folded at compile time (slang#14136). `WaveGetNumWaves` uses the folded size too.
@@ -53,6 +53,10 @@ Consider a `[numthreads(256)]` kernel launched with 128-thread blocks. Measured 
 
 So CUDA is internally inconsistent under an override. Metal differs again: `SV_GroupIndex` is computed from the `[numthreads]` literals (`emitCalcGroupExtents`), while `SV_DispatchThreadID` is the native `thread_position_in_grid` ([WorkgroupSize vs blockDim inconsistency](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md)).
 
+## CPU dispatch is single-threaded today; the task-pool fork-join seam
+
+The CPU compute target was designed for multi-core dispatch — emitted entries take an arbitrary `startGroupID/endGroupID` box (`ComputeVaryingInput`, docs/cpu-target.md), and the generated C++ has no shared mutable state (`groupshared` becomes a per-thread stack local; `GroupMemoryBarrierWithGroupSync` is rejected with E36107) — but slang-rhi's CPU backend (cpu-command.cpp:217) still calls the kernel once for the whole grid on the submitting thread (1 core). The built-in parallel seam is slang-rhi's global task pool (`globalTaskPool()`, public via `IRHI::initTaskPool`/`setTaskPool`): `submitTask(fn, payload, deleter, group)` + `waitAndReleaseTaskGroup()` (or the `TaskBatch` helper), with work-stealing so a waiting thread executes queued tasks and fork-join never idles the submitter. Per-dispatch fork-join over the group-ID box is the recommended approach (slang-rhi#974, parked for maintainer direction). On CPU, only integer `Atomic<T>.add` lowers to real atomics (`_slang_atomic_add_{u,i}{32,64}`); all other atomic ops fail the build loudly — no silent races [slang-rhi task pool: built-in fork-join seam for CPU-device parallelism](../learnings/1794960295017-slang-rhi-task-pool-built-in-fork-join-seam-for-cp.md).
+
 ## Metal `SV_GroupIndex` synthesis depends on parameter order (#14151)
 
 `legalizeSystemValueParameters` (`slang-ir-legalize-varying-params.cpp`) handles system values in entry-point parameter order, and `legalizeSystemValue` retypes a parameter to the permitted type, then redirects *all* its existing uses to a narrowed converted value (`tryConvertValue`: vector→scalar is `.x`, vector→vector a reshape). A derived value that a special handler builds on a reused user parameter before that parameter is legalized is therefore redirected too. Metal synthesizes `SV_GroupIndex` from `SV_GroupThreadID`, so it breaks only when `SV_GroupIndex` is declared before a `uint` or `uint2` `SV_GroupThreadID`: the scalar case gives a `gtid_1[int(2)]` compile error, and the `uint2` case reads out of bounds silently. `SV_InstanceID`'s reuse of `SV_StartInstanceLocation` is order-safe, because its consumer wants the user-typed scalar. Test both parameter orders when triaging a Metal or WGSL system-value bug. Metal also has a native `[[thread_index_in_threadgroup]]` (uint; MSL §5.2.3.6) that Slang never emits; DeepWiki maps it to `SV_WaveLaneIndex`, which is wrong (that is `thread_index_in_simdgroup`) [Metal SV legalization is parameter-order dependent](../learnings/1793614842007-metal-sv-legalization-is-parameter-order-dependent.md).
@@ -63,7 +67,8 @@ slang-test and render-test always launch CUDA kernels with the reflected `[numth
 
 A GLSL-source COMPARE_COMPUTE (`-source-language glsl`) on Vulkan without `[shader("compute")]` currently runs a 1x1x1 group, because the post-lowering entry lookup drops `layout(local_size_*) in;` (#14256); add the attribute and a fixed-size `gl_WorkGroupSize` control before trusting a launch-size result ([GLSL-source GPU tests need `[shader("compute")]`](../learnings/1793754636445-glsl-source-gpu-tests-add-shader-compute-and-a-fix.md); details on [[wiki/concepts/slang-backends-glsl-entry-point-and-varying-legalization.md]]).
 
-**Source learnings (7):**
+**Source learnings (8):**
+- [slang-rhi task pool: built-in fork-join seam for CPU-device parallelism (slang-rhi#974)](../learnings/1794960295017-slang-rhi-task-pool-built-in-fork-join-seam-for-cp.md) — submitTask/waitAndReleaseTaskGroup; CPU kernel runs on 1 core; only integer Atomic<T>.add is real
 - [slang-rhi CUDA block size comes from reflection of the linked program; generic numthreads works on L40S](../learnings/1793562777761-slang-rhi-cuda-block-size-comes-from-reflection-of.md) — `getComputeThreadGroupSize` → `cuLaunchKernel`; `k<777>` launches 777; unspecialized reflects (0,1,1); Vulkan `findAndCheckEntryPoint("name<777>")` SIGSEGV
 - [Dispatch-time thread-group size override: what each backend can honour (slang-rhi#961)](../learnings/1793562885466-dispatch-time-thread-group-size-override-what-each.md) — CPU bakes the loop; CUDA function limit < 1024; Metal `SV_GroupIndex` from literals; `metallib_4_0` `required_threads_per_threadgroup`
 - [Testing CUDA kernels launched with a block size != `[numthreads]`; WorkgroupSize vs blockDim inconsistency (#14136)](../learnings/1793543960963-slang-testing-cuda-kernels-launched-with-a-block-s.md) — PTX + driver-API harness; `WorkgroupSize()` folded, `blockDim` live; SIGBUS means a sibling rebuild

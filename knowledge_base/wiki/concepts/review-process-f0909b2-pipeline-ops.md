@@ -3,7 +3,7 @@ title: /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, int
 type: concept
 group: review-process
 tags: [slang-pr-review, reviewer-a, reviewer-b, reviewer-c, background-dispatch, monitor, run-dir, integrity-fail, max-budget-usd, onecli, drift-check, slang-rhi]
-source_count: 17
+source_count: 21
 ---
 
 # /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, integrity, drift)
@@ -45,6 +45,13 @@ of recurring operational traps:
   force-push — cross-check every flagged line against the current diff.
 - **gh routes through the OneCLI proxy;** if GitHub is not connected, A & C 401 with
   `app_not_connected` (Devin B unaffected; unauth public REST via curl still works).
+- **Dispatch reviewers serially — A first, C only after A exits 0 — and the rule is per
+  HOST IP, not per session.** Concurrent A+C dispatch trips per-IP 429 storms; before
+  dispatching, scan `runs/*` for other sessions' live runs lacking `exit-status` and wait
+  them out. A hand-detached launch needs `; echo $? > exit-status` appended, or
+  `wait-run.sh` can't adjudicate the run; poll exit-status sentinels, never `pgrep -f`.
+- **Mid-review head moves get delta-verified, not re-run:** keep the review bound to the
+  dispatched head, `git diff` old→new head, and map every finding to fixed/still-open.
 - **The pipeline runs cleanly against slang-rhi / any repo** in `pr` mode via `--repo`.
 
 ## Background dispatch and the double-background trap (recorded three times)
@@ -73,6 +80,66 @@ The exec-bit loss is not specific to Reviewer C, and it keeps recurring (2026-09
 The detached-run helpers added since then have the same exec-bit gap: on 2026-10-17 `wait-run.sh` (the blocking waiter for a `--detach` run dir, which exits 124 on its own `--timeout` and 125 when the wrapper pid is gone with no `exit-status`) failed with exit 126 "Permission denied", and it did again on 10-20 (the read-only skills mount drops the bit), so call it as `bash "$SKILL_DIR/scripts/wait-run.sh" <run-dir> --timeout 540`. Keep the timeout under 600: a foreground Bash call is capped at 600 s whatever timeout you pass, so a `--timeout 1200` wait gets moved to the background. For a longer wait, arm a `Monitor` until-loop on `<run_dir>/exit-status` plus a `kill -0 $(cat <run_dir>/pid)` liveness check ([reviewing a stale-CHECK refresh (side note: wait-run.sh exec bit)](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md), [skill scripts are not executable; invoke wait-run.sh via bash](../learnings/1792509790688-skill-scripts-under-claude-skills-are-not-executab.md)). It recurred on 2026-10-21 under `/app/skills/slang-pr-review-runner/scripts/` in the reviewer container: `bash …/wait-run.sh <run_dir> --timeout 560` works, and `compose-and-run.sh` / `run-clarity.sh` run as `bash <script> --detach …` ([/app/skills runner scripts lack +x: call wait-run.sh via bash](../learnings/1792584201371-app-skills-runner-scripts-lack-x-call-wait-run-sh-.md)).
 
 **Never end a reviewer turn with only a background waiter armed.** On slang#13700 R4 the turn ended on a `run_in_background` until-loop waiting for Reviewers A and C; the session was torn down at about 07:53Z, A had finished at 06:52Z, and nobody was left to act on it, so the verdict sat unsent for about 5 hours until a supervisor nudge caught it (#13541 went 11 h late the same way). A background-wait notification is not guaranteed to reach you across a teardown. Before ending a turn with reviewers still running, record the run dirs and the next step in memory (that cut recovery to about 10 minutes), and either schedule a one-shot re-check through `ncl tasks create --process-after` or keep the turn open with chained `bash wait-run.sh <run-dir> --timeout 540` calls; the full turn-survival recipe is on [reviewer-run survival](review-pr-reviewer-run-survival.md). The same atom bounds retries of a dead Reviewer C: an inner-CLI API `ECONNREFUSED` killed C three times in one day on three different heads, so after two such failures record C as inconclusive (`reviewers_complete=false`) rather than spend another 90 minutes per re-run ([don't end a reviewer turn waiting on a background job](../learnings/1792239292199-don-t-end-a-reviewer-turn-waiting-on-a-background-.md)).
+
+## Serial A→C dispatch, cross-session serialization, and detached-launch footguns
+
+**Serial A→C dispatch is the settled recipe; concurrent is the known failure.** Concurrent A+C
+dispatch on one host trips per-IP 429 storms; running serially — dispatch A first, C only after
+A exits 0 — produced clean exit-0 runs first-try for BOTH reviewers twice (round-2 #14530 and
+round-1 #14563, the latter on the open-weights opencode/GLM-5.3 path), and the per-IP 429 never
+recurred under it ([round-2 re-review mechanics: serial A→C is 2-for-2 clean](../learnings/1794930287330-round-2-re-review-mechanics-serial-a-c-is-2-for-2-.md),
+[PR #14563 r1 review — shared-checkout dispatch, fast-but-valid Reviewer C](../learnings/1794955556466-pr-14563-r1-review-shared-checkout-dispatch-fast-b.md)).
+The rule extends ACROSS sessions sharing the same host IP (#14574 r1): another session had
+A-14575 done while C-14575 still ran, so the second session held its Reviewer A dispatch and
+polled `runs/C-14575-r1/exit-status` (~10 min) before dispatching — both reviews then completed
+clean. Before dispatching any reviewer, scan `runs/*` for dirs modified in the last few minutes
+that lack an `exit-status` sentinel ([sequential reviewer dispatch applies across sessions; poll exit-status, not pgrep](../learnings/1794972094351-sequential-reviewer-dispatch-applies-across-sessio.md)).
+
+**Detached launches and polling discipline.** When launching a runner detached by hand
+(`setsid nohup … &`), append `; echo $? > exit-status` to the launch line — without that file
+`wait-run.sh` cannot be used and you must judge the outcome from artifacts instead
+(`devin-flags.md` present + `devin-commit-status.txt` matching the PR head). The inline
+`& echo` launch can also trip the Bash tool's 30 s timeout because the tool waits on the session
+pipe, but the setsid'd process survives fine — verify with `ps` and move on ([detached devin-fetch needs the exit-status writer for wait-run.sh](../learnings/1794928431173-detached-devin-fetch-needs-the-exit-status-writer-.md)).
+Two further footguns from the same atom: `pgrep -f "<pattern>"` in a polling loop is blocked by
+the container guard (self-match hazard) — poll exit-status sentinels or `ps -eo args | grep`
+instead; and `mkdir … && cd … && setsid … & echo $!` backgrounds the whole `&&` chain, so later
+commands run in the ORIGINAL cwd and the pid file lands in the wrong place — use `(...)` or
+write the pid from inside the backgrounded chain explicitly ([sequential reviewer dispatch applies across sessions; poll exit-status, not pgrep](../learnings/1794972094351-sequential-reviewer-dispatch-applies-across-sessio.md)).
+
+**Race-free clones that never re-pin the shared master.** For pr-mode clones without touching
+the shared `slang` master: fetch `refs/pull/<N>/head --depth 10` into slang (read-only),
+`git clone --bare --shared slang bare-<pr>.git`, `update-ref refs/heads/master <base>`, then
+clone revA/revC directly FROM the bare — same end state as the documented recipe but slang's
+local master is never re-pinned, so a concurrent session using slang directly is never broken
+([sequential reviewer dispatch applies across sessions](../learnings/1794972094351-sequential-reviewer-dispatch-applies-across-sessio.md)).
+The low-friction alternative when the shared checkout is already at the PR's base tip (detached
+HEAD is fine) and no concurrent session is live: `REPO_ROOT=/workspace/agent/slang` with no
+`wt-<pr>-revA`/`revC` clones at all (proven on A-14554-r2 and A-14563-r1) — it also keeps
+initialized submodules readable, which matters when the PR bumps one (e.g. `external/optix-dev`)
+([PR #14563 r1 review — shared-checkout dispatch](../learnings/1794955556466-pr-14563-r1-review-shared-checkout-dispatch-fast-b.md)).
+Whichever pattern you use, re-verify the base pin before every dispatch round: slang's local
+`master` can be re-pointed between rounds by other sessions or restarts, and reviewers then
+silently verify against the wrong base — caught on #14530 r2 when `checkout -f origin/master`
+landed on `2a91af5b7` instead of the base `9cd082ce8`
+([round-2 re-review mechanics: re-verify the stacked-base pin before every dispatch](../learnings/1794930287330-round-2-re-review-mechanics-serial-a-c-is-2-for-2-.md)).
+
+**Mid-review head moves: delta-verify, don't re-run.** A fixer can push while a review round
+runs (3 commits landed mid-#14530-r2). The handling that works: keep the review bound to the
+dispatched head's pre-staged diff (the runner's integrity guard enforces this anyway), then
+delta-verify old→new head yourself (`git diff r-head..new-head`, map EVERY finding to
+fixed/still-open) and put the mapping in the report header + verdict — a full re-run for a
+3-commit surgical delta is waste
+([round-2 re-review mechanics: mid-review head moves get delta-verified](../learnings/1794930287330-round-2-re-review-mechanics-serial-a-c-is-2-for-2-.md)).
+On Devin, the first fetch after a new head reliably harvests the stale previous-head analysis,
+so schedule the re-fetch AFTER Reviewer A completes rather than immediately (~25 min post-A was
+fresh on #14530 r2; the freshness recipe is on
+[Devin fetch tooling](review-e-devin-fetch-tooling.md)). A fast reviewer run is not a suspect
+run: Reviewer C finished in ~8 min on #14563 r1 and the output was still a full valid review
+(10 candidates, 7 kept, drift-free `tool-uses.jsonl`) — validate by content, not wall time; the
+first Devin fetch on a never-analyzed head completes fresh (~9 min, exit 0); and pr-mode
+`diff_hash` for the result JSON is the `diff_sha256` in the prestage `context.json`
+([PR #14563 r1 review — fast-but-valid Reviewer C](../learnings/1794955556466-pr-14563-r1-review-shared-checkout-dispatch-fast-b.md)).
 
 ## Run-dir selection, integrity, budget, and drift
 
@@ -140,7 +207,7 @@ the pre-`final-review.md` abort on a larger diff. And on a fixer PEER-REVIEW han
 slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exit 3
 [running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md).
 
-**Source learnings (17):**
+**Source learnings (21):**
 - [Reviewer run-dir selection: never pick by mtime when reviews share transcripts](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md) — pick by RUN_DIR from task .output or PR/head-SHA in dir name; INTEGRITY-FAIL.txt is a hard stop.
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md) — run scripts directly or arm a Monitor kill-0 waiter; guard hook blocks pgrep -f.
 - [Devin Review is static-only; and don't double-background reviewer dispatch](../learnings/1788341384825-devin-review-is-static-only-and-don-t-double-backg.md) — Devin never builds/runs; CI is the only oracle for arch-dependent runtime bugs; PID-wait monitor.
@@ -158,3 +225,7 @@ slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exi
 - [Reviewing a stale-CHECK refresh (side note: wait-run.sh lacks the exec bit)](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — `wait-run.sh` exits 126 Permission denied; call it as `bash …/wait-run.sh`.
 - [Skill scripts under ~/.claude/skills are not executable; invoke wait-run.sh via bash](../learnings/1792509790688-skill-scripts-under-claude-skills-are-not-executab.md) — 2026-10-20 recurrence (also compose-and-run, run-clarity, devin-fetch); foreground Bash caps at 600 s, so use a Monitor until-loop on `exit-status` + `kill -0` for longer waits.
 - [/app/skills runner scripts lack +x: call wait-run.sh via `bash`](../learnings/1792584201371-app-skills-runner-scripts-lack-x-call-wait-run-sh-.md) — 2026-10-21 recurrence in the reviewer container; rc 126 looks like a failed run; `--timeout` under 600 s
+- [Detached devin-fetch needs the exit-status writer for wait-run.sh](../learnings/1794928431173-detached-devin-fetch-needs-the-exit-status-writer-.md) — append `; echo $? > exit-status` to hand-detached launches; setsid survives the Bash 30 s timeout.
+- [Round-2 re-review mechanics: serial A→C 2-for-2 clean; mid-review head moves delta-verified; re-verify the stacked-base pin](../learnings/1794930287330-round-2-re-review-mechanics-serial-a-c-is-2-for-2-.md) — #14530 r2: serial dispatch settled; Devin re-fetch after A; base-pin re-check before dispatch.
+- [PR #14563 r1 review — shared-checkout dispatch, fast-but-valid Reviewer C](../learnings/1794955556466-pr-14563-r1-review-shared-checkout-dispatch-fast-b.md) — REPO_ROOT on shared checkout at base tip; validate C by content not wall time; diff_hash = prestage `diff_sha256`.
+- [Sequential reviewer dispatch applies across sessions; poll exit-status, not pgrep](../learnings/1794972094351-sequential-reviewer-dispatch-applies-across-sessio.md) — the 429 rule is per host IP; scan `runs/*` pre-dispatch; bare-clone recipe never re-pins shared master.

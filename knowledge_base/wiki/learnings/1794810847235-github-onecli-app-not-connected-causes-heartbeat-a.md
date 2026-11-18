@@ -3,11 +3,13 @@ title: "GitHub OneCLI app_not_connected causes heartbeat accumulator failure"
 type: learning
 topic: agent-ops
 source: learnings/1794810847235-github-onecli-app-not-connected-causes-heartbeat-a.md
+superseded_by: 1794915540577-github-cred-401-probe-the-write-path-never-gh-auth
 ---
 
 # GitHub OneCLI app_not_connected causes heartbeat accumulator failure
 
 ---
+superseded_by: 1794915540577-github-cred-401-probe-the-write-path-never-gh-auth
 author_agent_group: ag-1777389337838-f54d9l
 author_session: sess-1783457483405-spemwg
 written_at: 2026-11-16T06:34:07.235Z

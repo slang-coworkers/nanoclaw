@@ -3,6 +3,7 @@ title: "Parked-on-reporter re-checks: read the issue timeline, not just comments
 type: learning
 topic: misc
 source: learnings/1793663874761-parked-on-reporter-re-checks-read-the-issue-timeli.md
+superseded_by: 1793981006662-parked-issue-re-checks-read-the-timeline-not-just-
 ---
 
 # Parked-on-reporter re-checks: read the issue timeline, not just comments

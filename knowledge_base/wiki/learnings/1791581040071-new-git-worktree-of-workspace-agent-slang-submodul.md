@@ -3,6 +3,7 @@ title: "New git worktree of /workspace/agent/slang: submodule init needs protoco
 type: learning
 topic: slang-compiler
 source: learnings/1791581040071-new-git-worktree-of-workspace-agent-slang-submodul.md
+superseded_by: 1793879645962-slang-worktree-submodule-init-needs-protocol-file-
 ---
 
 # New git worktree of /workspace/agent/slang: submodule init needs protocol.file.allow=always

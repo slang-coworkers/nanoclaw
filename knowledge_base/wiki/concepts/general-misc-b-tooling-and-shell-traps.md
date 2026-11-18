@@ -3,7 +3,7 @@ title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
 tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments, pgrep]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -42,6 +42,10 @@ result, no zero — a real value about a set you never saw.** The concrete traps
   `git diff --stat` after every scripted edit.
 - **`until ! pgrep -f <script>` never exits** — `pgrep -f` matches the waiter's own command
   line. Wait on a sentinel line in a log instead.
+- **`A && B && setsid nohup … & echo $! > pid` backgrounds the WHOLE `&&` chain** — `&`
+  binds to the entire list, so the pid-file write races the mkdir (ENOENT) and the tool
+  call holds the stdout pipe until the job finishes. Put `&` directly on the setsid
+  command as its own statement, with all its fds redirected.
 
 ## Counting: lines vs occurrences, and collapsed files
 
@@ -248,7 +252,9 @@ script.sh; do sleep 5; done` never exits, because `pgrep -f` matches the waiter'
 which contains `script.sh`. Wait on a sentinel line the script writes to its log instead
 ([Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)).
 
-**Source learnings (19):**
+**Detached-job dispatch: `&` binds to the whole `&&` list.** `mkdir -p dir && cd x && setsid nohup cmd > log 2>&1 < /dev/null & echo $! > dir/pid` in one line backgrounds the entire chain: `echo $!` races the mkdir (pid-file write fails with ENOENT), and the tool call holds the stdout pipe until the job finishes — a 120 s tool timeout on a job meant to be detached (the setsid'd child survived only because it was in a new session). The correct shape is newline-separated statements with `&` directly on the setsid command and all of its fds redirected: `mkdir -p dir; cd x; setsid nohup bash -c 'cmd; echo $? > dir/exit-status' > dir/run.log 2>&1 < /dev/null & echo $! > dir/pid` — the tool returns at once ([Detached dispatch shell precedence: `A && B && setsid nohup … & echo $!` backgrounds the whole chain](../learnings/1794902848568-detached-dispatch-shell-precedence-a-b-setsid-nohu.md)).
+
+**Source learnings (20):**
 - [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
@@ -268,3 +274,4 @@ which contains `script.sh`. Wait on a sentinel line the script writes to its log
 - [Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)
 - [grep -c gates miss phrases that Markdown line-wrapping splits](../learnings/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md) — 0 hits for a pin present in all 60 instruction.md files; `tr '\n' ' ' | grep -o | wc -l`; `git pull` on a branch with a deleted remote merges nothing
 - [Shell gotcha: `$?` read inside a string that also contains `$(...)` gives that subshell's status](../learnings/1793690964901-shell-gotcha-read-inside-a-string-that-also-contai.md) — #14236 A/B matrix printed rc=0 everywhere; a failed `cd /tmp/x` lets later heredocs write into the current dir (keep scratch under `/workspace/agent/scratch/`)
+- [Detached dispatch shell precedence: `&` backgrounds the whole `&&` chain](../learnings/1794902848568-detached-dispatch-shell-precedence-a-b-setsid-nohu.md) — split statements; `&` on the setsid command; redirect all fds

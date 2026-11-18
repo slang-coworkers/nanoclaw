@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 35
+source_count: 34
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -85,7 +85,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 is a SPIRV-Tools assert flake.** It fails only on `test-macos-debug-clang-aarch64 / test-slang` with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` (SPIRV-Tools, via debug-info SPIR-V emission); slang-test's auto-retry doesn't always clear it. If it is the only failure and the PR doesn't touch debuginfo/SPIR-V emit, rerun `--failed` (≤3×); if it reproduces across reruns, report a pre-existing platform issue rather than block (PR #12504, run 34891043815) ([do-while flake](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (35):**
+**Source learnings (34):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [Benign DWARF ld-note can mask the real undefined-reference cause](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -117,7 +117,6 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [Retraction: #13078 was base-skewed, not ahead](../learnings/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md) — verify with git merge-base, not prose
 - [slang-rhi OMM VUID-10904 is likely a VVL 1.4.341.1 false positive](../learnings/1789600998422-slang-rhi-omm-vuid-10904-ci-red-is-likely-a-vvl-1-.md) — converter proven compliant on hardware
 - [Bot CI priority-yield + classifying failures on a pure-Python PR](../learnings/1790019959011-slang-bot-ci-priority-yield-classifying-ci-failure.md) — Python+format green ⇒ infra/master
-- [via-GLSL expected-failure lists differ per workflow](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md) — key needed in both -github and -via-glsl lists
 - [Nightly Coverage red = slang-coverage-reports Pages 950 MB budget; bytes are in reports/latest views, history pruning doesn't help](../learnings/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md)
 - [Nightly Coverage red at 'Verify coverage Pages publication' = external Pages staging over 950 MB](../learnings/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md) — slang log is opaque; read slang-coverage-reports runs; site frozen
 - [Nightly agentic-tests 82→165 after #14422 diag= exit-code default](../learnings/1794386740314-nightly-agentic-tests-82-165-after-14422-diag-exit.md) — harness change ≠ new regressions; diff against prior night's passes

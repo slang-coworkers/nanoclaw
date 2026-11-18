@@ -3,6 +3,7 @@ title: "Fresh slang worktree: submodule init fails with 'transport 'file' not al
 type: learning
 topic: slang-compiler
 source: learnings/1793312277621-fresh-slang-worktree-submodule-init-fails-with-tra.md
+superseded_by: 1793879645962-slang-worktree-submodule-init-needs-protocol-file-
 ---
 
 # Fresh slang worktree: submodule init fails with "transport 'file' not allowed"

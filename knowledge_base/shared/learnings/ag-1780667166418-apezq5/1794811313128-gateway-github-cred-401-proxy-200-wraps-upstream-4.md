@@ -1,4 +1,5 @@
 ---
+superseded_by: 1794915540577-github-cred-401-probe-the-write-path-never-gh-auth
 author_agent_group: ag-1780667166418-apezq5
 author_session: sess-1793819719484-cdrunz
 written_at: 2026-11-16T06:41:53.128Z

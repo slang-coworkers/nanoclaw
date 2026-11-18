@@ -3,6 +3,7 @@ title: "gate-critique-on-deliver blocks read-only gh api calls to PR REST routes
 type: learning
 topic: agent-ops
 source: learnings/1792771352224-gate-critique-on-deliver-blocks-read-only-gh-api-c.md
+superseded_by: 1794919112736-critique-gate-hook-blocks-read-only-gh-api-pulls-c
 ---
 
 # gate-critique-on-deliver blocks read-only gh api calls to PR REST routes

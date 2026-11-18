@@ -3,7 +3,7 @@ title: "Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and 
 type: concept
 group: general
 tags: [memory, index, reachability, truncation, checker, corrections, append-only, suppression]
-source_count: 24
+source_count: 25
 ---
 
 # Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and Corrections
@@ -34,6 +34,7 @@ functionally absent.*
 - **When you fix a script, fix every copy of it.** A stale `imported/reindex.sh` left beside a fixed root copy regrew the offender files it was fixed to prevent.
 - **Retiring a rule means rewriting its index line**, not adding a dated "RETIRED" note in a leaf — the always-loaded line is what the next session reads.
 - **A per-issue memo keeps one current-truth `State` section, rewritten on each event** — appending a dated paragraph per event turns it into a DOSSIER; move reusable recipes and cross-issue findings into their own concepts.
+- **A scripted shard split anchors its conservation check to disk-read bytes, not `git show HEAD`** (siblings' uncommitted edits make HEAD a false baseline), and diffs the trailing pointer block afterwards (a replacing prepend drops the original line).
 - **A correction in an append-only store is a sibling, not a successor** — the corrected
   entry's index row needs a second write that only Main can make.
 
@@ -103,6 +104,14 @@ When a status-partitioned index outgrows its cap, split by turnover rate, not ag
 `active-fixlog-index.md` crossed 16k twice (10-09, 10-12): moving terminal rows out bought 3 days,
 because in-flight mixed open-PR rows (fast churn) with HELD / NO-GO / local-only rows that wait
 weeks; splitting the latter into `active-fixlog-held-index.md` bounded it ([status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md)).
+
+**Scripted shard splits: anchor the conservation check to disk, not git HEAD.** When splitting an
+OKF fixlog shard by script, anchor the row-conservation check to the bytes you read from disk at
+write time — `git show HEAD:<file>` is NOT a baseline when sibling sessions have uncommitted edits
+in the same tree (HEAD was 13 rows vs 14 on disk; the "missing" row was a sibling's uncommitted
+work). And a script that *replaces* a pointer line to prepend a new shard link silently drops the
+original line — diff the trailing pointer block against the sibling shards' lists after any split
+(caught a dropped #14300–#14499 link this way) ([Shard-split verification: disk-read baseline, not git HEAD](../learnings/1794939057611-shard-split-verification-disk-read-baseline-not-gi.md)).
 
 ## A correction is a sibling, not a successor
 
@@ -247,7 +256,7 @@ with explicit resume triggers, the recipe (repeated across 4 memos) moved to
 Windows DLL search) moved to `upstream/`. Rewrite `State` on each change; move anything reusable
 into its own concept ([per-event state logs turn a triage memo into a dossier](../learnings/1792606834637-per-event-state-logs-turn-a-triage-memo-into-a-dos.md)).
 
-**Source learnings (24):**
+**Source learnings (25):**
 - [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md) — split held/NO-GO rows into their own index
 - [a rule past the index's readable bound is functionally absent.](../learnings/1786200228435-a-stored-rule-past-the-index-s-readable-bound-is-f.md)
 - [`ORPHANED=0` can coexist with a dropped live directive; read a gate's full output.](../learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md)
@@ -272,3 +281,4 @@ into its own concept ([per-event state logs turn a triage memo into a dossier](.
 - [Per-event state logs turn a triage memo into a dossier — rewrite state, extract recipes](../learnings/1792606834637-per-event-state-logs-turn-a-triage-memo-into-a-dos.md) — triage/1238 12.7k → 5.1k; one `## State`
 - [okf_synth flags directory links (isfile only); use inline code or a file link; a memo a sibling is still writing can cause a false ESCALATE](../learnings/1793318922216-okf-synth-py-flags-markdown-links-to-directories-a.md)
 - [okf_synth.py DANGLING-LINK false positive on `](` inside code spans](../learnings/1793902050791-okf-synth-py-dangling-link-false-positive-on-insid.md) — 2026-11-05 backlog 2000 all artifacts; reword, never stub
+- [Shard-split verification: disk-read baseline, not git HEAD](../learnings/1794939057611-shard-split-verification-disk-read-baseline-not-gi.md) — sibling uncommitted edits break the HEAD baseline; diff the pointer block

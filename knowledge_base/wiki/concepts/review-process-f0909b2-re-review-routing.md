@@ -3,7 +3,7 @@ title: Re-review scope decisions, cross-round adjudication, and reviewer session
 type: concept
 group: review-process
 tags: [slang-pr-review, re-review, round-2, spot-check, diff-hash, cross-round, a2a-redrive, thread-id, synchronize, canonical-thread, overlap-analysis]
-source_count: 12
+source_count: 14
 ---
 
 ## TL;DR
@@ -34,7 +34,9 @@ handoff to the wrong session silently strands it. Two clusters:
   title + file:line, not its reasoning; carry the context and surface FPs with contradicting
   evidence. A is also stateless across rounds and will re-suggest what an earlier round
   disproved — reject such reversals explicitly ("do not re-add") so the fixer doesn't swing.
-  The same holds for A/C findings that would undo an explicit maintainer decision: list the
+  A Devin bug A dropped as below-threshold in round 1 is the most likely round-2 graduate —
+  weight dropped B bugs in the round-2 dispatch context. The same holds for A/C findings that
+  would undo an explicit maintainer decision: list the
   maintainer's requirements from the issue/PR comments first, mark such findings
   **Disagreement**, and tell the fixer not to apply them.
 - **A reviewer's reused long-lived session is frozen to the FIRST PR's `thread_id`.** A
@@ -43,6 +45,9 @@ handoff to the wrong session silently strands it. Two clusters:
   reuse the stale-threaded session or double-dispatch.
 - **A `synchronize` re-wake can be metadata-only** (label, review re-request, CI re-run)
   with NO new commit — verify the head moved before minting a new ledger row.
+- **A duplicate [Fix Review Request] after an orchestrator fallback is served ONCE** —
+  verify the head is unchanged (`gh pr view --json headRefOid`), reply on the fixer's peer
+  edge pointing to the already-delivered verdict, and never re-run the review.
 
 ## When a targeted delta beats a full re-run
 
@@ -124,6 +129,14 @@ rationale in the `/explain-diff-html` comment, so Reviewer C flags the conflict 
 the parent rather than blocking the PR on it; and a `/tmp` scratch dir does not survive between
 rounds days apart, so keep A/B snapshot builds under `/workspace/agent/wt-<pr>-snap/`
 [Reviewer A re-suggests tint rows proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md).
+The converse also holds: a Devin bug that Reviewer A **dropped** as below-threshold in round 1
+is the finding most likely to graduate. On slang#14539 r1→r2, a B bug A dropped as
+sub-85-confidence ("Unbounded traversal of changing generic specializations") resurfaced in
+round 2 as a kept Bug at multi-agent 85/85 confidence (growing-argument generic struct →
+classifier stack overflow), and A additionally found a second stack-exhaustion path its own
+round-1 pass had missed. When a round-1 verdict carries A/B disagreements, weight the dropped
+B bugs in the round-2 dispatch context — they are the most likely graduates
+[dropped-by-A Devin bugs graduate to confirmed bugs next round](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md).
 
 The same discipline applies to findings that would reverse a **maintainer's** decision,
 which A and C cannot see either. On slang#13825 (a docs-only `CONTRIBUTING.md` CLA link),
@@ -174,7 +187,9 @@ and a red downstream check may be a cross-repo release-ordering gate, not a defe
 
 A routing collapse to watch when the reviewer is dispatched **directly by the fixer** (a fixer→reviewer peer-review handoff) rather than by the orchestrator: the `/slang-pr-review` Step-5 "Fix-chain / mention (live pr mode)" template says to *reply to parent AND forward to the fixer*, but that assumes parent ≠ fixer. When the tasking message came from `slang-fixer`, the fixer IS the parent edge (first inbound's `source_session_id`), so "reply to parent" and "forward to fixer" are the same destination — send the `combined-review.md` + `[Review Verdict]` **once** to `slang-fixer` via `in_reply_to=<request-id>`; sending to both `to="parent"` and `to="slang-fixer"` double-delivers to the same agent and reads as a duplicate. (Same run: Devin/Reviewer-B exit `3 = timeout` is a routine best-effort skip — merge proceeds with A + C, set `reviewers_complete=false` when any dispatched reviewer times out/errors/drifts; and the strongest signal in a combined report is **A↔C convergence** — surface an independently-flagged same line as the top consistency item) ([when the fixer is the requester, parent-edge and fixer-forward collapse to one send](../learnings/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md)).
 
-**Source learnings (12):**
+**Serve a duplicate [Fix Review Request] once — verify the head, reply on the peer edge, never re-run.** When a fixer's `[Fix Review Request]` is stuck behind critique-gate saturation and the Orchestrator dispatches the review directly, the fixer's original request still arrives later in the reviewer's queue — on #14530 round 2 it landed ~50 min after the fallback dispatch, ~30 min before the verdict delivery reached the fixer's own inbox. Serve it ONCE: do not re-run the review for the duplicate — verify the PR head hasn't moved past what the completed review covered (`gh pr view --json headRefOid`), then reply on the fixer's peer edge (`in_reply_to` its message id) pointing to the already-delivered verdict and report artifact paths, restating the actionable findings. Silence would leave the fixer believing a review is still pending; a re-run would duplicate a full 3-reviewer pass over a byte-identical diff. This is the mirror of the double-dispatch rule above: after a re-drive or fallback dispatch, exactly one review runs per head ([duplicate [Fix Review Request] after orchestrator fallback — serve once, never re-run](../learnings/1794930356291-duplicate-fix-review-request-after-orchestrator-fa.md)).
+
+**Source learnings (14):**
 - [spot-check (not full re-run) for additive nit-fixes; diff_hash goes stale](../learnings/1788198210854-slang-pr-review-spot-check-not-full-re-run-for-add.md) — read-only source spot-check of load-bearing touch points; never hand-fabricate an exact-head diff_hash.
 - [Round-2 re-review of a doc/test/refactor fix = targeted diff, not a full re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md) — git diff r1..r2 (both objects fetchable); grep the code delta to prove no functional leak.
 - [round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md) — confirm HEAD + byte-identical fix hunk, verify diag codes in `slang-diagnostics.lua`, negative-control on the unfixed master build (crash exit 139), incremental rebuild when merge-base allows, re-fetch Devin; disclose it as a delta-verification.
@@ -187,3 +202,5 @@ A routing collapse to watch when the reviewer is dispatched **directly by the fi
 - [Reviewer A re-suggests tint rows proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md) — slang#13381: stateless A re-raised removed wgsl-spirv-asm rows; reject reversals explicitly; upstream CLAUDE.md five-part rule vs concise-description conflict → report up; keep snapshots under /workspace/agent/wt-<pr>-snap/
 - [Reviewer A/C may ask to undo explicit maintainer direction; the lead review must override](../learnings/1792609475343-reviewer-a-c-may-ask-to-undo-explicit-maintainer-d.md) — slang#13825: mark A/C findings that reverse a maintainer decision as Disagreements; verify reviewer sub-claims against the primary source (cla-assistant API)
 - [Review round deltas: diff the PR's own net change across a merge, and watch for silently reverted nits](../learnings/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md) — raw old..new across a master merge pulls in master files; diff old-base→old-head vs new-master→new-head; #13130 R3 caught a "trim comments" commit reverting an applied nit.
+- [Duplicate [Fix Review Request] after orchestrator fallback — serve once: verify head unchanged, reply on the peer edge, never re-run](../learnings/1794930356291-duplicate-fix-review-request-after-orchestrator-fa.md) — #14530 r2: the stuck original request arrives after the fallback dispatch; point it at the delivered verdict.
+- [dropped-by-A Devin bugs graduate to confirmed bugs next round](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md) — #14539 r1→r2: sub-85 B bug became a kept 85/85 Bug; weight dropped B bugs in round-2 dispatch context.

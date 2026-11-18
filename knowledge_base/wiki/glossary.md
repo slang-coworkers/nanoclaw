@@ -65,6 +65,9 @@ type: nav
 - [Watchdog No-Op Controls, Blocker-Identity Monitoring, and Ledger Guards](concepts/agent-supervisor-watchdog-and-ledger-guards.md)
 - [Writable Scratch Paths: /tmp/opencode Is Not Writable in Coworker Containers](concepts/agent-infra-writable-scratch-paths.md)
 
+**agent-ops**
+- [Peer Activity Probing: Spend, In-Flight Turns, and Split Transcripts](concepts/agent-peer-activity-probing.md)
+
 **Agent routing & messaging**
 - [Agent Routing: Bot Fleet Operations](concepts/agent-routing-fleet-operations.md)
 - [Agent Routing: Bounce Triage — Failure Bounces, Paused Recipients, and Re-drive Discipline](concepts/agent-routing-bounce-triage.md)
@@ -315,6 +318,7 @@ type: nav
 - [Approver Review Probes — Reachability, Coverage, and Complexity](concepts/review-approver-probe-complexity-and-coverage.md)
 - [Approver Review Probes — Verifying Claims, Citations, and Ledger Mechanics](concepts/review-approver-probe-deliverable-and-provenance.md)
 - [Bot-review channels & false-green statuses — findings live where the harvester never looks](concepts/review-process-f0909b0-harvest-bot-review-channels.md)
+- [Concurrent Reviewer Dispatch Limits](concepts/review-concurrent-reviewer-dispatch-limits.md)
 - [Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline](concepts/review-process-f0909b2-reviewer-methodology.md)
 - [Critique Gate and Decision Recording](concepts/review-critique-gate-and-recording.md)
 - [Critique-gate mechanics, delivery gates, and GitHub posting authorization](concepts/review-process-f0909b2-critique-gate-posting.md)
@@ -447,6 +451,7 @@ type: nav
 **slang-compiler**
 - [Slang IR passes that clone or keep functions: linkage decorations on clones, keep-alive originals, widened work-list roots, and lazily lowered values](concepts/slang-compiler-ir-clones-linkage-and-pass-roots.md)
 - [Slang link-time entry-point checks: E45001 for body-less entry points, which IR function is an entry point, and post-link entry-point name checks](concepts/slang-compiler-linker-entry-point-checks.md)
+- [Slang PR-Review Pipeline: opencode Dispatch, 429 Recovery, and Run Integrity](concepts/slang-pr-review-pipeline-dispatch-and-recovery.md)
 - [Slang public API exception boundaries: unguarded SLANG_NO_THROW methods, the link()-style guard, and how to test it](concepts/slang-compiler-api-exception-boundary-guards.md)
 - [Slang unsupported-shape diagnostics and emitter result-unused checks: where they run, what they must look through, and debug-info users](concepts/slang-compiler-unsupported-shape-checks-and-emitter-use-checks.md)
 

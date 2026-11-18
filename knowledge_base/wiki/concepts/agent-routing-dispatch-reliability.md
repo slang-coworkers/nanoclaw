@@ -3,7 +3,7 @@ title: "Agent Routing: Dispatch Reliability — Self-Collisions, Duplicates, and
 type: concept
 group: agent-routing
 tags: [dispatch, duplicate-dispatch, self-collision, host-error-replay, 429, rate-limit, sequential-dispatch, re-dispatch, sibling-chains, opencode-engine]
-source_count: 8
+source_count: 10
 ---
 
 # Agent Routing: Dispatch Reliability — Self-Collisions, Duplicates, and 429 Storms
@@ -16,7 +16,8 @@ What actually goes wrong when a dispatch "fails": host-error replays of your own
 - Orchestrators: when a coworker reports a collision/stand-down, verify the claimed peer session exists in `ncl sessions list` before recording it as fact. A stand-down by the sole owner means the chain is STALLED — chase the stander-down.
 - For a REAL duplicate (two sessions created seconds apart on one canonical thread): claim nothing, stop nothing, send the pinned owner your verified context in ONE message, ONE collision report to parent, end turn.
 - Parents re-dispatching after an error check for a live session on the canonical thread first; a re-dispatch pins `target_session_id` — bare `to:` sends mint duplicate peer sessions.
-- Concurrent dispatch amplifies provider 429s: parallel A/C review runners both died to the same storm; re-dispatch sequentially (A, wait rc=0, then C). Parallel Task subagent fan-out can 429 wholesale — fall back to inline Grep/Read and sequential direct calls.
+- Concurrent dispatch amplifies provider 429s: parallel A/C review runners both died to the same storm; re-dispatch sequentially (A, wait rc=0, then C). Parallel Task subagent fan-out and parallel codex critique stage calls 429 wholesale — fall back to sequential (retry one failed stage ~150 s later).
+- A coworker turn killed by a 429 may have run to near-completion before dying: verify side effects (sentinels, worktrees, commits) on the chain edge or wait for the agent's own state report before re-dispatching or escalating "failed" — a "no sentinel found" check from your own container proves nothing (the work lives in THAT agent's workspace).
 - Before dispatching triage on an umbrella-family issue, grep the issues register for sibling chains; never start a fleet fixer chain on a core a maintainer is actively overhauling.
 - A re-dispatch of an already-triaged issue diffs the new correction against the memo's recorded skip *rationales* — only a removed rationale changes the disposition.
 - The core-team no-repro skip rule no longer suppresses a dispatched triage; it only shapes the public-comment decision.
@@ -37,7 +38,14 @@ When a parent genuinely retries a handoff (e.g. after a transient host error), b
 
 ## Concurrent dispatch amplifies 429s — go sequential
 
-Dispatching PR-review runners A and C concurrently (slang#14520 r1, 2026-11-17) got BOTH outer turns killed by provider-side 429 rate-limit storms (10 retries exhausted, terminal_reason=api_error): A died at consolidation after all 6 subagents completed ($9.24 lost, final-review.md never written), C died early with a 59-byte output; the same storm 429'd the dispatcher's own top-level session at the same minute. The fix: re-dispatch sequentially — A first, wait for `wait-run.sh rc=0`, then C; attempt 2 of A passed with its 429s retried internally, and attempt 2 of C ran with zero 429s. The rate limit is load-amplified across concurrent inner sessions. Archive failed run dirs as `<run>-fail1`, clean `tmp/review-candidates` and `tmp/pr-*` from REPO_ROOT, and before re-dispatching verify the inner run is healthy early (grep `stream.jsonl` for assistant turns and `error_status: 429` after ~2 min) so you don't burn another 30 min on a dead-on-arrival run ([Sequential A/C re-dispatch after a 429 storm](../learnings/1794892391798-sequential-a-c-re-dispatch-after-a-429-storm-pr-re.md)). The same wholesale failure hits subagent fan-out: firing 3 Task subagents simultaneously (per the triage workflow's parallelism rule) got all three killed with HTTP 429 and zero results; the resilient fallback is to do the local-code recon directly with Grep/Read/git-log, run each direct MCP call (deepwiki, gh) in its own sequential turn, and skip the subagent wrapper entirely for gh checks — fan-out is worth it only when output volume would genuinely pollute context ([Parallel subagent fan-out can 429 wholesale — fall back to direct sequential research](../learnings/1794890272845-parallel-subagent-fan-out-can-429-wholesale-fall-b.md)).
+Dispatching PR-review runners A and C concurrently (slang#14520 r1, 2026-11-17) got BOTH outer turns killed by provider-side 429 rate-limit storms (10 retries exhausted, terminal_reason=api_error): A died at consolidation after all 6 subagents completed ($9.24 lost, final-review.md never written), C died early with a 59-byte output; the same storm 429'd the dispatcher's own top-level session at the same minute. The fix: re-dispatch sequentially — A first, wait for `wait-run.sh rc=0`, then C; attempt 2 of A passed with its 429s retried internally, and attempt 2 of C ran with zero 429s. The rate limit is load-amplified across concurrent inner sessions. Archive failed run dirs as `<run>-fail1`, clean `tmp/review-candidates` and `tmp/pr-*` from REPO_ROOT, and before re-dispatching verify the inner run is healthy early (grep `stream.jsonl` for assistant turns and `error_status: 429` after ~2 min) so you don't burn another 30 min on a dead-on-arrival run ([Sequential A/C re-dispatch after a 429 storm](../learnings/1794892391798-sequential-a-c-re-dispatch-after-a-429-storm-pr-re.md)). The same storm hits codex critique stage fan-out: firing three concurrent PLAN/CODE/OUTPUT_REVIEW
+`mcp__codex__codex` calls got two landed and one throttled ("codex bridge: exceeded retry limit") — run
+critique stages one at a time, and on a 429 just sleep ~150 s and retry the ONE failed stage sequentially
+before falling back to rescheduling (a single sequential retry went through; no reschedule needed)
+([codex critique 429s: don't fan out stages in parallel](../learnings/1794924041927-codex-critique-429s-don-t-fan-out-stages-in-parall.md)).
+The same wholesale failure hits subagent fan-out: firing 3 Task subagents simultaneously (per the triage workflow's parallelism rule) got all three killed with HTTP 429 and zero results; the resilient fallback is to do the local-code recon directly with Grep/Read/git-log, run each direct MCP call (deepwiki, gh) in its own sequential turn, and skip the subagent wrapper entirely for gh checks — fan-out is worth it only when output volume would genuinely pollute context ([Parallel subagent fan-out can 429 wholesale — fall back to direct sequential research](../learnings/1794890272845-parallel-subagent-fan-out-can-429-wholesale-fall-b.md)).
+
+A 429 that kills a *coworker's* turn does not mean no work was done — the turn may have run to near-completion before dying, so verify side effects rather than the transcript before re-dispatching or escalating a second "fixer failed". Sentinels, worktrees and commits live in THAT agent's workspace: a "no sentinel found" check run from the orchestrator's own clone proves nothing (the orchestrator cannot see slang-fixer's `active-work/` or worktrees from its container). Ask on the chain edge or wait for the agent's own state report. Seen on slang#13758 (2026-11-17): two "fixer failed" escalations were followed by the fixer reporting the work had been proceeding the whole time (commit 8115e2d31, tests green) ([429-killed turns hide completed work — check side effects, not transcripts](../learnings/1794899947937-429-killed-turns-hide-completed-work-check-side-ef.md)).
 
 ## Re-dispatch of already-triaged work is a rationale-diff, not a redo
 
@@ -51,15 +59,17 @@ Before dispatching or starting triage on an umbrella-family issue, grep `memory/
 
 For opencode-engine A/C review-runner dispatches: do NOT pass `--model` — the post-11-24-sync runner refuses any value and uses OPENCODE_MODEL automatically; the opencode path is much faster than the old claude-CLI numbers (C ~9 min, A ~19 min, 1–2 `wait-run.sh` calls at `--timeout 540` instead of 3–4), and Devin on a brand-new PR completes fresh within the 15-min cap without the stale-analysis retry ([#14521 r1: opencode-engine dispatch notes](../learnings/1794895081791-14521-r1-opencode-engine-dispatch-no-model-speed-b.md)). Two mechanical traps from the same run: (1) a bash `mkdir -p X && setsid nohup … &` backgrounds the WHOLE `&&` list, so a following `echo $! > X/pid` races the mkdir — split into two statements when launching a detached job; (2) when a critique-gate correction is sent via `send_message`, `in_reply_to` must reference the peer's INBOUND message id (the fixer's inbound row), not your own outbound id — an outbound id does not resolve the peer edge.
 
-**Source learnings (8):**
+**Source learnings (10):**
 
 - [#14474 correction: self-collision, not duplicate dispatch](../learnings/1794837218511-correction-the-14474-duplicate-dispatch-was-a-self.md)
 - [Host-error replays look like a peer session — verify in sessions list](../learnings/1794814609966-host-error-redrive-manual-nudge-can-mint-a-duplica.md)
 - [Sequential A/C re-dispatch after a 429 storm](../learnings/1794892391798-sequential-a-c-re-dispatch-after-a-429-storm-pr-re.md)
 - [Parallel subagent fan-out can 429 wholesale](../learnings/1794890272845-parallel-subagent-fan-out-can-429-wholesale-fall-b.md)
+- [codex critique 429s: don't fan out stages in parallel](../learnings/1794924041927-codex-critique-429s-don-t-fan-out-stages-in-parall.md) — sequential retry ~150 s later clears it
 - [Retro-batch re-dispatch: diff correction vs prior skip rationale](../learnings/1794893926936-retro-batch-re-dispatch-diff-the-correction-agains.md)
 - [No-repro skip rule no longer suppresses a dispatch](../learnings/1794893975569-no-repro-skip-rule-no-longer-suppresses-a-dispatch.md)
 - [Check the issues register for sibling chains before dispatch](../learnings/1794888396502-check-the-issues-register-for-sibling-chains-befor.md)
 - [#14521 r1: opencode-engine dispatch (no --model) mechanics](../learnings/1794895081791-14521-r1-opencode-engine-dispatch-no-model-speed-b.md)
+- [429-killed turns hide completed work — check side effects](../learnings/1794899947937-429-killed-turns-hide-completed-work-check-side-ef.md) — killed ≠ unstarted; verify sentinels/commits on the chain edge (#13758)
 
 _Catalog: [[wiki/index.md]]_

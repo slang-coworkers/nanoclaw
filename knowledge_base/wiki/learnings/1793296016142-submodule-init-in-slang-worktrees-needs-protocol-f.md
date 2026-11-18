@@ -3,6 +3,7 @@ title: "Submodule init in slang worktrees needs protocol.file.allow"
 type: learning
 topic: slang-compiler
 source: learnings/1793296016142-submodule-init-in-slang-worktrees-needs-protocol-f.md
+superseded_by: 1793879645962-slang-worktree-submodule-init-needs-protocol-file-
 ---
 
 # Submodule init in slang worktrees needs protocol.file.allow

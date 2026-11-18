@@ -3,7 +3,7 @@ title: Adjudicating reviewer findings — severity is a claim to audit, verify a
 type: concept
 group: review-process
 tags: [severity-audit, hedged-wording, false-positive, consuming-code, convergence, universal-claim, typed-vs-computed, approver, reviewer]
-source_count: 12
+source_count: 15
 ---
 
 ## TL;DR
@@ -32,7 +32,9 @@ discipline that settles it.
   X" and "nothing exercises X" are **universal claims** requiring enumeration, not
   intuition (grep the spawn site / the public teardown API, not the workflow YAML).
 - **Verify at YOUR layer, with runtime operands.** A mechanism true at LOWER-TO-IR
-  can be dead by emit; constant folding hides opcode probes.
+  can be dead by emit; constant folding hides opcode probes. Settle liveness and
+  numeric disputes with one `-dump-ir` run, a built-slangc probe at head, or an
+  executing test — never by reviewer authority or vote.
 - **Classify from the RAW comment body**, never a WebFetch/summarizer paraphrase —
   a lossy instrument can invent the exact claim you then "refute".
 - **Numbers and totalizers are claims: compute them, don't type them.** Convergence
@@ -117,7 +119,7 @@ opcode is fine" — force runtime values); `-dump-ir` goes to **stderr**; and a 
 finding still needs a positive control (the *pre-fix* binary showing the signed
 opcodes) [a reviewer's plausible mechanism can be dead by the time it reaches your layer — check the FINAL IR](../learnings/1786385209770-a-reviewer-s-plausible-mechanism-can-be-dead-by-th.md).
 
-**Reviewer convergence raises confidence in the code-SHAPE, not the end-to-end
+A reviewer's liveness trace can be concrete down to file:line and still be dead. On slang#14519 r2, Reviewer A's reachability claim ("the recovery branch is reachable because `emitDefaultConstruct` creates `MakeCoopMatrixFromScalar`", citing slang-ir.cpp:4328 and hlsl.meta.slang:30513) was settled cheaply with one `slangc -dump-ir -target cuda -entry <e> -o out.cu` run at the PR head: 0 case-insensitive `MakeCoopMatrixFromScalar` hits across the full dump refuted it (the invalid CoopMat lowers to `LoadFromUninitializedMemory`; the frontend folds the constructor; the fixer's opposite, gdb-verified claim was right), and the same dump refuted A's duplicate-diagnostics gap (the expr path never fires → exactly 1 diagnostic per compile). One `-dump-ir` run per disputed claim, grepped case-insensitively with attention to the FINAL IR section, is the standard instrument for adjudicating IR-liveness disagreements before amplifying either side [settle liveness/disagreement claims with -dump-ir at the PR head](../learnings/1794901793619-settle-reviewer-liveness-disagreement-claims-with-.md). The reviewer container can also settle open questions with a real build: `/workspace/agent/slang/build/Release/bin/slangc` plus `git -C slang checkout <PR head sha>` and a targeted `cmake --build --preset release --target slangc` (~15-step increments after the first broad rebuild) lets you probe at head, rebuild at master, and diff exit codes, diagnostics, and emitted code — which turned Reviewer A's open "does MakeHit break?" question into hard evidence: no regression and byte-identical emitted code, but a PR-introduced `E41012` profile-widening warning the fixer's green test suite could not see (capability warnings are not test failures) [empirical slangc probes; MakeHit E41012 widening](../learnings/1794926376986-slang-pr-r2-review-devin-stale-head-refetch-empiri.md). Always restore the checkout to master tip and rebuild before ending the session — leaving head binaries under master source is a stale-build trap. **Reviewer convergence raises confidence in the code-SHAPE, not the end-to-end
 impact.** On slang#12518 three sub-reviewers converged on a headline 🟡 (a single-level
 `as<IRFunc>` unwrap drops generic-dispatched helpers) — the code-shape reading was
 locally correct, but the posited failure path never reaches emit (the test uses a
@@ -158,7 +160,9 @@ have landed as durable documentation — "any node id, error string, flag, or ve
 named in a comment is a falsifiable claim with a one-command test; a wrong *why*
 committed to source is worse than a wrong commit message" [reviewing a comment's style is not verifying its factual claim](../learnings/1786413091170-reviewing-a-comment-s-style-is-not-verifying-its-f.md).
 
-**Source learnings (12):**
+When reviewer notes disagree on a **numeric value**, settle it empirically, not by reviewer authority or vote. On slang#14386 three parties hand-derived three different constants ("verified the arithmetic myself: 0x7E08" vs 0x7F08 vs 0x7E09) while the committed unit test pinned the right one and the suite passed 686/686 — an empirically green check that fails on any wrong constant. Re-derive the value (python), let an executing test settle it, and reply on the reviewer's edge with the derivation so their stored learning gets fixed too; an exact-equality assertion added in response to a review is itself the instrument that makes the next such disagreement one-run-resolvable [resolve numeric disagreements empirically, not by reviewer authority](../learnings/1794909676385-resolve-numeric-review-disagreements-empirically-n.md).
+
+**Source learnings (15):**
 
 - [a reviewer's plausible mechanism can be dead by the time it reaches your layer — check the FINAL IR](../learnings/1786385209770-a-reviewer-s-plausible-mechanism-can-be-dead-by-th.md) — count the attributed type in the final dump section not the first; constant folding is a plausible-negative; `-dump-ir` goes to stderr; a refuted finding needs a positive control.
 - ["Nothing exercises X" is a claim about the TEST HARNESS — grep the spawn site, not the workflow YAML](../learnings/1786401954156-approver-challenger-miss-nothing-exercises-x-is-a-.md) — a driver-spawned binary is invisible in YAML; state gaps as "entry point E has no test"; the verdict survived the wrong premise so nothing prompted a re-check.
@@ -172,3 +176,6 @@ committed to source is worse than a wrong commit message" [reviewing a comment's
 - [CORRECTION — classify a reviewer finding from its RAW body, never a WebFetch/summarizer paraphrase](../learnings/1786482355990-approver-challenger-miss-correction-classify-a-rev.md) — a lossy summary can invent the claim you refute; read the `cr-indicator-types:` marker; price a gap against the invariant the PR ADDS. (Supersedes a same-session "functional-correctness inversion" leaf.)
 - [Devin "assert-skipped-in-release = UB" needs the value-path check, not just the assert-macro fact](../learnings/1786562763950-approver-challenger-miss-devin-assert-skipped-in-r.md) — two probes: is the asserted value on the value path, and does the invariant hold by construction; else the rule condemns thousands of existing asserts.
 - [slang#12518: three-reviewer-convergent generic-dispatch "gap" was REFUTED end-to-end](../learnings/1786600004939-slang-12518-three-reviewer-convergent-generic-disp.md) — convergence confirms the code-shape observation, not the impact; verify the pass-ordering crux and lowering fate; the repo rejects speculative defensive fixes.
+- [settle reviewer liveness/disagreement claims with -dump-ir at the PR head](../learnings/1794901793619-settle-reviewer-liveness-disagreement-claims-with-.md) — one dump per disputed claim, grepped case-insensitively in the FINAL IR section.
+- [resolve numeric review disagreements empirically, not by reviewer authority](../learnings/1794909676385-resolve-numeric-review-disagreements-empirically-n.md) — re-derive, let an executing test settle it, reply on the reviewer's edge.
+- [empirical slangc probes in-container; MakeHit E41012 widening](../learnings/1794926376986-slang-pr-r2-review-devin-stale-head-refetch-empiri.md) — build at head vs master, diff exit codes/warnings/emitted code; capability warnings evade green suites.
