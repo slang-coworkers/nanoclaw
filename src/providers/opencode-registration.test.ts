@@ -66,11 +66,21 @@ describe('OpenCode host payload', () => {
     );
     expect(contribution.env).toMatchObject({
       OPENCODE_MODEL: 'openai/test-model',
-      NO_PROXY: 'internal.example,127.0.0.1,localhost',
-      no_proxy: 'lower.example,127.0.0.1,localhost',
+      NO_PROXY: 'internal.example,host.docker.internal,127.0.0.1,localhost',
+      no_proxy: 'lower.example,host.docker.internal,127.0.0.1,localhost',
     });
     expect(contribution.mounts).toEqual([]);
     expect(fs.existsSync(context().sessionDir)).toBe(false);
+  });
+  it('lets the container reach the host directly when the host sets no proxy exclusions', async () => {
+    // OpenCode honors HTTP_PROXY for plain http. Without host.docker.internal here, the MCP proxy (:8808)
+    // and the dashboard hook posts go into the OneCLI gateway, which cannot forward them.
+    const contribution = await getProviderContainerConfig('opencode')!(context({ OPENCODE_PROVIDER: 'openai' }));
+    for (const key of ['NO_PROXY', 'no_proxy']) {
+      expect(contribution.env?.[key]?.split(',')).toEqual(
+        expect.arrayContaining(['host.docker.internal', '127.0.0.1', 'localhost']),
+      );
+    }
   });
   // Fork divergence: this fork owns the agent surfaces for every provider
   // (barrel-registration.test.ts), so core does not realize the contract's

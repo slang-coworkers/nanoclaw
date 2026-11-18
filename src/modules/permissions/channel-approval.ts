@@ -455,10 +455,10 @@ export async function createNewAgentGroup(name: string): Promise<AgentGroup | st
   });
 
   const ag = (await getAgentGroup(agId))!;
-  // Channel-approved groups are created on the instance default provider
-  // (DEFAULT_AGENT_PROVIDER, or claude when unset) — initGroupFilesystem stamps
-  // it onto the fresh config row. The operator flips a group afterward with
-  // `ncl groups config update --provider`.
+  // Channel-approved groups follow the install default provider and weights
+  // (installDefaultProvider): initGroupFilesystem leaves the fresh config row
+  // empty. The operator flips a group afterward with
+  // `ncl groups update --agent-provider`.
   await initGroupFilesystem(ag);
   return ag;
 }

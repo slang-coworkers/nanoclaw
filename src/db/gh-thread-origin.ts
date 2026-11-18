@@ -60,6 +60,18 @@ export async function recordGhThreadOrigin(origin: {
   }
 }
 
+/**
+ * Return every repo (`owner/name`) that GitHub has reported an issue or PR from,
+ * sorted. Webhook delivery is this table's only writer, so a repo in this list is
+ * a real repository whose events reach this instance; a2a.send uses it to refuse a
+ * hand-typed GitHub thread that names any other repo (see gh-thread-check.ts).
+ * Throws on a database error, so the guard fails closed and the delivery retries.
+ */
+export async function listKnownGhRepos(): Promise<string[]> {
+  const rows = await getDb().all<{ repo: string }>('SELECT DISTINCT repo FROM gh_thread_origin ORDER BY repo');
+  return rows.map((r) => r.repo);
+}
+
 /** Look up the origin row for a single thread_id. Never throws. */
 export async function getGhThreadOrigin(threadId: string): Promise<GhThreadOrigin | undefined> {
   try {

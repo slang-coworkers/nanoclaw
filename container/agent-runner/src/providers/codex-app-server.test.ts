@@ -1,6 +1,63 @@
 import { describe, it, expect } from 'bun:test';
 
-import { STALE_THREAD_RE, createCodexConfigOverrides, tomlBasicString } from './codex-app-server.js';
+import {
+  STALE_THREAD_RE,
+  createCodexConfigOverrides,
+  notificationThreadId,
+  tomlBasicString,
+  turnCompletedError,
+} from './codex-app-server.js';
+
+describe('turnCompletedError', () => {
+  // turn/completed params as codex 0.160's app-server sent them for a failed and
+  // an interrupted turn (captured from the real binary against a model endpoint
+  // that answered 400, and from a turn/interrupt).
+  const failed = {
+    threadId: 'th',
+    turn: {
+      id: 'tu',
+      items: [],
+      itemsView: 'notLoaded',
+      status: 'failed',
+      error: { message: '{"error": {"message": "bad request"}}', codexErrorInfo: 'other', additionalDetails: null },
+      startedAt: 1,
+      completedAt: 1,
+      durationMs: 79,
+    },
+  };
+  const interrupted = { threadId: 'th', turn: { id: 'tu', items: [], status: 'interrupted', error: null } };
+
+  it("returns codex's error for a failed turn", () => {
+    expect(turnCompletedError(failed)).toBe('{"error": {"message": "bad request"}}');
+    expect(turnCompletedError({ turn: { status: 'failed', error: null } })).toBe('codex turn failed');
+  });
+  it('returns a reason for an interrupted turn', () => {
+    expect(turnCompletedError(interrupted)).toBe('codex turn was interrupted');
+  });
+  it('is undefined for a completed turn, and for one without a status (codex before 0.160)', () => {
+    const completed = { threadId: 'th', turn: { id: 'tu', status: 'completed', error: null } };
+    expect(turnCompletedError(completed)).toBeUndefined();
+    expect(turnCompletedError({ turn: { id: 't1' } })).toBeUndefined();
+    expect(turnCompletedError(undefined)).toBeUndefined();
+  });
+});
+
+describe('notificationThreadId', () => {
+  // Shapes from codex 0.160's app-server protocol: turn and item notifications
+  // name their thread in params.threadId; thread/started carries the thread.
+  it('reads the thread of turn, item and thread notifications', () => {
+    expect(notificationThreadId({ method: 'turn/completed', params: { threadId: 'a', turn: { id: 't' } } })).toBe('a');
+    const item = { method: 'item/completed', params: { threadId: 'b', turnId: 't', item: { type: 'x' } } };
+    expect(notificationThreadId(item)).toBe('b');
+    const started = { method: 'thread/started', params: { thread: { id: 'c', parentThreadId: 'a' } } };
+    expect(notificationThreadId(started)).toBe('c');
+  });
+  it('is undefined for a notification about no single thread', () => {
+    expect(notificationThreadId({ method: 'account/rateLimits/updated', params: { rateLimits: {} } })).toBeUndefined();
+    const bare = { method: 'x', params: undefined as unknown as Record<string, unknown> };
+    expect(notificationThreadId(bare)).toBeUndefined();
+  });
+});
 
 describe('tomlBasicString', () => {
   it('leaves safe strings unchanged inside quotes', () => {

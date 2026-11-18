@@ -16,7 +16,26 @@ to Codex and back. The switch runs from the host.
 ## Switching
 
 ```bash
-ncl groups config update --id <group-id> --provider codex
+ncl groups update --id <group-id> --agent-provider codex
+ncl groups restart --id <group-id>
+```
+
+A spawn takes the first provider it finds, in this order: the session pin
+(`sessions.agent_provider`), the group's provider (`agent_groups.agent_provider`,
+set by `ncl groups update --agent-provider`), the group's container config
+(`container_configs.provider`, set by `ncl groups config update --provider`),
+and the install default. Set the group's provider: a container-config change
+has no effect on a group that has its own provider.
+
+The install default is OpenCode with open-weights models
+(`NANOCLAW_DEFAULT_WEIGHTS`, see [model-policy.md](model-policy.md)). A group
+that runs under `weights=open`, by its own setting or by the default, cannot
+run Claude; `ncl groups update --agent-provider claude` refuses it. Lift the
+rule first:
+
+```bash
+ncl groups config update --id <group-id> --weights any
+ncl groups update --id <group-id> --agent-provider claude
 ncl groups restart --id <group-id>
 ```
 
@@ -56,11 +75,46 @@ filesystem search (`rg`, `find`, and relative Markdown links).
 
 ## Rolling back
 
+Set the group's provider back, with the weights it ran under:
+
 ```bash
-ncl groups config update --id <group-id> --provider claude
+ncl groups config update --id <group-id> --weights any   # only when going back to Claude
+ncl groups update --id <group-id> --agent-provider claude
 ncl groups restart --id <group-id>
 ```
 
 Memory and standing instructions need no reverse migration because both
 providers use the same files. The prior provider resumes its own continuation,
 subject to its normal transcript rotation policy.
+
+## Pinning one session
+
+A session can run on another provider than its group. The pin is the first
+place a spawn looks for the provider:
+
+1. `sessions.agent_provider`: the session pin
+2. `agent_groups.agent_provider`: the group's provider
+3. `container_configs.provider`: the group's container config
+4. the install default
+
+```bash
+ncl sessions update --id <session-id> --provider codex             # pin
+ncl sessions update --id <session-id> --provider codex --restart   # pin, apply now
+ncl sessions update --id <session-id> --provider ''                # clear: follow the group again
+```
+
+`ncl sessions get` and `ncl sessions list` show the pin (`agent_provider`), the
+provider the session runs on (`effective_provider`) and the step that decided
+it (`provider_source`).
+
+The command checks the pin with the model policy that spawn uses, including the
+session's privilege. It refuses a provider the host does not register, and a
+pin that would make a `weights=open` session call a closed model, for example
+`--provider claude` on an open-weights group. It also refuses to clear a pin
+when the group's own provider would break the policy.
+
+The pin applies at the session's next spawn. A running container keeps its old
+provider: `--restart` stops only this session's container, and the next message
+starts it on the new provider. `ncl groups restart --id <group-id>` restarts
+every running container of the group instead. From inside a container the
+command needs admin approval, like `ncl groups update`.

@@ -48,6 +48,14 @@ export interface MessageRetry {
   processAfter: string | null;
 }
 
+/** A pending trigger row as the stuck-inbound retirement sees it (see getPendingTriggerRows). */
+export interface PendingTriggerRow {
+  id: string;
+  kind: string;
+  /** When the row fell due: the later of `timestamp` and `process_after` (normalized 'YYYY-MM-DD HH:MM:SS', UTC). */
+  dueAt: string;
+}
+
 export interface ProcessingClaim {
   messageId: string;
   statusChanged: string;
@@ -92,11 +100,15 @@ export interface MailboxHistoryMessage {
   timestamp: string;
   kind: string;
   content: string;
+  /** Outbound only: the platform's id for the delivered message, when known. */
+  platformMessageId?: string;
 }
 
 export interface MailboxTimelineMessage {
   timestamp: string;
   content: string;
+  /** The platform's id for the message, when known. Lets a read of the platform's history skip it. */
+  platformMessageId?: string;
 }
 
 export interface MailboxReclaimResult {
@@ -142,6 +154,13 @@ export interface InboundMailbox {
    * the number of rows closed. Optional for fakes.
    */
   expireOrphanedCliResponses?(cutoffIso: string): number;
+  /**
+   * Pending trigger rows, oldest first; with `passedOverMs`, only those the
+   * session's runner has passed over for at least that long while consuming
+   * newer work, and with `dueForMs`, only those due for at least that long
+   * now (see getPendingTriggerRows). Optional for fakes.
+   */
+  getPendingTriggerRows?(opts?: { passedOverMs?: number; dueForMs?: number }): PendingTriggerRow[];
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;
@@ -199,6 +218,8 @@ export interface InboundMailbox {
 export interface OutboundMailbox {
   getTerminalProcessingAcks(): ProcessingAck[];
   getProcessingClaims(): ProcessingClaim[];
+  /** The subset of `messageIds` holding a processing_ack row of any status. Optional for fakes. */
+  getAckedMessageIds?(messageIds: readonly string[]): Set<string>;
   deleteOrphanProcessingClaims(): number;
   getContainerState(): ContainerState | null;
   getDueMessages(excludeIds?: ReadonlySet<string>): OutboundMessage[];

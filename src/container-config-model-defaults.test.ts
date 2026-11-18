@@ -24,12 +24,14 @@ import type { AgentGroup, ContainerConfigRow } from './types.js';
 
 // This fork's AgentGroup carries more required columns than upstream's, so the
 // fixture is widened rather than the type loosened.
+// A Claude group: NANOCLAW_DEFAULT_MODEL is a Claude id, and a group that names
+// no provider would follow the install default (OpenCode, open weights).
 const GROUP: AgentGroup = {
   id: 'ag-model',
   name: 'model',
   folder: 'model',
   is_admin: 0,
-  agent_provider: null,
+  agent_provider: 'claude',
   container_config: null,
   coworker_type: null,
   allowed_mcp_tools: null,
