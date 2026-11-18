@@ -18,9 +18,15 @@
  *                         `error`, the final `error` (willRetry false), then
  *                         `turn/completed` with status "failed" and turn.error
  *   TURN_INTERRUPTED      `turn/completed` with status "interrupted", error null
+ *   RATE_LIMITED_ONCE <tag>  the first turn with this tag fails with codex's
+ *                         rate-limit error (`exceeded retry limit, last status:
+ *                         429 …`); later turns with the tag answer. The marker
+ *                         file sits next to FAKE_CODEX_LOG, so it survives the
+ *                         new app-server a retry starts.
+ *   RATE_LIMITED_ALWAYS   every turn fails with that rate-limit error
  *   LEGACY_TURN_FAILED    `turn/failed`, as codex versions before 0.160 sent
  */
-import { appendFileSync } from 'node:fs';
+import { appendFileSync, existsSync, writeFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 const argv = process.argv.slice(2);
@@ -68,6 +74,20 @@ function answer(threadId: string, turnId: string, text: string): void {
 /** The model endpoint's error as codex 0.160 relays it (captured from a real failed turn). */
 const FAKE_TURN_ERROR = '{"error": {"message": "fake model rejected the request", "type": "invalid_request_error"}}';
 
+/** The error codex 0.160 ends a turn with after its own retries of a 429 run out. */
+const FAKE_RATE_LIMIT_ERROR = 'exceeded retry limit, last status: 429 Too Many Requests';
+
+/** True when this turn should fail with FAKE_RATE_LIMIT_ERROR (see the RATE_LIMITED_* knobs). */
+function rateLimited(input: string): boolean {
+  if (input.includes('RATE_LIMITED_ALWAYS')) return true;
+  const tag = input.match(/RATE_LIMITED_ONCE\s+(\w+)/)?.[1];
+  if (!tag || !process.env.FAKE_CODEX_LOG) return false;
+  const marker = `${process.env.FAKE_CODEX_LOG}.rate-limited-${tag}`;
+  if (existsSync(marker)) return false;
+  writeFileSync(marker, '');
+  return true;
+}
+
 /** End `turnId` without an answer, in the shapes codex 0.160 sends (see the knobs above). */
 function endTurnWithoutAnswer(threadId: string, turnId: string, input: string): boolean {
   const turn = (status: string, error: unknown) => ({ id: turnId, items: [], status, error });
@@ -75,8 +95,9 @@ function endTurnWithoutAnswer(threadId: string, turnId: string, input: string): 
     send({ method: 'turn/failed', params: { threadId, error: { message: FAKE_TURN_ERROR } } });
     return true;
   }
-  if (input.includes('TURN_FAILS')) {
-    const error = { message: FAKE_TURN_ERROR, codexErrorInfo: 'other', additionalDetails: null };
+  if (input.includes('TURN_FAILS') || rateLimited(input)) {
+    const message = input.includes('TURN_FAILS') ? FAKE_TURN_ERROR : FAKE_RATE_LIMIT_ERROR;
+    const error = { message, codexErrorInfo: 'other', additionalDetails: null };
     send({ method: 'turn/started', params: { threadId, turn: turn('inProgress', null) } });
     send({ method: 'error', params: { error: { message: 'Reconnecting... 1/5' }, willRetry: true, threadId, turnId } });
     send({ method: 'error', params: { error, willRetry: false, threadId, turnId } });
