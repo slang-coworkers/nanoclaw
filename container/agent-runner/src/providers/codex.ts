@@ -29,9 +29,11 @@ import {
   createCodexConfigOverrides,
   initializeCodexAppServer,
   killCodexAppServer,
+  notificationThreadId,
   spawnCodexAppServer,
   startCodexTurn,
   startOrResumeCodexThread,
+  turnCompletedError,
   writeCodexMcpConfigToml,
 } from './codex-app-server.js';
 
@@ -390,6 +392,14 @@ async function* runOneTurn(
     // long tool executions keep the loop awake.
     buffer.push({ type: 'activity' });
 
+    // A sub-agent the turn spawns runs on its own thread on this app-server: its
+    // notifications keep the turn awake (above) but are not this turn's text,
+    // init or completion.
+    if (notificationThreadId(n) !== threadId) {
+      kick();
+      return;
+    }
+
     switch (method) {
       case 'thread/started': {
         const thread = params.thread as { id?: string } | undefined;
@@ -409,9 +419,13 @@ async function* runOneTurn(
         if (item?.type === 'agentMessage' && item.text) resultText = item.text;
         break;
       }
-      case 'turn/completed':
+      case 'turn/completed': {
+        const failure = turnCompletedError(params);
+        if (failure) turnState.error = new Error(failure);
         turnDone = true;
         break;
+      }
+      // Codex versions before 0.160 reported a failure with `turn/failed`.
       case 'turn/failed': {
         const e = params.error as { message?: string } | undefined;
         turnState.error = new Error(e?.message || 'Turn failed');

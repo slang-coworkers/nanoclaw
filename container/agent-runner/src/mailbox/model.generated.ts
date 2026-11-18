@@ -630,6 +630,26 @@ export function parseTaskWrite(value: unknown): TaskWrite {
   };
 }
 
+/**
+ * Decide whether a new inbound row wakes the agent. Every kind is a trigger by
+ * default except `system`, which never is one.
+ *
+ * A system row answers one in-flight tool call (an `ask_user_question` card,
+ * an `ncl` request), and that call's own poll reads it by id. The runner's
+ * poll loop drops system rows, so a system row stored as a trigger stays due
+ * for good: the host counts it on every sweep and wakes the session for a row
+ * nothing will consume. Consider an `ask_user_question` card answered after
+ * the tool timed out. The answer row has no reader, and as a trigger it kept
+ * an Orchestrator session "due" for 47 days on prod. We refuse an explicit
+ * `trigger: true` on a system row rather than override it, so a caller that
+ * asks for that shape learns why.
+ */
+function inboundTrigger(kind: InboundKind, trigger: boolean | undefined): boolean {
+  if (kind !== 'system') return trigger ?? true;
+  if (trigger === true) throw new Error('a system inbound row cannot be a trigger: no poll loop consumes it');
+  return false;
+}
+
 export function createInboundRecord(message: InboundWrite, sequence: number): InboundRecord {
   const input = parseInboundWrite(message);
   return parseInboundRecord({
@@ -638,7 +658,7 @@ export function createInboundRecord(message: InboundWrite, sequence: number): In
     status: 'pending',
     seriesId: input.id,
     tries: 0,
-    trigger: input.trigger ?? true,
+    trigger: inboundTrigger(input.kind, input.trigger),
     sourceSessionId: input.sourceSessionId ?? null,
     onWake: input.onWake ?? false,
   });

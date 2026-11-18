@@ -5,15 +5,27 @@ import path from 'node:path';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 
 import {
   CODEX_MCP_BRIDGE_OVERRIDES_ENV,
   CODEX_REPLY_TOOL,
   CODEX_TOOL,
   canonicalToolArgs,
+  codexToolFor,
+  codexToolResult,
   configToOverrides,
   criticModel,
+  CANCELLED,
+  criticRetryPolicy,
+  handleCodex,
+  openWeightsModelError,
+  progressReporter,
+  retryableCriticError,
+  threadIdNote,
+  withCriticRetry,
 } from './codex-mcp-bridge.js';
+import { ModelRetryBackoff } from './providers/opencode-retry.js';
 
 // The bridge must be a drop-in for codex 0.153.4's `codex mcp-server`: same two
 // tools, same input schema, same result shape (text + structuredContent.threadId),
@@ -49,6 +61,10 @@ beforeAll(async () => {
       NANOCLAW_HOOKS_DIR: binDir,
       CRITIQUE_GATE_ACTIVE: '1',
       CODEX_MODEL: 'openai/openai/gpt-test',
+      CODEX_MCP_PROGRESS_INTERVAL_MS: '50',
+      // Short critic retries: 10–20 ms, then doubling, for at most 400 ms.
+      CODEX_MCP_RETRY_BASE_MS: '20',
+      CODEX_MCP_RETRY_BUDGET_MS: '400',
       [CODEX_MCP_BRIDGE_OVERRIDES_ENV]: JSON.stringify(['sandbox_mode=danger-full-access', 'features.hooks=true']),
     },
     stderr: 'pipe',
@@ -106,6 +122,69 @@ describe('criticModel', () => {
   });
 });
 
+describe('openWeightsModelError', () => {
+  // On prod the GLM fixer passed model "gpt-5.2" (the schema's own example); the
+  // bridge forwarded it and the gateway refused six retries. An open-weights group
+  // may not choose its critic model, by `model` or by a model-choosing config key.
+  const open = { NANOCLAW_MODEL_WEIGHTS: 'open', NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3' };
+
+  it('refuses a closed model, and names the critic model', () => {
+    const e = openWeightsModelError({ model: 'gpt-5.2' }, open);
+    expect(e).toContain('nvidia/moonshotai/kimi-k3');
+    expect(e).toContain('model "gpt-5.2"');
+  });
+
+  it('refuses config keys that choose the model or its provider', () => {
+    for (const config of [
+      { model: 'gpt-5.2-codex' },
+      { model_provider: 'openai' },
+      { 'model_providers.x.base_url': 'u' },
+      { profile: 'p' },
+      { review_model: 'r' },
+    ]) {
+      expect(openWeightsModelError({ config }, open)).toContain(`config.${Object.keys(config)[0]}`);
+    }
+  });
+
+  it('allows the critic model itself, other config keys, and any model in a group that is not open', () => {
+    expect(openWeightsModelError({ model: 'nvidia/moonshotai/kimi-k3' }, open)).toBeUndefined();
+    expect(openWeightsModelError({ config: { model_reasoning_effort: 'low' } }, open)).toBeUndefined();
+    expect(openWeightsModelError({}, open)).toBeUndefined();
+    expect(openWeightsModelError({ model: 'gpt-5.2' }, { NANOCLAW_MODEL_WEIGHTS: 'any' })).toBeUndefined();
+    expect(openWeightsModelError({ model: 'gpt-5.2' }, {})).toBeUndefined();
+  });
+
+  it('makes handleCodex fail before it starts an app-server', async () => {
+    const saved = { w: process.env.NANOCLAW_MODEL_WEIGHTS, c: process.env.NANOCLAW_CRITIC_MODEL };
+    Object.assign(process.env, open);
+    try {
+      await expect(handleCodex({ prompt: 'review', model: 'gpt-5.2' })).rejects.toThrow(/open-weights models only/);
+    } finally {
+      if (saved.w === undefined) delete process.env.NANOCLAW_MODEL_WEIGHTS;
+      else process.env.NANOCLAW_MODEL_WEIGHTS = saved.w;
+      if (saved.c === undefined) delete process.env.NANOCLAW_CRITIC_MODEL;
+      else process.env.NANOCLAW_CRITIC_MODEL = saved.c;
+    }
+  });
+});
+
+describe('codexToolFor', () => {
+  it('in an open-weights group, says the critic model is fixed instead of suggesting closed models', () => {
+    const tool = codexToolFor({ NANOCLAW_MODEL_WEIGHTS: 'open', NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3' });
+    const desc = (tool.inputSchema.properties.model as { description: string }).description;
+    expect(desc).toContain('nvidia/moonshotai/kimi-k3');
+    expect(desc).not.toContain('gpt-5.2');
+    expect(Object.keys(tool.inputSchema.properties).sort()).toEqual(
+      Object.keys(CODEX_TOOL.inputSchema.properties).sort(),
+    );
+  });
+
+  it('elsewhere, is the codex 0.153.4 schema unchanged', () => {
+    expect(codexToolFor({ NANOCLAW_MODEL_WEIGHTS: 'any' })).toBe(CODEX_TOOL);
+    expect(codexToolFor({})).toBe(CODEX_TOOL);
+  });
+});
+
 describe('configToOverrides', () => {
   it('flattens nested config into codex -c overrides with TOML strings', () => {
     expect(configToOverrides({ model_reasoning_effort: 'low', features: { hooks: true }, name: 'x y', n: 3 })).toEqual([
@@ -159,6 +238,17 @@ describe('codex MCP bridge over stdio', () => {
     expect(r.content[0].text).toBe('VERDICT: approve');
     expect(r.structuredContent?.threadId).toBe('thread-1');
     expect(r.structuredContent?.content).toBe('VERDICT: approve');
+    // What each engine shows the model. OpenCode 1.18 joins the text items with a
+    // blank line and drops structuredContent; Claude Code 2.1 shows
+    // structuredContent as JSON. The thread id must reach the model in both, and
+    // the message must stay first, so its sentinel lines lead.
+    const openCodeView = r.content
+      .filter((c) => c.type === 'text')
+      .map((c) => c.text)
+      .join('\n\n');
+    expect(openCodeView.startsWith('VERDICT: approve\n\n')).toBe(true);
+    expect(openCodeView).toContain('codex threadId: thread-1');
+    expect(JSON.stringify(r.structuredContent)).toContain('"threadId":"thread-1"');
     const received = readFileSync(logFile, 'utf8')
       .trim()
       .split('\n')
@@ -225,10 +315,21 @@ describe('codex MCP bridge over stdio', () => {
   it('records one critique round per successful call, and none for a failed one', async () => {
     // The earlier calls in this file succeeded (codex, codex-reply) or failed
     // (a stale thread, a missing prompt); only the successes were recorded.
+    // The recorder also sees each call's start and failure; rounds are the
+    // PostToolUse payloads.
     const records = readFileSync(recordFile, 'utf8')
       .trim()
       .split('\n')
-      .map((l) => JSON.parse(l) as { tool_name: string; tool_input: { prompt?: string }; tool_response: string });
+      .map(
+        (l) =>
+          JSON.parse(l) as {
+            hook_event_name: string;
+            tool_name: string;
+            tool_input: { prompt?: string };
+            tool_response: string;
+          },
+      )
+      .filter((r) => r.hook_event_name === 'PostToolUse');
     expect(records.length).toBeGreaterThanOrEqual(2);
     expect(records[0]).toMatchObject({ tool_name: 'mcp__codex__codex', tool_input: { prompt: 'review this' } });
     expect(JSON.parse(records[0].tool_response)).toEqual({ threadId: 'thread-1', content: 'VERDICT: approve' });
@@ -243,5 +344,290 @@ describe('codex MCP bridge over stdio', () => {
     };
     expect(r.isError).toBe(true);
     expect(r.content[0].text).toContain('prompt');
+  });
+
+  // On prod a critic spawned a sub-agent to recall prior learnings. The
+  // sub-agent's turn ended first, on its own thread, and the bridge returned its
+  // "Recall complete …" message as the critique verdict, minutes before the
+  // critic itself had answered.
+  it("returns the call's own answer when the critic spawns a sub-agent", async () => {
+    const r = (await client.callTool({
+      name: 'codex',
+      arguments: { prompt: 'STAGE: PLAN_REVIEW SPAWN_SUBAGENT', cwd: binDir },
+    })) as { content: Array<{ text: string }>; structuredContent?: { threadId: string }; isError?: boolean };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toBe('VERDICT: approve');
+    expect(r.structuredContent?.threadId).not.toContain('subagent');
+  });
+
+  // OpenCode's MCP request timeout is 330 s; a critique runs 5 to 15 minutes.
+  // OpenCode calls with resetTimeoutOnProgress, as this client does here with a
+  // timeout shorter than the turn.
+  it('sends progress during a long turn, so a client timeout that resets on progress does not fire', async () => {
+    let progressSeen = 0;
+    const r = (await client.callTool(
+      { name: 'codex', arguments: { prompt: 'SLOW_TURN', cwd: binDir } },
+      CallToolResultSchema,
+      { timeout: 400, resetTimeoutOnProgress: true, onprogress: () => (progressSeen += 1) },
+    )) as { content: Array<{ text: string }>; isError?: boolean };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toBe('VERDICT: approve');
+    expect(progressSeen).toBeGreaterThan(1);
+  });
+
+  // Codex 0.160 reports a failed turn as turn/completed with status "failed";
+  // the bridge used to answer it as a successful critique with an empty verdict.
+  it('a failed turn is an error result carrying codex error, and records no critique round', async () => {
+    const recorded = (): Array<{ hook_event_name: string; error?: string; tool_use_id?: string }> =>
+      readFileSync(recordFile, 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+    const before = recorded().length;
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'TURN_FAILS', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('fake model rejected the request');
+    // A start and a failure, with the error text, and no round.
+    const added = recorded().slice(before);
+    expect(added.map((p) => p.hook_event_name)).toEqual(['PreToolUse', 'PostToolUseFailure']);
+    expect(added[1].error).toContain('fake model rejected the request');
+    // One call id on both, so the host can match the start to its result.
+    expect(added[0].tool_use_id).toBeTruthy();
+    expect(added[1].tool_use_id).toBe(added[0].tool_use_id);
+  });
+
+  // On 2026-11-17 the endpoint's rate-limit waves failed 255 critiques: codex
+  // retried for seconds, then the bridge gave up and the fixer was blocked at
+  // the critique gate. The bridge now waits and runs the call again.
+  it('retries a rate-limited critique, and records the failure, a new start and the round', async () => {
+    const recorded = (): Array<{ hook_event_name: string; error?: string; tool_use_id?: string }> =>
+      readFileSync(recordFile, 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+    const before = recorded().length;
+    const r = (await client.callTool({
+      name: 'codex',
+      arguments: { prompt: 'STAGE: PLAN_REVIEW RATE_LIMITED_ONCE r1', cwd: binDir },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toBe('VERDICT: approve');
+    const added = recorded().slice(before);
+    expect(added.map((p) => p.hook_event_name)).toEqual([
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUse',
+    ]);
+    expect(added[1].error).toContain('429');
+    expect(added[1].tool_use_id).toBe(added[0].tool_use_id);
+    expect(added[2].tool_use_id).not.toBe(added[0].tool_use_id);
+    expect(added[3].tool_use_id).toBe(added[2].tool_use_id);
+  });
+
+  // A reply whose thread had to be resumed registered the resumed server, and a
+  // failed turn left that dead server registered: the next attempt reused it.
+  it('retries a reply through two rate-limited turns, each on a fresh server', async () => {
+    const first = (await client.callTool({ name: 'codex', arguments: { prompt: 'open a thread', cwd: binDir } })) as {
+      structuredContent?: { threadId: string };
+    };
+    const threadId = first.structuredContent?.threadId;
+    expect(threadId).toBeTruthy();
+    const before = readFileSync(recordFile, 'utf8').trim().split('\n').length;
+    const r = (await client.callTool({
+      name: 'codex-reply',
+      arguments: { threadId, prompt: 'ROUND: 2 RATE_LIMITED_TWICE r3' },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toContain('VERDICT: approve');
+    const events = readFileSync(recordFile, 'utf8')
+      .trim()
+      .split('\n')
+      .slice(before)
+      .map((l) => (JSON.parse(l) as { hook_event_name: string }).hook_event_name);
+    expect(events).toEqual([
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUse',
+    ]);
+  });
+
+  it('gives up when the retry budget runs out, and names the retries', async () => {
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'RATE_LIMITED_ALWAYS', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('429');
+    expect(r.content[0].text).toMatch(/after \d+ retries\)/);
+  });
+
+  it('an interrupted turn is an error result', async () => {
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'TURN_INTERRUPTED', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('interrupted');
+  });
+
+  it('a turn/failed from codex before 0.160 is still an error result', async () => {
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'LEGACY_TURN_FAILED', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('fake model rejected the request');
+  });
+});
+
+describe('codexToolResult', () => {
+  it('keeps the message as its own first text item and names the thread in a second', () => {
+    expect(codexToolResult({ threadId: 't-9', text: '### Verdict\napprove' })).toEqual({
+      content: [
+        { type: 'text', text: '### Verdict\napprove' },
+        { type: 'text', text: threadIdNote('t-9') },
+      ],
+      structuredContent: { threadId: 't-9', content: '### Verdict\napprove' },
+    });
+    expect(threadIdNote('t-9')).toContain('t-9');
+  });
+});
+
+describe('progressReporter', () => {
+  it('sends increasing progress at most once per interval, and nothing without a token', () => {
+    const sent: Array<{ progressToken: string | number; progress: number }> = [];
+    let clock = 0;
+    const report = progressReporter(
+      7,
+      async (n) => {
+        sent.push(n.params);
+      },
+      1000,
+      () => clock,
+    )!;
+    report();
+    clock = 500;
+    report();
+    clock = 1000;
+    report();
+    clock = 2500;
+    report();
+    expect(sent).toEqual([
+      { progressToken: 7, progress: 1 },
+      { progressToken: 7, progress: 2 },
+      { progressToken: 7, progress: 3 },
+    ]);
+    expect(progressReporter(undefined, async () => undefined)).toBeUndefined();
+  });
+});
+
+describe('retryableCriticError', () => {
+  it('retries a rate limit, an overload or a server error, and nothing the caller caused', () => {
+    expect(retryableCriticError('exceeded retry limit, last status: 429 Too Many Requests')).toEqual({
+      statusCode: 429,
+    });
+    expect(retryableCriticError('unexpected status 503 Service Unavailable')).toEqual({});
+    expect(retryableCriticError('stream disconnected before completion')).toEqual({});
+    expect(retryableCriticError('service temporarily unavailable')).toEqual({});
+    expect(retryableCriticError('codex turn timed out after 1800s')).toBeUndefined();
+    expect(retryableCriticError('codex: `prompt` is required')).toBeUndefined();
+    expect(retryableCriticError('unexpected status 403 Forbidden')).toBeUndefined();
+    // Only codex's status counts, not a number elsewhere in the text.
+    expect(retryableCriticError('unexpected status 403 Forbidden: {"detail":"upstream 503"}')).toBeUndefined();
+    expect(retryableCriticError('cannot read /tmp/429/review.md')).toBeUndefined();
+    expect(retryableCriticError('codex app-server exited (code=0) before the turn completed')).toBeUndefined();
+  });
+});
+
+describe('withCriticRetry', () => {
+  const backoff = () => new ModelRetryBackoff({ budgetMs: 200, baseDelayMs: 2 });
+
+  it('runs the call again after a rate limit and returns its answer', async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const answer = await withCriticRetry(
+      async () => {
+        calls += 1;
+        if (calls < 3) throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+        return 'ok';
+      },
+      { backoff: backoff(), signal: new AbortController().signal, onRetry: async (_e, ms) => void waits.push(ms) },
+    );
+    expect(answer).toBe('ok');
+    expect(calls).toBe(3);
+    expect(waits).toHaveLength(2);
+  });
+
+  it('does not retry an error the caller caused', async () => {
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      throw new Error('codex: `prompt` is required');
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: new AbortController().signal })).rejects.toThrow(
+      '`prompt` is required',
+    );
+    expect(calls).toBe(1);
+  });
+
+  it('ends with CANCELLED, not the critic error, when the client cancels during a call', async () => {
+    const abort = new AbortController();
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      abort.abort();
+      throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(1);
+  });
+
+  it('ends with CANCELLED when the client cancels during the wait', async () => {
+    const abort = new AbortController();
+    let calls = 0;
+    const retries: string[] = [];
+    const run = async (): Promise<string> => {
+      calls += 1;
+      throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+    };
+    const slow = new ModelRetryBackoff({ budgetMs: 60_000, baseDelayMs: 10_000 });
+    const pending = withCriticRetry(run, {
+      backoff: slow,
+      signal: abort.signal,
+      onRetry: async (e) => {
+        retries.push(e);
+        setTimeout(() => abort.abort(), 5);
+      },
+    });
+    await expect(pending).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(1);
+    expect(retries).toHaveLength(1);
+  });
+
+  it('does not start a call the client already cancelled', async () => {
+    const abort = new AbortController();
+    abort.abort();
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      return 'ok';
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(0);
+  });
+
+  it('reads its policy from CODEX_MCP_RETRY_*, with the OpenCode defaults', () => {
+    expect(criticRetryPolicy({})).toEqual({ budgetMs: 600_000, baseDelayMs: 30_000 });
+    expect(criticRetryPolicy({ CODEX_MCP_RETRY_BUDGET_MS: '0', CODEX_MCP_RETRY_BASE_MS: '5' })).toEqual({
+      budgetMs: 0,
+      baseDelayMs: 5,
+    });
   });
 });

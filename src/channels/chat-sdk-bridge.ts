@@ -33,7 +33,7 @@ import { SqliteStateAdapter } from '../state-sqlite.js';
 import { registerWebhookAdapter } from '../webhook-server.js';
 import { cardProblems, isCardPart, isRecord, type CardPart } from './card-parts.js';
 import { CardTooLongError, cardQuestionTooLong, normalizeOptions, type NormalizedOption } from './ask-question.js';
-import type { ChannelAdapter, ChannelDefaults, ChannelSetup, InboundMessage } from './adapter.js';
+import type { ChannelAdapter, ChannelDefaults, ChannelSetup, HistoryLine, InboundMessage } from './adapter.js';
 import { INSTANCE_KEY_RE } from './channel-registry.js';
 import { resolveQuestionRender, dispatchQuestionAction } from './question-render-registry.js';
 
@@ -209,7 +209,7 @@ export function attachmentBytesToBase64(data: Buffer | ArrayBuffer | Uint8Array)
  * The Chat SDK reports a handler that throws or a failed state write only
  * through its logger, so `logger: 'silent'` dropped such a message without a
  * trace. Warn and error reach our log; the SDK's debug and info lines go to
- * our debug level.
+ * our debug level, except the info lines that report a lost inbound message.
  */
 export function chatSdkLogger(prefix = 'chat-sdk'): Logger {
   const to =
@@ -220,10 +220,22 @@ export function chatSdkLogger(prefix = 'chat-sdk'): Logger {
     child: (name: string) => chatSdkLogger(`${prefix}:${name}`),
     // SDK debug lines print each message's full text; drop them.
     debug: () => {},
-    info: to('debug'),
+    info: (message, ...args) => to(isLostMessage(message, args[0]) ? 'warn' : 'debug')(message, ...args),
     warn: to('warn'),
     error: to('error'),
   };
+}
+
+/**
+ * In queue mode the SDK drops a held message that waited past its TTL, and
+ * passes older held messages over for the newest (our handlers ignore the
+ * skipped list). It reports both only at info.
+ */
+function isLostMessage(message: string, data: unknown): boolean {
+  if (message === 'message-expired') return true;
+  return (
+    message === 'message-dequeued' && isRecord(data) && typeof data.skippedCount === 'number' && data.skippedCount > 0
+  );
 }
 
 /** Message-text fields the SDK puts in its log data. */
@@ -601,6 +613,65 @@ export function splitForLimit(text: string, limit: number): string[] {
   return chunks;
 }
 
+/** How long split-reply progress is kept for a retry, host downtime included. */
+const SPLIT_PROGRESS_TTL_MS = 7 * 24 * 60 * 60_000;
+
+interface SplitProgress {
+  digest: string;
+  posted: number;
+  firstId?: string;
+}
+
+/**
+ * How many parts of one split reply are posted, kept in the bridge's state
+ * store so a delivery retry, even after a restart, resumes there. Kept after
+ * the last part too, for a retry after a failed delivery ack (the outbox files
+ * are gone by then, so they stay out of the digest). A changed text or limit
+ * starts over. Best effort: on a store error the retry posts from part 1.
+ */
+class SplitProgressStore {
+  private readonly key: string;
+  private readonly digest: string;
+  /** Set when the read failed: saving then could overwrite progress this attempt never saw. */
+  private unread = false;
+
+  constructor(
+    private readonly state: SqliteStateAdapter,
+    deliveryId: string,
+    threadId: string,
+    chunks: string[],
+  ) {
+    this.key = `split-progress:${deliveryId}`;
+    this.digest = createHash('sha256')
+      .update(JSON.stringify([threadId, chunks]))
+      .digest('hex');
+  }
+
+  async read(): Promise<SplitProgress | undefined> {
+    const saved = await this.attempt('read', () => this.state.get<SplitProgress>(this.key));
+    if (saved === undefined) this.unread = true; // a missing key reads as null
+    if (!saved || saved.digest !== this.digest) return undefined;
+    log.info('Resuming a split reply after the parts already posted', { key: this.key, posted: saved.posted });
+    return saved;
+  }
+
+  async save(posted: number, firstId: string | undefined): Promise<void> {
+    if (this.unread) return;
+    const progress: SplitProgress = { digest: this.digest, posted, firstId };
+    await this.attempt('save', () => this.state.set(this.key, progress, SPLIT_PROGRESS_TTL_MS));
+  }
+
+  private async attempt<T>(op: string, run: () => Promise<T>): Promise<T | undefined> {
+    try {
+      return await run();
+      // eslint-disable-next-line no-catch-all/no-catch-all -- progress is best effort; the send goes on without it
+    } catch (err) {
+      log.warn('Split reply progress unavailable', { op, key: this.key, err });
+      return undefined;
+    }
+  }
+}
+
 /**
  * Append platform-rescued text to the serialized body, before `raw` is dropped.
  * No extractor, or nothing recovered, leaves the body byte-identical.
@@ -799,6 +870,7 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
   let state: SqliteStateAdapter;
   let setupConfig: ChannelSetup;
   let gatewayAbort: AbortController | null = null;
+  let stopWebhookServer: (() => Promise<void>) | null = null;
 
   async function messageToInbound(
     message: ChatMessage,
@@ -1038,7 +1110,9 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
         gatewayAbort = new AbortController();
 
         // Start local HTTP server to receive forwarded Gateway events (including interactions)
-        const webhookUrl = await startLocalWebhookServer(gatewayAdapter, config.botToken, resolveClick);
+        const webhookServer = await startLocalWebhookServer(gatewayAdapter, config.botToken, resolveClick);
+        const webhookUrl = webhookServer.url;
+        stopWebhookServer = webhookServer.stop;
 
         // Exponential backoff capped at 1h. Without this, an unrecoverable
         // failure (e.g., TokenInvalid) restarts ~10×/sec and Discord's
@@ -1278,8 +1352,15 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
           config.maxTextLength && text.length > config.maxTextLength
             ? splitForLimit(text, config.maxTextLength)
             : [text];
-        let firstId: string | undefined;
-        for (let i = 0; i < chunks.length; i++) {
+        // A retry of a reply that failed mid-split starts at the failed part:
+        // posting from part 1 again repeats what the user already has.
+        const progress =
+          chunks.length > 1 && message.deliveryId && state
+            ? new SplitProgressStore(state, message.deliveryId, tid, chunks)
+            : undefined;
+        const resumed = await progress?.read();
+        let firstId = resumed?.firstId;
+        for (let i = resumed?.posted ?? 0; i < chunks.length; i++) {
           const chunk = chunks[i];
           const attachFiles = i === 0 && fileUploads && fileUploads.length > 0;
           const result = await adapter.postMessage(
@@ -1287,6 +1368,7 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
             attachFiles ? { markdown: chunk, files: fileUploads } : { markdown: chunk },
           );
           if (i === 0) firstId = result?.id;
+          await progress?.save(i + 1, firstId);
         }
         return firstId;
       } else if (message.files && message.files.length > 0) {
@@ -1307,6 +1389,8 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
 
     async teardown() {
       gatewayAbort?.abort();
+      await stopWebhookServer?.();
+      stopWebhookServer = null;
       await chat.shutdown();
       log.info('Chat SDK bridge shut down', { adapter: adapter.name });
     },
@@ -1323,6 +1407,38 @@ export function createChatSdkBridge(config: ChatSdkBridgeConfig): ChannelAdapter
       // is the SDK's thread id, which is what the router already has from
       // the original inbound event.
       await state.subscribe(threadId);
+    },
+
+    async readHistory(
+      platformId: string,
+      threadId: string | null,
+      { limit }: { limit: number },
+    ): Promise<HistoryLine[]> {
+      if (threadId !== null && adapter.channelIdFromThreadId(threadId) !== platformId) {
+        throw new Error('History read refused: thread is not in this chat');
+      }
+      // The library reads the platform, or its own cache on platforms without
+      // server-side history.
+      const { messages } =
+        threadId === null
+          ? await chat.history.channel.listMessages(platformId, { limit })
+          : await chat.history.thread.list(threadId, { limit });
+      return messages.map((m) => {
+        // The text an inbound message of this line would carry.
+        const read = { text: m.text };
+        if (m.raw) appendRawText(read, m.raw as Record<string, unknown>, config.extractRawText);
+        return {
+          id: m.id,
+          timestamp: m.metadata.dateSent.toISOString(),
+          senderId: m.author.userId,
+          senderName: m.author.fullName || m.author.userName,
+          text: read.text,
+          isBot: m.author.isBot === true,
+          isSelf: m.author.isMe,
+          threadId: m.threadId,
+          raw: m.raw,
+        };
+      });
     },
   };
 
@@ -1414,12 +1530,14 @@ function removeButtonsAfter(edit: Promise<unknown>, removeButtons: () => void): 
  *
  * Loopback is not a trust boundary, so only our own Gateway listener may post
  * here: it sends the bot token in x-discord-gateway-token on every forward.
+ *
+ * Resolves with the server's URL and a stop function for the bridge's teardown.
  */
 function startLocalWebhookServer(
   adapter: GatewayAdapter,
   botToken: string | undefined,
   resolveClick: ResolveClick,
-): Promise<string> {
+): Promise<{ url: string; stop: () => Promise<void> }> {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       if (!gatewayTokenMatches(req.headers['x-discord-gateway-token'], botToken)) {
@@ -1448,8 +1566,22 @@ function startLocalWebhookServer(
       const addr = server.address() as { port: number };
       const url = `http://127.0.0.1:${addr.port}/webhook`;
       log.info('Local webhook server started', { port: addr.port });
-      resolve(url);
+      resolve({ url, stop: () => stopLocalWebhookServer(server) });
     });
+  });
+}
+
+/**
+ * Stops the local webhook server and ends every connection to it, the idle
+ * keep-alive ones and any forward still in flight. Ending an in-flight forward
+ * drops only its response: teardown has already aborted the Gateway listener
+ * that sent it. A connection left open would keep its client's keep-alive
+ * timer armed after the bridge is gone.
+ */
+function stopLocalWebhookServer(server: http.Server): Promise<void> {
+  return new Promise((resolve) => {
+    server.close(() => resolve());
+    server.closeAllConnections();
   });
 }
 

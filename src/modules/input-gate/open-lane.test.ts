@@ -51,7 +51,7 @@ describe('resolveOpenLane', () => {
   });
 
   it('is invalid for a group left at weights=any, whose critic is the closed default', async () => {
-    await group('any', 'opencode');
+    await group('any', 'opencode', { weights: 'any' });
     expect(await resolveOpenLane('any')).toMatchObject({ status: 'invalid', problem: 'the group is not weights=open' });
   });
 

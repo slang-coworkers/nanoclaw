@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it } from 'bun:test';
+import path from 'path';
 
-import { buildCompactInstructions, buildPostCompactionReminder } from './compact-instructions.js';
+import { buildCompactInstructions, buildPostCompactionReminder, runPreCompactHook } from './compact-instructions.js';
+import { closeSessionDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
 
 describe('compaction delivery reminder', () => {
   it('preserves final-output addressing in chat sessions', () => {
@@ -79,5 +81,50 @@ describe('post-compaction reminder', () => {
     expect(reminder).toContain('tasks/daily-digest-a1b2.md');
     expect(reminder).toContain('Available destinations: (none).');
     expect(reminder).not.toContain('<message to="name">');
+  });
+});
+
+// The PreCompact hook runs this file as its own process, which has no mailbox
+// until it registers one. Without the registration every run failed with "No
+// agent mailbox registered", and every compaction lost its instructions.
+describe('the PreCompact hook entry', () => {
+  afterEach(() => closeSessionDb());
+
+  it('registers the session mailbox when run as its own process', () => {
+    // A test process may not open the live session DB, so the child stops at
+    // that guard, which it reaches only through a registered mailbox.
+    const child = Bun.spawnSync(['bun', path.join(import.meta.dir, 'compact-instructions.ts')], {
+      env: { ...process.env, NODE_ENV: 'test' },
+      stderr: 'pipe',
+      stdout: 'pipe',
+    });
+    const stderr = child.stderr.toString();
+    expect(stderr).not.toContain('No agent mailbox registered');
+    expect(stderr).toContain('Refusing to open the live inbound.db from a test process');
+  });
+
+  it("prints the instructions for the session's destinations and task", async () => {
+    const { inbound } = initTestSessionDb();
+    inbound
+      .prepare(
+        `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+         VALUES ('ops-room', NULL, 'channel', 'discord', 'room-1', NULL)`,
+      )
+      .run();
+    inbound.exec(`CREATE TABLE IF NOT EXISTS session_routing (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      channel_type TEXT, platform_id TEXT, thread_id TEXT
+    )`);
+    inbound
+      .prepare('INSERT INTO session_routing (id, channel_type, platform_id, thread_id) VALUES (1, ?, ?, ?)')
+      .run('discord', 'room-1', 'system:tasks:nightly-a1b2');
+
+    const out: string[] = [];
+    await runPreCompactHook((text) => out.push(text));
+
+    expect(out).toHaveLength(1);
+    expect(out[0]).toContain('Preserve the following in the compaction summary:');
+    expect(out[0]).toContain('Available destinations: `ops-room`.');
+    expect(out[0]).toContain('tasks/nightly-a1b2.md');
   });
 });

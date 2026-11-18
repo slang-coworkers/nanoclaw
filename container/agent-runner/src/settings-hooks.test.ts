@@ -43,6 +43,24 @@ describe('Claude Code hook semantics', () => {
     expect(hookOutcome(1, '', 'hook crashed').block).toBe(false);
   });
 
+  it('hands back plain stdout or a JSON additionalContext as context', () => {
+    expect(hookOutcome(0, 'Keep the routing.\n', '')).toEqual({
+      block: false,
+      reason: '',
+      context: 'Keep the routing.',
+    });
+    const json = {
+      hookSpecificOutput: { hookEventName: 'UserPromptSubmit', additionalContext: '<buddy-note>x</buddy-note>' },
+    };
+    expect(hookOutcome(0, JSON.stringify(json), '')).toEqual({
+      block: false,
+      reason: '',
+      context: '<buddy-note>x</buddy-note>',
+    });
+    expect(hookOutcome(0, '{}', '')).toEqual({ block: false, reason: '' });
+    expect(hookOutcome(1, 'crashed half way', '')).toEqual({ block: false, reason: '' });
+  });
+
   it('runs only the hooks whose matcher selects the tool, and skips commands another path runs', async () => {
     const marker = path.join(dir, 'ran');
     const settings: HookSettings = {

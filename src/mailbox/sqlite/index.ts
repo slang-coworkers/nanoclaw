@@ -18,7 +18,9 @@ import {
   getMessageForRetry,
   gcInboundHistory,
   getMostRecentPeerSourceSessionId,
+  getAckedMessageIds,
   getNextDueAt,
+  getPendingTriggerRows,
   getProcessingClaims,
   insertMessage,
   markDelivered,
@@ -199,6 +201,7 @@ export function wrapSqliteInbound(
     gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
     reclaimSpace: () => reclaimFreePages(db, mailboxReclaimOptions()),
     expireOrphanedCliResponses: (cutoffIso) => expireOrphanedCliResponses(db, cutoffIso),
+    getPendingTriggerRows: (opts) => getPendingTriggerRows(db, opts),
     setRouting: (routing) => {
       const record = parseSessionRoutingRecord(routing);
       upsertSessionRouting(db, {
@@ -357,10 +360,18 @@ export function wrapSqliteOutbound(
   source: Database.Database | (() => Database.Database),
   writable: () => Database.Database = () => (typeof source === 'function' ? source() : source),
   nextSequence = () => nextEvenAcross(undefined, writable()),
+  /** The inbound DB: its delivered table holds the platform's id for each delivered post. */
+  inbound?: Database.Database,
   opts: { inboundPath?: string } = {},
 ): OutboundMailbox {
   const readable = () => (typeof source === 'function' ? source() : source);
   let fallbackWarned = false;
+  let deliveredLookup: Database.Statement | undefined;
+  const platformMessageId = (outboundId: string): string | undefined => {
+    deliveredLookup ??= inbound?.prepare('SELECT platform_message_id FROM delivered WHERE message_out_id = ?');
+    const row = deliveredLookup?.get(outboundId) as { platform_message_id: string | null } | undefined;
+    return row?.platform_message_id ?? undefined;
+  };
   return {
     getTerminalProcessingAcks: () =>
       (
@@ -385,6 +396,7 @@ export function wrapSqliteOutbound(
         });
         return { messageId: record.messageId, statusChanged: record.statusChanged };
       }),
+    getAckedMessageIds: (messageIds) => getAckedMessageIds(readable(), messageIds),
     deleteOrphanProcessingClaims: () => deleteOrphanProcessingClaims(writable()),
     getContainerState: () => {
       const row = getContainerState(readable());
@@ -470,20 +482,28 @@ export function wrapSqliteOutbound(
     getOutboundHistory: (limit) =>
       (
         readable()
-          .prepare('SELECT timestamp, kind, content FROM messages_out ORDER BY seq DESC LIMIT ?')
-          .all(limit) as MailboxHistoryMessage[]
-      ).map((row) => ({ ...row, timestamp: sqliteTimestamp(row.timestamp) })),
+          .prepare('SELECT id, timestamp, kind, content FROM messages_out ORDER BY seq DESC LIMIT ?')
+          .all(limit) as Array<MailboxHistoryMessage & { id: string }>
+      ).map(({ id, ...row }) => ({
+        ...row,
+        timestamp: sqliteTimestamp(row.timestamp),
+        platformMessageId: platformMessageId(id),
+      })),
     getTopLevelOutbound: (limit) =>
       (
         readable()
           .prepare(
-            "SELECT timestamp, content FROM messages_out WHERE kind NOT IN ('system','task_log') " +
+            "SELECT id, timestamp, content FROM messages_out WHERE kind NOT IN ('system','task_log') " +
               "AND (channel_type IS NULL OR channel_type != 'agent') " +
               "AND (thread_id IS NULL OR thread_id = '' OR thread_id LIKE '%:') " +
               'ORDER BY seq DESC LIMIT ?',
           )
-          .all(limit) as MailboxTimelineMessage[]
-      ).map((row) => ({ ...row, timestamp: sqliteTimestamp(row.timestamp) })),
+          .all(limit) as Array<MailboxTimelineMessage & { id: string }>
+      ).map(({ id, ...row }) => ({
+        ...row,
+        timestamp: sqliteTimestamp(row.timestamp),
+        platformMessageId: platformMessageId(id),
+      })),
     hasMessagesToOtherAgents: (selfAgentGroupId) =>
       readable()
         .prepare("SELECT 1 FROM messages_out WHERE channel_type = 'agent' AND platform_id != ? LIMIT 1")
@@ -545,7 +565,7 @@ export class SqliteAgentMailbox implements AgentMailbox {
       // two-DB split exists to avoid exactly that cross-mount coupling.
       return await action({
         ...wrapSqliteInbound(inbound, undefined, { outboundPath: sessionMailboxPath(key, 'outbound') }),
-        ...wrapSqliteOutbound(readableOutbound, writableOutbound, undefined, { inboundPath }),
+        ...wrapSqliteOutbound(readableOutbound, writableOutbound, undefined, inbound, { inboundPath }),
       });
     } finally {
       inbound.close();

@@ -51,7 +51,7 @@ vi.mock('./request-wake.js', () => ({
 }));
 
 vi.mock('./session-manager.js', () => ({
-  heartbeatPath: () => '/nonexistent/heartbeat',
+  heartbeatMtimeMs: () => 0,
   openInboundDb: vi.fn(() => {
     order.push('redrive:open-inbound');
     return { close: vi.fn() };
