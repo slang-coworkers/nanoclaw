@@ -38,11 +38,14 @@ import {
 } from '../../db/cost-escalation-episodes.js';
 import {
   aggregateSessionCosts,
+  describeSnapshotFreshness,
   fetchSessionCosts,
   listStoppedSessions,
   rankSessionCosts,
   COST_PERIODS,
+  DEFAULT_DASHBOARD_TIMEOUT_MS,
   type CostPeriod,
+  type CostSnapshotFreshness,
   type GroupCostAggregate,
   type SessionCostListEntry,
   type StoppedSessionView,
@@ -50,9 +53,28 @@ import {
 import { readCostPerCoworker, type CostPerCoworkerResult } from '../cost-per-coworker.js';
 import { readCostHistory, isValidDate, HISTORY_BY, type HistoryBy, type CostHistoryResult } from '../cost-history.js';
 
+/** The `--timeout` arg shared by the verbs that read the dashboard's `/api/sessions`. */
+const DASHBOARD_TIMEOUT_ARG = {
+  name: 'timeout',
+  type: 'number' as const,
+  description: `Seconds to wait for the dashboard (default ${DEFAULT_DASHBOARD_TIMEOUT_MS / 1000}, max 300).`,
+};
+
+/** `--timeout <seconds>` as milliseconds; absent means the default. Rejects anything outside (0, 300]. */
+function parseDashboardTimeoutMs(raw: unknown): number | undefined {
+  if (raw === undefined || raw === null || raw === '') return undefined;
+  const sec = Number(raw);
+  if (!Number.isFinite(sec) || sec <= 0 || sec > 300) {
+    throw new Error('--timeout must be a number of seconds in (0, 300]');
+  }
+  return Math.round(sec * 1000);
+}
+
 /**
- * Cost sources, by verb — the transcript engine (`sessions`) is the COST OF
- * RECORD (matched the Anthropic bill to ~103%). `coworkers` (OneCLI gateway
+ * Cost sources, by verb — the dashboard's per-session engine (`sessions`: each
+ * session's runner cost ledger, its transcripts only when it has no exact
+ * ledger) is the COST OF RECORD (the transcript pricing matched the Anthropic
+ * bill to ~103%). `coworkers` (OneCLI gateway
  * body-usage) and `history` (the #65 per-turn ledger) are ALTERNATE sources with
  * caveats (litellm undercounts streamed today; the ledger is partial pre-2026-08-31)
  * — callers select them explicitly; they are not the default and not hidden.
@@ -401,12 +423,15 @@ registerResource({
         'the append-only HISTORY ledger of every ceiling-trip ever (a resumed or exited session keeps its episode ' +
         "rows but is no longer `stopped`). Use it before reconcile/continue so you don't act on a session that is " +
         'merely idle. Needs the dashboard installed/running (like `sessions`); fails loudly if unreachable, never a ' +
-        'false-empty. Filter: --group <folder>.',
-      args: [{ name: 'group', type: 'string', description: 'Filter to one coworker workspace folder.' }],
+        'false-empty. Filter: --group <folder>; --timeout <seconds> to wait longer for the dashboard (default 30).',
+      args: [
+        { name: 'group', type: 'string', description: 'Filter to one coworker workspace folder.' },
+        DASHBOARD_TIMEOUT_ARG,
+      ],
       examples: ['ncl cost-cap stopped', 'ncl cost-cap stopped --group slang-fixer --json'],
       handler: async (args) => {
         const group = typeof args.group === 'string' && args.group.trim() ? args.group.trim() : undefined;
-        return listStoppedSessions({ group });
+        return listStoppedSessions({ group, timeoutMs: parseDashboardTimeoutMs(args.timeout) });
       },
       formatHuman: (data) => {
         const d = data as {
@@ -499,14 +524,16 @@ registerResource({
       access: 'open',
       description:
         'Per-session cost DISTRIBUTION + percentiles — the surface a coworker needs to compute a per-group ' +
-        'p95 and set a sane ceiling (escalations only shows the tripped tail). Reads the authoritative ' +
-        'transcript-priced per-session cost from the local dashboard `GET /api/sessions` (the same source ' +
-        'ops/metrics collect_cost() reads; requires /add-dashboard installed + running). Default output: ' +
+        'p95 and set a sane ceiling (escalations only shows the tripped tail). Reads the per-session cost ' +
+        "from the local dashboard `GET /api/sessions` (priced from each session's cost ledger, transcripts " +
+        'only for sessions without one; the same source ops/metrics collect_cost() reads; requires ' +
+        '/add-dashboard installed + running) and reports how old that snapshot is. Default output: ' +
         "per-group aggregates {group, sessions, total_usd, p50, p90, p95, max} over each group's cost>0 " +
         'sessions, sorted by total spend. Percentiles use the NEAREST-RANK method (sort asc, index ' +
         'floor(p*(n-1))) — the same method the host uses for cost-thresholds.json p90, so every value is a ' +
         'real observed session cost. Filters: --group <folder>, --period (1d|7d|30d|all, default 30d); ' +
-        '--sessions emits the raw per-session list instead of aggregates.',
+        '--sessions emits the raw per-session list instead of aggregates; --timeout <seconds> waits longer ' +
+        'for the dashboard (default 30).',
       args: [
         { name: 'group', type: 'string', description: 'Filter to one group workspace folder.' },
         { name: 'period', type: 'string', description: 'Day-window: 1d|7d|30d|all (default 30d).', default: '30d' },
@@ -515,6 +542,7 @@ registerResource({
           type: 'boolean',
           description: 'Emit the raw per-session cost list (ranked desc) instead of per-group aggregates.',
         },
+        DASHBOARD_TIMEOUT_ARG,
       ],
       examples: [
         'ncl cost-cap sessions',
@@ -527,16 +555,19 @@ registerResource({
           throw new Error(`--period must be one of: ${COST_PERIODS.join(', ')}`);
         }
         const group = typeof args.group === 'string' && args.group.trim() ? args.group.trim() : undefined;
-        const { sessions, costUnavailable } = await fetchSessionCosts(period);
+        const { sessions, costUnavailable, snapshot } = await fetchSessionCosts(period, {
+          timeoutMs: parseDashboardTimeoutMs(args.timeout),
+        });
         if (args.sessions === true) {
           const list = rankSessionCosts(sessions, { group });
-          return { period, group: group ?? null, costUnavailable, count: list.length, sessions: list };
+          return { period, group: group ?? null, costUnavailable, snapshot, count: list.length, sessions: list };
         }
         const groups = aggregateSessionCosts(sessions, { group });
         return {
           period,
           group: group ?? null,
           costUnavailable,
+          snapshot,
           method: 'nearest-rank (sort asc, index floor(p*(n-1)))',
           groups,
         };
@@ -546,14 +577,18 @@ registerResource({
           period: string;
           group: string | null;
           costUnavailable?: string | null;
+          snapshot?: CostSnapshotFreshness | null;
           method?: string;
           groups?: GroupCostAggregate[];
           count?: number;
           sessions?: SessionCostListEntry[];
         };
         // Surface the dashboard's "pricing absent" reason so a $0/empty result is
-        // never mistaken for "no spend" when it actually means "no cost data".
-        const warn = d.costUnavailable ? `⚠ cost data may be unavailable: ${d.costUnavailable}\n` : '';
+        // never mistaken for "no spend" when it actually means "no cost data",
+        // and say how old the numbers are, so a stale snapshot is never read as live.
+        const warn =
+          `${describeSnapshotFreshness(d.snapshot ?? null)}\n` +
+          (d.costUnavailable ? `⚠ cost data may be unavailable: ${d.costUnavailable}\n` : '');
         if (d.sessions) {
           if (d.sessions.length === 0) return `${warn}No priced sessions in the last ${d.period}.`;
           const lines = [`${warn}${d.count} priced session${d.count === 1 ? '' : 's'} (${d.period}):`];

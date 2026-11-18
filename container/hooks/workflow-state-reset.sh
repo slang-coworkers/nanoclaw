@@ -6,7 +6,8 @@
 # Detection strategy (ordered by reliability):
 # 1. Router envelope (<context> + <message>) — always a new routed task → full reset
 # 2. Workflow invocation (/plan, /implement, or project variants like /slang-implement) → full reset
-# 3. Idle timer (>10min since last activity) → full reset
+# 3. Idle timer (>10min since the task's latest edit or critique round) → full reset,
+#    except for a prompt that carries only host notifications
 # 4. Otherwise — follow-up message within same task → no reset
 set -euo pipefail
 
@@ -55,9 +56,24 @@ fi
 # If no state file exists, create fresh state for the first task
 [ ! -f "$STATE" ] && do_reset
 
-# Signal 3: Idle timer — if no activity for >10min, reset.
-# Prefer last_activity_at (updated by edit-counter.sh) over started_at.
-LAST_ACTIVE=$(jq -r '.last_activity_at // .started_at // empty' "$STATE")
+# A prompt that carries only host notifications (a critique-gate nudge, a saved
+# learning, a container-restart notice) is the host talking about the work in
+# progress, so it never starts a new task. A routed message renders as
+# <message> and a scheduled task as <task>; either one keeps the idle check.
+# The formatter XML-escapes every body, so a literal "<task" inside a
+# notification's text cannot fake either tag.
+# Without this, the gate's own nudge erased the critique round it asked for.
+if grep -q '<system-notification' <<< "$PROMPT" && ! grep -qE '<message|<task' <<< "$PROMPT"; then
+  exit 0
+fi
+
+# Signal 3: Idle timer — a prompt that arrives 10 minutes or more after the
+# task's latest recorded activity starts a new task. Activity is the latest of
+# the task start, an edit (last_edit_at, track-edits.sh) and a critique round
+# (last_critique_at, track-critique.sh). All three use one UTC format, so the
+# lexicographic max is the latest time.
+LAST_ACTIVE=$(jq -r '[.last_activity_at, .last_edit_at, .last_critique_at, .started_at]
+  | map(select(type == "string" and . != "")) | max // empty' "$STATE")
 if [ -n "$LAST_ACTIVE" ]; then
   ACTIVE_EPOCH=$(date -d "$LAST_ACTIVE" +%s 2>/dev/null || echo 0)
   NOW_EPOCH=$(date +%s)

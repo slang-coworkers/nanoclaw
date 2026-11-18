@@ -44,6 +44,7 @@ import { runMigrations, type Migration } from '../../db/migrations/index.js';
 import { migration919 } from '../../db/migrations/919-a2a-session-mode-per-thread.js';
 import { migration920 } from '../../db/migrations/920-a2a-session-sources.js';
 import { createAgentGroup } from '../../db/agent-groups.js';
+import { recordGhThreadOrigin } from '../../db/gh-thread-origin.js';
 import { createSession, getSession } from '../../db/sessions.js';
 import {
   createMessagingGroup,
@@ -630,6 +631,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     // the generic-thread case above, these MUST land in one session so the
     // recipient holds one coherent chain for the issue.
     const tid = 'gh-issue-shader-slang/slang-9999';
+    await recordGhThreadOrigin({ threadId: tid, repo: 'shader-slang/slang', number: 9999, kind: 'issue', author: 'u' });
     await routeAgentMessage(
       { id: 'out-1', platform_id: 'ag-recipient', thread_id: tid, content: JSON.stringify({ text: 'from A' }) },
       senderSession,
@@ -902,6 +904,7 @@ describe('routeAgentMessage — source-session envelope (round-trip)', () => {
     initSessionFolder('ag-other', otherSession.id);
 
     const tid = 'gh-issue-r/repo-88';
+    await recordGhThreadOrigin({ threadId: tid, repo: 'r/repo', number: 88, kind: 'issue', author: 'u' });
     await routeAgentMessage(
       { id: 'out-A', platform_id: 'ag-recipient', thread_id: tid, content: JSON.stringify({ text: 'from sender' }) },
       senderSession,

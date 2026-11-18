@@ -1,0 +1,24 @@
+{
+  "eval-compliance": [
+    "mcp__slang-mcp__discord_read_messages"
+  ],
+  "slang-discord-support": [
+    "mcp__slang-mcp__github_list_issues",
+    "mcp__slang-mcp__github_get_issue",
+    "mcp__slang-mcp__github_search_issues",
+    "mcp__slang-mcp__github_get_discussions",
+    "mcp__slang-mcp__github_get_file_contents",
+    "mcp__slang-mcp__discord_read_messages",
+    "mcp__slang-mcp__discord_send_message",
+    "mcp__deepwiki__ask_question"
+  ],
+  "slang_maintainer": [
+    "mcp__slang-mcp__github_list_issues",
+    "mcp__slang-mcp__github_get_issue",
+    "mcp__slang-mcp__github_search_issues",
+    "mcp__slang-mcp__github_get_discussions",
+    "mcp__slang-mcp__discord_read_messages",
+    "mcp__deepwiki__ask_question",
+    "mcp__slang-mcp__github_get_file_contents"
+  ]
+}

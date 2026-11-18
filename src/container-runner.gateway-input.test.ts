@@ -7,6 +7,7 @@ import fs from 'fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { SupervisedHandle } from './drivers/session-events.js';
+import { installDefaultProvider } from './model-policy.js';
 
 const { prepare } = vi.hoisted(() => ({ prepare: vi.fn() }));
 vi.mock('./config.js', async () => {
@@ -90,11 +91,11 @@ afterEach(async () => {
 });
 
 describe('gateway session input on spawn', () => {
-  it('names the provider a group with no configured provider runs (claude)', async () => {
+  it('names the provider a group with no configured provider runs (the install default)', async () => {
     await createSession(session(null));
     expect(await wakeContainer(session(null))).toBe(true);
     expect(ensure).toHaveBeenCalledWith(
-      expect.objectContaining({ disposition: 'create', provider: 'claude' }),
+      expect.objectContaining({ disposition: 'create', provider: installDefaultProvider() }),
       expect.anything(),
     );
   });

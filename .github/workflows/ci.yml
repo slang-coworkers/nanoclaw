@@ -399,6 +399,11 @@ jobs:
       - name: Cost ledger drift check tests (Python)
         run: python3 -m unittest scripts/test_verify_cost_ledger.py
 
+      # The OpenCode trace page (scripts/opencode-trace-html.py) is the only readable record of an OpenCode
+      # session: the trace index (:8081) and the transcripts archive (:8080) both render it.
+      - name: OpenCode trace page tests (Python)
+        run: python3 -m unittest scripts/test_opencode_trace_html.py
+
       # The hourly practices check (ops/practices-check/) decides which fleet
       # operating faults Grafana alerts on; a regression there does not fail a
       # build, it just stops counting a class of finding.

@@ -2,7 +2,8 @@
  * PreCompact hook script — outputs custom compaction instructions to stdout.
  *
  * Claude Code captures the stdout of PreCompact shell hooks and passes it
- * as `customInstructions` to the compaction prompt. This ensures the
+ * as `customInstructions` to the compaction prompt; the OpenCode hook bridge
+ * adds the same stdout to OpenCode's compaction prompt. This ensures the
  * compaction summary preserves message routing context that the agent needs
  * to correctly address responses, plus any in-flight TodoWrite checklist.
  *
@@ -84,7 +85,17 @@ function formatDestinationNames(names: string[]): string {
   return names.length > 0 ? names.map((name) => `\`${name}\``).join(', ') : '(none)';
 }
 
-if (import.meta.main) {
+/**
+ * Print the compaction instructions for the session this container serves.
+ * The PreCompact hook runs this file as a process of its own, so it registers
+ * the session mailbox through the capability barrel first, as the runner, the
+ * MCP server and `ncl` do at their entry points; the destinations and the task
+ * series are read through that mailbox.
+ */
+export async function runPreCompactHook(write: (text: string) => void = console.log): Promise<void> {
+  await import('./modules/index.js');
   const names = getAllDestinations().map((destination) => destination.name);
-  console.log(buildCompactInstructions(names, getTaskSeriesId()));
+  write(buildCompactInstructions(names, getTaskSeriesId()));
 }
+
+if (import.meta.main) await runPreCompactHook();

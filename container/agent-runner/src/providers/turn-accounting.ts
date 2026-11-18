@@ -44,6 +44,28 @@ export class TurnTokenTally {
 }
 
 /**
+ * Sum per-model token lists into one, by model. Consider an OpenCode turn whose
+ * first attempt ran three steps and then hit a 429, and whose retry finished
+ * the work: the turn's one `usage` event charges both attempts.
+ */
+export function mergeTurnTokens(...lists: TurnModelTokens[][]): TurnModelTokens[] {
+  const tally = new TurnTokenTally();
+  for (const rows of lists) {
+    for (const row of rows) {
+      // `outputTokens` already includes reasoning, as `add` expects of `output`.
+      tally.add(row.model, {
+        input: row.inputTokens,
+        output: row.outputTokens,
+        reasoning: row.reasoningTokens,
+        cacheRead: row.cacheReadTokens,
+        cacheWrite: row.cacheWriteTokens,
+      });
+    }
+  }
+  return tally.rows();
+}
+
+/**
  * Return the `usage` payload of one turn from its per-model totals. The
  * aggregate fields serve the turn log line; the poll loop charges from
  * `turnTokens`. The payload goes out on every turn, empty or not, because the

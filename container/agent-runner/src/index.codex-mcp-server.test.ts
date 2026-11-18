@@ -275,8 +275,21 @@ describe('container/hooks/codex-git-guard/gitconfig (GIT_CONFIG_SYSTEM)', () => 
 describe('codex MCP child env — critic model', () => {
   it('passes the group critic model to the bridge when the host set one', async () => {
     const { buildCodexMcpServer } = await import('./codex-mcp-server.js');
-    const env = buildCodexMcpServer({ HOME: '/home/node', PATH: '/bin', NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3' }).env!;
+    const env = buildCodexMcpServer({
+      HOME: '/home/node',
+      PATH: '/bin',
+      NANOCLAW_CRITIC_MODEL: 'nvidia/moonshotai/kimi-k3',
+    }).env!;
     expect(env.NANOCLAW_CRITIC_MODEL).toBe('nvidia/moonshotai/kimi-k3');
     expect(buildCodexMcpServer({ HOME: '/home/node', PATH: '/bin' }).env!.NANOCLAW_CRITIC_MODEL).toBeUndefined();
+  });
+
+  it('passes the group weights to the bridge, which refuses a caller-chosen model when they are open', async () => {
+    const { buildCodexMcpServer } = await import('./codex-mcp-server.js');
+    expect(
+      buildCodexMcpServer({ HOME: '/home/node', PATH: '/bin', NANOCLAW_MODEL_WEIGHTS: 'open' }).env!
+        .NANOCLAW_MODEL_WEIGHTS,
+    ).toBe('open');
+    expect(buildCodexMcpServer({ HOME: '/home/node', PATH: '/bin' }).env!.NANOCLAW_MODEL_WEIGHTS).toBeUndefined();
   });
 });

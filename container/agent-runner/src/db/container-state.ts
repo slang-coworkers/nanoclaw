@@ -5,6 +5,15 @@ export function setContainerToolInFlight(tool: string, declaredTimeoutMs: number
   getAgentMailbox().operations.setContainerToolInFlight(tool, declaredTimeoutMs);
 }
 
+/**
+ * Return the timeout a tool call declares for itself, in ms, or null. Bash
+ * declares one in `tool_input.timeout`; no other tool does. The host's stuck
+ * check widens its tolerance to a running Bash call's declared timeout.
+ */
+export function declaredToolTimeoutMs(tool: string, toolInput: Record<string, unknown> | undefined): number | null {
+  return tool === 'Bash' && typeof toolInput?.timeout === 'number' ? toolInput.timeout : null;
+}
+
 export function clearContainerToolInFlight(): void {
   getAgentMailbox().operations.clearContainerToolInFlight();
 }

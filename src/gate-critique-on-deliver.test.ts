@@ -36,8 +36,10 @@ function run(payload: object, env: Record<string, string> = {}): RunResult {
       WORKFLOW_STATE_FILE: stateFile,
       EXPLAIN_DIFF_STATE_FILE: explainStateFile,
       // These tests cover the critique logic on its own; the step-aside for a
-      // description gate-pr-description.sh refuses has its own describe block.
+      // description gate-pr-description.sh or gate-github-comment-body.sh
+      // refuses has its own describe block.
       PR_DESCRIPTION_GATE: '0',
+      GITHUB_COMMENT_BODY_GATE: '0',
       ...env,
     },
     encoding: 'utf-8',
@@ -1556,8 +1558,24 @@ describe('description gate step-aside (gate-pr-description.sh refuses the descri
     const file = path.join(tmpRoot, 'ok-desc.md');
     fs.writeFileSync(file, '**Summary.** Short.\n\nFixes #1\n');
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
-    const r = run(createWith(file), { PR_DESCRIPTION_GATE: '1' });
+    const r = run(createWith(file), { PR_DESCRIPTION_GATE: '1', GITHUB_COMMENT_BODY_GATE: '1' });
     expect(r.status).toBe(2);
     expect(r.stderr).toContain('PR creation');
+  });
+
+  it('exits 0 without touching critique state when gate-github-comment-body.sh refuses the body', () => {
+    // `--body "@<path>"` posts the path itself, and a description that opens with
+    // YAML frontmatter shows the block as text: the body gate refuses both.
+    activateOverlay();
+    const memo = path.join(tmpRoot, 'memo.md');
+    fs.writeFileSync(memo, '---\ntype: pr\ntitle: Fix\n---\n\n**Summary.** Short.\n');
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 2 }));
+    for (const command of [`gh pr create --title t --body "@${memo}"`, `gh pr create --title t --body-file ${memo}`]) {
+      const r = run({ tool_name: 'Bash', tool_input: { command } }, { GITHUB_COMMENT_BODY_GATE: '1' });
+      expect(r.status).toBe(0);
+      expect(r.stderr).toBe('');
+    }
+    expect(JSON.parse(fs.readFileSync(stateFile, 'utf-8')).critique_gate_denials).toBe(2);
+    expect(fs.existsSync(path.join(tmpRoot, 'critique-escalation.json'))).toBe(false);
   });
 });

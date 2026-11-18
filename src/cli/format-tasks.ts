@@ -2,7 +2,11 @@
  * Compact aligned-table renderer for `ncl tasks list` (human mode only).
  *
  * A task series is a recurring job; each fire is a run. This surfaces the run history
- * the raw row hides — run count, last/next fire, schedule — as an aligned table.
+ * the raw row hides — run count, how many runs woke the agent, last/next fire,
+ * schedule — as an aligned table. WOKE matters for a series with a pre-task gate:
+ * its PROMPT column shows the text the agent would wake to (often "The … gate woke
+ * you: …"), which reads like an outcome, while most of its runs are gated and never
+ * reach the agent. WOKE says how many actually did.
  * Driven by the enriched rows from listTasks (tasks.ts); the --json path is
  * untouched. `now` is injectable so the relative times are testable.
  */
@@ -11,6 +15,7 @@ interface TaskListRow {
   series_id: string;
   schedule?: string | null;
   runs?: number;
+  gated_runs?: number;
   failed_runs?: number;
   last_run?: string | null;
   next_run?: string | null;
@@ -20,7 +25,18 @@ interface TaskListRow {
   prompt?: string | null;
 }
 
-const COLS = ['SERIES', 'SCHEDULE', 'RUNS', 'FAILED', 'LAST RUN', 'NEXT RUN', 'STATUS', 'AGE', 'PROMPT'] as const;
+const COLS = [
+  'SERIES',
+  'SCHEDULE',
+  'RUNS',
+  'WOKE',
+  'FAILED',
+  'LAST RUN',
+  'NEXT RUN',
+  'STATUS',
+  'AGE',
+  'PROMPT',
+] as const;
 
 function parseMs(iso: string): number {
   return Date.parse(/[Z+]|[+-]\d\d:\d\d$/.test(iso) ? iso : iso + 'Z');
@@ -67,6 +83,7 @@ export function formatTasksTable(rows: TaskListRow[], now: number = Date.now()):
     r.series_id, // full id, copy-pasteable into `ncl tasks get --id <…>`
     r.schedule || 'once',
     String(r.runs ?? 0),
+    String((r.runs ?? 0) - (r.gated_runs ?? 0)),
     String(r.failed_runs ?? 0),
     lastRun(r.last_run, now),
     nextRun(r.next_run, now),

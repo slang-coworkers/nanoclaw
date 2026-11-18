@@ -3,7 +3,7 @@ import path from 'path';
 
 import { describe, expect, it } from 'vitest';
 
-import { EVAL_SANDBOX_GATE_MATCHER } from './container-runner.js';
+import { EVAL_SANDBOX_GATE_MATCHER, GITHUB_COMMENT_BODY_GATE_MATCHER } from './container-runner.js';
 
 // Codex runs hooks only from its managed hook file (container/codex-hooks.toml,
 // installed as /etc/codex/requirements.toml). The Bash gates Claude Code runs as
@@ -55,6 +55,12 @@ describe('Codex managed hooks', () => {
     const wired = entries.filter((e) => e.commands.includes('bash /app/hooks/gate-eval-sandbox.sh'));
     expect(wired).toHaveLength(1);
     expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: EVAL_SANDBOX_GATE_MATCHER });
+  });
+
+  it('runs the GitHub comment-body gate on Bash and the GitHub MCP comment tools, with the matcher Claude groups get', () => {
+    const wired = entries.filter((e) => e.commands.includes('bash /app/hooks/gate-github-comment-body.sh'));
+    expect(wired).toHaveLength(1);
+    expect(wired[0]).toMatchObject({ event: 'PreToolUse', matcher: GITHUB_COMMENT_BODY_GATE_MATCHER });
   });
 
   it('runs the issue-close backstop from the read-only runner mount on Bash, once', () => {
