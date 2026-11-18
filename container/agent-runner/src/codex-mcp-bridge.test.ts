@@ -16,11 +16,16 @@ import {
   codexToolResult,
   configToOverrides,
   criticModel,
+  CANCELLED,
+  criticRetryPolicy,
   handleCodex,
   openWeightsModelError,
   progressReporter,
+  retryableCriticError,
   threadIdNote,
+  withCriticRetry,
 } from './codex-mcp-bridge.js';
+import { ModelRetryBackoff } from './providers/opencode-retry.js';
 
 // The bridge must be a drop-in for codex 0.153.4's `codex mcp-server`: same two
 // tools, same input schema, same result shape (text + structuredContent.threadId),
@@ -57,6 +62,9 @@ beforeAll(async () => {
       CRITIQUE_GATE_ACTIVE: '1',
       CODEX_MODEL: 'openai/openai/gpt-test',
       CODEX_MCP_PROGRESS_INTERVAL_MS: '50',
+      // Short critic retries: 10–20 ms, then doubling, for at most 400 ms.
+      CODEX_MCP_RETRY_BASE_MS: '20',
+      CODEX_MCP_RETRY_BUDGET_MS: '400',
       [CODEX_MCP_BRIDGE_OVERRIDES_ENV]: JSON.stringify(['sandbox_mode=danger-full-access', 'features.hooks=true']),
     },
     stderr: 'pipe',
@@ -391,6 +399,75 @@ describe('codex MCP bridge over stdio', () => {
     expect(added[1].tool_use_id).toBe(added[0].tool_use_id);
   });
 
+  // On 2026-11-17 the endpoint's rate-limit waves failed 255 critiques: codex
+  // retried for seconds, then the bridge gave up and the fixer was blocked at
+  // the critique gate. The bridge now waits and runs the call again.
+  it('retries a rate-limited critique, and records the failure, a new start and the round', async () => {
+    const recorded = (): Array<{ hook_event_name: string; error?: string; tool_use_id?: string }> =>
+      readFileSync(recordFile, 'utf8')
+        .trim()
+        .split('\n')
+        .map((l) => JSON.parse(l));
+    const before = recorded().length;
+    const r = (await client.callTool({
+      name: 'codex',
+      arguments: { prompt: 'STAGE: PLAN_REVIEW RATE_LIMITED_ONCE r1', cwd: binDir },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toBe('VERDICT: approve');
+    const added = recorded().slice(before);
+    expect(added.map((p) => p.hook_event_name)).toEqual([
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUse',
+    ]);
+    expect(added[1].error).toContain('429');
+    expect(added[1].tool_use_id).toBe(added[0].tool_use_id);
+    expect(added[2].tool_use_id).not.toBe(added[0].tool_use_id);
+    expect(added[3].tool_use_id).toBe(added[2].tool_use_id);
+  });
+
+  // A reply whose thread had to be resumed registered the resumed server, and a
+  // failed turn left that dead server registered: the next attempt reused it.
+  it('retries a reply through two rate-limited turns, each on a fresh server', async () => {
+    const first = (await client.callTool({ name: 'codex', arguments: { prompt: 'open a thread', cwd: binDir } })) as {
+      structuredContent?: { threadId: string };
+    };
+    const threadId = first.structuredContent?.threadId;
+    expect(threadId).toBeTruthy();
+    const before = readFileSync(recordFile, 'utf8').trim().split('\n').length;
+    const r = (await client.callTool({
+      name: 'codex-reply',
+      arguments: { threadId, prompt: 'ROUND: 2 RATE_LIMITED_TWICE r3' },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+    expect(r.isError).toBeFalsy();
+    expect(r.content[0].text).toContain('VERDICT: approve');
+    const events = readFileSync(recordFile, 'utf8')
+      .trim()
+      .split('\n')
+      .slice(before)
+      .map((l) => (JSON.parse(l) as { hook_event_name: string }).hook_event_name);
+    expect(events).toEqual([
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUseFailure',
+      'PreToolUse',
+      'PostToolUse',
+    ]);
+  });
+
+  it('gives up when the retry budget runs out, and names the retries', async () => {
+    const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'RATE_LIMITED_ALWAYS', cwd: binDir } })) as {
+      isError?: boolean;
+      content: Array<{ text: string }>;
+    };
+    expect(r.isError).toBe(true);
+    expect(r.content[0].text).toContain('429');
+    expect(r.content[0].text).toMatch(/after \d+ retries\)/);
+  });
+
   it('an interrupted turn is an error result', async () => {
     const r = (await client.callTool({ name: 'codex', arguments: { prompt: 'TURN_INTERRUPTED', cwd: binDir } })) as {
       isError?: boolean;
@@ -448,5 +525,109 @@ describe('progressReporter', () => {
       { progressToken: 7, progress: 3 },
     ]);
     expect(progressReporter(undefined, async () => undefined)).toBeUndefined();
+  });
+});
+
+describe('retryableCriticError', () => {
+  it('retries a rate limit, an overload or a server error, and nothing the caller caused', () => {
+    expect(retryableCriticError('exceeded retry limit, last status: 429 Too Many Requests')).toEqual({
+      statusCode: 429,
+    });
+    expect(retryableCriticError('unexpected status 503 Service Unavailable')).toEqual({});
+    expect(retryableCriticError('stream disconnected before completion')).toEqual({});
+    expect(retryableCriticError('service temporarily unavailable')).toEqual({});
+    expect(retryableCriticError('codex turn timed out after 1800s')).toBeUndefined();
+    expect(retryableCriticError('codex: `prompt` is required')).toBeUndefined();
+    expect(retryableCriticError('unexpected status 403 Forbidden')).toBeUndefined();
+    // Only codex's status counts, not a number elsewhere in the text.
+    expect(retryableCriticError('unexpected status 403 Forbidden: {"detail":"upstream 503"}')).toBeUndefined();
+    expect(retryableCriticError('cannot read /tmp/429/review.md')).toBeUndefined();
+    expect(retryableCriticError('codex app-server exited (code=0) before the turn completed')).toBeUndefined();
+  });
+});
+
+describe('withCriticRetry', () => {
+  const backoff = () => new ModelRetryBackoff({ budgetMs: 200, baseDelayMs: 2 });
+
+  it('runs the call again after a rate limit and returns its answer', async () => {
+    let calls = 0;
+    const waits: number[] = [];
+    const answer = await withCriticRetry(
+      async () => {
+        calls += 1;
+        if (calls < 3) throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+        return 'ok';
+      },
+      { backoff: backoff(), signal: new AbortController().signal, onRetry: async (_e, ms) => void waits.push(ms) },
+    );
+    expect(answer).toBe('ok');
+    expect(calls).toBe(3);
+    expect(waits).toHaveLength(2);
+  });
+
+  it('does not retry an error the caller caused', async () => {
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      throw new Error('codex: `prompt` is required');
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: new AbortController().signal })).rejects.toThrow(
+      '`prompt` is required',
+    );
+    expect(calls).toBe(1);
+  });
+
+  it('ends with CANCELLED, not the critic error, when the client cancels during a call', async () => {
+    const abort = new AbortController();
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      abort.abort();
+      throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(1);
+  });
+
+  it('ends with CANCELLED when the client cancels during the wait', async () => {
+    const abort = new AbortController();
+    let calls = 0;
+    const retries: string[] = [];
+    const run = async (): Promise<string> => {
+      calls += 1;
+      throw new Error('exceeded retry limit, last status: 429 Too Many Requests');
+    };
+    const slow = new ModelRetryBackoff({ budgetMs: 60_000, baseDelayMs: 10_000 });
+    const pending = withCriticRetry(run, {
+      backoff: slow,
+      signal: abort.signal,
+      onRetry: async (e) => {
+        retries.push(e);
+        setTimeout(() => abort.abort(), 5);
+      },
+    });
+    await expect(pending).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(1);
+    expect(retries).toHaveLength(1);
+  });
+
+  it('does not start a call the client already cancelled', async () => {
+    const abort = new AbortController();
+    abort.abort();
+    let calls = 0;
+    const run = async (): Promise<string> => {
+      calls += 1;
+      return 'ok';
+    };
+    await expect(withCriticRetry(run, { backoff: backoff(), signal: abort.signal })).rejects.toThrow(CANCELLED);
+    expect(calls).toBe(0);
+  });
+
+  it('reads its policy from CODEX_MCP_RETRY_*, with the OpenCode defaults', () => {
+    expect(criticRetryPolicy({})).toEqual({ budgetMs: 600_000, baseDelayMs: 30_000 });
+    expect(criticRetryPolicy({ CODEX_MCP_RETRY_BUDGET_MS: '0', CODEX_MCP_RETRY_BASE_MS: '5' })).toEqual({
+      budgetMs: 0,
+      baseDelayMs: 5,
+    });
   });
 });
