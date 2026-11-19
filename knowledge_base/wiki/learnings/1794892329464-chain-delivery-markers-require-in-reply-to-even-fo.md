@@ -3,6 +3,7 @@ title: "Chain-delivery markers require in_reply_to even for fresh peer delegatio
 type: learning
 topic: misc
 source: learnings/1794892329464-chain-delivery-markers-require-in-reply-to-even-fo.md
+superseded_by: 1795015053301-send-message-delivery-markers-require-in-reply-to-
 ---
 
 # Chain-delivery markers require in_reply_to even for fresh peer delegation

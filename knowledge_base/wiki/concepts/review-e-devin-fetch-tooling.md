@@ -3,7 +3,7 @@ title: "Devin/review harness tooling — the false-clean scraper defect family"
 type: concept
 group: review
 tags: [devin, devin-fetch, pr-review, infra-abstain, false-clean, scraper, tooling]
-source_count: 8
+source_count: 9
 ---
 
 ## TL;DR
@@ -185,6 +185,12 @@ The recipe confirmed verbatim once more on #14525 (stale `4e80c4b` → fresh `59
 re-fetch ~10 min later), with one added nuance: the stale page's AI-analysis PROSE can partially
 describe the NEW head, so trust only the commit-status rail, never the prose
 ([Devin stale-analysis refetch confirmed on second push](../learnings/1794926700911-devin-stale-analysis-refetch-confirmed-on-second-p.md)).
+If the SECOND fetch is still stale, mark Reviewer B **skipped-stale** rather than merging old-head
+findings (disposition added on #14536 r2, 2026-11-18): the one re-fetch after the first visit is the
+legitimate trigger-re-analysis wait, not the forbidden transient-failure retry, and the only reliable
+pre-merge check is grepping the `_Commit status: **Analysis is behind the head commit (analysed
+<old>, head <new>)**_` line in `devin-flags.md`
+([devin-fetch can exit 0 with a stale-head analysis — check the commit-status line before merging](../learnings/1794990035054-devin-fetch-can-exit-0-with-a-stale-head-analysis-.md)).
 
 ## Identity, copies, and ownership
 
@@ -249,7 +255,7 @@ self-correction pages ([[wiki/concepts/review-e-self-correction.md]],
 [[wiki/concepts/review-e-self-correction.md]]). The abstain-severity calls the
 scraper feeds into live in [[wiki/concepts/review-e-abstain-calibration.md]].
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [Review-runner recovery: stream.jsonl result-line extraction; Devin stale-first-fetch on new heads](../learnings/1794824483565-review-runner-recovery-stream-jsonl-result-line-ex.md) — new-head fetch harvests stale analysis; re-fetch ~10–12 min later
 - [Devin first-fetch is fresh on a brand-new never-analyzed PR head](../learnings/1794838719892-devin-first-fetch-is-fresh-on-a-brand-new-never-an.md)
 - [Devin fetch on a brand-new PR: one 15-min-capped fetch suffices](../learnings/1794840486940-devin-fetch-on-a-brand-new-pr-one-15-min-capped-fe.md)
@@ -258,3 +264,4 @@ scraper feeds into live in [[wiki/concepts/review-e-abstain-calibration.md]].
 - [dropped-by-A Devin bugs graduate to confirmed bugs next round](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md) — #14539: stale first fetch → fresh flags on second
 - [Devin stale-head refetch; empirical slangc probes](../learnings/1794926376986-slang-pr-r2-review-devin-stale-head-refetch-empiri.md) — #14540: exit-0 fetch still stale; second fetch ~30 min later up to date
 - [Devin stale-analysis refetch confirmed on second push; bug titles are leads not findings](../learnings/1794926700911-devin-stale-analysis-refetch-confirmed-on-second-p.md) — #14525: stale prose can describe the NEW head — trust the commit-status rail, not the prose.
+- [devin-fetch can exit 0 with a stale-head analysis — check the commit-status line before merging](../learnings/1794990035054-devin-fetch-can-exit-0-with-a-stale-head-analysis-.md) — one re-fetch is legitimate; still-stale second fetch ⇒ Reviewer B skipped-stale.

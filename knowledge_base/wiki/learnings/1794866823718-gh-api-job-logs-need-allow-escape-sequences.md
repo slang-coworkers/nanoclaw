@@ -3,6 +3,7 @@ title: "gh api job logs need --allow-escape-sequences"
 type: learning
 topic: misc
 source: learnings/1794866823718-gh-api-job-logs-need-allow-escape-sequences.md
+superseded_by: 1795003539770-gh-api-actions-job-logs-now-requires-allow-escape-
 ---
 
 # gh api job logs need --allow-escape-sequences

@@ -3,7 +3,7 @@ title: "Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and workf
 type: concept
 group: agent-infra
 tags: [critique-gate, delivery-gate, gate-plan, plan-tracker, false-positive, read-only, workflow-state, requirements-anchor, attested-hash]
-source_count: 24
+source_count: 23
 ---
 
 # Gate-hook mechanics: read-only false positives, the plan gate, and workflow-state lifecycle
@@ -54,7 +54,6 @@ source_count: 24
 The critique-gate hook pattern-matches `gh api [^|]*pulls` and `api.github.com.../pulls` on ANY Bash
 command — including read-only GETs, and `curl` against the same URLs — refusing them with "CRITIQUE
 REQUIRED before PR creation" ([burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md),
-[blocks read-only /pulls/ API calls; use alternate read endpoints](../learnings/1794816828733-critique-gate-hook-blocks-read-only-pulls-api-call.md),
 [pulls-read false positive, timeout residue, attested-hash binding](../learnings/1794868189687-critique-gate-mechanics-pulls-read-false-positive-.md)).
 Three such reads (e.g. `gh api repos/shader-slang/slang/pulls/13650` to check a PR's state) each count as a
 "PR creation" denial, hit the 3-denial cap, and open an admin escalation for something that was never a
@@ -80,8 +79,7 @@ not a connect-flow (no `connect_url` in the 401 body). For read-only triage mean
 `curl --noproxy '*'` gives unauthenticated access to public endpoints, but the IP quota is 60/h and burns
 fast: check `/rate_limit` first, cache responses to files, and order reads by scarcity — check-runs and
 check-suites APIs are auth-only (404 unauth) while statuses and `actions/runs` are not
-([harness hooks false-positive; unauth fallbacks](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md),
-[blocks read-only pulls; 401 = infra outage](../learnings/1794816828733-critique-gate-hook-blocks-read-only-pulls-api-call.md)).
+([harness hooks false-positive; unauth fallbacks](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md)).
 
 ## The plan gate and plan-tracker: Write, not Edit
 
@@ -260,11 +258,10 @@ advisory on an attested file is cheaper to decline (attested text is what ships)
 re-review ([re-hash only OUTPUT_REVIEW's set; write deliverables first](../learnings/1794892336879-critique-gate-recording-mechanics-anchored-require.md);
 full re-arm rules on [critique and delivery gates](agent-routing-f0909b2-critique-and-delivery-gates.md)).
 
-**Source learnings (24):**
+**Source learnings (23):**
 
-- [harness hooks false-positive on read-only queries](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md)
+- [harness hooks false-positive on read-only queries](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md) — also carries the 401/GH_TOKEN infra-outage + unauth fallback facts
 - [gate burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)
-- [gate blocks read-only /pulls/ calls; 401=infra outage](../learnings/1794816828733-critique-gate-hook-blocks-read-only-pulls-api-call.md)
 - [plan-tracker wants Write not Edit; re-hash](../learnings/1794855941188-critique-gate-mechanics-plan-tracker-wants-write-n.md)
 - [REQUIREMENTS links must be anchored](../learnings/1794861965038-track-critique-requirements-links-must-be-anchored.md)
 - [pulls-read false positive; counts vs verdicts](../learnings/1794868189687-critique-gate-mechanics-pulls-read-false-positive-.md)

@@ -3,7 +3,7 @@ title: "Agent Routing: Subagent & Fork Control"
 type: concept
 group: agent-routing
 tags: [subagent, fork, recall, auto-route, worktree, collision, read-only, Agent, context-inheriting, isolation]
-source_count: 20
+source_count: 21
 ---
 
 # Agent Routing: Subagent & Fork Control
@@ -87,7 +87,10 @@ This separates two failure classes that need opposite fixes. **Present-but-unfin
 
 Two subagent-control failure modes. A coworker must NEVER end a turn waiting on a **background** subagent's completion notification: a container restart (instruction update, redeploy, image rebuild) tears down the notification, and the coworker waits indefinitely — observed on #11682, where the fixer sat idle 3+ days after "I'll act on the background subagent's completion" until a maintainer pinged. Use a **synchronous blocking Agent** for builds/tests so the result returns in-turn ([fixer stalls forever waiting on a background-subagent completion notification across teardown](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)). And when you add a NEW `SLANG_ASSERT` that can fire during the core-module build, do NOT hand it to an autonomous `general-purpose` subagent — one edited `slang-parser.cpp` to inject debug `fprintf` probes and chased a phantom; the assert firing is *expected signal*, so run the build yourself (or use read-only `Explore` for diagnosis) and read the log deliberately ([build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)).
 
-**Source learnings (20):**
+A third mode: when the Task tool itself refuses ("Subagent depth limit reached (1)", seen in the slang-fixer container 2026-11-18), the workflow's "run the build inside an Agent subagent" step cannot delegate at all — run the long build directly via bash with an explicit large timeout (`timeout: 3600000` ms) and the CLAUDE.md output-suppression pattern (`cmake --build --preset debug >/dev/null 2>&1 || ...`); a full 15–25 min rebuild completes fine that way without holding the turn hostage ([subagent depth limit — run builds directly with extended bash timeout](../learnings/1794995695015-subagent-depth-limit-run-builds-directly-with-exte.md)).
+
+**Source learnings (21):**
+- [subagent depth limit — run builds directly with extended bash timeout](../learnings/1794995695015-subagent-depth-limit-run-builds-directly-with-exte.md) — Task tool can refuse at depth 1; bash with timeout 3600000 ms completes the rebuild.
 - [Don't use context-inheriting fork for narrow recall during active workflow](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
 - [Read-only recall forks must be scoped Explore or explicitly constrained](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
 - [Duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
