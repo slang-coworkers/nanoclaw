@@ -57,7 +57,7 @@ describe('buildContainerImageWindowed', () => {
     expect(fixture.spawnSync).not.toHaveBeenCalled();
   });
 
-  it.each([
+  it.each<[{ exitCode: number; signal?: string; error?: Error }, string, string]>([
     [{ exitCode: 1 }, 'The container image build failed (exit 1).', 'The build output above has the reason.'],
     [{ exitCode: 1, signal: 'SIGKILL' }, 'The container image build was terminated by SIGKILL.', 'killed for memory'],
     [{ exitCode: -2, error: new Error('spawn ENOENT') }, `Couldn't run ${SCRIPT}: spawn ENOENT`, 'executable'],
