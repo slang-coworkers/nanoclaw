@@ -19,8 +19,45 @@ REAL_CLAUDE="${CLAUDE_TRACE_REAL_BIN:-/app/node_modules/@anthropic-ai/claude-age
 
 # Per-session log name if the runner exports one; else claude-trace timestamps it.
 LOG_ARGS=()
+LOG_NAME=""
 if [[ -n "${NANOCLAW_SESSION_ID:-}" ]]; then
-  LOG_ARGS=(--log "session-${NANOCLAW_SESSION_ID}")
+  LOG_NAME="session-${NANOCLAW_SESSION_ID}"
+  LOG_ARGS=(--log "${LOG_NAME}")
+fi
+
+# Tracing is observability, so a trace path the session user cannot write must
+# not fail the agent turn. claude-trace creates <cwd>/.claude-trace/<name>.jsonl
+# at startup, and an EACCES there (for example a folder that a root process
+# created) ends the child before the SDK reads one message. We move such a
+# folder or log file aside so claude-trace starts a fresh one; when the move
+# also fails, we run the real binary without tracing.
+OUT_DIR="${PWD}/.claude-trace"
+STAMP="$(date +%s)"
+UNTRACED_REASON=""
+
+move_aside() {
+  mv "$1" "$1.unwritable-${STAMP}" 2>/dev/null || return 1
+  echo "[claude-trace-wrapper] $1 was not writable; moved it to $1.unwritable-${STAMP}" >&2
+}
+
+out_dir_writable() {
+  mkdir -p "${OUT_DIR}" 2>/dev/null && [[ -w "${OUT_DIR}" && -x "${OUT_DIR}" ]]
+}
+
+if ! out_dir_writable && ! { move_aside "${OUT_DIR}" && out_dir_writable; }; then
+  UNTRACED_REASON="${OUT_DIR} is not writable"
+fi
+if [[ -z "${UNTRACED_REASON}" && -n "${LOG_NAME}" ]]; then
+  for f in "${OUT_DIR}/${LOG_NAME}.jsonl" "${OUT_DIR}/${LOG_NAME}.html"; do
+    if [[ -e "${f}" && ! -w "${f}" ]] && ! move_aside "${f}"; then
+      UNTRACED_REASON="${f} is not writable"
+      break
+    fi
+  done
+fi
+if [[ -n "${UNTRACED_REASON}" ]]; then
+  echo "[claude-trace-wrapper] ${UNTRACED_REASON}; running claude without tracing" >&2
+  exec "${REAL_CLAUDE}" "$@"
 fi
 
 exec node "${TRACE_DIR}/dist/cli.js" \
