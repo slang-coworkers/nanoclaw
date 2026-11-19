@@ -6,15 +6,33 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 874 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 323 |
-| `nv-slang` | slang project spine, skills, workflows | 227 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 136 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 113 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 876 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 324 |
+| `nv-slang` | slang project spine, skills, workflows | 228 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 137 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 114 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-19
+
+### nv-main (2 PRs)
+- **#2469** `Sync nv-main with upstream/main`
+- **#2477** `Keep Claude turns running when the trace folder is not writable`
+
+### nv-dashboard (1 PRs)
+- **#2471** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#2472** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2473** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2474** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-18
 
