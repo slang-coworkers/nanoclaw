@@ -3,7 +3,7 @@ title: "Slang Test — FileCheck Authoring and Opt-Levels"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, FileCheck, slang-llvm, libslang-llvm, CHECK-NOT, vacuous-assertion, ordered-match, spirv-asm, opt-level, goldens, OpSource, g2, gitattributes]
-source_count: 34
+source_count: 35
 ---
 
 # Slang Test — FileCheck Authoring and Opt-Levels
@@ -28,6 +28,7 @@ How slang-test runs FileCheck, its region and vacuity traps, goldens, and harnes
 - **SPIR-V debug tests:** without `[shader("compute")]`/`-entry`/`-stage` there is NO entry point; match `OpSource {{Slang|Unknown}} 1`; at `-g2` source is an `OpString`, so anchor `{{^}}`; byte-offset fixtures need `text eol=lf`.
 - **Try a crafted minimal reproducer before calling a sanitizer witness un-addable**; if a test would stay green when "the compile fails," add a status assertion.
 - **Textual-emitter miscompiles show at runtime only with `-vk -emit-spirv-via-glsl`**; pair with per-target text FileChecks.
+- **Plain `//TEST:SIMPLE:` asserts EMPTY stdout AND stderr** — binary-target clean-compile pins want `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK,exit-code=0):` (no `-o` residue); an empty kernel body proves nothing (DCE strips every parameter use); `__intrinsic_asm` can never reach the LLVM module verifier (E99997 hard-assert first).
 
 ## Where FileCheck comes from, and proving it ran
 
@@ -48,6 +49,10 @@ Hand-verify with an **ordered matcher** (each CHECK at or after the previous mat
 slang-test **front-inserts `-O0`** (`kTestOptimizationOption` in `slang-test-optimization-options.h`) into any directive without an explicit `-OX`, so a fold-dependent CHECK needs `-O1` (manual `slangc` optimizes by default). `SLANG_RUN_SPIRV_VALIDATION=1` validates **pre-optimization** SPIR-V, so optimizer defects pass; assert on `-target spirv-asm` with a `{{$}}` anchor telling correct-3 from buggy-4 operands ([-O0; pre-opt validation](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)). A suite-wide override adds `defaultOptimizationLevel` to `Options`, threads it into `addDefaultSlangOptimization`/`addDefaultRenderTestSlangOptimization`, and passes `context->options.defaultOptimizationLevel` (`TestContext::options` is public); `-O0` is the sole spirv-opt early-out, so "max SpvOpt" means `-O3` ([override via context->options](../learnings/1784440518963-slang-test-suite-wide-opt-level-override-plumb-via.md)).
 
 **render-test compiles with debug info ON**: unless a row passes `-g0`, every target gets `DebugInformation = STANDARD` (`tools/render-test/options.h:89` defaults `generateSPIRVDirectly=true`; `slang-support.cpp:273-282`; `options.cpp:293`). `DebugLine`/`DebugScope` block passes such as store-to-load forwarding (default case of `canInstHaveSideEffectAtAddress`), so a COMPARE_COMPUTE_EX row can fail where `slangc` without `-g` is correct: on PR #13883 the `-wgpu` row failed Tint uniformity on Windows CI only, since Linux reports wgpu rows `ignored` (`SLANG_EXCLUDE_DAWN=ON`; [false greens](slang-test-false-greens-and-verification-traps.md)). Reproduce with `slangc -g2`; fix the row with `-g0` (precedent: `tests/autodiff/reverse-checkpoint-4.slang`) ([debug info ON](../learnings/1792768846741-slang-test-compare-compute-rows-compile-with-debug.md)).
+
+## Directive shape: SIMPLE asserts empty output; what a kernel body must contain
+
+**Plain `//TEST:SIMPLE:` asserts EMPTY stdout AND stderr.** Binary-output targets (host-object-code) dump an ELF hexdump to stdout when no `-o` is given, and `-o out.o` writes untracked residue into the test's source dir (`.o` is not in `.gitignore`, unlike `*.spv`); a `main`-named entry point on the downstream C++ host-callable path also emits E40100 "renamed to main_0" on stderr — name the entry `computeMain` in tests on that path. For clean-compile pins of binary targets use `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK,exit-code=0):` (compares diagnostics only, leaves no files; pattern: `tests/diagnostics/aliased-out-inout-parameter.slang`). Note `-o` on host-callable artifacts separately triggers pre-existing E00098 "cannot access as a blob", independent of module validity — don't conflate it with an LLVM module problem. An EMPTY kernel body lets DCE strip every parameter use, so a FileCheck test declaring `SV_DispatchThreadID` + a cbuffer but with only `if (tid.x == 0) {}` proves nothing about parameter classes: give the body a real store (`outputBuffer[dispatchThreadID.x] = g_scale;`) and pin a GEP through the context pointer (`getelementptr i8, ptr %globalParams` — with `-whole-program` the cbuffer lands in `globalParams` and GEPs are byte-wise `i8`, not `%struct`-typed). And `__intrinsic_asm` can never exercise the LLVM module verifier from a test: the inline-IR ingestion path hard-asserts (E99997, builder-side parse+verify) on any verifier-invalid IR, in old AND new slang-llvm builders, before `finalize()`'s `verifyModule` runs — a fail-on-verifier regression test needs a different injection vector ([slang test directives: SIMPLE asserts empty stdout/stderr; binary-target pins want DIAGNOSTIC_TEST; E00098 is -o-only; DCE strips empty-body params](../learnings/1794997025565-slang-test-directives-simple-asserts-empty-stdout-.md)).
 
 ## SPIR-V debug-test authoring traps (PR #12202/#12204/#12206)
 
@@ -105,7 +110,8 @@ For a GLSL/HLSL text-emitter bug, `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK
 - **"Whole-file negatives need a top anchor"** — superseded by the lone-prefix negative.
 - **"Agent containers have no GPU"** (2026-09-28 passthrough outage) — historical; containers have an L40S again.
 
-**Source learnings (34):**
+**Source learnings (35):**
+- [SIMPLE asserts empty stdout/stderr; DIAGNOSTIC_TEST pins binary targets; E00098 is -o-only; DCE strips empty-body params](../learnings/1794997025565-slang-test-directives-simple-asserts-empty-stdout-.md) — `__intrinsic_asm` hard-asserts before the verifier; entry points named `main` emit E40100
 - [type-only OpIMul/OpIAdd DAG pins match unrelated setup ops (#14452)](../learnings/1794382846418-filecheck-type-only-opimul-opiadd-dag-pins-can-be-.md) — capture the multiply, pin the consuming add, `{{ }}` fence
 - [CHECK-NOT is bounded by surrounding positive CHECKs](../learnings/1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi.md)
 - [a `CHECK-NOT` can be vacuous because DCE removed its subject (#12116)](../learnings/1785754047907-a-filecheck-check-not-can-be-vacuous-because-dce-r.md)

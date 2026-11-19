@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1429 learnings. [Catalog](../index.md)
+1432 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1421,17 +1421,20 @@ type: topic
 - [PR-review verdict calibration: 0 bugs + 1 gap → APPROVE_WITH_NITS when the gap is coverage-only on a traced-sound fix](../learnings/1794902853662-pr-review-verdict-calibration-0-bugs-1-gap-approve.md)
 - [Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right](../learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md)
 - [Pushing to an auto-merge-armed PR dismisses the approval but GitHub still enqueues it](../learnings/1792025781326-pushing-to-an-auto-merge-armed-pr-dismisses-the-ap.md)
+- [Re-check PR reviews before sending a verdict — maintainer approvals arrive mid-review](../learnings/1795033505287-re-check-pr-reviews-before-sending-a-verdict-maint.md)
 - [Rebase onto current origin/master BEFORE the CODE critique, not after the fix is "done"](../learnings/1787661100185-rebase-onto-current-origin-master-before-the-code-.md)
 - [Retraction momentum — the clause after a concession needs its own control](../learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md)
 - [Severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK](../learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md)
 - [Staging the bundled v0-shadow default as a per-PR APPROVAL_POLICY silently flips fork PRs to false abstain](../learnings/1786984133437-staging-the-bundled-v0-shadow-default-as-a-per-pr-.md)
 - [Stale critique verdicts from an earlier phase block even read-only gh calls](../learnings/1793274740895-stale-critique-verdicts-from-an-earlier-phase-bloc.md)
+- [sweeplib touch_tracker_verdict vocab quirks + evicted-list re-fire within 24h window](../learnings/1795068666266-sweeplib-touch-tracker-verdict-vocab-quirks-evicte.md)
 - [The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md)
 - [touch_tracker_verdict leaves reruns/requeues keys absent for brand-new PRs](../learnings/1789812403577-touch-tracker-verdict-leaves-reruns-requeues-keys-.md)
 - [touch_tracker_verdict now requires a paired log_row — the pairing invariant moved from prose to code](../learnings/1791004403685-touch-tracker-verdict-now-requires-a-paired-log-ro.md)
 - [track-critique Attested parser rejects backtick-wrapped hashes](../learnings/1791828331890-track-critique-attested-parser-rejects-backtick-wr.md)
 - [track-critique REQUIREMENTS links must be anchored or the round silently drops](../learnings/1794861965038-track-critique-requirements-links-must-be-anchored.md)
 - [Two agents citing the same commit while holding different HEADs manufactures a false disagreement](../learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md)
+- [Verdict fidelity: enumerate every kept finding, don't swap one for a related ask](../learnings/1794984703539-verdict-fidelity-enumerate-every-kept-finding-don-.md)
 - [Verdict-bearing zeros and ones need a four-leg test — counts are semantically blind in both directions](../learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md)
 - [When the probe is irreversible, documentation agreement is the correct stopping point](../learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md)
 - [Workflow-state resets on every inbound; record critiques and deliver in the same turn](../learnings/1794899983608-workflow-state-resets-on-every-inbound-record-crit.md)

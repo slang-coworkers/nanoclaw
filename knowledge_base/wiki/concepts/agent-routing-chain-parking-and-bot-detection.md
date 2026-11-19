@@ -3,7 +3,7 @@ title: "Agent Routing: Chain Parking and Bot Detection"
 type: concept
 group: agent-routing
 tags: [github, webhook, chain-parking, watchers, draft-pr, bot-detection, CI, silence-fallback]
-source_count: 24
+source_count: 25
 ---
 
 # Agent Routing: Chain Parking and Bot Detection
@@ -26,6 +26,7 @@ Why a chain parked on an external party has no observer, the silence fallback it
 - **On a draft PR, `statusCheckRollup` and `commits/<sha>/check-runs` differ:** a `workflow_dispatch` matrix appears only in `check-runs`, so cite the run id and `check-runs` as coverage evidence.
 - **A closed-set allowlist is the wrong shape for bot detection.** Use `__typename == Bot` or per-comment `is_bot` (allowlist only as fallback, suffix-matching the un-normalized login); a derived authoritative boolean makes an upstream bug uncorrectable downstream.
 - **An `issue_opened` webhook authored by our own bot is usually our own in-flight chain;** find and consolidate on it before dispatching a fresh triage — and a bot-authored body that already carries verification results is the chain's TERMINAL filing, so a triage dispatch on it is an echo misroute.
+- **A draft handoff bundle handed to the orchestrator gets filed by nv-slang-bot within ~24h** — before retiring a draft, verify exact title + body via the issue API (not titles alone), keep the bundle file as source of record, and track comment-type drafts separately.
 
 ## Parking a Chain on an External Party Needs a Silence Date and a Terminal Act
 
@@ -63,7 +64,9 @@ to its filing state. Check the filer before running the workflow: a triage dispa
 bot-authored verified filing is a likely echo misroute
 ([echo misroute: triage dispatch on own bot-authored filing](../learnings/1794923405157-echo-misroute-triage-dispatch-on-own-bot-authored-.md)).
 
-**Source learnings (24):**
+**Draft-handoff bundles get filed by nv-slang-bot within ~24h — verify bodies before retiring drafts.** Handing the orchestrator a bundle of ready-to-paste issue drafts works as a round-trip: on 2026-11-17/18 all 6 drafts (08/11/12/14/15/16 → slang #14541–#14546) were filed within 24 h, same-minute timestamps, bodies verbatim from the bundle with fresh top-of-tree repro notes appended. Before retiring a draft: match exact title AND body text via the issue API (REST/MCP), never titles alone; preserve the full-text bundle file (e.g. `reports/draft-handoff-<date>.md`) as the source of record before deleting the individual draft files; and track comment-type drafts ("post this comment on issue #N") separately — an issue filing does not complete them ([draft handoff bundles get filed by nv-slang-bot within ~24h](../learnings/1794990033075-draft-handoff-bundles-get-filed-by-nv-slang-bot-wi.md)).
+
+**Source learnings (25):**
 
 - [#11545 ByteAddressBuffer alignment cluster ownership flipped](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md) — absolute date + named terminal act, written where the chain is read.
@@ -74,6 +77,7 @@ bot-authored verified filing is a likely echo misroute
 - [a closed-set allowlist is the wrong shape for bot detection — use __typename==Bot / per-comment is_bot; a derived boolean discards correctable evidence](../learnings/1786280996629-a-closed-set-allowlist-is-the-wrong-shape-for-bot-.md)
 - [issue_opened webhook by nv-slang-bot[bot] is often our own in-flight chain — check before dispatching](../learnings/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md) — consolidate on the running chain.
 - [echo misroute: triage dispatch on own bot-authored filing](../learnings/1794923405157-echo-misroute-triage-dispatch-on-own-bot-authored-.md) — a verified bot-authored body is Terminal work, not triage input.
+- [draft handoff bundles get filed by nv-slang-bot within ~24h](../learnings/1794990033075-draft-handoff-bundles-get-filed-by-nv-slang-bot-wi.md) — verify exact title + body before retiring drafts; bundle file is the source of record.
 - [a coworker's "will report when it opens" ack is not a timer; arm a GitHub-checking re-chase task; verify recalled PR numbers.](../learnings/1790627350003-a-coworker-s-will-report-when-the-pr-opens-ack-is-.md)
 - [CI-green webhook doesn't always arrive: when a step waits on CI, schedule a one-shot re-check instead of relying on the webhook](../learnings/1792483997051-ci-green-webhook-doesn-t-always-arrive-when-a-step.md) — rider: count pytest XFAILs from `[gwN]` lines only.
 - [when a blocker is disproved in one thread, wake every session parked on it with a pinned GO; every park needs a timer.](../learnings/1790637455225-an-unblock-proven-in-one-thread-must-be-pushed-to-.md)

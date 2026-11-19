@@ -3,7 +3,7 @@ title: "slang-test GPU lanes on the shared L40S: run suites serially, orphaned t
 type: concept
 group: slang-grab-bag
 tags: [slang-test, gpu, l40s, nvidia, vulkan, cuda, vk, test-server, server-count, concurrency, oversubscription, d-state, vram, nvidia-smi, ignored, groupshared, race, barrier, also-fails-on-master, push-constant, validation-layer, render-test, reflection, hlsl-emitter, dx12-lane, signed-zero, inf-nan, slang]
-source_count: 27
+source_count: 28
 ---
 
 # slang-test GPU lanes on the shared L40S: run suites serially, orphaned test-servers, "ignored" that is contention, and what the GPU confirms
@@ -31,6 +31,7 @@ Every coworker container shares one NVIDIA L40S (46 GB). Since passthrough retur
 - **Rebuild `render-test` before a push-constant repro**: a binary from before slang-rhi#848 aborts with `Unsupported binding type: 14`.
 - **Reflection cannot place push constants for a global push-constant block plus entry-point uniforms**: the PUSH_CONSTANT_BUFFER index is a program-wide counter with no byte meaning, and `isParameterLocationUsed` says every index is unused (#5685).
 - **A render-test SIGSEGV gets a backtrace in-process:** `LD_PRELOAD` a SIGSEGV `backtrace()` shim and run slang-test without `-use-test-server`; the frames name the layer (driver, render-test, slang-rhi, emit). Crash repros use your own test server, never a shared one.
+- **A `VUID-…-viewType-07752` in render-test is usually a TEST_INPUT shape misclassification** (`isArray = arrayLength > 1`, so a 1-layer array texture becomes a non-array view), not bad SPIR-V: grep `OpTypeImage` first, and remember a passing dx12 leg proves nothing. A bare container can't fire VUIDs at all — verify statically and note the limitation.
 
 ## Concurrency on one GPU: the failure shapes
 
@@ -77,6 +78,8 @@ Other containers' memory turns CUDA rows `ignored` rather than red: on 2026-10-2
 
 With validation errors render-test fails the test [runtime pass is not evidence](../learnings/1793289426474-a-vulkan-runtime-pass-on-nvidia-without-validation.md); render-test is a module slang-test loads (no binary in `build/Release/bin`) [green render-test can be UB](../learnings/1793294735619-a-green-vulkan-render-test-run-can-be-undefined-be.md). Even without a layer, `-vk` runs can dump core at teardown with a correct result (#14061, passing fp32 control), so check the `-o` file before reading a crash as a failure [fp64 GLSL.std.450 ops](../learnings/1793312363687-slang-spir-v-fp64-math-which-glsl-std-450-ops-are-.md).
 
+**A `VUID-vkCmdDispatch-viewType-07752` in render-test is usually a TEST_INPUT shape misclassification, not an emitter bug.** `ShaderRendererUtil::generateTexture` (`tools/render-test/shader-renderer-util.cpp:78`) uses `isArray = arrayLength > 1`, so an array resource with exactly 1 layer (notably `TextureCube(arrayLength=1)` bound to `TextureCubeArray`, slang#14593) is created as the non-array type, and slang-rhi then makes a cube view while the shader's `OpTypeImage` correctly says Arrayed=1 on both the direct and `-emit-spirv-via-glsl` paths. Discriminators: if the SPIR-V side is correct (grep `OpTypeImage` in `-target spirv-asm` output), look at render-test's view creation, not the emitters; a passing dx12 leg proves nothing (the D3D12 debug layer doesn't cross-validate SRV dimension vs shader-declared type at dispatch); #4797 was the same VUID closed "fix-unknown" in 2025, so check whether a new 07752 case is the arrayLength=1 misclassification before assuming validation-layer skew. A bare triager container has only MESA/INTEL layers, so a VUID-class repro cannot fire locally — don't apply `reproduced`; verify the SPIR-V side with spirv-asm greps, code-trace the viewType mapping, note the limitation in the issue comment, and install one of the layers above when a live VUID fire is genuinely required [VUID 07752 = TEST_INPUT misclassification](../learnings/1795014946638-vuid-07752-in-render-test-test-input-shape-misclas.md).
+
 ## Vulkan push-constant repros: a fresh render-test and what reflection cannot tell the host
 
 For a SlangPy module-scope `[[vk::push_constant]]` block on Vulkan (slangpy#1232; slang#13713, slang-rhi#915), a render-test built before slang-rhi#848 aborts with `Assertion failed: Unsupported binding type: 14` (`vk-shader-object.cpp`). Rebuild with `cmake --build --preset debug --target render-test slang-test` (not `render-test-tool`); `//TEST_INPUT:set push.a = {...}` binds a global block by name ([push-constant repro](../learnings/1792167218740-vulkan-push-constant-gpu-repro-rebuild-render-test.md)).
@@ -99,7 +102,7 @@ For a SlangPy module-scope `[[vk::push_constant]]` block on Vulkan (slangpy#1232
 
 **A cross-group visibility repro needs a primed re-read, not a spin on a coherent load.** `Coherent` is not `volatile`, so the NVIDIA Vulkan driver and NVCC hoist a non-atomic spin and it hangs everywhere. Shape: group 1 reads `shared[0]` once (into L1), polls `InterlockedAdd(flag, 0)`, re-reads; group 0 delays ~200k atomic adds, writes `shared[0] = 42`, `DeviceMemoryBarrier()`, `InterlockedExchange` on the flag. On the L40S (6815ed82d) vk with `globallycoherent` gives `0 42`, without `0 0`, CUDA `0 0` because it drops the qualifier (slang#14140). It lacks a reader acquire (codex's objection), so present it as an illustration backed by a PTX/CUDA diff with and without the qualifier. An `Atomic<T>.load(Acquire)` spin really hangs on CUDA (hoisted `bra.uni` self-loop): run under `timeout -s KILL` from a private root (`mkdir root/tests`; slang-test accepts only `tests/` files). render-test is a library; use `-compute-dispatch 2,1,1` on the test line for multiple groups ([Coherent is not volatile](../learnings/1793545531703-gpu-repro-of-cross-group-visibility-bugs-coherent-.md)).
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [cross-group visibility: Coherent is not volatile; primed re-read](../learnings/1793545531703-gpu-repro-of-cross-group-visibility-bugs-coherent-.md) — CUDA drops `globallycoherent` (slang#14140); private `tests/` root.
 - [run GPU slang-test jobs serially (D state, 'ignored')](../learnings/1792140793972-run-gpu-slang-test-jobs-serially-concurrent-vk-cud.md) — `ps -o stat,wchan`; serial 2/2 in ~100 s.
 - [don't run two GPU suites concurrently on one L40S](../learnings/1792140794509-don-t-run-two-gpu-slang-test-suites-concurrently-o.md) — `CUDA_ERROR_LAUNCH_FAILED`; serial 68/68; #13659 3/3.
@@ -127,5 +130,6 @@ For a SlangPy module-scope `[[vk::push_constant]]` block on Vulkan (slangpy#1232
 - [Get a backtrace for a slang-test/test-server SIGSEGV without gdb: LD_PRELOAD a backtrace() handler](../learnings/1793657696451-get-a-backtrace-for-a-slang-test-test-server-sigse.md) — run in-process (no `-use-test-server`); #14208 NVIDIA driver crash in `createComputePipeline2`; never a shared server
 - [A vk/SPIR-V lane does not verify an HLSL/DXC emitter change](../learnings/1794223117457-a-vk-spir-v-lane-does-not-verify-an-hlsl-dxc-emitt.md) — `-vk` never runs slang-emit-hlsl.cpp or DXC; use `-dx12`/`-dx11` (Windows CI) or static HLSL/DXIL CHECKs; name the lane's path (#14416)
 - [DXC types 0L as uint; Vulkan on L40S drops inf/NaN/-0 through arithmetic](../learnings/1794222996261-dxc-types-0l-as-uint-vulkan-on-l40s-drops-inf-nan-.md) — no `SignedZeroInfNanPreserve`; `inf * one` store vanished, `-0.0f * one` stored +0; cross-check on `-cpu` (DXC half on the DXC page)
+- [VUID 07752 in render-test = TEST_INPUT shape misclassification, not an emitter bug](../learnings/1795014946638-vuid-07752-in-render-test-test-input-shape-misclas.md) — `arrayLength > 1` threshold; #14593; dx12 leg proves nothing; no local VUID fire without a Khronos layer.
 
 _Catalog: [[wiki/index.md]]_

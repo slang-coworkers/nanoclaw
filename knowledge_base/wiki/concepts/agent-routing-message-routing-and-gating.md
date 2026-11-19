@@ -3,7 +3,7 @@ title: "Agent Routing: Message Routing & Gating"
 type: concept
 group: agent-routing
 tags: [routing, chain, dispatch, in_reply_to, a2a, orchestrator, triage, fixer, provenance, echo-loop, credit]
-source_count: 54
+source_count: 55
 ---
 
 # Agent Routing: Message Routing & Gating
@@ -88,13 +88,16 @@ Run codex OUTPUT_REVIEW before posting (on PR #12479 it caught a code bug and 3 
 
 A Discord summon row is stamped at click time, so an un-clicked "Click below for a bot answer" offer isn't a summon; compare the `summon_requests.jsonl` row's write time to the offer `message_id`'s snowflake time; answering an un-clicked offer in a reply-forbidden channel breaks the rules ([summon rows stamped at click time](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)).
 
+A dispatch citing a Discord "thread id" may actually cite a MESSAGE id — verify before assuming a thread exists: `discord_read_messages(channel_id=...)` 404s ("Unknown Channel") on a message id, but the OP message is fetchable from the channel's messages endpoint, meaning the whole conversation lives directly in the channel (seen 2026-11-18 on a "#slang-discussion thread 1564421436276219965" dispatch; snowflake decode `(id >> 22)/1000 + 1420070400` sanity-checks the post date). Same session verified: `discord_send_message`'s allowlist covers the watched forums only — #slang-discussion is a read-only source channel — and when a parent dispatches a reply outside the allowlist, do NOT bypass via raw curl (the OneCLI proxy would inject the credential and the post would go through — that is exactly why the allowlist must be respected deliberately): finalize the draft, save it to `memory/drafts/<id>.md`, hand it to the parent with exact posting instructions (target channel, reply-to message id, mention user id, AI-disclosure footer), and update `pending-questions.md` so heartbeats don't re-draft it ([Discord "thread ids" may be message ids; send allowlist = watched forums only](../learnings/1794990427587-discord-thread-ids-in-dispatches-may-be-message-id.md)).
+
 ## Contradictions / Supersessions
 
 - **False:** "`Explore` subagents have no write surface" — `Bash` is retained ([auto-loaded rule](../learnings/1785805120902-having-a-rule-auto-loaded-is-not-executing-it-read.md)). **Retracted:** "`ncl sessions messages --full` makes a payload provable" — emission facts only ([retraction momentum](../learnings/1785788144509-retraction-momentum-i-over-claimed-inside-the-mess.md)); "no triager→slang-fixer edge" — the edge works ([retraction](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)).
 - **Superseded:** "`[Report]` needs `in_reply_to`" ([fresh delegations](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)) — `[Report]` is ungated ([one-shot re-check](../learnings/1793026958053-one-shot-re-check-final-reports-use-report-not-tri.md)); "a one-shot run has no inbound" — the `kind='task'` row is one ([task row](../learnings/1793199763353-one-shot-task-sessions-in-reply-to-the-task-row-to.md)).
 - CI-verdict currency, critique-gate trips, worktree GC, budget caps and holds: [Holds, Authorization, Gates & CI Currency](agent-routing-holds-authorization-gates.md).
 
-**Source learnings (54):**
+**Source learnings (55):**
+- [Discord "thread ids" may be message ids; send allowlist = watched forums only](../learnings/1794990427587-discord-thread-ids-in-dispatches-may-be-message-id.md) — verify before assuming a thread; never bypass the send allowlist via curl.
 - [operator-gated vs mention-authorized replies](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)
 - [bare send refused on a cron session (677 unresponded)](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
 - [Discord summon rows stamped at click time](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)

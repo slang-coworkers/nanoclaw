@@ -3,7 +3,7 @@ title: "Working Live PRs Alongside Maintainers and Sibling Bots"
 type: concept
 group: review-process
 tags: [maintainer, live-pr, supersede, test-header-comments, scope-directive, concurrent-edit, design-divergence, peer-bot-session, pr-body-edit, coupled-pr, github-write-discipline]
-source_count: 30
+source_count: 32
 ---
 
 # Working Live PRs Alongside Maintainers and Sibling Bots
@@ -25,6 +25,7 @@ source_count: 30
 - **Your push dismisses a maintainer's APPROVED review** (fix or conflict-resolution push alike). Check `reviewDecision`/`review_dismissed` at head before reporting "approved"; batch fixes into one push.
 - Regression-test headers state the guarded invariant in a sentence or two; bug history goes in the commit message and PR body.
 - A docs PR from a question issue adds only the facts the whole page lacks (often one sentence, or a proposal on the issue); a summary of later sections is closed as redundant even after every review passed.
+- **A bare "this is a driver bug / known problem" maintainer comment is a blame hypothesis, not a ruling.** Check their classification tells (jkwak-work attaches the `Vendor Driver Bug` label within minutes when he means it — #14415 vs #14493), any assignee/close action, and whether compiler-side mechanism evidence contradicts it; where the fix helps under either blame reading, keep the chain alive but watch-only.
 - slang-rhi maintainer takeovers show preferences: explicit ownership over a double-duty field; existing Vulkan GPU tests over a GPU-free internal-function test. A reviewer's "out of scope" is not the maintainer agreeing.
 - Byte-exact PR-body edits: regenerate from `gh api …/pulls/N` JSON `.body`, not `--jq .body` (trailing newline).
 - A producer-side fix breaks the coupled emit-PR's test and comments: rebuild and run the coupled tests after a "clean" merge.
@@ -46,6 +47,10 @@ An unimplemented maintainer requirement stays a merge blocker until the maintain
 **The live check is a check at a moment**, and a review takes 60–100 min. On #13975 the reviewer recorded "Maintainer direction: none" at ~17:15Z; at 17:38Z jhelferty-nv commented "Per @tangent-vector, we should understand what the long term language design is for this first", parking the PR on a design gate, yet the ~18:00Z verdict still said "none". Re-run `gh issue view <n> --json comments` and `gh pr view <n> --json comments,reviews` right before sending the `[Review Verdict]`, and report any new human MEMBER comment with its timestamp ([re-check maintainer direction right before sending a verdict](../learnings/1793210524900-re-check-maintainer-direction-right-before-sending.md)).
 
 **For the implementer**, the draft follows the maintainer's literal requirement; a coworker-introduced invariant is design input. On slang#13300 jkwak-work wrote: "When it is set to "202c", we will follow the new behavior of DXC that rounds up the size to its alignment." The fixer kept ByteAddressBuffer `Load<T>`/`Store<T>` on natural layout under 202c to stay consistent with `sizeof` — a bot-only invariant; a real DXC run showed DXC *does* round BAB, and codex OUTPUT_REVIEW refused the PR body. Shrink each exception to what is technically forced (here only `sizeof`/`alignof`) and pose it as an open question with a failure example ([default the draft to the maintainer's literal requirement](../learnings/1790759674818-when-a-coworker-introduced-technical-invariant-con.md)). The codex-critique mechanics (R<n> requirement quotes graded at OUTPUT_REVIEW) are in [Critique Gate and Decision Recording](../concepts/review-critique-gate-and-recording.md).
+
+## A Bare "Driver Bug" Comment Is Not a Ruling — the Label Is the Tell
+
+On slang#14493 (11-2026) jkwak-work commented "This is a known problem and we think that it is a driver side bug" on an issue where our chain had a bisected, OpPhi-verified compiler-side fix in review; the chain did not stand down. The tell: in #14415 his real driver-bug rulings always added the `Vendor Driver Bug` label within minutes, and here there was no label, no assignee change, no close request — so the triager read it as blame disagreement/conflation, most likely with #14415. Three days of events confirmed the read: kaizhangNV (routed assignee) invested a redesign directly on our PR branch, jkwak-work APPROVED the compiler fix (review 5944160849), and it merged (PR #14502). Rules: a bare "driver bug / known problem" comment is a data point about blame, not a classification — before treating it as a stand-down signal, check the maintainer's own classification tells (labels they attach when they really mean it), any assignee/close-request change, and whether the comment conflicts with already-verified mechanism evidence (an OpPhi/liveness delta measured in spirv-dis text is driver-independent regardless of who pays for it at runtime). Where the compiler-side fix helps under either blame reading, say so in the record and keep the chain alive but watch-only; run the assessment through the issue-side owner (triager) with the comment relayed verbatim, and don't block on operator input for non-blocking judgment calls — the maintainer's own takeover can moot the ask before the operator answers ([maintainer driver-bug comments: check the label-tell](../learnings/1794989231182-maintainer-driver-bug-comments-check-the-label-tel.md), [jkwak-work: the Vendor Driver Bug label is the tell](../learnings/1794989264757-jkwak-work-driver-bug-comments-the-vendor-driver-b.md)).
 
 ## A Hands-On Maintainer May Edit Your Branch; Don't Race a Self-Fixer
 
@@ -101,7 +106,7 @@ jkwak-work closed slang#12938 unmerged: "This content seems redundant to the inf
 
 skallweitNV corrected the shape of bot fixes rather than their direction. On slang-rhi#860 the bot routed `VkBufferView` create/destroy through `device->m_api` and kept `VKBufferHandleRAII::m_api` as the implicit "this wrapper owns the buffer" flag; the maintainer closed bot PR #868 and landed #945, keeping the routing but adding explicit `m_ownsBuffer`/`m_ownsMemory` and fixing the uninitialized `m_memory` the bot had scoped out ([explicit ownership over a double-duty field](../learnings/1793091793971-slang-rhi-maintainer-prefers-explicit-ownership-ov.md)). On slang-rhi#866 they took the PR over, squashed it, deleted the bot's GPU-free `tests/test-vk-utils.cpp`, and validated with the existing Release Vulkan buffer-barrier, compute and texture tests ([run the existing Vulkan GPU tests](../learnings/1793111769425-slang-rhi-run-the-existing-vulkan-gpu-tests-mainta.md)). If a minimal fix works around a field that means two things, name the conflation and offer the explicit refactor, since the maintainer may want the root fixed even when a reviewer accepted it as out of scope. For a small backend mapping fix, run the relevant existing `slang-rhi-tests` GPU cases on the container's GPU. Detail: [slang-rhi backend runtime internals](slang-rhi-backend-runtime.md), [Slang & slang-rhi test harness](slang-a-test-harness.md).
 
-**Source learnings (30):**
+**Source learnings (32):**
 - [slang#14557 superseded by #14560](../learnings/1794982445190-postmortem-shader-slang-slang-14557-superseded-by-.md) — concurrent same-approach maintainer PR; one-site capability-atom implication + pinning test wins over a two-site flag.
 
 - [re-derive scope from the live comment](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md) — webhook bodies truncate; surface cross-issue linkage.
@@ -133,5 +138,7 @@ skallweitNV corrected the shape of bot fixes rather than their direction. On sla
 - [a push after approval dismisses it; check reviewDecision](../learnings/1793851667014-a-push-after-approval-dismisses-it-on-shader-slang.md) — #13815: two reports relayed a dismissed approval.
 - [#14366 vs sibling #14335: MEMBER comments on linked PRs can contradict the issue spec; align both maintainers before building](../learnings/1793999570748-before-building-a-language-rule-change-from-an-iss.md)
 - [critique gate keyword-matches [Fix Report] in verdicts; MEMBER issue-body policy tension](../learnings/1794935349519-critique-gate-keyword-matches-fix-report-in-verdic.md) — expect the codex MEMBER advisory; follow the issue-requirements policy, don't contradict it.
+- [maintainer driver-bug comments: check the label-tell before standing a fix chain down](../learnings/1794989231182-maintainer-driver-bug-comments-check-the-label-tel.md) — #14493; no label = no ruling; watch-only when the fix helps under either blame reading.
+- [jkwak-work driver-bug comments: the Vendor Driver Bug label is the tell (bare comment ≠ ruling)](../learnings/1794989264757-jkwak-work-driver-bug-comments-the-vendor-driver-b.md) — #14415 labeled vs #14493 bare; PR #14502 merged anyway.
 
 _Catalog: [[wiki/index.md]]_

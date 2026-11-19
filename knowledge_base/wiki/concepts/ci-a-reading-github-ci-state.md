@@ -17,6 +17,7 @@ source_count: 9
 - **`--paginate` can inject an auth-error blob as a data row.** Grep each page for `app_not_connected`/`401` before parsing; treat a partial-page death as no answer, not a small one.
 - **`mergeable_state=BLOCKED` may carry zero information** — sample the population; a status field with no variance has no discriminating power. `BLOCKED` and `BEHIND` are not exclusive buckets.
 - **Logs expire (HTTP 410 after ~7 days).** The cause of an expired red is recoverable from the *workflow definition at the merge-base* (not master). A 151-byte "log" is an HTTP 410 body, not a small log.
+- **A finished job's log is readable while its run is still in progress** — `gh run view --log-failed` refuses, the per-job `gh api .../jobs/<id>/logs` (with `--allow-escape-sequences`) works. A sanitizer run stalled on `git submodule update` ending in `##[error]The action has timed out.` is a container-action checkout stall, not a build failure.
 
 ## Three independent ways to get a confidently wrong verdict
 
@@ -89,3 +90,23 @@ In slang-rhi's doctest harness a case that skips at runtime for a missing device
 ## Resolve a contested CI claim at the log line, not the job list
 
 In slangpy CI, Python tests run as a *step* inside the `build` job (there is no separate test job by design), so a job-name scan structurally cannot see them: "no job named cuda" is an unasked question, not an absence. A *correct* claim was retracted on this basis — don't repeat it. Three traps measured on one green run: **(1)** grep the bare nodeid and read the bracket — pytest's parametrization *collapses* with no CUDA device (`test_dispatch_torch_tensor[NOTSET]`, not `[DeviceType.cuda]`), so a scan keyed on the param finds nothing on macOS. **(2)** Green ≠ ran: 12 green `build` jobs carried only 4 real executions; 6 of 12 had `Unit Tests (Python)` with `conclusion: skipped` — check each job's step conclusion. **(3)** Match the verdict token, not the nodeid (a SKIPPED prints the same name as a PASSED): `grep -oE "(PASSED|SKIPPED|FAILED) path/...::test\[...\]"`. Meta-lesson: **a correction is the worst possible slot for an unverified claim, because its form asserts the checking already happened** — and this retraction reasoned from a *cheaper proxy* (job names) than the claim it killed (a log line). [Resolve a contested CI claim at the log line, not the job list](../learnings/1785959966108-resolve-a-contested-ci-claim-at-the-log-line-not-t.md)
+
+## Job-level logs are fetchable mid-run; the sanitizer checkout stall is a container-action timeout
+
+`gh run view <run-id> --log-failed` refuses while the parent run is still in progress ("run still in progress"), but `gh api repos/<o>/<r>/actions/jobs/<job-id>/logs` works for a completed job inside an in-progress run — it needs `--allow-escape-sequences` (ANSI in logs; without it gh writes only the ~99-byte refusal message). Use it whenever a falcor-gate WAITING holds a run but a job inside already failed (2026-11-18, #12563 sanitizer triage; seen 2x within 6h, merge-group job for #14560 and job 134674277425).
+
+The sanitizer hang signature, precisely: `sanitizer-linux-clang-x86_64 / sanitizer` on linux-build-* runners stalls silently mid `git submodule update` (last log = a `Cloning into ...` line, then nothing) and dies with `##[error]The action has timed out.` after ~900s. The timeout lives on the container action itself, so the submodule script's built-in 3x retry never gets to matter; the failure reads "Build failed -- sanitizer results unavailable." with no compile/assert error. Classify intermittent (#13722-class checkout stall), rerun via `--job` once the parent run is terminal ([Job-level GH Actions logs fetchable mid-run; sanitizer submodule-hang timeout lives on the container action](../learnings/1794996318782-job-level-gh-actions-logs-fetchable-mid-run-saniti.md)).
+
+**Source learnings (10):**
+- [Job-level GH Actions logs fetchable mid-run; sanitizer submodule-hang timeout lives on the container action](../learnings/1794996318782-job-level-gh-actions-logs-fetchable-mid-run-saniti.md) — per-job endpoint + --allow-escape-sequences mid-run; sanitizer checkout stall = intermittent, rerun --job
+- [Reading GitHub check-runs: three independent ways to get a confidently wrong CI verdict](../learnings/1785867215545-reading-github-check-runs-three-independent-ways-t.md) — truncation, historical attempts, auth-error blobs
+- [A matching sha does not establish a current CI reading — bucket check-runs three ways](../learnings/1785892639116-a-matching-sha-does-not-establish-a-current-ci-rea.md) — failed / settled-clean / pending; never `/commits/<sha>/status`
+- [Bounding a CI red-streak claim: use total_count vs returned to find the history edge](../learnings/1785879966196-bounding-a-ci-red-streak-claim-use-total-count-vs-.md) — state "≥N nights"; count `cancelled` separately
+- [A retry step masks failures from every surface a reader checks](../learnings/1785954196916-a-retry-step-masks-failures-from-every-surface-a-r.md) — key crash rates on per-attempt log occurrences
+- [An expired CI check's cause is recoverable from the workflow definition at the merge-base](../learnings/1785958905251-an-expired-ci-check-s-cause-is-recoverable-from-th.md) — read the workflow as it was then
+- [Falcor CI logs ARE readable — and "structurally cannot" needs a second sample from the class](../learnings/1785947928176-falcor-ci-logs-are-readable-and-structurally-canno.md) — 151 bytes = HTTP 410 body
+- [slang-rhi CI DOES run GPU tests — never infer coverage from a check-run name](../learnings/1785937835338-slang-rhi-ci-does-run-gpu-tests-check-run-names-al.md) — read the workflow's test step and the run log
+- [doctest counts a device-SKIPPED case as PASSED — cite the per-test line](../learnings/1785938474607-doctest-counts-a-device-skipped-case-as-passed-a-s.md) — suite tallies are identical whether or not it ran
+- [Resolve a contested CI claim at the log line, not the job list](../learnings/1785959966108-resolve-a-contested-ci-claim-at-the-log-line-not-t.md) — green ≠ ran; match the verdict token
+
+_Catalog: [[wiki/index.md]]_

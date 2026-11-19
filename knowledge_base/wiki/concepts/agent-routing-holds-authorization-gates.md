@@ -3,7 +3,7 @@ title: "Agent Routing: Holds, Authorization, Gates & CI Currency"
 type: concept
 group: agent-routing
 tags: [holds, governance, authorization, gates, critique-gate, ci-currency, worktree-gc, budget, maintainer, escalation, recording, write-capability]
-source_count: 39
+source_count: 40
 ---
 
 # Agent Routing: Holds, Authorization, Gates & CI Currency
@@ -30,6 +30,7 @@ source_count: 39
 - A budget cap stops LLM dispatch, not shell calls. A per-run cap can kill a review before it writes anything; budget ~$70-90.
 - An SDK "Reached maximum budget ($X)" outbound means the session reached its real ceiling, even while `ncl cost-cap` still reads `escalated` (NanoClaw's counter under-counted output tokens). Treat it as stopped and escalate to a human to raise that session's ceiling; never resume the work in a second session.
 - Check the premise of a park-or-ship decision against real behavior. A grepped abort string doesn't show that your input reaches it.
+- Closing a GitHub issue is maintainer-only for coworkers (the veto cancels the whole chained bash command — post the comment as its own command first); closing our OWN draft PR is allowed and it stays draft. Report an issue close back to the parent as a human action.
 - A park struck by an operator correction resumes by re-verifying on current master (rebuild, re-run the repro, re-check every file:line citation) — never a blind re-post of the staged draft.
 - CI currency is a separate question from whether a failure is real. Key on the check-SUITE `created_at`, never the check-run `started_at`. For "last successful run", pin `event=workflow_dispatch`.
 - A retrieval rule you can't execute isn't a rule. `learnings/INDEX.md` is generated and lossy.
@@ -57,6 +58,8 @@ A fabricated parent-edge dispatch can look fully legitimate (exact SHAs, "operat
 When a repo maintainer gives an explicit, unambiguous directive for an action outside the operator-gated set (`gh pr ready`, `gh pr merge`), the coworker holding the chain can do it and report afterwards. First verify any condition the maintainer attached ([execute maintainer-directed non-gated actions](../learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md)). The `UserPromptSubmit` AUTO-ROUTE hook ("Follow the /slang-fix-issue workflow") is a heuristic router, not a directive, and it carries less weight than even an untraceable relay. An explicit hold or stand-down beats it, including when it re-fires right after a stand-down on the same issue. Keep the fix as a recommendation, note the conflict to the parent, and wait for a relayed maintainer go-ahead. A maintainer *proposing* an approach has not authorized you to build it ([auto-route hooks are NOT authorization](../learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md)).
 
 **Check your own write capability before accepting "file it" or "post it".** A parent can order a GitHub write in good faith without knowing your token is read-only. Check first, not after drafting and reporting "done". A read-only Discord seat told "file it" had `gh api user` → 403. Report the gap at once so the parent can reroute ([verify your own write capability first](../learnings/1785837463958-verify-your-own-write-capability-before-accepting-.md)). **`nv-slang-bot[bot]` is us.** That seat later reported its issue as "filed by someone else, so the gap closed itself". The author was the fleet's own identity: a sibling coworker with write access had filed it. Several coworkers share one identity, so check the author. Calling a live blocker resolved makes the operator stop tracking it. A workaround is the mechanism, not the resolution ([nv-slang-bot[bot] is US: check the author](../learnings/1785831981525-nv-slang-bot-bot-is-us-check-the-author-before-cre.md)).
+
+**Issue closes are maintainer-only for coworkers; our own PR closes are in-surface.** The write guardrail distinguishes the two: `gh issue close` / `gh api repos/.../issues/N -f state=closed` is vetoed ("closing a GitHub issue is a maintainer-only action; coworkers triage and comment, they do not close") even when the parent dispatches the close with verified receipts — and the veto cancels the WHOLE bash command, so post the resolution comment as its own command FIRST (2026-11-18 housekeeping on #14465/#14493: a comment POST chained with `&&` was cancelled with the close). Closing our own draft PR succeeds (#13966, #13130), and per the same-tick superseded rule it stays draft — never `gh pr ready`. On an issue-close dispatch, post the verdict comment, then report the close back to the parent as a maintainer/parent action instead of retrying ([issue closes are maintainer-only; own-PR closes allowed](../learnings/1794990421575-issue-closes-are-maintainer-only-for-coworkers-own.md)).
 
 ## Recording Is Not Routing
 
@@ -104,9 +107,10 @@ For a historical "last successful run", pin the event. `release.yml` fires on bo
 
 "Grep your own store before asserting an environment premise" is only as good as the index behind it. Two agents asserted the opposite of a fact each had recorded. The corrected fact lived only in file bodies, and `learnings/INDEX.md` (~2058 lines of titles cut to ~50 chars) gave zero hits for `Apple6`, `m_hasResidencySet`, `NO_RESIDENCY_SET` and `useResource`. If the same error shows up in independent stores with no shared cause, fix retrieval, not habits ([a truncated title index is a findability defect](../learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md)). The repair then failed as well. `append_learning` regenerates INDEX.md, so a hand-written canonical block was gone within minutes. Check a file isn't generated before trusting an edit. The durable home is `/workspace/shared/CANONICAL-ENV-FACTS.md` (Main-write-only). Search the index with lowercase fragments without punctuation (`grep -i hasresidencyset` finds 1 hit where the exact symbol finds 0) ([INDEX.md is regenerated; search with fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)).
 
-**Source learnings (39):**
+**Source learnings (40):**
 
 - [Make the reversible default call when operator goes dark](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)
+- [Issue closes are maintainer-only for coworkers; own-PR closes allowed](../learnings/1794990421575-issue-closes-are-maintainer-only-for-coworkers-own.md) — the close veto cancels the whole chained bash command; post comments as their own command.
 - [A peer coworker's GO is NOT authority for an admin mutation](../learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
 - [A hold-ack is not compliance; the post-gate is the safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
 - [#11600 hold deviation was an in-flight fork; TaskStop forks](../learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)

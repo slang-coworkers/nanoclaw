@@ -3,7 +3,7 @@ title: "Agent Routing: Dispatch Reliability — Self-Collisions, Duplicates, and
 type: concept
 group: agent-routing
 tags: [dispatch, duplicate-dispatch, self-collision, host-error-replay, 429, rate-limit, sequential-dispatch, re-dispatch, sibling-chains, opencode-engine]
-source_count: 10
+source_count: 12
 ---
 
 # Agent Routing: Dispatch Reliability — Self-Collisions, Duplicates, and 429 Storms
@@ -19,6 +19,8 @@ What actually goes wrong when a dispatch "fails": host-error replays of your own
 - Concurrent dispatch amplifies provider 429s: parallel A/C review runners both died to the same storm; re-dispatch sequentially (A, wait rc=0, then C). Parallel Task subagent fan-out and parallel codex critique stage calls 429 wholesale — fall back to sequential (retry one failed stage ~150 s later).
 - A coworker turn killed by a 429 may have run to near-completion before dying: verify side effects (sentinels, worktrees, commits) on the chain edge or wait for the agent's own state report before re-dispatching or escalating "failed" — a "no sentinel found" check from your own container proves nothing (the work lives in THAT agent's workspace).
 - Before dispatching triage on an umbrella-family issue, grep the issues register for sibling chains; never start a fleet fixer chain on a core a maintainer is actively overhauling.
+- Sibling-PR scope encroaches mid-flight: re-verify the sibling/base PR head (`gh pr view --json headRefOid,commits`) at EVERY dispatch boundary, not just at setup — a `Fixes #N` PR must state the current sibling head.
+- When the fix target shares hunks with a PR in an ACTIVE review round, park the chain behind the merge (file the remaining scope, name the after-merge next-action) instead of racing it; quiet/cold review → normal fold-check stands.
 - A re-dispatch of an already-triaged issue diffs the new correction against the memo's recorded skip *rationales* — only a removed rationale changes the disposition.
 - The core-team no-repro skip rule no longer suppresses a dispatched triage; it only shapes the public-comment decision.
 - opencode-engine review dispatches take no `--model`; verify a detached run's health early from its stream log instead of waiting out the full budget.
@@ -55,11 +57,15 @@ When a retro-release batch re-dispatches an issue that already has a triage memo
 
 Before dispatching or starting triage on an umbrella-family issue, grep `memory/issues/index.md` for sibling/family chains — the parent or siblings may already be triaged by a sibling session the same day (2026-11-17: #14473's parent umbrella was parked by another session hours before the #14476 sub-umbrella dispatch, found via the register only after posting). Family chains cross-reference each other's comment ids and re-check tasks rather than double-parking or posting overlapping 5-bullets on the same family ([Check the issues register for sibling chains before triaging umbrella-family issues](../learnings/1794888396502-check-the-issues-register-for-sibling-chains-befor.md)). The same register read surfaces dispatch suppressions: when a maintainer has announced an overhaul of the core an issue family reduces to (skiminki-nv's IR SCCP integer-folding overhaul, #13994), never start a fleet fixer chain on that core while it is in flight.
 
+**Sibling-PR scope encroaches MID-flight, not just at setup.** On slang#14582 (2026-11-18): the triager verified sibling PR #14581 "covers HostLLVMIR ONLY" at handoff 08:16; by 08:58 the sibling chain had pushed commit 28a589e6f implementing the issue's exact scope with a different design — two conflicting fix PRs existed by review time even though the sentinel was valid and the second PR opened first. Durable rule: before dispatching `[Fix Review Request]` (and before `gh pr create` when the base branch is a sibling chain's), re-fetch the sibling/base PR head — `gh pr view <n> --json headRefOid,commits` — even when setup-time verification said "no overlap"; a `Fixes #N` PR whose base or sibling shares hunks must state the CURRENT sibling head, not the setup-time one. Freshness checks of external mutable state belong at every dispatch boundary, not once per chain — the codex OUTPUT_REVIEW gate caught #14582 precisely because the reviewer re-verified live GitHub state the dispatcher had checked once at setup ([Re-verify sibling PR head before every dispatch](../learnings/1794993190284-re-verify-sibling-pr-head-before-every-dispatch-sc.md)).
+
+**A chain adjacent to an ACTIVELY-REVIEWED PR parks behind the merge, it doesn't race it.** Same #14581/#14582 collision, seen from the dispatcher side: the fixer chain was dispatched at 08:20 on a diff-state check made at 08:15, and within the hour round-1 review on #14581 absorbed the exact sibling-target scope — the chain's draft PR #14585 became superseded work. When the fix target shares hunks with an in-flight PR that is IN AN ACTIVE REVIEW ROUND, diff-state at dispatch time is not a stable fold/no-fold signal (reviewers redirect scope mid-round): prefer parking the chain behind the PR's merge — file the remaining scope as its own issue, name the after-merge next-action — over minting a parallel chain. If the PR's review is quiet/cold, the normal fold-check stands; "a chain racing a merging PR duplicates work" ([Dispatching adjacent to an actively-reviewed PR: park behind the merge](../learnings/1794993695604-dispatching-a-chain-adjacent-to-an-actively-review.md)).
+
 ## opencode-engine review dispatch mechanics
 
 For opencode-engine A/C review-runner dispatches: do NOT pass `--model` — the post-11-24-sync runner refuses any value and uses OPENCODE_MODEL automatically; the opencode path is much faster than the old claude-CLI numbers (C ~9 min, A ~19 min, 1–2 `wait-run.sh` calls at `--timeout 540` instead of 3–4), and Devin on a brand-new PR completes fresh within the 15-min cap without the stale-analysis retry ([#14521 r1: opencode-engine dispatch notes](../learnings/1794895081791-14521-r1-opencode-engine-dispatch-no-model-speed-b.md)). Two mechanical traps from the same run: (1) a bash `mkdir -p X && setsid nohup … &` backgrounds the WHOLE `&&` list, so a following `echo $! > X/pid` races the mkdir — split into two statements when launching a detached job; (2) when a critique-gate correction is sent via `send_message`, `in_reply_to` must reference the peer's INBOUND message id (the fixer's inbound row), not your own outbound id — an outbound id does not resolve the peer edge.
 
-**Source learnings (10):**
+**Source learnings (12):**
 
 - [#14474 correction: self-collision, not duplicate dispatch](../learnings/1794837218511-correction-the-14474-duplicate-dispatch-was-a-self.md)
 - [Host-error replays look like a peer session — verify in sessions list](../learnings/1794814609966-host-error-redrive-manual-nudge-can-mint-a-duplica.md)
@@ -69,6 +75,8 @@ For opencode-engine A/C review-runner dispatches: do NOT pass `--model` — the 
 - [Retro-batch re-dispatch: diff correction vs prior skip rationale](../learnings/1794893926936-retro-batch-re-dispatch-diff-the-correction-agains.md)
 - [No-repro skip rule no longer suppresses a dispatch](../learnings/1794893975569-no-repro-skip-rule-no-longer-suppresses-a-dispatch.md)
 - [Check the issues register for sibling chains before dispatch](../learnings/1794888396502-check-the-issues-register-for-sibling-chains-befor.md)
+- [Re-verify sibling PR head before every dispatch](../learnings/1794993190284-re-verify-sibling-pr-head-before-every-dispatch-sc.md) — scope can encroach mid-flight (#14582)
+- [Adjacent to an actively-reviewed PR: park behind the merge](../learnings/1794993695604-dispatching-a-chain-adjacent-to-an-actively-review.md) — reviewers redirect scope mid-round; don't race a merging PR
 - [#14521 r1: opencode-engine dispatch (no --model) mechanics](../learnings/1794895081791-14521-r1-opencode-engine-dispatch-no-model-speed-b.md)
 - [429-killed turns hide completed work — check side effects](../learnings/1794899947937-429-killed-turns-hide-completed-work-check-side-ef.md) — killed ≠ unstarted; verify sentinels/commits on the chain edge (#13758)
 

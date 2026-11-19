@@ -3,7 +3,7 @@ title: "Codex-Critique Round Recording: Bridge Path, Client Timeouts, and the Th
 type: concept
 group: agent-infra
 tags: [codex-critique, critique-gate, track-critique, codex-mcp-bridge, mcp-timeout, critique-threads, thread-map, recording]
-source_count: 20
+source_count: 21
 ---
 
 # Codex-critique round recording: bridge path, client timeouts, and the thread map
@@ -23,8 +23,9 @@ source_count: 20
   artifact list. An xhigh round runs 8-15 min, the client gives up, and the orphaned session burns quota —
   kill orphaned `codex app-server` PIDs, keep the bridge process.
 - A round records only with the verbatim `/codex-critique` developer-instructions block AND the exact param
-  key (`developerinstructions`; camelCase `developerInstructions` silently records nothing), `STAGE:` on
-  fresh calls only, and anchored `REQUIREMENTS:` URLs (anchoring detail on
+  key — in opencode-harness sessions camelCase `developerInstructions` is the working spelling (measured
+  recording 2026-11-18; the hyphenated spelling truncates), `STAGE:` on fresh calls only, and anchored
+  `REQUIREMENTS:` URLs (anchoring detail on
   [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
 - In **opencode-harness sessions the direct `mcp__codex__codex` MCP tool systematically fails to record**
   (the harness truncates hyphenated param names at the first hyphen, so `developer-instructions` arrives as
@@ -189,6 +190,14 @@ PR-description updates to a NEW file (e.g. the bot disclaimer append) rather tha
 artifact
 ([3 silent round-droppers](../learnings/1794900588491-critique-gate-3-silent-round-droppers-restart-rese.md),
 [dev-instructions pinning, state resets, marker routing](../learnings/1794901788554-critique-gate-gotchas-dev-instructions-pinning-sta.md)).
+The Attested list also binds the reviewer's own advice: an OUTPUT_REVIEW that attested stale test leftovers
+(e.g. `tests/….slang.actual`) and whose Advisory told you to delete them makes the delivery gate deny the
+next marker once the files are gone ("reviewed artifacts changed … (missing)") — apply file-mutating
+advisories only AFTER the gated delivery, or immediately re-run a fresh OUTPUT_REVIEW whose Attested list
+drops the deleted paths; and since every file write (even a `/tmp` heredoc) bumps `edits_since_critique`
+and stales OUTPUT_REVIEW freshness for the NEXT marker, make all edits first, run the final fresh
+OUTPUT_REVIEW last, and send the marker in the same turn
+([attested files bind the reviewer's own advisories](../learnings/1794989112338-codex-critique-recording-in-opencode-developerinst.md)).
 The re-hash covers even the plan file in `reports/` and the mandatory plan re-arm Write; and the explain-diff
 gate credits an explanation ONLY when posted via `upsert_pr_body.py` (marker + seal + receipt) — a plain
 `gh pr comment` does not count and must be deleted as a duplicate; the plan-tracker likewise counts only
@@ -214,6 +223,13 @@ hyphen, so in opencode sessions `developerinstructions` is the only safe form) a
 every critique call you expect to be recorded
 ([codex critique rounds silently unrecorded with camelCase developerInstructions param](../learnings/1794816470745-codex-critique-rounds-silently-unrecorded-with-cam.md);
 [OpenCode truncates hyphenated MCP param names](../learnings/1794933603258-opencode-truncates-hyphenated-mcp-param-names-pass.md)).
+CORRECTION re-measured 2026-11-18 (slang#14579): in this opencode harness `mcp__codex__codex` DOES pass
+camelCase `developerInstructions` and track-critique.sh RECORDS the round — the pin-check accepts it and
+the verdict parses when codex emits the canonical `### Verdict` — so camelCase is the working spelling
+there, superseding the earlier camelCase-fails reading; without the verbatim block codex instead replies
+`**Verdict:**` bold-inline, which the hook's awk (`^### verdict`) cannot parse, so the round records with an
+EMPTY verdict and the gate stays closed. Always pass the /codex-critique developer-instructions block
+verbatim ([codex critique recording in opencode: developerInstructions camelCase works](../learnings/1794989112338-codex-critique-recording-in-opencode-developerinst.md)).
 Also: the gate, plan-tracker and edit-counter hooks all write `workflow-state.json` via tmp+mv with NO
 locking — concurrent writes race and clobber each other (one plan re-write erased a recorded CODE_REVIEW),
 so do gate writes with nothing else in flight
@@ -271,7 +287,7 @@ the delivery-side freshness window (edits_since_critique bumped by late `>` redi
 launchers, and the clean-window recipe for firing the delivery marker), [gate-hook
 mechanics](agent-infra-gate-hook-mechanics.md).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [gate state resets per inbound; codex-reply rounds never record](../learnings/1794898781583-gate-state-resets-on-every-inbound-codex-reply-rou.md)
 
 - [rounds record via the codex bridge, not the hook](../learnings/1794851587389-critique-rounds-record-via-the-codex-bridge-not-th.md)
@@ -293,3 +309,4 @@ mechanics](agent-infra-gate-hook-mechanics.md).
 - [critique-gate gotchas: pinning, state resets, marker routing](../learnings/1794901788554-critique-gate-gotchas-dev-instructions-pinning-sta.md) — verdict needs literal `### Verdict`; re-run stages when `.task_id` is new.
 - [codex rounds record only with the skill's verbatim dev-instructions](../learnings/1794908989857-codex-critique-rounds-record-only-with-the-skill-s.md) — explain-diff credit only via upsert_pr_body.py; plan-tracker counts Write only.
 - [main session can't emit developer-instructions — use a subagent](../learnings/1794913063020-codex-gate-calls-main-session-can-t-emit-developer.md) — subagents emit the param; omit `model:` (403 open-models rule).
+- [codex critique recording in opencode: developerInstructions camelCase works; attested files bind the reviewer's own advisories](../learnings/1794989112338-codex-critique-recording-in-opencode-developerinst.md) — camelCase records (2026-11-18 re-measure, no block ⇒ empty verdict); apply file-mutating advisories after delivery or re-review.

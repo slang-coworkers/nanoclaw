@@ -3,7 +3,7 @@ title: "Agent Routing: Re-Check Staleness and Gated One-Shots"
 type: concept
 group: agent-routing
 tags: [re-check, staleness, one-shot, gated-task, infra-outage, ncl-tasks, hold-off, parking]
-source_count: 5
+source_count: 6
 ---
 
 # Agent Routing: Re-Check Staleness and Gated One-Shots
@@ -21,6 +21,7 @@ A scheduled one-shot re-check prompt is a snapshot written at scheduling time, n
 - Report blocked to the parent naming the decision owner before ending the turn.
 - `ask_user_question(timeout: 0)` can itself fail with `MCP error -32001` — don't retry it in a loop; fall through to parking.
 - `ncl tasks update` cannot reschedule the series that is currently running you ("no live task matched") — schedule a FRESH one-shot via `ncl tasks create --process-after` instead.
+- A peer that fails repeatedly isn't dead: escalate, keep the GitHub artifact self-sufficient for a human, and arm ONE one-shot re-check (~2h) capped at one re-send — the fixer may recover on its own (#14248 → PR #14536).
 - A fired one-shot that died (e.g. a 429) is consumed like a success: it vanishes from `ncl tasks list` and the ONLY trace is the run log at `tasks/<series-id>.md` — "gone from list" means "fired", not "ran".
 
 ## Re-check prompts go stale — verify every trigger live
@@ -45,11 +46,16 @@ successful run: it disappears from `ncl tasks list`, and the only trace is the r
 11-13 re-check had silently failed with a 429, leaving the issue un-checked for 4+ days)
 ([one-shot ncl task failures are silent — check tasks/<id>.md](../learnings/1794947920360-one-shot-ncl-task-failures-are-silent-check-tasks-.md)).
 
-**Source learnings (5):**
+## Park-and-recheck for a repeatedly failing peer
+
+A peer that fails N times isn't necessarily dead — one scheduled re-check is cheap insurance. On slang#14248 (2026-11-17/18) slang-fixer errored 3× on a `[Triage handoff]` with automated runtime failures; instead of abandoning or spamming retries: (1) escalate to parent/operator, (2) hand the work to the human maintainer via the issue comment (full brief + acceptance criteria = resumable artifact), (3) keep ONE one-shot re-check task armed (`ncl tasks create --process-after` ~2h). The fixer recovered overnight, the 07:24Z re-check re-sent the brief once, and the fix shipped as draft PR #14536 — the maintainer handoff never had to be used. Cap it at one re-send and keep the GitHub artifact self-sufficient meanwhile ([Park-and-recheck: fixer failed 3x, one-shot re-check recovered the chain](../learnings/1794992254268-park-and-recheck-fixer-failed-3x-one-shot-re-check.md)).
+
+**Source learnings (6):**
 - [Parked re-check prompts go stale — check triggers live](../learnings/1794384180737-parked-re-check-prompts-go-stale-check-every-trigg.md)
 - [Scheduled re-check prompts stale — reconcile with chain-state](../learnings/1794895267498-scheduled-re-check-prompts-go-stale-reconcile-with.md)
 - [Gated one-shot re-check for infra outages (401)](../learnings/1794814589163-gated-one-shot-re-check-for-infra-outages-github-4.md)
 - [ncl tasks update cannot reschedule the running task itself](../learnings/1794923530167-ncl-tasks-update-cannot-reschedule-the-running-tas.md) — create a fresh one-shot instead
 - [one-shot ncl task failures are silent](../learnings/1794947920360-one-shot-ncl-task-failures-are-silent-check-tasks-.md) — check tasks/<id>.md; gone from list = fired, not ran
+- [Park-and-recheck: fixer failed 3x, one-shot re-check recovered](../learnings/1794992254268-park-and-recheck-fixer-failed-3x-one-shot-re-check.md) — one re-send cap, self-sufficient GitHub artifact meanwhile
 
 _Catalog: [[wiki/index.md]]_

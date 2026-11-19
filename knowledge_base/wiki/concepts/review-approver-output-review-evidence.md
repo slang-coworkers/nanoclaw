@@ -3,7 +3,7 @@ title: "PR-Approver: OUTPUT_REVIEW Evidence Discipline & Incremental Sharpenings
 type: concept
 group: review-process
 tags: [approver, output-review, critique-mustfix, evidence-discipline, citations, human-agreement, infra-abstain]
-source_count: 23
+source_count: 24
 ---
 
 # PR-Approver: OUTPUT_REVIEW Evidence Discipline & Incremental Sharpenings
@@ -26,6 +26,7 @@ The evidence discipline a recorded approver row demands: OUTPUT_REVIEW verifies 
 - A non-exit-0 harvest can co-occur with a still-running PRIMARY — probe check-runs for a `review` run on any 10/20/22; `in_progress` ⇒ wait, stuck `queued` ~20min ⇒ runner backlog (fall to Devin only when byte-identical-to-a-reviewed-revision). State the exit code in the review-doc (`harvest.json {found:false}` carries none).
 - A protected-path ABSTAIN_POLICY is a withhold, not a prediction: a byte-identical merge is AGREEMENT; an author self-merge with no independent APPROVED dilutes it (log as weak/self-endorsement, gaps shipped unweighed).
 - A verified 🔴 cannot be downgraded because "it's only docs" — the only path from a confirmed 🔴 to non-BLOCK is genuine REFUTATION. Don't bake volatile GitHub fields (`mergeStateStatus`) into a durable artifact — they trip the attested-hash re-check at send time.
+- A [Review Verdict]'s severity count and its enumeration must name the SAME findings — enumerate every kept finding with its file:line; never swap one counted item for a related-but-different ask.
 
 ## OUTPUT_REVIEW must-fixes: state only what your artifacts prove
 
@@ -47,6 +48,7 @@ The OUTPUT_REVIEW critique checks every factual claim against the artifacts you 
 - **`reason_code` for a clean WOULD_APPROVE is the literal `none`.** For a clean conjunction (Steps 1–4 clean) the closed-enum field carries detail only for abstain/block states (`CLAUSE_FAIL:*`, `OPEN_GAP`, `CHALLENGER_CONCERN`, `RED_BUG`, …). The gate bounces `reason_code: (none — clean conjunction)` and an invented `reason_code: CLEAN`; only `reason_code: none` passes. Put the "why it's clean" narrative in `challenger` / the message ([reason_code is literal `none`](../learnings/1785530765832-approver-critique-mustfix-ledger-reason-code-for-c.md)).
 - **Don't call an ABI-contract finding "refuted" because in-tree callers are safe.** On slangpy#1082, marking CodeRabbit's 🟠 buffer-contract finding "CLEARED / unreachable on any supported path" was an overclaim: it proved only the *two current in-tree callers* safe, but the function is an exposed `extern "C"` fn-ptr in a versioned `TensorBridgeAPI` struct with a documented minimum-buffer contract the native side enforces and the fallback doesn't. Reserve "refuted/unreachable" for triggers impossible for *any* caller; across a published ABI/API boundary say "no impact on current in-tree callers" and keep the contract gap on record ([ABI finding not refuted by in-tree callers](../learnings/1785426158100-approver-critique-mustfix-don-t-call-an-abi-contra.md)).
 - **Decision-message wording.** A `synchronize` re-decision (slangpy#1083 R1) bounced four times, all on wording. A, self-referential overclaim: don't assert "both critique stages recorded = approve" *inside* OUTPUT_REVIEW, and say recording "is being recorded this turn", never "recorded" (`record_decision` runs after the gate). B, diff-stat conflation: state full-PR size (`main...head`, = clauses eligibility size) AND revision delta (`prior_head...head` via `gh api compare`) as SEPARATE numbers; `clauses.json` "N lines / M files" is eligibility size. C (advisory): reference the prior head by SHA + compare fact, not its verdict. Bake all three into the template; recurring wording must-fixes are a procedure bug ([decision-message pitfalls](../learnings/1785454931977-approver-critique-mustfix-decision-message-pitfall.md)).
+- **Verdict fidelity: the count and the enumeration must name the same findings.** When relaying reviewer severity counts into a `[Review Verdict]`, enumerate EVERY kept finding explicitly with its `file:line` — never substitute a related-but-different ask for one of the counted items. On slang#14580 r1 the "Test gaps" bullet listed the inline-site-coverage gap plus a bool regression-test ask, silently dropping A's other kept gap (scalar-only scoping unstated, `slang-ir-util.cpp:2805`) while the header still said "2 gaps" — a fixer acting on the verdict alone would never have seen it, and the codex OUTPUT_REVIEW caught it as must-fix scope shrinkage: the verdict is the fixer's only action signal ([verdict fidelity: enumerate every kept finding, don't swap one for a related ask](../learnings/1794984703539-verdict-fidelity-enumerate-every-kept-finding-don-.md)). Same atom: re-read `author_association` from the live API per thread (jkwak-work reads COLLABORATOR now, not MEMBER as an older note claimed; both count as maintainer direction).
 
 ## Incremental sharpenings (2026-07-18/19 approver session)
 
@@ -56,7 +58,7 @@ The OUTPUT_REVIEW critique checks every factual claim against the artifacts you 
 
 **No verified 🔴 downgrade, no volatile fields.** The 🔴 rule has NO documentation carve-out: once the challenger CONFIRMED a 🔴, moving it to ABSTAIN/OPEN_GAP because "it's only docs / compiled output is correct" is the forbidden upgrade toward approval. Only genuine REFUTATION (not real / not reachable / not this revision) leaves BLOCK; severity-based clearing applies to 🟡 gaps only (DECISION_REVIEW caught this) ([no 🔴 docs exemption](../learnings/1784440920822-approver-critique-mustfix-a-verified-cannot-be-dow.md)). Don't bake **volatile GitHub fields** into a durable artifact: `mergeStateStatus` flips BEHIND/BLOCKED/CLEAN/UNSTABLE on its own and trips the attested-hash re-check at send time; quote durable signals (`reviewDecision`, human review states, the gate) or label the value volatile ([volatile fields aren't decision-relevant](../learnings/1784421284355-approver-output-review-volatile-github-fields-merg.md)).
 
-**Source learnings (23):**
+**Source learnings (24):**
 
 - [reason_code for clean WOULD_APPROVE is literal `none`](../learnings/1785530765832-approver-critique-mustfix-ledger-reason-code-for-c.md)
 - [ABI-contract finding not "refuted" by safe in-tree callers](../learnings/1785426158100-approver-critique-mustfix-don-t-call-an-abi-contra.md)
@@ -81,3 +83,4 @@ The OUTPUT_REVIEW critique checks every factual claim against the artifacts you 
 - [severity downgrade needs receiver AND signature (`Signal`)](../learnings/1785780937062-approver-critique-mustfix-when-a-severity-downgrad.md)
 - [over-claiming rigor is a real defect class](../learnings/1785784300014-approver-critique-mustfix-over-claiming-rigor-is-a.md)
 - [`sed -n 'A,Bp'` emits no line numbers; verify provenance](../learnings/1785822343830-approver-critique-mustfix-sed-n-a-bp-emits-no-line.md)
+- [verdict fidelity: enumerate every kept finding, don't swap one for a related ask](../learnings/1794984703539-verdict-fidelity-enumerate-every-kept-finding-don-.md) — count and enumeration must name the same findings; `author_association` re-read per thread

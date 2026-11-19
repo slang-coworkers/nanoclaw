@@ -3,7 +3,7 @@ title: "Multi-Session Coordination, A2A Routing, and Session Handoff"
 type: concept
 group: agent-infra
 tags: [a2a, sessions, routing, dedup, loops, reinforcements, spine, provenance, handoff, teardown]
-source_count: 44
+source_count: 45
 ---
 
 # Multi-Session Coordination, A2A Routing, and Session Handoff
@@ -36,7 +36,7 @@ A host stall-detection sweep injects full message bodies into stalled sessions u
 
 ## A2A Deduplication: Trust the Edge and the Work
 
-When one issue reaches a coworker twice (a handoff plus a direct dispatch), two sessions share one worktree and branch, and concurrent `ninja` builds corrupt the build dir. The session that hits the conflict stops its own build, touches nothing of the peer's, and escalates to the parent. Identify the keeper by (a) which a2a edge each is on and (b) the work each did, not by the (often mislabeled) suffix in chat notes. Only the tier owning an edge can stand a session down ([A2A dedup: verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)). A duplicate can also start on the routing side: on slang#13672 two slang-fixer sessions started 2 s apart from what looked like a triager double-send, but the triager had sent once and routing delivered it twice. Claim the item with plain `mkdir "$SENTINEL"` (atomic, no `-p`) and treat a failure as a collision; don't chase the sender ([the duplicate #13672 handoff came from routing](../learnings/1792089121951-correction-the-duplicate-13672-handoff-came-from-r.md)). If issue B's fix must land on a branch owned by a LIVE sibling session working issue A, don't push from a second worktree — it clobbers the owner's branch; hand the change to the owner through the parent ([checkModule ordering fix; cross-session branch collision](../learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md)).
+When one issue reaches a coworker twice (a handoff plus a direct dispatch), two sessions share one worktree and branch, and concurrent `ninja` builds corrupt the build dir. The session that hits the conflict stops its own build, touches nothing of the peer's, and escalates to the parent. Identify the keeper by (a) which a2a edge each is on and (b) the work each did, not by the (often mislabeled) suffix in chat notes. Only the tier owning an edge can stand a session down ([A2A dedup: verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)). A duplicate can also start on the routing side: on slang#13672 two slang-fixer sessions started 2 s apart from what looked like a triager double-send, but the triager had sent once and routing delivered it twice. Claim the item with plain `mkdir "$SENTINEL"` (atomic, no `-p`) and treat a failure as a collision; don't chase the sender ([the duplicate #13672 handoff came from routing](../learnings/1792089121951-correction-the-duplicate-13672-handoff-came-from-r.md)). If issue B's fix must land on a branch owned by a LIVE sibling session working issue A, don't push from a second worktree — it clobbers the owner's branch; hand the change to the owner through the parent ([checkModule ordering fix; cross-session branch collision](../learnings/1781118303603-slang-checkmodule-ordering-fix-for-sibling-namespa.md)). A sibling can also change the chain's *state record* under you: on #14582 (2026-11-18) two "still parked on go/no-go" messages went out stale because a parallel sibling triager session on the canonical thread had already received GO and released the chain an hour earlier — so before composing state-bearing reports or issue comments, re-read the issue's memory page and `ncl sessions list` for a parallel session on the same issue family; when two chains collide on one fix surface, relay the new context to the parent with a re-scope recommendation and stand down rather than messaging the sibling directly ([parallel sibling sessions can change chain state under you](../learnings/1794997076772-parallel-sibling-sessions-can-change-chain-state-u.md)).
 
 ## Empty-Ack Loops: Self-Edge vs Mutual Echo
 
@@ -150,10 +150,11 @@ The heartbeat pre-check's `pending_summons` counts unhandled lines in `summon_re
 - Cross-module `import` and same-module `__include` namespace reopening share one scope-wiring path ([namespace-reopen lookup bug](../learnings/1781191464750-slang-namespace-reopen-lookup-bug-cross-module-imp.md)).
 - The legacy `slang.dll` proxy and `libslang` symlink live in `source/slang/CMakeLists.txt` ([legacy slang.dll proxy + libslang symlink](../learnings/1782154549776-slang-legacy-slang-dll-proxy-libslang-symlink-loca.md)).
 
-**Source learnings (44):**
+**Source learnings (45):**
 - [Resumed sessions blind to their own prior records](../learnings/1794814036749-resumed-sessions-can-be-blind-to-their-own-prior-r.md) — check the session transcript before accepting "no prior work exists"
 - [CONSOLIDATED: phantom orchestrator-relay directives](../learnings/1780558161000-CONSOLIDATED-phantom-injected-relay-directives.md)
 - [A2A dedup: verify by edge + work-done](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
+- [parallel sibling sessions can change chain state under you](../learnings/1794997076772-parallel-sibling-sessions-can-change-chain-state-u.md) — re-read memory + ncl sessions before state-bearing reports; stand down to parent on collision
 - [Empty-ack loops: self-edge vs mutual echo](../learnings/1781221969721-empty-ack-loops-diagnose-self-edge-vs-mutual-echo-.md)
 - [A fixer's hold-ack doesn't guarantee it stopped](../learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
 - [Standing-order reinforcements inherit via CLAUDE.md](../learnings/1780769195650-standing-order-reinforcements-inherit-via-claude-m.md)

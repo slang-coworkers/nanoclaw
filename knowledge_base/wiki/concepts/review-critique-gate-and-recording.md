@@ -3,7 +3,7 @@ title: "Critique Gate and Decision Recording"
 type: concept
 group: review-process
 tags: [critique-gate, record-decision, fails-open, fails-closed, human-agreement, approver, codex, verdict, delivery-gate, workflow-state, false-abstain, published-vs-local]
-source_count: 41
+source_count: 43
 ---
 
 # Critique Gate and Decision Recording
@@ -48,6 +48,8 @@ STATE=/workspace/.claude/workflow-state.json
 jq -r '(.critique_attested//{}).OUTPUT_REVIEW//{}|keys[]' "$STATE" | while read -r p; do sha256sum "$p"; done
 jq -r '(.critique_attested//{}).OUTPUT_REVIEW//{}|to_entries[]|"\(.value)  \(.key)"' "$STATE"   # recorded
 ```
+
+The counter is shared by ALL concurrent sibling sessions on one filesystem: a sibling's edit — even their codex start events in `critique-attempts.jsonl` — after your OUTPUT_REVIEW approve trips the delivery gate with "N edit(s) recorded since the last critique round" while your artifacts are byte-identical to the attested hashes. Diagnose via `last_edit_at` and `critique-attempts.jsonl` in `/workspace/.claude/`; resolve by re-hashing (must match the approve's `### Attested` lines), running ONE fresh OUTPUT_REVIEW stating the re-record premise, and dispatching immediately — never bypass ([critique freshness counter is cross-session](../learnings/1794992119333-critique-freshness-counter-is-cross-session-check-.md)). Side-fact: `//CHECK-DAG-SAME:` is not a real FileCheck directive (slang-test's DXC port parses only `-DAG:`/`-SAME:`/`-NOT:`/`-NEXT:`/`-LABEL:`), so it is silently ignored after a `CHECK-DAG` — use one `//CHECK-DAG: a{{.*}}b` pattern instead (`{{.*}}` doesn't cross newlines, so same-line association still holds).
 
 4. **A missing state directory blocks everything.** Without `/workspace/.claude/` the hook's `> "$STATE.tmp"` fails (`No such file or directory`) and every call is blocked (slang#12924): `mkdir -p /workspace/.claude` at session start. Skill scripts (`collect-reviews.sh`, `eval-clauses.py`) hide their inner `gh api .../pulls`, since only the top-level command string is inspected ([read-only `gh api .../pulls` blocked; missing state dir](../learnings/1788945661953-approver-tooling-critique-gate-hook-blocks-read-on.md)).
 
@@ -106,6 +108,8 @@ diff /tmp/live-norm.txt ./local-body.md && echo "PUBLISHED == LOCAL"
 
 **Hard-block escalation is a human approval.** The third deny of a coworker's `gh pr create` on an unfixable must-fix creates a `critique_gate_bypass` row in `pending_approvals` for `dashboard-admin` (`ncl approvals` is list/get only). Approve makes `src/modules/critique-escalation/` set `critique_gate_bypass_approved=true` and the `gh pr create` fires; Reject takes the pre-agreed clean path. The orchestrator gives the operator the `approval_id` (`ncl approvals list`) with a recommendation, never telling the coworker "proceed". A blocked coworker opens a draft PR (skips CI via `ci.yml`'s `draft != true`; not auto-merged) or escalates promptly (slang#12622 idled 13 days) ([bypass is a human approval](../learnings/1789272925575-critique-gate-bypass-is-a-human-dashboard-approval.md)).
 
+When the shared-ledger race makes a gated marker permanently undeliverable, the compliant closure is the plain blocked-report to parent named by the gate's own rejection message: admin REJECTED the critique-gate bypass request (2026-11-18), and on slang#13833 the plain send (no marker) worked where the record-closing `[Fix Report]` marker is undeliverable in this fleet layout. Do not keep alternating record/retry cycles — each costs three codex calls and the approve never survives to the send (15+ wipes over two days; the wipe rate tracks sibling turn boundaries, not fleet load). The chain stays compliant because the SUBSTANCE was already public (PR, issue footprint, the triager's `[Triage Resolution]` with blocked:<reason>, memory file) — the formal marker is bookkeeping, not information; the durable fix is per-session ledger isolation, already escalated to the operator ([admin rejected the critique-gate bypass; plain blocked-report is the compliant closure](../learnings/1794988068539-admin-rejected-the-critique-gate-bypass-plain-bloc.md)).
+
 ## Gate-scope error: a must-fix on an input the approver cannot edit
 
 On slang#12453 @425c2a95 DECISION_REVIEW held must-fix for three rounds after every factual fix, objecting only to two PR-author comments narrating history. That is a gate-scope error: comment hygiene covers the agent's own diff, not the approver's read-only input, and a maintainer had APPROVED the head. Accept every factual catch and let WOULD_APPROVE coexist with clarity nits. The host needs a critique `approve` to record WOULD_APPROVE/BLOCK, not ABSTAIN_\*, so the honest label is ESCALATED (gate/approver deadlock), not CHALLENGER_CONCERN or a silent WOULD_APPROVE. The durable fix exempts PR-author comment style from approver DECISION/OUTPUT_REVIEW must-fix ([comment hygiene over-applied](../learnings/1786490730776-approver-critique-mustfix-critique-gate-over-appli.md)).
@@ -123,7 +127,7 @@ Everything above serves a `record_decision` row in the `approval_decisions` ledg
 **Averted false-abstains and declined checks leave no error signal.** "New flag + new gate" triggers a dead-flag probe that mandates `ABSTAIN_POLICY:OPEN_GAP` absent a trigger-present control. On #12322 it was rightly declined because the input failed its precondition: the gate (`_canIgnore` in `tools/slang-test/slang-test-main.cpp`) and flag bit (`SLANG_PASS_THROUGH_LLVM`) pre-existed, only two writers were added, and `addUsedBackEnd` (`tools/slang-test/test-context.h`) is a pure OR, so a test can only move running→`Ignored`. Demanding the control would have false-abstained an approved PR, which only the join records. Doc-vs-diff drift stays advisory here, never `OPEN_GAP`. A bot eviction comment on an unmoved green head (#12322, by the tracked Falcor flake #12145) is a no-op.
 
 ---
-**Source learnings (41):**
+**Source learnings (43):**
 - [exact-format codex calls only; Attested re-hashes at send](../learnings/1790016287155-critique-gate-resolution-pr-delivery-only-counts-c.md)
 - [chain-close messages trip `[GATE AUDIT]`](../learnings/1790042386094-verdict-bearing-chain-close-messages-resolution-re.md)
 - [abstain `[Approval Decision]`: no BLOCK/WOULD_APPROVE; set in_reply_to](../learnings/1789057110525-approver-infra-abstain-approval-decision-abstain-m.md)
@@ -165,5 +169,7 @@ Everything above serves a `record_decision` row in the `approval_decisions` ledg
 - [NanoClaw workflow-state wipe on restart + track-critique hook misses **Verdict** format](../learnings/1794913228992-nanoclaw-workflow-state-wipe-on-restart-track-crit.md) — pin `### Verdict`; query branches by exact name.
 - [Critique gate keyword-matches [Fix Report] in verdicts; MEMBER issue-body policy tension](../learnings/1794935349519-critique-gate-keyword-matches-fix-report-in-verdic.md) — OUTPUT_REVIEW the actual deliverable; honor bookkeeping audits in spirit.
 - [LLVM CPU repro needs Debug build; handoff messages need in_reply_to](../learnings/1794962446679-llvm-cpu-repro-needs-debug-build-handoff-messages-.md) — `[Triage handoff]` markers rejected without in_reply_to.
+- [admin rejected the critique-gate bypass; plain blocked-report to parent is the compliant closure](../learnings/1794988068539-admin-rejected-the-critique-gate-bypass-plain-bloc.md) — ledger-race-blocked markers close via blocked-report; don't alternate record/retry cycles.
+- [critique freshness counter is cross-session; CHECK-DAG-SAME is ignored by FileCheck](../learnings/1794992119333-critique-freshness-counter-is-cross-session-check-.md) — sibling edits/codex starts trip the gate; re-hash, one fresh OUTPUT_REVIEW, dispatch now.
 
 _Catalog: [[wiki/index.md]]_

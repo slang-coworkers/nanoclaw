@@ -3,7 +3,7 @@ title: "slangc CLI, Freshness & Emit-Verification Mechanics"
 type: concept
 group: slang-tooling
 tags: [slangc, cli, filecheck, dump-ir, diagnostics, version, freshness, check-cmdline-ref, render-test]
-source_count: 27
+source_count: 28
 ---
 
 # slangc CLI, Freshness & Emit-Verification Mechanics
@@ -22,6 +22,7 @@ How to invoke `slangc` correctly for local verification: the slangc-only build, 
 - **Old releases (v2025.2x and earlier) print `error 30019:`, new ones `error[E30019]:`**: when bisecting, check the exit status and grep `error\[?E?[0-9]+`.
 - **A default slang-test flag needs TWO forms:** bare (`-O0`) for slangc-backed paths, `-Xslang -O0` for render-test-backed ones, injected per run-function.
 - **Two diagnostic catalogs:** `slang-diagnostics.lua` → PascalCase C++ symbols; `slang-misc-diagnostic-defs.h` → verbatim camelCase. Grep both before calling a diagnostic dead.
+- **#14573 (Nov 2026) flipped the exit-code convention:** slangc returns positive codes and slang-test's DIAGNOSTIC_TEST default is now `CompilationFailed(2)` (was `-1`); the harness rejects any `exit-code` outside 0–2. Pin new test directives against master's CURRENT harness, not the PR base's.
 
 ## Building slangc-only to avoid slang-rhi / X11 failures
 
@@ -33,7 +34,7 @@ cmake --preset default
 cmake --build --preset debug --target slangc
 ```
 
-That covers all text-target emit verification (HLSL, CUDA, Metal, GLSL, SPIR-V-asm); it cannot run GPU tests (no `slang-test`/`render-test`). Containers have an NVIDIA L40S as of 2026-10-16 (the 09-28→10-16 no-GPU period was a host outage), so build `slang-test` when a task needs real GPU execution. A first debug build from a fresh clone takes a few minutes after submodules and configure ([slangc-only build (X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md), [slangc-only dodges slang-rhi/X11](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md)).
+That covers all text-target emit verification (HLSL, CUDA, Metal, GLSL, SPIR-V-asm); it cannot run GPU tests (no `slang-test`/`render-test`). One carve-out: a slangc-only target builds/downloads none of the downstream toolchain (spirv-opt, slang-glslang), so in a fresh worktree even a Debug slangc-only build fails `-target spirv`/`spirv-asm` with E00100 — it proves lowering ran, not a full `.spv` emit (lib-level detail and fixes on [Build System, Prebuilt Deps](slang-tooling-build-runtime-libs.md)). Containers have an NVIDIA L40S as of 2026-10-16 (the 09-28→10-16 no-GPU period was a host outage), so build `slang-test` when a task needs real GPU execution. A first debug build from a fresh clone takes a few minutes after submodules and configure ([slangc-only build (X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md), [slangc-only dodges slang-rhi/X11](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md)).
 
 ## Confirming the binary reflects HEAD (the version-string trap)
 
@@ -96,7 +97,10 @@ A single-case grep silently misses live entries in the other catalog: zero hits 
 
 **The output format changed between releases.** v2025.2x and older print `file.slang(9): error 30019: ...`; newer print `error[E30019]: ...`. `grep -oE 'error\[E[0-9]+\]'` finds nothing on an old binary, so a failing old compile looks like success; this produced a false "regression since v2025.24" claim that OUTPUT_REVIEW caught. Check the exit status (255 on error) and grep `error\[?E?[0-9]+`; capture `rc=$?` right after slangc, since inside `$(...)` or after a pipe `$?` is the last stage's. An E30019 reading "expected T got T" usually hides a layout/modifier difference the type printer omits: since #12992 made `MatrixLayoutModifier` a `TypeModifier`, `_coerce` (`slang-check-conversion.cpp:2316`) converts layout-only-different matrices but not arrays of them, so `cbuffer { row_major float4x4 m[N]; }` passed to a `float4x4 x[N]` parameter fails (#13376) ([`error 30019` without E](../learnings/1790885585791-old-slangc-releases-print-error-30019-no-e-prefix-.md)).
 
-**Source learnings (27):**
+**The exit-code convention flipped on master (#14573, Nov 2026).** slangc now returns positive exit codes, and slang-test's diagnostic-test default changed from `expectedExitCode = (isDiagTest ? -1 : 0)` to `(isDiagTest ? CompilationFailed(2) : Success)`, plus a harness range check (`_checkExpectedExitCode`, `tools/slang-test/slang-test-main.cpp`) that rejects any `exit-code` option outside 0–2. Consequence: a DIAGNOSTIC_TEST written at an older base with `exit-code=-1` (or otherwise relying on the `-1` default) passes locally at the PR base but fails unconditionally once #14573 enters the merge — and GitHub CI builds the merge commit, so the PR's own CI goes red. Robust form: drop the `exit-code` option entirely (the defaults are correct on both sides of #14573); `exit-code=2` works only post-#14573. General rule: pin new test directives against master's CURRENT harness, not the PR base's, whenever master touched test conventions between base and head (found on #14536 round 2) ([slangc exit-code convention flipped on master (#14573) — diagnostic tests with exit-code=-1 break post-merge](../learnings/1794990033256-slangc-exit-code-convention-flipped-on-master-1457.md)).
+
+**Source learnings (28):**
+- [slangc exit-code convention flipped on master #14573 — diagnostic tests with exit-code=-1 break post-merge](../learnings/1794990033256-slangc-exit-code-convention-flipped-on-master-1457.md) — positive codes; DIAGNOSTIC_TEST default 2; harness rejects exit-code outside 0-2
 - [slangc repro-matrix CLI quirks: -o must follow -entry; /dev/null rejected; stale version string](../learnings/1794885847361-slangc-repro-matrix-cli-quirks-o-must-follow-entry.md) — E00070 silent no-compile in matrix scripts
 - [slangc version string is configure-time stale; ninja no-op is the freshness signal](../learnings/1794891489687-slangc-version-string-is-configure-time-stale-ninj.md) — "no work to do" proves artifacts match the tree
 - [slangc-only build (X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md)

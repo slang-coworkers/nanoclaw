@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen, llvm-prebuilt, gcs, ci]
-source_count: 23
+source_count: 24
 ---
 
 ## TL;DR
@@ -23,7 +23,9 @@ doesn't compile `source/slang-llvm`, `-target host-callable` swallows an invalid
   old release (every `(llvm)` leg fails, `result code = 1`, empty stderr); a `--target slangc slang-test`
   build may have none (filecheck tests *ignored* under "100% passed"). Compare
   `SLANG_SLANG_LLVM_BINARY_URL` in `CMakeCache.txt`, copy a current library into `build/<cfg>/lib/`, grep
-  for `ignored test`.
+  for `ignored test`. A Release slangc can lack the library even when the fetch ran — the FETCH_BINARY
+  download lands in `build/slang-<ver>-linux-x86_64/lib/` and `build/Debug/lib/` only, so use the Debug
+  slangc (or copy the `.so` beside the Release binary) for LLVM CPU repros.
 - **Regress the LLVM emitter with `-target llvm-host-ir -o -`, NOT `host-callable`** — `host-callable`
   ignores `llvm::verifyModule`'s result, so an invalid module exits 0. Anchor `CHECK-NOT: noinline` after
   the `attributes #N = {` match (the mangled name can contain it).
@@ -97,6 +99,16 @@ claiming a filecheck test passes
 ([missing libslang-llvm.so makes filecheck tests "ignored"](../learnings/1791516327523-slang-test-filecheck-is-not-available-silently-ign.md)).
 The `COMPARE_COMPUTE(filecheck-buffer=)` variant that reports *passed* rather than ignored is on
 [Slang Test — FileCheck Authoring and Opt-Levels](slang-test-filecheck-authoring-and-opt-levels.md).
+
+**A Release slangc can lack the library even when the fetch ran.** In the base clone
+`build/Release/bin/slangc` cannot run any CPU-via-LLVM target: it fails with `error[E00028]: unable to
+generate code for target` because the FETCH_BINARY download lands only in
+`build/slang-<ver>-linux-x86_64/lib/` and `build/Debug/lib/` — `build/Release/lib/` gets no
+`libslang-llvm.so`. Use `build/Debug/bin/slangc` for LLVM-path repros, or copy the prebuilt
+`libslang-llvm.so` next to the Release binary. Also `cmake --build --preset release --target slangc` does
+not regenerate the version string (it still reports the configure-time hash), so `-version` is not a
+freshness signal there either — cite the built SHA, not `-version`
+([slang clone: Release slangc lacks libslang-llvm.so — use Debug slangc for LLVM CPU repros](../learnings/1794989575131-slang-clone-release-slangc-lacks-libslang-llvm-so-.md)).
 
 ## Regression-testing the LLVM emitter: -target llvm-host-ir -o -, not host-callable
 
@@ -177,7 +189,8 @@ From triaging the static-initializer atomic drop (slang#14578, 2026-11-18), thre
 
 For a "bump LLVM to a version containing upstream PR X" issue (e.g. slang#13549 / llvm#229712), check three things. **PR state:** `gh pr view <N> -R llvm/llvm-project --json state,mergedAt,mergeCommit,milestone,comments` — `gh api repos/llvm/...` REST returns 401 through the gateway, but `gh pr view` uses GraphQL and works. **Whether the fix is in a release:** before merge, fetch the touched file from raw.githubusercontent.com at each tag (`llvmorg-21.1.8`, `22.1.8`, `23.1.x`, `main`), compare md5s, and `git apply --check` the local backport on a temp tree of just those files. Once merged, ancestry of the merge SHA settles the tag: a cheap clone (`git init; git remote add origin https://github.com/llvm/llvm-project.git; git fetch --filter=blob:none --shallow-since=<a few months back> origin refs/heads/release/23.x:refs/remotes/origin/release/23.x refs/heads/main:refs/remotes/origin/main refs/tags/llvmorg-23.1.4:refs/tags/llvmorg-23.1.4`, ~25 s), then `git merge-base --is-ancestor <sha> <tag>`. A negative in a shallow clone is weak, so back it with `git show <tag>:<file> | grep <new symbol>`. A `main` fix reaches an x.1.y release only through a backport (milestone "LLVM X.Y Release" + `/cherry-pick <sha>`, per llvm/docs/GitHub.md), and `llvmorg-N-init` is the branch point, not a release ([is an LLVM main commit in a release tag](../learnings/1793197406074-check-if-an-llvm-main-commit-is-in-a-release-tag-w.md)). **Tag dates:** `git ls-remote --tags` for the list, GraphQL `ref(qualifiedName:"refs/tags/…")` committedDate for dates. Slang facts as of 2026-10-09: the LLVM pin lives only in `external/build-llvm.sh:57` and `build-llvm.ps1:58`; deleting a backport patch rekeys the prebuilts (the key globs `external/llvm-*.patch`); LLVM 23 trips `static_assert(LLVM_VERSION_MAJOR < 23)` in `slang-llvm-jit-shared-library.cpp` (the Win64 RTDyld workaround); draft #11017 bumps to 22.1.4 ([checking whether an upstream LLVM fix has shipped](../learnings/1791577897128-checking-whether-an-upstream-llvm-fix-has-shipped-.md)).
 
-**Source learnings (23):**
+**Source learnings (24):**
+- [Release slangc lacks libslang-llvm.so — use Debug slangc for LLVM CPU repros](../learnings/1794989575131-slang-clone-release-slangc-lacks-libslang-llvm-so-.md) — FETCH_BINARY download skips build/Release/lib; `--target slangc` doesn't refresh `-version`
 - [LLVM CPU triage gotchas: -dump-ir goes to stderr; _SR mangles encode module names; statics can vanish pre-pipeline](../learnings/1794980057555-llvm-cpu-triage-gotchas-dump-ir-goes-to-stderr-sr-.md) — #14578: diff first-vs-second dump; case-insensitive greps
 - [ILLVMBuilder ABI constraint and CI testing (#13857 sNaN cluster)](../learnings/1794890998708-slang-llvm-illvmbuilder-abi-constraint-and-ci-test.md) — header changes force a slang-llvm release; cpp-only fixes are ABI-safe and CI-tested
 - [target-gating: CPU-via-LLVM is a separate emitter — producer predicate excludes isCPUTargetViaLLVM (#13228)](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
