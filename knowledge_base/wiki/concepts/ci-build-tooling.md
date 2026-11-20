@@ -3,7 +3,7 @@ title: "CI Build Tooling & Workflow Structure"
 type: concept
 group: ci-tooling
 tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang, capability-atoms, doc-regen, cmdline-ref, shallow-clone, submodules, git-provenance]
-source_count: 29
+source_count: 31
 ---
 
 # CI Build Tooling & Workflow Structure
@@ -73,6 +73,8 @@ Folding `check-cmdline-ref.yml` into `ci.yml` (#11586) is low-risk: the `build-l
 
 **`slangpy-samples` CI runs `pre-commit --all-files`**, so a red `main` (e.g. `black` reformatting ~8 pre-existing files) reddens a PR touching no Python. Before owning a `github.ci_failed`, find the failing hook and files (`gh run view --log-failed | grep -iE "Failed|reformatted|\.py"`), compare with `git diff --name-only origin/main`, and confirm `main` is red; document inherited debt instead of pulling in unrelated reformatting. Local `black --check` can pass while CI's pinned version fails ([inherited pre-commit failure](../learnings/1783525328477-slangpy-samples-ci-runs-pre-commit-all-files-inher.md)).
 
+**The same local-vs-CI gap hits `Check Formatting`, and `--since master` is the unreliable leg.** `./extras/formatting.sh --check-only --since master` passed locally on slang#14617/PR #14622 while CI's Check Formatting failed — same gersemi version (0.21.0) on both, and `gersemi --diff <file>` locally DID flag it, so the gap was the `--since master` file-selection path, not the formatter. After CMake edits run BOTH the full `./extras/formatting.sh --check-only` (no `--since`) and `gersemi --diff <file>` on each touched file; catching it late costs a CI round-trip, a follow-up commit and an explanation-comment refresh ([formatting.sh --since master passed while CI Check Formatting failed](../learnings/1795048503433-formatting-sh-since-master-passed-while-ci-check-f.md)). Two riders from the same incident window: run clang-format on EVERY edited file including unit tests you don't normally touch (a 101-char line in an untouched test failed the formatting CI check gating the PR), and gersemi 0.21.0 wraps `target_sources(${t} PRIVATE ...)` calls that fit on one line into 4 lines — write CMake command calls with ≥~4 args multi-line from the start ([Path::simplify flips Windows delimiters in foundPaths; format every edited file](../learnings/1795065993573-path-simplify-flips-windows-to-in-foundpaths-kosca.md)).
+
 ## Advisory CI Shell Scripts: `continue-on-error` at the Call Site
 
 For a script that is advisory by construction (every branch exits 0, only `::warning::`), the fix for "it crashed the build" is `continue-on-error: true` on the workflow step: per-probe `|| true` fixes one probe at a time, while `continue-on-error` makes "never gate the build" structural for any failure (new probe, syntax error, segfault, `set -o` change), and the step still shows failed in the UI. Keep the `|| true` edits too, since under `set -euo pipefail` they preserve later checks' warnings. Do not over-build a regression test (an 82-line harness for a 141-line script was dropped in review). The step change is a workflow edit, so the bot ships the `|| true` edits and hands it to a maintainer (#13041 → PR #13042) ([continue-on-error beats `|| true`](../learnings/1789654672103-advisory-ci-shell-scripts-continue-on-error-beats-.md)).
@@ -113,7 +115,7 @@ On `slang-coworkers/nanoclaw`, `ci.yml` tests a sync PR into an `nv-*` base by m
 
 ---
 
-**Source learnings (29):**
+**Source learnings (31):**
 - [Workflow-edit review remedies are maintainer actions](../learnings/1793648853326-the-slang-coworkers-github-app-cannot-push-github-.md) — #14194.
 - [docs-only head commit skips a dispatch's whole matrix, conclusion still success](../learnings/1794006658553-slang-ci-yml-workflow-dispatch-skips-all-builds-wh.md)
 - [Required check = job in `check-ci.needs`](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
@@ -139,6 +141,8 @@ On `slang-coworkers/nanoclaw`, `ci.yml` tests a sync PR into an `nv-*` base by m
 - [Workflow changes: catch at triage](../learnings/1783546996023-workflow-file-changes-are-policy-rejected-for-cowo.md)
 - [ci-examples.sh grades exit code only](../learnings/1783471474036-slang-ci-examples-sh-grades-examples-on-exit-code-.md)
 - [slangpy-samples inherited pre-commit reds](../learnings/1783525328477-slangpy-samples-ci-runs-pre-commit-all-files-inher.md)
+- [`formatting.sh --since master` can pass while CI Check Formatting fails; run the full `--check-only` + `gersemi --diff` per touched file; gersemi wraps one-line `target_sources`.](../learnings/1795048503433-formatting-sh-since-master-passed-while-ci-check-f.md)
+- [clang-format EVERY edited file incl. unit tests; delimiter-regression incident context (technical class on [Windows path-delimiter regressions](ci-windows-path-delimiter-regressions.md)).](../learnings/1795065993573-path-simplify-flips-windows-to-in-foundpaths-kosca.md)
 - [slang-rhi FetchContent of Vulkan-Headers](../learnings/1783619348986-slang-11985-2nd-cause-slang-rhi-fetchcontent-downl.md)
 - [nanoclaw sync-PR CI composes nv-* branches](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
 - [Windows CI crash dumps via ci-slang-test.yml](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)

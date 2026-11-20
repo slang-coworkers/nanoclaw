@@ -3,7 +3,7 @@ title: Slang Dev Craft — Git, Build, Blast-Radius Grep, and FileCheck
 type: concept
 group: misc
 tags: [git, rebase, pathspec, ninja-build, filecheck, slang-test, blast-radius, grep, benchmark]
-source_count: 14
+source_count: 17
 ---
 
 ## TL;DR
@@ -76,6 +76,13 @@ review-side mirror: a large rebase can silently revert a recently-landed sibling
 `#ifdef`; verify the net effect at the actual PR head (`contents?ref=<head-sha>` → base64 -d), not by
 eyeballing hunk direction ([a large rebase can silently revert a recently-landed sibling
 PR](../learnings/1787673424885-a-large-rebase-can-silently-revert-a-recently-land.md)).
+The patch-application half of the loop has the same silent-partial trap: splitting a diff into
+per-commit hunks with `('\n@@'.join(hunks))` when each hunk already starts with `@@` produces
+`@@@@` at every boundary, and `git apply` then applies ONLY THE FIRST HUNK while still exiting 0
+— always `'\n'.join(hunks)`, and after applying, verify with grep that a marker from EACH hunk
+landed in the file (`git apply` exit 0 is not proof; caught only because a pinning test regressed
+mid-#14555) ([git apply silently applies only the first hunk when a hand-split patch has @@@@
+boundaries](../learnings/1795096116047-git-apply-silently-applies-only-the-first-hunk-whe.md)).
 
 The same wrong-reference-point trap bites a **swap-only perf baseline**. Measuring an IR-pass change by "swap only the one `.cpp`, rebuild, compare" requires the swapped-in baseline to be the PRE-change source — and on a branch that has merged `master`, the obvious commit is often wrong: on PR #12608 `git show 0fd3b1cece:…slang-ir-specialize.cpp` was used as "master baseline," but `0fd3b1cece` was a *merge commit* whose tree already contained the branch's fix, so the swap compared fix-vs-fix and the delta was meaningless. The true merge-base is `git merge-base HEAD origin/master`, and for a branch that merged master via a merge commit `M`, that base is `M^2` (the master parent), NOT `M`; confirm the baseline is fix-free by grepping for a marker the change introduces (`git show <base>:path | grep -c <new-symbol>` should be 0 on the baseline, non-zero on HEAD) and that master hasn't touched the file since (`git diff <base>..origin/master -- path` empty). Also: **interleave head/base samples for shared-host perf** — prebuild both `.so`s and alternate per sample (drift is shared between each pair and cancels out of the delta); all-head-then-all-base lets host-load drift bias the medians (the same Release binary swung ~1633↔1946 ms run-to-run), which turned a spurious "17% slower" into a true flat result ([swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md)).
 
@@ -94,6 +101,18 @@ cross-platform every-PR suite was not, so enumerate a guard's effect on EACH pla
 separately ([a patch-scoped grep undercounts a repo-wide idiom; host-conditional guards need
 per-platform blast-radius
 checks](../learnings/1787659716816-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md)).
+Fetch and scratch-file writes fail silently in the same class. `curl -sf URL | grep '^{' | tail -1
+|| echo FAILED` does NOT report a fetch failure — curl's non-zero exit is swallowed because the
+pipeline status is tail's, so an empty result looks like "no data"; check the fetched file's byte
+count (or `set -o pipefail`) before parsing, and on a suffix-range fetch that 501s use a
+cache-buster query param and verify line count ([curl-pipe grep/tail silently masks fetch
+failures](../learnings/1795072630293-curl-pipe-grep-tail-silently-masks-fetch-failures.md)).
+In slang-coworker containers `/tmp/opencode` exists but is root-owned while the agent runs as
+`node`: `curl -o /tmp/opencode/file` still prints `HTTP 200 size N` (download happens, write is
+dropped) — `&&`-chained scripts fail correctly but `;`-chained ones silently proceed with a
+missing file; use `/workspace/agent/` for scratch, pipe curl output, and `ls`-verify scratch
+writes before trusting them ([/tmp/opencode is root-owned — curl -o silently no-ops
+there](../learnings/1795122284885-tmp-opencode-is-root-owned-curl-o-silently-no-ops-.md)).
 
 A scratch PR-body file (`.pr-body-11317.md`) leaked into a fix commit via a blanket `git add
 source/... tests/... .pr-body-*.md`, unnoticed until CodeRabbit's "Files selected for processing" list
@@ -134,7 +153,13 @@ line; for per-layout expected values use per-RUN prefixes (e.g. `COL`/`ROW`) wit
 ([Slang release tags live on release branches; FileCheck CHECK-NEXT capture trap](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md)).
 Adjacent gotchas: a directive token in a `.slang` comment (`HLSL:`, `SPIRV:`) is parsed as a real
 directive — keep them out of prose; and a byte-address store has no template arg, so `-NOT: Store<void`
-is vacuous.
+is vacuous. To pin IR-level facts that have no user-visible semantic surface,
+`-dump-ir-after <pass>` + `//TEST:SIMPLE(filecheck=CHECK)` is an established repo test pattern
+(see `tests/autodiff/non-autodiff-finalize-skip.slang`) — CHECK-NEXT binds a decoration line to
+the instruction line, and pre-fix the check fails against the same decoration elsewhere (on the
+func) because CHECK-NEXT sees `func` not `call`
+([git apply silently applies only the first hunk when a hand-split patch has @@@@
+boundaries](../learnings/1795096116047-git-apply-silently-applies-only-the-first-hunk-whe.md)).
 
 Finally, when replacing "filler" math in a synthetic benchmark generator (Slang compile-perf
 `gen_codegen`) to fix a downstream-target expansion (`sin`/`cos` → software `::sinf`/`::cosf` blows up
@@ -146,7 +171,7 @@ compounds and overflows float32). And an import-time regression guard should pin
 filler swap must stay op-count and growth-character
 neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)).
 
-**Source learnings (14):**
+**Source learnings (17):**
 - [Scratch PR-body file can leak into the commit via git add during --amend](../learnings/1787566872697-scratch-pr-body-file-can-leak-into-the-commit-via-.md) — `git show --stat HEAD` after every commit; CodeRabbit's file list is a free check.
 - [Slang build: never run two ninja builds in the same build/ dir](../learnings/1787615532680-slang-build-never-run-two-ninja-builds-in-the-same.md) — objcopy 'input file is empty' race; kill by pid+cwd, run exactly one serialized build.
 - [git checkout master -- <file> restores from master TIP, not the PR merge-base](../learnings/1787637340749-git-checkout-master-file-restores-from-master-tip-.md) — restore from `git merge-base`; verify with the three-dot diff.
@@ -161,3 +186,6 @@ neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count
 - [swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md) — a merged-master branch's baseline is `M^2` not the merge commit `M`; grep a fix marker to confirm fix-free; interleave head/base samples so shared-host drift cancels.
 - [Slang release tags live on release branches — bisect from merge-base; FileCheck CHECK-NEXT capture trap](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — `[[X:[0-9.]+]]` then `[[X]]` on CHECK-NEXT fails "same line"; use per-RUN COL/ROW prefixes
 - [git checkout <rev> -- <file> stages the file, so a revert drill needs checkout HEAD to restore](../learnings/1793218043049-git-checkout-rev-file-stages-the-file-so-a-revert-.md) — slang#13984 drills leaked the SCCP revert; also: two concurrent GPU suites on one L40S
+- [curl-pipe grep/tail silently masks fetch failures](../learnings/1795072630293-curl-pipe-grep-tail-silently-masks-fetch-failures.md) — pipeline status is tail's, so a curl failure reads as "no data"; check byte count / pipefail; cache-buster on 501ing suffix-range fetches.
+- [/tmp/opencode is root-owned — curl -o silently no-ops there](../learnings/1795122284885-tmp-opencode-is-root-owned-curl-o-silently-no-ops-.md) — `HTTP 200` prints while the write is dropped; scratch under /workspace/agent/ or pipe curl; ls-verify scratch writes.
+- [git apply silently applies only the first hunk when a hand-split patch has @@@@ boundaries](../learnings/1795096116047-git-apply-silently-applies-only-the-first-hunk-whe.md) — `'\n'.join(hunks)` not `'\n@@'.join`; grep a marker from EACH hunk after applying; also the `-dump-ir-after <pass>` + `//TEST:SIMPLE(filecheck=CHECK)` IR-pinning pattern.

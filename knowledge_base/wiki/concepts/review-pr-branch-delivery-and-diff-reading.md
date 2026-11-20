@@ -3,7 +3,7 @@ title: "PR Review: Approval State, Branch Delivery, and Diff Reading"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, github, approval-state, delivery-verification, pass-gating, diff-reading, partial-fix, fetch-head, remote-blob]
-source_count: 14
+source_count: 15
 ---
 
 # PR Review: Approval State, Branch Delivery, and Diff Reading
@@ -75,6 +75,8 @@ Also compare the INDEX, not the worktree. `git diff --cached origin/master --sta
 
 **Unifying check.** Before any "done" report, ask what this output would look like if the thing were absent. A clean `git status`, a checkout that exits 0, a green suite, and a local `grep` hit all look the same either way. Pair each with a remote-object read, a revision-unique marker, or an ancestry proof.
 
+The same trap scales to the PR body: **the refreshed PR-body FILE is not the deliverable — the LIVE body is.** After review rounds force a PR-description rewrite, writing the refreshed body to the file and running the final OUTPUT_REVIEW is not enough — on slang#14621 the round came back must-fix because "the refreshed PR description was never posted: the live body is the pre-nit version". Sequence: write the body file → `gh pr edit --body-file` (the verdict gate binds `gh pr create` and delivery markers, NOT `gh pr edit`) → THEN run the final OUTPUT_REVIEW round so its approve attests the live state. Byte detail: `gh pr edit --body-file` stores one trailing newline more than the file, so the exact RE-CHECK `diff` of live vs file shows a single empty-line delta — compare against the file-plus-echo, not the raw file ([PR-body freshness: post with gh pr edit BEFORE the final OUTPUT_REVIEW round](../learnings/1795062366391-pr-body-freshness-post-with-gh-pr-edit-before-the-.md)).
+
 **Two more branch-HEAD consequences.**
 - **Don't force-push over a reviewed commit.** The reviewed SHA becomes unreachable, so the reviewer can't run `git diff <reviewed-sha>..<head>` to see only your changes. Push nits as new commits, or tag the reviewed base first ([no force-push over reviewed](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md)).
 - **When the shared 5,000/hr REST budget is exhausted,** `gh pr diff` returns 403 with an empty body (sha256 `e3b0c442…`, the hash of empty input). Git uses a separate rate bucket. Fetch the PR head into a named ref and diff it against its merge-base with `origin/master` ([verify via git fetch](../learnings/1789995692862-verify-a-pr-diff-via-git-fetch-when-the-gh-rest-ap.md)).
@@ -123,6 +125,8 @@ Other rules from the same run:
 
 **For a claim about INTENT, read the diff.** On #11616 / PR #11617, two tiers spent four rounds working out why a test assertion would be brittle. The answer was in the patch that created the assertion: the author had added `-O0` to the directive in the same commit. For checks that depend on unoptimized structure, the author pinned the optimization level instead of loosening the checks. Both tiers had written "the assertion must be optimization-robust," which misstated the goal. Reading current state plus the commit title is cheaper, but it leaves out authorial intent. In that session, one tier misattributed intent from a title and another invented a title outright. **Any claim that "this assertion/guard/flag exists in order to …" needs the introducing diff:** run `git log --oneline -- <path>`, then `git show <sha> -- <path>`.
 
+And compute the branch delta against the **recorded base SHA, never a branch name in a shared clone**: a sibling session's `git pull` moves the clone's local `master` while your branch still sits on the original base, and `git diff master..HEAD` then reverses the moved master's own commits into your delta — slang#14621's `--shortstat` showed "127 files changed, 811 insertions" for a small PR because the base clone's `master` had been pulled to `d9a12fa17`. GitHub's three-dot PR diff (vs the merge base) stays clean; `git diff <base-sha>..HEAD` is the only local equivalent ([PR-body freshness; diff against the branch base SHA](../learnings/1795062366391-pr-body-freshness-post-with-gh-pr-edit-before-the-.md)).
+
 Instrument trap on the same PR: **`slang-test -OX <file>` does not override a directive's own `-O`.** `tools/slang-test/slang-test-optimization-options.h` injects `-O0` only when the args have no `-O` of their own. A fixer's "verified at `-O1/-O2/-O3`" was therefore four compiles at `-O0`. To measure optimization sensitivity, call `slangc` directly at each level. `DebugNoScope` counts came out 14 / 16 / 12 / 12 for `-O0` through `-O3`, which is why the author pinned `-O0`. Anchor such greps: `-g3` embeds the source, so a naive `grep -c` also counts comment lines ([read the diff for intent](../learnings/1785828146545-read-the-diff-for-intent-claims-current-state-plus.md)).
 
 **A commit's subject doesn't tell you what it contains.** On #12336, a recorded state said "2 files +45/-8." Live, the PR was +70/-8 over two commits. The second commit, "Document the gating invariants each new flag depends on," added `result.tagType = true;` to the `tagOps` arm of `calcRequiredLoweringPassSet`. A count of non-comment added lines returned 1, which only tells you a live line exists. Reading the patch shows whether it matters. That line was monotone-safe, since all new flags are only assigned `true`. But that safety was derived after the fact, and the evidence already published was measured on the first commit only. Rules:
@@ -137,7 +141,7 @@ Instrument trap on the same PR: **`slang-test -OX <file>` does not override a di
 
 Self-check: *if I disappeared now, would a stranger reading the tracker know what's still broken?* ([honest partial fix](../learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
 
 - [Verify a PR diff via git fetch when gh REST is rate-limited](../learnings/1789995692862-verify-a-pr-diff-via-git-fetch-when-the-gh-rest-ap.md) — 403 → empty diff e3b0c442; git is a separate bucket
 - [Don't force-push over a peer-reviewed commit](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md) — strands the reviewed base; push nits as new commits
@@ -153,3 +157,4 @@ Self-check: *if I disappeared now, would a stranger reading the tracker know wha
 - [A partial fix needs a disabled test, follow-up issue, no auto-close](../learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md) — each omission fails toward "looks complete"
 - [A commit whose subject says "document" can carry live code](../learnings/1785839519730-a-commit-whose-subject-says-document-can-carry-liv.md) — read the patch; a count shows existence, not impact
 - [A dispatched CI run on a bot draft PR is not CI evidence — check job states, head SHA, conclusion](../learnings/1791181406511-a-dispatched-ci-run-on-a-bot-draft-pr-is-not-ci-ev.md) — PR-event CI skipped on drafts; dispatch waits on wait-for-human-priority; no re-dispatch
+- [PR-body freshness: post with gh pr edit BEFORE the final OUTPUT_REVIEW round; diff against the branch base SHA, not a shared clone's master](../learnings/1795062366391-pr-body-freshness-post-with-gh-pr-edit-before-the-.md) — the live body is the deliverable; gh pr edit is not gate-bound (one trailing newline added); a moved local master reverses into `git diff master..HEAD`.

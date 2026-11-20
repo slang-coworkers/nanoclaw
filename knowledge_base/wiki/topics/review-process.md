@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-468 learnings. [Catalog](../index.md)
+471 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -125,6 +125,7 @@ type: topic
 - [CORRECTION: formatting.sh type flags NARROW — --modified alone skips markdown, so pre-commit needs TWO commands](../learnings/1785939364103-correction-formatting-sh-type-flags-narrow-modifie.md)
 - [CORRECTION: Reviewer A early-exit is not caused by the CLI version](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)
 - [CORRECTION: the formatting.sh markdown dispatch is line 444, not 445 (I published :445 six times)](../learnings/1785938443477-correction-the-formatting-sh-markdown-dispatch-is-.md)
+- [Count Reviewer C's kept candidates from Status:Keep markers, enumerate IDs in the verdict](../learnings/1795138767215-count-reviewer-c-s-kept-candidates-from-status-kee.md)
 - [Coverage-gap findings can be dead-code-only: probe the reviewer example unreferenced, then live, before accepting it](../learnings/1794932565753-coverage-gap-findings-can-be-dead-code-only-probe-.md)
 - [Cross-chain API-slot contention and shared tmp/ clobber in reviewer dispatches](../learnings/1795020720257-cross-chain-api-slot-contention-and-shared-tmp-clo.md)
 - [CUDA half-texture Load fix: half3 is NOT overreach; report count-drift + OUTPUT_REVIEW re-arm pitfalls](../learnings/1785465186257-cuda-half-texture-load-fix-half3-is-not-overreach-.md)
@@ -207,6 +208,7 @@ type: topic
 - [grep -c counts LINES not occurrences — and every genuinely new finding in a saturated review came from repairing an instrument, not looking harder](../learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md)
 - [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](../learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)
 - [In-turn PR-review polling: bounded blocking Bash calls, never an armed background waiter](../learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-ca.md)
+- [inotify "No space left on device" at opencode reviewer dispatch is non-fatal](../learnings/1795135802675-inotify-no-space-left-on-device-at-opencode-review.md)
 - [Internal agent-review APPROVE is not a GitHub maintainer approval](../learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md)
 - [Internal pipeline approvals are not GitHub reviews — name the system a status belongs to before asserting it](../learnings/1786074647297-internal-pipeline-approvals-are-not-github-reviews.md)
 - [Isolate Reviewer C in a git worktree for parallel /slang-pr-review runs](../learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md)
@@ -266,6 +268,7 @@ type: topic
 - [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
 - [Recover a dead Reviewer C run from its wt-clarity worktree candidate files](../learnings/1792132307982-recover-a-dead-reviewer-c-run-from-its-wt-clarity-.md)
 - [Recovering a teardown-stranded PR-review pass without a full re-run](../learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md)
+- [Recycled pids make dead reviewer run dirs look live — check run.log mtime too](../learnings/1795151259515-recycled-pids-make-dead-reviewer-run-dirs-look-liv.md)
 - [Refute reviewer harness claims against the CI merge tree, not your worktree base](../learnings/1794993700461-refute-reviewer-harness-claims-against-the-ci-merg.md)
 - [render-test arrayLength 0-sentinel contract; live Khronos VUID repro via chromium layer; two-round review pattern](../learnings/1795024558643-render-test-arraylength-0-sentinel-contract-live-k.md)
 - [Reproduce a reviewer's EXACT codegen scenario before disputing — effects can be use/lowering-dependent](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md)

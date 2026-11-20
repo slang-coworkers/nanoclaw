@@ -3,7 +3,7 @@ title: "Slang Compiler: Generics Memoization & Build Options (-g, buildHash, mod
 type: concept
 group: slang-grab-bag
 tags: [generics, memoization, substitution, conformance-witness, compile-perf, SubstitutionCache, debug-level, IRDebugLine, folding, strip-debug-info, module-serialization, loadSerializedModuleContents, up-to-date-check, endianness, pointer-size, ABI, CompilerOptionSet, buildHash, shader-cache, DownstreamArgs, option-composition, linkWithOptions, TargetProgram]
-source_count: 26
+source_count: 27
 ---
 
 # Slang Compiler: Generics Memoization & Build Options
@@ -25,6 +25,7 @@ Nested-generic compile cost, the default `-g` level's blast radius, module-seria
 - slangc gives a declared target a version-only profile; the full raw set arrives only at output binding. A stage-bearing session-target profile fails multi-stage modules (E36107) — strip the stage.
 - Cache keys must hash every codegen input (`buildHash` dropped `intValue2`; `getEntryPointHash` skipped a linked component's own set). Test on a target AND option values that really change codegen.
 - `DownstreamArgs` do NOT compose across levels (`add()` matches tool name), and `(tool, args)` dedup is wrong — clients add one entry per token. Fix by provenance: compose once, concatenate, never dedup; probe with a split-token repeated flag.
+- In `TryJoinTypes`, `{bool, scalar}` is the equal-cost tie pair behind order-dependent generic inference (#10164): bool↔scalar costs 900 both ways — test bool-mixed calls first.
 
 ## Exponential Compile Time With Generic Nesting Depth (#12100/#12103/#12139)
 
@@ -85,7 +86,11 @@ Front-end checks such as E36107 in `validateEntryPoint` read level 1, so `linkWi
 
 When triaging anything touching specialization or "pending layout", don't assume the old machinery exists — check first. The "pending layout" half of the legacy existential-slot specialization is ALREADY REMOVED on both sides: compiler side in #8691 (layout system; reflection earlier still) and slang-rhi in PR #558 (commit e60e614, −540 lines; oversized payloads now SLANG_E_NOT_IMPLEMENTED at src/shader-object.cpp ~260). The legacy path has near-zero live usage: #14341 shows global `type_param` + `-specialize` is already broken (E38025). The `specialize()` API front door is shared with modern generics and must be kept in any removal ([legacy pending-layout already removed; remaining specialization surface mapped](../learnings/1794885917536-legacy-pending-layout-already-removed-from-slang-s.md)).
 
-**Source learnings (26):**
+## Generic-inference join ties: bool pairs are the equal-cost ties (#10164)
+
+Type-inference ties in `TryJoinTypes` (shader-slang/slang#10164, fixed in PR #14636): the equal-cost tie that made implicit generic binding order-dependent was `{bool, float}` — bool↔any-scalar conversions cost `kConversionCost_GeneralConversion` (900) in BOTH directions, so bool mixed with any fundamental type is the pair most likely to hit an equal-cost tie. `{float, uint}` is NOT a tie (uint→float IntegerToFloat 400 < float→uint lossy cost) — join asymmetry resolves those correctly. When triaging order-dependent generic inference, test bool-mixed calls first; failed joins surface as E30442 "conflicting requirements" [bool↔scalar joins are the equal-cost tie pairs (900/900)](../learnings/1795102978633-slang-10164-bool-scalar-joins-are-the-equal-cost-t.md).
+
+**Source learnings (27):**
 - [getEntryPointHash omits a linked component's own option set](../learnings/1790001366182-getentrypointhash-omits-a-component-s-own-link-tim.md) — only `Module::buildHash` hashes its options
 - [Legacy pending-layout already removed from slang + slang-rhi](../learnings/1794885917536-legacy-pending-layout-already-removed-from-slang-s.md) — #8691 + slang-rhi #558; `specialize()` front door must stay
 - [PR #13215 review: buildHash hashes DownstreamArgs; Module re-hash harmless](../learnings/1790048442419-getentrypointhash-link-time-downstreamargs-fix-con.md) — misses only, no false hits
@@ -112,3 +117,4 @@ When triaging anything touching specialization or "pending layout", don't assume
 - [stage-bearing TargetDesc::profile blocks multi-stage modules](../learnings/1793606998775-a-stage-bearing-profile-in-targetdesc-profile-bloc.md) — E36107; strip the stage
 - [Entry-point hash tests: unit-test location and buildHash identity design (PR #14529)](../learnings/1794900006218-slang-entry-point-hash-tests-unit-test-location-if.md) — gfx cache suite is `#if 0`; slang-rhi owns its replacement
 - [slangc option-parser facts](../learnings/1793608426918-slangc-option-parser-facts-verified-while-document.md) — target vs session options
+- [#10164: bool↔scalar joins tie at 900/900 in `TryJoinTypes`; `{float,uint}` resolves asymmetrically; E30442 on failed joins](../learnings/1795102978633-slang-10164-bool-scalar-joins-are-the-equal-cost-t.md)

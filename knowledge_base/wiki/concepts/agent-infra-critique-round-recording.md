@@ -3,7 +3,7 @@ title: "Codex-Critique Round Recording: Bridge Path, Client Timeouts, and the Th
 type: concept
 group: agent-infra
 tags: [codex-critique, critique-gate, track-critique, codex-mcp-bridge, mcp-timeout, critique-threads, thread-map, recording]
-source_count: 21
+source_count: 25
 ---
 
 # Codex-critique round recording: bridge path, client timeouts, and the thread map
@@ -27,10 +27,13 @@ source_count: 21
   recording 2026-11-18; the hyphenated spelling truncates), `STAGE:` on fresh calls only, and anchored
   `REQUIREMENTS:` URLs (anchoring detail on
   [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
-- In **opencode-harness sessions the direct `mcp__codex__codex` MCP tool systematically fails to record**
-  (the harness truncates hyphenated param names at the first hyphen, so `developer-instructions` arrives as
-  `developer`): drive the production bun bridge directly via MCP JSON-RPC instead, or record the round
-  manually with a synthetic PostToolUse payload / saved transcripts.
+- In **opencode-harness sessions the param spelling decides recording**: the harness truncates
+  hyphenated MCP param names at the first hyphen (`developer-instructions` arrives as `developer`),
+  so pass the reviewer block under the working spelling (camelCase `developerInstructions`, measured
+  2026-11-18/20). The direct `mcp__codex__codex` MCP tool DOES record when the block is present —
+  prefer it over the bridge when it is available (the bridge's spawned codex child can die silently);
+  when no tool path works, drive the production bun bridge via MCP JSON-RPC, or record manually with a
+  synthetic PostToolUse payload / saved transcripts.
 - `codex-reply` rounds do not reliably refresh `critique_attested` hashes — dispatch the FINAL round as a
   fresh `STAGE:` call listing every deliverable under ARTIFACTS.
 - Workflow-state resets on EVERY inbound (auto-retry, parent ping): `plan_written` resets with it (re-record
@@ -67,6 +70,17 @@ and the codex app-server exited (`exit_code -1`, no round recorded), so always p
 prompts: read-only checks, no builds, no test runs; (4) the plan-tracker hook only fires on the Write tool
 — an Edit to `reports/<slug>.md` does NOT mark `plan_written` (plan-gate detail on
 [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
+The SCOPE line generalizes into **budget discipline for the prompt itself** (slang#14615, 2026-11-19):
+if the prompt names suite evidence ("suites green: hlsl 792..."), kimi-k3 re-runs those suites in its
+sandbox — 10-20 min each, and three consecutive OUTPUT_REVIEW attempts died at exactly the 900s turn
+budget that way. Pre-run the suites yourself, leave the logs on disk with "of tests passed" tails, point
+the prompt at them, and add BOTH a budget warning ("do NOT re-run suites; two previous attempts died
+exactly this way") and a HARD numbered checklist of the few things to verify, ending with "list anything
+else as Advisory without further verification" — with that the round completed in ~9 min with precise
+findings. Two deliverable-side riders from the same atom: reordering quiz options leaves stale answer-key
+letters inside each `<details><summary>Answer</summary>` block (re-grep them after any option reorder),
+and pass the FULL sha to `--quiz-positions` (a 7-char prefix can differ from the verifier's letters)
+([codex critique: hard-checklist prompt + no suite re-runs](../learnings/1795068180208-codex-critique-hard-checklist-prompt-no-suite-re-r.md)).
 
 **Caveat measured 2026-11-17/18 (opencode-harness groups): the direct MCP tool path does NOT record there.**
 In opencode sessions a direct `mcp__codex__codex` call systematically fails to record a round: the harness
@@ -109,6 +123,16 @@ rounds conflict, resolve on the merits (re-read the disputed code path yourself,
 the disputed point and which asserted at face value — don't average); relayed verdicts should carry the
 sha256 of the extracted verdict file plus the rollout path/timestamp for provenance
 ([codex MCP -32001 timeout is cosmetic — poll rollout files for the real verdict](../learnings/1794852776159-codex-mcp-32001-timeout-is-cosmetic-poll-codex-ses.md)).
+The same rollout path recovers text when the **bridge client hangs after recording server-side**
+(slang#14618, 2026-11-19): the verdict arrives via `jq .critique_stages workflow-state.json` while
+the must-fix/advisory text seems lost — it is NOT lost. Codex writes a full session rollout at
+`~/.codex/sessions/<YYYY/MM/DD>/rollout-<ts>-*.jsonl`; walk every string field for blocks containing
+`### Verdict` and keep the LAST one that isn't the developer-instructions template (the template also
+contains those headers — filter out blocks containing the literal `approve | must-fix`). This
+recovered a must-fix (a dropped `?` in a verbatim maintainer quote) that would otherwise have been a
+blind re-run; the delivery-recipe variant is to find the rollout file whose first lines carry your
+`STAGE:` marker ([codex rollout files recover hung-bridge review text](../learnings/1795086068053-codex-rollout-files-recover-hung-bridge-review-tex.md);
+recipe with the STAGE-marker match on [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
 The same recovery applies when the verdict recorded but you never saw it (slang#14498: three consecutive
 CODE_REVIEW calls all "timed out" while the state showed rounds recording live): read the thread id from
 `critique_threads`, then `codex-reply` on THAT thread — "your verdict was delivered but the output was lost
@@ -230,6 +254,15 @@ there, superseding the earlier camelCase-fails reading; without the verbatim blo
 `**Verdict:**` bold-inline, which the hook's awk (`^### verdict`) cannot parse, so the round records with an
 EMPTY verdict and the gate stays closed. Always pass the /codex-critique developer-instructions block
 verbatim ([codex critique recording in opencode: developerInstructions camelCase works](../learnings/1794989112338-codex-critique-recording-in-opencode-developerinst.md)).
+Re-confirmed and extended 2026-11-20 (slang#14652): the track-critique hook DOES fire on
+`codex_codex`/`codex_codex-reply` MCP calls, but its instruction-pinning gate requires the reviewer
+block in `developer-instructions` — a call without it runs the review fine yet records only a
+"start" event, never the "round" (`critique_stages` stays null; the PR-create gate then names every
+stage missing). Always pass the canonical developer-instructions block and verify
+`jq .critique_stages /workspace/.claude/workflow-state.json` after every round; and when the MCP
+tool is present, prefer it over the bun-bridge fallback client, whose spawned codex child can die
+silently (empty output, no round event) — PLAN/CODE/OUTPUT rounds all recorded correctly once the
+field was added ([codex critique rounds need developer-instructions even on the codex_codex MCP tool](../learnings/1795146830771-codex-critique-rounds-need-developer-instructions-.md)).
 Also: the gate, plan-tracker and edit-counter hooks all write `workflow-state.json` via tmp+mv with NO
 locking — concurrent writes race and clobber each other (one plan re-write erased a recorded CODE_REVIEW),
 so do gate writes with nothing else in flight
@@ -280,6 +313,17 @@ file — the reply inherits the stage via the thread map and its verdict records
 means the turn died, so check the jsonl before re-sending (state-reset context on
 [gate-hook mechanics](agent-infra-gate-hook-mechanics.md)).
 
+A cheap sibling of the gate itself: run the codex OUTPUT_REVIEW on a **[Review Verdict] draft
+BEFORE sending it**, not only when the critique gate fires. On #14626 (2026-11-19) the pre-send
+OUTPUT_REVIEW caught three real attribution errors in two rounds: a "3 gaps" claim that described
+only two (the module-level API-specialization divergence at slang-check-shader.cpp:3843 was
+missing from both the Test-gaps bullet and the fixer-next-step), an "A, B, and C converge"
+claim that overstated Reviewer C (which never flagged the coverage hole), and a wrong "C's only
+test-related keep is FG005" (C kept FG003/FG004/FG005). Codex also independently verified
+file:line refs at the PR head, the diff_hash, and live maintainer-direction state — the fixer's
+handoff inherits the accuracy. Cost ~3 short codex calls; the gate's spirit is best honored
+pre-send ([pre-send codex OUTPUT_REVIEW catches verdict attribution errors](../learnings/1795055971325-pre-send-codex-output-review-catches-verdict-attri.md)).
+
 For cross-cutting recording rules (fails-open verdict parser, recall-stub replies, `### Attested` line
 format) see [critique gate and decision recording](review-critique-gate-and-recording.md); for stage
 counting and delivery sequencing, [gate mechanics](agent-routing-f0909b1-critique-gate-mechanics.md); for
@@ -287,7 +331,7 @@ the delivery-side freshness window (edits_since_critique bumped by late `>` redi
 launchers, and the clean-window recipe for firing the delivery marker), [gate-hook
 mechanics](agent-infra-gate-hook-mechanics.md).
 
-**Source learnings (21):**
+**Source learnings (25):**
 - [gate state resets per inbound; codex-reply rounds never record](../learnings/1794898781583-gate-state-resets-on-every-inbound-codex-reply-rou.md)
 
 - [rounds record via the codex bridge, not the hook](../learnings/1794851587389-critique-rounds-record-via-the-codex-bridge-not-th.md)
@@ -310,3 +354,7 @@ mechanics](agent-infra-gate-hook-mechanics.md).
 - [codex rounds record only with the skill's verbatim dev-instructions](../learnings/1794908989857-codex-critique-rounds-record-only-with-the-skill-s.md) — explain-diff credit only via upsert_pr_body.py; plan-tracker counts Write only.
 - [main session can't emit developer-instructions — use a subagent](../learnings/1794913063020-codex-gate-calls-main-session-can-t-emit-developer.md) — subagents emit the param; omit `model:` (403 open-models rule).
 - [codex critique recording in opencode: developerInstructions camelCase works; attested files bind the reviewer's own advisories](../learnings/1794989112338-codex-critique-recording-in-opencode-developerinst.md) — camelCase records (2026-11-18 re-measure, no block ⇒ empty verdict); apply file-mutating advisories after delivery or re-review.
+- [pre-send codex OUTPUT_REVIEW catches verdict attribution errors](../learnings/1795055971325-pre-send-codex-output-review-catches-verdict-attri.md) — review the [Review Verdict] draft before sending; ~3 codex calls for an accurate fixer handoff.
+- [codex critique: hard-checklist prompt + no suite re-runs](../learnings/1795068180208-codex-critique-hard-checklist-prompt-no-suite-re-r.md) — suite re-runs kill rounds at 900s; budget warning + numbered checklist; quiz answer-key letters after reorder (slangc SIMPLE_EX half on slang-codebase specifics).
+- [codex rollout files recover hung-bridge review text](../learnings/1795086068053-codex-rollout-files-recover-hung-bridge-review-tex.md) — last non-template `### Verdict` block; explicit-form force-with-lease for tracking-ref-less branches.
+- [codex critique rounds need developer-instructions even on the codex_codex MCP tool](../learnings/1795146830771-codex-critique-rounds-need-developer-instructions-.md) — hook fires but records only "start" without the block; prefer the MCP tool over the silently-dying bridge.

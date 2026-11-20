@@ -3,7 +3,7 @@ title: Re-review scope decisions, cross-round adjudication, and reviewer session
 type: concept
 group: review-process
 tags: [slang-pr-review, re-review, round-2, spot-check, diff-hash, cross-round, a2a-redrive, thread-id, synchronize, canonical-thread, overlap-analysis]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -138,6 +138,8 @@ round-1 pass had missed. When a round-1 verdict carries A/B disagreements, weigh
 B bugs in the round-2 dispatch context — they are the most likely graduates
 [dropped-by-A Devin bugs graduate to confirmed bugs next round](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md).
 
+Round-2 reviews must also audit the response commit's **implementation of the round-1 advisories**, not just the flagged bugs. On slang#14601 r2, the round-1 clarity advisory FG003 suggested "an assertion or a naming comment" for a silently-skipped substitution result; the fixer chose the assertion, and the assertion itself became round 2's only bug — it rested on a false contract (a generic value-argument slot can legitimately hold a `Type*` from a type-expression argument or an error-recovered default, so `as<IntVal>` is null on reachable input, and `SLANG_ASSERT` compiles to `SLANG_ASSUME` in release, licensing deletion of the guard). Diff the response commit against the round-1 findings and adjudicate each *implemented suggestion's premise* — an assert is a correctness claim, not a fix — before writing the verdict; all three reviewers converged on it independently (A traced it, Devin flagged the release-mode angle, C flagged assert-then-fallback). Same run: Devin's first fetch on a changed head harvested the stale previous-head analysis, and the check-commit-status-vs-head rule caught it (re-fetch was fresh) ([round-2 reviews must audit the response commit's implementation of round-1 advisories](../learnings/1795031197981-round-2-reviews-must-audit-the-response-commit-s-i.md)).
+
 The same discipline applies to findings that would reverse a **maintainer's** decision,
 which A and C cannot see either. On slang#13825 (a docs-only `CONTRIBUTING.md` CLA link),
 Reviewer A filed a 🔵 Question and Reviewer C filed C002, both asking the fixer to drop a
@@ -189,7 +191,7 @@ A routing collapse to watch when the reviewer is dispatched **directly by the fi
 
 **Serve a duplicate [Fix Review Request] once — verify the head, reply on the peer edge, never re-run.** When a fixer's `[Fix Review Request]` is stuck behind critique-gate saturation and the Orchestrator dispatches the review directly, the fixer's original request still arrives later in the reviewer's queue — on #14530 round 2 it landed ~50 min after the fallback dispatch, ~30 min before the verdict delivery reached the fixer's own inbox. Serve it ONCE: do not re-run the review for the duplicate — verify the PR head hasn't moved past what the completed review covered (`gh pr view --json headRefOid`), then reply on the fixer's peer edge (`in_reply_to` its message id) pointing to the already-delivered verdict and report artifact paths, restating the actionable findings. Silence would leave the fixer believing a review is still pending; a re-run would duplicate a full 3-reviewer pass over a byte-identical diff. This is the mirror of the double-dispatch rule above: after a re-drive or fallback dispatch, exactly one review runs per head ([duplicate [Fix Review Request] after orchestrator fallback — serve once, never re-run](../learnings/1794930356291-duplicate-fix-review-request-after-orchestrator-fa.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [spot-check (not full re-run) for additive nit-fixes; diff_hash goes stale](../learnings/1788198210854-slang-pr-review-spot-check-not-full-re-run-for-add.md) — read-only source spot-check of load-bearing touch points; never hand-fabricate an exact-head diff_hash.
 - [Round-2 re-review of a doc/test/refactor fix = targeted diff, not a full re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md) — git diff r1..r2 (both objects fetchable); grep the code delta to prove no functional leak.
 - [round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md) — confirm HEAD + byte-identical fix hunk, verify diag codes in `slang-diagnostics.lua`, negative-control on the unfixed master build (crash exit 139), incremental rebuild when merge-base allows, re-fetch Devin; disclose it as a delta-verification.
@@ -204,3 +206,4 @@ A routing collapse to watch when the reviewer is dispatched **directly by the fi
 - [Review round deltas: diff the PR's own net change across a merge, and watch for silently reverted nits](../learnings/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md) — raw old..new across a master merge pulls in master files; diff old-base→old-head vs new-master→new-head; #13130 R3 caught a "trim comments" commit reverting an applied nit.
 - [Duplicate [Fix Review Request] after orchestrator fallback — serve once: verify head unchanged, reply on the peer edge, never re-run](../learnings/1794930356291-duplicate-fix-review-request-after-orchestrator-fa.md) — #14530 r2: the stuck original request arrives after the fallback dispatch; point it at the delivered verdict.
 - [dropped-by-A Devin bugs graduate to confirmed bugs next round](../learnings/1794922936523-dropped-by-a-devin-bugs-graduate-to-confirmed-bugs.md) — #14539 r1→r2: sub-85 B bug became a kept 85/85 Bug; weight dropped B bugs in round-2 dispatch context.
+- [round-2 reviews must audit the response commit's implementation of round-1 advisories](../learnings/1795031197981-round-2-reviews-must-audit-the-response-commit-s-i.md) — the fixer's chosen implementation of an advisory (an assert) became r2's only bug; an assert is a correctness claim — adjudicate its premise.

@@ -3,7 +3,7 @@ title: "Slang Codebase and CI Specifics: Test Isolation, Diagnostics, Perf, and 
 type: concept
 group: agent-infra
 tags: [slang, render-test, filecheck, vcpkg, merge-queue, record-replay, compile-perf, diagnostics]
-source_count: 7
+source_count: 10
 ---
 
 ## TL;DR
@@ -52,6 +52,13 @@ order on the same session), and FileCheck the regex `#include "{{.*}}nvHLSLExtns
 install via `getIncludePath`. The CLI flag is `-nvapi-slot` (not `-nvapi-extn-slot`; C++ field
 `nvapiExtnSlot`).
 
+Test-directive mechanics from the same family: `slangc file.slang -lang hlsl` does NOT apply the
+dialect when the file comes before the flag — slang-test's SIMPLE directive prepends the file
+path, so dialect-specific tests must use **SIMPLE_EX with the path inline AFTER the flags** (as
+the cpp-style-trailing-this-const tests do). And `.hlsl` test files are matched by a `.gitignore`
+rule (`/tests/**/*.hlsl`) — `git add -f` is the convention
+([codex critique: hard-checklist prompt + no suite re-runs; quiz answer-key letters](../learnings/1795068180208-codex-critique-hard-checklist-prompt-no-suite-re-r.md)).
+
 ### Ground truth beats a stale checkout and a doc
 
 A code-reading subagent dispatched to "verify file:line claims firsthand" can read a stale local
@@ -76,6 +83,19 @@ Corroborating cross-checks that need no build: a patch the overlay's README omit
 `portfile.cmake` reveals, and the maintainer's own vcpkg-bump PR modifying-but-not-deleting the
 overlay. Removability against a *newer* pin still needs a real build, but "removable at the current
 pin" can be conclusively ruled out from the filesystem alone.
+
+The same ground-truth discipline settles **pass-ownership questions where the pass name lies**.
+On slang#14652 (SPIR-V `spvDescriptorHeapEXT` ByteAddressBuffer params surviving into
+byte-address legalization), `specializeFuncsForBufferLoadArgs` *sounds* like the pass that
+removes BAB function params, but its condition gates on `isTypePreferrableToDeferLoad`, which
+excludes resource types — the pass that actually removes BAB params is `specializeResourceUsage`
+(slang-emit.cpp:2232). The want-side (`isIllegalSPIRVParameterType`, specialize-resources.cpp:1660)
+already flags BAB params on Khronos; the failure was purely argument *suitability*: the shared
+walker (slang-ir-specialize-function-call.cpp:27-96) doesn't recognize
+`SPIRVLoadDescriptorFromHeap(heap, index)` args (without the capability the heap fetch is
+`getElement(%__slang_resource_heap, i)`, which the walker already accepts — why the no-cap path
+specializes and the EXT path doesn't). IR dumps at the head settled it (`-dump-ir` before/after
+`specializeResourceUsage`), not the pass names ([heap-fetch BAB args fail call specialization in the suitability walker, not the want gate](../learnings/1795151586123-14652-heap-fetch-bab-args-fail-call-specialization.md)).
 
 ### CI-health reading and coverage-as-bug-hunt
 
@@ -126,9 +146,14 @@ command-line mode, so suppress the diagnostic in the standard-modules gen comman
 in CMake) OR a name (unknown name errors E31111 — self-documenting, use in tests); diagnostic codes
 render zero-padded to 5 digits (`88 → warning[E00088]`), so FileCheck the bracketed code, not a
 bare `CHECK: warning 88`; and `-no-codegen` is a debug path that swallows escalated errors (returns
-`SLANG_OK` without the sink-error check).
+`SLANG_OK` without the sink-error check). The same verify-don't-assume rule applies to pinning
+CHECK lines against *error text*: builtin generic surfaces (`?:`/`select`) report inference-tie
+failures as **E39999** "no overload … applicable" naming the argument-type tuple, NOT the E30442
+conflicting-requirements text user generics emit — verify diagnostic text empirically against BOTH
+binaries with a probe file + `-enable-machine-readable-diagnostics` before pinning
+([builtin select/:? tie failures are E39999, and host gates misfire on stale state](../learnings/1795102972618-builtin-select-tie-failures-are-e39999-and-host-ga.md)).
 
-**Source learnings (7):**
+**Source learnings (10):**
 - [render-test HLSL-prelude leak is CPU-reproducible via shared test-server session](../learnings/1787030106338-render-test-hlsl-prelude-leak-is-cpu-reproducible-.md) — one shared GlobalSession lets a `-cpu` test poison a later `-target hlsl` test; single-file two-directive repro; flag is `-nvapi-slot`.
 - [A code-reading subagent can read a stale local main — cut the worktree from origin first](../learnings/1787227434639-a-code-reading-subagent-can-read-a-stale-local-mai.md) — stale-tree facts are internally consistent; `git rev-list --count main..origin/main`; smaller line numbers ⇒ older tree; positive-control DeepWiki.
 - [Static REF+patch diff can settle a vcpkg overlay-removability question without a build](../learnings/1787228997352-static-ref-patch-diff-can-settle-a-vcpkg-overlay-r.md) — matching REFs + extra patches ⇒ not redundant at that pin; corroborate with README omission and the bump PR not deleting the overlay.
@@ -136,3 +161,6 @@ bare `CHECK: warning 88`; and `-no-codegen` is a debug path that swallows escala
 - [Record-replay createSession leaked a ref on registered-FS reuse; live-count stub catches it](../learnings/1788252612832-record-replay-createsession-leaked-a-ref-on-regist.md) — `s_liveCount` COM stub is a sanitizer-independent leak assert; call createSession twice with the same FS to hit the registered arm; a coverage task can be a bug hunt.
 - [Slang perf: "benchview" != the existing compile-perf gh-pages dashboard](../learnings/1788881905309-slang-perf-benchview-the-existing-compile-perf-gh-.md) — gh-pages dashboard is live; benchview is a separate, design-only backend; split "verify publishing" by which is meant.
 - [Slang module-container diagnostics: hook scope, all 4 extensions, warning-disable id vs name](../learnings/1788903544418-slang-module-container-diagnostics-hook-scope-all-.md) — 4 extensions map to SlangModule; gate CLI diagnostics on `m_isCommandLineCompile` inside the hook; codes render zero-padded (E00088).
+- [#14652: heap-fetch BAB args fail call specialization in the suitability walker, not the want gate](../learnings/1795151586123-14652-heap-fetch-bab-args-fail-call-specialization.md) — `specializeResourceUsage` owns BAB param removal, not `specializeFuncsForBufferLoadArgs`; walker must accept `SPIRVLoadDescriptorFromHeap`; IR dumps settle pass ownership.
+- [Builtin select/:? tie failures are E39999, not E30442 — verify diagnostic text empirically](../learnings/1795102972618-builtin-select-tie-failures-are-e39999-and-host-ga.md) — probe file + `-enable-machine-readable-diagnostics` before pinning CHECK lines (gate/session traps from the same atom are on gate-hook mechanics).
+- [SIMPLE_EX for dialect flags; .hlsl test files need force-add](../learnings/1795068180208-codex-critique-hard-checklist-prompt-no-suite-re-r.md) — `-lang hlsl` is ignored when the file precedes the flag; `/tests/**/*.hlsl` is gitignored (codex-prompt half of the atom is on critique round recording).

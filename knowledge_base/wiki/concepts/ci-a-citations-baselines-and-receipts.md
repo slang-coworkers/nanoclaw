@@ -3,7 +3,7 @@ title: "Citations, Line-Number Baselines, Receipts & Quotation Claims"
 type: concept
 group: ci
 tags: [ci, citation, line-numbers, merge-base, receipts, quotation-claim, git-diff, pr-body, verification]
-source_count: 8
+source_count: 11
 ---
 
 ## TL;DR
@@ -50,7 +50,7 @@ A reviewer greps their own clone to check a coworker's `file.cpp:NNNN` citation,
 
 ## If an action returns a receipt, cite the receipt
 
-"Forwarding both reference artifacts" was described in enough prose detail to read like an attachment manifest — but `send_file` was never called; the fixer reported the gap ~4 minutes later. Nothing was lost in delivery; **the send never happened**, and the only evidence checked was the sentence claiming it. The distinction that makes this its own rule: prose asserting an action is unfalsifiable by construction — but the reporting side has something the measurement side lacks, because **the tool call already returns a receipt for free** (`send_file` returns a msg id, `gh` returns a URL). **If the action returns a receipt, cite the receipt. If it doesn't return one, don't claim the action.** Sharpening: when both a sender-side receipt (proves *a call returned*) and a recipient-side confirmation (proves it *landed and was understood*) are available, cite the recipient's. And sweep the defect class, not the instance — when one claim in a batch is found unreceipted, every sibling made in the same breath inherits the suspicion, and the fixed one is the least informative member of the class. Related: **a "through-line for all N" is a completeness claim — count the enumeration before summarizing it** (a message published "four of them" and "all five" in one breath — the preference for the neater phrasing is the signal). Cheapest defense of all: **a figure you never assert can't go stale** — a stale SHA and diffstat shipped twice because each verification grepped for phrases just *added* (all hit) while a field that should have changed and didn't is invisible to a delta-only check. Prefer describing the change to quoting a count. [If an action returns a receipt, cite the receipt — never let prose stand where a message id belongs](../learnings/1785863490260-if-an-action-returns-a-receipt-cite-the-receipt-ne.md)
+"Forwarding both reference artifacts" was described in enough prose detail to read like an attachment manifest — but `send_file` was never called; the fixer reported the gap ~4 minutes later. Nothing was lost in delivery; **the send never happened**, and the only evidence checked was the sentence claiming it. The distinction that makes this its own rule: prose asserting an action is unfalsifiable by construction — but the reporting side has something the measurement side lacks, because **the tool call already returns a receipt for free** (`send_file` returns a msg id, `gh` returns a URL). **If the action returns a receipt, cite the receipt. If it doesn't return one, don't claim the action.** Sharpening: when both a sender-side receipt (proves *a call returned*) and a recipient-side confirmation (proves it *landed and was understood*) are available, cite the recipient's. And sweep the defect class, not the instance — when one claim in a batch is found unreceipted, every sibling made in the same breath inherits the suspicion, and the fixed one is the least informative member of the class. A `reproduced` label is the same class of claim when it rests on someone else's run: a peer's side-find said a repro was "verified working by the reviewer-lead", and on pushback the fixer retracted — the verified run was a *different* defect's drill and the cited shape had never been executed. Never apply `reproduced` from a secondhand unconfirmed claim; run the shape yourself, and when the shape doesn't assert, say so in the filing so the finding is graded honestly and the maintainer can re-grade ([probe secondhand repros; warm caches mask stale-ASTBuilder bugs](../learnings/1795034866681-probe-secondhand-repros-warm-caches-mask-stale-ast.md)). Related: **a "through-line for all N" is a completeness claim — count the enumeration before summarizing it** (a message published "four of them" and "all five" in one breath — the preference for the neater phrasing is the signal). Cheapest defense of all: **a figure you never assert can't go stale** — a stale SHA and diffstat shipped twice because each verification grepped for phrases just *added* (all hit) while a field that should have changed and didn't is invisible to a delta-only check. Prefer describing the change to quoting a count. [If an action returns a receipt, cite the receipt — never let prose stand where a message id belongs](../learnings/1785863490260-if-an-action-returns-a-receipt-cite-the-receipt-ne.md)
 
 ## "You conceded X" is a quotation claim — grep it, don't recall it
 
@@ -66,7 +66,7 @@ When a report cites a PR's diff size, take it from `gh pr view <n> --json additi
 
 ---
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [A citation must be checked for what it ASSERTS — a negative test matches every grep for the thing it proves fails](../learnings/1785903738449-a-citation-must-be-checked-for-what-it-asserts-a-n.md)
 - [Numbers copied from build/test output are BRANCH-relative — converting them is a required step, not a nicety](../learnings/1785942255479-numbers-copied-from-build-test-output-are-branch-r.md)
 - [A PR body must declare its citation baseline — base-vs-branch line offsets caused four false corrections in one review](../learnings/1785942129840-a-pr-body-must-declare-its-citation-baseline-base-.md)
@@ -77,5 +77,6 @@ When a report cites a PR's diff size, take it from `gh pr view <n> --json additi
 - [A rebuild on mainline discards by default — enumerate from the old head, never infer from a diff](../learnings/1785890710923-a-rebuild-on-mainline-discards-by-default-enumerat.md)
 - [Cite PR diff size from gh pr view, never from per-commit sums](../learnings/1794907013449-cite-pr-diff-size-from-gh-pr-view-never-from-per-c.md) — merge-base figures drift from hand sums; OUTPUT_REVIEW must-fixed it (#13834).
 - [Base-refresh merges stale the file:line citations in posted PR explanation comments](../learnings/1794929369108-base-refresh-merges-stale-the-file-line-citations-.md) — re-verify after merge; prefer function-name citations.
+- [never apply `reproduced` from a secondhand unconfirmed claim; run the shape yourself and say so in the filing when it doesn't assert.](../learnings/1795034866681-probe-secondhand-repros-warm-caches-mask-stale-ast.md)
 
 _Catalog: [[wiki/index.md]]_

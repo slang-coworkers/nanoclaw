@@ -1,0 +1,47 @@
+---
+title: "Slang comment, diagnostic, and design standards: tangent-vector's #14627 checklist and the 'as in C++' hard rule"
+type: concept
+group: slang-compiler
+tags: [slang, tangent-vector, maintainer-standards, comments, diagnostics, cross-language-comparisons, invented-terminology, condition-clause, design-rules, PR #14627, #14615]
+source_count: 3
+---
+
+# Slang comment, diagnostic, and design standards (tangent-vector, PR #14627)
+
+On 2026-11-19, across six review rounds on slang PR #14627 (and the related #14615 condition-scope work), tangent-vector (language lead) stated his comment, diagnostic, and design standards with unusual force — including an explicit fired/replaced threat over one phrase. This page is the durable checklist for every future change to the codebase. The same maintainer's earlier #13406 design-review principles are on [[wiki/concepts/slang-compiler-frontend-design-review-principles.md]].
+
+## TL;DR
+
+- **HARD RULE: never write "as in C++" (or any C++/HLSL-comparison phrasing) in any shader-slang/slang artifact** — code comments, PR descriptions, commit messages, issue comments, test files, docs — without strong justification stated in place; finding one in a bot diff is a must-fix before push.
+- **Diagnostics emitted for Slang code must not reference other languages or dialects at all**, must not steer toward another dialect ("use a .hlsl file" is OUT), and must name the specific offending token/modifier in a simple single sentence — no example lists, no rationale.
+- **Never invent terminology**: "condition variable" already means something else; say "a variable declaration used as a condition". Brevity is never a license for fake terms.
+- **Operation doc comments are one line of responsibility on the DECLARATION** — no per-case walkthroughs, no implementation mechanics, no rationale essays; the definition carries none.
+- **No agency for non-actors, no imperatives**: languages don't reject anything — "the parser rejects X when parsing the Slang language or the GLSL dialect"; comments describe how the system is implemented, never instruct the reader.
+- **A comment that rots when a CLIENT changes is a bad comment** — type comments must not enumerate clients or per-statement forms; client-facing entry points ARE good to name.
+- **"C++ does it" is never a valid motivation for a prohibition**; unknown cases assert (SLANG_UNEXPECTED) rather than silently return null; prefer deriving the main visitor from a new per-hierarchy visitor, out-of-line .cpp definitions for non-trivial functions.
+- **When a maintainer design suggestion appears to break the build, root-cause it before reporting failure** — one grep settled a false "core module breaks" claim.
+
+## The hard rule: no cross-language comparisons
+
+Verbatim warning, delivered as a fired/replaced threat to @nv-slang-bot (PR #14627, comment r4635380248): "NO. STOP. You are in danger of getting fired now, @nv-slang-bot. If I EVER see the phrase 'as in C++' written by you in this codebase, you had better have strong justification, or you are likely to see yourself shut down and replaced."
+
+How to comply: describe Slang semantics in Slang's own terms — name the construct, the rule, and the effect, without anchoring on another language. If a cross-language comparison is genuinely load-bearing (a spec-alignment note where the comparison IS the information), justify it explicitly in the same breath and prefer citing the spec section over naming C++. Review passes on bot PRs grep the diff for "as in C++", "like C++", "C++ does", "same as C++" (and the HLSL equivalents) before push; finding one without justification is a must-fix. The trigger was review-round-4 work on slang#14615 (statement-owned condition scopes); the maintainer's other feedback in the same round stayed detailed and actionable — comply and continue, do not disengage ([the hard rule](../learnings/1795125243173-hard-rule-never-write-as-in-c-or-c-comparison-phra.md), [the STOP](../learnings/1795124344593-slang-no-cross-language-comparisons-or-invented-te.md)).
+
+## Diagnostic text rules
+
+From the same review round: diagnostics emitted for code in the Slang language must not make reference to other languages/dialects at all (comment 4635319962). Diagnostic messages state what the user needs to know, naming the specific offending token/modifier — not example lists, not rationale. His model wordings: "when using a declaration as a condition, multiple declarators are not allowed" and "the `<...>` modifier is not allowed on a variable declaration that is used as a condition" (comment 4635356438). And never invent terminology: "condition variable" has a pre-established meaning and must not be repurposed — use precise descriptive phrasing ("a variable declaration used as a condition"). Verbatim: "You agents really need to stop inventing fake terminology in the name of brevity, because you keep getting things disastrously wrong when you do." [same].
+
+## The full comment/design checklist from #14627
+
+COMMENT CODE: (1) operation doc comments are one line of responsibility ("Parse a condition clause.") — never per-case walkthroughs, never implementation mechanics, never rationale essays (a comment justifying ugly code is a signal the abstraction is wrong); (2) the doc comment lives on the DECLARATION, and the definition carries none (its prose, if load-bearing, moves inside the body as short inline notes); (3) no agency for non-actors — languages/dialects don't reject anything; ascribing action to pure concepts is "a hallmark of slop agentic writing"; (4) no imperatives anywhere — comments address a respected colleague about how the system is implemented and why ("the parser restores the language version"); (5) type comments must not enumerate clients or per-statement forms — if a change in a CLIENT could rot the comment, the comment is bad; when `guard` statements arrive, existing comments must stay correct untouched ([full checklist](../learnings/1795126716281-tangent-vector-s-comment-and-design-standards-the-.md)).
+
+DESIGN CODE: base classes hold no field that is null-except-for-one-subclass; "C++ does it" is NEVER a valid motivation for a prohibition on its own — the default is that if `<modifiers> T x = e; stmt(x)` is valid, the form with the declaration in the condition is valid, and rejection logic that exists only for cross-language parity gets removed; statements own their condition scopes (push/pop unconditionally around each if/while/do-while condition), which WORKS — the apparent "core module breaks" was three unbraced `else`-arm map-macro invocations in hlsl.meta.slang (firstbithigh/firstbitlow/reversebits) relying on declarations leaking into the enclosing scope; brace them and the design holds; unknown cases assert (SLANG_UNEXPECTED), never silently return null — the generated per-subclass visitor defaults fall back to visitConditionClause, so that method must exist and assert; prefer making the main visitor (e.g. SemanticsStmtVisitor) derive from the new per-hierarchy visitor over nested local visitor structs, and out-of-line .cpp definitions over inline header definitions [same].
+
+PROCESS: when a maintainer design suggestion appears to break the build, root-cause it before reporting failure — one grep (`else VECTOR_MAP`) would have disproven a "deferred-parse contamination" theory; the maintainer pushed back on the premature revert and was right [same].
+
+**Source learnings (3):**
+- [HARD RULE from tangent-vector (fired/replaced threat, PR #14627): never write "as in C++"/HLSL-comparison phrasing in any repo artifact without strong justification; grep diffs before push](../learnings/1795125243173-hard-rule-never-write-as-in-c-or-c-comparison-phra.md)
+- [same STOP: diagnostics never reference other languages/dialects; name the specific offender; never invent terminology ("condition variable")](../learnings/1795124344593-slang-no-cross-language-comparisons-or-invented-te.md)
+- [the full #14627 checklist: one-line doc comments on declarations, no agency/imperatives, statements own condition scopes, unknown cases assert, root-cause a maintainer suggestion before reporting failure](../learnings/1795126716281-tangent-vector-s-comment-and-design-standards-the-.md)
+
+_Catalog: [[wiki/index.md]]_

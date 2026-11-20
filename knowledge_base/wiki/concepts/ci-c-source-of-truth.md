@@ -3,7 +3,7 @@ title: "Authoritative sources: freshness, units, and stale caches"
 type: concept
 group: ci
 tags: [ci, source-of-truth, git-cache, units, staleness, re-read-at-head, deadlines, policy-vs-capability, vendored-deps]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -52,6 +52,8 @@ A front-end defect measured per-target *understates itself*. A "bare unparenthes
 
 After a container restart, in-flight chain messages (e.g. a fixer's `[Fix Report]`) can be silently lost — the chat transcript just ends at the restart notification. Don't wait for the lost inbound: reconcile the chain from GitHub state instead (does the draft PR exist and at what head; the latest bot comment on the issue; the active-work sentinel), then forward the resolution with a note that it was reconciled from the GitHub record. This is the "GitHub is the system of record" invariant paying off in practice — on #13758 (2026-11-17) the PR's existence plus an issue comment showed the review had converged while the orchestrator was down, and the resolution went upstream 4h late instead of never. [Reconcile lost chain inbounds from GitHub state after a restart](../learnings/1794918076895-reconcile-lost-chain-inbounds-from-github-state-af.md)
 
+The same invariant covers `/tmp` scratch files, which do not survive long session gaps: after a multi-hour gap between turns, a `/tmp/explain-body.md` working copy of a PR's explanation comment was silently gone (`/tmp` is wiped between container/message-batch boundaries, slang#14621). The posted GitHub comment IS the system of record — reconstruct the working copy from the live artifact with `gh api repos/<o>/<r>/issues/comments/<id> --jq '.body > file'`, strip the tool-added marker line, the `explain-diff-html:written` seal and the `<sub>` disclaimer, then edit and re-upsert. Never assume a scratch file in `/tmp` survived a gap; check before editing ([/tmp scratch files do not survive long gaps — rebuild working copies from the live GitHub comment](../learnings/1795117093078-tmp-scratch-files-do-not-survive-long-gaps-rebuild.md)).
+
 ## The learnings index is itself a build output
 
 `/workspace/shared/learnings/INDEX.md` is *regenerated*, not maintained — hand-editing a row does not persist (33 of 36 operator annotations vanished after an unrelated `append_learning`). An index row's label is the *filename slug* baked in at creation; the generator never re-derives it from a leaf, so *nothing written into a leaf afterwards ever reaches its index row*. Consequences: a *correction* is durable only if it names what it corrects in its own opening line (a new leaf, so you control its text at write time); a *warning on a superseded leaf* is not achievable after the fact by a container coworker (`EROFS` blocks the edit, the row is regenerated) — but *is* achievable by whoever holds write access to `/workspace/shared/` (Main), who can edit the leaf in place and `build` propagates it. Route a wrong claim in a published leaf to that owner as an in-place edit rather than stacking an appended correction that leaves the bad artifact intact. Write the first version assuming you'll never amend it: don't publish a load-bearing claim you're unsure of, and before designating yourself the owner of a fix, verify the fix survives (`stat` your write target after an unrelated write — check whether it's source or derived). [INDEX.md is a build output derived from leaf openings — a retraction banner must be IN the leaf, and EROFS means you must get it right on first write](../learnings/1786172024659-index-md-is-a-build-output-derived-from-leaf-openi.md)
@@ -60,7 +62,7 @@ A partial fix rail is not a verdict, and a defect re-recorded as lessons is not 
 
 ---
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [git origin/branch is a local cache — never cite it for what is pushed](../learnings/1786196186804-git-origin-branch-is-a-local-cache-never-cite-it-f.md)
 - [Re-read the target file at HEAD before replying about a delivered diff — CI workflows migrate under you](../learnings/1786132634125-re-read-the-target-file-at-head-before-replying-ab.md)
 - [A CI deadline is a carried value — every push voids it, and a 403 is not "no rule"](../learnings/1786109673796-a-ci-deadline-is-a-carried-value-every-push-voids-.md)
@@ -73,5 +75,6 @@ A partial fix rail is not a verdict, and a defect re-recorded as lessons is not 
 - [INDEX.md is a build output derived from leaf openings — a retraction banner must be IN the leaf, and EROFS means you must get it right on first write](../learnings/1786172024659-index-md-is-a-build-output-derived-from-leaf-openi.md)
 - [devin-fetch done-guard: a partial CI rail is not a verdict — the class stayed open for 12 recorded instances because the fix was never wired into the artifact](../learnings/1786121384159-devin-fetch-done-guard-a-partial-ci-rail-is-not-a-.md)
 - [Reconcile lost chain inbounds from GitHub state after a restart](../learnings/1794918076895-reconcile-lost-chain-inbounds-from-github-state-af.md) — don't wait for a lost [Fix Report]; rebuild chain state from the GitHub record (#13758).
+- [/tmp is wiped across long gaps; rebuild explanation-comment working copies from the live GitHub comment and strip the marker/seal/disclaimer.](../learnings/1795117093078-tmp-scratch-files-do-not-survive-long-gaps-rebuild.md)
 
 _Catalog: [[wiki/index.md]]_

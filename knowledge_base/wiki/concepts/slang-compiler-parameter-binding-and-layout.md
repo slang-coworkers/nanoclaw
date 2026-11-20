@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 31
+source_count: 32
 ---
 
 # Slang Parameter Binding and Layout
@@ -13,6 +13,7 @@ source_count: 31
 - `validateEntryPoint` checks each SV in isolation; #6319 (exact duplicate) and #11863 (overlap) are complementary. A duplicate-SV key needs the output binding space (classic empty, mesh CATEGORY, geometry STREAM).
 - E38052 (VS without SV_Position) is an **intentional false-positive** (`-warnings-disable 38052`). `SV_Target<N>`'s `index` is set in **TWO** places.
 - GLSL varying layout gives 64-bit 3/4-vectors one Location instead of two (#13427); fix `GetVectorLayout` AND the hull patch-constant IR layout.
+- WGSL/Metal varying-location bugs are one family fixed by open PR #13736 (+ umbrella #13892) — check it before dispatching a fixer; the WGSL emitter reads semantic decoration indices, not front-end layout offsets.
 - Layout POLICY is written **twice** (`slang-type-layout.cpp`, `slang-ir-layout.cpp`; no shared code, not 1:1). SPIR-V decorations use the **IR path**, not reflection `IRTypeLayout`.
 - A reflection-affecting layout attribute needs one target gate in both engines: `[vk::offset]` was IR-only and applied off-Vulkan; PR #14108 gates it to `isKhronosTarget`.
 - Type-level alignment: `alignas` on CUDA/C++/Metal, explicit offsets on SPIR-V, per-member `@align` on WGSL; GLSL `align` block-only; HLSL none.
@@ -47,6 +48,8 @@ E38052 "vertex shader has no output with SV_Position" (PR #10971) is an **intent
 Deriving a fragment `SV_Target<N>`'s `layout(location=N)` from the render-target index (#11944) means patching **both** places in `slang-parameter-binding.cpp` that set the VarLayout resource `index` ([SV_Target fix in TWO places](../learnings/1783263604045-sv-target-location-fix-lives-in-two-places-in-slan.md)).
 
 64-bit vectors get too few Locations (#13427). `DefaultVaryingLayoutRulesImpl::GetVectorLayout` (`slang-type-layout.cpp:1035-1045`), inherited by `GLSLVaryingLayoutRulesImpl` (:1048), ignores the element type: every vector is one Location. Vulkan needs two for `double3/4`, `int64_t3`, `uint64_t4` (scalars and 2-vectors take one); arrays and matrices inherit the undercount (`double4x4` gets 4, not 8). spirv-val reports 08721 (inputs) / 08722 (outputs; geometry too; mesh misnumbered but unflagged). Overriding `GetVectorLayout` in the GLSL varying rules (>16 bytes → 2) fixes every front-end shape and reflection, leaves HLSL unchanged (3208/3209 subsets pass), but misses the hull patch-constant OUTPUT path: `createPatchConstantFuncResultTypeLayout` (`slang-ir-glsl-legalize.cpp`) builds its own IR layout (leaf size `fromRaw(1)`), so hull and domain disagree. Oracle: DXC `-spirv` (`/workspace/agent/scratch-13324` dxcspv harness) [64-bit varying Location counts](../learnings/1791134194001-vulkan-64-bit-varying-location-counts-slang-glsl-v.md).
+
+WGSL/Metal varying-location bugs are one family: before dispatching any fixer chain on them, check open PR #13736 ("WGSL: vertex input locations follow the varying-input layout", plus umbrella #13892 "IR passes and emitters must use the front-end layout") — its branch (94c49ee97, verified 2026-11-18) fixes the whole set: WGSL `@location` reordering, ignored `[vk::location]` on semantic-bearing fields, nested-varying layout drops, and Metal `lowerOutParameters` layout staleness. Root-cause pattern: the WGSL legalizer collapses all user semantics to one name `user_semantic` (`slang-ir-legalize-varying-params.cpp:5433`), so suffix-derived indices collide and get first-fit renumbered, while the WGSL emitter reads semantic decoration indices (`slang-emit-wgsl.cpp:325`), never the correct front-end layout offsets. #9693 was triaged as a member of this family and parked with no fixer — a duplicate-collision avoided by building the PR branch locally (fetch `pull/N/head`, checkout detached, minutes for an incremental slangc) [WGSL/Metal varying-location bugs: check PR #13736 first](../learnings/1795043376789-wgsl-metal-varying-location-bugs-check-pr-13736-be.md).
 
 ## Layout POLICY Is Written Twice: type-layout vs ir-layout
 
@@ -114,7 +117,7 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 
 **GPU-free, MSVC-free layout oracle:** `-target cpp` (emitted `struct S_0` backings and setter masks give the layout; `g++ -I prelude` runs it). To compare with MSVC host layout, compile `struct __attribute__((ms_struct)) S {...}` with g++/clang, memcpy to bytes, compare with the Slang masks. Backing-word initialization rules are on [[wiki/concepts/slang-compiler-frontend-and-checking.md]].
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [CUDA reflection-JSON reports scalar pointee layout while emitting native vectors (slang #14040)](../learnings/1794947921393-cuda-reflection-json-reports-scalar-pointee-layout.md) — PtrTypeBase branch forces scalar rules; one JSON, two layouts
 - [bool size is context-dependent](../learnings/1793830159570-slang-bool-size-is-context-dependent-sizeof-bool-1.md)
 - [#14489 redundant SV_Target on a struct return is silently accepted](../learnings/1794815315476-slang-14489-redundant-sv-target-on-a-struct-return.md) — missing duplicate-semantic validation
@@ -146,5 +149,6 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299 at d78
 - [IR vk::offset honoured off-Vulkan](../learnings/1793400225781-ir-layout-vk-offset-was-honoured-off-vulkan-while-.md)
 - [entry-point push constants alias at Offset 0 (#9643)](../learnings/1793349219262-entry-point-push-constants-all-start-at-offset-0-w.md)
 - [per-target alignment expressibility (#14032)](../learnings/1793644718087-per-target-struct-alignment-expressibility-for-ali.md)
+- [WGSL/Metal varying-location family fixed by PR #13736/#13892; WGSL legalizer collapses user semantics to `user_semantic`, emitter reads semantic indices; #9693 parked as duplicate](../learnings/1795043376789-wgsl-metal-varying-location-bugs-check-pr-13736-be.md)
 
 _Catalog: [[wiki/index.md]]_

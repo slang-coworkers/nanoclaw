@@ -3,7 +3,7 @@ title: "Approver and CI Operational Notes"
 type: concept
 group: review-process
 tags: [pr-approver, record-decision, head-pinning, mode-staleness, clause-gap, challenger, critique-gate, ci-status, check-suite, human-calibration, human-agreement, human-disagreement, wrong-layer, producer-fix, false-safe, protected-path, memoization-safety]
-source_count: 35
+source_count: 36
 ---
 
 # Approver and CI Operational Notes
@@ -44,6 +44,8 @@ A second cause of the same shape is **require-conversation-resolution**: a PR AP
 
 On bot-authored PRs, `license/cla` PENDING / `not_signed` (CLAassistant: "author has not signed") looks like a hard blocker but is a **soft gate** — maintainers merged 6 `nv-slang-bot[bot]` PRs Sep 2–11 2026 despite it; a bot cannot self-sign. Report it once as FYI. The real blocker is usually `reviewDecision: REVIEW_REQUIRED` with 0 human reviews (maintainer attention), not CLA or CI infra ([CLA soft gate](../learnings/1789183755022-slang-bot-authored-prs-license-cla-not-signed-is-a.md)).
 
+On the CI-babysitter side, sweeplib's `touch_tracker_verdict` validates against a fixed **log-row vocabulary** distinct from the tracker verdict's own (2026-11-19: four failed calls before all three landed). Tracker `no-ci` requires `head_sha` AND a log_row verdict `not-applicable` with label `no-ci-never-ran` (passing the tracker verdict "no-ci" into the row raises "verdict 'no-ci' not in [UNCLASSIFIED/intermittent/legitimate/not-applicable/unclassifiable]"); `ci_never_ran_state()` refuses no-ci while any ci.yml run is live/in-progress on the head. Tracker `legitimate` requires the log_row verdict to carry an evidence label from REGRESSION_EVIDENCE ('legitimate-regression', 'author-owned-regression', 'policy-formatting', …) — bare labels[] raise. A cleared flake goes through `resolved` via log_row verdict `intermittent` + label `re-verified-at-source` + result `cleared`. Also: the `evicted` wake list re-fires for the full 24h window even after the eviction was fully handled (log exam + verdict + requeue decision) — check the tracker's `requeues.events` for the same mergeGroupRunId before redoing the log examination ([sweeplib touch_tracker_verdict vocab quirks + evicted-list re-fire within 24h window](../learnings/1795068666266-sweeplib-touch-tracker-verdict-vocab-quirks-evicte.md)).
+
 ## Ordering the clause eval and review-doc synthesis
 
 On #12126 running `eval-clauses.py` *before* synthesizing the review doc left `commit_match` unevaluable, because synthesis populates the field the clause reads. Synthesize the review doc first, then evaluate clauses ([eval-clauses order](../learnings/1784147694801-approver-critique-mustfix-eval-clauses-before-revi.md)).
@@ -80,7 +82,7 @@ Clean approves confirm too: slang#12052's module-scoped `SharedSemanticsContext`
 
 ---
 
-**Source learnings (35):**
+**Source learnings (36):**
 
 - [wrong-layer no-op drop: safe ≠ right](../learnings/1784109134516-approver-challenger-miss-drop-a-no-op-before-emit-.md)
 - [demo doc-inconsistency OPEN_GAP shipped via self-merge](../learnings/1784111092025-approver-human-disagreement-demo-example-doc-incon.md)
@@ -117,3 +119,4 @@ Clean approves confirm too: slang#12052's module-scoped `SharedSemanticsContext`
 - [maintainer hand-apply → last-pusher block](../learnings/1789218545131-a-maintainer-hand-applying-a-bot-s-changes-can-blo.md)
 - [bot PR license/cla not_signed is soft gate](../learnings/1789183755022-slang-bot-authored-prs-license-cla-not-signed-is-a.md)
 - [unresolved human thread blocks approved PR](../learnings/1789499918969-approved-pr-can-still-be-merge-blocked-by-an-unres.md)
+- [sweeplib touch_tracker_verdict vocab quirks + evicted-list re-fire within 24h window](../learnings/1795068666266-sweeplib-touch-tracker-verdict-vocab-quirks-evicte.md) — no-ci needs head_sha + log_row not-applicable/no-ci-never-ran; legitimate needs a REGRESSION_EVIDENCE label; evicted re-fires 24h — check requeues.events first.

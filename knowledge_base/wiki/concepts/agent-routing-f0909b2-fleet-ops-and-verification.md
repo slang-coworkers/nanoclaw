@@ -3,7 +3,7 @@ title: Fleet operations — CI/GitHub infra, dispatch routing & verify-before-yo
 type: concept
 group: agent-routing
 tags: [gh-auth, onecli, falcor-gate, ci-rerun, dispatch, wired-coworkers, stale-toolchain, verification, revert-drill, skill-drift]
-source_count: 20
+source_count: 23
 ---
 
 ## TL;DR
@@ -308,7 +308,33 @@ review:
   cause is skill-copy drift, flagged to the operator to reconcile once
   ([okf-synth exempt mechanism retracted; skill-copy drift](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md)).
 
-**Source learnings (20):**
+Verification environments have their own gaps. Reproducing Vulkan validation (VUID) failures in the coworker
+containers requires the Khronos validation layer, which is NOT installed (`/usr/share/vulkan/explicit_layer.d/`
+holds only Intel/Mesa) — a pre-fix test silently "passes" and the VUID repro looks unreproducible. Fix without
+a package install: chromium bundles the layer at `/usr/lib/chromium/libVkLayer_khronos_validation.so`;
+hand-write a manifest next to it and run `VK_LAYER_PATH=<dir> slang-test -enable-debug-layers true ...`
+(verified on #14596, L40S: base failed both legs with VUID-vkCmdDispatch-viewType-07752, head 2/2 clean).
+Treat any "pre-fix repro passes" as an environment gap, not evidence
+([Vulkan VUID repro: activate the chromium-bundled layer via VK_LAYER_PATH](../learnings/1795019909235-vulkan-vuid-repro-in-coworker-containers-activate-.md)).
+
+Shared slang worktrees carry operational hazards that manufacture false evidence. `git stash`/`pop` operates
+on the BASE CLONE's shared stash stack — never pop blindly (a foreign session's stash applied into a clean
+worktree); check `git stash list` first, and `git reset --hard HEAD` restores after a bad pop (the entry is
+kept on conflict). A/B checkout-dances (`git checkout <ref> -- source/` then `git checkout HEAD -- source/`)
+silently revert UNCOMMITTED working-tree edits — the failure surfaced only as contradictory test results
+later; commit semantic edits BEFORE any dance. And `-use-test-server` spawns server-mode processes an
+incremental `--target slang-test` rebuild does NOT refresh — a stale server gave false failures for tests
+that passed standalone, so rebuild everything the harness spawns
+([shared-worktree git hazards: stash stack, checkout-dance edit loss, stale test servers](../learnings/1795044043145-shared-worktree-git-hazards-stash-stack-checkout-d.md)).
+
+Harness quirk: the bash tool's persistent shell does NOT keep cwd across tool calls in these containers —
+every call starts back in /workspace/agent, so a mid-session `cd` and relative paths fail confusingly
+(heredocs land in the workspace, "cannot stat" from wrong dirs). Use the `workdir` parameter or absolute
+paths for every command in a multi-call session; and /tmp/opencode is root-owned and NOT writable despite the
+tool description — use /tmp/<task>
+([bash tool cwd resets between calls](../learnings/1795035874712-bash-tool-cwd-resets-between-calls-in-this-contain.md)).
+
+**Source learnings (23):**
 
 - [`gh auth status` says "GH_TOKEN invalid" — red herring for the app installation token](../learnings/1788374386518-gh-auth-status-says-gh-token-invalid-red-herring-f.md) — App tokens can't hit `/user`; repo-scoped reads/writes still work — test the actual call before escalating.
 - [gh auth status falsely reports nv-slang-bot token invalid; gh api still works](../learnings/1788881883720-gh-auth-status-falsely-reports-nv-slang-bot-token-.md) — Use `gh api` (REST) for everything; GraphQL-backed `gh` subcommands break; never `env -u GH_TOKEN`.
@@ -330,3 +356,6 @@ review:
 - [okf-synth has NO `okf_synth: exempt`; a load-bearing top offender is a known false positive](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md) — Verify a skill's version (md5 + `git log -S`) before citing its mechanism; runtime copies drift from canonical.
 - [KB-sync STEP-4b data-only gate: core.fileMode=false defeats the chmod control — prove via cacheinfo](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md) — a fresh chmod stages as `100644` under `fileMode=false`; exercise the gate with `update-index --cacheinfo 100755` and scan the whole staged index (`git ls-files -s`), don't abort on the false alarm.
 - [KB-sync STEP 4b control needs `update-index --chmod`; the gate reads INDEX modes, not the working-tree bit](../learnings/1790219167090-kb-sync-step-4b-control-needs-update-index-chmod-c.md) — `git add -f && git update-index --chmod=+x` drives the control under `fileMode=false`; the real check (`git ls-files -s`) stays authoritative and caught 0 execs/0 gitlinks on 2026-09-24.
+- [Vulkan VUID repro in coworker containers: activate the chromium-bundled Khronos layer via VK_LAYER_PATH](../learnings/1795019909235-vulkan-vuid-repro-in-coworker-containers-activate-.md) — without the layer a pre-fix test silently passes; treat it as an environment gap, not evidence.
+- [Shared-worktree git hazards: stash stack, checkout-dance edit loss, stale test servers](../learnings/1795044043145-shared-worktree-git-hazards-stash-stack-checkout-d.md) — never blind stash pop (shared stack); commit before checkout dances; rebuild test servers.
+- [bash tool cwd resets between calls in this container](../learnings/1795035874712-bash-tool-cwd-resets-between-calls-in-this-contain.md) — use workdir/absolute paths; /tmp/opencode is root-owned.

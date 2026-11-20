@@ -74,6 +74,16 @@ has one ([One owner per work item: never start a second session to reset a budge
 
 A different delivery-side failure is a *legitimate refusal*, not a bounce: a bare `send_message(to="orchestrator")` from a recurring heartbeat session was rejected with `Refusing to send to thread "…" without in_reply_to: 678 unresponded inbound rows exist on this peer thread`. The session's default outgoing thread_id auto-propagates to a peer thread that had accumulated hundreds of unanswered inbound rows over the life of the ~5-min-cadence heartbeat (~56h of backlog), and the routing layer refuses a bare send into a thread with that much unaddressed backlog rather than let it silently vanish. The correct response is NOT to guess an `in_reply_to` from the huge unrelated backlog (picking a wrong ancestor mis-threads the reply, violating "route on edges, never guess" — and a `<task>`-block wake carries no message id to legitimately reply to): route the same status to a distinct, non-backlogged destination and explicitly note that the `orchestrator` delivery failed for this reason, rather than dropping it or force-guessing. The open pipeline question worth surfacing: a heartbeat whose periodic trigger mints an inbound row each cycle that is never explicitly acked will keep tripping the backlog-refusal threshold every wake — fix by auto-acking heartbeat trigger rows, raising the threshold, or having the heartbeat rely purely on its memory files instead of `send_message(to="orchestrator")` ([heartbeat reports to orchestrator blocked by a 678-row unresponded backlog on the peer thread](../learnings/1789645494994-heartbeat-reports-to-orchestrator-blocked-by-678-r.md)).
 
+Sibling-process liveness needs its own instrument (slang#14628 r1): stale `runs/` dirs make
+"no exit-status file" useless as a live-sibling signal, because many dead B-fetch/probe/drill
+dirs never got one — check `cat <dir>/pid` + `kill -0 <pid>` (assign outside any subshell; `( kill -0 ... )`
+drops the variable), plus `stat -c %Y` mtime recency and `ps aux | grep -E "opencode run|devin-fetch"`.
+The same dispatch needs a clone-pin check: `git clone --shared slang wt-<pr>-revX` checks out
+slang's *current HEAD*, not the pinned master, even when the branch was force-pointed before
+cloning — always run `git -C wt-<pr>-revX checkout -B master <base>` in each rev clone and verify
+`HEAD == origin/master == PR base` before compose-and-run
+([rev-clone HEAD gotcha and stale runs/ liveness checks](../learnings/1795059118559-rev-clone-head-gotcha-and-stale-runs-liveness-chec.md)).
+
 ## Heartbeat health — the watermark lies
 
 [A reporting gap can last days with the watermark staying fresh](../learnings/1786996231168-reporting-gap-can-last-days-with-the-watermark-sta.md):
@@ -159,12 +169,34 @@ maintainer explicitly flagged being misgendered; wrong pronouns cost trust.
 [Defer, don't race a member's self-assigned issue](../learnings/1787062663706-defer-don-t-race-member-self-assigned-issue-no-com.md)
 (slang#12603): the verify-the-assign fact stands (check the assignment on the issue itself, cheap GraphQL), but the DEFER-on-self-assignment is superseded 2026-11-17 by operator correction `operator/1794884111425` — an assignment is not a stand-down, so the hold no longer supersedes the workflow's default forward; the fixer proceeds unless an explicit stand-down exists or the assignee's own PR/work is actively in flight (the don't-race-actual-work courtesy, not don't-race-an-assignee). [A cleaner
 reframing can discard your own prior analysis](../learnings/1787163810101-a-cleaner-reframing-can-discard-your-own-prior-ana.md)
-(slangpy#1091): re-presenting a maintainer's binary simplification *feels
-confirmatory* while quietly dropping richer analysis you already recorded (here, a
+(slangpy#1091): re-presenting a maintainer's binary simplification *feels*
+confirmatory while quietly dropping richer analysis you already recorded (here, a
 decision-independent path + a bounded failure band). Before answering a question as
 asked, check whether your own prior record frames it differently; and when citing
 your own prior artifact publicly, read it at source first — option labels drift
 ("Approach A" in notes ≠ "Option A" in the public comment).
+
+A stand-down can cross a dispatched chain mid-flight or land after the work completes
+(slang#14589): before starting non-trivial work on a handoff, check the same thread for a
+newer stand-down/collision message — the first inbound in a batch is not necessarily the
+operative one. If work is already complete when the stand-down lands, do not destroy or
+close anything: report the exact state (branch, commit shas, PR number, worktree path,
+in-flight reviews) to the parent and let them disposition — closing PRs/deleting branches
+are operator-gated — send a withdrawal note to any peer you dispatched, and record the held
+state in memory with its resume trigger. That atom also carries a build-aperture fact: a
+partial slang build (`slangc`+`slang-test` targets only) fails ~18 full-suite tests
+spuriously (functional codegen, dispatcher smoke, gfx-smoke need the standard-module
+producer targets, `slang-dispatcher` and `gfx`) — verify those pass standalone before
+blaming your diff [stand-down can arrive after the chain completes](../learnings/1795020796879-stand-down-can-arrive-after-the-chain-completes-re.md).
+
+Finalize briefing-artifact edits BEFORE the send. When a supervisor directive overturns
+prior state in a memo (park → dispatch), the attached file must be re-synced first — on
+slang#14595 the fixer received `triage-14595.md` still carrying the old "Park, do not
+dispatch" recommendation while the handoff message said dispatch, and had to reconcile a
+self-contradictory brief by hand. The send/send_file of any briefing artifact is the last
+step after all edits land; if the artifact is already in flight when state changes, send a
+follow-up delta on the same thread naming what changed
+[send-after-edit: re-sync briefing artifacts before dispatch](../learnings/1795022916014-send-after-edit-re-sync-briefing-artifacts-before-.md).
 
 ## Source learnings (14):
 
@@ -194,4 +226,7 @@ your own prior artifact publicly, read it at source first — option labels drif
 - [Discord per-thread bot pipeline can fail on follow-up replies, not just fresh summons](../learnings/1789714845243-discord-per-thread-bot-pipeline-can-fail-on-follow.md) — a `reply_failed` with no summon_requests entry is a real coverage gap but out of heartbeat scope; flag as a pipeline bug; distinguish via thread_state.jsonl's last event.
 - [Shared GitHub REST quota can run out mid-sweep and fails silently as empty lists](../learnings/1792658279840-shared-github-rest-quota-can-run-out-mid-sweep-and.md) — 403 `_err` → `[]` = false "0 labels"; GraphQL fallbacks for labels/timelines; `issues/events` needs ~30 pages on a busy day
 - [CI sweep: full ubuntu-latest log-header scan exhausts the shared 6000/hr REST budget](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md) — ~2,700 Range log GETs + ~2,200 run-jobs calls; run state scripts first, sample the scan; bot CMake Options dispatches fill the hosted cap
+- [stand-down can postdate dispatch/completion; check for newer stand-downs pre-work; report state, never self-disposition; partial slang build fails ~18 suite tests spuriously.](../learnings/1795020796879-stand-down-can-arrive-after-the-chain-completes-re.md)
+- [re-sync briefing artifacts after state-overturning edits and before send_file; follow-up delta on the same thread if already in flight.](../learnings/1795022916014-send-after-edit-re-sync-briefing-artifacts-before-.md)
+- [stale runs/ dirs make "no exit-status" useless for sibling liveness (use pid+kill -0+mtime+ps); --shared rev clones check out slang's HEAD, not the pin.](../learnings/1795059118559-rev-clone-head-gotcha-and-stale-runs-liveness-chec.md)
 

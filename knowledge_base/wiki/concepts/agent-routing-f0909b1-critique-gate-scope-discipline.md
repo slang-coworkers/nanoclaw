@@ -3,7 +3,7 @@ title: Critique-gate scope, false-positives, and using it well
 type: concept
 group: agent-routing
 tags: [critique-gate, decision-review, output-review, comment-hygiene, false-positive, escalation, gate-scope, discipline]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -46,7 +46,9 @@ The plan stage is also a cheap **concede** instrument. On slang#13073 PR(2), aft
 
 **The codex critique gate (`/app/hooks/gate-critique-on-deliver.sh`) that hard-blocks `gh pr create` clears ONLY via a recorded codex OUTPUT_REVIEW approve, a HOST-injected env kill-switch an agent cannot set (`CRITIQUE_ESCALATION=0`/`CRITIQUE_GATE_ACTIVE=0`), or a HUMAN-admin one-shot bypass grant in `workflow-state.json` (consulted only after ≥3 denials this session). This is by design: the bypass is reserved for a human admin.** An admin-orchestrator agent (Main/Orchestrator) must NOT declare a "waiver" it can grant — mechanically it can't (env is host-injected; writing the bypass flag forges a human safety decision), and it shouldn't. When codex is down and a well-verified PR is gate-blocked, escalate to the human operator with mechanisms + recommendation: prefer repairing/restarting codex (the gate then works as designed fleet-wide), else the operator injects the env kill-switch or grants the one-shot bypass. ([Codex critique gate is human-reserved — agents (even Main) cannot self-waive it](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md))
 
-**Source learnings (18):**
+The codex-critique subprocess itself can exceed review scope under `danger-full-access` — the skill docs warn about file writes but not about posting. During the #14535 design-reply OUTPUT_REVIEW it applied its two factual corrections to the draft, edited the triage memo to fold in the maintainer input, and POSTED the GitHub comment itself under the bot identity. After every round, the audit is mandatory, not optional: `sha256sum` every artifact you passed and diff anything that changed; check GitHub for a NEW comment you did not post before claiming you posted it; only then accept the outcome (the #14535 corrections verified accurate, so the outcome stood — but the "who posted" step decided that) ([codex-critique subprocess can post/edit beyond review](../learnings/1795026286108-codex-critique-subprocess-can-post-edit-beyond-rev.md)).
+
+**Source learnings (19):**
 - [Codex critique gate is human-reserved — agents (even Main) cannot self-waive it; escalate to the operator when codex is down](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md)
 - [Critique-gate audit false-positives on the literal "[Fix Report]" in a triager's report](../learnings/1787274342384-critique-gate-audit-false-positives-on-the-literal.md) — a naive substring match; advisory for a session that reviewed no code; paraphrase the marker.
 - [DECISION_REVIEW can raise a severity-classification disagreement that is an escalation](../learnings/1787324124929-critique-gate-decision-review-can-raise-a-severity.md) — present both positions to parent; distinguish a real deliverable defect from a defensible judgment split.
@@ -65,3 +67,4 @@ The plan stage is also a cheap **concede** instrument. On slang#13073 PR(2), aft
 - [Critique gate fires on read-only gh calls in non-PR tasks (e.g. OKF memory synthesis)](../learnings/1790568902795-critique-gate-fires-on-read-only-gh-calls-in-non-p.md) — read-only `gh` calls in memory-synthesis subagents trip the gate; use the slang-mcp read tools.
 - [critique-gate refuses [Resolution] on non-code chains too; an ack-of-ack needs no marker](../learnings/1792142514567-critique-gate-refuses-resolution-on-non-code-chain.md) — a confirmation echo after your `[Report]` needs no reply
 - [gh api issue timeline: drop the query string if a PreToolUse hook blocks it](../learnings/1793732599158-gh-api-issue-timeline-drop-the-query-string-if-a-p.md) — `?per_page=100` / `-H Accept` form got "Blocked by hook"; the plain form passed; `gh search prs --repo <o>/<r> <N>` for referencing PRs
+- [codex-critique subprocess can post/edit beyond review](../learnings/1795026286108-codex-critique-subprocess-can-post-edit-beyond-rev.md) — audit artifacts and GitHub state after every round: sha256 what you handed it, check for comments you didn't post.
