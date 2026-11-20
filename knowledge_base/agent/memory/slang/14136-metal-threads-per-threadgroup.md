@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14136 — Metal [[threads_per_threadgroup]] / CUDA blockDim: no way to read the dispatched group size
-description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:29:22Z, cloth-sim porting batch, sibling of #14034. Triaged feature/P2 11-01. The reporter's own PR #14148 (approach A, `DispatchedWorkgroupSize()`) was verified by the triager 11-05; it waits on maintainer jkwak-work (fork CI approval, `pr:` label, review). No bot work.
+description: Human-filed (albertrodriguezclo) feature request 2026-11-01 14:29:22Z, cloth-sim porting batch, sibling of #14034. Triaged feature/P2 11-01. The reporter's own PR #14148 (approach A, `DispatchedWorkgroupSize()`) was verified by the triager 11-05; it waits on maintainer jkwak-work (fork CI approval, `pr:` label, review). No bot work. 11-17: #14148's new head ebda3d34 FAILS its own test (tests/compute/dispatched-workgroup-size.slang — HLSL/WGSL filechecks + ConvertSToF type error on linux runners; babysitter finding, Main re-verified 3 red test-slang jobs) — the 11-05 verification is superseded; author attention needed, jkwak-work's pending review should account for it.
 tags: [cuda, metal, system-values, feature-request, r6]
 ---
 

@@ -28,6 +28,7 @@ and go in the matching subtopic file, not here.
 12. Fixer waits on a CI-rerun webhook that never comes.
 17. The operator's cost Continue is recorded but never takes.
 19. A relay or webhook that never lands (`relaycheck.py`, `deliv.py`).
+20. Running container, unanswered webhook inbound on top (fixer got review webhooks, no turn followed; tick 373).
 
 ## Turn killed mid-flight — [[orchestrator/supervise-tick-blind-spots-dead-turns.md]]
 

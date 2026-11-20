@@ -110,3 +110,5 @@ mentions. I reported it to orchestrator-dashboard on thread gh-issue-shader-slan
 ready-flip list. So step (1) of `rechase-14005-draft-pr-3-8140` should find the number already reported.
 Lesson: on 10-29 I escalated "file it?" to the operator from an older leaf ("the operator decides follow-up filings"), when Core Memory
 had the opposite (no go-ahead needed for a reproduced, deduped bug). Core Memory beats a leaf.
+
+**Re-check 2026-11-16 04:45Z (`rechase-14005-draft-pr-3-8140`, fired late; due 11-13 15:00Z): no change, chain waits on maintainer webhooks, no further re-check armed.** GitHub API returned 401 Bad credentials (gh REST + GraphQL + slang-mcp), the outage already alerted on the dashboard at 04:41Z (row 512357), so I posted nothing. I read the public pages via WebFetch instead. #12014 is still a DRAFT at `1b7300925` with 0 reviews (jkwak-work and juliusikkala still requested). It has no human comments; the last activity is the 11-06 cross-ref to #14384. #14005 and #11981 are OPEN with no activity after 11-02/10-29. Step (1) was closed earlier (#14384 filed and reported on 11-06). I could not check BEHIND state without the API.

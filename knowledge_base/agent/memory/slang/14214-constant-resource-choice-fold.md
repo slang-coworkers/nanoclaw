@@ -60,3 +60,28 @@ mention. Sent to triager task session `sess-1793665494184-5v2c48` (row 8, verifi
 **11-06 16:31Z, DONE (I checked: nv-slang-bot, updated_at 16:31:03Z, still the only comment).** 6592023541 now opens with "Update 2026-11-06:
 overlap with #14358" (OUTPUT_REVIEW round 3). A2 is not affected (#14358 does not touch `slang-ir-ssa.cpp`); whether the fold still needs A2 is untested.
 Triager state: its `memory/issues/14214.md`; PR build at triager `wt-14358`. **Terminal on our side; webhooks reopen.**
+
+**Reopened 11-16 08:46Z (webhook row 20 in my t1hvlj session).** tangent-vector (assignee) asked on the issue:
+"Please confirm whether this issue is resolved by the fix that was landed in PR #14358" (comment 6834463443). So **#14358 has landed** — the
+draft became the fix. Relayed verbatim to slang-triager owner session `sess-1793664547990-km3apv` (pinned + thread_id + in_reply_to=20;
+delivery verified, its row 14, 08:48Z): re-verify on merged master (draft head f8c828a7f may differ), rerun the 10-repro matrix, post the
+confirmation as a NEW nv-slang-bot comment replying to tangent-vector (not an edit of 6592023541 — someone commented since). Known blocker
+handed over: gateway GitHub credential 401 since ~04:41Z (operator alerted; restore-watch live) — verification proceeds now, the post
+retries until restore, escalate to me if dead ~2h. Expect the answer to be "partial": SPIR-V/GLSL compile errors gone, constant still not
+folded, WGSL/Metal still fail (per the 11-06 finding).
+
+**11-16 08:54Z, triager report (its finding, not verified by me).** Verification complete on freshest reachable tree: local master `cdca151fb`
+(2026-11-14) contains the #14358 merge `0fc069e94` (merged 11-09) — landed #14358 is a far bigger rewrite than draft head f8c828a7f tested
+11-06. Lib verified fresh (new E56020/56021 diagnostics embedded; the "2026.13.1-50" string is a stale CMake cache value). **Verdict: PARTIAL** —
+24/24 repro variants (incl. #14101's runtime case) compile spirv-val clean on SPIR-V; 24/24 compile on GLSL with new E56021 warning; but the
+constant is still NOT folded (`OpBranchConditional %true` / `OpLogicalNot %false`, dead arm still loads texA, texA stays in OpEntryPoint
+Binding 0), and WGSL still E56004 / Metal still E56019 (19/24 fail each). Recommendation: issue stays open; remaining scope = fold the
+constant branch + WGSL/Metal. Reply comment staged at triager `repro-14214/verify-2026-11-16/reply-comment.md`, OUTPUT_REVIEW-approved;
+**post blocked by the 401 credential outage** — one-shot retry task `i14214-post-retry-1` fires 09:40Z, chains +45-min retries, escalates to
+me if still dead at ≥10:50Z. Not closing the issue.
+
+**RESOLVED-CLOSED 11-16 09:26Z (I verified: comment 6912519457 posted by nv-slang-bot at 09:26:22Z, 2,025 chars).** Credential was
+restored in time; retry task canceled. Verdict comment live on #14214 answering tangent-vector: PARTIAL (#14358 fixes the SPIR-V/GLSL
+*errors*, 24/24 variants, but no constant fold — texA still loaded/bound — and WGSL E56004 / Metal E56019 remain; 19/24 fail each). Issue left
+OPEN, decision with tangent-vector (keep open for fold + WGSL/Metal, or split follow-ups). GitHub is the record; webhooks reopen if the
+maintainer follows up.

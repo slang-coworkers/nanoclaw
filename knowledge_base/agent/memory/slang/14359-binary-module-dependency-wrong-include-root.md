@@ -63,5 +63,14 @@ resource: raw/triage-14359.md
   `slang-preprocessor.cpp:3686` (`simplifyPath`, 9b80537bc / #824, 2019) was added only so diagnostics read better, so it is unintended. It
   breaks the `slang.h:1804-1806` contract. It is a general include bug: plain `slangc` compiles the textual sibling, but `-depfile`
   names the physical file. #14370 (S2) is medium/P2. #14371's issue_opened webhook (~23:46Z) was not dispatched (live: no assignees, only bot label/type events).
+- **11-16 04:4xZ re-check (`recheck-14359-q1-eeb1`, fired 4 days late): live GitHub state is UNVERIFIED.** gh, curl and slang-mcp all
+  returned 401 Bad credentials / OneCLI `app_not_connected`. Sibling sessions had already alerted the fleet-wide outage on the dashboard
+  (rows 512357 at 04:41Z and 512364 at 04:42Z), so I did not post a duplicate. GitHub-free signal: the fixer session `sess-1793910917180-7o6asx` (active) has
+  had no inbound since 11-05 23:33Z. Its last webhook was `ci_failed` at 23:22Z, and no review or comment webhook has arrived since, so Q1 is presumed unanswered.
+  Applied branch (b) provisionally: #14362 is in the **parked-on-maintainer section of the 11-16 weekly list**
+  ([undraft-asks-replaced-by-weekly-list.md](../orchestrator/undraft-asks-replaced-by-weekly-list.md)), flagged "live-verify first".
+  No GitHub ping, no per-PR ask, nothing relayed to the fixer. That weekly entry is now the timer; no new one-shot.
+  If the 09:00Z live check finds a maintainer answer, merge or close, relay it under branch (a). Use `thread_id=gh-issue-shader-slang/slang-14359`
+  and `in_reply_to` set to the run's own inbound row, and skip the relay if a webhook already reached the fixer.
 - **My decision: both are filed-only, with no fixer chains.** #14370 is in the same loader code as #14362, so it waits until #14362 settles,
   which avoids conflicting PRs. #14371 is independent but medium, and the shepherds are carrying a large bot-draft load. The operator can ask for either.

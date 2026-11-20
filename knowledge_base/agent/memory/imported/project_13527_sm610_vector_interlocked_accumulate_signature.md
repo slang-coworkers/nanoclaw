@@ -96,3 +96,13 @@ the bot. `update` refused the firing one-shot again (`no live task matched`), so
 events since 10-09). The DXC `releases.atom` and `tags.atom` feeds match the baseline: newest `v1.9.2609` (09-29), newest SM 6.10 preview
 `v1.10.2605.37` (08-12, old order). No comment on #13527 since 6480214472; issue `updatedAt` 10-28 20:42Z, still assigned to jkwak-work. `update`
 refused the firing one-shot again (`no live task matched`), so I re-armed it as `rechase-13527-dxc8644-81fa` for 11-12 18:00Z.
+
+**11-19 18:00Z re-chase: still held.** (The 11-12/11-16 fires of `81fa` died on an API 429 — no run completed between 11-05 and now; the
+`rechase-13527-dxc8644-aa0d` prompt carried an 11-16 baseline but no run wrote memory or a dashboard line until this one.) #13532 is OPEN
+(head `c91704bc`, non-draft, not merged, last updated 10-09; its only PR comment is coderabbitai[bot] 6068701793 from 10-08). #13527 is open,
+assigned to jkwak-work, 6 comments — all ≤ 6480214472, none mention the bot, no new comment since 10-28. The DXC `releases.atom` feed still
+matches the baseline: newest release "DX Compiler Release for September 2026" (`v1.9.2609`, 09-29, SM 6.9 line); newest SM 6.10 preview is
+"Shader Model 6.10 Preview Release (May 2026) - Patch 2" (`v1.10.2605.37`, 08-12, old order). No release has both SM 6.10 and DXC#8644.
+`gh api` to shader-slang worked (no gateway outage). `update` refused the firing one-shot (`no live task matched`), so I re-armed it as a fresh
+one-shot `rechase-13527-dxc8644-a8e4` for 11-26 18:00Z, with a prompt note to check release notes for linalg/InterlockedAccumulate before
+declaring unblocked (the December Agility 1.621 retail window is near — a SM 6.10 DXC release is likely in the next few weeks).

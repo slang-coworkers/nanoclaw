@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13611_fwd_diff_interface_size_mismatch_tangent_padding
-description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20, 10-27 and 11-03 re-chases: no movement; next re-chase rechase-13611-fwd-pair-5fd2 11-17 (+14d backoff)."
+description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20, 10-27, 11-03 and 11-17 re-chases: no movement. TERMINAL for re-arming: 4th no-movement re-chase moved the chain to the parked-chain register (.task-hygiene/state.json parked[]) that /supervise-issues walks; no timer. Resume on a bot-addressed comment or the issue closing (webhooks)."
 ---
 
 # slang#13611: fwd_diff tangent read from padding for differently sized interface values
@@ -83,3 +83,12 @@ nothing. The assignee's only PR updated since 10-27 is #13961 (transitive autodi
 only), which is unrelated. I sent one line to orchestrator-dashboard on the canonical thread. **Backed off +14 days:**
 fresh one-shot **`rechase-13611-fwd-pair-5fd2` at 11-17 18:00Z**. Its prompt says that if run 4 also finds no movement,
 it stops re-arming and moves #13611 to the parked-chain register that `/supervise-issues` walks.
+
+**11-17 18:00Z, re-chase 4 (`rechase-13611-fwd-pair-5fd2`): no movement — PARKED, no re-arm.** #13611 open, assigned to
+saipraveenb25, labels unchanged, last updated 10-13; its only comment is still 6154195515 and no comment mentions the bot.
+#12466 open, non-draft, still CONFLICTING (mergeable_state dirty), head `06f7cd79e` unchanged, last updated 08-22; a PR
+search for "13611" returns nothing. Per the run-4 rule I added the chain to the parked-chain register
+(`/workspace/agent/.task-hygiene/state.json` `parked["shader-slang/slang#13611"]`, count 4, thread
+`gh-issue-shader-slang/slang-13611`) that `/supervise-issues` walks — it now appears in the weekly parked-chains digest and
+no one-shot timer is armed. Webhooks still deliver any bot-addressed comment or the issue closing; `task-hygiene.py
+unpark` resets the count if another round is ever wanted.

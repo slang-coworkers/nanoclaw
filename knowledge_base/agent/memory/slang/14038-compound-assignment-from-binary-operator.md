@@ -128,3 +128,11 @@ interface-based approach. I relayed it to the triager pinned (in_reply_to=98, ms
 18:34:32Z (still a one-shot at 11-16 17:15Z). I re-checked live: OPEN, 7 comments, labels and assignees unchanged.
 
 **Next.** The open direction (interfaces, numerics, docs, or close now that A has landed) is for skiminki-nv and tangent-vector. The bot posts nothing unless the operator says so.
+
+**11-16 19:1xZ (verified live).** The maintainer's daily-report dropped-commit ask, resolved: `d959f7318a`'s qualifier is confirmed
+ABSENT on master — `source/slang/slang-diagnostics.lua` note 40026 (line ~4425) still ends "…or write 'x = x ~binaryOp y'" without the
+"if evaluating 'x' twice is safe" qualifier (consistent with the triager's merge-queue hypothesis: the squash came from the earlier
+head `110d70c6d`). If the maintainers want the qualifier, it is a ~2-line re-land (diagnostics note + the
+compound-assignment-binary-operator-note test). The other half of the ask: #13936's dropped `8e6a3090d9` (Metal unsigned coords for
+`texture2d_ms` reads) substance IS on master via the rewritten `$1`-packed overloads (`read(vec<uint,2>(($1).xy), uint(($1).z)…` in
+`hlsl.meta.slang` ~5236–5265) — no follow-up owed there.

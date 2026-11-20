@@ -129,5 +129,26 @@ description). kaizhangNV is the maintainer to expect for the review. Nothing has
 dashboard session `rnc00v` has no operator reply after 10-22 17:30Z, so the follow-up decision is still pending. I
 re-asked it once on the dashboard thread (options a–d). The task was not rescheduled, as the task order required.
 
-**Resume on:** a maintainer review on #13864 (kaizhangNV is likely), the PR being marked ready or merged, and the
-operator's choice on the follow-ups. Webhooks deliver the first two; there is no timer.
+**Resume on:** a maintainer review on #13864 (kaizhangNV is likely), the PR being marked ready or merged, and
+the operator's choice on the follow-ups. Webhooks deliver the first two; there is no timer.
+
+**2026-11-18 00:2xZ, CI wait resolved (Main, task ci13864-check-938c).** On 11-17 14:52Z the chain refreshed
+onto master (head `79ec8b39b`) and dispatched draft-testing CI run `44107858904` (nv-slang-bot). It
+priority-yielded by design (`wait-for-human-priority` failed, jobs skipped) and the fixer ran 9 hourly
+re-checks waiting on retry-yielded-bot-ci's aging rerun. Root cause (receipts: retry workflow run
+`44206154802` log, 00:14:42Z): "CI is still active (230 run(s)); not rerunning bot CI" — our run sits
+`waiting` on `falcor-build-approval-gate` (human approval never comes for a bot draft-testing
+dispatch), tripping the guard forever and never qualifying as a candidate (needs status=completed +
+yield marker). Same known deadlock as
+[[orchestrator/supervise-tick-pull-pitfalls.md]] "Draft bot-PR CI is deadlocked, not slow" (#13126/#13716).
+**Disposition:** fixer instructed to cancel run `44107858904`, kill the re-check loop (incl. early-fired
+`ff21`), and park — green CI comes with the undraft (weekly ready-flip list) or maintainer action.
+supervisor-state disposition updated. Operator told (dashboard); no operator action needed for this chain.
+**Applied + verified 11-18 00:3xZ:** run cancelled (completed/cancelled, Main-checked), ff21 cancelled
+before firing (0 wakes), loop dead. Fixer's sweep cancelled all 9 sibling zombies (-14292/-14430/-13833/
+-14557/-13534/-13800/-13348/-14524/-14518; Main-verified 0 waiting dispatch runs remain) — its first
+pass missed 5 of them to a `gh run list --limit N` window artifact (newer pull_request runs hid the
+waiting dispatch run; corrected on Main's challenge, learning shared). Guard now untripped by bot
+zombies; structural exposure remains per future draft-testing dispatches.
+
+**Resume on (supersedes):** a maintainer review on #13864, the undraft/ready-flip, or merge. No CI timers.

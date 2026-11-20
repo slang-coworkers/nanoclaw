@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13330 — array-of-struct shader IO field crashes SPIR-V/GLSL
-description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD; external user binaryfire working on a fix since 10-28; PARKED indefinitely 11-03 (no re-checks; webhooks only)
+description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer RELEASED 2026-11-17 07:12Z (operator retro-release wave-2, supersedes 10-28 stand-down) with binaryfire-PR check-first caveat
 tags: [slang, spirv, glsl, varying-legalization, parked]
 resource: /workspace/inbox/a2a-1790714475432-85ez5y/triage-13330.md
 ---
@@ -105,6 +105,8 @@ request (see [R6 record](../imported/project_13591_ai_contributor_standards_batc
 request, so the 10-28 stand-down rests on the older competing-PR judgement. A one-word operator release is enough to restart it. Otherwise it waits for
 case (b)/(c)/(d) via webhook. **To release:** send slang-fixer the A+B1 go-ahead on thread `gh-issue-shader-slang/slang-13330`, quoting the authorizing human.
 
+
+**2026-11-17 07:12Z RELEASED** — operator retro-release wave-2 directive: "GO with the CAVEAT that the fixer must first check for a binaryfire PR (timeline cross-ref) — if one exists, stand down and validate it instead; if none, proceed." Supersedes the 10-28 stand-down; directive quoted verbatim in the GO. Pre-dispatch verification (07:10Z): no binaryfire PR in any state, no comments after 10-28, assignees unchanged, no `bot-ok`. GO sent to slang-fixer on this thread (fixer msg id 17; woke the briefing-holding fixer session sess-1790714486422-tmvkxf, inbound verified). Dashboard report sent (id 35, this thread). Resume on: fixer reports on this thread.
 
 **Cross-link (11-05 17:05Z, from #13427 re-chase 5):** #13427 is also PARKED indefinitely, with no operator answer and no change on GitHub. Bot-filed
 tracking issue #13892 (jkwak-work, an inventory of varying-location band-aids, filed 10-23) lists #13427 and the related #11944. It does not list #13330.

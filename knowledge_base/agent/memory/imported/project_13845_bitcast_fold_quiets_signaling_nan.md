@@ -36,3 +36,11 @@ reviewer (asked the operator 11-03 18:01Z).
 
 **10-22 follow-up.** The author filed #13857 (LLVM targets quiet the NaN too) and offered to implement it:
 [project_13857_llvm_constant_float_quiets_signaling_nan](project_13857_llvm_constant_float_quiets_signaling_nan.md).
+
+**TERMINAL 11-19 (Main, live-verified; postmortem learning saved by the owning chain).**
+Maintainer jkwak-work opened his own **PR #14629** ("Keep a signaling NaN's bits when folding a bit
+cast to float") — **merged 2026-11-19T18:44:50Z** → issue #13845 closed. The reporter's PR
+**#13846 closed UNMERGED** @ `415cea103` (superseded). The approver-pause-queue entry for #13846 is
+marked MOOT (do not dispatch on unpause). The supersession unblocks our draft #13816 (#13635 chain,
+slang-fixer sess-…-gj2lyx owns the follow-up — webhook/supervisor-driven, no dispatch from here) and
+lifts the #13857 block. Chain closed.

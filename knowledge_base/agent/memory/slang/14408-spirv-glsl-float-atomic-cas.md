@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14408 — SPIR-V/GLSL Atomic<float|half|double>.compareExchange emits integer-only CAS on a float type
-description: Human-filed (albertrodriguezclo) 2026-11-08 10:07:41Z. Draft PR #14412 @ c0c1dd807: R1 APPROVE_WITH_NITS applied, [Fix Report] 12:07Z. Waiting on maintainer review; ready-flip on the weekly list. Triaged bug/high/P2 10:20Z; fixer fu0349 on canonical thread (approach A, diagnostic + BAB uint view). Side issue #14410 bot-filed and owned here, so it needs no dispatch.
+description: TERMINAL 2026-11-17 — PR #14412 closed unmerged by jkwak-work: user-side int cast suffices, no compiler change. Issue #14408 keeps integer-only CAS behavior. Fixer stood down; worktree removed. Side issue #14410 (HLSL/CUDA half/double CAS) remains open with no fixer chain — operator's call.
 tags: [spirv, glsl, atomics, float, compare-exchange]
 ---
 
@@ -59,3 +59,12 @@ c0c1dd807 and still a draft (verified). 6 files, +231/−11, 3 new tests, 12/12 
 S1 was not filed (covered by #13938). Out-of-scope follow-up the fixer noted: the BAB FloatBitwise `[require]` asks for int64 atomics
 it does not need.
 **State: waiting on maintainer review; the ready-flip is on the weekly list.**
+
+**TERMINAL 2026-11-17 17:44Z (fixer's [Fix] report, msg 38).** PR #14412 was closed unmerged by
+jkwak-work 11-17 — "this can still be implemented by casting the given float to int" (per
+@albertrodriguezclo's suggestion on the other PR, comment
+[6956041733](https://github.com/shader-slang/slang/pull/14412#issuecomment-6956041733)).
+Maintainer direction accepted: no compiler-side change; #14408 keeps the current integer-only CAS
+behavior. Fixer stood down — ack posted (6956074365), `wt-slang-14408` removed, active-work cleared,
+`memory/fix-14408.md` + fixlog updated. **Chain complete; ready-flip moot (PR closed, drop it from the
+weekly list).** Side issue #14410 is unaffected: still open, no fixer chain started, operator's call.

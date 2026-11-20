@@ -37,20 +37,27 @@ not here.
    slang#12316 (2026-08-07): created 08-01, triaged publicly 08-03, webhook arrived 6 days late; I
    put a second "please triage" on a thread whose top comment was the triage. If the chain is held,
    answer the operator from live state and send nothing to the triager or GitHub.
-4. **The author, and whose work item it is.**
-   - A human-filed body is a *report* that needs triage.
-   - **Our** bot-filed body is a *verdict*: repro, SHA, isolated gate, dedup and an open fork already
-     published, so `comments_count: 0` is correct forever and every check above passes it
-     (slang#12461). It needs its owner found, not a fresh triage. Run
-     [[technique_find_the_owner_of_a_bot_filed_issue_before_dispatching]].
-   - **A maintainer-written plan that the maintainer owns is their work item, not a report**:
-     self-assigned (or assigned to its author by a peer maintainer; read `/timeline` for the actor),
-     with its own fix direction, "Done when", own PR, or code that exists only on their fork
-     branch. Every rung above passes it. ⇒ Hold: no dispatch, no bot post (the bot waits on human
-     issues, R6 #13596). Resume only on an @nv-slang-bot mention or an operator ask. A batch of N
-     filings mints N Main sessions; one report covers the batch.
-   - **A human report that arrives with the reporter's own open fix PR, or a maintainer assignee,** is
-     held the same way, even when the reporter is not the assignee (slang-rhi#941/#942).
+4. **The author — but only an explicit stand-down stops the bot (operator correction 2026-11-17,
+   supersedes the pre-11-17 "maintainer-owned ⇒ hold" rung 4, which came from the R6 draft
+   #13596; R6 as decided has no wait and no ownership rule).**
+    - A human-filed body is a *report* that needs triage.
+    - **Our** bot-filed body is a *verdict*: repro, SHA, isolated gate, dedup and an open fork already
+      published, so `comments_count: 0` is correct forever and every check above passes it
+      (slang#12461). It needs its owner found, not a fresh triage. Run
+      [[technique_find_the_owner_of_a_bot_filed_issue_before_dispatching]].
+    - **A coworker backs off an issue only for an explicit stand-down**: the issue has the `no-bot`
+      label; or the issue text, a comment, or the operator asks the bot to stay off it. Main
+      dispatches the triager at once, on the canonical thread with `<github-post-authorized />`.
+    - **These are NOT stand-downs** (each was wrongly treated as one before 11-17): an assignee, or a
+      self-assignment (also seconds after filing — slang#14517, held 11-16 with no triage and no
+      post, wrongly); a milestone; a MEMBER or COLLABORATOR author; a fix plan or "Done when" in the
+      body; a "tracking"/"umbrella" title; the absence of a `bot-ok` label; a fix direction or code
+      on the author's fork branch.
+    - Two cases are not holds, because the work is already owned or done: a chain already owns the
+      issue (send to that owner, no second session); an open or merged human PR already fixes it
+      (point to that PR, open no second PR).
+    - If a maintainer later asks the bot to stop, or adds `no-bot`, the chain stops then. A batch of N
+      filings mints N Main sessions; one report covers the batch.
 5. **Who the body @-mentions** (`pr_mention`). The webhook fires for any comment on a thread the
    bot touched, and **every human comment on a bot-authored issue arrives as `pr_mention`**. If it
    @-mentions another human, or nobody, it is not a summons: hold, no dispatch, no reaction, no

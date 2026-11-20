@@ -48,3 +48,10 @@ Standard R9). That is a fleet-wide gap in the filing path, not specific to this 
 - **Next:** none. Webhooks deliver any maintainer PR or close event. If jhelferty-nv opens a PR, the interaction with #13792 (see
   above) is the only cross-chain note worth giving.
 
+## Addendum 2026-11-19: milestoned Q4 2026 (Fall); stale webhook re-delivery
+
+jhelferty-nv milestoned the issue **Q4 2026 (Fall)** on 10-23 20:42Z (same day, after the re-check above). Since then only
+cross-references: nv-slang-bot referenced it 11-05 from #14166 (bot-filed, open — raster-order-group in ParameterBlock), and
+albertrodriguezclo 11-06. Still no fix PR from the maintainer; OPEN, assigned, milestoned. A dashboard relay of the original
+`issue_opened` arrived 11-19 11:33Z (issue created 10-20) — disposition unchanged: maintainer-owned, no triage/fixer dispatch.
+

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14034 — WorkgroupCount() unavailable on CUDA (gridDim) and Metal ([[threadgroups_per_grid]])
-description: Human-filed (albertrodriguezclo) feature request 2026-10-29, P2, reproduced. Assigned to jkwak-work (by jhelferty-nv) 11-02 18:32Z, so rung 4 applies (no bot post). PARKED on jkwak-work, who is weighing the design on sibling #14148 with Yong. The FINAL one-shot re-check is 2026-11-16 17:15Z; after it there is no timer.
+description: Human-filed (albertrodriguezclo) feature request 2026-10-29, P2, reproduced. Assigned to jkwak-work (by jhelferty-nv) 11-02 18:32Z, so rung 4 applies (no bot post). PARKED webhook-only since the final one-shot t-d38249 11-16 17:16Z (no change); no timer; supervisor-state awaiting_human.
 tags: [cuda, metal, capabilities, system-values, feature-request, r6]
 ---
 
@@ -45,6 +45,15 @@ Sibling #14148 is OPEN with CHANGES_REQUESTED at head 7bbe1a316. The triager rep
 for Metal/CUDA; will discuss with Yong next week". Approach A adds no public API, but the owner is still deciding the design.
 **Decision (Main, 11-09):** I chose option (a), capped. The triager scheduled ONE final one-shot, **`t-d38249`**, for 2026-11-16T17:15Z (recurrence null; confirmed by the triager 11-09 17:19Z). I rejected option (b), the @jkwak-work delta, because of rung 4.
 If the final run finds silence, the chain parks webhook-only with no timer, and I add it to `supervisor-state.json` awaiting_human.
+
+**11-16 final one-shot (t-d38249, ran 17:16Z) — chain parked, webhook-only.** The triager verified: comment 6583505566
+still the only one; assignee jkwak-work; sibling #14148 OPEN at head 019dbb36e (reporter addressing coderabbit feedback
+— sibling #14136's value, does not alter Approach A's `SV_WorkgroupCount` → `threadgroups_per_grid` mapping);
+jkwak-work's CHANGES_REQUESTED (11-07) stands; no maintainer direction, no PR for #14034, no @-mention. Nothing posted,
+nothing scheduled. **No timer remains; resume triggers are webhooks only:** maintainer approves A or asks the bot to fix
+(→ [Triage handoff] to slang-fixer, words verbatim + link, draft PR rebased over #14148 if merged), reporter PR for #14034
+(→ read-only validation vs the memo Accept-when), #14148 merges/closes/changes mechanism (→ delta report), human comment
+or bot @-mention (→ live inbound). supervisor-state.json entry rewritten `parked:awaiting_human` 11-16.
 
 **Superseded:** The triager's one-shot `t-f136f9` ran 2026-11-09 17:15Z. It hands off to slang-fixer only if a maintainer approves A and the reporter is not doing it.
 If nothing has changed, it re-posts nothing and asks me whether to keep parking.

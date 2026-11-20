@@ -15,6 +15,12 @@ and cited elsewhere. Siblings: [[orchestrator/supervise-tick-blind-spots-dead-tu
    (acked < 1 min).
 2. **Bot said "On it", then the owning container stopped** (tick 267, #12875: 9 h stall, fixer lost context). Bot spoke
    last → `awaiting_human`. Detector: owning session's newest row is an `in` webhook with no `out` after, PR head unmoved.
+   - Variant seen 2× on 11-18 (tick 361): **the dead turn is a sibling *Main* session that received the webhook
+     directly** — 00:30Z `issue_opened` #14570 (no 👀, no dispatch for 1.5 h until the supervisor dispatched the
+     triager itself) and 01:52Z `pr_mention` on closed #10641 (koubaa thanks; dispositioned no-reply). #14570 is
+     catchable by scan (`silent` new chain); the closed-issue one is invisible to the board — detector: a session
+     `created_at` within minutes of a `pr_mention` webhook row and no `out` rows at all. Both recovered by hand;
+     if it recurs, treat as a sibling-session infra defect, not chain noise.
 3. **Owning session is on a sub-thread or a non-chain thread** (tick 275). #13406 work ran on
    `gh-issue-shader-slang/slang-11709/13406-resume`, in neither chain's session set; jhelferty's split-PR ask sat 9 h
    while scan read `cost_stopped`/`awaiting_human`. Detector: for chains whose newest human comment is an instruction
@@ -70,3 +76,15 @@ and cited elsewhere. Siblings: [[orchestrator/supervise-tick-blind-spots-dead-tu
     A closed-session pr-mapping does not always need an operator `ncl pr-mappings remap`. On 11-10 the live owner's
     `report_pr_created` re-claimed #14209's mapping from the closed `fejlik` (Main-verified). First route the work
     to the live owner. Ask for a remap only if the mapping still points at the closed session after the owner reports again.
+20. **Running container, unanswered webhook inbound on top** (tick 373, 11-19, #14617 fixer `ioz8i8`). scan.py counts
+    any session-level outbound as "we acted", and `blind.py` only flags sessions whose container is NOT running — so a
+    chain whose newest rows are `in` (GitHub review webhooks), with NO outbound after them, on a container that still
+    reports `running`, is missed by both. Shape: maintainer review feedback on a PR (10:20Z + 10:35Z) landed as two
+    `in` webhook rows; the fixer's last `out` was a provider-death apology hours earlier (3 deaths that night); our
+    chain's newest activity was an unrelated Main ops report on the same session, so `last_activity_by_us` (10:59Z)
+    postdated the review and the row read `pr_open / action=none`. Detector (runs in seconds, no API calls beyond
+    `ncl sessions messages`): for each open chain whose PR has a review newer than the chain's `last_activity_by_us`
+    by a human non-bot login, list that session's last rows sorted by timestamp — newest row `in` + no `out` after it
+    = stall, regardless of `container_status`. Fix: normal thread-keyed nudge (delivered here on the first try,
+    `in` row visible in <1 min). Generalizes shape 6 (inbound lost while running) but with the tell on the OTHER end:
+    not compaction eating an old inbound, but a fresh inbound never producing a turn.

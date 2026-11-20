@@ -96,6 +96,11 @@ Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belo
 
 The audit went to the operator only. Nothing was posted to GitHub and nothing was dispatched, per the batch hold above.
 
+**11-16 19:05Z: task paused by the operator.** `slang-pr-report-committe-83e0` was paused per a dashboard-admin request
+(maintainer report 19:06Z); the Monday-05:00Z weekly "Slang Community PR Report" to #slang-committers goes dark intentionally —
+do NOT flag it as an outage in sweeps (the exit-42/43 escalation path won't fire). Resume only if the operator asks
+(`ncl tasks update slang-pr-report-committe-83e0 --group ag-1776713258088-r8pp2t`). The maintainer's own log/watch-list records it too.
+
 **10-18 12:03Z re-chase (rechase-13600-r10-pr-rep-9fef): both decisions still open, reminder sent** (orchestrator-dashboard
 msg 37, thread `gh-issue-shader-slang/slang-13600`). Live STEP 3 still says "(part k/N)". #13600 has 0 comments. szihs
 now owns the fix in drafts: nanoclaw **#1996** (threads on text channels via `thread_name`, returns `thread_id`) and
@@ -140,3 +145,26 @@ $3.36→$4.37 (+$1.01, CI [+0.14, +2.09]). The #13591 note omits the cost rise. 
 format part of #13589, enforce the length as a mechanical cap at posting time (modelled on nanoclaw#1991's description gate),
 then run v3 against the same v1. #13589 is still a draft. #13591 now carries the `Infra` label. Nothing was asked of the bot:
 no dispatch, no bot post, a 5-bullet to the dashboard only.
+
+### 11-17 operator correction: only an explicit stand-down stops the bot
+A stand-down is the `no-bot` label, or the issue text / a comment / the operator asking the bot to stay off (learning
+`operator/1794884111425-...`). An assignee, self-assignment (even seconds after filing — #14517 was wrongly held 11-16;
+#14333, self-assigned 7 s after filing, was dispatched correctly on 11-05), milestone, MEMBER/COLLABORATOR author, plan in
+the body, or a "tracking" title is NOT a stand-down — dispatch the triager at once. Assignee history is context for
+owner-chain detection only (`gh api repos/<o>/<r>/issues/<N>/events`: `.actor` = *assignee*, `.assigner` = who assigned —
+misread on #1258 11-06).
+
+### 11-17 batch-window self-echo + fresh-filing detectors (from the #14542/#14546/#14548 misroutes)
+Before dispatching any `issue_opened` (bot-filed especially), `grep -rl '<num>' memory/slang/` and read every
+hit — a bot-filed issue is usually a follow-up an existing chain owns (missed #14007 on 10-29 → duplicate
+chains). Read live assignees (`gh api repos/<o>/<r>/issues/<N>/events`; `.actor` = *assignee*, `.assigner` =
+who assigned) for owner detection only. **If the author is nv-slang-bot AND a filing batch went Terminal
+within ~1h, the webhook is a self-echo: the R6 number-grep false-empties in that window (batch pages get
+their numbers section only after filing; the do-not-dispatch rule is keyed by draft titles) — read the batch
+chain page (`memory/slang/*batch-<date>*.md`) before dispatching.** Missed 11-17 → #14542 misroute (grep at
+11:39Z, numbers landed 11:40Z). The grep also false-empties for ANY fresh bot filing (no chain record exists
+yet — the filing races the webhook); the body's verification-results signature (master sha + repro status +
+root cause) marks our own Terminal filings — do not dispatch, disposition filed-only and report to the
+operator ([filing policy](../orchestrator/filing-verified-issues-policy.md); 3 echo misroutes on 11-17 —
+#14542, #14546, #14548, see [../slang/14548-require-variables-unenforced.md](../slang/14548-require-variables-unenforced.md)).
+Never copy "PARKED: R6 …" from records ≤11-02 — that hold is retired (no waiting period, dispatch at once).

@@ -28,7 +28,7 @@ Messaging mechanics live in [Sending messages](#sending-messages); these are the
 ## Memory
 
 - Per-group: `/workspace/agent/memory/` — the OKF tree described in Runtime Contract › Memory.
-- Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Recall via a subagent (`/workspace/shared/wiki/index.md` catalog → ≤2 `/workspace/shared/wiki/concepts/<page>.md`, `limit=60` each); never read an index inline. `/workspace/shared/learnings/INDEX.md` is the raw atom log, not a reading surface. Write via `append_learning`.
+- Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Read them only through the [Recall rule](#recall-rule) below. Write via `append_learning`.
 - `/workspace/shared/` is **read-write for Main only** — coworkers read it but can't write directly.
 
 ## Constraints
@@ -78,6 +78,16 @@ The `conversations/` folder in your workspace holds searchable transcripts of pa
 - Credentials stay in the gateway: never run `gh auth login` or any client-side login that stores a token in the container, and never request a real token through chat or MCP environment settings. Connecting GitHub or another app needs no new MCP server — use an existing HTTP client or the user's requested CLI (`gh`), and install a missing CLI only through the normal package-approval flow.
 - To connect an account run `ncl groups connect --host <API hostname>` and show its exact `connect_url`. `action: operator_console` requires operator configuration; `oauth` is a consent flow; `action_required` is not a connection, credential grant, or request approval. If unsupported, report the capability gap — never substitute a new MCP server, a local login, or guessed host commands.
 - Report success only after a credentialed request succeeds; never invent an authorization link or claim a pending request completed. A bare 403 does not say whether the destination, credential grant, policy, or upstream service denied it, and a 401 does not prove injection failed (the injected token may be invalid). The `connect_url` display and error-handling rules are in Resident Skill Instructions › `/onecli-gateway`.
+
+## Recall rule
+
+Before investigating or changing anything, spawn one `Agent` subagent with this prompt (substitute `<task>`); never read these files inline:
+
+```
+Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it (a small catalog of concept pages; links are relative to /workspace/shared, so `](wiki/concepts/x.md)` means `/workspace/shared/wiki/concepts/x.md`), pick at most 2 concept pages relevant to <task>, read each with limit=60 (every page opens with a `## TL;DR`), and follow their links to cited learnings if needed. If no concept fits, Grep /workspace/shared/wiki/ for keywords. IF NO wiki/ dir: Grep /workspace/shared/learnings/ for keywords and read at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
+```
+
+Never read `/workspace/shared/learnings/INDEX.md` — it is the raw atom log (one line per learning, thousands of lines), not a reading surface.
 
 ## Sending messages
 
@@ -186,7 +196,9 @@ Two tools, two purposes:
 
 ### `send_card` shape
 
-`card` supports `title`, `description`, `children` (nested text or content blocks), `actions` (buttons). `fallbackText` renders on platforms without card support.
+`card` supports `title`, `description`, `children` (strings, objects with a `text` field, or the parts below), `actions` (buttons). `fallbackText` renders on platforms without card support.
+
+For numbers, add parts to `children`: `{ type: 'Fields', children: [{ type: 'Field', props: { label: 'p95', value: '118 ms' } }] }` for a few key figures, `{ type: 'Table', props: { headers, rows, align?, caption? } }` for row data (one cell per header), `{ type: 'Chart', props: { title, chart } }` with `chart` either `{ type: 'pie', segments: [{ label, value }] }` or `{ type: 'bar' | 'line' | 'area', categories, series: [{ name, values }] }` (one value per category), `{ type: 'Divider' }`, and `{ type: 'Text', props: { content, style? } }` with `style` `plain`, `bold` or `muted`. A card holds at most 10 parts and 10 fields, one table (30 rows, 6 columns, 10,000 characters of text including its caption), two charts (titles and axis labels up to 50 characters, other labels up to 20, up to 20 categories and 12 series or slices, none repeated), text parts up to 2,500 characters, and 12,000 characters of text across the whole card, title and description included, with quote marks, backslashes and line breaks counting twice. A card with an invalid part is **not sent**, and the tool result says which child to fix. Where a chat platform can't draw a chart, it shows the values as a table; WhatsApp shows neither tables nor charts yet, and Mattermost shows no charts, so put those numbers in text there.
 
 **Actions are link buttons only.** Each needs a non-empty `label` and a `url` that is a real web link (`http` or `https`). Any other scheme, and any placeholder like `#` or `/docs`, is **dropped before the card is sent**, and the tool result tells you how many went — so a dropped button is recoverable if you read it. Only top-level `actions` are considered at all; an action nested inside a child is not rendered and not reported. `send_card` never renders a callback button, so a card cannot collect an answer: if you want the user to choose something and return a value, that is `ask_user_question`, not a link that looks clickable. `style` is `primary`, `danger` or `default`; anything else renders as default rather than costing you the button. `fallbackText` is the plain-text rendering for channels without cards — unrelated to buttons.
 
@@ -416,7 +428,7 @@ The pin does **not** bypass authorization — you still need a destination row t
 
 ## GitHub webhook routing
 
-You receive `kind: webhook` messages with `content.event: "github.pr_mention"` when a GitHub user mentions the install's bot in a PR or issue comment.
+You receive `kind: webhook` messages with `content.event: "github.pr_mention"` when a GitHub user mentions the install's bot in a PR or issue comment, and `content.event: "github.issue_opened"` for a new issue (see "New issues" below).
 
 **Your job is routing — pick the right coworker and forward. The coworker handles the GitHub side (commenting, status updates, the work itself).**
 
@@ -444,6 +456,23 @@ You receive `kind: webhook` messages with `content.event: "github.pr_mention"` w
    d. **Issue (not a PR)** → `{triager}`.
 
 4. **Forward** with `mcp__nanoclaw__send_message(to: "<coworker-name>", text: …)`. Include `repo`, `pr_number`, `comment_url`, and the original comment body. The coworker — not you — owns posting/editing GitHub comments.
+
+### New issues (`github.issue_opened`)
+
+The host sends `content.event: "github.issue_opened"` for each new issue that passed its label gate. The gate already dropped issues labeled `GoodFirstBug`, `HelpWanted` or `no-bot`, and `bot-ok` gives one back. So every issue that reaches you is the bot's to triage.
+
+1. **Read the live issue once** (`gh api repos/{repo}/issues/{issue_number}`): state, labels, body and comments. The payload is a snapshot; decide from the live read.
+2. **Stop only for an explicit reason:**
+   - the issue is closed or deleted;
+   - it has the `no-bot` label now;
+   - the issue text, a comment or the operator asks the bot to stay off it;
+   - a chain already owns it (a live session on its canonical thread, or the chain that filed a bot-filed issue): send to that owner instead;
+   - an open or merged human PR already fixes it: record it as resolved elsewhere and dispatch nothing.
+3. **Otherwise acknowledge and dispatch at once:**
+   - post 👀 on the issue: `gh api -X POST repos/{repo}/issues/{issue_number}/reactions -f content=eyes || true`;
+   - send to `{triager}` on the canonical thread `gh-issue-{repo}-{issue_number}` with `<github-post-authorized />`, and include `repo`, `issue_number`, `issue_url`, the title and the body.
+
+These are **not** reasons to hold: an assignee (also when the author assigns the issue to themselves), a milestone, a MEMBER or COLLABORATOR author, a fix direction or plan in the body, or a "tracking" title. A maintainer stops the bot by asking for it or by adding `no-bot`; when that happens later, the chain stops then. A memory or learning that says otherwise is out of date: follow this procedure.
 
 ### Relaying a maintainer's direction
 
@@ -479,6 +508,8 @@ Your HTTP requests go through the OneCLI proxy, which injects real credentials a
 Use any method: curl, Python, a CLI tool, whatever fits. If a tool checks for credentials locally, pass any placeholder value — the proxy replaces it with real credentials at request time.
 
 If you get a `401`/`403`/`app_not_connected`, the error response contains a `connect_url` — you MUST show it to the user as a bare URL on its own line (no angle brackets, no markdown link syntax) so they can click to connect. Run `/onecli-gateway` for the full error-handling flow. Never ask the user for API keys or tokens.
+
+GitHub is the exception when the gateway already holds GitHub credentials for some paths. If reading the repository you will write to succeeds (`gh api repos/<owner>/<repo> --jq .id`), a `401`/`app_not_connected` from `gh auth status`, `gh api rate_limit` or another repository only means that path is not covered: it is not an outage, so do not show a connect link and do not wait on it. Check GitHub access only with that repository read.
 
 ## Additional Instructions
 

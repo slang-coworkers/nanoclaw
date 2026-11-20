@@ -117,3 +117,34 @@ check returned runs, so the API works). tangent-vector's 5 comments have 0 repli
 PR or issue comments after 10-16. dshreiner-nv and jkwak-work are still requested. #13419 is open,
 last updated 10-08. **Dormant 26 days (>3 weeks)**, flagged on the dashboard (one line). Next one-shot:
 `rechase-13419-pr13487-2e8b` (2026-11-18).
+
+**2026-11-17 07:12Z — #13534 fix chain RELEASED** (operator retro-release wave-2 directive; #13419 itself unchanged — its chain still tracks PR #13487). GO sent to slang-fixer on thread `gh-issue-shader-slang/slang-13534` (fixer msg id 15; woke held session sess-1791496049510-og2rsu, inbound verified) with the operator caveat: diff #13487's coverage against the #13534 repro FIRST — covered → validate+report (no duplicate PR); not covered → draft PR. Assignment (pdeayton-nv) = context, not stand-down. Dashboard report sent (id 33, thread gh-issue-shader-slang/slang-13534).
+
+**2026-11-17 13:55Z — #13534 fixer: draft PR opened, peer review in flight.** Fixer report (msg 2,
+live-verified): #13487 did NOT cover the #13534 repro → **draft PR #14549** "Allow link-time
+constants in vk::binding arguments" (branch `fix/issue-13534`, head `f669ff8b1`, base master@`2a91af5b7`,
+label `pr: non-breaking`, ci.yml run 44096382041 triggered, explanation comment 6949951203
+posted). Critique gates: CODE_REVIEW + OUTPUT_REVIEW + PLAN_REVIEW all approve
+(PLAN_REVIEW re-run by fixer after the 13:28 restart wiped workflow-state and it had never been
+recorded). Review dispatched to slang-reviewer (Mode: pr; fixer msg 23); reviewer + CI webhooks
+route back via the PR mapping. Next: APPROVE → Fix Report + wrap-up; REQUEST_CHANGES → apply,
+re-verify, re-push (2 rounds max). No blockers (codex-bridge 429s retried through).
+
+**2026-11-17 13:55Z — #14549 standalone HTML explanation received** (fixer file delivery, msg 4): same
+content as PR explanation comment 6949951203; archived at
+`/workspace/inbox/a2a-1794923717461-80vvjc/2026-11-17-shader-slang-slang-pr14549-link-time-vk-binding.html`.
+No action required — chain still awaits slang-reviewer verdict.
+
+**2026-11-18 re-chase (`…-2e8b`):** no change. #13487 is open, not a draft, head `53035c247` (last push
+10-16), BEHIND, updatedAt still 2026-10-16. Head still has 0 runs and 0 check-runs (CI unreadable
+until a new push or re-run). Reviews: only github-actions (10-07) and tangent-vector's 5 COMMENTED
+(10-16) — **0 author replies**, no dshreiner-nv/jkwak-work review; the only issue comment on the PR
+is coderabbit 10-07. #13419 open, 1 comment, updated 10-08. **Dormant 33 days.** One dashboard line
+sent. Next one-shot: `rechase-13419-pr13487-<next>` (2026-11-25).
+
+**2026-11-17 — spin-off filing #14556 (compiler crash, self-referential `extern const`):** filed by
+nv-slang-bot with full verification in the body (SIGSEGV repro, root cause: extern branch of
+`tryConstantFoldDeclRef` bypasses check-time circularity detection → unguarded recursion in
+`lowerConstantDeclCommon`; reachable since #14549 allowed extern-derived link-time `vk::binding`
+args). Live-read: open, 0 comments, no labels/assignees; no prior chain owns #14556. Disposition per
+filing policy: filed-only — NO triage dispatch; any triage/fixer start is the operator's call.

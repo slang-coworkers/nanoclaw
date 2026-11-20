@@ -44,3 +44,20 @@ Verify every `action=nudge`/`escalate` row before acting; for each shape below, 
 inbound (tick 315: the #13685 chain's PR is #13700, but fixer `yiuh5a` stopped holding #14081's R2 `[Review Verdict]`).
 
 `watch:` / `handed-off:` are not tokens scan.py recognizes — re-tokenize to `advisory:…` or the row keeps re-flagging.
+
+## Tick 343 additions
+
+| Row scan flags that isn't real | How to tell | Disposition |
+| --- | --- | --- |
+| A re-chase/session **rewrote** a chain's disposition text and dropped the `advisory:maintainer-driving` token in the rewrite (slangpy#1216, tick 343: the FINAL re-chase stamped "parked-no-timer (re-ask cap) — …" at 17:01, mid-gate-window) | compare the disposition against the pre-tick text; substance (human owns next step, re-ask cap, reopen-via-comment) unchanged | re-tokenize by **prefixing** the missing token in `disp-overrides.json` (`'advisory:maintainer-driving — ' + cur`), re-run apply_disp → scan; don't nudge |
+| A NEW silent chain that is a **deliberate bot-filed follow-up** of an active chain (slang#14503, tick 343): the #14496 chain's record says "#14503 is owned by THIS chain — its webhook needs NO dispatch", and the webhook session holds exactly one inbound row with zero outbound | `grep -rl '<num>' memory/slang/` + read live assignees (Core Memory rule) before any nudge | `advisory:follow-up-backlog — …` with the owning chain named; the issue body is the artifact |
+| A mid-tick **bot-filed CI infra-flake** issue that a maintainer assigns within minutes (slang#14504, tick 343: jhelferty-nv → jkiviluoto-nv 9 min after filing) | `gh api …/issues/<n>/events` — `assigned` with `.assigner`/`.assignee` (rung-4 hold) | `advisory:maintainer-driving — …` journaled by hand: add a minimal chain record to payload2b (model on an existing no-PR chain, `sessions` from the new session id) + disp-overrides entry, re-run apply_disp → scan |
+
+## Tick 350 additions
+
+| Row scan flags that isn't real | How to tell | Disposition |
+| --- | --- | --- |
+| A sibling Main session is mid-fan-out on the same family the gate flagged (tick 350, 11-17: the operator's retro-dispatch of the struck-hold family, batches 1–7). Dispatching from the tick would mint duplicate sessions and collide with operator-fed waves | `ncl sessions list` shows triager/fixer sessions **created ≥ 03:00 this hour** on the flagged threads; read the dispatcher session's newest `out` rows (dashboard session 9fon2n) for "batch N of 7" wording | none — verify the flagged chains live (open, no `no-bot`, no stand-down, no human fix PR), patch the payload with the fresh sessions (they post-date the pull), board the rest as "queued for batches N+1–7"; **do not persist `advisory:` tokens** — they'd hide a batch that never lands |
+| Flagged `silent ≥4h` rows whose dispatch landed **between the tick's pull and its scan** (tick 350: #14248/#14354/#14423/#14481, dispatched 04:00–04:08Z, pull was 04:05Z) | sessions re-listed after the pull shows fresh sessions on the flagged threads absent from `payload*.json` | patch payload5 with the fresh sessions + `our_last_outbound`, re-scan; no disposition |
+
+**Correction (operator, 2026-11-17, learning `operator/1794884111425-...`):** "rung-4 hold" is superseded as a ROUTING rule — a maintainer assignment or self-assignment is NOT a stand-down and never justifies holding a new human issue without triage; only an explicit stand-down does (`no-bot` label, or issue text/comment/operator asking the bot to stay off). The dated `advisory:maintainer-driving` dispositions above remain valid only where the CHAIN owns the issue (bot-filed) or an explicit stand-down exists; do not copy the "rung-4" reasoning into new routing decisions.

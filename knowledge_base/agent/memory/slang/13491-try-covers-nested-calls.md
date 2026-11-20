@@ -53,7 +53,12 @@ holds a reverted prototype at `scratch-13491/prototype.diff`.
   skiminki-nv's spec#66 (name lookup, opened 10-30), which does not touch `try`. The Discord channel is still silent
   since 10-09 16:34Z, and Yong hasn't posted. Told dashboard and created `rechase-13491-try-covera-9ed5` for 11-11.
 - 2026-11-11 17:00Z re-chase: still parked. #13491, #13490 and #13492 have had no comments since 10-07/08 (last update
-  10-08 01:18Z). No slang item mentions 13491 since 11-04. The only new spec item is TareHimself's spec#67 (`invariant`
-  qualifier for position outputs, opened 11-10). It doesn't touch `try`, and spec#66 is unchanged since 11-04. The Discord
-  channel is still silent since 10-09 16:34Z, and Yong hasn't posted. Told dashboard and created
-  `rechase-13491-try-covera-915e` for 11-18.
+    10-08 01:18Z). No slang item mentions 13491 since 11-04. The only new spec item is TareHimself's spec#67 (`invariant`
+    qualifier for position outputs, opened 11-10). It doesn't touch `try`, and spec#66 is unchanged since 11-04. The Discord
+    channel is still silent since 10-09 16:34Z, and Yong hasn't posted. Told dashboard and created
+    `rechase-13491-try-covera-915e` for 11-18.
+- 2026-11-18 17:00Z re-chase: still parked. #13491 unchanged (open, 2 comments, last update 10-08 01:18Z, still
+    assigned to skiminki-nv); #13490 and #13492 have no new comments. Spec activity since 11-11 is only #67 (`invariant`,
+    updated 11-17) and #68 (`precise`, opened 11-17) — neither touches `try`, and no spec issue/PR/comment mentions 13491
+    or try coverage (spec#63 remains the last). Discord channel still silent since 10-09 16:34Z; Yong hasn't posted. Told
+    dashboard and created `rechase-13491-try-covera-dccc` for 11-25.

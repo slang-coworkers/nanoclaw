@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14441 — async target codegen overlapping session-owner frontend work (prepared-compilation job API)
-description: Maintainer (skallweitNV, MEMBER) filed 2026-11-10 16:04Z. Feature/RTG. TRIAGED 16:19Z feature/P2 (cmt 6772694452). PARKED on maintainer scope pick A/B/C (triager rec C then A); triager re-check t-529d77 11-17. No fixer. H1/H2 latent races: bounded TSan repro authorized 11-10.
+description: Maintainer (skallweitNV, MEMBER) filed 2026-11-10 16:04Z. Feature/RTG. TRIAGED 16:19Z feature/P2 (cmt 6772694452). PARKED on maintainer scope pick A/B/C (triager rec C then A); 11-17 HOLD confirmed — maintainers took the cluster in-house (tangent-vector owns #14441, jkwak-work owns #14443+#14444). Last auto re-check 14441-scope-recheck-7120 fires 11-24; then parked-list only. No fixer.
 tags: [feature-request, api, threading, parallel-backend, codegen, design]
 ---
 
@@ -42,3 +42,12 @@ fixer chain needs the operator/maintainer decision on design and scope. It is no
   **Main decision:** the #14443 fixer starts now, through the triager on `gh-issue-shader-slang/slang-14443`;
   #14444 stays filed-only until the #14441 scope pick. Sibling Main sessions `…tgirtq`/`…lu8p9f` were minted for
   their issue_opened webhooks.
+- 11-17 16:0xZ — re-check t-529d77 fired; triager [Report] + Main live verification: maintainers moved on 11-11 —
+  #14441 `perf` label (jhelferty-nv 18:22Z) + assigned **tangent-vector** (18:23Z); **#14444 assigned jkwak-work**
+  (18:25Z); and additionally **#14443 reassigned to jkwak-work** (18:52Z, after kaizhangNV's 11-10 self-assign).
+  No new comments anywhere (only our 6772694452 on #14441), no PRs referencing #14441/#14444, PR #14446 still
+  draft with 0 reviews. **Main decision: HOLD (option a)** — assignment is issue ownership, not a scope pick; a
+  fixer into #14444 would collide with in-house work and its fix shape is hostage to the unwritten A/B/C decision.
+  Handoff trigger: written scope direction on #14441, or a maintainer ask for input. Final one-shot re-check
+  `14441-scope-recheck-7120` fires 11-24 16:00Z; if nothing moved, no further auto re-checks — weekly parked list only.
+  Triager replied on its edge (in_reply_to=2, delivered id 5).

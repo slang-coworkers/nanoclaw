@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13169 — bwd_diff hang on runtime-bound loop (from slangpy#1167)"
-description: "CLOSED 2026-10-09 by saipraveenb25: fixed on master by #13234 (dup of #13226). slangpy#1167 open; CUDA check passed 10-16; test PR slangpy#1225 (draft) is RED on D3D12 with E56019, a Slang 2026.20 regression; waiting on the operator (ceiling + approach)."
+description: "slang#13169 CLOSED 2026-10-09 by saipraveenb25 (fixed by #13234). slangpy#1167 CLOSED (maintainer note 11-16, cmt 6922171106: 'Fixed by slang#13234'); CUDA check passed 10-16; test PR slangpy#1225 (draft) is RED on D3D12 with E56019, a Slang 2026.20 regression; waiting on the operator (ceiling + approach)."
 ---
 
 # slang#13169: bwd_diff runtime-bound loop hang
@@ -13,6 +13,7 @@ description: "CLOSED 2026-10-09 by saipraveenb25: fixed on master by #13234 (dup
   session `sess-1789719798342-ukgccz`, owns closing slangpy#1167. The CUDA `runtime` variant must print
   `bwds ok grad_sum=320` on a build that contains #13234, so the close needs a GPU.
 - **GPU check done 10-16 07:49Z:** the 10-09 "no GPU" was the host passthrough bug (fixed 10-16). slangpy-fixer re-ran the CUDA `runtime` variant on the L40S and it passed (slangpy#1167 cmt 6210717821). A maintainer closes #1167.
+- **slangpy#1167 CLOSED 11-16:** saipraveenb25 (assignee) closed it and left "Fixed by: slang#13234" (cmt 6922171106, webhook `pr_mention`). No request to the bot — no dispatch, no post. The #1167 issue side of the chain is terminal; only the slangpy#1225/#1227 tail remains (below).
 - **slangpy#1225 / #1227 (10-20 re-check):** #1225 (regression test, owner fixer session `sess-1787042942592-fhnz2d`
   via pr-mapping) is still a draft. Head `5a19d513`, CI 38887675966 green since 10-16 (`vulkan-*` XFAIL against #1227),
   no human review, no fixer [Report] or round-2 reviewer verdict. Fixer nudged (msg 51). #1227 was triaged silently on

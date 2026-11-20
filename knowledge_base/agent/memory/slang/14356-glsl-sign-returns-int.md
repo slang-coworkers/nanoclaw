@@ -42,3 +42,7 @@ overload in `glsl.meta.slang` that leaves the HLSL `int` return as it is. **Held
 the operator one line that withdraws the 11-05 ask. Seen from Main session `sess-1793902035147-vaunlo`.
 
 **Resumes on:** the assignee (jkwak-work) asking the bot for something, a PR cross-reference, or the issue closing.
+
+**11-19 11:33Z: a late/replayed `issue_opened` webhook** (row 52, dashboard-admin "New issue to triage") arrived 14 days after the 11-05 filing. Main-verified live at 11:3xZ: state matches the record exactly — OPEN, assignee jkwak-work, labels `GLSL`+`reproduced`, 1 comment, updated 11-11T19:02Z. No dispatch: bot-authored verified Terminal filing, already maintainer-held under rung 4. Verdict sent to `orchestrator-dashboard`.
+
+**Resumes on:** the assignee (jkwak-work) asking the bot for something, a PR cross-reference, or the issue closing.

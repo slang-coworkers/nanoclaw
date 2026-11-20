@@ -25,6 +25,13 @@ CUDA-regression lessons) is in [[imported/project_11709_groupshared_byref.md]].
   cleanup issue, and slang-fixer filed **#14105** (reply r4428523055).
 - **11-11 02:57Z:** she self-approved at `bf24e9e1f6` (review 5853126151); the remaining items, such as
   `QualType` → `ExprInfo` (#13831), became follow-up PRs. **04:16Z: MERGED** (`6862c98ecc`).
+- **11-18 01:52Z:** koubaa (issue #10641 author) commented on the closed issue: "Thanks for fixing! I was
+  surprised to see how complex the fix turned out to be." (comment 6966594847). Pure thank-you, no bot mention, no
+  question — acknowledged here, no reply posted, nothing dispatched.
+- **11-18 (later):** jhelferty-nv replied to koubaa on the closed issue (comment 6969198799): the complexity came
+  from `const groupshared` / `__constref` semantics (tangent-vector's correction → readonly references, per merged
+  #13406/#11709), plus docs; "bunch of additional follow-up work we'd like to do" — matches her known follow-ups
+  above. Addressed to @koubaa, no bot mention, no ask of the bot — nothing to do.
 - **11-11 04:27Z, TERMINAL.** The bot's unpushed P1 fix `9230f147c` ("Keep a no_diff groupshared parameter a
   reference in its derivatives") and `50c003155` (test tightening) never reached the PR; `git cherry` shows neither
   upstream. slang-fixer re-ran the 09-30 repro (`fwd_diff`/`bwd_diff` of a function with a

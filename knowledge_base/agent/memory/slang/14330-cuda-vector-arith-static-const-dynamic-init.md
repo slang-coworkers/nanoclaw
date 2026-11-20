@@ -31,3 +31,11 @@ bug / medium / P2. Not a regression or a dup, related to #13444. Labels unchange
 - Cast side find: folded into #13444, not filed.
 **Parked on jkwak-work:** (1) a bot PR, or they take it; (2) fold or per-thread. One-shot re-check `t-33121f` (triager group) runs 11-12 18:00Z and only relays. The webhook carries their reply.
 **On a reply:** a go-ahead for a bot PR comes to Main first; then a triager → fixer handoff on this thread.
+
+**11-16 08:46Z — both park halves resolving via jkwak-work's new filing #14468**
+("Fold vector and matrix arithmetic on constant operands in SCCP"): **(2) fold-vs-per-thread answered =
+fold** (option B; #14467 = option A already landed the per-thread CUDA fix). **(1) implementer still open** —
+now carried by the #14468 chain, which was TRIAGED enhancement/P3 ready-for-fix 08:54Z and is parked holding
+its triage comment behind the auth outage + the implementer question. All further state on
+[[14468-sccp-vector-matrix-constant-folding.md]]; the #14330 t-33121f re-check (11-12) has long fired and is
+superseded by the #14468 chain.
