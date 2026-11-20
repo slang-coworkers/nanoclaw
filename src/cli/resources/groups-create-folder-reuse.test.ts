@@ -98,11 +98,12 @@ describe('groups-create — folder-reuse refusal (A4)', () => {
   });
 
   it('allows creation when the folder is absent (scaffolds folder + config row)', async () => {
-    const resp = await create('fresh');
+    const resp = await create('fresh', { name: 'Fresh Bot' });
 
     expect(resp.ok).toBe(true);
     const row = (await getDb().get<{ id: string }>('SELECT * FROM agent_groups WHERE folder = ?', 'fresh'))!;
     expect(row).toBeDefined();
+    expect(resp).toMatchObject({ ok: true, data: { id: row.id, folder: 'fresh', name: 'Fresh Bot' } });
     expect(fs.existsSync(path.join(GROUPS_DIR, 'fresh'))).toBe(true);
     expect(await getDb().get('SELECT * FROM container_configs WHERE agent_group_id = ?', row.id)).toBeDefined();
   });
