@@ -85,3 +85,14 @@ A re-check prompt for a parked decision names the exact question comment and ask
   `eliminateUndefinedOpaqueHandles`, head e601be32, CI 57 pass / 0 fail). It competes with our stalled draft #14081
   (fixer `yiuh5a` still cost-stopped). Not forwarded to the paused approver; queued in `data/approver-pause-queue.md`.
   When the fixer resumes, it should stop #14081 work and ask on #14081 whether to close it in favour of #14342. No dispatch now.
+- **2026-11-17 12:11Z — #14076/#14081 chain CLOSED (fixer report, Main-verified live).** **#14342 merged
+  2026-11-13T19:32:24Z** (Main-checked via API); issue **#14076 closed** by it. The delayed maintainer review —
+  tangent-vector's 13 comments on #14081, written 10-30 but webhook-delivered only 11-17 — was acknowledged by
+  the fixer (cmt [6947658281](https://github.com/shader-slang/slang/pull/14081#issuecomment-6947658281), nv-slang-bot
+  2026-11-17T12:11:03Z, opens "Thanks for the detailed review — and apologies for the late acknowledgment…").
+  All 13 were fully addressed by the successor #14342: specialization instead of inlining, verb-first file name,
+  whitelisted recognizers + diagnostics, AssumeValidResourceOperands decoration on asm blocks. No follow-up needed;
+  no dispatch. Fixer saved the review policies as shared learning "Slang reviewer policies from tangent-vector" and
+  updated its `memory/fix-14076.md` + active-work sentinel. NOTE: parent draft **#13700** is still open/unmerged —
+  its spirv-val image-OpUndef merge-blocker is now resolved in-tree by #14342; pdeayton-nv's R2/R8 choice on #13700
+  remains with them.

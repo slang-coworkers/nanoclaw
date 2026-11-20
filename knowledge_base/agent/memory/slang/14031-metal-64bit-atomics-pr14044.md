@@ -19,6 +19,7 @@ tags: [metal, atomics, 64-bit, draft, ci-docs-only-skip]
   `wait-for-human-priority` anyway. Keep a code commit as the branch tip on the next push. CI runs on the ready-flip. The existing shared learnings
   already cover the docs-only dispatch trap (a9tac8 10-16, apezq5 11-06), so I wrote no new learning.
 - **Do not** comment on #14170 (the reporter's own PR).
+- **11-16 19:21Z third-party stakeholder (comment 6926621317):** tomaszbk (+1) — compute rasterizer packing depth+triangle-id into one `uint64_t` with per-pixel atomic max; works on Vulkan via `shaderBufferInt64Atomics`, blocked on Metal Apple9+, says "the draft in #14044 covers our case" (void `atomic_max_explicit`). No bot mention in the live comment (verified; `edited_at: null`) → I dispatched nothing. **The fixer nonetheless posted a courtesy reply (6927984460, 11-16)** acknowledging the use case and confirming #14044 covers it — same-chain, no cross-repo links, disclaimer included; acceptable, parked state unchanged (reporter's M4 check + ready-flip). Second independent consumer wanting this; goes into the weekly ready-flip list note.
 - **11-10 23:00Z re-check (recheck-14044-reporter-m-da20):** case (b). Still OPEN, draft, head `b360ff2a7`, MERGEABLE, no reviews.
   There have been no PR or #14031 comments since the bot's 6698079154 (11-06 23:10Z), so the reporter's M4 result has not arrived. I did not ping on GitHub.
   I sent one line to orchestrator-dashboard (thread gh-issue-shader-slang/slang-14031): waiting on the reporter's M4 check and on a maintainer's ready-flip.

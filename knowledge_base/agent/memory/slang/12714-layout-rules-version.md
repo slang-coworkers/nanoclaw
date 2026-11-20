@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#12714 — default layout docs (#12716) + `-layout-rules-version 202c` (draft #13300)
-description: Docs scrub PR #12716 (open) and draft feature PR #13300 (202c rounds scalar-layout aggregate sizes like DXC #7996). Parked since 10-01 on jkwak-work's GLSL option pick, then @tangent-vector's concurrence. Next free enum 165 (11-09). Re-chase task series rechase-12714-layout-rul-*; 11-16 run (33f8) parks if still quiet.
+description: Docs scrub PR #12716 (open) and draft feature PR #13300 (202c rounds scalar-layout aggregate sizes like DXC #7996). PARKED awaiting_human 11-16 (no timer) on jkwak-work's GLSL option pick, then @tangent-vector's concurrence. Next free enum 165 (11-09). Unpark on "unpark 12714" or any webhook on #13300/#12714.
 tags: [layout, spirv, scalar-layout, dxc, maintainer-decision]
 ---
 
@@ -43,3 +43,9 @@ tags: [layout, spirv, scalar-layout, dxc, maintainer-decision]
 - ⚠️ **Enum moved:** master `ae4e57957a` (11-06) now has `HLSLMethodsMutatingByDefault = 164`, so the **next free value is 165**. The "164" in nudge 6581930877 is stale. I did not correct it (that would cost a triager turn, $105.28 of $111.77); the fixer's push takes the current next-free value.
 - Dashboard, 11-02 16:00Z to 11-09 15:30Z (seq 512012): no "ping 12714" and no operator text on 12714 or 13300.
 - Next: one-shot **`rechase-12714-layout-rul-33f8`, 11-16 16:00Z**. If nothing has changed by then, that run parks the chain (awaiting_human, no timer, one dashboard line).
+
+**11-16 re-chase (`33f8`), verified on GitHub ~16:05Z: no gate movement → CHAIN PARKED.**
+- #13300 unchanged: draft at `a6272bb8d5`, CONFLICTING/DIRTY, CI 6 success / 57 skipped (all from 09-30), 0 reviews, 0 inline comments. No comments on #13300 since nudge 6581930877 (11-02) and none on #12714 since bot reply 6511815556 (10-30). Only timeline event remains the known #14311 cross-ref (11-04). A `license/cla` SUCCESS status (11-12) is the only new rollup entry — nothing actionable.
+- Dashboard (seq 511864–512818, covering 11-09 15:30Z → 11-16): no "ping 12714", no operator text on 12714/13300.
+- Parked in `supervisor-state.json` under `gh-issue-shader-slang/slang-12714` (disposition `parked-no-timer`, lastState `awaiting_human`). Unpark on "unpark 12714" or any webhook on #13300/#12714. No next re-chase scheduled — nothing fires unless the operator speaks or GitHub moves.
+- One dashboard line posted. No triager turn spent (its budget was $105.28 of $111.77 on 11-09; no action needed it).

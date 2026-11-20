@@ -20,7 +20,7 @@ gap is closed, and a local edit to SKILL.md is **overwritten on re-provision** �
 10-15 run scanned 1,119 false NO-FRONTMATTER + 86 false DOSSIER (backlog 0 → 1,765,478) and printed a false
 ESCALATE. The pre-#2039 tool is kept at `/workspace/agent/tools/okf_synth.py.before-2039` (it reads the same tree as
 0 offenders). Owner decision pending: upstream the fix, or normalize every leaf to a top-level `type:` line.
-Escalated once (dashboard msg 239, 10-15 12:11Z). No reply as of 11-12 00:05Z (dashboard rows up to seq 512316).
+Escalated once (dashboard msg 239, 10-15 12:11Z). No reply as of 11-16 04:40Z (dashboard rows up to seq 512342).
 
 **Interim run policy (from 10-15 18:00Z):** never fold the 1,118 NO-FRONTMATTER or the nested-type DOSSIERs (all are
 dialect false positives). Each run, also run `tools/okf_synth.py.before-2039 scan`; fold only what it lists
@@ -35,7 +35,7 @@ and is not `okf_synth: exempt`. The 21 original real dossiers were all folded by
 - Siblings may still be writing the file: snapshot it, and swap in the split only after an md5 check against the snapshot.
   If a write landed mid-split, merge it first (10-30 #14055, 10-31 #13350).
 - Neither tool flags folder `index.md` size, but `slang/index.md` reached ~79 KB on 11-01 because re-chase prompts append history into
-  index rows. Trims hold every entry at <= 450 B (~117 KB at 11-12 00:05Z; a few rows regrow to ~600 B between runs; trim any regrown entry largest-first) (one state line + link), so it has
+  index rows. Trims hold every entry at <= 450 B (~117 KB at 11-16 04:40Z; a few rows regrow to ~600 B between runs; trim any regrown entry largest-first) (one state line + link), so it has
   no slack left: from here its size tracks the number of chains, and only an entry that regrows past ~450 B is a target. Trim rows to one state line + a link once the detail is in the record, and point a re-chase prompt's
   "History:" at the chain record, never at an index.
 - Verbatim raw memos >= 12 KB that are `resource:` targets (`slang/raw/`) get `type: source` + `okf_synth: exempt`, not a split;
@@ -49,6 +49,15 @@ replies, or if a NEW real offender (not a dialect false positive) stays stuck fo
 
 **Still true:** SKILL.md's embedded `okf_synth.py` overwrites `/workspace/agent/tools/okf_synth.py` every run, and
 the recurring task is `okf-memory-synthesis-*` gated by `okf_synth.py gate`. Groups that run it: fixer, triager, Main.
+
+**Repo-skill tool defect (found 11-17, RESOLVED upstream 11-17):** the repo SKILL.md's embedded `_write_atomic`
+said `fh.fsync(fh.fileno())` — `TextIOWrapper` has no `fsync`, so a verbatim write crashed `finalize` (exit 1,
+state NOT recorded). Verified fixed in the repo SKILL.md on 11-17 06:00Z (line now `os.fsync(fh.fileno())`), so
+the verbatim write needs no local patch; `finalize` records cleanly (06:03:30Z). The classifier defect (top-level
+`type:` only, no `okf_synth: exempt`) is STILL unfixed upstream — interim policy above still applies. Same root
+cause — fixes must land as a repo PR. (11-17 00:06 run: patched locally, then folded the one real offender —
+slang/14474 chain record split into a slim live record + `14474-…_history.md` sibling, index row trimmed to one
+state line.)
 
 **History (2026-08-22, superseded):** `/home/node/.claude` is a per-agent-group `.claude-shared` mount; before the
 repo copy existed, each group carried its own SKILL.md and Main could not file-copy fixes to peers

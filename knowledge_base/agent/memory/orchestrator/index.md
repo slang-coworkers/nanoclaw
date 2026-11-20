@@ -13,6 +13,9 @@ the one mount detail the spine omits.
 
 ## Map
 
+- [Finding your own session](own-session-thread-id.md) — `env | grep NANOCLAW_SESSION` gives
+  your live session's thread (`NANOCLAW_SESSION_THREAD_ID`); no ncl query marks "self". The
+  one-command answer when diagnosing which dead handoff bounced into YOUR session.
 - [Wiki fold: per-author learnings dir emptied on purpose](wiki-fold-deleted-author-dirs.md) — when live_atoms drop and lineage exits 3: prune moot edges, strip dead cites + remnants (diff vs yesterday's KB), never restore (eval isolation 11-04)
 - [Fleet disk: review-eval worktrees](fleet-disk-eval-worktrees.md) — 11-03 eval-slang-reviewer runs left ~330 GB of worktrees on the 2.5 TB shared volume. Covers how to find the writer, the GC blind spot for standalone review clones, and how one fleet-wide alert reaches several Main sessions at once (check siblings first).
 - [Container mounts](mounts.md) — the mount map, incl. the `/workspace/project`
@@ -45,4 +48,5 @@ the one mount detail the spine omits.
 - [Filing verified issues](filing-verified-issues-policy.md) - reproduced+deduped shader-slang bugs are filed without operator approval; external-repo filings, scope requests and fixer fan-out are asked/reported
 - [Un-draft asks → weekly list](undraft-asks-replaced-by-weekly-list.md) - no per-PR 'may #N leave draft?' asks; maintainers flip drafts themselves; one weekly list (P0/P1 excepted)
 - [Infra-alert dedupe](infra-alert-dedupe-across-sessions.md) - parallel Main sessions re-alert the same infra event (8× disk on 11-04); grep the dashboard's last rows first, post only new facts
+- [Compliance-check skill patch](compliance-check-fix-2026-11-16.md) - R10 author filter + R7 judge truncation fixed in a verified patch, **pending operator apply** (registry is ro in-container); this week's R1/R5/R9 zero-pass = real drift vs the unmerged upstream PR format, not a check bug
 - [Optional doc tweaks from Q&A triage](optional-doc-tweaks-from-qa-triage.md) - dispatch only a genuinely missing fact (one sentence, diffed against the whole page); never promise the reporter a doc PR (#12938 closed as redundant 11-04)

@@ -102,3 +102,12 @@ listed the scope questions (`double`; `sub`/`min`/`max`) and said the decision i
   (`nurj2k`, PR-mapped) implements it. #14189 is still a draft at 555cf1f: **ready-flip pending**, on the weekly list
   ([../orchestrator/undraft-asks-replaced-by-weekly-list.md](../orchestrator/undraft-asks-replaced-by-weekly-list.md)), no per-PR ask.
 - **Timer:** one-shot `recheck-14189-scope-d160`, 11-13 15:00Z. I named the decision on the dashboard at ~23:12Z.
+
+**Re-check 11-16 04:45Z (one-shot `recheck-14189-scope-d160`; it fired 3 days late, scheduled for 11-13 15:00Z). STILL PARKED.** GitHub
+auth was down fleet-wide: `gh` returned 401 Bad credentials, and slang-mcp failed too. The operator was already alerted on the
+dashboard at 04:41Z, with follow-ups at 04:42, 04:43 and 04:44Z, so I sent no duplicate. I read state through the WebFetch fallback,
+which shows dates but not times. #14189 is OPEN, still a draft, head 555cf1f, "Awaiting requested review" from jkwak-work, 0 reviews.
+#14183 is OPEN, assigned to jkwak-work, Q4 2026 (Fall). On neither one is there a comment after the 11-06 reporter ask and fixer
+reply, and no maintainer has commented. The fixer session `nurj2k` has nothing inbound after row 30 (the 11-06 22:57Z webhook). That
+matches the page: no answer arrived. **I sent no reminder and no relay.** #14189 stays on the weekly ready-flip list. The scope
+decision (a = in #14189, b = follow-up, c = neither) is still jkwak-work's, and any answer arrives by webhook, so I set no new timer.

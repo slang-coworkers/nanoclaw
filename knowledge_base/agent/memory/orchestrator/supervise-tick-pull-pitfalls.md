@@ -28,6 +28,19 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
 - **`ncl sessions messages` truncates every row to 300 chars unless `--full` is passed** — hold reasons and operator asks get cut mid-sentence. `tick305/msgs.py` passes `--full`. Any `ncl` call made while `pull.sh` is running fails with `database is locked`; do GitHub-only checks (auto-merge sweep, closed-since) during the pull instead (tick 305).
 - **Relayed posts in the dashboard session are stored cut to ~500 chars even with `--full`** (tick 319: the 08:44Z maintainer relay ended mid-sentence). Find the sending Main session by `last_active` near the post time and read its own `out` row with `--full`.
 
+- **A predecessor tick that died mid-pull (tick 354: 0-byte payload1, session death 12:06Z) does not corrupt the next tick** — `memory/supervisor-state.json` stays at the last COMPLETED tick's final state, which is exactly the right pre-tick snapshot. Build `lo-cache.json` from the last completed tick's `payload3.json` (tick 353's, not the dead tick's), and `prev-la.json` from the dead tick's `sessions.json` if it got that far (fresher). Check the previous tick dir for `pull.done`/nonzero `payload1.json` before trusting it (tick 355).
+- **If `pull.sh` ran with the `--state` file missing (tick 355: a `cp` landed in the default cwd), the payload comes back with `state: {}` and no disposition rehydration — do NOT re-pull.** The state file's only two uses in pull.sh are the `payload['state']` key and per-chain `disposition` rehydration (pull.sh ~line 606). Post-hoc: inject the pre-tick state into `payload['state']` and copy each chain's `disposition` from it, then continue the pipeline. Verify the save with 0 dropped keys vs pre-tick (the usual guard still applies).
+
+## Harness + helper plumbing (ticks 343, 345)
+
+- **Tick 345: `bgA.sh` (runs.py → ci.py) races the disposition pass.** ci.py reads `payload5.json` + `scan-out3.json`, which only exist after the mid-tick disposition re-run (`apply_disp.py payload2b → payload5` + scan). Launching the CI background job right after `pull.done` makes ci.py die on FileNotFoundError (exit 1 in `ci.done`) and it must be re-run. Launch bgA only after payload5/scan-out3 exist, or make bgA wait for `payload5.json`.
+
+- **Copied helpers hardcode the PREVIOUS tick's paths**: `runs.py` wrote `runs.json` to `/workspace/agent/tick342/runs.json` (tick 343: it overwrote the old tick's cache and `ci.py` then died on a missing local `runs.json`). Grep the copied `*.py`/`*.sh` for `tick<N-1>` and fix every hit before running.
+- **`run_in_background: true` is still killed at the default 120 s timeout in this harness** (tick 343: pull died mid-run at 120 s, 0-byte payload1). Pass an explicit large `timeout:` with it, or run long steps in the foreground with a 600 s cap and a done-marker file.
+- **`cd X && (…) & (…) & (…) & wait` binds the `cd` to the FIRST background job only** — bash parses `cd X && (…) &` as one background job; the other subshells run in the original cwd (tick 343: titles/GC subshells ran in `/workspace/agent`, created stray `*.done`/`wt-dirs*` files there and died on script paths). Put an explicit `cd` INSIDE every subshell, or run the steps sequentially.
+- **Never swap `payload['sessions']` for the raw `ncl sessions list` re-list.** The pull's session list is stamped (`cost_status`, `group_folder`); the raw list has neither, so scan misclassifies en masse (tick 343: 37 false `awaiting_us` nudge rows, 2 false escalates, cost_stopped count 0→wrong). Use the re-list only to (a) diff for brand-new canonical threads, (b) feed `blind.py`/`moved.py`, and (c) recover a missing session's id when hand-journaling a mid-tick chain — via a minimal chain record, never a sessions swap.
+- **`refetch_none.py` can exceed the runbook's 90 s window** (tick 364, 10,451 sessions: first run exit 124 with no output file; a 300 s retry fixed 0 and finished). Retry once with `timeout 300` before treating it as broken; a clean run with `fixed 0` means the lo-cache already covered everything.
+
 ## State
 
 - **scan's `delta=updated` overcounts** when a cache refresh moves stamps backwards (tick 269: 59 raw → 20 real). Filter
@@ -57,7 +70,18 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   `waiting` on `falcor-build-approval-gate`. A fixer holding its Fix Report "until the retry re-runs CI" waits forever,
   and scan reads it as `awaiting_human` (#13716). Any coworker claim that the retry will re-run a `waiting` run is
   false while the deadlock holds — correct it on the board. Classify the helper's decision lines
-  (`gh run view <id> --log`) before trusting a ⏸️ yield to self-heal (ticks 288, 290).
+  (`gh run view <id> --log`) before trusting a ⏸️ yield to self-heal (ticks 288, 290). Re-measured
+  11-18 00:14Z: "still active (**230** runs)"; the 11-17 base-refresh batch alone left ~10 fresh
+  zombie `workflow_dispatch` runs (fix/issue-13534/-13800/-14292/-13348/-14430/-13833/-14524/
+  -14518/-14557 + -13858). Disposition per #13126/#13864: the owning fixer **cancels** its zombie
+  run — cancelled ⇒ `failed_only_because_priority_gate`=False ⇒ never re-picked, and one fewer
+  guard-tripper for everyone. #13858's check loop (9 hourly re-checks waiting on the rerun,
+  11-17/18) is the failure mode in action: terminate such loops with this fact, don't re-arm.
+  **All 10 cancelled 11-18 (Main-verified; 0 waiting dispatch runs left)** — but every new bot
+  draft-testing dispatch recreates one, so re-check on refresh batches. Sweep gotcha: a per-branch
+  `gh run list --limit N` can be all newer `pull_request` runs while an older `waiting`
+  `workflow_dispatch` run sits outside the window — filter on `event==workflow_dispatch` (bit the
+  fixer's sweep 11-18; learning in shared/learnings/ag-1780667166439-vmjrwe/1794961760356-*).
 
 ## GitHub API
 
@@ -67,6 +91,11 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
   REST `repos/shader-slang/<r>/pulls?state=open&per_page=100&page=N` filtered on `.auto_merge!=null` (**6 pages** for slang — 544 open PRs at tick 333, 445 at tick 292; 3 pages missed the armed #10769/#10098 on page 4),
   and `gh search issues --owner shader-slang --closed '>=<date>' --include-prs` (raw `gh api search/issues?q=…closed:>=`
   returns empty JSON).
+- **Armed-PR mergeable check — GraphQL field names (tick 347):** `PullRequest.mergeableState`, `AutoMergeRequest.state`
+  and `AutoMergeRequest.enabledMethod` do NOT exist; the working query is `mergeable mergeStateStatus reviewDecision
+  isDraft autoMergeRequest{mergeMethod}`. **Simpler one-call sweep (tick 376):** `gh pr list -R shader-slang/slang --state
+  open --limit 400 --json number,autoMergeRequest,mergeStateStatus` returns armed PRs directly (`autoMergeRequest != null`
+  = armed, with `enabledAt`/`enabledBy`/`mergeMethod` inside) — no REST pagination, no GraphQL; retry once on an HTTP 502.
 
 - **`ncl pr-mappings list` returns only 200 rows by default** — pass `--limit 10000` (1,069 rows at tick 337). Tick 336's
   `prmap.json` was truncated, so `deliv.py` missed mappings for older PRs.
@@ -91,3 +120,5 @@ Procedure: [[orchestrator/supervise-tick-runbook.md]]. Outage modes: [[orchestra
 - **Read the free-space trend from a tier's `.worktree-gc/history.log`, not one `df`** (tick 324: 681→232 GB in 12 h, 9.4% at 00:07Z, 313 GB at 00:2xZ; every tier reaped 0). The tier GC only covers the six prod tiers: `eval-slang-*` groups have no worktree-gc task, and `eval-slang-reviewer` alone held 328 GB. `du -sh prod-groups/*` names the consumer; that goes to the operator, since the supervisor never reaps.
 - Common REAP shape: merged-PR reviewer worktrees (`wt-<pr>-verify/-revA/-base/-master`), owned by the reviewer
   session on the chain whose `pr.number` matches (or the `slang-ci-nightly-*` thread for nightly-PR chains).
+
+- **The copied `bg*.sh`/`run-pull.sh` batch scripts hardcode `cd /workspace/agent/tick<NNN>` of the tick they were written in** (measured tick 356, 2026-11-17: bgall.sh still said `cd tick355`, so runs/ci/titles/gc wrote fresh outputs into the PREVIOUS tick's dir — harmless, but the new tick found no ci.json and tick355's intermediates were clobbered). After copying helpers, `sed -i '1s|.*|cd "$(dirname "$0")"|' bg*.sh run-pull.sh ghfeeds.sh` (tick 356 already fixed its copies, so ticks ≥357 inherit the relative form). Also `setsid` background launches survive tool-call timeouts, but a launch call killed inside its first ~15 s can take the child with it — after launching, verify the PID is alive before waiting on the done-files.

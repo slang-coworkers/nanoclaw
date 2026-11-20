@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13555: -ignore-capabilities + case-less __target_switch → silent UB"
-description: "External bug (minco3), opened 2026-10-09. Triaged bug/high/P2, reproduced, long-standing. GO 2026-10-10 on Approach A (tag the missingReturn in specializeTargetSwitch, diagnose survivors after the final DCE) as a draft PR with Fixes #13555, routed through slang-triager."
+description: "External bug (minco3), opened 2026-10-09. Triaged bug/high/P2, reproduced, long-standing. GO 2026-10-10 on Approach A (tag the missingReturn in specializeTargetSwitch, diagnose survivors after the final DCE) as a draft PR with Fixes #13555, routed through slang-triager. Dated readings in [[13555-history-rechases.md]]."
 ---
 
 # slang#13555: `-ignore-capabilities` + case-less `__target_switch` → silent UB
@@ -34,89 +34,37 @@ and open PR #11225 touches only `slang-check-shader.cpp`. Routed through the tri
 - My test note: draft #13559 adds a cuda `SampleGrad` case, so don't rely on it as the case-less repro. Use a
   user-code `__target_switch` or `Buffer<T>`.
 
-**PR (2026-10-10 ~07:54Z).** Draft [#13564](https://github.com/shader-slang/slang/pull/13564).
+**PR: draft [#13564](https://github.com/shader-slang/slang/pull/13564)** (2026-10-10, bot-authored on
+`fix/issue-13555`; PR-mapped to slang-fixer `sess-1791593655069-w74ros`; both maintainer questions are in the
+PR body and the explanation comment, cmt 6095450396).
+- **Design (triager-accepted):** on SPIR-V/GLSL/WGSL, E41037 replaces E41009 inside `checkForMissingReturns`;
+  every other target reports after the final DCE. Reason: with only the late check, a case-less function
+  returning `Texture2D` segfaulted in `specializeResourceUsage`.
+- **Breaking-change exposure (fixer):** cpp `Buffer<T>` loads; exported / `[DllExport]` functions on cpp;
+  built-ins that were no-ops under the flag (`GroupMemoryBarrierWithGroupSync` on cpp, `debugBreak` on metal).
+- **Two pre-existing crashes, out of scope and unfiled** (master 08d419cbf): spirv with
+  `-disable-non-essential-validations` → rc 139; hlsl with `-ignore-capabilities` → rc 139. Only mentioned in
+  the PR's explanation comment. Also unfiled: a duplicate E41037 per generic specialization, and the
+  follow-up specializeCallSite crash (also on master).
 
-Checked live: draft, `fix/issue-13555` → master, head `19b0b2e3ac`, 3 commits all by the bot, `pr: non-breaking`, closes 13555, 12 files +348/−4. The PR mapping goes to slang-fixer `sess-1791593655069-w74ros`. The PR body and the explanation comment carry both maintainer questions.
-- **Design change, which the triager accepted:** on SPIR-V/GLSL/WGSL, E41037 now replaces E41009 inside `checkForMissingReturns`; every other target reports after the final DCE. The triager's reason: with only the late check, a case-less function returning `Texture2D` segfaulted in `specializeResourceUsage`.
-- **Two pre-existing crashes, out of scope and unfiled:** the triager reports both on master 08d419cbf. spirv with `-disable-non-essential-validations` gives rc 139, and hlsl with `-ignore-capabilities` gives rc 139. Both are only mentioned in the PR's explanation comment.
-- **Fixer's numbers:** 30/30 new tests; 13 of the 18 positive cases are silent on master. Full suite 7785/7786, the one failure being gfx-smoke, which needs a GPU. CI has not run yet (draft-gated).
-- **Breaking-change exposure, per the fixer:** cpp `Buffer<T>` loads; exported / `[DllExport]` functions on cpp; built-ins that were no-ops under the flag (`GroupMemoryBarrierWithGroupSync` on cpp, `debugBreak` on metal).
-- **Next:** slang-reviewer is reviewing, then the fixer's [Fix Report], then the triager's [Triage Resolution]. Ready/merge is operator-gated, and the label decision belongs to the maintainers.
+**State (last verified 11-05 10:05Z):** draft at head `a4e7e33342` (merge of `100e058605` + master `04d2726db0`,
+plus two test-only commits: `exit-code=-1` on 16 lanes for #14269's SIMPLE exit-code enforcement, and three
+`-ignore-capabilities` lanes E41009→E41037 — the PR's intended effect; jkwak-work, the #13555 assignee, had
+pinned those lanes in #14269). MERGEABLE, `pr: non-breaking`, 0 human reviews, CI 42005875266 waiting on its
+gate. At head: `Decoration.noTargetCase` = **913**, min 38 / max 39. Fixer receipts at head (L40S, Debug):
+48/48 new tests, full suite 11796/11799 (only the 3 fp8-cuda tests that also fail on master). The 11-16 04:39Z
+re-check was auth-blocked (GitHub 401 outage). The 11-17 09:00Z re-check restored reads: head unchanged at
+`a4e7e33342`, still draft, `pr: non-breaking`, 0 reviews, no new human comments — but now **CONFLICTING**, and
+master moved to last id **914** with min=max=**42** (`Decoration.Artificial` = 913 collides with our
+`noTargetCase` = 913). Merge-origin/master ask sent to the pinned triager session 11-17 09:03Z (delivered, its
+seq 46): `noTargetCase` = **915**, min 42, max 43.
+- **Collisions:** #13425 @ `e855bd5db0` (draft, MERGEABLE) claims 910 and shares **v39** — whoever merges second
+  moves to 911/v40; #13872 @ `70cb286878` (draft, CONFLICTING) claims 910/v38. `slang-ir.h` can auto-merge to a
+  version number master already uses, so check the number by hand.
+- **Parked:** Q1 (breaking?) and Q2 (cpp `case cpp:`?) on the maintainers; Q3 (ready/merge) on the operator.
+  **Ready-flip pending, on the weekly list** ([policy](../orchestrator/undraft-asks-replaced-by-weekly-list.md)).
+- **Next:** triager→fixer executing the 11-17 merge-origin/master ask (`noTargetCase` 915 / 42–43); expect their
+  [Report]/[Fix Report] on this thread. No further re-check scheduled — the chain is active again.
 
-**10-13 08:14Z hazard (reported by the triager on the #13544 chain).** The triager's `wt-13555` worktree is at `08d419cbf`, but its `build/` holds
-#13547 (`6c65eea6c4`) binaries. Before relaying any #13555/#13564 measurement the triager makes from that worktree, check that it was rebuilt at
-the SHA being cited.
-
-**10-15 fixer run failure (triager report 13:45Z, checked by me 13:5xZ).**
-- Fixer session `w74ros` timeline:
-  - seq 30: round-1 REQUEST_CHANGES at 10:42Z.
-  - seq 35: the fixer requested round 2, marked "(last)", at 11:10Z.
-  - seq 40: round-2 REQUEST_CHANGES @ `1a9f927e67` at 12:43Z (1 bug and 4 gaps from A, "three fixes are small").
-  - 13:02–13:12Z: the fixer pushed the round-2 fixes, ending at head `eac83d94ed`.
-  - seq 42: the container was restarted by an instructions update at 13:13Z.
-  - seq 43: "The agent run failed" at 13:43Z.
-  - So the failure came on the resume after the restart, after the push. No [Fix Report] was sent.
-- Cost is not the cause. The fixer is `ok` at $72.62 of a $150 cap. The reviewer `oe47tu` is escalated, but its decision was `continue` at 09:27Z, and its container is stopped because it is idle, not blocked. That makes the triager's "reviewer paused at its ceiling" stale.
-- PR checked live: still a draft, 0 GitHub reviews, CI not run.
-- Action: told the triager to re-dispatch the fixer on its own edge and ask for the [Fix Report] at `eac83d94ed`. If a second run also fails, it goes to the operator.
-
-**10-15 13:58Z [Triage Resolution]: held draft, parked.** The re-dispatch worked, and the fixer sent its [Fix Report] at 13:58Z. Checked live 14:00Z: draft, head `eac83d94ed`, MERGEABLE, `pr: non-breaking`, 15 files +517/−6, 0 human reviews. The issue's only comment is still 6091831285, which is accurate.
-- Round-2 items are mapped to commits. The fixer reports 48/48 new tests and a full suite of 8059/8060 (the failure is gfx-smoke, which needs a GPU), Debug rebuilt at `eac83d94ed`. Those are its receipts; I didn't re-run them. I accepted no round 3.
-- The 35→36 version bump is correct, and the 10-10 "no bump" call was wrong. I checked at the head that `emitHostVMCode` (slang-emit.cpp:3798-3800) serializes linked IR, and `slang-ir.h:2257` has max=36.
-- ⚠ **Merge collision, found by me:** draft #13425 (13423-metal-cb-scalar-layout, head c994d094e1) also claims stable opcode **909** (`Type.MetalConstantBufferLayout`), and its `slang-ir.h` comment says max=**36**. Whichever lands second must move to 910/37. It's a textual conflict, so git reports it rather than letting it pass silently. Eight other open PRs touch stable-names.lua; I haven't checked them.
-- Open: (Q1) breaking? (Q2) cpp `case cpp:`? (Q3) ready/merge (operator). There's also a duplicate E41037 per generic specialization. The follow-up specializeCallSite crash, which also happens on master, is unfiled.
-- Re-chase: one-shot `rechase-13564-maintainer-b2f8` on 2026-10-22 09:00Z.
-- 10-15 14:10Z: the triager found a second collision, non-draft **#13406** (jhelferty-nv, `pr: breaking change`, CHANGES_REQUESTED, head `671215f5de`), which sets min=max=36. I checked this live myself. It conflicts with #13564 in `slang-ir.h` only. The hazard bullet is in explanation cmt 6095450396 (verified: bot, mentions #13406 and #13425). Decision: post nothing on #13406 or #13425. The PR that merges second resolves the conflict, git flags it, and both of our PRs are held drafts. Both re-chase prompts (`-b2f8`, `rechase-13425-maintainer-9a08`) now carry the cross-reference.
-
-**10-21 09:00Z, from the #13425 re-chase:** master `9e17a9e850` (#13078, merged 10-19) took stable id **909** (`Decoration.glslPatch`) and max version **36**. Draft #13564 (`eac83d94ed`) claims both and is now **CONFLICTING**. #13425 was asked to move to 910/37, and #13406 (`e5ac28a647`) is now min=max=37, so #13564's next free values depend on which of those lands first. Note that `slang-ir.h` can auto-merge to a version number master already uses, so check the number by hand.
-
-**10-22 09:0xZ re-chase (`rechase-13564-maintainer-b2f8`).**
-- **#13406 MERGED** at 08:47Z as master `0bd71cd709`. Master is now at min=max=**37**, and its stable ids end at `Decoration.glslPatch` = 909. I checked both live.
-- #13564 @ `eac83d94ed`: still a draft, now **CONFLICTING/DIRTY**. It still adds `noTargetCase` = 909 and max=36, and master already uses both.
-- No human comments or reviews on #13564/#13555 since 10-15. Q1–Q3 are still parked.
-- Draft #13425 @ `3a41ab51a0` claims 910 with max=37. Whichever of #13425/#13564 merges second moves to 911/39.
-- Action: sent slang-triager (`33kqnm`, thread `gh-issue-shader-slang/slang-13555`) a merge-origin/master ask for the fixer `w74ros`. It asks for 910 and max=38 (min 37), with no rebase and no force-push. After that: rebuild, PR tests plus full suite, push, edit cmt 6095450396 in place, keep the draft and the label.
-  - The first send returned `database is locked`. The retry is msg id 7, and the triager inbox shows one inbound (seq 26, 09:02Z), so it was not duplicated.
-- Next re-chase: one-shot `rechase-13564-merge-veri-837b` on 10-29 09:00Z. Before that, expect the triager's report on the thread.
-
-**10-22 09:44Z: the merge landed (triager report). I checked it live at 09:5xZ.**
-- Head `100e058605`, parents `eac83d94ed` + master `0bd71cd709`, author is the bot. Still a draft, MERGEABLE, BLOCKED, `pr: non-breaking`, 0 reviews.
-- At the head, stable-names ends `glslPatch`=909 then `noTargetCase`=**910**, and `slang-ir.h:2257-2258` reads min **37** / max **38**. Master is at 909 and min=max=37.
-- CI run 39756995357 at that head is `waiting` on its gate. saipraveenb25 is a requested reviewer (github-actions, 10-10).
-- Fixer's numbers (Debug build at the head, L40S): 48/48 new tests. Full suite 11178/11181; the 3 failures are `cooperative-matrix/fp8-cuda*` CUDA_ERROR_INVALID_PTX, which the fixer reports also fail on a master build at 0bd71cd709. These are its receipts; I didn't re-run them.
-- **Collision still open:** #13425 @ `3a41ab51a0` (CONFLICTING) also claims **910**, with max 37. Whichever merges second moves to 911/39. That note is on `rechase-13425-maintainer-e658`.
-- I authorized a Tests-line-only refresh of the PR body, since it was stale at 8059/8060. Q1–Q3 are still parked. The next one-shot is `rechase-13564-merge-veri-837b` (10-29), and its prompt is updated.
-- 10-22 09:46Z: the Tests line in the PR body was refreshed to the 100e058605 numbers. I checked live: still a draft, same head and label, and `Fixes #13555` is still present. Parked until `rechase-13564-merge-veri-837b` (10-29).
-
-**10-29 09:0xZ re-chase (`rechase-13564-merge-veri-837b`): case (d).** Checked live:
-- #13564 is still a draft at head `100e058605` (same as 10-22), `pr: non-breaking`. GitHub shows MERGEABLE but BEHIND master `01dcd35682`. CI run 39756995357 is still `waiting` on its gate.
-- No non-bot comments or reviews on #13564 or #13555 since 10-15.
-- I checked the PR diff by hand. It adds `Decoration.noTargetCase` = 910 and moves max from 37 to 38 (min 37). Master `01dcd35682` still ends at `glslPatch` = 909 with min=max=37, so both values are free.
-- ⚠ **Three-way collision.** Draft #13425 @ `4b7541ad55` (`Type.MetalConstantBufferLayout`) and draft #13872 @ `5c5909334a` (`Decoration.DebugVarStorage`) also claim 910 with max 38, and both are MERGEABLE. The first to merge keeps 910/38; the others move to 911/39 and then 912/40.
-- Sent the 5-bullet with Q1–Q3 to orchestrator-dashboard on thread `gh-issue-shader-slang/slang-13555` (msg id 3). Nothing went to the triager or fixer.
-- Next: one-shot `rechase-13564-decisions-5727` at 11-05 09:00Z. If it is the third unchanged check in a row, it asks the dashboard whether to keep re-checking.
-
-**11-05 09:0xZ re-chase (`rechase-13564-decisions-5727`): case (c).** Checked live:
-- #13564 is still a draft at head `100e058605` with `pr: non-breaking`, and is now **CONFLICTING/DIRTY** (ahead 15, behind 90, merge base `0bd71cd709`).
-- Master `04d2726db0`: #14051 (merged 11-04 06:39Z, `c8bd944484`) added `Type.TraceProgramDescriptor` = **911** and `metalTraceRay` = **912**, and set min=max=**38**. 910 is unused on master. The PR diff still has `noTargetCase` = 910 with min 37 / max 38.
-- No non-bot comments or reviews on #13564 or #13555 since 10-15. #13555 has been self-assigned to **jkwak-work** since 10-12 (saipraveenb25 assigned themselves 10-10 and unassigned 10-12). This is not new, and earlier records missed it.
-- #13425 @ `4b7541ad55` and #13872 @ `70cb286878` are both drafts, CONFLICTING, and still claim 910.
-- Action: sent slang-triager (pinned `33kqnm`, thread `gh-issue-shader-slang/slang-13555`, `in_reply_to=2`, msg id 9) a merge-origin/master ask for fixer `w74ros`: `noTargetCase` = **913**, min **38**, max **39**, no rebase or force-push. After that: rebuild, PR tests plus full suite, push, edit cmt 6095450396 in place, refresh only the Tests line, keep the draft and the label. Delivery verified: triager inbound seq 32 at 09:01:48Z.
-- This was not an unchanged check (10-22 had an action, and so did 11-05), so I did not send the "keep re-checking?" ask to the dashboard. Q1–Q3 are still parked.
-- Next: one-shot `rechase-13564-merge-913-9c85` on 11-12 09:00Z, which verifies the merge. Before then, expect the triager's report on the thread.
-
-**11-05 09:59Z: the merge landed (triager report). I checked it live at 10:1xZ.**
-- Head `a4e7e33342`, built from three bot commits:
-  - `fd65a95e81`: merge of `100e058605` and master `04d2726db0`.
-  - `6f4a6ad223`: test-only; adds `exit-code=-1` on 16 lanes, needed because #14269 now enforces SIMPLE exit codes.
-  - `a4e7e33342`: test-only; changes `capabilitySimplification1`, `var-capability-wgsl` and `var-implicit-capability-wgsl` from E41009 to E41037 under `-ignore-capabilities`. jkwak-work had just pinned those lanes to E41009 in #14269 (merged 11-04 21:37Z). This is the PR's intended effect, and jkwak-work is the #13555 assignee.
-- At the head: `noTargetCase` = **913**, min **38** / max **39**. Master has 911/912 and 38/38. Still a draft, MERGEABLE, `pr: non-breaking`, 0 reviews.
-- Fixer's numbers at the head on the L40S: 48/48 new tests; full suite 11796/11799, where the only failures are the 3 fp8-cuda tests that also fail on master. CI 42005875266 is waiting on its gate.
-- Collisions, checked at both heads:
-  - #13425 `e855bd5db0` is at 910/v39 and MERGEABLE. It shares **v39** with us, so whichever merges second moves to v40.
-  - #13872 `70cb286878` is at 910/v38 and CONFLICTING. It collides with #13425 on 910.
-- I authorized a refresh of the PR body's stale `**Merge order:**` line (it still said 910/v38). That one line only.
-- **Ready-flip pending, on the weekly list.** Under [the policy](../orchestrator/undraft-asks-replaced-by-weekly-list.md), no per-PR un-draft ask.
-- Incident, which the fixer reports it already fixed: in the fixer's container, a command detached its base clone `/workspace/agent/slang` to `04d2726db0` for a master build, after worktree GC had removed its master control tree. The fixer re-attached the clone to `master`.
-- Next: `rechase-13564-merge-913-9c85` on 11-12; its prompt is updated.
-- 11-05 10:05Z: refreshed the PR body's Merge-order line (913/v39; #13425 shares v39; #13425/#13872 share 910). Checked live: draft @a4e7e33342, label unchanged, `Fixes #13555` still present. Parked until `rechase-13564-merge-913-9c85` (11-12).
+Dated re-chase readings, the collision evolution (909/36 → 910 → 913/39) and incident history live in
+[[13555-history-rechases.md]] — new dated entries go there, never here.

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reject system-value semantics overridden by an enclosing semantic — slang#14489 (PR #14497)</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; max-width: 860px; margin: 0 auto; padding: 1rem 2rem 4rem; color: #222; }
+  h1 { font-size: 1.7rem; margin: 1.2rem 0 0.2rem; }
+  h2 { font-size: 1.3rem; border-bottom: 2px solid #d0d7de; padding-bottom: 0.25rem; margin-top: 2.2rem; }
+  h3 { font-size: 1.05rem; margin-top: 1.5rem; }
+  code, pre { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.92rem; }
+  code { background: #f6f8fa; padding: 0.1rem 0.3rem; border-radius: 4px; }
+  pre { background: #f6f8fa; padding: 0.8rem 1rem; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+  .callout { background: #fff8e6; border-left: 4px solid #d4a72c; padding: 0.6rem 1rem; margin: 1rem 0; border-radius: 0 8px 8px 0; }
+  .toc { background: #f6f8fa; border-radius: 8px; padding: 0.8rem 1.2rem; margin: 1rem 0 2rem; }
+  .toc a { text-decoration: none; }
+  .diagram { background: #eef6ee; border-radius: 8px; padding: 1rem; margin: 1rem 0; }
+  .diagram .box { display: inline-block; border: 2px solid #2a7f2a; border-radius: 8px; padding: 0.4rem 0.8rem; margin: 0.3rem; background: #fff; text-align: center; }
+  .diagram .arrow { color: #2a7f2a; font-weight: bold; }
+  .quiz-q { border: 1px solid #d0d7de; border-radius: 8px; padding: 0.8rem 1rem; margin: 1rem 0; }
+  .quiz-q .options button { display: block; width: 100%; text-align: left; margin: 0.3rem 0; padding: 0.5rem 0.8rem; border: 1px solid #d0d7de; border-radius: 6px; background: #fff; cursor: pointer; font: inherit; }
+  .quiz-q .options button:hover { background: #f0f4f8; }
+  .quiz-q .explanation { display: none; margin-top: 0.6rem; padding: 0.6rem 0.8rem; border-radius: 6px; }
+  .quiz-q.correct .explanation.ok { display: block; background: #e6f4e6; }
+  .quiz-q.incorrect .explanation.bad { display: block; background: #fdeceb; }
+  .meta { color: #57606a; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<h1>Reject system-value semantics overridden by an enclosing semantic</h1>
+<p class="meta">shader-slang/slang PR #14497 · fixes issue #14489 · head <code>6606f42</code> · 2026-11-16</p>
+
+<div class="toc">
+<strong>Contents</strong>
+<ol>
+  <li><a href="#background">Background</a></li>
+  <li><a href="#intuition">Intuition</a></li>
+  <li><a href="#code">Code walkthrough</a></li>
+  <li><a href="#quiz">Quiz — five questions</a></li>
+</ol>
+</div>
+
+<h2 id="background">Background</h2>
+<p>When Slang compiles an entry point, every varying input/output — parameter or return value — is <em>laid out</em> before code emission. The layout records, for each leaf value, which semantic binds it: <code>systemValueSemantic("SV_Depth", 0)</code> or a plain location. Emitters trust the layout, not the source text. A leaf laid out as <code>SV_Depth</code> becomes <code>gl_FragDepth</code> / <code>BuiltIn FragDepth</code>; a leaf laid out as <code>SV_Target1</code> becomes an ordinary color output at Location 1.</p>
+<p>Semantics can be declared per field, or on an enclosing declaration. When both exist, the documented <strong>outer-most semantic wins</strong> policy applies the enclosing semantic to every leaf with a running index: <code>void fs(out Out o : OUTPUT)</code> with <code>Out { float4 a : A; float4 b : B; }</code> gives <code>o.a &rarr; OUTPUT0</code>, <code>o.b &rarr; OUTPUT1</code>. For <em>user-defined</em> semantics that composition is the point of the policy.</p>
+<div class="callout"><strong>Deep background (skippable).</strong> The layout pass walks an entry-point signature recursively: <code>processEntryPointVaryingParameterDecl</code> takes a declaration (a parameter, the function itself for the result, or a struct field) plus a <code>state</code> carrying the nearest enclosing semantic. With no enclosing semantic, the decl's own semantic is <em>adopted</em> into the state and pushed down into fields and array elements; with one present, the decl's own semantic was silently skipped. The result of an entry point is laid out with <code>decl = the function</code>, so <code>Output main() : SV_Target</code> enters the walk as the outer-most semantic for every result-struct field. System-value semantics are classified purely by prefix — any <code>SV_</code>/<code>NV_</code>-prefixed name — except <code>SV_Target&lt;N&gt;</code> on fragment outputs, which is deliberately treated as an ordinary user output.</div>
+
+<h2 id="intuition">Intuition</h2>
+<p>Consider the issue's reproducer:</p>
+<pre>struct Output {
+    float4 color : SV_Target;
+    float   depth : SV_Depth;
+};
+
+[shader("fragment")]
+Output main(Input input) : SV_Target { ... }</pre>
+<p>The <code>: SV_Target</code> on <code>main</code> becomes the outer-most semantic. Walking the result struct, the policy skips each field's own semantic and numbers leaves sequentially:</p>
+<div class="diagram">
+  <span class="box">main() : SV_Target<br><small>outer semantic</small></span>
+  <span class="arrow">&rarr;</span>
+  <span class="box">color : SV_Target<br><small>rebound &rarr; SV_Target0</small></span>
+  <span class="arrow">&rarr;</span>
+  <span class="box">Location 0 color</span><br>
+  <span class="box">main() : SV_Target</span>
+  <span class="arrow">&rarr;</span>
+  <span class="box">depth : SV_Depth<br><small>rebound &rarr; SV_Target1</small></span>
+  <span class="arrow">&rarr;</span>
+  <span class="box">Location 1 color<br><small>FragDepth never written</small></span>
+</div>
+<p><code>depth</code> is silently rebound to <code>SV_Target1</code>: an ordinary color output. The shader compiles with exit 0, renders the image, and never writes depth — the exact silent miscompilation the issue reports. Deleting <code>: SV_Target</code> from the function restores <code>SV_Depth</code>, and <code>FragDepth</code> appears.</p>
+<p>The fix keeps the outer-most-wins policy untouched for user-defined semantics, and adds one rule: when the skipped semantic is a <strong>system-value</strong> semantic and the outer semantic would bind the field to something <em>different</em>, that is never what the spelling means — reject it with E39034 naming both semantics. When the outer semantic would assign exactly the slot the field names itself (same base name, own index equal to the slot the running counter has reached), the spelling is redundant and stays legal with identical layout.</p>
+
+<h2 id="code">Code walkthrough</h2>
+<h3>1. Diagnostic — <code>slang-diagnostics.lua</code></h3>
+<p>New error <code>outer-semantic-overrides-system-value-semantic</code> (E39034): "the system-value semantic '~fieldSemantic' is ignored because the enclosing declaration applies its own '~outerSemantic' semantic", with the field's semantic as the primary span and the enclosing declaration's semantic as a secondary span, so the rendered error points at both spellings.</p>
+<h3>2. State — <code>slang-parameter-binding.cpp</code>, <code>EntryPointParameterState</code></h3>
+<p>Two new fields, <code>optSemanticLoc</code> and <code>optSemanticText</code>, recorded wherever an enclosing semantic is adopted, so the secondary span has an exact source location and the message quotes the enclosing semantic as written.</p>
+<h3>3. Classification helper</h3>
+<p>The prefix rule moves into a named helper <code>isSystemValueSemanticName</code> (any <code>SV_</code>/<code>NV_</code> prefix, case-insensitive), and the pre-existing inline check in <code>processSimpleEntryPointParameter</code> now calls it — one source of truth for "is this a system-value semantic".</p>
+<h3>4. The check — <code>processEntryPointVaryingParameterDecl</code></h3>
+<p>The adoption branch is unchanged. A new <code>else if</code> fires when an outer semantic is already active and the decl's own semantic is a system value: it compares base names case-insensitively and the decl's own index against the running slot counter. Different name or different index &rarr; E39034. Identical slot &rarr; redundant, no diagnostic, byte-identical layout. Because the walk is shared, one site covers function results, <code>out</code>/<code>inout</code> parameters, and fields nested arbitrarily deep.</p>
+<h3>5. Tests</h3>
+<p><code>tests/diagnostics/outer-semantic-overrides-system-value-semantic.slang</code> runs eight cases: the issue's shape errors on SPIR-V, HLSL and GLSL; nested-struct, <code>out</code>-parameter, and user-defined-outer variants error; two positive controls (a single <code>SV_Target</code> field under an outer <code>SV_Target</code>, and an indexed <code>SV_Target1</code> field landing on the slot it names) compile clean and emit real SPIR-V. <code>tests/spirv/depth-out-struct-fragdepth.slang</code> guards the clean path: the struct result keeps <code>BuiltIn FragDepth</code> and no spurious Location-1 depth output appears.</p>
+
+<h2 id="quiz">Quiz — five questions</h2>
+<p>Click an option to check yourself.</p>
+
+<div class="quiz-q">
+  <p><strong>1.</strong> With <strong>no</strong> enclosing semantic anywhere, how are the semantics of two struct fields in an entry-point result used?</p>
+  <div class="options">
+    <button data-correct="false">A. Both are ignored; fields are numbered sequentially from zero.</button>
+    <button data-correct="false">B. Only the first field's semantic is used.</button>
+    <button data-correct="false">C. The compiler errors out: fields must not carry semantics.</button>
+    <button data-correct="true">D. Each field's own semantic is adopted and binds that field.</button>
+  </div>
+  <div class="explanation ok">Correct. The adoption branch uses the decl's own semantic when no outer semantic is active; the new check only fires in the presence of an enclosing semantic.</div>
+  <div class="explanation bad">Not quite. With no enclosing semantic, each field's own semantic is adopted and used. The new check only fires when an outer semantic is already active.</div>
+</div>
+
+<div class="quiz-q">
+  <p><strong>2.</strong> Why does the depth output <em>vanish</em> rather than error in the original bug?</p>
+  <div class="options">
+    <button data-correct="false">A. <code>SV_Depth</code> is illegal in Slang, so it is dropped.</button>
+    <button data-correct="true">C. The layout records <code>systemValueSemantic("SV_Target", 1)</code> for the depth field, and emitters bind by layout — a plain Location-1 color.</button>
+    <button data-correct="false">B. The parser strips field semantics on struct returns.</button>
+    <button data-correct="false">D. The GLSL and SPIR-V emitters have no depth support.</button>
+  </div>
+  <div class="explanation ok">Correct. The outer-most-wins policy overwrites the field's own semantic during layout, and the emitters faithfully emit what the layout says; nothing downstream ever sees <code>SV_Depth</code>.</div>
+  <div class="explanation bad">Not quite. The layout overwrote the field's semantic with <code>SV_Target1</code>, and emitters bind by layout — depth became an ordinary color output.</div>
+</div>
+
+<div class="quiz-q">
+  <p><strong>3.</strong> <code>struct Out2 { float4 a : SV_Target; float4 b : SV_Target1; }</code> with entry <code>Out2 main() : SV_Target</code> — what does the new check do?</p>
+  <div class="options">
+    <button data-correct="false">A. Errors on both fields.</button>
+    <button data-correct="false">B. Errors only on <code>a</code>.</button>
+    <button data-correct="false">C. Errors only on <code>b</code>.</button>
+    <button data-correct="true">D. Compiles clean: each field's own index matches the slot the outer semantic assigns.</button>
+  </div>
+  <div class="explanation ok">Correct. <code>a</code> is compared when the running counter is at 0 (own index 0) and <code>b</code> when it has advanced to 1 (own index 1); both are redundant spellings of the same layout, so the same-slot exemption applies.</div>
+  <div class="explanation bad">Not quite. Each field's own index matches the slot the running counter has reached when that field is visited, so the same-slot exemption keeps this legal with identical layout.</div>
+</div>
+
+<div class="quiz-q">
+  <p><strong>4.</strong> Which semantic names does the compiler classify as <em>system values</em>?</p>
+  <div class="options">
+    <button data-correct="true">B. Any name with an <code>SV_</code> or <code>NV_</code> prefix, case-insensitive.</button>
+    <button data-correct="false">A. Only semantics in a fixed allowlist like <code>SV_Depth</code> and <code>SV_Position</code>.</button>
+    <button data-correct="false">D. Anything the downstream target does not recognize.</button>
+    <button data-correct="false">C. Only <code>SV_</code>-prefixed names; <code>NV_</code> is not recognized.</button>
+  </div>
+  <div class="explanation ok">Correct. <code>isSystemValueSemanticName</code> keeps the pre-existing prefix rule as the whole classification (with <code>SV_Target&lt;N&gt;</code> on fragment outputs still special-cased downstream as an ordinary output).</div>
+  <div class="explanation bad">Not quite. Classification is purely by prefix: any case-insensitive <code>SV_</code>/<code>NV_</code>-prefixed name is a system value.</div>
+</div>
+
+<div class="quiz-q">
+  <p><strong>5.</strong> After this change, what happens to a <strong>user-defined</strong> field semantic under an enclosing user-defined semantic, e.g. <code>void fs(out Out o : OUTPUT)</code> where <code>Out { float4 a : A; float4 b : B; }</code>?</p>
+  <div class="options">
+    <button data-correct="true">A. Unchanged: the enclosing semantic wins silently, <code>a &rarr; OUTPUT0</code>, <code>b &rarr; OUTPUT1</code>.</button>
+    <button data-correct="false">B. Now an error: field semantics may not coexist with enclosing semantics.</button>
+    <button data-correct="false">D. A warning is emitted but the layout is unchanged.</button>
+    <button data-correct="false">C. Now the field semantics win; the enclosing semantic is ignored.</button>
+  </div>
+  <div class="explanation ok">Correct. That composition is the documented, intentional behavior of the outer-most-wins policy; the new check only fires when the skipped semantic is a system-value semantic.</div>
+  <div class="explanation bad">Not quite. User-defined field semantics under an enclosing user-defined semantic keep the documented outer-most-wins composition, unchanged by this PR.</div>
+</div>
+
+<script>
+document.querySelectorAll('.quiz-q').forEach(function (q) {
+  var buttons = q.querySelectorAll('.options button');
+  // Fisher-Yates shuffle so the correct option is not always in the same slot.
+  var arr = Array.prototype.slice.call(buttons);
+  for (var i = arr.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+  }
+  var opts = q.querySelector('.options');
+  arr.forEach(function (b) { opts.appendChild(b); });
+  buttons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var right = b.getAttribute('data-correct') === 'true';
+      q.classList.remove('correct', 'incorrect');
+      q.classList.add(right ? 'correct' : 'incorrect');
+    });
+  });
+});
+</script>
+</body>
+</html>

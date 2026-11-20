@@ -27,3 +27,10 @@ tags: [slangpy, slang, ci, required-check, merge-queue, outage]
   Red `SlangPy Tests` statuses still on open PRs are stale, left over from pre-fix runs.
   Merge-queue ejections #13477, #13483, #13502 and #13503 are green at their heads. A human needs to re-enqueue them (the bot can't), and I asked the operator. #13479 is held back by #13515 instead.
   **Chain resolved** apart from those re-enqueues.
+
+## Recurrence: slangpy#1280 (2026-11-16) — same class, third workflow file
+
+- `sanitizers.yml` (nightly ASan/UBSan GPU matrix) is the only GPU workflow still missing the cap; red 10 consecutive nights (2026-11-07 → 11-16), six CUDA ray-tracing tests failing on both legs, same `_optix_trace_typed_32` PTX signature as #1214. Linux leg additionally has the independent LSan root tracked by slangpy#1130.
+- Owned by **slangpy-fixer** session `sess-1794856174989-r9h311` (thread `slangpy-sanitizers-sgl-max-cuda-cap`), dispatched 19:09Z 2026-11-16 by a sibling Main session (slangpy CI maintenance / daily-report chain). It verified the mechanism from run 43802285857, attempted the 2-line push mirroring ci.yml:75-76, and was **rejected: the nv-slang-bot App token lacks the `workflows` permission** — no bot can push `.github/workflows/**`.
+- It filed slangpy#1280 (19:42:35Z, no assignees) as the resumable artifact with root cause + proposed diff, and has a pending ask_question; Main task `sanitizers-cap-perm-rech-7d19` rechecks the permission escalation.
+- **Needs a human**: maintainer applies the 2-line diff (or grants the App the Workflows permission). No fixer dispatch — the fixer is the chain owner and cannot push the fix itself.

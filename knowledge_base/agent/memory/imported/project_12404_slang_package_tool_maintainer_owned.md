@@ -1,6 +1,6 @@
 ---
 name: project_12404_slang_package_tool_maintainer_owned
-description: "slang#12404 `slang package`/`pkg` Git-backed module deps — TRIAGED maintainer-owned, verdict cmt 5208103219, NO fixer. Two design 'open questions' were already answered in-tree: the dispatcher exists (#10621, v2026.5.1+) and dot→slash import sugar serves a hierarchy. 3 latent defects found. My brief carried 2 errors."
+description: "slang#12404 `slang package`/`pkg` Git-backed module deps — TRIAGED maintainer-owned, verdict cmt 5208103219, NO fixer. Two design 'open questions' were already answered in-tree: the dispatcher exists (#10621, v2026.5.1+) and dot→slash import sugar serves a hierarchy. 3 latent defects found. My brief carried 2 errors. 2026-11-17 re-triage on CodingDaniel1's package-aliasing comment: answered (cmt 6938207390), verdict unchanged — design-gated, maintainer owns mapping-vs-layout."
 metadata:
   node_type: memory
   type: project
@@ -118,3 +118,37 @@ then release `slang-fixer` for a **DRAFT** PR, slice (a) or (b) first, `pr: non-
 fresh substantive human comment. Related: [[feedback_group_clone_is_shared_by_all_sibling_sessions]]
 (the dirty-tree report that arrived with this memo, acted on for #12330 —
 [[project_12330_entrypoint_throws_not_diagnosed]]).
+
+## Re-open 2026-11-17 — CodingDaniel1's aliasing comment; answered, verdict unchanged (triager; Main verified the artifact)
+
+The RESUME trigger fired: fresh substantive human comment from **CodingDaniel1** (2026-11-17) proposing
+package-name→search-path aliasing surfaced through slangd (`import engine.core` →
+`thirdparty_shaders/engine/content/shaders/`). Supervisor tick caught it; triager re-triaged and
+answered substantively — **cmt [6938207390](https://github.com/shader-slang/slang/issues/12404#issuecomment-6938207390)**
+(nv-slang-bot, 2026-11-17T04:20:57Z; Main-verified live, opens "Replying to @CodingDaniel1's proposal
+… verified against current master @ da04f0426"). First tier to answer. Key technical points:
+
+- Aliasing needs a **compiler-side** change today: import resolution = flat `-I` search roots plus
+  `.`→`/` parser sugar (slang-parser.cpp:1389-1401); no name→root mechanism anywhere. Their
+  Session-level placement fits `SessionDesc` (size-versioned, slang.h:4577).
+- BUT the same UX is reachable **tool-only**: manifest-declared import root + materialization layout
+  (zero compiler change). slangd's workspace scan (`slang.searchInAllWorkspaceDirectories`) worsens
+  the flat-list name clash. Files: slang-session.cpp:1129/247 ·
+  slang-language-server.cpp:2644-2682 · slang-include-system.cpp:92-135.
+- **New design sub-decision added, verdict NOT overturned:** (i) Session-level name→root table in
+  compiler+slangd config vs (ii) package-layout convention carrying it tool-only; either adds a
+  "declared import root" manifest field (already TBD). Maintainer-owned (@csyonghe / @jhelferty-nv);
+  no maintainer has replied on the issue.
+
+**State: still parked, design-gated.** No fixer dispatch (nothing bot-actionable until the
+mapping-vs-layout call is made); no new timer — the supervisor tick that caught this comment covers the
+parked re-open trigger. Chain state also in triager's group page memory/issues/12404.md.
+
+## ⛔ STAND-DOWN 2026-11-17T05:21:19Z — chain CLOSED, do not dispatch
+
+Issue author **jhelferty-nv** (MEMBER) posted
+[cmt 6939383483](https://github.com/shader-slang/slang/issues/12404#issuecomment-6939383483):
+*"@nv-slang-bot stand down. :)"* — explicit, Main-verified live via the comments API. The bot stands
+down on #12404: no dispatch, no nudge, no GitHub posts, no re-open on future comments. Supervisor
+chain entry archived in supervisor-state.json (`_archived`, reason "maintainer stand-down"). Only a
+fresh explicit re-invite from jhelferty-nv (or the operator) reopens the chain.

@@ -16,5 +16,8 @@ I read `/events`, saw `actor=jvepsalainen-nv`, and "corrected" it to a self-assi
 reached GitHub.
 
 ⇒ Before stating who assigned an issue, print `assigner` (events) or use `/timeline`'s `actor`.
-Self-assign matters because it decides ownership-hold calls
-([[feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new]] rung 4).
+Self-assign still matters — it names who to coordinate with and who owns the next step
+([[feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new]]) — but it is NOT a
+stand-down and no longer holds anything (operator correction 2026-11-17,
+learning `operator/1794884111425`: only `no-bot`, or the issue text / a comment / the operator
+asking the bot to stay off, stops the bot).

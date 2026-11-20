@@ -29,7 +29,7 @@ with the ruling (likely breaking for existing CUDA users).
 | item | state |
 |---|---|
 | #14071 | OPEN, assignee jkwak-work, human-triaged 11-02 (label `optix`, Type=Bug). Bot triage comment [6591886780](https://github.com/shader-slang/slang/issues/14071#issuecomment-6591886780) posted 11-03 00:15Z at master 96a728c85. **PARKED** on the A/B/C call. |
-| re-check | triager one-shot `t-35ef08`, 11-10 00:10Z: reports a maintainer reply to Main, posts nothing otherwise, dispatches no fixer. |
+| re-check | polling ENDED 11-17 00:10Z (`t-7858dd` reported no change, per the pre-decided plan). No further re-check tasks; webhooks + the parked register only. |
 | #14073 (F1–F4 spin-out, bot-filed) | **CLOSED 11-06 21:18Z.** Items 1–3 in [#14079](https://github.com/shader-slang/slang/pull/14079) (`9b46bca644`); item 4 (option (a), jkwak-work [6691067713](https://github.com/shader-slang/slang/issues/14073#issuecomment-6691067713)) in [#14388](https://github.com/shader-slang/slang/pull/14388) (`b85caf9285`). Deferred nits kept in `remedy-14388-r1.patch`. |
 | #14083 (G2 spin-out, bot-filed) | `[CudaKernel]`/`[CudaDeviceExport]` skip `validateEntryPointCapabilities`, so unavailable intrinsics compile to an empty body. Parked with jkwak-work; no bot fixer. Addendum [6692697361](https://github.com/shader-slang/slang/issues/14083#issuecomment-6692697361) (11-06): statements after the unsupported call are deleted too. |
 

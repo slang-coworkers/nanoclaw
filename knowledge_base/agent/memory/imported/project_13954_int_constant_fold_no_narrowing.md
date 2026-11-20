@@ -19,6 +19,12 @@ specific reflected values are the filer's/reviewer's; I did not re-run them.
 no fixer. Same shape as [project_13946](project_13946_metal_mesh_per_primitive_system_values.md).
 Resume on a maintainer comment (arrives as `pr_mention`) or an operator ask.
 
+**2026-11-19:** maintainer `skiminki-nv` self-assigned ("Assigning to self.", comment 7015418121),
+then said their PR #14509 will fix this (comment 7015443694). A self-assignment is the human taking
+the fix, not a bot ask — chain stays down, no dispatch. Resume only if the maintainer explicitly asks
+the bot for the fix. Note: #14509 is an overhaul of front-end int constant folding generally — if it
+merges, it likely also resolves the #13953 R1 probe interaction; verify before touching that thread.
+
 **Sequencing if a fix is ordered:** #13953 pins the current wrong values in its test, so a #13954 fix
 must update that probe; fix after #13953 merges, or coordinate on the #13952 fixer's thread.
 

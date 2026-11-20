@@ -96,3 +96,9 @@ so CUDA Gather offset is now E36107. The triager suggests (as a hypothesis) that
 option A; that is still jkwak-work's call. Next: t-7858dd at 11-17 00:10Z. **Pre-decided:** if 11-17 also shows no change,
 the triager posts nothing and schedules no more re-checks. The 11-03 comment stays as the artifact, and webhooks plus
 the supervise-issues parked register cover it.
+
+**11-17 00:11Z: t-7858dd final parked re-check (triager msg 86). No change since 11-03 — polling ENDED as pre-decided.**
+Issue OPEN, labels `optix`, Type=Bug, assignee jkwak-work; last timeline event is our own comment 6591886780. The triager
+posted nothing and created no further re-check task. From here: webhooks + the supervise-issues parked register only; any
+maintainer comment lands as a live inbound. The #14073 ruling (6691067713) stays hypothesis, not direction. No reply sent
+to the triager (terminal report; ack would be a content-free echo).

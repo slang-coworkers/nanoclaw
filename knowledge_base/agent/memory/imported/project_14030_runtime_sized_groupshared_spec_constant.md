@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_14030_runtime_sized_groupshared_spec_constant
-description: "slang#14030 (albertrodriguezclo, human, filed 10-29 16:18Z): spec-constant-sized groupshared arrays work only on SPIR-V; CUDA E99997, Metal/WGSL/GLSL E99999, HLSL emits a VLA DXC rejects. Proposal: fix GLSL/WGSL ICEs (overlaps open #10214), lower to CUDA extern __shared__ / Metal [[threadgroup(N)]] with entry-point reflection, diagnostic on HLSL. TRIAGED 16:38Z (bug/medium/target-emit+IR/P2, not regression, superset-sibling of #10214); bug slice (Approach A) with slang-fixer; ask 2 (CUDA/Metal dynamic lowering) PARKED on assignee jkwak-work (assigned by jhelferty-nv 11-02, milestone Q4 2026); triager final one-shot t-9ed81f 11-19T16:30Z. Draft PR #14049 @ d73c1ea6d, Fix Report 10-30 00:44Z after R2. PARKED on maintainer review (kaizhangNV) + un-draft + CI; Main timer recheck-14049-maintainer-a085 11-03 14:00Z."
+description: "slang#14030 (albertrodriguezclo, human, filed 10-29 16:18Z): spec-constant-sized groupshared arrays work only on SPIR-V; CUDA E99997, Metal/WGSL/GLSL E99999, HLSL emits a VLA DXC rejects. Proposal: fix GLSL/WGSL ICEs (overlaps open #10214), lower to CUDA extern __shared__ / Metal [[threadgroup(N)]] with entry-point reflection, diagnostic on HLSL. TRIAGED 16:38Z (bug/medium/target-emit+IR/P2, not regression, superset-sibling of #10214); bug slice (Approach A) with slang-fixer; ask 2 (CUDA/Metal dynamic lowering) PARKED on assignee jkwak-work (assigned by jhelferty-nv 11-02, milestone Q4 2026); triager final one-shot t-9ed81f 11-19T16:30Z. Draft PR #14049 @ d73c1ea6d, Fix Report 10-30 00:44Z after R2. PARKED on maintainer review (kaizhangNV) + un-draft + CI; both re-check chains CLOSED (Main 11-10, triager 11-19) — zero timers, resume only on webhook or operator unpark; on the task-hygiene parked register."
 ---
 
 # slang#14030: runtime-sized `groupshared` via specialization constants
@@ -118,3 +118,9 @@ to the 11-03 "ping kaizhangNV?" ask (checked the dashboard rows 11-05..11-10). *
 task-hygiene parked register (`.task-hygiene/state.json` → `parked["shader-slang/slang#14030"]`, refs #14030 + #14049; it drops out when both
 close). Ready-flip is still pending on the weekly un-draft list. Triager t-9ed81f (11-19) is the last timer anywhere. Resume only on a webhook
 (maintainer review/comment, un-draft) or an operator "unpark". Operator told on orchestrator-dashboard (msg 7).
+
+**11-19 16:31Z triager final re-check (t-9ed81f) complete — chain fully parked, zero timers left:** triager [Report] (verified live by Main
+16:4xZ): #14030 has only our 2 comments, jkwak-work never answered the A/B/C options ask (unchanged since 11-02 milestone set); #14049
+draft, 0 reviews, untouched since 10-30, no [Fix Report] from the fixer beyond the 10-30 one. No GitHub post (rung 4; comment 6506657387
+still accurate). **Both re-check chains are now closed; no recurrence anywhere.** Resume only on a webhook (jkwak-work/kaizhangNV reply,
+review, un-draft) or operator "unpark". No operator post — no new facts (last told 11-10).

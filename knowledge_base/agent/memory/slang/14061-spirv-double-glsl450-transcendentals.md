@@ -48,3 +48,8 @@ Main's final one-shot is `recheck-14061-maintainer-aa6e` at 2026-11-09 22:30Z. I
 rests on the /supervise-issues parked-chain register.
 
 **11-09 22:30Z: final re-check recheck-14061-maintainer-aa6e — still silent.** Open, assigned jkwak-work, only comment is the bot 5-bullet; no PR (search 14061; none by albertrodriguezclo or jkwak-work on double transcendentals). Only new event is the bot cross-ref from sibling issue #14211 (core-module double constants at float precision). Nothing scheduled; rests on the /supervise-issues parked-chain register.
+
+**11-18: GLSL-facet sibling [#14589](14589-glsl-via-glsl-double-sin.md) filed by jkwak-work himself**
+(`-emit-spirv-via-glsl` double `sin` → glslang rejects). Triaged 11-18, reproduced on ToT 4a1d62c5b: the direct
+SPIR-V path only appears to work because `sin(3.0)` constant-folds — a non-constant arg still emits the invalid
+`OpExtInst %double Sin` (this issue). Held maintainer-driving with it; no fixer, no timer on either.

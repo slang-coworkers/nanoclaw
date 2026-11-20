@@ -48,3 +48,20 @@ full suite is running. Next: push, then the [Fix Report] and "ready-flip pending
 list** (not a direct ask). The Q1 question is on this issue, as comment 6646031120.
 **11-05 00:52Z: #14325 head `4929edf8a`** (draft). R1 remedy and nits N1-N4 applied. Suite 11737/11740 (`fp8-cuda*`). CI 41944450993. **Ready-flip pending, weekly list** (not a regression, so no direct ask).
 **11-05 00:56Z:** the triager confirmed #14325 is "ready-flip pending" for the **weekly list**, together with the Q1 answer (6646031120).
+**11-17 14:47Z (fixer report, receipt verified):** jkwak-work @-mentioned the bot on the issue (comment 6950985087) questioning whether the repro
+shader is valid at all — `divisor` is a runtime uniform, so a `static const` initializer over it can't be compile-time. Fixer replied 6951383406:
+agreed it should be rejected; root cause = the E31226 "static const global initializer must be a compile-time constant" check is gated on
+`isGlobalDecl(varDecl)` (slang-check-decl.cpp:3834), false inside a struct, so the front end accepts it and execution reaches the `-g` ICE.
+Proposed: keep #14325 (inliner fix, correct under either semantics; ready-flip pending) + implement the E31226 struct-member extension as a
+separate change **if jkwak-work confirms the intended semantics** (it rejects currently-legal code). **Parked awaiting his A/B + semantics answer**;
+register entry updated. Fixer session i9d99t owns.
+**11-17 17:32Z (fixer report, receipt verified):** jkwak-work APPROVED #14325 (review 5943399084, 17:30Z: *"I feel like there gotta be a better way than
+this but it looks good for now."*). The "better way" = the open E31226-struct-statics semantics question (bot issue reply 6951383406); fixer PR reply
+6955782602. **PR is now non-draft, head `f6ccfc9c`, mergeable_state blocked (CI)** — flipped out of draft by the maintainer, so the weekly-list
+ready-flip item for #14325 is done. Remaining open item: jkwak-work's issue-thread answer on extending E31226 to struct `static const` members
+(separate change; fixer follows up if confirmed). Not a regression; no direct undraft ask was needed.
+**11-17 21:24Z (fixer report, receipt verified): TERMINAL — PR #14325 MERGED** by jkwak-work at 21:22Z (merge commit `9c105e5c`, head
+`f6ccfc9c7`); he flipped it ready and merged master in earlier that day. **Issue #14321 auto-closed.** Fixer removed `wt-slang-14321` and the
+`active-work/slang-14321` sentinel. **Residual (closed UNANSWERED):** the E31226-for-struct-`static const`-members semantics question —
+jkwak-work approved the inliner fix "for now" and never answered the A/B question (bot comments 6646031120, 6951383406). If a maintainer
+answers or reopens, fixer i9d99t owns the diagnostic follow-up; no action otherwise.

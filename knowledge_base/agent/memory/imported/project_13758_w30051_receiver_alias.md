@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13758_w30051_receiver_alias
-description: "slang#13758 (jhelferty-nv, self-assigned, 10-20 02:06Z): W30051 misses an argument aliasing the receiver of a [mutating]/[__ref] method (s.mutInout(s), s.mutBorrow(s), s.mutInoutField(s.v)) and prefix access paths (s vs s.v). Suggested fix already chosen by the author and sequenced on her #13406. HELD: maintainer-owned follow-up, no dispatch, no bot post."
+description: "slang#13758 (jhelferty-nv, 10-20 02:06Z): W30051 misses an argument aliasing the receiver of a [mutating]/[__ref] method (s.mutInout(s), s.mutBorrow(s), s.mutInoutField(s.v)) and prefix access paths (s vs s.v). Held as maintainer-owned 10-20 → REQUEUED 11-17 (ownership-only hold struck per operator correction, re-triaged under the stand-down rule). Chain ACTIVE: triager + fixer on gh-issue-shader-slang/slang-13758; fix implemented (receiver pair via findEffectiveThisParamInfo, prefix access-path case in _exprsDefinitelyAlias, new W30134 diagnostic), draft PR pending."
 metadata:
   node_type: memory
   type: project
@@ -24,3 +24,15 @@ a report. She told the bot to stand down on #13406 on 10-16; R6 (#13596) says th
 human issues. #13406 is OPEN, non-draft, head `a15e286653` (10-19 16:54Z).
 
 **Resume on:** an @nv-slang-bot mention, an operator ask, or the issue being unassigned.
+
+**2026-11-17, requeued and dispatched.** Ownership-only hold struck per operator correction
+(learning operator/1794884111425); re-triaged under the stand-down rule and dispatched. Chain live
+on `gh-issue-shader-slang/slang-13758`: `slang-triager` session (sess-1794891267122-0ekcm8) +
+`slang-fixer` session (sess-1794891960491-1yts8k, worktree wt-slang-13758 @ 8115e2d31), both
+verified active 11-17. Per triager's 07:19Z report (fixer 07:18Z update): earlier 429s killed turns
+but not the work — msg-25 infra block no longer applies. Fix implemented: prefix access-path case
+in `_exprsDefinitelyAlias` + receiver pairing via `findEffectiveThisParamInfo` + new W30134
+diagnostic (distinct code from W30051); build green, diagnostics suite 1083/1083; commit +
+critique + draft PR in progress. Next: triager stands by for the fixer's [Fix Report], then
+forwards [Triage Resolution] and refreshes issue comment issuecomment-6939064741 once the draft PR
+exists. No blocker.

@@ -30,3 +30,12 @@ so no re-check timer.
 **11-04 04:30Z.** Follow-up [#14295](14295-ptr-extension-instance-method-lookup.md) (same author, self-assigned): the `INTERPRET` exit-code work exposed `tests/bugs/ptr-extension-this-type.slang` as a failing compile; it is disabled with a TODO pointing at #14295. Also held.
 
 **11-04 04:35Z.** Two more follow-ups, same author, both self-assigned and held: [#14296](14296-pack-query-in-expand-pattern.md) (`__trimFirst`/`__trimLast` on value packs in an `expand`) and [#14297](14297-countof-tuple-expand-generic-pack-size.md) (`countof(Tuple<expand Wrap<each T>>)` returns 1). Both block `variadic-pack-query-layer-shape.slang`.
+
+**11-17 — RESOLVED (triager Terminal, 17:22Z).** Prior ownership-only hold struck per the 11-17 operator correction; re-triaged under the stand-down
+rule and the fixer chain completed. **Draft PR #14520** ("slang-test: check the exit code in SIMPLE_LINE, DISPATCHER and COMPARE_COMPUTE tests",
+head `05da6897b` (round-3 verdict named one more doc nit — the "runners that pass one" antecedent in the C++ enum comment — applied comment-only, +3/−3; helper stays at the PR body's cited :3600), 9 commits / 6 files on master@da04f0426, `pr: non-breaking` applied — head/draft/file+commit counts live-verified by Main 11-17; GitHub API reads +116/−26, triager's corrected report says +119/−26 — minor count discrepancy, non-load-bearing).
+All triage-identified slices implemented incl. the README exit-code section; documented exceptions COMPARE_GLSL / PERFORMANCE_PROFILE / LANG_SERVER.
+3 internal review rounds (REQUEST_CHANGES ×2 → APPROVE_WITH_NITS, nits applied at final head). Repro FAILS pre / PASSES post; suites green on the
+L40S build; CI run 44136883008 is the current one for head 05da6897b (earlier run 44127574066 was green on 90840793, a comment-only delta from it). **State: review-complete, ready-flip pending** (weekly
+undraft list; fixer cannot `gh pr ready`). **After merge: close #14292 manually** — the PR is a draft, so `Closes #14292` won't auto-close;
+reference #14520 and the umbrella #14215. Side-finding [#14518](14518-parse-diagnostic-util-rust-style.md) stays open/separate.

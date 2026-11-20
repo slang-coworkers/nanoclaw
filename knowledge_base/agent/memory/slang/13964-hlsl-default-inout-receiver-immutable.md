@@ -58,3 +58,19 @@ description: Regression from #13615; triage resolved, bot draft PR #13966 (call-
   `ncl groups list` first (approvers are paused), then route through slang-triager (never message the fixer directly) to
   **merge** master (no rebase; 41+ behind) and then `gh pr ready`.
 - **2026-11-06:** tangent-vector opened follow-up #14361 (11-05 21:31Z, `-fhlsl-methods-mutating-by-default`, opt-in option replacing #14352's dormant `if (0)`); in the merge queue 11-06 00:02Z. Approver event not forwarded (approver paused); queued in `data/approver-pause-queue.md`. Maintainer-owned; nothing dispatched.
+
+- **11-16 19:0xZ: close dispatched (bundle released).** The maintainer's daily report (09:50Z, 5th ask since 11-01) re-asked closing
+  superseded #13966; the operator "go" bundle (11-06, supervisor operator_decisions[30]) was released per the 10-31
+  filing/maintenance policy after 10 days of silence. Verified live: #14352 merged 11-05T20:26Z (issue closed by it); #13966
+  still open-draft @ `e785e0710`. Dispatched the close-with-superseded-pointer to slang-triager pinned to owner session
+  `sess-1793136956389-4i9ub9` on the canonical thread (delivery verified, row 26, 19:09:31Z), per the 11-16 #14076 postmortem
+  same-tick rule; the un-draft path is moot. Fallback if the triager's write path is still 401 (broken as of 12:05Z): hand the
+  close to fixer session `sess-1793137690090-eygrm7` (write path verified working today). On close: drop from the weekly
+  un-draft list and the approver-pause queue; chain terminal pending the close URL.
+
+- **11-16 19:10:43Z: TERMINAL (verified live).** PR #13966 closed (not merged) with courteous supersede comment
+  [6926342472](https://github.com/shader-slang/slang/pull/13966#issuecomment-6926342472) — superseded by #14352 (merged, closed #13964).
+  Issue comment 6455952706 PATCHed in place with the final resolution 5-bullet (updated 19:11:18Z, verified). The triager's gh write
+  path worked (no 401) — the 12:05Z app_not_connected report is superseded; its connection recovered. Sentinel removed, triager memory
+  terminal, fixer notified (worktree wt-slang-13964 + branch cleanup). Chain CLOSED. No follow-up owed; the approver-pause-queue
+  #14352/#14361 entries liveness-check themselves on unpause (both merged).

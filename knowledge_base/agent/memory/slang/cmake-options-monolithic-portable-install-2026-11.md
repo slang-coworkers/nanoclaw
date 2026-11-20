@@ -27,6 +27,10 @@ not labelled `regression`, because the monolithic matrix entry is new since 11-0
 needs a manual CMake Options `workflow_dispatch` to verify. ⚠️ That run is 490 jobs and fills the hosted cap, so dispatch
 it only with `max-parallel` or at a quiet time.
 
+**11-16: #13997 CLOSED by its author lujinwangnv on 11-13** ("closed as completed", after fix PR #14001 merged 11-03).
+Verified via public page (API was 401 — auth outage). The pr_mention webhook asking to close arrived 11-16 with outage lag;
+no action, no bot post (human-owned). The #14400 regression chain above is unaffected by #13997's closure.
+
 **11-09: fix PR #14417 by jkwak-work** (maintainer, self-assigned on #14400; no closing keyword). CMake-only, guards the
 portable install on `NOT …MONOLITHIC…` and adds the module to the shared manifest. Head `5c152066` at its first
 ready_for_review event, CI 53 pass / 0 fail. Not forwarded: slang-pr-approver is paused; queued in

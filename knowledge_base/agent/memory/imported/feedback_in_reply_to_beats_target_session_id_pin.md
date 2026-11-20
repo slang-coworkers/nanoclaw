@@ -37,8 +37,29 @@ session), together with `target_session_id`. Then verify with
 (why Main has to relay at all) and
 [feedback_thread_id_filter_for_session_existence](feedback_thread_id_filter_for_session_existence.md).
 
+**Recurred 2026-11-17 (#13749, 6th time, the "no null-source row exists" variant).** The turn's ONLY
+inbound was the triager backstop session `2y6w6x`'s escalation (id 2). I pinned a disposition to the
+triager's #13749 chain session `v26dll` with `target_session_id` + `thread_id` + `in_reply_to=2` —
+but row 2's `source_session_id` = `2y6w6x`, so Layer 1 resolved directly to `2y6w6x` and the pin
+silently lost (verified: `v26dll` max seq unchanged). ⇒ **The recipe needs a row with
+`source_session_id = NULL` (webhook/system row). In a turn whose only inbound is a peer escalation,
+no such row exists — a sibling-pin send CANNOT be constructed and any reply lands in the escalating
+session.** That is usually fine (the escalating session owns the follow-up) — decide deliberately:
+either reply to the escalating session, or wait to do sibling routing from a webhook turn. Don't
+burn sends "pinning" to a sibling when the only in_reply_to candidates are peer rows.
+
 **Upstream fix worth proposing:** an *auto-stamped* in_reply_to shouldn't outrank an explicit pin.
 Only an agent-passed one should.
+
+**Recurred 2026-11-17 (#14518, 7th time, same-day repeat of the #13749 variant — I applied the recipe that cannot
+work).** Turn's only inbound: the triager's recheck-task session `1cldf3` report (id 2). I "pinned" the disposition to the
+triager's chain session `ayh9li` with pin + `thread_id` + `in_reply_to=2` — but row 2's source is a triager session, so
+Layer 1 resolved to the triager group and the send landed in `1cldf3` (its seq 18), pin silently ignored — exactly what
+the #13749 note above predicts ("a sibling-pin send CANNOT be constructed when the only in_reply_to candidates are peer
+rows"). No harm here: the escalating session had the recheck context and the content said "no action needed". ⇒ **Reread
+this file before any sibling pin. When the only in_reply_to candidates resolve to the recipient's own group, a
+cross-session pin inside that group is impossible from this turn — reply to the escalating session directly (it owns the
+follow-up) or defer sibling routing to a webhook turn.**
 
 ### 2026-10-15, #13633 → #13641: recurred because I skipped the rule
 I relayed the #13633/#13641 scope split to the #13641 triager session (`c9g7tq`). Sending with pin + `thread_id=…-13641` but no explicit `in_reply_to` landed it in the #13633 session (`d21hbq`) twice (its seq 6, then seq 10). The second try had no pin, which doesn't help either. The third send added `in_reply_to=2` (my webhook row) and landed in `c9g7tq` seq 4 within 12 s. ⇒ **Treat pin and in_reply_to=<own webhook row> as a single unit, every time.** Verify the recipient's last inbound row before telling anyone it was relayed: my "relayed (msg 27)" to the #13633 triager was false when I sent it.
@@ -73,3 +94,40 @@ last message (id 20) to me. A sibling hit the same thing on #14032 (relay → cl
 `target_session_id=<owner>` and `in_reply_to=26` (my webhook row): it landed as seq 48 within 1 s.
 ⇒ **When a peer's last report came from a task session, every later send on that chain needs `in_reply_to=<my webhook
 row>` plus a pin to the owner session, even in a webhook turn.** Check the owner's `messages --reverse --limit 3`.
+
+**Recurred 2026-11-16 (#13670, 5th time, the explicit-in_reply_to variant): a NEW degradation.** Replying to inbound
+594 — the #13670 owner session zf9z7v's own blocked-classification report — with an **explicit** `in_reply_to=594` and
+NO pin, while the same turn's batch carried a newer inbound (640) from a different fixer session (gj2lyx): the send
+landed in **gj2lyx** (its seq 148), not in zf9z7v. So the turn's current reply route beat not just the pin (known) but
+an **explicit, correctly-targeted `in_reply_to`**. gj2lyx self-detected the mismatch ("not in my fix log"), ran the
+confirming read anyway, and reported the misroute. Re-send with `target_session_id=zf9z7v` + `thread_id=…-13657` +
+`in_reply_to=594` landed as its seq 40 in 1 s.
+⇒ **In any multi-inbound turn, an explicit `in_reply_to` to a non-latest inbound is NOT sufficient — always add the
+`target_session_id` pin.** Full recipe: pin + `thread_id` + `in_reply_to`, then verify the recipient's last inbound row.
+
+**Recurred 2026-11-17 (#13686), the 6th time — the "no safe `in_reply_to` exists" variant.** This turn's ONLY
+inbound was the target group's own report (the triager's re-check report, id 2), so there was no webhook row to use
+as a safe `in_reply_to`. Full recipe (pin `target_session_id=…-729jln` + `thread_id=system:tasks:i13686-fixer-recheck-3rd-9015`
++ `in_reply_to=2`) still fell through: the note landed in the warm sender session (`…-ctmnfs`, seq 30) instead of the
+cold task session `729jln`. ⇒ **When this turn's inbound is from the target group itself, no `in_reply_to` resolves
+outside it and the pin cannot win — routing into a peer's not-yet-fired task session is structurally unavailable.**
+Adapt instead of retrying: (a) a warm sender session is often the RIGHT reader (it has full chain context — here it
+executed the disposition and cancelled its own task within a minute); (b) from global scope, manage the task directly:
+`ncl tasks cancel --id <series> --group <agent-group-id>` (the `--group` flag works for cli_scope=global; the bare
+and `--agent-group-id` forms report "no live task matched"). Verify every landing with the recipient's
+`messages --reverse --limit 3`.
+
+**Recurred 2026-11-17 (#13686 r2-dispatch, same day again — the intra-group-owner variant + the false "notified" claim).**
+This turn's only inbound (id 2) was the slang-fixer **helper** one-shot's stand-down report; the target was its sibling,
+the **owner** fixer session `0agu2z` (same group). Pin + `thread_id` + `in_reply_to=2` → landed in the helper (`dtu39c`
+seq 28), predictably. Two NEW facts:
+1. **The coworker's "it has been notified" report claim was false** — its own seq-7/seq-13 notices (and later a pinned
+   id-53 "re-delivery") all silently vanished; only by reading the owner's transcript (`--reverse --limit 3`, ends at
+   the 13:42 verdict) did the false claim surface. It even re-asserted direct delivery at 13:55 before retracting at
+   seq 65. ⇒ **Never accept a "notified" claim in a coworker report without the recipient's transcript row; a sender's
+   out-row is not delivery** (the helper saved this as its own learning, seq 58).
+2. **Working workaround when the pin is structurally unavailable and the warm sender is NOT the right reader: relay via
+   the group's shared filesystem.** The helper shares chain-state files with its sibling owner; instructing it to append
+   a dated notice to the owner's live next-steps file (`reports/slang-13686-status.md`) delivered the facts verifiably
+   (re-checked on disk by the helper, and it corrected its task work log). Cheap, one extra wake of a session that was
+   waking anyway, no routing involved. Prefer this over retrying doomed pins or burning a third-group relay wake.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14238 — `[ForceInline]` helper with integer `/` or `%` in a global `static const` array is no longer folded (G1 regression from #14150)
-description: Bot-filed 2026-11-03 from the #14133 chain; G1 regression from merged #14150. Do NOT dispatch its issue_opened. Draft PR #14267 (per-thread rework, Fixes #14238 + #14217) converged R3 APPROVE 11-05; ONE ready-flip ask sent to the operator 00:5xZ, no re-ask.
+description: TERMINAL — PR #14267 merged 2026-11-13 (Fixes #14238 + #14217, both auto-closed); resolution report 11-16. Bot-filed from the #14133 chain; do NOT dispatch its issue_opened. One residual close-out (stale cmt 6640934112) parked behind the GitHub auth outage on retry t-244861.
 tags: [cuda, glsl, cpp, force-inline, static-const, regression, integer-division]
 ---
 
@@ -22,16 +22,18 @@ side-effecting (`slang-ir.cpp:9799-9811`). Our #14150 comment 6592707618 flagged
 **Not fixed by #14236** (jvepsalainen-nv's fix for G2/#14235, which only skips debug insts in the same function).
 The triager verified #14236 head `4c34875db` 11-03.
 
-## Current state (11-05 00:56Z)
+## Terminal state (resolution report 11-16 06:41Z)
 
 | field | value |
 |---|---|
-| PR | draft **#14267**, branch `fix/issue-14238`, head `485637d9c` (verified), 9 files +519/−9, `pr: non-breaking`; Fixes #14238 + #14217 |
-| review | R3 APPROVE, 0 bugs / 0 gaps (fixer-reported); 37/37 new lanes |
-| CI | run 41942522276 waits on the approval gates |
-| ready-flip | **ONE direct ask sent to the operator 11-05 00:5xZ** (regression exception; v2026.21 shipped the regression): "flip 14267" / "hold 14267", recommended flip now. **No re-ask.** No answer → weekly ready-flip list. Fixer holds `gh pr ready` until I relay an answer. |
-| issue comment | 5-bullet 6613001265; delta 6640934112 (edited in place for r2) |
-| sessions | fixer `sess-1793732830219-r1jbdf` (pr-mapping owner); triager: fresh session on `gh-issue-shader-slang/slang-14238` (opened 11-04 19:1xZ; the old `t-700e05` parent `sess-1793667544858-o8dnsv` is closed); Main `sess-1793690897967-0o6crb` |
+| outcome | **MERGED** — PR #14267 merged 2026-11-13T06:45:31Z by jkwak-work (triager-verified via public API); #14238 and #14217 auto-closed |
+| final shape | per-thread dynamic evaluation per jhelferty-nv (cmt 6639517817); cleanup worklist in `inlineGlobalValuesAndRemoveIfUnused`, no module-scope orphan calls; HLSL DXC duplicate-effect removal |
+| tests | 37/37 branch lanes (master fails 30); full suite 11765/11768 green (fp8-cuda* pre-existing on master); 25/25 targeted probes × 7 targets ± `-g` |
+| reviews | R1 APPROVE_WITH_NITS → R2 REQUEST_CHANGES (small, 0 bugs) → R3 APPROVE (0 bugs/gaps); fixer cleaned worktree + sentinel |
+| residual | `-g` debug ICE split lives in #14321 (own chain, unaffected). Side finds #14278/#14279/#14280 (own chains) + #14330 (terminal, fixed by #14467). **One parked close-out:** stale delta comment 6640934112 ("reworked/draft") — cosmetic (merged PR + closed issue carry the trail). 11-17 16:03Z: permanently parked awaiting operator GitHub reconnect (OneCLI now `app_not_connected`, full disconnect); triager PATCHes it in one shot on reconnect or human comment. |
+
+Design context for #14321's open Q1: pre-merge maintainer cmt 6837518027 (jkwak-work, 11-12) muses about
+reverting #14150 and giving users more control over `[ForceInline]`. No reply posted or needed.
 
 ## Decisions that still bind
 

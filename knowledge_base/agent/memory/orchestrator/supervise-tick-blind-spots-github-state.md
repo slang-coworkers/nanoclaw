@@ -46,5 +46,5 @@ Part of [[orchestrator/supervise-tick-blind-spots.md]] (hub). Shape numbers are 
     touches, never what it fails to cover:** I wrote "#14170 has no `RWBuffer<float>`/half" but its
     `isTextureAccess` includes `RWBuffer`; the fixer's 14-probe matrix corrected me in 3 min.
     Tick 329: minco3 opened #14379 (`Fixes #14378`) 20 min after our triage offered them the PR. Its `assigned` event
-    at the same second has `assigner=github-actions[bot]` (auto-assign of the requested reviewer) — not a maintainer
-    self-assign (rung 4).
+    at the same second has `assigner=github-actions[bot]` (auto-assign of the requested reviewer) — an assignment names
+    the owner but is not a stand-down and holds nothing (operator correction 2026-11-17, `operator/1794884111425`).

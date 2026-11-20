@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14333 — modifier order changes SV_Barycentrics interpolation (SPIR-V + GLSL)"
-description: MERGED 2026-11-06 18:42Z (PR #14365 → df8b1d354, by pdeayton-nv); issue CLOSED completed. Human-filed (pdeayton-nv, MEMBER/write) 2026-11-05 05:52:10Z, self-assigned 7 s later. I dispatched triage BEFORE the rung-4 assignee check (miss). Triaged P2 ready-for-fix 06:01Z; fixer held until 21:49Z, when the owner asked for a draft PR, then DISPATCHED (fixer sess-1793915411988-1yq16l).
+description: MERGED 2026-11-06 18:42Z (PR #14365 → df8b1d354, by pdeayton-nv); issue CLOSED completed. Human-filed (pdeayton-nv, MEMBER/write) 2026-11-05 05:52:10Z, self-assigned 7 s later. I dispatched triage without holding on the self-assignment — CORRECT per the operator's 11-17 correction (self-assignment is not a stand-down). Triaged P2 ready-for-fix 06:01Z; fixer held until 21:49Z, when the owner asked for a draft PR, then DISPATCHED (fixer sess-1793915411988-1yq16l).
 tags: [slang, spirv, glsl, sv-barycentrics, interpolation, pdeayton-nv, maintainer-owned, dispatched, pr-ready]
 resource: raw/triage-14333.md
 ---
@@ -14,9 +14,10 @@ SPIR-V. `noperspective centroid` emits the expected `BaryCoordNoPerspKHR`. Repor
 **Timeline.**
 - 05:52:10Z `issue_opened`. 05:52:17Z `assigned` pdeayton-nv, actor pdeayton-nv (self-assigned, 7 s).
   pdeayton-nv has `write` permission.
-- ~05:53Z I dispatched slang-triager (thread `gh-issue-shader-slang/slang-14333`) without the rung-4
-  live-assignee check from [issue_opened is not evidence](../imported/feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new.md).
-  The payload has no assignee field, and the assignment came after filing. Under rung 4 this should have been held.
+- ~05:53Z I dispatched slang-triager (thread `gh-issue-shader-slang/slang-14333`) without a live-assignee
+  hold. The payload has no assignee field, and the assignment came after filing. **Operator correction
+  11-17: dispatching anyway was correct** — a self-assignment (even seconds after filing) is NOT a
+  stand-down; the pre-11-17 "rung-4 hold" rule this turn was later judged against was superseded.
 - 06:00–06:01Z the triager set `reproduced` + Type=Bug and posted the triage 5-bullet
   ([cmt 6650987414](https://github.com/shader-slang/slang/issues/14333#issuecomment-6650987414)).
 

@@ -21,4 +21,6 @@ tags: [slang, autodiff, readnone, pr, awaiting-maintainer]
 - 10-24 12:00Z verify (`rechase-11387-post-merge-0cda`): head `7d1757f4e2`, MERGEABLE/BLOCKED (CHANGES_REQUESTED still stands). CI: 53 pass, 1 skipped, 0 fail; `falcor-build-approval-gate` WAITING. No human comment, review or inline since 09-30. Dashboard line sent.
 - 10-31 12:00Z `rechase-11387-maintainer-a511`: no human comment/review/inline since the 10-23 bot comment; OPEN, BEHIND (not DIRTY), head `7d1757f4e2`. No message sent.
 - 11-07 12:00Z `rechase-11387-maintainer-3d96`: same result (no human activity, OPEN, BEHIND, head `7d1757f4e2`, updatedAt still 10-23T12:30:09Z). No message sent.
-- Next: one-shot `rechase-11387-maintainer-21db` on 11-14 12:00Z (same check; re-arms +7d).
+- 11-16 04:40Z `rechase-11387-maintainer-21db` (fired late): check NOT run. gh returned HTTP 401, OneCLI `app_not_connected` (GitHub not connected for Orchestrator; a sibling session had already alerted the dashboard at 04:41Z). PR state unknown since 11-07.
+- 11-17 12:00Z `rechase-11387-maintainer-7093`: gh auth restored, check ran. Same result — no human comment/review/inline since 09-30, OPEN, BEHIND (not DIRTY), head `7d1757f4e2`. No message sent.
+- Next: one-shot `rechase-11387-maintainer-7584` on 11-24 12:00Z (same check; +7d if it runs clean, +24h if gh is 401 again).

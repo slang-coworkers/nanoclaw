@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13301 — header-guard PR #13742 (fixes slangpy#1204); slangpy#1206 parked on operator A/B/C"
-description: "#13742 MERGED 10-22 (653bfdeef), #13301 closed. slangpy#1204/#1206 open: waiting on the operator's A/B/C pick and on a Slang release after v2026.20 plus a slangpy pin bump. v2026.21 (11-04) ships 653bfdeef; pin bump pending. One silent re-check 11-11 10:30Z."
+description: "slangpy#1204 CLOSED 11-16 by assignee (fixed by slang#13742, merged 10-22, ships in Slang ≥ v2026.21). Remaining tail: slangpy pin still 2026.20, draft #1206 disposition (keep regression test vs close), follow-up issue, docs example. Parked, no timer."
 ---
 
 # slang#13301: header guard (#13742) and the slangpy#1204 / #1206 tail
@@ -15,7 +15,7 @@ Split out 2026-10-30 from the [#13169 index row](index.md) and
 |---|---|
 | slang#13742 (header guard, slang-fixer `sess-1789716207340-dwbdoz`) | **MERGED** 10-22 04:02:51Z by saipraveenb25, merge commit `653bfdeef`; worktree + sentinel removed |
 | slang#13301 | closed as completed |
-| slangpy#1204 | open, assigned saipraveenb25 |
+| slangpy#1204 | **CLOSED** 11-16 19:04:12Z by saipraveenb25, "Fixed by #13742" (state_reason: completed) |
 | slangpy#1206 (draft workaround, head `27ddfd3b`) | open, CI green, no reviews, assigned jkwak-work; no human comments since 2026-10-09T22:37Z |
 | Slang release containing `653bfdeef` | **v2026.21** (11-04 00:14Z; compare 76 ahead / 0 behind). slangpy main still pins `SGL_SLANG_VERSION "2026.20"` (`external/CMakeLists.txt:123`); no bump PR open |
 | Re-chase | one silent one-shot `rechase-slangpy-1204-pin-aaa4` 11-11 10:30Z (reports only on pin bump / answer / human comment; else park, no timer), thread `gh-issue-shader-slang/slangpy-1204` |
@@ -55,3 +55,14 @@ New re-chase results append to the History section here, not to the index row.
   #1206 draft `27ddfd3b`, 0 reviews; no human comments on #1204/#1206 after 10-09T22:37Z; no operator A/B/C answer
   (dashboard read 11-04 10:30Z→11-11 10:30Z). Nothing sent. **Parked: awaiting_human, no timer** — reopens only on a
   webhook (human comment, a slangpy Slang-bump PR) or an operator answer. Don't schedule another re-chase.
+
+- 11-16 16:23Z webhook: saipraveenb25 asked on #1204 whether #13742 fixes it. Answered from existing state — the
+  fixer had already verified (10-19) that #13742 head `e2d4abb15` (byte-identical to the merged commit) fixes #1204;
+  it re-confirmed today against the **released v2026.22 prebuilt** + slangpy main `fc12c8d9` (f_concrete/f_iface/
+  f_iface2 grads `[3,3,3,3]` vk+cuda, control 20/20, 2m14s) and posted both comments 16:49Z after OUTPUT_REVIEW:
+  reply on #1204 (issuecomment-6922910984) + status note on #1206 (issuecomment-6922912871). Keep-vs-close on #1206
+  and pin-bump left to maintainers; nothing closed/un-drafted by the bot.
+- 11-16 19:04Z: saipraveenb25 **closed slangpy#1204 as completed** ("Fixed by #13742"). No mention, no bot reply
+  (correctly). Issue side terminal. Open tail: pin bump to ≥ v2026.21 (still 2026.20), #1206 disposition (its
+  workaround is moot; only the regression test has value), follow-up issue, docs example. Still parked: awaiting_human,
+  no timer — reopen triggers: a slangpy Slang-bump PR, human comment on #1206, or an operator A/B/C answer.

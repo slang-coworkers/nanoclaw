@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14154 — Metal read-only StructuredBuffer / ByteAddressBuffer emitted as writable `T device*`
-description: Human-filed (albertrodriguezclo) bug 2026-11-02 10:04:27Z. Read-only buffers emit `T device*`, so a non-void vertex function warns "writable resources in non-void vertex function"; want `const device T*`. Triaged bug/low/P2. HELD (rung 4) since jkwak-work self-assigned it 11-02 18:38Z; the reporter offered the PR. The triager delta draft is unposted; check-only re-check r6-release-14154-33ea 11-12.
+description: Human-filed (albertrodriguezclo) Metal bug 2026-11-02; read-only buffers emitted as writable `T device*`. TERMINAL 2026-11-14 01:04Z — CLOSED (completed) by the reporter's merged PR #14392 (option 1, `const` everywhere, element-pointer temps covered). jkwak-work closed it. The triager's held delta draft is moot; it was never posted.
 resource: raw/triage-14154.md
 tags: [metal, emit, structured-buffer, byte-address-buffer, vertex, warning, r6]
 ---
@@ -60,3 +60,22 @@ The decision owner is jkwak-work, not csyonghe (the triager's pick). The triager
 `r6-release-14154-33ea` is now a **check-only re-check at 11-12 10:08Z**: no post, and it reports only if the state changes.
 **11-05 11:35Z dashboard "New issue to triage" re-ask:** answered from live state; nothing was sent to the triager or
 GitHub (rung 3). Live state: OPEN, 1 comment (the reporter's), no labels, no cross-referenced PR.
+
+**Re-check 11-16 04:4xZ (`r6-release-14154-33ea`, check-only) — TERMINAL.** `gh` and the REST API returned
+401 `Bad credentials` (GH_TOKEN invalid; fleet-wide outage already on the dashboard, so no new alert). I read the
+public HTML pages instead (issue + PR embedded JSON, `.diff`).
+- Issue **CLOSED / COMPLETED 2026-11-14 01:04:20Z**, actor jkwak-work, closer = PR
+  [#14392](https://github.com/shader-slang/slang/pull/14392) "Metal: emit read-only buffers as pointers to const"
+  (author **albertrodriguezclo**, opened 11-06 23:20Z, MERGED, `Fixes #14154`; dshreiner-nv and jkwak-work on the page).
+  Issue comments: still only the reporter's 6574811444. No labels.
+- **Ruling on the 3 options:** no issue comment from jkwak-work; the merged PR is **option 1** (`const` in
+  `emitSimpleTypeImpl` for `HLSLStructuredBufferType` and `HLSLByteAddressBufferType`, user-guide table updated; the PR
+  body mentions the `MTLBindingAccessReadOnly` reflection change). So the de-facto ruling is option 1.
+- **Triager's gap is covered, but not the way the triager proposed.** The PR adds an emit-side walk
+  `isAddressIntoReadOnlyBuffer` (FieldAddress/GetElementPtr/GetOffsetPtr → `RWStructuredBufferGetElementPtr` on an
+  `HLSLStructuredBufferType`), and `emitTempModifiers` emits `const ` for such temps. It does not set Read access on the
+  IR `Ptr` type. Tests: `tests/metal/readonly-buffer-const{,-entry-point,-vertex}.slang` and an edit to
+  `descriptor-handle-dynamic-dispatch.slang`. Unverified by me whether helper-function params that receive such a
+  pointer are covered; that is a possible follow-up, not this chain's business now that it is merged.
+- No bot action is open: the triager's held draft is moot (do not release it), and there was no fixer.
+⇒ **TERMINAL. No timer.** A new human comment on #14154 or #14392 is a fresh inbound.

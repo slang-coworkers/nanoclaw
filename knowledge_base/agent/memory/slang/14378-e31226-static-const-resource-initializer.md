@@ -69,3 +69,13 @@ or operator ask (human PR). Triager scheduled no re-check and offered a one-shot
 **Main: no reply sent, no timer** (R10; webhooks deliver). **Resume on:** a `synchronize` on #14379 → forward to
 slang-triager on `gh-issue-shader-slang/slang-14378` for the one-shot re-review (re-fetch the head first; see the
 synchronize-moves-head hazard); #14379 merge/close; or a human comment on #14378/#14379/#14399.
+
+**11-19 11:33Z — chain TERMINAL (webhook re-fire of #14399's issue_opened prompted the sweep).**
+- #14379 closed 11-12 21:49Z **in favor of maintainer PR #14464** (jkwak-work, same title; reporter minco3 agreed).
+- #14464 **merged 11-13 00:36Z**; #14378 auto-closed `completed` 00:37Z. The E31226 regression is resolved; the
+  triager's must-fix (recursive-struct segfault in `_isResourceHandleOnlyType`) was #14379-scoped — unverified against #14464.
+- #14399: assigned to jkwak-work 11-09; skiminki-nv linked it 11-13 as a **child of umbrella #14478
+  "[Constant folding] Missing folds"**. 0 comments, label `reproduced`. Human-owned, no bot action.
+- Disposition of the re-fired webhook: **no dispatch** (own Terminal filing with verification results;
+  see filing policy). No fixer chain start — operator's call if #14478/#14399 stalls.
+Verify-before-believing note: all states read live via gh api 11-19 11:4xZ, not from the webhook payload.

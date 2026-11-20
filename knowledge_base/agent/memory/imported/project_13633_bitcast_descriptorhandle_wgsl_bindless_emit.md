@@ -89,3 +89,37 @@ Timer: one-shot `rechase-13679-scope-6ec0` at 2026-11-13T13:00Z.
 - The `slang-emit-wgsl.h` blobs are no longer identical. #13707 at `c09c746ea6` has `c7ea931f4f4`, because it merged master (`m_requiresImmediateAddressSpace`); #13679 still has `abd726c0113`. The deletion hunk is the same and `git merge-tree` is clean. My "byte-identical" was true on 10-19 and went stale.
 
 **Next resume trigger:** the fixer's draft PR report, or a human comment on #13633.
+
+**11-16 07:36Z [ci_failed + auth-outage park]:** a `ci_failed` webhook hit PR #13679 (head `e2c7788`, unchanged since 10-16, bot-r2-approved, still no human
+review — the 04:44Z sibling re-check read the public pages to confirm). The slang-fixer could not classify it: the GitHub credential outage (401 `Bad
+credentials` / OneCLI `app_not_connected`, down since ~04:41Z) kills every API read. Candidate causes: priority-yield on the aging force-run (→ do
+nothing), flaky (→ `gh run rerun --failed`), or genuine merge-ref drift of a month-old head against today's master (→ merge master + fix + re-push).
+**Park:** the fixer's own gated one-shot `gh-cred-recheck-13679-990d` (fixer group, fires 2026-11-16 10:36 UTC, script gate wakes only on GitHub 200;
+verified active, session `39rk6l`) classifies and acts the moment auth works; if still broken it reports blocked once and stops — no polling loop. The
+Orchestrator-side restore-watch `github-auth-restore-watc-42a0` must **skip #13679** — covered by the fixer's one-shot. Operator has everything: outage
+alerts 04:41Z/07:07Z + the OneCLI reconnect URL (my probes return a `connect_url` the fixer's 401s lack), posted to orchestrator-dashboard 07:27Z. The
+fixer's 07:36Z ask_user_question (timeout 0) timed out — operator not at the wheel; no further operator escalation owed for this chain.
+
+**11-16 10:38Z [park discharged — one-shot fired, ci_failed = STALE]:** the fixer-group gated one-shot `gh-cred-recheck-13679-990d` (session `39rk6l`, fired 10:36Z once the GitHub gate passed) completed the parked classification, and reported up to a Main bubble on the same task thread (report received 10:39Z). Verified live from Main: credentials healthy (200s), old run 38873310343 is 404 (deleted), head `e2c7788` (unchanged since 10-16, draft, behind) had no failing run — the 07:36Z ci_failed matched no live run, so priority-yield/flaky/merge-drift all don't apply. Remediation: fixer re-dispatched ci.yml → run **43850704891** on e2c7788 (created 10:38:42Z, status `waiting`); its result arrives via webhook to the PR's mapped session — no polling. Chain now waits on (a) run 43850704891's outcome and (b) the maintainer answer to the 11-06 reporter thread. No dashboard post: 09:23Z addendum (seq 512748) already told the operator the fixer's connection writes fine, and the 07:36Z park owed no further escalation. Supervisor-state #13633 disposition refreshed (was stale at head f51b857/round-2). Memory correction: the 07:36Z note's "(fixer group …)" attribution was right — `ncl tasks get` from Main correctly returns "task not found".
+
+**11-16 10:39Z [ci_failed closed]:** the fixer's gated one-shot `gh-cred-recheck-13679-990d` ran after the credential restore and re-classified:
+**zero workflow runs and zero check runs exist on head `e2c7788`** (only `license/cla` = pass) — the `ci_failed` webhook was a stale event referencing deleted runs,
+remediated, nothing owed. (Durable lesson logged by the fixer: "deleted CI runs are a fourth outcome" — a ci_failed event can name a run that no longer exists.)
+
+**11-18 10:45Z [live inbound — reporter comment cmt 6976226585]:** albertrodriguezclo posted another way to hit the same abort: `reinterpret<DescriptorHandle<T>>(uint2)`
+on `-target cpp`/`host-callable`/`cuda` aborts E99997 (`Unable to generate bit_cast code for the given type`) on master `4a1d62c5b`, triggered whenever the linked IR contains
+any `BitCast` (a `countbits()` call is enough — its GLSL/SPIR-V branch brings `bit_cast<uint2>(uint64_t)` in via `__emulatedCountbits64`). Their root-cause trace:
+`processBitCast` skips resource/sampler/structured-buffer types but not `IRDescriptorHandleType` → `readObject` reaches `SLANG_UNEXPECTED`. SPIR-V/HLSL/Metal compile it.
+They announced they will open their own PR: lower handle bit casts on CPU+CUDA (generated and direct `bit_cast<DescriptorHandle<T>>(uint2)`) + located diagnostic elsewhere.
+No such PR exists yet (checked 10:46Z). Dispatched to the chain fixer (vgdo6h, pinned, seq 64): reproduce/verify, post ONE ack on #13633 naming the overlap with draft
+#13679 (same `lowerBitCast`/`processBitCast` area — if their PR lands first we rebase #13679; #13707 shared-hunk precedent), make no scope promise (consistent with the 11-06
+defer-to-maintainers reply cmt 6698283183), and STAND DOWN on the variant per the 10-19 self-PR precedent (#13755). Reporter is credible — this chain's whole history validates
+their reports; the 11-06 corrections show to verify their exact wording before quoting.
+
+**11-18 11:01Z [ack posted, chain resting]:** the fixer verified the reporter's analysis empirically (fresh Debug build of master `4a1d62c5b`: E99997 on cpp/host-callable/cuda,
+clean on hlsl/metal, `countbits()`-gated, `DescriptorHandle<Texture2D>` identical) and in source (skip list `slang-ir-lower-bit-cast.cpp:406-423`, `readObject` `:269`, pass gating
+`slang-emit.cpp:573/2703`, countbits GLSL branch `hlsl.meta.slang:10136`), then posted the ack: cmt 6976600759 (OUTPUT_REVIEW approve, ≥1000-char attestation path). One honest
+carve-out stated in the ack: SPIR-V lowering runs without the abort but no full `.spv` emit was checked (build lacks prebuilt spirv-opt/glslang) — that target taken on the
+reporter's word. Stand-down posture on the fix (reporter self-PR, #13755 precedent); worktree back at `fix/issue-13633` @ `e2c7788`.
+**Watch item for when the reporter's PR lands:** #13679's E41206 diagnostic already rejects the cuda/cpp reinterpret-into-handle path the reporter plans to lower — the
+rebase must reconcile diagnostic-vs-lowering there, not just merge hunks. No timer needed: their PR will arrive via webhook routing.

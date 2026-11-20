@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fix SPIR-V crash: resource selection + uninitialized texture parameter — slang#14646</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.65; max-width: 860px; margin: 2rem auto; padding: 0 1rem; color: #222; }
+  h1 { font-size: 1.6rem; border-bottom: 3px solid #4a6fa5; padding-bottom: .4rem; }
+  h2 { font-size: 1.25rem; margin-top: 2.2rem; color: #2b4a76; }
+  h3 { font-size: 1.05rem; margin-top: 1.6rem; }
+  nav { background: #f2f5fa; border: 1px solid #d5dce8; border-radius: 8px; padding: .8rem 1.2rem; }
+  nav a { text-decoration: none; color: #2b4a76; }
+  pre { background: #f6f8fa; border: 1px solid #ddd; border-radius: 6px; padding: .8rem; overflow-x: auto; white-space: pre-wrap; font-size: .85rem; }
+  code { background: #eef1f5; padding: .1rem .3rem; border-radius: 4px; font-size: .9em; }
+  pre code { background: none; padding: 0; }
+  .callout { border-left: 4px solid #4a6fa5; background: #f2f5fa; padding: .7rem 1rem; margin: 1rem 0; border-radius: 0 6px 6px 0; }
+  .callout.warn { border-color: #b35900; background: #fdf6ee; }
+  table { border-collapse: collapse; margin: 1rem 0; width: 100%; }
+  th, td { border: 1px solid #ccc; padding: .45rem .6rem; text-align: left; font-size: .92rem; }
+  th { background: #f2f5fa; }
+  .quiz-q { margin: 1.4rem 0; padding: .8rem 1rem; background: #fbfbfd; border: 1px solid #e2e6ee; border-radius: 8px; }
+  .quiz-q .options button { display: block; margin: .35rem 0; padding: .45rem .8rem; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; text-align: left; width: 100%; font: inherit; }
+  .quiz-q .options button.correct { border-color: #2e7d32; background: #e8f5e9; }
+  .quiz-q .options button.wrong { border-color: #c62828; background: #fdecea; }
+  .quiz-q .rationale { display: none; margin-top: .6rem; padding: .6rem .8rem; background: #f2f5fa; border-radius: 6px; }
+  .footer { margin-top: 3rem; font-size: .85rem; color: #777; border-top: 1px solid #ddd; padding-top: .8rem; }
+</style>
+</head>
+<body>
+
+<h1>Fix SPIR-V crash when a function uses a texture chosen at run time</h1>
+<p><b>Repo:</b> shader-slang/slang · <b>PR:</b> <a href="https://github.com/shader-slang/slang/pull/14649">#14649</a> · <b>Issue:</b> <a href="https://github.com/shader-slang/slang/issues/14646">#14646</a> · <b>Head:</b> 68db33992 · 2026-11-20</p>
+
+<nav>
+<b>Contents</b>
+<ol>
+  <li><a href="#background">Background</a></li>
+  <li><a href="#intuition">Intuition</a></li>
+  <li><a href="#code">Code walkthrough</a></li>
+  <li><a href="#quiz">Quiz</a></li>
+</ol>
+</nav>
+
+<h2 id="background">Background</h2>
+
+<p>Slang compiles shaders through its own SSA-based intermediate representation. A function is a
+list of <b>basic blocks</b>; each block is a list of instructions ending in a branch. Two facts
+about this IR matter for this bug.</p>
+
+<div class="callout">
+<b>Fact 1 — the block list has a load-bearing order.</b> The order of blocks in a function's list
+must be <i>compatible with dominance</i>: if block A dominates block B, then A appears before B in
+the list. The invariant is stated in the source itself
+(<code>slang-ir.cpp</code>, <code>mergeCandidateParentsForHoistableInst</code>: <i>"We assume that
+the order of basic blocks in a function is compatible with the dominance relationship"</i>). The
+function cloner relies on it: when it copies a function body it walks the blocks in list order,
+registering each cloned instruction as it goes, and an operand whose definition has not been seen
+yet is silently resolved to the <i>original</i> instruction instead of a clone.
+</div>
+
+<div class="callout">
+<b>Fact 2 — two late passes interact here.</b> On Khronos targets, a <i>runtime select between two
+textures</i> (<code>gMode != 0 ? gA : gB</code>) cannot survive as a single instruction, so the
+<code>specializeResourceSelections</code> pass rewrites the operation that consumes the selected
+texture into an <code>if/else</code> that executes one copy per texture. Later — SPIR-V direct
+emission only — the <code>eliminateUndefinedOpaqueHandles</code> pass sees that an argument is an
+uninitialized <code>Texture2D</code> (Vulkan forbids <code>OpUndef</code> for opaque types) and
+fixes it by <b>cloning the callee</b> with that parameter specialized away. The clone is made by
+the cloner from Fact 1.
+</div>
+
+<h2 id="intuition">Intuition</h2>
+
+<p>The reporter's shader needs three ingredients, and removing any one of them makes the crash
+disappear:</p>
+
+<pre><code>void f(Texture2D unused)
+{
+    Texture2D t = gMode != 0 ? gA : gB;   // (b) runtime texture select
+    gOut[0] = t.Load(0);
+    uint w = gMode * 3;                   // (c) value defined after the select...
+    if (gMode > 4)
+        gOut[1] = w;                      //     ...and used in a later block
+}
+
+void main()
+{
+    Texture2D undef;
+    f(undef);                             // (a) uninitialized texture argument
+}</code></pre>
+
+<p>What each ingredient contributes:</p>
+<table>
+<tr><th>Ingredient</th><th>Role in the failure</th></tr>
+<tr><td>(a) uninitialized <code>Texture2D</code> argument</td><td>triggers <code>eliminateUndefinedOpaqueHandles</code>, which clones <code>f</code> — the cloner is the <i>consumer</i> of the broken layout</td></tr>
+<tr><td>(b) runtime texture select</td><td>triggers <code>specializeResourceSelections</code>, which <i>splits</i> <code>f</code>'s block — the <i>producer</i> of the broken layout</td></tr>
+<tr><td>(c) <code>w</code> defined in the merge block, used later</td><td>the <i>value</i> that gets wired across functions</td></tr>
+</table>
+
+<p>Step by step:</p>
+<ol>
+<li>The resource-selection pass splits <code>f</code>'s entry block at the texture-consuming
+operation. The instructions <i>after</i> the split point — including <code>w = gMode * 3</code> —
+move into a newly created <b>merge block</b>. The inner <code>if (gMode &gt; 4)</code> had already
+been lowered to its own blocks, sitting right after the entry block in the list.</li>
+<li>The pass appended the merge block <b>at the end of the block list</b>
+(<code>func-&gt;addBlock(after)</code>). So the list read: entry, inner-if blocks&nbsp;…, arms,
+merge — but dominance says the merge block (which defines <code>w</code>) comes <i>before</i> the
+inner-if blocks (which use <code>w</code>). List order no longer matched dominance order.</li>
+<li>The undefined-handle pass then cloned <code>f</code>. The cloner walked blocks in list order,
+so it cloned the inner-if block <i>before</i> the merge block. When it cloned the use of
+<code>w</code>, no clone of <code>w</code> existed yet, and <code>findCloneForOperand</code> fell
+back to the <b>original</b> <code>w</code> — an instruction inside the old <code>f</code>.</li>
+<li><code>specializeCall</code> deallocated the now-unused original <code>f</code>. The clone was
+left holding a dangling operand, and SPIR-V emission dereferenced it: SIGSEGV.</li>
+</ol>
+
+<p>The fix is one move: when the pass creates the dispatch arms and the merge block, insert them
+<b>immediately after the block being split</b> — the same adjacency the inliner already maintains
+when it splits a block around an inlined call (<code>slang-ir-inline.cpp</code>:
+<code>afterBlock-&gt;insertAfter(callerBlock)</code>). With the merge block back before the blocks
+that use its values, the cloner sees the definition before the use and never falls back.</p>
+
+<p>Before the fix (block list order vs. dominance):</p>
+<pre><code>list:    entry → inner-true → inner-false → merge …  → arms → merge(dispatch)
+                       ▲ use of w is cloned BEFORE w's block is reached
+dominance:            entry → arms → merge(dispatch, defines w) → inner-true → …</code></pre>
+<p>After the fix, the list and dominance agree again:</p>
+<pre><code>list:    entry → arm0 → arm1 → merge(dispatch) → inner-true → inner-false → …
+                       ▲ w's definition is cloned before any use</code></pre>
+
+<h2 id="code">Code walkthrough</h2>
+
+<p>The PR is two commits, ordered so a reviewer can read the change as steps.</p>
+
+<h3>Commit 1 — the failing test</h3>
+<p><code>tests/spirv/resource-selection-uninitialized-param.slang</code> reproduces the crash with
+all three ingredients, compiled to SPIR-V (plus an <code>-O0</code> variant, matching the sibling
+<code>resource-selection-*.slang</code> tests). On the unpatched build the test fails
+deterministically — under <code>-validate-ir</code> the IR validator itself catches the broken
+layout (<code>E40007: def must be ancestor of use</code>), so the test does not depend on the
+segfault timing. Its CHECK lines pin the emitted shape loosely: an <code>OpSelectionMerge</code>
+(the sunk select) and an <code>OpIMul</code> (the <code>w</code> computation surviving the clone
+with a live operand).</p>
+
+<h3>Commit 2 — the fix</h3>
+<p>In <code>emitConsumer</code> (<code>slang-ir-specialize-resource-selections.cpp</code>), the
+pass used to create the merge block and arms with <code>func-&gt;addBlock(...)</code>, which
+appends at the end of the block list. The fix keeps the creation logic but changes the
+attachment: a chain tail starts at the block the builder is currently inserting into — the split
+block at the top level, the arm at nested dispatch levels — and every new block is inserted after
+the previous one, ending with the merge block:</p>
+<pre><code>IRInst* listTail = builder.getBlock();
+for (auto arm : arms)
+{
+    arm-&gt;insertAfter(listTail);
+    listTail = arm;
+}
+after-&gt;insertAfter(listTail);</code></pre>
+<p>Details a reviewer may probe:</p>
+<ul>
+<li><b>Why arms before merge?</b> It matches the inliner's idiom and the natural reading order
+(true arm, false arm, then the join). The only hard ordering requirement is that the merge block
+— which ends up owning the moved continuation instructions — precedes the blocks that were
+already after the split point, and the chain guarantees that.</li>
+<li><b>Nested dispatches</b> (a consumer with several independently selected arguments) create
+their arms and merge <i>inside</i> an arm. Anchoring each level at <code>builder.getBlock()</code>
+places the nested chain right after its arm, which keeps every constraint intact: arms only use
+values from earlier blocks, and only the outermost merge receives continuation instructions.</li>
+<li><b>The temporary <code>continuation</code> block</b> in <code>rewriteConsumer</code> still uses
+<code>func-&gt;addBlock</code>. It is a scratch pen for the moved instructions; its contents are
+appended into the final merge block and it is deallocated before the pass returns, so no observer
+ever sees its position.</li>
+<li><b>Why not also fix <code>emitIfElseWithBlocks</code>?</b> That helper has the same
+append-at-end shape, but it is not on this crash path: its composite-select caller runs for HLSL,
+and on SPIR-V it runs <i>after</i> the undefined-handle pass, so it cannot feed this cloner. It
+stays as-is here and is noted in a follow-up.</li>
+</ul>
+
+<div class="callout warn"><b>Considered and dropped:</b> the triage suggested pairing the fix with
+a cloner-side assertion that the <code>findCloneForOperand</code> fallback is only taken for
+module-scoped values. A full survey found many legitimate users of that fallback within the same
+function, and a narrowed cross-function version — implemented and tested — correctly caught this
+bug but also fired on all 39 <code>tests/autodiff-dstdlib/*</code> executions: autodiff cloning
+legitimately reuses instructions across functions that stay alive, which a clone-time check
+cannot distinguish from the deadly case (where the source function is later deallocated). Per the
+triage's pre-approved fallback, the assertion was dropped and cloner hardening is filed as a
+separate follow-up.</div>
+
+<h3>Evidence</h3>
+<ul>
+<li>Repro: <code>slangc repro.hlsl -target spirv-asm</code> exits 0 with
+<code>SLANG_RUN_SPIRV_VALIDATION=1</code>, printing only <code>E41016</code> (the uninitialized
+variable warning — expected; no <code>E56003</code>).</li>
+<li><code>tests/spirv/resource-selection-*</code>: 157/157; diagnostics suites
+(<code>undefined-opaque-handle-*</code>, <code>opaque-local-resource-*</code>): 100%.</li>
+<li>Full suite: 12384/12402; all 18 remaining failures are pre-existing infrastructure issues
+(stale standard-module install, CUDA fp8 PTX JIT driver errors, a missing gfx DLL, a dispatcher
+harness smoke test), none touching the changed subsystem.</li>
+</ul>
+
+<h2 id="quiz">Quiz</h2>
+
+<div class="quiz-q" data-q="1">
+<p><b>Q1.</b> Why does appending the merge block at the end of the function's block list break the cloner, given that block order "doesn't affect CFG topology"?</p>
+<div class="options">
+<button data-correct="true" onclick="pick(this)">Because the cloner walks blocks in list order and resolves an unmapped operand to the original instruction — a definition appearing later in the list than its use gets wired to the original, which can later be deallocated.</button>
+<button data-correct="false" onclick="pick(this)">Because the emitted SPIR-V requires blocks in dominance order, and the SPIR-V emitter crashes when reordering.</button>
+<button data-correct="false" onclick="pick(this)">Because appending invalidates the branch instructions' block operands.</button>
+</div>
+<div class="rationale">The CFG itself stays correct — branches name their targets explicitly. What breaks is the cloner's assumption (shared by hoisting) that list order respects dominance: it registers clones as it walks, so a use cloned before its definition's block is reached silently binds to the original instruction.</div>
+</div>
+
+<div class="quiz-q" data-q="2">
+<p><b>Q2.</b> The fixed code inserts the new blocks with <code>builder.getBlock()</code> as the chain anchor. At a <i>nested</i> dispatch level, what does that return, and why is that the right anchor?</p>
+<div class="options">
+<button data-correct="true" onclick="pick(this)">The arm block currently being filled — the nested arms and merge only need to precede blocks after that arm, and the outer merge (which holds the continuation) is still anchored next to the original split block.</button>
+<button data-correct="false" onclick="pick(this)">The function's entry block, so every level re-anchors at a fixed point.</button>
+<button data-correct="false" onclick="pick(this)">The original split block, so nested chains pile up in creation order next to it regardless of level.</button>
+</div>
+<div class="rationale">Nested dispatch blocks are created while the builder is inserting into an arm; only the outermost merge receives the continuation instructions, and it was anchored directly after the split block at the top level. Arms only consume values from earlier blocks, so their exact position among the new blocks is free as long as the outer merge precedes the blocks that follow the split point.</div>
+</div>
+
+<div class="quiz-q" data-q="3">
+<p><b>Q3.</b> Why was the cloner-side assertion (fallback only for module-scoped operands) dropped instead of shipped?</p>
+<div class="options">
+<button data-correct="true" onclick="pick(this)">The full suite showed autodiff cloning legitimately reuses instructions across functions that stay alive, which a clone-time check cannot distinguish from the deadly reuse-then-deallocate case.</button>
+<button data-correct="false" onclick="pick(this)">It failed to catch the bug in a revert drill, proving it dead code.</button>
+<button data-correct="false" onclick="pick(this)">It required changing a public header in include/, breaking ABI rules.</button>
+</div>
+<div class="rationale">The assertion did catch the bug in a revert drill. But all 39 tests/autodiff-dstdlib/* executions tripped it: autodiff primal/differential cloning reuses instructions across function boundaries where the source function stays alive. Clone-time checks cannot see the future deallocation that made the #14646 case deadly, so hardening needs its own investigation (filed as a follow-up).</div>
+</div>
+
+<script>
+function pick(btn) {
+  var q = btn.closest('.quiz-q');
+  var correct = q.querySelectorAll('button[data-correct="true"]')[0];
+  q.querySelectorAll('button').forEach(function (b) {
+    b.disabled = true;
+    if (b.dataset.correct === "true") b.classList.add('correct');
+  });
+  if (btn.dataset.correct !== "true") btn.classList.add('wrong');
+  q.querySelector('.rationale').style.display = 'block';
+}
+// Shuffle each question's options on load (Fisher-Yates over option elements).
+document.querySelectorAll('.quiz-q .options').forEach(function (opts) {
+  var btns = Array.prototype.slice.call(opts.querySelectorAll('button'));
+  for (var i = btns.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    opts.appendChild(btns[j]); btns.splice(j, 1);
+  }
+});
+</script>
+
+<div class="footer">Explanation of shader-slang/slang PR #14649 (fixes issue #14646), head 68db33992. Generated by an automated Slang coworker — may be inaccurate; a human maintainer should verify.</div>
+</body>
+</html>

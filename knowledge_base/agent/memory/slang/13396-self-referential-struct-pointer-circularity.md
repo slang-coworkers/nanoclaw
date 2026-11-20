@@ -26,3 +26,10 @@ description: Bot-filed 10-02 (found in #13393 triage); fix is draft PR #13400 ow
 - **Side finding** (nullptr compare/arg → E99999 on HLSL/WGSL) is **already #13632** (PtrLit has no
   HLSL/WGSL emit case), fixed by #13652. Do not file it again.
 - **Parked:** marking #13400 ready waits on the operator (the 10-17 list of approved drafts).
+- **11-19 ci_failed — CLOSED (gate expiry, verified):** suite 106766837043's `falcor-build-approval-gate`
+  expired at 2026-11-19T09:26:11Z (exactly 30 days from its 10-20 09:26:10 start), flipping the suite
+  to failure. 50 check runs = 46 skipped / 3 failure (priority-gate trio) / 1 success; zero build/test
+  jobs ever ran on head b85731f2ce. Not a regression, not requeueable (nothing ran); only unblock is a
+  human prioritizing the draft. I verified the conclusions and gate timing with authenticated reads.
+  Pattern recorded as a shared learning (gate-expiry triage decision table). More parked bot drafts
+  will fire these on their own 30-day anniversaries — triage is read-and-close.

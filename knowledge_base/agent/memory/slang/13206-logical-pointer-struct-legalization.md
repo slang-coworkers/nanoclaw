@@ -32,3 +32,5 @@ tags: [slang, spirv, type-legalization, parked]
   code failure.
 - **Next:** one-shot `recheck-13206-pr13305-pa-7b5e` at 11-07 09:00Z. If there is still no answer, it parks the chain
   with no timer ([reask cap](../orchestrator/reask-cap-park-after-final-ask.md)), and does not re-arm.
+
+- 2026-11-16 04:45Z re-check: no human activity on #13206/#13305 since the 11-06 reassign (source: public pages via WebFetch; gh API returned 401 that day). No `ping 13206` through dashboard seq 512357. Told the dashboard it is still waiting; re-armed one-shot `recheck-13206-pr13305` for 2026-11-30T09:00Z.
