@@ -3,7 +3,7 @@ title: "Approver Review-Miss Patterns: Clearing a Finding Is a Claim"
 type: concept
 group: misc
 tags: [approver, challenger-miss, concurrency, public-api, abstain, contract-vs-callgraph, disclosure, worst-case-bound, audit-record]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -106,6 +106,18 @@ artifact (which survived the ~5-day log expiry) over any narrative about the run
 grep a stale worktree for a claim about a head
 [a PR's stated failure mechanism is a claim about source](../learnings/1786374529551-approver-challenger-miss-a-pr-s-stated-failure-mec.md).
 
+The same claim-status rule applies to issue bodies quoted as review requirements: before
+grading a requirement MET, fact-check any premise asserting *existing* compiler behavior by
+running it on master — not just the PR's behavior. On slang#14601 (round 3), requirement R2
+said both specializations should be rejected "with the same error that float a[0x100000001ull]
+and float a[0x80000000u] produce," but those direct spellings produce **no diagnostic on
+master**, so the PR created the asymmetry its author believed already existed; rounds 1–2 had
+graded R2 MET with the premise unexamined. Grade "MET on the operative clause, premise
+inaccurate" and carry a note for the maintainer. (Also from that atom: a response-commit
+re-review crossing with peer acks resolves itself — run the pass on the pushed head and the
+confirmation verdict closes the ambiguity.)
+[fact-check issue-body premises about existing behavior before grading requirements MET](../learnings/1795035874572-fact-check-issue-body-premises-about-existing-beha.md)
+
 slang-rhi#825 removed six virtual methods from a public COM interface under an unchanged GUID;
 the initial ABSTAIN reasoned "the author disclosed it, so it's a human's call." A reviewer
 called that the false-safe: the author's *awareness* of a break is not *mitigation* of it — a
@@ -166,7 +178,7 @@ in a variant such as X"). And when a scripted probe and a fresh measurement disa
 the measurement's scope before retiring the probe
 [a self-run control can measure the wrong environment](../learnings/1786386188551-approver-challenger-miss-a-self-run-empirical-cont.md).
 
-**Source learnings (10):**
+**Source learnings (11):**
 
 - ["Is it reachable?" is about the CONTRACT, not the call graph](../learnings/1786367763472-approver-challenger-miss-is-it-reachable-is-a-ques.md) — for a library the thread population is its callers; a clearance is a claim, open its artifact.
 - ["No in-tree caller does X" is not "X is forbidden" — public extension points sample the wrong population](../learnings/1786368454060-approver-challenger-miss-no-in-tree-caller-does-x-.md) — a contract's silence permits; distinguish repo-fact / forbidden / silent.
@@ -178,3 +190,4 @@ the measurement's scope before retiring the probe
 - [A numeric ID is not a unique key — enumerate its definition sites before a code-keyed join](../learnings/1786382218712-approver-challenger-miss-a-numeric-id-is-not-a-uni.md) — unique only within its minting namespace; a disclosed symptom under a wrong cause is not mitigation.
 - [Check a worst-case bound in both directions — an under-claim is the credible kind](../learnings/1786385252194-approver-challenger-miss-check-a-worst-case-bound-.md) — enumerate lock lifetimes not sites; a mixed-sign correction set carries zero directional information.
 - [A self-run empirical control can measure the wrong environment and feel authoritative](../learnings/1786386188551-approver-challenger-miss-a-self-run-empirical-cont.md) — match the control's environment to the claim; when a workaround is narrowed, check enumerated-vs-exemplified.
+- [run issue-body premises about existing compiler behavior on master before grading requirements MET; grade "operative clause MET, premise inaccurate" when they fail.](../learnings/1795035874572-fact-check-issue-body-premises-about-existing-beha.md)

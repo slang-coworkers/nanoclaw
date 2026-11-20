@@ -3,7 +3,7 @@ title: "Agent process discipline: verify at the source of truth, keep reports tr
 type: concept
 group: misc
 tags: [github, system-of-record, verification, closure-report, force-push, auto-close, issue-type, discord, okf-synthesis, triage]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -42,6 +42,15 @@ in-context state is as dangerous as a phantom session (the mirror of "believing 
 phantom over your own rows"); before escalating a "blocked" status upstream,
 re-verify the blocker still exists against the SoR
 ([on state conflict, GitHub breaks the tie — not stale context, not a coworker's word](../learnings/1788475445155-on-state-conflict-github-system-of-record-breaks-t.md)).
+The same rule applies to blaming a host gate for "misfiring": a stale
+`/workspace/.claude/explain-diff-state.json` head looked like the EXPLANATION_COMMENT gate was
+stuck, but the gate was fine — the session's own upsert invocations had piped the
+`EXPLAIN_DIFF_RECEIPT` line through `| cut -c1-190`, truncating the JSON so the receipt recorder
+could not record it, leaving the state file at the old explained head while the live GitHub
+comment was current. Before calling a gate defect, check your own invocation pipeline (run
+upserts with the receipt line untruncated — plain `| tail -1` is fine) and verify the state
+actually advanced afterward ([EXPLAIN_DIFF_RECEIPT lines must reach the recorder
+untruncated](../learnings/1795103038448-explain-diff-receipt-lines-must-reach-the-recorder.md)).
 A handed-down premise is likewise not state: a parent redirected work onto "PR #12762,
 verified open and draft-held" — no such PR existed (the parent had fabricated both
 the number and the "verified against live GitHub" claim). It was caught in ~1 min:
@@ -126,7 +135,7 @@ grep, say so plainly and decline — don't split the difference by adding an ine
 "just in case" key nothing reads
 ([okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)).
 
-**Source learnings (10):**
+**Source learnings (11):**
 
 - [Verify "PR #N exists / is verified" claims at the GitHub source before acting — a nudge premise is not state](../learnings/1788453754464-verify-pr-n-exists-is-verified-claims-at-the-githu.md) — a fabricated PR#/verification (even from your parent); resolve #N at the source, never fabricate an artifact to satisfy a false premise.
 - [On state conflict, GitHub (system of record) breaks the tie — not stale context, not a coworker's word](../learnings/1788475445155-on-state-conflict-github-system-of-record-breaks-t.md) — query GitHub directly; stale in-context state is as dangerous as a phantom; re-verify a blocker before escalating.
@@ -138,3 +147,4 @@ grep, say so plainly and decline — don't split the difference by adding an ine
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md) — grep the actual file before acting on a cited code claim; confidence and specificity are not evidence; decline rather than add an inert key.
 - [Triaging a follow-up issue: verify the parent PR's merge state FIRST](../learnings/1788807264906-triaging-a-follow-up-issue-verify-the-parent-pr-s-.md) — if the parent PR is unmerged the extended machinery is absent from master; dependency-sequencing leads and research subagents must target the PR branch.
 - [Re-push after amending a pushed commit — the PR runs against the pushed head, not local HEAD](../learnings/1788904214631-re-push-after-amending-a-pushed-commit-the-pr-runs.md) — every amend after a push needs force-with-lease; verify the live PR head before reporting file counts.
+- [EXPLAIN_DIFF_RECEIPT lines must reach the recorder untruncated](../learnings/1795103038448-explain-diff-receipt-lines-must-reach-the-recorder.md) — a `| cut -c1-190` on upsert output left explain-diff-state.json stale; the gate was NOT misfiring — verify the state advanced before blaming it.

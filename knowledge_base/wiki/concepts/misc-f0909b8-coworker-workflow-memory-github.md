@@ -3,7 +3,7 @@ title: "Coworker workflow: memory/KB operations, GitHub PR process, and dedup di
 type: concept
 group: misc
 tags: [okf-synthesis, memory, kb-sync, github, pr-body, dedup, triage, dead-code, subagent, discord, revert, abi, closing-keywords]
-source_count: 17
+source_count: 19
 ---
 
 ## TL;DR
@@ -124,8 +124,18 @@ wake); `tools:` frontmatter is a complete no-inheritance allowlist, but an in-pr
 `Agent` subagent shares the parent's env + `GH_TOKEN`, so credential-scoping needs a
 separate container, not tool names
 [provisioning a per-coworker Claude Code subagent type](../learnings/1788288563386-provisioning-a-per-coworker-claude-code-subagent-t.md).
+On the messaging side of the same platform: a `send_message` whose text contains a chain-delivery
+marker (`[Triage handoff]`, `[Report]`, …) is REJECTED with "CHAIN ROUTING REQUIRED" when
+`in_reply_to` is missing — even for a *fresh* delegation to a peer who has never written to you.
+Set `in_reply_to` to the parent inbound id that spawned the task (e.g. the webhook row) together
+with explicit `to=<peer>` and the canonical `thread_id`, and the delivery lands on the peer edge
+with the thread intact; confirmed handing triage #10164 and #14645 to slang-fixer
+([send_message chain-delivery markers require in_reply_to even for fresh peer
+handoffs](../learnings/1795088586257-send-message-chain-delivery-markers-require-in-rep.md),
+[chain-delivery markers require in_reply_to even for fresh peer
+delegation](../learnings/1795125513998-chain-delivery-markers-require-in-reply-to-even-fo.md)).
 
-**Source learnings (17):**
+**Source learnings (19):**
 
 - [Check for author-opened fix PR before fixing a core-team-authored issue](../learnings/1788102480379-check-for-author-opened-fix-pr-before-fixing-a-cor.md) — #12751/#12752 (author fixed in 3 min); run gh pr list first; convergent-confirmation comment, not a competing bot PR; triggers: assignee=core-team, `Dev Opened` label, named parent PR.
 - [OKF synthesis: legacy native-memory frontmatter false-flags as DOSSIER](../learnings/1788109261898-okf-synthesis-legacy-native-memory-frontmatter-fal.md) — _has_type() only checks top-level type:; check H2 count (<8 → frontmatter conversion, not split); verify fabricated claims in index.md against the filesystem.
@@ -144,3 +154,5 @@ separate container, not tool names
 - [Implementation gap in WIP draft-PR code is not a Bug — don't set Issue Type=Bug](../learnings/1788367478397-implementation-gap-in-wip-draft-pr-code-is-not-a-b.md) — #12744; a gap in never-shipped code isn't a defect against released behavior; clear rather than guess; the bot App can't read the org's issueTypes list; POST a fresh delta comment on reclassification.
 - [`/learnings-wiki` fold: single-source→single-page is the flaky-streaming-robust unit; verify-then-delete (citation-superset gate) makes deletes safe; `grep -hoE` for multi-file checks; coverage/finalize is the real safety net; keep base pages, dissolve `-N` siblings.](../learnings/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md)
 - [learnings-wiki finalize DANGLING misses relative concept-to-concept links](../learnings/1792046612849-learnings-wiki-finalize-dangling-misses-relative-c.md) — 40 stale `-N` links on 15 pages while finalize reported 1; regex-check relative targets after every consolidation
+- [send_message chain-delivery markers require in_reply_to even for fresh peer handoffs](../learnings/1795088586257-send-message-chain-delivery-markers-require-in-rep.md) — "CHAIN ROUTING REQUIRED" without in_reply_to; pass the parent inbound id + to + canonical thread_id (triage #10164 → slang-fixer).
+- [Chain-delivery markers require in_reply_to even for fresh peer delegation](../learnings/1795125513998-chain-delivery-markers-require-in-reply-to-even-fo.md) — same guard re-confirmed on the #14645 [Triage handoff]; resend with in_reply_to=<webhook-msg-id> delivered.

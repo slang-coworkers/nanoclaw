@@ -3,7 +3,7 @@ title: "Slang IR passes: CSE/aliasing, variadic packs, SROA, and producer-side b
 type: concept
 group: misc
 tags: [slang, ir, cse, aliasing, variadic-pack, sroa, specialization, producer-bug, triage]
-source_count: 29
+source_count: 30
 ---
 
 ## TL;DR
@@ -76,7 +76,9 @@ A latent null-deref exposed by a sibling PR gives two triage rules. "Latent/dorm
 
 Implied-constraint synthesis (inferring `where T:IFoo` from a constrained generic application) is part of the mangle. It fires only where an unconstrained param is used in a constrained application, which is exactly the set of programs that error today. No currently compiling program's mangle changes, and the accepted set only grows, so argue `pr: non-breaking`. The synthesized `GenericTypeConstraintDecl` member propagates with no extra wiring ([implied-constraint synthesis is additive, not ABI-breaking](../learnings/1787955885624-implied-constraint-synthesis-is-additive-not-abi-b.md)).
 
-**Source learnings (29):**
+A byte-address-legalization poisoning class shows the same producer/consumer split (#14652, triaged 2026-11-20): the function-param path in `slang-ir-byte-address-legalize.cpp` does `replaceUsesWith` on the module-wide deduped `HLSLByteAddressBufferType` inst, so one surviving BAB param retypes EVERY BAB in the module to the first-legalized element type, and the early-outs (:1387, :1610) check only the type *kind*, never the element type, so later differently-typed loads reuse the poisoned buffer. Global-buffer args never expose it because `specializeFuncsForBufferLoadArgs` (slang-emit.cpp:2239) specializes the param away before the pass runs — descriptor-heap and other runtime-value args defeat that specialization and are the trigger. When triaging "type mismatch" SPIR-V validation errors with BABs, dump IR before/after `legalizeByteAddressBufferOps` and check whether a BAB function param survived ([BAB legalization poisons module via shared type inst; heap args expose it](../learnings/1795139675107-bab-legalization-poisons-module-via-shared-type-in.md)).
+
+**Source learnings (30):**
 - [A latent null-deref exposed by a sibling PR + when a "WAR" is the principled fix](../learnings/1787777363163-a-latent-null-deref-exposed-by-a-sibling-pr-when-a.md) — check branch reachability before labeling; a null may be an intended representation.
 - [narrow-SROA — the scalarization tail and escape analysis already exist](../learnings/1787809324437-slang-narrow-sroa-12787-the-scalarization-tail-and.md) — peephole and `isPromotableVar` already do the work; assert on target output.
 - [Read-only StructuredBuffer is NOT value-stable](../learnings/1787811803955-read-only-structuredbuffer-is-not-value-stable-dom.md) — SRV/UAV alias; dominance alone cannot CSE across writes.
@@ -106,3 +108,4 @@ Implied-constraint synthesis (inferring `where T:IFoo` from a constrained generi
 - [CPU lanes need -g0; KernelContext masks alias bugs; spirv-opt -O drops Function OpStore before a call](../learnings/1791173083128-slang-assert-is-an-optimizer-assumption-in-release.md)
 - [render-test debug-info default hides forwarding bugs on CPU lanes](../learnings/1790982231204-slang-cpu-compare-compute-tests-can-hide-ir-optimi.md)
 - [Slang DSE repros: __getAddress yields UserPointer wrongly disjoint from buffers](../learnings/1794897593571-slang-dse-repros-getaddress-yields-userpointer-cla.md) — also buf[0] vs .Load() channel distinction; DSE fires inside deferBufferLoad
+- [BAB legalization poisons module via shared type inst; heap args expose it](../learnings/1795139675107-bab-legalization-poisons-module-via-shared-type-in.md) — one surviving BAB param retypes every BAB via replaceUsesWith on the deduped type inst; kind-only early-outs; descriptor-heap args defeat the buffer-load-arg specialization (#14652).

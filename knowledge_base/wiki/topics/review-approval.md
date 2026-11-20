@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1432 learnings. [Catalog](../index.md)
+1433 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1420,6 +1420,7 @@ type: topic
 - [pr-approver harvest misses pulls-N-comments where inline findings live](../learnings/1786277284242-pr-approver-harvest-misses-pulls-n-comments-where-.md)
 - [PR-review verdict calibration: 0 bugs + 1 gap → APPROVE_WITH_NITS when the gap is coverage-only on a traced-sound fix](../learnings/1794902853662-pr-review-verdict-calibration-0-bugs-1-gap-approve.md)
 - [Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right](../learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md)
+- [Pushing to an approved PR dismisses the approval; master merges can move source files](../learnings/1795140674253-pushing-to-an-approved-pr-dismisses-the-approval-m.md)
 - [Pushing to an auto-merge-armed PR dismisses the approval but GitHub still enqueues it](../learnings/1792025781326-pushing-to-an-auto-merge-armed-pr-dismisses-the-ap.md)
 - [Re-check PR reviews before sending a verdict — maintainer approvals arrive mid-review](../learnings/1795033505287-re-check-pr-reviews-before-sending-a-verdict-maint.md)
 - [Rebase onto current origin/master BEFORE the CODE critique, not after the fix is "done"](../learnings/1787661100185-rebase-onto-current-origin-master-before-the-code-.md)

@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 19
+source_count: 21
 ---
 
 ## TL;DR
@@ -82,6 +82,20 @@ through `ParseDeclName`. General lesson: for "let X be spelled as an expression,
 check whether the expression-position name reader already shares the
 declaration-position reader — the feature may fall out for free
 ([operator-named decls are already referenceable via ParseDeclName reuse](../learnings/1788910043597-operator-named-decls-are-already-referenceable-as-.md)).
+
+**Pushing a fresh parser scope around every `if`/`while`/`do`-`while` condition (statement-owned
+unconditional scopes) BREAKS the core module build.** Deferred-body parsing
+(`UnparsedStmt::currentScope` capture + `parseUnparsedStmt` re-parse) ends up with contaminated
+scope chains: lookups in `hlsl.meta.slang` bodies (e.g. `VECTOR_MAP_UNARY` at :8088) resolve
+against a *sibling function's* scope objects and names become undefined identifiers. Repro:
+`slang-bootstrap -compile-core-module`; disabling only the if-condition push made the build green
+(while/do-while pushes alone did not reproduce it). The debug technique that nailed it in three
+probes: toggle one push site off and rebuild slang-bootstrap (~4 min), minimize by editing
+`hlsl.meta.slang` locally + `cmake -E touch` + relink, and a temporary `fprintf` in the
+undefined-identifier diagnose path dumping the expr's scope chain (names + astNodeType of each
+containerDecl) — a chain rooting at a different function was the smoking gun (remove the probe
+afterward) ([operation doc comments are one line of responsibility; extra parser scopes break
+deferred-body capture](../learnings/1795123743418-operation-doc-comments-are-one-line-of-responsibil.md)).
 
 **Never copy a type's name onto a synthesized field.** A lambda capturing `this`
 inside an interface default method failed with E30019/E30011/E30022 because
@@ -292,7 +306,36 @@ the name to a named `String` before the lookup. Review lens: in an rvalue constr
 every initializer after a `_Move(x)` must read the moved-to member, not `x`
 ([ImmutableHashedString(String&&) hashed the moved-from string](../learnings/1793366191596-slang-immutablehashedstring-string-hashed-the-move.md)).
 
-**Source learnings (19):**
+**An OPERATION doc comment states its responsibility in one line, full stop** (tangent-vector,
+PR #14627): "Parse a condition clause." — never the per-case walkthrough of how subclasses are
+handled, never implementation mechanics, never a rationale essay (the test: the comment on
+`Val* evalExpr(Expr*)` would be "evaluate an expression and return the resulting value", NOT "if
+the expression is a variable reference then…"). Rationale prose in a doc comment is a signal the
+abstraction is wrong; invariants and non-obvious *why* still belong as SHORT inline notes at the
+load-bearing line, and type-level doc comments may still describe the type + client usage — but
+operation docs = one line of responsibility
+([operation doc comments are one line of responsibility; extra parser scopes break
+deferred-body capture](../learnings/1795123743418-operation-doc-comments-are-one-line-of-responsibil.md)).
+
+**FIDDLE visitor catch-alls are removable dead code — lazy instantiation makes an unhandled new
+case a compile error.** The per-hierarchy visitor templates emit
+`visit$T($T*) { ((Derived*)this)->visit$(directSuperClass)(obj); }` for each subclass as ordinary
+template member functions, instantiated ONLY when a subclass case is actually left unhandled by
+the CRTP Derived — so when every walker overrides the concrete cases, a root `visitX` catch-all
+exists for no reason and can simply be deleted; and with no catch-all, a future subclass (a
+`LetConditionClause`, a `guard` clause) fails to COMPILE every walker that doesn't handle it — a
+build failure is the loud, maintenance-enforcing outcome an `SLANG_UNEXPECTED` only approximates
+at runtime. Corollary: a plain (non-visitor) function like `getPredicateExpr(ConditionClause*)`
+has no generated dispatch, so IT keeps the `SLANG_UNEXPECTED` fallthrough. Same-round design
+lesson: a helper's cross-call state that callers had to restore (a debug-lexical-scope
+previousScope/conditionScope pair) was a smell — once the scope's source moved to the declaration's
+parentDecl, enter/exit could live entirely inside the helper and the signature collapsed to
+`IRInst* lowerConditionClause(ConditionClause*)`; prefer reshaping the helper's contract over
+threading state structs through callers
+([FIDDLE visitor catch-alls are removable: lazy instantiation makes an unhandled new case a
+compile error](../learnings/1795128053228-fiddle-visitor-catch-alls-are-removable-lazy-insta.md)).
+
+**Source learnings (21):**
 - [Slang linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md) — `emitHostVMCode` serializes linked IR; ptx DIAGNOSTIC_TEST lanes silently need NVRTC
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
@@ -313,3 +356,5 @@ every initializer after a `_Move(x)` must read the moved-to member, not `x`
 - [Value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md) — `Foo obj{}` zero-inits regardless of the new initializer; only `Foo obj;` exercises the fixed path.
 - [Editing a .meta.slang file while a Slang build runs can silently embed the OLD core module](../learnings/1793215460858-editing-a-meta-slang-file-while-a-slang-build-runs.md) — the bootstrap reads the early-copied `.meta.slang.h`; touch, rebuild, grep the header
 - [ImmutableHashedString(String&&) hashed the moved-from string (PR #14092)](../learnings/1793366191596-slang-immutablehashedstring-string-hashed-the-move.md) — keys built from a temporary `String` got the empty-string hash; `findSymbolByMangledName(tempString())` silently returned nothing.
+- [Operation doc comments are one line of responsibility; extra parser scopes break deferred-body capture](../learnings/1795123743418-operation-doc-comments-are-one-line-of-responsibil.md) — operation docs state the responsibility, never mechanics/rationale (PR #14627); statement-owned unconditional condition scopes contaminate UnparsedStmt re-parse scope chains — core module build breaks.
+- [FIDDLE visitor catch-alls are removable: lazy instantiation makes an unhandled new case a compile error](../learnings/1795128053228-fiddle-visitor-catch-alls-are-removable-lazy-insta.md) — fallback visit methods only instantiate when a case is unhandled; deleting catch-alls turns a future unhandled subclass into a build failure; non-visitor functions keep SLANG_UNEXPECTED; reshape helper contracts over threading state.

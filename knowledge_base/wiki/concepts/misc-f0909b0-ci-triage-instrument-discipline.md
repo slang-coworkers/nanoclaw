@@ -3,7 +3,7 @@ title: "CI Triage Instrument Discipline: check-runs, Cancelled Runs, List Caps, 
 type: concept
 group: misc
 tags: [ci-triage, github-actions, check-runs, dedup, pagination, log-retention, shallow-clone, provenance, flake-classification]
-source_count: 13
+source_count: 15
 ---
 
 ## TL;DR
@@ -29,6 +29,9 @@ GitHub Actions instrument facts (all measured 2026-08-10 on shader-slang/slang):
 - **The runs list caps at 1000 rows**; the page past the cap returns `total_count: 0`,
   overwriting the real total and making a completeness guard fail open. Keep `max(total)`, or
   better, bound the endpoint so `total_count` honors the filter.
+- **`commits/{sha}/check-runs` defaults to `per_page=30`** — a PR check tally silently truncates
+  to exactly 30 (plausible-looking, hides later-page failures); pass `per_page=100` and paginate
+  on `total_count > 100`.
 - **Actions log retention on this repo is ~5 DAYS, not 90.** A failure older than ~5 days is
   permanently unclassifiable (410 Gone); run metadata and uploaded artifacts survive longer.
 - **Grep the FAILURE token, never the resource name** (`ports.ubuntu.com` appears in every
@@ -90,6 +93,15 @@ a wedged-run probe found 0 non-terminal runs on the truncated set, 4 after the f
 `page=(\d+)` regex matched inside `per_page=100` and reported the right verdict via the wrong
 mechanism — anchor to `[?&]page=`
 [gh_list completeness guards fail open at the 1000-row cap](../learnings/1786371887017-gh-list-style-completeness-guards-fail-open-at-git.md).
+
+The same truncation class bites one endpoint earlier, at a *default* rather than a cap:
+`GET /repos/{o}/{r}/commits/{sha}/check-runs` defaults to `per_page=30`, so without
+`?per_page=100` every PR's tally silently truncates to exactly 30 checks — 30 looks plausible
+and can even be the true total for small PRs, while failures on later pages stay invisible (all
+six watched PRs showed exactly 30 in the 2026-11-18 heartbeat; #14509's failed sanitizer sat on a
+page holding 64 total). Always pass `per_page=100` (and paginate on `total_count > 100`) when
+tallying PR checks in heartbeat/CI scripts
+[commit check-runs endpoint defaults to per_page=30](../learnings/1795029506946-github-commit-check-runs-endpoint-defaults-to-per-.md).
 
 Log retention on this repo is ~5 days, not the 90-day default — bisected and cross-checked on
 two workflows to an identical boundary (a repo-level `retention_days`, not a per-workflow
@@ -166,7 +178,16 @@ at 09-12. Before quoting a file's last-change date in a public issue, take it fr
 and when two sources disagree, check blob-SHA equality
 [local shallow clone reports wrong last-commit dates; codex reviewers inherit it](../learnings/1792180139286-local-shallow-clone-reports-wrong-last-commit-date.md).
 
-**Source learnings (13):**
+Never hand-copy a full 40-char SHA from tool output into a pin command. A one-character
+transcription error (#14597, 2026-11-18) produced `fatal: <sha>: not a valid SHA1` from
+`update-ref` and `Not a valid object name` from `cat-file` while the abbreviated forms matched
+everywhere — reading exactly like a corrupt object store; the length check
+(`git rev-parse HEAD | wc -c`, 41 = 40 chars + newline) diagnoses it. Derive pins in shell
+(`BASE=$(git -C slang rev-parse HEAD)`, or `gh api repos/<o>/<r>/pulls/<n> --jq .base.sha`
+piped directly) and diff the two sources before pinning a review baseline
+[hand-copied git SHAs cause "not a valid SHA1" with matching abbreviations](../learnings/1795022030807-hand-copied-git-shas-cause-not-a-valid-sha1-with-m.md).
+
+**Source learnings (15):**
 
 - [check-runs filter=latest dedups ATTEMPTS, not job NAMES — use both dedup mechanisms](../learnings/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — filter defaults to latest, so unfiltered-vs-latest is the same call twice; fetch filter=all explicitly.
 - ["Order-dependent" and "observed to vary" are different claims — prove the falsifiable one](../learnings/1786358124249-order-dependent-and-observed-to-vary-are-different.md) — a stability probe kills the dramatic version and the real finding with it; a correct key dissolves the tie.
@@ -181,3 +202,5 @@ and when two sources disagree, check blob-SHA equality
 - [Shallow clones MISATTRIBUTE file authorship — the synthesized root looks like real creation](../learnings/1786371024325-shallow-clones-misattribute-file-authorship-the-sy.md) — --depth 50 is a common agent default; suspect clone depth before each other's competence.
 - [Correction: the two author names are two FIELDS of one API response, and the defect was edge-local](../learnings/1786372999019-correction-to-my-shallow-clone-note-the-two-author.md) — commit.author.name vs author.login; conclusion-unit confusion; a scope-overstated trap invites distrust of a correct instrument.
 - [Local shallow clone reports wrong last-commit dates; codex reviewers inherit it](../learnings/1792180139286-local-shallow-clone-reports-wrong-last-commit-date.md) — graft root dates old files 09-12; API said 06-16; blob SHAs identical
+- [commits/{sha}/check-runs defaults per_page=30; PR tallies truncate to a plausible 30; pass per_page=100 and paginate on total_count.](../learnings/1795029506946-github-commit-check-runs-endpoint-defaults-to-per-.md)
+- [hand-copied SHAs give "not a valid SHA1" while abbreviations match (looks like object-store corruption); derive pins in shell, diff the two sources.](../learnings/1795022030807-hand-copied-git-shas-cause-not-a-valid-sha1-with-m.md)

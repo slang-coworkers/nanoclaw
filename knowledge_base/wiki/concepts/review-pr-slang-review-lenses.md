@@ -3,7 +3,7 @@ title: "Slang Code-Review Lenses"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, reviewer-a, reviewer-c, false-positives, filecheck, convergence, unreachable-path]
-source_count: 27
+source_count: 29
 ---
 
 # Slang Code-Review Lenses
@@ -80,6 +80,8 @@ An associated-constant requirement with **no default** on a widely implemented i
 - `CHECK-COUNT-1:` right after a `CHECK-DAG:` block is not a robust exactly-one guard: the count scans from the DAG group's MAX match position, so an earlier duplicate can fall outside the window. When the records are distinct anyway, prefer plain `CHECK-DAG` positives and don't over-claim dedup coverage ([two review-round gotchas](../learnings/1790222348386-two-review-round-gotchas-filecheck-check-tokens-in.md)).
 - Under `-g2`, SPIR-V embeds the shader source (CHECK lines included) as an `OpString`, so `CHECK: <source text>` can self-match. Anchor on `OpExtInst %void %{{[0-9]+}} <Op>` and capture numeric IDs (`CHECK-COUNT-1` over IDs, not text); stays GPU-free ([directive tokens inside prose comments](../learnings/1790163672721-slang-test-filecheck-parses-directive-tokens-insid.md)).
 - A `-NOT:` constrains only the text between its immediately preceding and following positive CHECKs. Before propagating "this `-NOT: func %` is unsatisfiable", check what brackets it: in slang#13252 the flagged line sat in an ORIG→WRAP decoration gap with no `-NOT`, and the pipeline's editorial filter correctly dropped it (a recurring false-positive class). Prefer order-insensitive `CHECK-DAG` captures by type-shape over an ordering-sensitive `[DebugFunction([[X]])]` / `-NOT: func %` / `[entryPoint(` fence, and run the editorial filter before relaying raw subagent flags ([CHECK-NOT window](../learnings/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md)).
+- Reviewer-suggested filecheck pins are shape guesses, not verified output — phrase them as "pin the shape, verify against actual `-target glsl` output before committing the annotation". On #14597 the suggested pin `//GLSL: (ivec2(s)) >> (uvec2(1U))` never matched what the compiler emits: the emit-time simplifier folded the splat into the existing `_S1` ivec2 temp, so the fixer had to re-pin as `//GLSL: (_S1 >> uvec2(1U, 1U))` — a wrong literal annotation wastes a round ([reviewer-suggested filecheck annotations must be re-pinned from actual emitted output](../learnings/1795023803902-reviewer-suggested-filecheck-annotations-must-be-r.md)).
+- A CHECK-NOT pattern can be VACUOUS — `mod(abs(m_0)` is closed by the `)` ending `abs(`, not `mod(`, so it matches neither the buggy whole-matrix spelling (comma after `m_0`) nor the valid row spelling (bracket), catching nothing. The discriminating pattern is the closed `abs(m_0)` / `sign(m_0)`, which matches the matrix form in either `mod` argument and never the row spelling. And a `precise` regression line must use a UNIQUE computation: `precise float2x2 p = m % n;` when `r = m % n` already exists gets CSE-merged into the non-precise value and the qualifier disappears from the emitted GLSL — use a value nothing else computes ([CHECK-NOT paren vacuity, reviewer mechanism claims, precise CSE, ### Verdict heading — four traps from slang PR #14599](../learnings/1795030888933-check-not-paren-vacuity-reviewer-mechanism-claims-.md)).
 
 ## Reviewing -fno-exceptions Guard PRs (the #12779 series)
 
@@ -106,7 +108,7 @@ From slang#12302 → PR #13021 and follow-up #13023 → #13040:
 - **Per-license obligations:** MIT = reproduce the dep's copyright lines; Apache-2.0 §4(a) = include the license; §4(d) NOTICE-carry applies only if upstream ships a NOTICE (spirv-tools has none, so LICENSE-only is correct; check `ls external/<dep>/NOTICE`). A follow-up PR editing the same CPack block lands AFTER its precedent (adopt the same per-dep-vs-aggregated form), and any `.github/workflows/*` half is blocked by the bot's missing App `workflows` scope, so deliver it as a maintainer-applied `git apply` patch ([Apache §4(d), sequencing](../learnings/1789167340037-third-party-license-notice-follow-ups-apache-4-d-n.md)).
 - **No PR-CI coverage.** `COMPONENT metadata` + `EXCLUDE_FROM_ALL` rules materialize only at release-time `cpack` (`ci-slang-build.yml` installs `--component generators`; `cmake-options-build.yml` installs with no component), so a path typo or bad `RENAME` fails only at a release tag. Cheap guard: a GPU-free step running `cmake --install build --component metadata --prefix X` and asserting the files land ([install-component CI coverage](../learnings/1789164645783-slang-license-notice-prs-check-mit-deps-install-co.md)).
 
-**Source learnings (27):**
+**Source learnings (29):**
 
 - [Extracted-matcher integration gap + normalize-before-match](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md) — helper unit tests aren't integration coverage.
 - [Null-possible invariant: audit ALL identical sites](../learnings/1781792411472-pr-review-heuristic-when-a-fix-adds-a-null-possibl.md) — grep every raw deref of the nullable member.
@@ -135,3 +137,5 @@ From slang#12302 → PR #13021 and follow-up #13023 → #13040:
 - [.hlsl test files gitignored; receiver-mode lowering hunk](../learnings/1793143062366-slang-tests-hlsl-files-are-gitignored-diagnostic-c.md) — #13966: `moveIntoMutableTemp`, not `tryGetAddress`.
 - [filecheck-buffer small-digit CHECKs vacuous; implicit-`this` overloads](../learnings/1793153753122-filecheck-buffer-with-output-using-type-small-digi.md) — skip the receiver test.
 - [Slang reviewer policies from tangent-vector (PR review)](../learnings/1794917468140-slang-reviewer-policies-from-tangent-vector-pr-rev.md) — IR-pass review: no inlining as propagation, verb-first names, whitelisted ops, named predicates.
+- [reviewer-suggested filecheck annotations must be re-pinned from actual emitted output](../learnings/1795023803902-reviewer-suggested-filecheck-annotations-must-be-r.md) — suggested pins are shape guesses; the emit-time simplifier can fold a splat so the literal never matches.
+- [CHECK-NOT paren vacuity, reviewer mechanism claims, precise CSE, ### Verdict heading — four traps from slang PR #14599](../learnings/1795030888933-check-not-paren-vacuity-reviewer-mechanism-claims-.md) — an unclosed-paren NOT is vacuous; `precise` regression lines need a unique (non-CSE-merged) computation.

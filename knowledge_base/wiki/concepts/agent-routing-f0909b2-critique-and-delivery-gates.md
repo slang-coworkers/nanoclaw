@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 34
+source_count: 39
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -81,6 +81,17 @@ create` / `gh pr edit` / `[Fix Report]`, and `codex-reply` rounds recorded nothi
 publish and deliver with no writes between. The gate also matches `gh api repos/.../pulls/<n>/files` as PR
 creation; read a diff with `gh pr diff <n>`
 ([fixer gate: any file write voids OUTPUT_REVIEW approve](../learnings/1793410518336-fixer-gate-autosquash-rebases-onto-new-master-any-.md)).
+The counter's scope is the whole `/workspace/agent/reports/` tree, not just the deliverable named in the
+critique prompt — an explanation-HTML render or dispatch-message file written there after the last recorded
+approve invalidates the round, and a `codex_reply` on the same thread does NOT re-record it (only a fresh
+`mcp__codex__codex` STAGE call records), so make every reports/-dir write before the final fresh OUTPUT_REVIEW
+([fresh OUTPUT_REVIEW must cover every reports/ edit](../learnings/1795043157533-critique-gate-fresh-output-review-must-cover-every.md);
+git note from the same atom: `git commit --amend` amends HEAD — re-split a mis-amended series with
+`git reset --soft master` + `git reset master -- <file>` + two explicit commits). Any Edit/Write to a
+non-allowlisted path (`/tmp/*`) also bumps `edits_since_critique` after the approve, even byte-identical —
+the freshness check fires before the attested-hash check; `reports/*`, `memory/*`, `plans/*` are allowlisted,
+so draft public GitHub bodies there, never in /tmp
+([pinned codex calls count; /tmp writes re-stale the approve](../learnings/1795046963589-critique-gate-pinned-codex-calls-count-codex-reply.md)).
 
 Two secondary edit-triggers: **PR-body citations drift** (a `file.cpp:NNNN` in the body is invalidated by any
 comment trim or `clang-format` reflow above it, so re-derive ALL line numbers from the final committed file in
@@ -166,6 +177,14 @@ literal-path rule: `-F body=@$var.md` is refused, so post each reply with a lite
 The same rule binds `gh pr edit N --body-file $D/file.md` ("cannot be resolved (not a literal path…)") even for
 an approved file; spell the absolute path out
 ([`--body-file $VAR` refused](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)).
+The hook must also read the body file BEFORE the command runs: writing it with cp/printf inside the SAME bash
+invocation as the `gh pr edit/create` trips the PreToolUse gate ("this same command writes <file>"), and the
+gate cannot read /tmp paths at all — write the body in an EARLIER bash call under /workspace/agent/reports/
+and pass the absolute path ([gh pr edit body-file gate](../learnings/1795022081312-gh-pr-edit-body-file-gate-write-the-body-in-an-ear.md)).
+And never build a long comment body with a bash heredoc + `'\''` escapes — the escaping desynchronizes and
+backticks get command-substituted, producing a 422 "Body cannot be blank"; write the body with the Write
+tool, then `jq -Rsn --arg b "$(cat file)" '{body:$b}' | gh api ... --method POST --input -`
+([comment bodies from files; fixer handoffs need in_reply_to](../learnings/1795036139472-github-comment-bodies-from-files-and-fixer-handoff.md)).
 
 The body itself is size-gated (slangpy#1137): `gh pr edit --body-file` is capped at 1000 chars with each `##`
 section at most 2 lines, and the 5-bullet block counts toward whichever section holds it, so put it before the
@@ -231,7 +250,11 @@ access modifier). So run `mcp__codex__codex` against live GitHub before any
 A triager's fresh `[Triage handoff]` without `in_reply_to` is refused on both channels (tool and block) even
 with an explicit `thread_id`; what passes is `send_message(to="slang-fixer", in_reply_to=<id of the parent's
 dispatch that started this triage>, thread_id="gh-issue-<owner>/<repo>-<n>")`
-([fresh Triage handoff needs in_reply_to=<parent dispatch>](../learnings/1792070986920-chain-routing-gate-a-fresh-triage-handoff-needs-in.md)).
+([fresh Triage handoff needs in_reply_to=<parent dispatch>](../learnings/1792070986920-chain-routing-gate-a-fresh-triage-handoff-needs-in.md))
+(re-confirmed on slang#5870: a fresh `[Triage handoff]` to slang-fixer counts as a gated dispatch — keep `to`
++ the canonical `thread_id` and add `in_reply_to=<parent dispatch>`; `send_file`'s `in_reply_to` must be an
+inbound id, not your own outbound
+([comment bodies from files; fixer handoffs need in_reply_to](../learnings/1795036139472-github-comment-bodies-from-files-and-fixer-handoff.md))).
 A reviewer's final-response `<message to="slang-fixer" in_reply_to="2">` carrying `[Review Verdict]` was refused
 twice ("the <message> tag omitted in_reply_to") although the attribute was there; the tool with integer
 `in_reply_to: 2` landed first time, so treat the XML attribute as unreliable for any marker
@@ -266,6 +289,8 @@ From the `Namespace::operator+` parse-gap fix (slang#12971 → PR #12976)
   lines and counts Python characters, so answer a size must-fix with the output of
   `upsert_pr_body.description_problems(open(F).read(), 1000, 2)` (`[]` = within limits)
   ([byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md)).
+  Re-measure after applying review wording — a body at 981 chars pre-advisory crept to 1028 after codex
+  edits ([delivery-gate mechanics](../learnings/1795017778129-delivery-gate-mechanics-codex-reply-must-not-carry.md)).
 - **The explain-diff-html upsert does not write the description.** `upsert_pr_body.py` writes the explanation
   to ONE PR comment and strips the old explanation block from the description; write the concise description
   yourself with `gh pr edit --body-file <literal absolute path>`
@@ -296,7 +321,7 @@ behaviour, against `_claims.md` §1's "doc's own wording", is precedent-accepted
 with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (34):**
+**Source learnings (39):**
 
 - [attestation treadmill: batch edits, OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)
 - [ABSTAIN fast-path trips on WOULD_APPROVE / BLOCK](../learnings/1788385047068-approver-infra-abstain-critique-gate-abstain-fast-.md) — case-sensitive.
@@ -332,3 +357,8 @@ with a drift-from-source row
 - [Dawn/Tint num_subgroups in chromium/7559](../learnings/1793144297778-dawn-tint-num-subgroups-first-lands-in-chromium-75.md) — (gate half).
 - [send the handoff message before its memo](../learnings/1793825152219-nanoclaw-send-the-triage-handoff-message-before-it.md) — #14321.
 - [fixer delivery gates](../learnings/1793850163791-fixer-delivery-gates-review-request-field-format-i.md) — `thread_id` alone refused.
+- [gh pr edit body-file gate: write the body in an earlier call, keep it out of /tmp](../learnings/1795022081312-gh-pr-edit-body-file-gate-write-the-body-in-an-ear.md) — same-call writes trip the PreToolUse gate; /tmp is unreadable by the hook.
+- [fresh OUTPUT_REVIEW must cover every reports/ edit, and codex-reply never records](../learnings/1795043157533-critique-gate-fresh-output-review-must-cover-every.md) — the counter scope is all of reports/, not the named deliverable.
+- [pinned codex calls count; /tmp writes re-stale the approve](../learnings/1795046963589-critique-gate-pinned-codex-calls-count-codex-reply.md) — allowlist is reports/*, memory/*, plans/*; recording mechanics on recording reliability.
+- [comment bodies from files, and fixer handoffs need in_reply_to](../learnings/1795036139472-github-comment-bodies-from-files-and-fixer-handoff.md) — heredoc bodies 422; jq pipe from a Write-tool file.
+- [delivery-gate mechanics: codex-reply must not carry STAGE; Rn self-check](../learnings/1795017778129-delivery-gate-mechanics-codex-reply-must-not-carry.md) — (gate half) PR-body counted_lines re-measure.

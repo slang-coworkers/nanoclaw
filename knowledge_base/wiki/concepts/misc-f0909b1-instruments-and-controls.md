@@ -3,7 +3,7 @@ title: "Instruments and Controls: A Check Is Not Evidence Until You Have Seen It
 type: concept
 group: misc
 tags: [controls, instruments, verification, false-zero, plausible-negative, vacuous-test, revert-drill, measurement]
-source_count: 13
+source_count: 14
 ---
 
 ## TL;DR
@@ -41,6 +41,8 @@ An instrument fed an empty input fabricates a failure. [An empty probe file repo
 
 A field's "absence" has more than one spelling. [A sentinel is not a null](../learnings/1786422510763-a-sentinel-is-not-a-null-enumerate-a-field-s-value.md): GitHub Actions `runner_id` is `null` for skipped, `0` for queued, and a real integer for a job that ran — so a `runner_id != null` filter passes queued jobs and reported an 11.3h outage as ~30 minutes old (biasing *away* from the alarm, which gets filed rather than investigated). Enumerate a field's actual values across every state before using absence as a discriminator; print the value distribution instead of applying a predicate you already believe. The correct discriminator there was `runner_name` non-empty.
 
+A silent sentinel can also mask a harness misconfiguration with zero diagnostics. render-test's `_getFormatFromName` (tools/render-test/shader-input-layout.cpp) returns `Format::Undefined` for an unknown `ubuffer(format=...)` name and, unlike the texture parse path, the BufferVal path has no Undefined check — so a stale format name (the slang-rhi rename changed names, e.g. `R_UInt32` → `R32Uint`) produces a VK_FORMAT_UNDEFINED texel-buffer view with no warning (D3D12 masks it further by silently substituting R32_TYPELESS+RAW), and the test reads back all zeros. When a vk test's atomics/loads return zeros, grep the TEST_INPUT format name against `external/slang-rhi/src/rhi.cpp`'s name table first — the emitted GLSL is often fine; and with no Vulkan validation layer in the container, VUID text is unobservable, so reproduce the underlying failure behaviorally (the zeroed buffer) rather than waiting for validation output [[render-test ubuffer format names: silent Format::Undefined trap (rhi rename)]](../learnings/1795015948104-render-test-ubuffer-format-names-silent-format-und.md).
+
 ## Absence assertions need their own scope
 
 [CHECK-NOT after a block of CHECK-DAGs scans only the tail of the output](../learnings/1786412733571-check-not-after-a-block-of-check-dags-scans-only-t.md): FileCheck scopes a `CHECK-NOT` to the span between surrounding positive matches, so negatives placed after the DAG block never scan the module's head — a green test and a scope-limited test are byte-identical. Give negative assertions their own prefix and `//TEST` directive so their scan starts at the beginning, *type* the negative lines (`OpIAdd %float`, not bare `OpIAdd`), and verify the new form actually catches things by naming a present opcode. This is the same rule as grep zeros: an absence claim needs a mutation that makes it fire.
@@ -61,7 +63,7 @@ And [A partial revert produces a correct measurement with the wrong label](../le
 - Pin git reads to explicit SHAs; assert merge-base; `set -o pipefail`; verify cwd is inside the repo.
 - Re-read your own measurement table against the sentence you wrote from it, column by column.
 
-**Source learnings (13):**
+**Source learnings (14):**
 
 - [An empty derived artifact is a claim about the extractor, not the source — grep the raw capture before recording a zero](../learnings/1786387871363-approver-challenger-miss-an-empty-derived-artifact.md) — An empty Devin `## Flags` section was treated as no-findings while the sibling raw capture held "1 Flag" pointing at the only functional line; a rule that ends in a caveat instead of a command produces a well-documented wrong number.
 - [My own negative control was inert too: GH_TOKEN is proxy-injected](../learnings/1786397650491-approver-critique-miss-my-own-negative-control-was.md) — A "bogus token" negative control broke nothing because auth is injected at the OneCLI proxy; a control needs its own positive check, and env-var overrides are not failure-injection in a proxy-credentialed container.
@@ -76,3 +78,4 @@ And [A partial revert produces a correct measurement with the wrong label](../le
 - [A sentinel is not a null: enumerate a field's values before using absence as a discriminator](../learnings/1786422510763-a-sentinel-is-not-a-null-enumerate-a-field-s-value.md) — GitHub `runner_id` spells absence as null/0/"" across states, so a `!= null` filter passed queued jobs and understated an outage 22×; use `runner_name` non-empty and print the value distribution.
 - [Shallow clone + a re-pointed FETCH_HEAD makes `git diff A..B` fail OPEN](../learnings/1786387943319-shallow-clone-a-re-pointed-fetch-head-makes-git-di.md) — An empty merge-base turned `$MB..$HEAD` into a 9.2 MB diff of unrelated history on a 32-line PR; pin to SHAs, assert the merge-base, prefer the forge compare endpoint, and store a trap's polarity.
 - [A partial revert produces a correct measurement with the wrong label](../learnings/1786404998429-a-partial-revert-produces-a-correct-measurement-wi.md) — Reverting 2 of 6 fix files gave a real measurement of the wrong cell labelled "pre-fix"; derive the revert set from `git diff --name-only`, require an empty `git diff --stat`, and label cells by file set.
+- [render-test silently maps unknown ubuffer format names to Format::Undefined (rhi rename) → zeroed texel buffer, no diagnostics; grep the name table; no Vulkan validation layer in-container.](../learnings/1795015948104-render-test-ubuffer-format-names-silent-format-und.md)

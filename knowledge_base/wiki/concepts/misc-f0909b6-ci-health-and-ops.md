@@ -3,7 +3,7 @@ title: CI Health, Monitoring, Staleness Signals, and Operational Hygiene
 type: concept
 group: misc
 tags: [ci-health, monitoring, stale-data, nightly, sanitizer, github-app-token, slang-pr-report, doc-comments, review-comments]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -72,6 +72,26 @@ already runs under ASan on every PR because `ci.yml`'s call to `ci-slang-sanitiz
 default `server-count: 2`, so bumping the nightly's `server-count: 1` would remove unique in-process
 coverage ([sanitizer multi-server transport already runs under ASan on PR
 CI](../learnings/1787568663413-slang-sanitizer-multi-server-transport-already-run.md)).
+Sweep-operational corollaries: when the wake payload itself dies on the quota-exhaustion 403, the
+whole sweep is reconstructible after the window resets (`api_usage_probe.py start`'s `reset` epoch
+decodes the wait) — pull `repos/<owner>/<repo>/pulls?state=open&sort=updated` pages 1-2 with FULL
+head shas, run the legitimate-unchanged gate first (skips ~3 PRs free), probe remaining heads via
+`commits/<sha>/check-runs` with a jq filter for non-green (catches WAITING jobs `gh pr checks`
+omits), cross-ref `rerun-tracker.json` for PRs that already have fresh verdicts, and re-derive a
+lost `evicted` from `gh run list --event merge_group --created '>24h ago'` (all-success = no
+evictions); measured cost 892 calls for a full reconstruction, well under budget. Mid-loop
+transient `app_not_connected` JSON blobs in `gh api` output must be retried ~5s later before
+trusting a "failure" row ([reconstructing a sweep when the wake payload 403s on quota
+exhaustion](../learnings/1795075669372-reconstructing-a-sweep-when-the-wake-payload-403s-.md)).
+And a tracker-recorded head SHA can be CORRUPTED (a dropped character → 39 chars): every probe of
+it 422s "No commit found for SHA", which reads like a force-push or API flake but is neither —
+re-derive the head via `gh pr view <n> --json headRefOid` and compare character-by-character
+before concluding the commit vanished; the fix is one `touch_tracker_verdict(..., head_sha=<live
+sha>)` overwrite, and passing live-gh-derived SHAs (never retyped) prevents recurrence (note also:
+this container's `gh pr view` has no `mergeQueueEntry` field — idempotency-check a merge-queue
+requeue via `autoMergeRequest`/`state` instead) ([tracker head_sha can be corrupted (one char
+dropped) — 422 "No commit found" that isn't a
+force-push](../learnings/1795090035878-tracker-head-sha-can-be-corrupted-one-char-dropped.md)).
 
 ## Read the terminal state; probe the actual operation
 
@@ -131,7 +151,7 @@ prose, since a mention can be relayed onward into a prohibited GitHub ping ([ded
 endorse a bot-flagged finding, don't re-post
 it](../learnings/1787738047335-dedup-residual-comment-endorse-a-bot-flagged-findi.md)).
 
-**Source learnings (11):**
+**Source learnings (13):**
 - [Slang sanitizer multi-server transport already runs under ASan on PR CI](../learnings/1787568663413-slang-sanitizer-multi-server-transport-already-run.md) — grep ALL callers of a reusable workflow and check each caller's input defaults before "fixing" a coverage gap.
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md) — read the artifact + last-line result event; a growing stream = alive = error match is false.
 - [A frozen-field heuristic must re-arm when the number changes](../learnings/1787606627212-a-frozen-field-heuristic-must-re-arm-when-the-numb.md) — the instant a believed-frozen numeric field moves, treat it as a fresh signal.
@@ -143,3 +163,5 @@ it](../learnings/1787738047335-dedup-residual-comment-endorse-a-bot-flagged-find
 - [Source doc comments: client-facing, no off-github refs, no change-narration](../learnings/1787573555990-source-doc-comments-client-facing-no-off-github-re.md) — a decl comment is a doc comment even in .cpp; keep only the enduring non-obvious WHY.
 - [slang-pr-report: two on-disk copies at different versions; select by capability not path](../learnings/1787593536039-slang-pr-report-two-on-disk-copies-at-different-ve.md) — probe `--help` for the feature; robust to relocation and staleness.
 - [Dedup residual comment — endorse a bot-flagged finding, don't re-post it](../learnings/1787738047335-dedup-residual-comment-endorse-a-bot-flagged-findi.md) — read existing bot reviews first; lead with the point no bot raised; drop the @ even internally.
+- [Reconstructing a sweep when the wake payload 403s on quota exhaustion](../learnings/1795075669372-reconstructing-a-sweep-when-the-wake-payload-403s-.md) — pages 1-2 of /pulls + legitimate-unchanged gate + per-head check-runs + tracker cross-ref; retry transient app_not_connected blobs; 892 calls for a full reconstruction.
+- [Tracker head_sha can be corrupted (one char dropped) — 422 "No commit found" that isn't a force-push](../learnings/1795090035878-tracker-head-sha-can-be-corrupted-one-char-dropped.md) — compare against `gh pr view --json headRefOid` char-by-char; fix with one touch_tracker_verdict overwrite; no mergeQueueEntry field — use autoMergeRequest/state.

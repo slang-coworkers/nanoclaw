@@ -3,7 +3,7 @@ title: PR-review runner tooling and gh pr diff file-status pitfalls
 type: concept
 group: ci-tooling
 tags: [slang-pr-review, clarity-review-runner, patch-mode, gh-pr-diff, name-status, external-repo, reviewer]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -33,6 +33,10 @@ Operational traps in the local PR-review runner skills (`slang-pr-review-runner`
   path-filtered grep over the raw diff** — git's `deleted file mode`/`new file mode` markers are on
   separate, pathless lines, so a path filter silently drops every deletion → deletions under-count
   to zero → "file kept" when it was deleted.
+- **A slang-rhi review needs REPO_ROOT = a slang-rhi tree at the PR base, with REVIEW.md + agents +
+  skills committed at `origin/master` via a scaffolding commit** (Reviewer C's fresh worktree drops
+  untracked copies; the bare-clone branch must be named master). Verify-build: GLFW tests/examples
+  OFF; never `install_packages` mid-review.
 
 ## Runner invocation and patch-mode mechanics
 
@@ -49,6 +53,29 @@ code — a ~15-25min pipeline that "finishes" in <1s failed. The newer atom's cl
 `--max-budget-usd`/`--max-turns`/`--model`/`-h` and exits 1 with `unknown flag` on anything else, as
 the older atom says. Both scripts take flags only, and a leading verb token fails instantly without
 minting a run dir.
+
+Reviewing a **slang-rhi** PR with the runners (pr mode) adds a scaffolding requirement: `REPO_ROOT`
+must be a **slang-rhi tree at the PR base**, not the slang checkout — the inner reviewers read
+"surrounding code context" from REPO_ROOT and would otherwise explore the wrong repo — and because
+Reviewer C creates a fresh `git worktree add` from REPO_ROOT, the required `REVIEW.md`, `.claude/agents/*.md`
+and `.claude/skills/slang-review-*` must be **committed** at `origin/master` (untracked copies don't
+survive the worktree). Proven recipe on slang-rhi#977 (2026-11-18): detached worktree of the local
+slang-rhi clone at the base sha → copy the scaffolding from the slang checkout → one "review
+scaffolding" commit → `git clone --bare --shared` to `bare-<pr>.git` → `update-ref refs/heads/master
+<scaffold-sha>` + `symbolic-ref HEAD refs/heads/master` (the branch **must be named master** —
+slang-rhi's default branch is main but the runners fetch/checkout `origin/master`) → clone
+`wt-<pr>-revA/revC` from the bare. The diff still comes fresh from `gh pr diff`, so diff-integrity is
+unaffected; `context.json`'s `base_sha` just records the scaffold sha. Two operational riders: the
+slang-rhi verify build needs `-DSLANG_RHI_BUILD_TESTS_WITH_GLFW=OFF -DSLANG_RHI_BUILD_EXAMPLES=OFF`
+on this Linux container (GLFW's configure dies on missing Xinerama headers, and either option pulls
+it in), and never `install_packages` mid-review — a container rebuild kills the detached reviewers.
+The new plain doctest TEST_CASEs (guarded `#if SLANG_RHI_ENABLE_CPU`, no GPU needed) validated the
+CPU-backend headless test pattern: revert drill (`git checkout <base> -- src/cpu/*.cpp`, rebuild,
+rerun) cleanly showed the tests fail on base and pass on head, and the `-tc='*cpu-texture*'` filter
+count (5 matched + 1091 skipped) proved them registered, not vacuous. Devin caveat from the same
+review: on a fix PR Devin can list a bug whose title is the issue symptom the PR fixes while its own
+AI Analysis describes the fix approvingly — always adjudicate a Devin bug card against the current
+head with a live run before counting it ([slang-rhi PR review: REPO_ROOT scaffolding-commit recipe and verify-build flags](../learnings/1795034941814-slang-rhi-pr-review-repo-root-scaffolding-commit-r.md)).
 
 Patch mode has two independent bugs.
 [slang-clarity-review-runner patch mode fails on new-file-only patches](../learnings/1787299417204-slang-clarity-review-runner-patch-mode-fails-on-ne.md):
@@ -115,7 +142,7 @@ has siblings to sweep. (The two atoms disagree only on the initially-guessed cau
 deleted-branch-404 — which both retract in favor of the path-filtered-grep cause; the 404 trap is real
 but independent, not what happened here.)
 
-**Source learnings (7):**
+**Source learnings (8):**
 
 - [CI-infra patches referencing external repos need coordinator-side verification](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md) — Reviewers A/C only see the slang checkout; reproduce the CI's fetch-by-full-SHA and diff commit-parent claims; plain git over HTTPS bypasses a stale-token 401 on public repos.
 - [slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity arg exits 1 instantly, reading as "no findings"; verify clarity-review.md has real content (its compose-and-run.sh claim is wrong: that script is flags-only too).
@@ -124,3 +151,4 @@ but independent, not what happened here.)
 - [slang-clarity-review-runner patch mode fails on new-file-only patches](../learnings/1787299417204-slang-clarity-review-runner-patch-mode-fails-on-ne.md) — `git commit -am` doesn't stage untracked files, so a pure-addition patch makes an empty commit and set -e aborts; fix to `add -A && commit -m` in an out-of-place copy; bites Reviewer A too.
 - [slang PR-review runners: patch mode hard-applies onto origin/master, ignores --base](../learnings/1787579499769-slang-pr-review-runners-patch-mode-hard-applies-on.md) — --base is parsed but only branch mode uses it; patch a PR whose target code exists only on its branch via a detached worktree + pre-staged diff driving the inner claude CLI; never mutate the shared tree.
 - [Claude PR Review CLI version moves with the floating claude-code-action@v1 tag, not with repo changes](../learnings/1793694704618-claude-pr-review-cli-version-moves-with-the-floati.md) — v1.0.267 moved CLI 2.1.316→2.1.317 with the workflow unchanged; release times via GraphQL (REST 401s through the proxy); version from the "Installing Claude Code" log line.
+- [slang-rhi#977: REPO_ROOT scaffolding-commit recipe (bare clone named master), GLFW-off verify flags, CPU doctest revert drill, Devin bug-card caveat.](../learnings/1795034941814-slang-rhi-pr-review-repo-root-scaffolding-commit-r.md)

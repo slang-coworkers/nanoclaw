@@ -3,7 +3,7 @@ title: "GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Class
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, job-logs, auth-401, summarizing-tools, absence-claims, controls, slang]
-source_count: 37
+source_count: 38
 ---
 
 # GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Classed Auth & Absence Controls
@@ -24,7 +24,7 @@ Many GitHub reads answer "nothing here" when the truth is "unreadable", and a ze
 
 ## Job logs and `steps[]` fail toward "no output"
 
-Read the byte count and HTTP status, never the grep count.
+Read the byte count and HTTP status, never the grep count. The same holds for raw `curl` pipelines: in `curl -sf URL | jq '...'`, the pipeline's exit code is **jq's**, and jq reading EMPTY input prints nothing and **exits 0** — so a GitHub 403/500 reads as "empty array"/"no output" and an `|| echo FAILED` guard never fires (two occurrences in two wakes, 2026-11-19). Guard by fetching to a variable/file FIRST (`OUT=$(curl -sf ...); rc=$?` — check `rc` and the byte count), or drop `-f` and have jq check `.message`/`.status`, or use `curl -s -w '%{http_code}'`. That 403 can be the GitHub installation-token quota (6000/hr, shared across `gh` AND raw curl through the OneCLI gateway) exhausted by heavy per-wake polling: recovery is waiting to the documented reset epoch (`date -u -d @<reset>`), and the quota-efficient PR-watch pattern is one `pulls?state=open&sort=updated&direction=desc&per_page=20` call covering all open PR heads, fetching per-PR check-runs only for heads that changed since the last wake ([curl -sf | jq masks GitHub API 403 rate-limit failures](../learnings/1795075322492-curl-sf-jq-masks-github-api-403-rate-limit-failure.md)).
 
 **A cancelled-before-start job has no log, only a 215-byte error body.** For a job with `steps=[]` and `runner_name:""`, `/actions/jobs/<id>/logs` is HTTP 404 `<Error><Code>BlobNotFound</Code>…`, which `gh api` writes to stdout with exit 0, so `grep -c` returns a clean `0` for every signature. The tell is `gh api -i .../logs | head -1` → `HTTP/1.1 404 Not Found` with `X-Ms-Error-Code: BlobNotFound`; a 151-byte body of the same shape is HTTP 410, log expired. `steps=0` with no log blob is **UNTESTED** (nothing ran; a rerun restores signal), not a code failure; in a batch with no blobs, read the sibling that got further. Before trusting a count from a log, assert it is a log: size, HTTP 200, a must-hit control string ([BlobNotFound false 0](../learnings/1786076873413-a-cancelled-ci-job-s-log-endpoint-returns-a-215-by.md)).
 
@@ -90,7 +90,7 @@ Several REST fields return a well-formed value answering a neighbouring question
 
 The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?filter=all` answered **HTTP 502** for runs with `run_attempt > 1` while `/actions/runs/<id>/attempts/<n>/jobs` answered 200. A sweep that swallowed the error reported "0 lost runners" for 11-04, but #14294 listed two runner losses in exactly those runs. A run re-run to green reads `conclusion: success`; the losses exist only in attempt 1. So fetch re-run runs per attempt, record any job-fetch error as a gap, and assert "runs with job data == runs listed" before claiming zero ([502 on re-run runs](../learnings/1793867735899-actions-jobs-filter-all-returns-http-502-on-re-run.md)).
 
-**Source learnings (37):**
+**Source learnings (38):**
 
 - [gh api actions job logs now requires --allow-escape-sequences](../learnings/1795003539770-gh-api-actions-job-logs-now-requires-allow-escape-.md) — 0-byte file + exit 1; ANSI now embedded in step-echo lines (`::group::`)
 - [Never assert from a summarizing tool](../learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md) — enumerate with gh api.
@@ -129,5 +129,6 @@ The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?fi
 - [Fetch a failed job log while the run is in progress](../learnings/1794848874252-fetching-a-failed-github-actions-job-log-while-the.md) — per-job endpoint + --allow-escape-sequences.
 - [Failure triage via check-run annotations when job logs are gated](../learnings/1794888169040-github-actions-failure-triage-use-check-run-annota.md) — one-job jq selector; runner-loss text.
 - [Issue Onboard workflow broken by GraphQL iterationId ID! tightening](../learnings/1794873968836-stale-gh-readonly-queue-refs-from-merged-prs-mimic.md) — rider of the 11-17 TOT scan.
+- [pipeline exit code is jq's, so a 403 reads as "no output"; capture rc + byte count; 6000/hr quota shared across gh and curl; one updated-sorted pulls call covers all PR heads.](../learnings/1795075322492-curl-sf-jq-masks-github-api-403-rate-limit-failure.md)
 
 _Catalog: [index](../index.md)_

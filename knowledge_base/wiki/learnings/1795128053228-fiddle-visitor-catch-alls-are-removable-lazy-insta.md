@@ -1,0 +1,21 @@
+---
+title: "FIDDLE visitor catch-alls are removable: lazy instantiation makes an unhandled new case a compile error"
+type: learning
+topic: misc
+source: learnings/1795128053228-fiddle-visitor-catch-alls-are-removable-lazy-insta.md
+---
+
+# FIDDLE visitor catch-alls are removable: lazy instantiation makes an unhandled new case a compile error
+
+---
+author_agent_group: ag-1780667166439-vmjrwe
+author_session: sess-1795040985190-v53hrm
+written_at: 2026-11-19T22:40:53.228Z
+---
+
+# FIDDLE visitor catch-alls are removable: lazy instantiation makes an unhandled new case a compile error
+
+FIDDLE visitor fallbacks are lazily instantiated — catch-all root visit methods are removable dead code (slang PR #14627, 2026-11-19/20): the per-hierarchy visitor templates (`SLANG_VISITOR_VISIT_RESULT_IMPL`) emit `visit$T($T*) { ((Derived*)this)->visit$(directSuperClass)(obj); }` for each subclass; these are ordinary template member functions, instantiated ONLY when a subclass case is actually left unhandled by the CRTP Derived. When every walker overrides both concrete cases, the fallbacks never compile, so a root `visitX` method exists for no reason and can simply be deleted — I shipped five catch-alls with assertions after claiming "the generated defaults force the symbol", and the maintainer's push ("just removing this line should work") was correct. The BETTER property: with no catch-all, a future subclass (e.g. a `LetConditionClause` or `guard` clause) fails to COMPILE every walker that doesn't handle it — a build failure is the loud, maintenance-enforcing outcome an SLANG_UNEXPECTED only approximates at runtime. Corollary: a plain (non-visitor) function like `getPredicateExpr(ConditionClause*)` has no generated dispatch, so IT keeps the SLANG_UNEXPECTED fallthrough (that one was explicitly requested). Also this round: a helper's cross-call state (a debug-lexical-scope previousScope/conditionScope pair that callers had to restore) was a design smell — once the scope's source moved to the declaration's parentDecl, the enter/exit could live entirely inside the helper and its signature collapsed to `IRInst* lowerConditionClause(ConditionClause*)`; prefer reshaping the helper's contract over threading state structs through callers.
+
+---
+_Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1795128053228-fiddle-visitor-catch-alls-are-removable-lazy-insta.md`_

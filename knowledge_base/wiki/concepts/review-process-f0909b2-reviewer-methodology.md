@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile, probe-matrix, pass-reordering]
-source_count: 27
+source_count: 28
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -198,6 +198,30 @@ valid. Test a *direct* `fwd_diff`/`bwd_diff(f)` and a *differentiated caller* (o
 nvrtc 12.6 works in this container; Metal has no downstream compiler here
 [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md).
 
+A "cannot reproduce locally" triage is often solvable in-container with the GPU: the Khronos validation
+layer ships inside chromium's directory (`/usr/lib/chromium/libVkLayer_khronos_validation.so`), so a
+hand-written `VkLayer_khronos_validation.json` manifest under the workspace plus `VK_LAYER_PATH` and
+`slang-test -enable-debug-layers true` fires the VUIDs the bare driver silently accepts — on slang#14593
+/ PR #14596 this turned an unreproducible render-test bug into a live 0/2 repro and a verifier-replicated
+revert experiment (revert only the fix and the new 2D test fails 0/2 with the exact VUID). The same PR's
+domain notes: `InputTextureDesc::arrayLength`'s 0-sentinel is the documented contract (0 = unspecified →
+non-array; any positive value = explicit array even of one element, honored for 1D/2D/MS/cube; 3D ignores
+the field), and reviewers held every layer to exact wording — "debug-layer" is D3D terminology,
+Vulkan's is "validation layer", and the classification happens host-side once, never in SPIR-V emit
+paths. Small-PR review-cycle cost control: two rounds produced APPROVE_WITH_NITS when the gaps were
+coverage-shaped ("the change is broader than its tests") and the fixer closed them with dx11/dx12/cuda
+legs and a companion test; declines survive when justified at the mechanism level (1D/MS take the
+identical `isArray` branch) rather than by preference, and declines belong in the report/PR prose,
+never in source comments
+([render-test arrayLength 0-sentinel contract; live Khronos VUID repro via chromium layer; two-round review pattern](../learnings/1795024558643-render-test-arraylength-0-sentinel-contract-live-k.md)).
+The same chain re-confirmed the delivery-gate mechanics documented on
+[the critique-gate page](review-critique-gate-and-recording.md): each new inbound re-arms plan+critique
+gates with fresh stage counters, the plan is recorded only by a `Write` tool call (an `Edit` does not
+count), every required stage needs its own fresh codex call carrying `STAGE:`, codex-reply continuations
+must never carry a STAGE line, and any file edit between approve and send re-arms the gate — so write
+the final deliverable first, critique last, send unchanged
+([render-test arrayLength 0-sentinel contract; live Khronos VUID repro via chromium layer; two-round review pattern](../learnings/1795024558643-render-test-arraylength-0-sentinel-contract-live-k.md)).
+
 A reviewer's suggested test snippet needs the same check. On slang#13468 Reviewer A's
 `useBar<IFoo<int>>(a)` hit E99997 (#13469) on head and master; the compiling form reaching the same
 `isInterfaceType(sub)` guard is `useBar<T>(T[2] t) where T : IBar<int>` with `IFoo<int> arr[2]`,
@@ -301,7 +325,7 @@ so the CHECK must reject the buggy variant: `//CHECK: cyclic reference '$inherit
 `//CHECK: cyclic reference` that also matches a wrong `'E'` diagnostic
 [never cite file.cpp:line in durable text; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md).
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: single-block test hid the conjunct; pin emit `SLANG_FAIL` via `CHECK-NOT: glslang`
 - [Stale-CHECK refresh: run the block against the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` never covered case 0
 - [Reject a 'make it valid' remedy: per-EP vs single-EP location](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: valid SPIR-V, silent Location mislink; dawn.node subgroups need a feature flag
@@ -329,3 +353,4 @@ so the CHECK must reject the buggy variant: `//CHECK: cyclic reference '$inherit
 - [Probe a reviewer's remedy patch before adopting it verbatim](../learnings/1793763695844-probe-a-reviewer-s-remedy-patch-before-adopting-it.md) — #14284: 4 bugs over 2 rounds incl. spec-constant `local_size_x` folded as constant; CODE_REVIEW + adversarial probes; iterate members by index
 - [Fixpoint loops require every override to uphold receiver-identity](../learnings/1794935448272-pr-14549-r2-fixpoint-loops-require-every-override-.md) — #14549 r2: `nullptr` on partial progress collapses chained externs after one pass; audit ALL overrides, not just the new one.
 - [Laxer-checker swaps silently drop diagnostics; pass caps don't bound per-pass cost](../learnings/1794941599396-pr-14549-r3-laxer-checker-swaps-silently-drop-diag.md) — #14549 r3: null-sink variant turned a hard error into silent index 0; a pass cap is not a per-pass-cost cap.
+- [render-test arrayLength 0-sentinel contract; live Khronos VUID repro via chromium layer; two-round review pattern](../learnings/1795024558643-render-test-arraylength-0-sentinel-contract-live-k.md) — #14593/#14596: chromium-bundled Khronos layer + VK_LAYER_PATH fires VUIDs the bare driver accepts; 0-sentinel contract wording; coverage-shaped gaps close in two rounds; declines in prose not comments.

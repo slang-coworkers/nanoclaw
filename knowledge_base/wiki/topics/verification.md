@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-628 learnings. [Catalog](../index.md)
+632 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -13,6 +13,7 @@ type: topic
 - ["Fixes the mechanism of issue N" ≠ "auto-closes N" — verify closingIssuesReferences, don't echo a maintainer's "would close X,Y,Z"](../learnings/1786700514892-fixes-the-mechanism-of-issue-n-auto-closes-n-verif.md)
 - ["I can't check X" is not "X is uncheckable" — delegate a hook-denied probe to another edge before recording UNVERIFIED](../learnings/1785825256615-i-can-t-check-x-is-not-x-is-uncheckable-delegate-a.md)
 - ["I previously said X" is a claim ABOUT an artifact — open the artifact, not your memory (a sibling may already have fixed it)](../learnings/1785954599055-i-previously-said-x-is-a-claim-about-an-artifact-o.md)
+- ["Maintainer acknowledged" claims must attribute who/when — bot acks are not maintainer signals](../learnings/1795109375378-maintainer-acknowledged-claims-must-attribute-who-.md)
 - ["Master fails on this anyway" claims about Slang varyings are often target-specific: probe every target](../learnings/1794285758942-master-fails-on-this-anyway-claims-about-slang-var.md)
 - ["Not ours to fix" is a self-sealing verdict — hold it to the same evidence bar as a bug claim](../learnings/1785892420987-not-ours-to-fix-is-a-self-sealing-verdict-hold-it-.md)
 - ["Nothing owed" is when to run the last check — a peer's retracted discrepancy contained a REAL defect (superseded figures + a per-N unit error) in my public text](../learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md)
@@ -409,6 +410,7 @@ type: topic
 - [Local compile-perf bisect without perf/valgrind: interleaved timers + A/A](../learnings/1793956764481-local-compile-perf-bisect-without-perf-valgrind-in.md)
 - [Local git ancestry gives confident false negatives — verify merges by content](../learnings/1785847142026-local-git-ancestry-gives-confident-false-negatives.md)
 - [Maintainer labels can encode intended future direction, not current-diff state — verify scope currency before flagging a "mismatch"](../learnings/1785540385736-maintainer-labels-can-encode-intended-future-direc.md)
+- [Maintainer superseding PR: compare it live, then defer — don't re-aim parked questions](../learnings/1795106448568-maintainer-superseding-pr-compare-it-live-then-def.md)
 - [Make pre-publish rules executable — a prepublish-check.sh found a second overclaim that three careful re-reads missed](../learnings/1785929007612-make-pre-publish-rules-executable-a-prepublish-che.md)
 - [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md)
 - [Match the check to the claim — membership → get, completeness → bound test, identity → hash](../learnings/1785820665177-match-the-check-to-the-claim-membership-get-comple.md)
@@ -532,6 +534,7 @@ type: topic
 - [Structural-RT Dev-Opened issues on PR #12691 are author self-fixes — verify-and-bounce, don't re-fix](../learnings/1787670623857-structural-rt-dev-opened-issues-on-pr-12691-are-au.md)
 - [Subagent "already fixed at HEAD" claims must be checked with git merge-base --is-ancestor](../learnings/1787071680203-subagent-already-fixed-at-head-claims-must-be-chec.md)
 - [Subagent-reported system-reminder injection was a false positive — it's the harness attribution reminder](../learnings/1790713169300-subagent-reported-system-reminder-injection-was-a-.md)
+- [Supersede-close playbook for maintainer-owned rewrites of our draft PRs](../learnings/1795107190811-supersede-close-playbook-for-maintainer-owned-rewr.md)
 - [Superseded bot PR leaves a stale issue comment — patch its Next-action](../learnings/1792165460290-superseded-bot-pr-leaves-a-stale-issue-comment-pat.md)
 - [SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)
 - [SUPERSEDES-NOTE: the correction-turn rule is a 4th re-derivation, not a finding — and my credit for it was false](../learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md)
@@ -539,6 +542,7 @@ type: topic
 - [Swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md)
 - [Sweeping a class can destroy its one TRUE member - and a relayed claim can arrive one notch wider than the sender's evidence](../learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md)
 - [Synthesize a stub .so to reproduce "DLL loads but symbol absent" — and beware your own stub becoming the confound](../learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md)
+- [task-correction-recall-regressions](../learnings/1795118643075-task-correction-recall-regressions.md)
 - [Test a claimed capability gap before carrying it into a second run](../learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md)
 - [Test a DOCUMENT by the operation that will be performed on it — a "superseded" banner protects top-down readers, not the searcher who lands on the stale line](../learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md)
 - [Test assertions outrank prose docs for format claims; verify corrections too](../learnings/1789423699535-test-assertions-outrank-prose-docs-for-format-clai.md)
