@@ -3,7 +3,7 @@ title: "Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission"
 type: concept
 group: slang-backends
 tags: [spirv, descriptor-handle, bindless, spvBindlessTextureNV, spvDescriptorHeapEXT, descriptor-heap, nonuniform, constantbuffer, std140, acceleration-structure]
-source_count: 38
+source_count: 40
 ---
 
 # Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission
@@ -40,9 +40,11 @@ source_count: 38
 
 ## NonUniformResourceIndex propagation
 
-**DescriptorHandle round-trip (PR #12116, #12161).** The float pass (`slang-ir-float-non-uniform-resource-index.cpp`) adds SPIR-V-gated `kIROp_CastUInt2ToDescriptorHandle` and `kIROp_MakeVector` cases that float the wrapper to the heap index, fixing VUID-RuntimeSpirv-None-10148 on the default heap path. The `floatMode != SPIRV` asymmetry follows the file-header contract (textual = hint; SPIR-V decoration is position-specific): a nit ([#12116](../learnings/1784536684181-slang-12116-nonuniform-float-pass-guard-asymmetry-.md)). On HLSL/GLSL the mark nests in `uint2(...).x` (#12161, checked via `-emit-spirv-via-glsl`). For the nested `heap[uvec2(nonuniformEXT(i),0U).x]` (pre-#12263) glslang decorates only the index `OpCopyObject`; canonical `heap[nonuniformEXT(i)]` gets index, `OpAccessChain` and `OpLoad`; DXC flags both. glslang never decorates the `OpSampledImage` of `sampler2D(tex[nonuniformEXT(i)], s[...])`, even for plain arrays (Slang's direct path does). List the ids `OpDecorate ... NonUniform` targets; `grep -c NonUniform` also counts `OpCapability ShaderNonUniform` and comments ([nested mark](../learnings/1784539603707-nonuniform-on-descriptorhandle-round-trip-lands-ne.md), [glslang](../learnings/1791406267340-glslang-propagates-nonuniformext-only-from-the-fin.md)).
+**DescriptorHandle round-trip (PR #12116, #12161).** The float pass (`slang-ir-float-non-uniform-resource-index.cpp`) adds SPIR-V-gated `kIROp_CastUInt2ToDescriptorHandle` and `kIROp_MakeVector` cases that float the wrapper to the heap index, fixing VUID-RuntimeSpirv-None-10148 on the default heap path. The `floatMode != SPIRV` asymmetry follows the file-header contract (textual = hint; SPIR-V decoration is position-specific): a nit ([#12116](../learnings/1784536684181-slang-12116-nonuniform-float-pass-guard-asymmetry-.md)). As of slang HEAD `410071448` (2026.22.1-22, post-#12263) the textual-target emitters produce the canonical `resource[NonUniformResourceIndex(i)]` / `nonuniformEXT(i)` index form for BOTH the descriptor-heap subscript spelling AND the `.Handle` construction spelling — the nested `uint2(NonUniformResourceIndex(i), 0U).x` shape of the pre-#12263 era is stale (#12161, PR #14667); when relaying any wiki claim about *current emitted output* to a fix chain, mark it a premise to re-verify at the working HEAD, not ground truth ([nested form stale at HEAD](../learnings/1795193515261-12161-nested-non-uniform-emit-form-is-stale-head-e.md)). For the nested `heap[uvec2(nonuniformEXT(i),0U).x]` form glslang decorates only the index `OpCopyObject`; canonical `heap[nonuniformEXT(i)]` gets index, `OpAccessChain` and `OpLoad`; DXC flags both. glslang never decorates the `OpSampledImage` of `sampler2D(tex[nonuniformEXT(i)], s[...])`, even for plain arrays (Slang's direct path does). List the ids `OpDecorate ... NonUniform` targets; `grep -c NonUniform` also counts `OpCapability ShaderNonUniform` and comments ([glslang](../learnings/1791406267340-glslang-propagates-nonuniformext-only-from-the-fin.md)).
 
 **Through arithmetic (#13072).** `buffers[NUR(i)*i][0]` / `.Load(...)` lowers to a CALL: the float pass floats the mark through `mul` but dead-ends at the call argument. The gate is `findNonuniformIndexInst` (`slang-ir-specialize-function-call.cpp`), which walked only `IntCast`; the float pass's arithmetic path covers only same-function access. Use a worklist + visited set (naive recursion took >10 s on a 29-node chain), re-insert the mark with `newParam->getFullType()`, keep one `isNonUniformIndexArithmeticOp` predicate ([specializer fix](../learnings/1789465468604-nonuniformresourceindex-through-arithmetic-fix-is-.md)).
+
+**Call specialization on heap-fetched arguments is all-or-nothing (#14652).** `canSpecializeCall` (slang-ir-specialize-function-call.cpp) blocks the WHOLE call from specializing when any one argument is unsuitable: a helper taking (heap-fetched `Texture2D`, heap-fetched `ByteAddressBuffer`) keeps BOTH parameters because the texture heap-fetch is unsuitable on direct SPIR-V, and the surviving ByteAddressBuffer parameter then triggers the module-wide shared-type retype and the exact #14652 spirv-val failure. Widening heap-fetch suitability to all resource types is NOT safe-by-default — it reshapes texture call sites that tests/bugs/13074 pins (heap indices get threaded instead of fetched texture values); verify mixed-signature helper shapes in any descriptor-heap specialization work ([all-or-nothing specialization](../learnings/1795162996338-slang-call-specialization-is-all-or-nothing-one-un.md)). Mechanism-claim guard from the same chain: `-emit-spirv-directly` DEFAULTS TO TRUE (`SLANG_EMIT_SPIRV_DEFAULT`, slang-compiler-options.h), so a `-target spirv` command without the flag still takes the direct path where `isIllegalSPIRVParameterType` (all texture types + ByteAddressBuffers want specialization) governs — when a claim hinges on a flag's absence, check the flag's default first and settle it with a `-dump-ir-after <pass>` dump under the test's exact options before rewording tests or comments to match the claim ([verify flag defaults with an IR dump](../learnings/1795224184868-slang-emit-spirv-directly-defaults-true-verify-fla.md)).
 
 ## spvBindlessTextureNV and DescriptorHandle width (#12185, #12186)
 
@@ -82,7 +84,7 @@ For `InterlockedOr(h[p], 1)` on `RWTexture2D<uint>.Handle h`, a plain global get
 
 [[wiki/concepts/slang-backends-spirv.md]] · [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] · [[wiki/concepts/slang-backends-spirv-image-access-decorations.md]] · [[wiki/concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md]] · [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]] · [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] · [[wiki/concepts/slang-backends-spirv-capabilities-and-version-gating.md]] · [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] · [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] · [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]]
 
-**Source learnings (38):**
+**Source learnings (40):**
 - [#12051 reload is an emit artifact](../learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)
 - [CORRECTION #12051: emit-time](../learnings/1784075115135-correction-slang-12051-spir-v-descriptor-reload-is.md)
 - [#12111 isMovableInst](../learnings/1784269362740-slang-12111-spir-v-legalize-pass-ordering-removere.md)
@@ -95,9 +97,11 @@ For `InterlockedOr(h[p], 1)` on `RWTexture2D<uint>.Handle h`, a plain global get
 - [label from OpTypeFunction](../learnings/1784128407283-slang-bindless-noinline-image-passes-as-uint-index.md)
 - [#12004 isArray gate](../learnings/1783527024741-slang-12004-sampler-vs-texture-noinline-spir-v-par.md)
 - [#12116 nit](../learnings/1784536684181-slang-12116-nonuniform-float-pass-guard-asymmetry-.md)
-- [textual mark nests](../learnings/1784539603707-nonuniform-on-descriptorhandle-round-trip-lands-ne.md)
+- [nested form stale at HEAD: canonical NonUniformResourceIndex(i) for both spellings](../learnings/1795193515261-12161-nested-non-uniform-emit-form-is-stale-head-e.md) — re-verify emitted-output claims at the working HEAD
 - [glslang final index only](../learnings/1791406267340-glslang-propagates-nonuniformext-only-from-the-fin.md)
 - [NUR through arithmetic (#13072)](../learnings/1789465468604-nonuniformresourceindex-through-arithmetic-fix-is-.md)
+- [call specialization is all-or-nothing; one unsuitable arg blocks the whole call (#14652)](../learnings/1795162996338-slang-call-specialization-is-all-or-nothing-one-un.md) — widening heap-fetch suitability reshapes 13074-pinned call sites
+- [-emit-spirv-directly defaults true; verify flag defaults with a -dump-ir-after before trusting flag-absence claims](../learnings/1795224184868-slang-emit-spirv-directly-defaults-true-verify-fla.md)
 - [#12185 producer over-broadcasts](../learnings/1784687930584-slang-12185-spvbindlesstexturenv-descriptorhandle-.md)
 - [ONE predicate](../learnings/1784697407327-emit-switch-accept-set-a-legalization-guard-that-m.md)
 - [uint64 under bindless](../learnings/1784762549887-descriptorhandle-is-uint64-native-under-spvbindles.md)

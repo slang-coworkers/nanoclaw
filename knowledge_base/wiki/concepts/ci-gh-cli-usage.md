@@ -3,7 +3,7 @@ title: "gh CLI Usage & PR/Issue Mechanics"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, pr, issues, workflow, bot-process, slang]
-source_count: 26
+source_count: 27
 ---
 
 # gh CLI Usage & PR/Issue Mechanics
@@ -78,6 +78,8 @@ gh issue view <n> --json number,title,state,author,labels,body
 
 ([gh issue view --comments can return empty; use --json or gh api for comments](../learnings/1782389247211-gh-issue-view-comments-can-return-empty-use-json-o.md))
 
+Issue-comment *replies* have no API threading at all: GraphQL has no `addIssueComment` mutation (the real one is `addComment` with `AddCommentInput{subjectId, body}` — no `replyToId`), and REST `POST /repos/*/issues/*/comments` has no in-reply-to either. For a "reply to issue comment <id>" task, post a **top-level comment that opens with the @mention of the commenter** — GitHub's UI surfaces it as the latest reply and the mention notifies them. (PR *review* comments DO have a reply endpoint: `POST /repos/*/pulls/*/comments/<id>/replies`.) Rider for the opencode container: the Write tool gets PermissionDenied on `/tmp/opencode` — write GitHub comment body files under `/workspace/agent/reports/` instead (existing convention: `<issue>-issue-comment.md`) ([issue-comment replies have no API threading](../learnings/1795209996527-github-issue-comment-replies-have-no-api-threading.md)).
+
 ## Verifying release artifacts vs. reporter claims
 
 When a reporter says an official release artifact has a version mismatch, download and inspect the actual artifact before routing a fix. The zip ships `include/slang-tag-version.h` (contains the embedded version) and the binaries. `slang-compiler.dll` is the module that implements `getBuildTagString`; `slang.dll` is a ~156KB re-export shim. CI run logs expire after ~few weeks (HTTP 410 Gone), so the artifact is often the only remaining ground truth. A `strings` grep on the binary is the authoritative check ([Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)).
@@ -136,7 +138,7 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API, `GET /repos/shader-slang/slang/actions/runs?event=schedule&per_page=20` returned a **stale cached page** (newest run 08-30) even though nightly runs had executed that morning — it silently looked like nothing ran. It recurred on 2026-09-28: `?event=schedule&per_page=40` served June/July runs of unrelated scheduled workflows (CI Health, Populate sccache), a listing that reads like "latest schedule runs" and is not. The **reliable path is per workflow id**: list `actions/workflows?per_page=100`, keep names containing "nightly"/"cmake options", then read `actions/workflows/<id>/runs?per_page=4` for each. On slang "nightly green" means ALL of them — 8 scheduled nightlies (Slang Test, VKGLCTS, MDL Perf, Remix, Coverage, Sanitizer, Sascha, Falcor) plus the weekly CMake Options run — and in a `created=` filter the `>=` must be URL-encoded as `%3E%3D`, or the unauthenticated API returns non-JSON ([event=schedule run listing is stale — query nightlies per workflow id](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)). A cheaper approximation is `GET .../actions/runs?branch=master&per_page=100`, then client-side filter run names containing "Nightly" and take the newest per name (returns current conclusions — Nightly Slang Test / Sascha / Falcor / VKGLCTS / MDL Perf). Caveats: a burst of per-PR runs can consume the 100-run master window and push an infrequent nightly (e.g. `Nightly MDL Perf Test`) out of it — so "no runs found for workflow X in last 100" is NOT "X didn't run" (query that workflow-id's runs endpoint for its own history); and `?status=failure&per_page=N` reliably surfaces in-window failures and distinguishes schedule/master (nightly regressions) from pull_request/workflow_dispatch/merge_group events (per-PR churn, not master regressions) ([GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)).
 
-**Source learnings (26):**
+**Source learnings (27):**
 - [GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — unauth event=schedule can be a stale cache; filter master runs by name for nightly conclusions
 
 - [gh search prs misses recent open PRs](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
@@ -164,5 +166,6 @@ Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API,
 - [GitHub search index lag hides recently closed PRs from closed:/is:merged queries](../learnings/1790756182955-github-search-index-lag-hides-recently-closed-prs-.md) — a PR closed ~2h earlier was missing from closed:/merged: queries; report unverified; slangpy has no Discussions
 - [GitHub sub-issues POST takes the numeric issue id](../learnings/1794422434280-github-sub-issues-post-takes-the-numeric-issue-id-.md) — sub_issues_summary lags; render-test PassThrough is effectively unread
 - [GitHub GraphQL updateIssue uses `id`, not `issueId`](../learnings/1794893025063-github-graphql-updateissue-uses-id-not-issueid.md) — issue-type setting in triage
+- [GitHub issue-comment replies have no API threading](../learnings/1795209996527-github-issue-comment-replies-have-no-api-threading.md) — post a top-level comment opening with the @mention; PR review comments do have a /replies endpoint
 
 _Catalog: [[wiki/index.md]]_

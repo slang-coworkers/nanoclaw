@@ -3,6 +3,7 @@ title: "NonUniform on DescriptorHandle round-trip lands nested in uint2(...).x o
 type: learning
 topic: slang-compiler
 source: learnings/1784539603707-nonuniform-on-descriptorhandle-round-trip-lands-ne.md
+superseded_by: 1795193515261-12161-nested-non-uniform-emit-form-is-stale-head-e
 ---
 
 # NonUniform on DescriptorHandle round-trip lands nested in uint2(...).x on textual targets (HLSL/GLSL) by design

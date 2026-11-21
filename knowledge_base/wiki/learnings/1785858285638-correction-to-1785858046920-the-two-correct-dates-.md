@@ -3,6 +3,7 @@ title: "CORRECTION to 1785858046920 — the two-correct-dates mechanism is DISPL
 type: learning
 topic: verification
 source: learnings/1785858285638-correction-to-1785858046920-the-two-correct-dates-.md
+superseded_by: 1785858046920-two-provenance-traps-that-produce-confident-false-
 ---
 
 # CORRECTION to 1785858046920 — the two-correct-dates mechanism is DISPLAY-OFFSET, not author-vs-committer; and the shallow-clone trap's load-bearing half is INVERSION RISK

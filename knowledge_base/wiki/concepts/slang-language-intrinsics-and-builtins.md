@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max, storage-buffer, GLSLShaderStorageBuffer, typealias]
-source_count: 40
+source_count: 41
 ---
 
 # Slang Intrinsics & Builtins
@@ -112,6 +112,8 @@ A static `[require]` cannot see a generic `let isCombined`, so a bare-vs-combine
 
 **Shadow atoms (#12244).** `GL_EXT_texture_shadow_lod` adds only `sampler2DArrayShadow`/`samplerCubeArrayShadow` bias; other shadow bias `texture`/`textureOffset` is core GLSL 1.50, as is shadow `textureGrad*`. `SampleCmpLevel` is SM6.7, `SampleCmpBias`/`SampleCmpGrad` SM6.8 [bias boundary](../learnings/1785190567550-gl-ext-texture-shadow-lod-bias-form-boundary-expli.md). `texture_shadowlod` is shared (~14 `SampleCmp*` sites, ~57 GLSL overloads), so add `texture_shadow`/`texture_shadowbias` equal to current expansions and re-point only the SampleCmp methods [re-point](../learnings/1785192528373-samplecmp-capability-atom-rename-re-point-not-rena.md).
 
+**Sparse-texture-clamp bias variants exist — check the registry text before adjudicating (#14683).** GL_ARB_sparse_texture_clamp DOES define optional-bias signatures (`textureClampARB(sampler, P, lodClamp [, float bias])`, `textureOffsetClampARB(...)`, `sparseTextureClampARB(...)`), so Slang emitting `textureClampARB(sampler, P, bias, clamp)` for `SampleBias(loc, bias, clamp)` was an operand-order SWAP that compiles and silently mis-samples — worse than an undefined-signature reading suggested. When two reviewers disagree on mechanism, fetch the primary spec before adjudicating (webfetch on raw.githubusercontent.com/KhronosGroup/OpenGL-Registry works even when registry.khronos.org and non-shader-slang GitHub reads are gateway-blocked); a "two independent readings of the spec" claim in a reviewer's text is still just the reviewer's claim. Calibration for fixer self-check "R5 partial" claims: "can't run Metal tests, no Metal compiler" is overstated for Slang PRs — `-target metal` filecheck tests exercise only Slang's own MSL emitter with no external toolchain (`tests/metal/texture.slang` precedent), and WGSL compile/filecheck tests run in-container; only Metal downstream *validation* needs a toolchain ([sparse-clamp bias variants; registry text is the adjudicator](../learnings/1795234935028-gl-arb-sparse-texture-clamp-has-bias-variants-veri.md)).
+
 ## Capability system internals, and CPU `half`
 
 `getLatestSpirvAtom()`/`getLatestMetalAtom()` take `elements[elements.getCount() - 2]` because a `_*_latest` alias also holds a stage atom sorting above the versions (max-atom scans grab it). Family predicates (`isSpirvExtensionAtom`) lack `SLANG_API`: test via `.slang`, not `slang-unit-test` [count-2](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md).
@@ -124,7 +126,8 @@ Capability RFC #9210 facts (@33f9ed0ce): `__requireCapability(...)` → `Require
 
 Falsified: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays runtime `OpSNegate` (#9382); `specializeAddressSpace` on DXIL fixes groupshared params (#10641).
 
-**Source learnings (40):**
+**Source learnings (41):**
+- [GL_ARB_sparse_texture_clamp HAS bias variants; verify spec claims against the registry text before adjudicating](../learnings/1795234935028-gl-arb-sparse-texture-clamp-has-bias-variants-veri.md) — operand-order swap mis-samples; "no Metal compiler" is an overstated test excuse
 - [m * v on matrices: E39999 with no mul hint; import glsl flips order](../learnings/1794385834955-slang-m-v-on-matrices-e39999-with-no-mul-hint-impo.md) — matrix `*` is element-wise; `mul()` is the product
 - [`__intrinsic_type`/`__intrinsic_op` legal in user code](../learnings/1792065241922-intrinsic-type-intrinsic-op-are-accepted-in-user-c.md) — E31229 covers three others; bogus opcode ICEs
 - [intrinsic-prefix emitter rules filter arity/type, never assert](../learnings/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md) — revert-drilled row

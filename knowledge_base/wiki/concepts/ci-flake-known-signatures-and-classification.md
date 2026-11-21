@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 34
+source_count: 35
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -85,7 +85,9 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 is a SPIRV-Tools assert flake.** It fails only on `test-macos-debug-clang-aarch64 / test-slang` with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` (SPIRV-Tools, via debug-info SPIR-V emission); slang-test's auto-retry doesn't always clear it. If it is the only failure and the PR doesn't touch debuginfo/SPIR-V emit, rerun `--failed` (≤3×); if it reproduces across reruns, report a pre-existing platform issue rather than block (PR #12504, run 34891043815) ([do-while flake](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (34):**
+**`warped-sampling-1d.slang` sign-flip flake** (`tests/autodiff/was/warped-sampling-1d.slang` on `test-windows-debug-cl-x86_64-gpu / test-slang`): the expected CHECK-NEXT pattern is a positive `0.9[4-9]000`, but the actual comes back NEGATIVE — -0.912 on #14662's merge-group run (vk) and -0.968/-0.965 across in-run retries on #14666's head check (cuda), twice in one day (2026-11-20) — while the dx12 variant passes. Classified intermittent both times (single test in a 16940/16941-green suite, unrelated to PR content). Caveat for the next sweep: every observed actual is negative where a positive is expected, so if a clean rerun ever reproduces the negative sign identically, reclassify as a real debug-config autodiff numerics issue rather than a flake. Same-session rider: `gh run rerun --job` is rejected while the run is wedged `waiting` on the falcor-build-approval-gate — the rerun must wait until the run is terminal (see [rerun decision rules](ci-flake-rerun-decision-rules.md)) ([warped-sampling-1d sign-flip](../learnings/1795212558949-slang-ci-warped-sampling-1d-sign-flip-flake-on-win.md)).
+
+**Source learnings (35):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [Benign DWARF ld-note can mask the real undefined-reference cause](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -120,5 +122,6 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [Nightly Coverage red = slang-coverage-reports Pages 950 MB budget; bytes are in reports/latest views, history pruning doesn't help](../learnings/1793953073465-slang-coverage-reports-pages-budget-only-reports-l.md)
 - [Nightly Coverage red at 'Verify coverage Pages publication' = external Pages staging over 950 MB](../learnings/1794125071114-nightly-coverage-red-at-verify-coverage-pages-publ.md) — slang log is opaque; read slang-coverage-reports runs; site frozen
 - [Nightly agentic-tests 82→165 after #14422 diag= exit-code default](../learnings/1794386740314-nightly-agentic-tests-82-165-after-14422-diag-exit.md) — harness change ≠ new regressions; diff against prior night's passes
+- [warped-sampling-1d sign-flip flake on windows-debug GPU](../learnings/1795212558949-slang-ci-warped-sampling-1d-sign-flip-flake-on-win.md) — negative actual vs positive expected; reclassify if a clean rerun reproduces the sign identically
 
 _Catalog: [[wiki/index.md]]_

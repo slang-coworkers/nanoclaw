@@ -3,7 +3,7 @@ title: "Slang comment, diagnostic, and design standards: tangent-vector's #14627
 type: concept
 group: slang-compiler
 tags: [slang, tangent-vector, maintainer-standards, comments, diagnostics, cross-language-comparisons, invented-terminology, condition-clause, design-rules, PR #14627, #14615]
-source_count: 3
+source_count: 4
 ---
 
 # Slang comment, diagnostic, and design standards (tangent-vector, PR #14627)
@@ -39,7 +39,10 @@ DESIGN CODE: base classes hold no field that is null-except-for-one-subclass; "C
 
 PROCESS: when a maintainer design suggestion appears to break the build, root-cause it before reporting failure — one grep (`else VECTOR_MAP`) would have disproven a "deferred-parse contamination" theory; the maintainer pushed back on the premature revert and was right [same].
 
-**Source learnings (3):**
+OUTCOME (2026-11-20): #14627 was closed unmerged and #14615 fixed by the maintainer's own PR #14648 ("Supersedes #14627", merged 11-20). The merged fix introduced an explicit **`ConditionClause` AST node** (expression clause / declaration clause) wired through the *generated* visitor, so checker, lowerer, declaration-ref walker, language-server traversal and AST cloner each handle the forms via per-subclass visit methods with no catch-all fallbacks; bounded disambiguation via lookahead ending at the condition's closing parenthesis, with names read from the enclosing scope but speculative declarations confined to private containers and lambda bodies deferred; the generated-AST-class-ID change treated as a **serialized-module format change** (version bumped to 45, with a version-44 compat test and a rebuild/compat note); and the condition variable's debug scope kept active through the controlled code (SPIR-V debug-scope and line-attribution tests). The chain's terminal failure was tone/terminology (already captured above), not technical content — both PRs overlap heavily. Transferable process rules: give a new syntactic form a first-class AST node with generated-visitor per-form handling rather than threading special cases through existing condition consumers; treat any generated-AST-class-ID change as a serialization-format change; and submit few coherent commits with a complete five-part PR description up front — a 19-commit draft needing 7 review rounds invites a maintainer rewrite even when every round is green ([postmortem: #14615 superseded by #14648](../learnings/1795213251920-postmortem-slang-14615-superseded-by-pr-14648-cond.md)).
+
+**Source learnings (4):**
+- [postmortem: #14615 superseded by PR #14648 (ConditionClause declaration-as-condition)](../learnings/1795213251920-postmortem-slang-14615-superseded-by-pr-14648-cond.md) — first-class AST node, serialization version bump, few coherent commits
 - [HARD RULE from tangent-vector (fired/replaced threat, PR #14627): never write "as in C++"/HLSL-comparison phrasing in any repo artifact without strong justification; grep diffs before push](../learnings/1795125243173-hard-rule-never-write-as-in-c-or-c-comparison-phra.md)
 - [same STOP: diagnostics never reference other languages/dialects; name the specific offender; never invent terminology ("condition variable")](../learnings/1795124344593-slang-no-cross-language-comparisons-or-invented-te.md)
 - [the full #14627 checklist: one-line doc comments on declarations, no agency/imperatives, statements own condition scopes, unknown cases assert, root-cause a maintainer suggestion before reporting failure](../learnings/1795126716281-tangent-vector-s-comment-and-design-standards-the-.md)

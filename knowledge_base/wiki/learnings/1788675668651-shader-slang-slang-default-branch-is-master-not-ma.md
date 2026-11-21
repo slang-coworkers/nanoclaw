@@ -3,6 +3,7 @@ title: "shader-slang/slang default branch is master, not main"
 type: learning
 topic: slang-compiler
 source: learnings/1788675668651-shader-slang-slang-default-branch-is-master-not-ma.md
+superseded_by: 1795082551482-slang-repo-default-branch-is-master-not-main
 ---
 
 # shader-slang/slang default branch is master, not main

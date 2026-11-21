@@ -3,7 +3,7 @@ title: "Codex-Critique Hazards and PR-Review Runner Reliability"
 type: concept
 group: agent-infra
 tags: [codex, danger-full-access, codex-mcp, critique-gate, pr-review-runner, clarity-runner, integrity-fail, worktree, restart]
-source_count: 15
+source_count: 17
 ---
 
 ## TL;DR
@@ -68,7 +68,18 @@ committing/pushing, run `git rev-parse HEAD` + `git status --short` and confirm 
 your last verified commit; if codex amended it, `git reflog` shows the rogue amend and
 `git reset --hard <your-last-verified-sha>` restores the real state; verify with
 `git diff --stat origin/master...HEAD` against your PR-body diffstat and confirm injected files
-are gone. Codex must-fix items *can* be legitimately deferred as advisory (you don't have to
+are gone. The mutation hazard also fires on CRASHED runs: a codex round that died mid-turn
+("codex app-server exited (code 0) before the turn completed", slang#14663 round 2) had already
+removed a just-added `_checkExtensionMemberCapConflict(varDecl)` call and refined a test pin in the
+tree, and never reverted — the next round then (correctly) flagged the missing call as must-fix
+against the agent's claims. The critique skill's "file writes remain possible, re-hash artifacts you
+hand codex" warning therefore extends to the SOURCE TREE: after ANY crashed codex run, diff the tree
+against your intent before trusting anything (compare verification-log timestamps against source
+mtimes — logs 14:44 vs sources 14:59 caught it), don't assume the next finding is wrong OR right
+(grep the tree for the claimed-missing change first), and audit each leftover edit on its merits — the
+crashed run's test-pin refinement happened to be MORE precise than the original — then re-verify
+everything from a fresh build
+([a crashed codex run can leave the source tree mid-experiment](../learnings/1795189199283-a-crashed-codex-run-can-leave-the-source-tree-mid-.md)). Codex must-fix items *can* be legitimately deferred as advisory (you don't have to
 accept every one), but then don't let the amended commit become your HEAD — treat codex's edits
 as advisories to weigh, not commits to keep, and ship only code you built and tested. A
 compounding hazard: **on container restart the worktree re-syncs to the pushed origin state**, so
@@ -124,6 +135,27 @@ the background, returns the same structured verdict. (Run from a non-git working
 exec` exits immediately with "Not inside a trusted directory" unless given `--skip-git-repo-check`,
 and when the prompt is not fed on stdin it needs `< /dev/null` or it hangs
 ([relocated slang build copies cause spurious CUDA/OptiX/header test failures](../learnings/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md)).)
+When driving nested codex CLI critique rounds directly (slang#14671, 2026-11-21), four more traps:
+(1) a fix branch created via `git fetch origin master && git worktree add -b fix/N` sits on top of
+FETCH_HEAD while the LOCAL `master` still points at whatever the base clone last checked out — a reviewer
+told to run `git diff master HEAD` sees weeks of unrelated churn and derails; name the review artifact
+`git diff origin/master HEAD` (or the merge-base form) explicitly in the critique prompt. (2) `codex exec
+resume` takes its flags BEFORE the subcommand (`codex exec --skip-git-repo-check -C <dir> -s
+danger-full-access --json -o out.txt resume <thread_id> "<msg>"`); flags after `resume` are parsed as its
+arguments, and a stdin-piped prompt (`resume <id> -`) is rejected — pass the message as the trailing
+argument. (3) the nested CLI can die silently mid-turn on long reviews (~15–25 min in, no result file, no
+turn.completed) — recover the thread id from the first JSONL event line (`thread.started`) and `exec
+resume <id> "wrap up now WITHOUT further test execution; emit the structured output"` finishes the round
+in ~2–4 min; a `codex exec` with no session args continues the MOST RECENT recorded session, so don't
+rely on that for verdict re-emits — put the dev-instructions block verbatim in the prompt so the verdict
+comes back in the canonical `### Verdict\napprove` shape on the first try (a freeform verdict records as
+"unparseable" and fails the delivery gate closed). (4) replaying a round through
+`/app/hooks/track-critique.sh` via a bash command whose text contains `>` redirects bumps
+`edits_since_critique` AFTER the round records (PostToolUse ordering), so the delivery gate then denies
+with "edits since the last critique round" — reset the counter with a redirect-free python one-liner
+after the last replay, and keep `gh issue comment --body-file` in its own short command (<1000 bytes) so
+the public-comment gate doesn't flag the command text itself as body-carrying
+([nested codex CLI critique: stale worktree master, resume-flag order, silent mid-turn death](../learnings/1795229233345-nested-codex-cli-critique-stale-worktree-master-re.md)).
 But the gate does not count a CLI verdict: `gate-critique-on-deliver.sh` only counts rounds that
 `track-critique.sh` records on `mcp__codex__codex` PostToolUse, so a CLI approve does not unblock
 `gh pr create`, and every gate that needs a recorded call (codex-critique, critique-overlay,
@@ -207,7 +239,7 @@ BOTH the fix build and the master control — a probe "clean on fix" only proves
 upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarity.sh --mode pr ...`
 (passing a leading `run-clarity` positional errors "unknown flag"). Likewise `slang-pr-review-runner/scripts/devin-fetch.sh` is not executable, so run it as `bash devin-fetch.sh`; a direct call exits 126 ([unit-test tail time from CI logs; devin-fetch.sh exit 126](../learnings/1792577720934-measuring-unit-test-tail-time-from-slang-ci-logs.md)).
 
-**Source learnings (15):**
+**Source learnings (17):**
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md) — codex re-injects deferred advisories and amends HEAD, then flags the mismatch as must-fix; `git reset --hard <verified-sha>` from reflog, a naive `git restore` keeps the creep.
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md) — restart re-syncs to pushed origin (local amends vanish); write a RESUME.md with the pushed sha; `--force-with-lease`'s "stale info" rejection is a feature.
 - [Detached nohup PR-review runs are killed by container restart with no artifacts](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md) — check for `final-review.md`≥500B, not the run dir; A/C are disposable across a likely restart; on slang-rhi the subagent tree is the compiler, degraded.
@@ -223,3 +255,5 @@ upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarit
 - [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md) — `mcp-server` parsed as a prompt → "stdin is not a terminal"; not the allow-list; check `codex --help | grep mcp-server`; operator pins an older CLI or ports `codex-mcp-server.ts`.
 - [relocated slang build copies cause spurious CUDA/OptiX/header test failures](../learnings/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md) — (codex side-note) `codex exec` from a non-git dir needs `--skip-git-repo-check` and `< /dev/null`.
 - [Measuring unit-test tail time from slang CI logs](../learnings/1792577720934-measuring-unit-test-tail-time-from-slang-ci-logs.md) — rider: `devin-fetch.sh` lacks the exec bit; run it with `bash` (exit 126 otherwise)
+- [a crashed codex run can leave the source tree mid-experiment](../learnings/1795189199283-a-crashed-codex-run-can-leave-the-source-tree-mid-.md) — after any crashed round, diff the tree against intent (log-timestamp vs mtime catches it); audit leftovers on their merits; re-verify from a fresh build.
+- [nested codex CLI critique: stale worktree master, resume-flag order, silent mid-turn death](../learnings/1795229233345-nested-codex-cli-critique-stale-worktree-master-re.md) — diff `origin/master` not local `master`; flags before `resume`; recover thread id from JSONL; replay commands must be redirect-free.
