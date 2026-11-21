@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1433 learnings. [Catalog](../index.md)
+1436 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1402,6 +1402,7 @@ type: topic
 - [Critique finding can be accurate-but-intentional; verify the resolver before acting](../learnings/1787306565821-critique-finding-can-be-accurate-but-intentional-v.md)
 - [Critique gate keyword-matches [Fix Report] in verdicts; MEMBER issue-body policy tension](../learnings/1794935349519-critique-gate-keyword-matches-fix-report-in-verdic.md)
 - [Critique REQUIREMENTS URLs need a #anchor or the round silently does not record](../learnings/1794899321120-critique-requirements-urls-need-a-anchor-or-the-ro.md)
+- [Critique rounds record only with pinned developer-instructions AND anchored REQUIREMENTS URLs](../learnings/1795154512935-critique-rounds-record-only-with-pinned-developer-.md)
 - [Critique-gate DECISION_REVIEW can raise a severity-classification disagreement that is an escalation, not a self-resolve](../learnings/1787324124929-critique-gate-decision-review-can-raise-a-severity.md)
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [Dampen repeat approver re-dispatch on a churning size-capped PR](../learnings/1786519685407-dampen-repeat-approver-re-dispatch-on-a-churning-s.md)
@@ -1410,6 +1411,7 @@ type: topic
 - [E30624/MatrixLayoutMode cluster split into two verdicts — behind-master disambiguation isn't always uniform across a cluster](../learnings/1789435293943-e30624-matrixlayoutmode-cluster-split-into-two-ver.md)
 - [Empty approver-policy mount → decide under bundled conservative default (honest CLAUSE_FAIL), never a last-known-good reconstruction](../learnings/1788297294911-empty-approver-policy-mount-decide-under-bundled-c.md)
 - [FULL_SCAN_CAP truncation gap: "never classified" is a distinct failure mode from "verdict gone stale"](../learnings/1790283947352-full-scan-cap-truncation-gap-never-classified-is-a.md)
+- [Human APPROVE mid-review → calibrate verdict APPROVE_WITH_NITS, not REQUEST_CHANGES-with-ship-endorsement](../learnings/1795181514499-human-approve-mid-review-calibrate-verdict-approve.md)
 - [Independent critique catches regressions a green exhaustive test pass misses — don't equate them](../learnings/1790033016436-independent-critique-catches-regressions-a-green-e.md)
 - [learnings INDEX rows are generated from the FILENAME SLUG so a retraction cannot be patched in — title the mechanism not the verdict](../learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md)
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md)
@@ -1426,6 +1428,7 @@ type: topic
 - [Rebase onto current origin/master BEFORE the CODE critique, not after the fix is "done"](../learnings/1787661100185-rebase-onto-current-origin-master-before-the-code-.md)
 - [Retraction momentum — the clause after a concession needs its own control](../learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md)
 - [Severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK](../learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md)
+- [slang-test -xslang prefix; hook-refused compound commands silently drop side effects; critique verdicts record only on fresh STAGE calls](../learnings/1795199396295-slang-test-xslang-prefix-hook-refused-compound-com.md)
 - [Staging the bundled v0-shadow default as a per-PR APPROVAL_POLICY silently flips fork PRs to false abstain](../learnings/1786984133437-staging-the-bundled-v0-shadow-default-as-a-per-pr-.md)
 - [Stale critique verdicts from an earlier phase block even read-only gh calls](../learnings/1793274740895-stale-critique-verdicts-from-an-earlier-phase-bloc.md)
 - [sweeplib touch_tracker_verdict vocab quirks + evicted-list re-fire within 24h window](../learnings/1795068666266-sweeplib-touch-tracker-verdict-vocab-quirks-evicte.md)

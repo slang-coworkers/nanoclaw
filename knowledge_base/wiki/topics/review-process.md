@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-471 learnings. [Catalog](../index.md)
+477 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -102,6 +102,7 @@ type: topic
 - [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
 - [Clarity reviewer API-400 is payload-accumulation, not diff-size, dependent](../learnings/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md)
+- [Clarity-review candidate files use C### and FG### prefixes — count both](../learnings/1795241727548-clarity-review-candidate-files-use-c-and-fg-prefix.md)
 - [Clarity-runner (Reviewer C) can lose its output to a tmp/ file — recover it from the Write tool call in stream.jsonl](../learnings/1789573892015-clarity-runner-reviewer-c-can-lose-its-output-to-a.md)
 - [Claude PR Review `review` check can be green with no review posted](../learnings/1793089932557-claude-pr-review-review-check-can-be-green-with-no.md)
 - [Claude PR Review check: budget-cap failure signature, and green check with no review](../learnings/1793090163556-claude-pr-review-check-budget-cap-failure-signatur.md)
@@ -207,6 +208,7 @@ type: topic
 - [GLSLModuleModifier→SourceLanguage refactor: how PR 13112 addressed the known pitfall + a cross-reviewer convergence signal](../learnings/1789515728058-glslmodulemodifier-sourcelanguage-refactor-how-pr-.md)
 - [grep -c counts LINES not occurrences — and every genuinely new finding in a saturated review came from repairing an instrument, not looking harder](../learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md)
 - [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](../learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)
+- [Human APPROVE dismissed by later push — re-fetch review state every round; Devin new-head refetch discipline confirmed](../learnings/1795185602095-human-approve-dismissed-by-later-push-re-fetch-rev.md)
 - [In-turn PR-review polling: bounded blocking Bash calls, never an armed background waiter](../learnings/1785143391944-in-turn-pr-review-polling-bounded-blocking-bash-ca.md)
 - [inotify "No space left on device" at opencode reviewer dispatch is non-fatal](../learnings/1795135802675-inotify-no-space-left-on-device-at-opencode-review.md)
 - [Internal agent-review APPROVE is not a GitHub maintainer approval](../learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md)
@@ -215,6 +217,7 @@ type: topic
 - [Isolated REPO_ROOT worktree prevents the PR-review shared-tmp race; also verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md)
 - [Local shallow clone reports wrong last-commit dates; codex reviewers inherit it](../learnings/1792180139286-local-shallow-clone-reports-wrong-last-commit-date.md)
 - [Maintainer naming request overrides automated-reviewer semantic objection](../learnings/1787619515509-maintainer-naming-request-overrides-automated-revi.md)
+- [Maintainer PR direction also lives in inline review comments (pulls/N/comments), not just the issue thread](../learnings/1795167967631-maintainer-pr-direction-also-lives-in-inline-revie.md)
 - [Maintainer who reviews AND self-fixes: don't race a batch of "@bot rewrite this" comments](../learnings/1790226898754-maintainer-who-reviews-and-self-fixes-don-t-race-a.md)
 - [Markdown emphasis inside a phrase breaks literal grep - the runnable fix, not just "a grep miss is not an absent claim"](../learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md)
 - [Mid-iteration PR: combined-review diff_hash (Reviewer A's SHA) mismatches pinned HEAD → approver Step-2 flag](../learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md)
@@ -241,6 +244,7 @@ type: topic
 - [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
 - [Peer-review verdicts can land on a stale head — adjudicate before re-working](../learnings/1795058053540-peer-review-verdicts-can-land-on-a-stale-head-adju.md)
 - [Pending-review inline comments are invisible: re-query reviews right before a "maintainer silent → escalate" report](../learnings/1793285602027-pending-review-inline-comments-are-invisible-re-qu.md)
+- [Post-last-round disposition pushes: verify by direct diff, don't dispatch a new review round](../learnings/1795189246936-post-last-round-disposition-pushes-verify-by-direc.md)
 - [post-review.sh posts body verbatim — no bot-transparency disclaimer](../learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md)
 - [PR "no human review yet" claims need the /reviews endpoint](../learnings/1790756096989-pr-no-human-review-yet-claims-need-the-reviews-end.md)
 - [PR #12200 RayQuery-return NRVO review — APPROVE_WITH_NITS, 0 bugs](../learnings/1784882737937-pr-12200-rayquery-return-nrvo-review-approve-with-.md)
@@ -271,6 +275,7 @@ type: topic
 - [Recycled pids make dead reviewer run dirs look live — check run.log mtime too](../learnings/1795151259515-recycled-pids-make-dead-reviewer-run-dirs-look-liv.md)
 - [Refute reviewer harness claims against the CI merge tree, not your worktree base](../learnings/1794993700461-refute-reviewer-harness-claims-against-the-ci-merg.md)
 - [render-test arrayLength 0-sentinel contract; live Khronos VUID repro via chromium layer; two-round review pattern](../learnings/1795024558643-render-test-arraylength-0-sentinel-contract-live-k.md)
+- [Report stats must be computed, not guessed; reviewer API claims need source verification (String::tail case)](../learnings/1795215594631-report-stats-must-be-computed-not-guessed-reviewer.md)
 - [Reproduce a reviewer's EXACT codegen scenario before disputing — effects can be use/lowering-dependent](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md)
 - [Resolve numeric review disagreements empirically, not by reviewer authority](../learnings/1794909676385-resolve-numeric-review-disagreements-empirically-n.md)
 - [Resolving a self-contradictory review finding: measure a third quantity, don't adjudicate the prose](../learnings/1785891049289-resolving-a-self-contradictory-review-finding-meas.md)
@@ -388,6 +393,7 @@ type: topic
 - [Scoped to verify the bug? Read the fix's open review threads — the fix may contain the same bug class](../learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md)
 - [Self-review catches errors only when it executes a check — re-reading your own claim catches nothing](../learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md)
 - [Sequential reviewer dispatch applies across sessions; poll exit-status, not pgrep](../learnings/1794972094351-sequential-reviewer-dispatch-applies-across-sessio.md)
+- [Session error mid-OUTPUT_REVIEW: resume surviving reviewer artifacts, don't re-run](../learnings/1795204725512-session-error-mid-output-review-resume-surviving-r.md)
 - [Settle reviewer liveness/disagreement claims with -dump-ir at the PR head before amplifying them](../learnings/1794901793619-settle-reviewer-liveness-disagreement-claims-with-.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers reliably ask for a shared predicate](../learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)
 - [Skip /explain-diff-html when it would overwrite a repo-mandated, OUTPUT_REVIEW-approved PR body](../learnings/1790592963343-skip-explain-diff-html-when-it-would-overwrite-a-r.md)

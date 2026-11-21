@@ -3,7 +3,7 @@ title: "Slang capability gating of a type and of struct fields (fp64 double, #10
 type: concept
 group: slang-language-core
 tags: [slang, capability, require, capability-inference, fp64, double, struct-fields, CapabilityDeclReferenceVisitor, visitDeclRefType, visitedVals, kMaxTypeNestingDepth, type-legalization, E36104, E36107, BFloat16, wgsl, metal]
-source_count: 5
+source_count: 6
 ---
 
 # Slang capability gating of a type and of struct fields (fp64 double, #10232 / PR #14332)
@@ -47,7 +47,7 @@ A field walk that deduplicates with `HashSet<StructDecl*>` ("first specializatio
 
 Each other gap closed alongside the field join on PR #14332 rejected code that master compiles [closing gaps exposes stale requires](../learnings/1793841008790-slang-capability-inference-closing-gaps-exposes-st.md):
 
-- **Initializers.** Making `checkVarDeclCommon` visit global/static initializers broke `tests/bugs/13074/*` (HLSL `&` in a static resource initializer) and `static-const-struct-array-resource-13107` (CUDA `DescriptorHandle.init`). It was reverted and needs its own design.
+- **Initializers.** Making `checkVarDeclCommon` visit global/static initializers broke `tests/bugs/13074/*` (HLSL `&` in a static resource initializer) and `static-const-struct-array-resource-13107` (CUDA `DescriptorHandle.init`). It was reverted and needs its own design — a design now owned by in-flight PR #14661 ("gate double behind fp64, including static initializers"), which implements the initializer walk in `checkVarDeclCommon` WITH the resource-type filter #14332 lacked; #14663 (var `[require]` enforcement, #14548) deliberately does not walk initializers, since local initializers are already covered by the enclosing function's body walk. When reviewing capability-inference PRs, check #14661's state before filing initializer-laundering as a new gap; chained-constant laundering (`static const float x = w;`) stays a known limitation until it lands ([initializer walk owned by #14661](../learnings/1795185658616-var-initializer-capability-walk-is-owned-by-pr-146.md)).
 - **`MemberDeclRef` members.** Processing a `MemberDeclRef` member's *own* requirements broke the core-module build (E36104 at `coopVecLoad` vs `CoopVec.load` / `optix_coopvec`). Only field requirements are safe to join there.
 - **Default arguments.** Lowering inserts a parameter's default at each call that omits it, so the walk visits the parameter's `initExpr` there. It needs a per-walk visited set of parameters: a recursive struct's synthesized constructor has a default that calls itself, and without the set it recursed until SIGSEGV (`recursive-variadic-field-specialization-budget.slang`). The crash showed only under the test server.
 - **Link-time `-conformance` types** get no capability check at all, even an explicit `[require(hlsl)]` on wgsl/metal/spirv.
@@ -58,7 +58,8 @@ Run a compile-only sweep of every WGSL and Metal `//TEST` line, master vs fix (8
 
 Slang's `-DFOO` without a value defines an EMPTY macro, so `#if FOO` gives E15201; use `-DFOO=1` or `#ifdef` [closing gaps exposes stale requires](../learnings/1793841008790-slang-capability-inference-closing-gaps-exposes-st.md). The deliver-gate hook blocks even read-only `gh api` calls whose path contains `pulls`; use the slang-mcp PR tools for reads [type gating is AST-time and misses unread fields](../learnings/1793819445773-slang-capability-gating-on-a-type-ast-time-rejects.md).
 
-**Source learnings (5):**
+**Source learnings (6):**
+- [var initializer capability-walk is owned by PR #14661 (resource-filtered); #14663 deliberately skips initializers](../learnings/1795185658616-var-initializer-capability-walk-is-owned-by-pr-146.md) — check its state before filing initializer-laundering
 - [capability gating on a type: AST-time, rejects folded code, misses unread struct fields; BFloat16 require vacuous](../learnings/1793819445773-slang-capability-gating-on-a-type-ast-time-rejects.md) — E36107 "see using of 'double'"; core `double.__min` re-gating; working precedent
 - [closing capability gaps exposes stale requires](../learnings/1793841008790-slang-capability-inference-closing-gaps-exposes-st.md) — use-site field join OK; initializers / MemberDeclRef members break; default-arg recursion; 889-config sweep
 - [capability join of struct fields: resource fields cause false E36107](../learnings/1793844879718-capability-join-of-struct-fields-resource-fields-c.md) — `__ShapeBuffer` via legalized-out fields; decl-ref trigger gates generic qualifiers

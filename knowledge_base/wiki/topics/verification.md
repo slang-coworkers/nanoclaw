@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-632 learnings. [Catalog](../index.md)
+636 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -380,6 +380,7 @@ type: topic
 - [Fixing a crash can be a multi-layer cascade — verify each layer before shipping, and stop at the safe boundary](../learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)
 - [Follow-up/tracking issue premise can outrun its prerequisite PR — verify the PR is actually MERGED](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)
 - [For an error-handling / dispatch fix, "it compiles now" is the wrong success claim — a wrong-handler dispatch also compiles](../learnings/1785921261355-for-an-error-handling-dispatch-fix-it-compiles-now.md)
+- [formatting.sh no-args is a silent no-op — verify the detector, not the exit code](../learnings/1795183540075-formatting-sh-no-args-is-a-silent-no-op-verify-the.md)
 - [Forward-reference memory rot: an index hook whose child predates the claim passes every structural check](../learnings/1785784698148-forward-reference-memory-rot-an-index-hook-whose-c.md)
 - [Four errors, one shape: we verified a proxy instead of the thing](../learnings/1785775797519-four-errors-one-shape-we-verified-a-proxy-instead-.md)
 - [gh 'token invalid' is usually cosmetic — verify before escalating a credential blocker to the operator](../learnings/1789716532319-gh-token-invalid-is-usually-cosmetic-verify-before.md)
@@ -469,6 +470,7 @@ type: topic
 - [pr_report.py "CI failing" false positive from non-required checks](../learnings/1791188233110-pr-report-py-ci-failing-false-positive-from-non-re.md)
 - [Praising self-correction breeds false retractions — and retracting a correct claim is worse than the error it imitates](../learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md)
 - [Probe "constants are folded" test claims; SCCP folds only scalar Neg, not vector/matrix](../learnings/1791812377155-probe-constants-are-folded-test-claims-sccp-folds-.md)
+- [Probe a reviewer's claimed repro before it drives the verdict (and the -O0 -emit-spirv-directly minimal-build trick)](../learnings/1795213711544-probe-a-reviewer-s-claimed-repro-before-it-drives-.md)
 - [Probe operator resolution with the operator's own result type, not a scalar](../learnings/1795056358156-probe-operator-resolution-with-the-operator-s-own-.md)
 - [Probe the hazard against a built binary instead of offering the maintainer options](../learnings/1785935098942-probe-the-hazard-against-a-built-binary-instead-of.md)
 - [Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce](../learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md)
@@ -484,6 +486,7 @@ type: topic
 - [Re-triage verify: a WIP "Fixes #N" PR is not evidence the issue is fixed](../learnings/1784132477360-re-triage-verify-a-wip-fixes-n-pr-is-not-evidence-.md)
 - [Re-verify a quoted code inventory against source before republishing it](../learnings/1787264346872-re-verify-a-quoted-code-inventory-against-source-b.md)
 - [Re-verify sibling PR head before every dispatch — scope can encroach mid-flight](../learnings/1794993190284-re-verify-sibling-pr-head-before-every-dispatch-sc.md)
+- [Re-verifying a moved PR head: fetch/checkout refspec refusal, stale exit-file races, stale-binary probes, and spirv -o /dev/null false failures](../learnings/1795193407486-re-verifying-a-moved-pr-head-fetch-checkout-refspe.md)
 - [Registry-collision addendum: second verified instance, and the scope-of-absence error that nearly lost it](../learnings/1786023401020-registry-collision-addendum-second-verified-instan.md)
 - [Related-by-symptom is not fixed-by: two issues sharing a repro is the signal that invites a wrong `Fixes #N`](../learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md)
 - [Release-binary bisect beats a bot-filed "pre-existing, not a regression" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)
@@ -626,6 +629,7 @@ type: topic
 - [Voiding a false claim returns the question to UNKNOWN, not to the opposite claim — and a baseline needs a DATE range-check](../learnings/1786106071970-voiding-a-false-claim-returns-the-question-to-unkn.md)
 - [Voiding the evidence for a retraction returns the question to unknown — it does not reinstate the retracted claim](../learnings/1786083885179-voiding-the-evidence-for-a-retraction-returns-the-.md)
 - [Vulkan ICDs live in two directories — `ls` on one is a config probe, not a capability probe](../learnings/1785962749990-vulkan-icds-live-in-two-directories-ls-on-one-is-a.md)
+- [Vulkan validation-layer repro on the L40S: wire the layer manually, and SM 8.9 coopmat shapes can't represent Reduce2x2 results](../learnings/1795230053647-vulkan-validation-layer-repro-on-the-l40s-wire-the.md)
 - [Wake payload can report an eviction that never happened — verify against RemovedFromMergeQueueEvent](../learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md)
 - [Wake-payload pagination bug confirmed on BOTH prs and evicted — fix drafted+live-tested](../learnings/1787250588200-wake-payload-pagination-bug-confirmed-on-both-prs-.md)
 - [wc -m returns BYTES with no locale set — and two agents agreeing on a figure is evidence about their tools, not the figure](../learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md)

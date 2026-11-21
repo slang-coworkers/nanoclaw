@@ -3,7 +3,7 @@ title: "Slang SPIR-V emit and legalization defects: logical pointers, opaque cop
 type: concept
 group: slang-backends
 tags: [spirv, emit, legalization, logical-pointer, OpCompositeConstruct, opaque-types, RayQuery, NRVO, UIntPtr, constants, diagnostics, OpKill, abort]
-source_count: 23
+source_count: 24
 ---
 
 # Slang SPIR-V emit and legalization defects: logical pointers, opaque copies, constants, and diagnostics
@@ -68,6 +68,8 @@ Recurring defect classes in SPIR-V legalization and emit, each with the layer th
 
 The general mechanism: if a failure path emits only a `standalone_note` (or a warning), `getErrorCount()` stays 0, the front-end gate after `generateIR()` lets compilation continue, and the backend crashes on whatever placeholder the failing code returned; here SPIR-V segfaults in `buildEntryPointReferenceGraph` (slang-ir-call-graph.cpp:88). The fix (PR #13809) promotes E29103 to `err(...)`, which alone stops the crash, and replaces the null operand with `getPoison(getPtrType(T))` for IR hygiene. A note→error promotion makes previously-compiling invalid code fail when it sits in unused functions or non-SPIR-V `__target_switch` cases, so the PR was labeled `pr: breaking change`. Test notes: one DIAGNOSTIC_TEST CHECK line consumes one diagnostic, so write `^^^ error E29103` on a single line; run crash repros with `slang-test -use-test-server`, because the in-process run dumps core; and `tests/functional/*` fails unless ALL targets are built, since `--target slangc slang-test` does not build the `functional` std module ([a standalone_note diagnostic on a failure path lets codegen run on broken IR](../learnings/1792573873487-slang-a-standalone-note-diagnostic-on-a-failure-pa.md)).
 
+**E56003 "use of uninitialized opaque handle" is SPIR-V-only by contract — do not relocate it to other targets.** `tests/bugs/13074/` (3 tests, exit-code=0 pins) establishes that an undefined LEAF resource read on non-SPIR-V targets is warning-only by design: the emitted unbound resource is accepted with just the E41016/E41017 warning and "must not issue a second diagnostic", so a fix that adds a post-DCE E56003 diagnose for hlsl/glsl/wgsl — e.g. while unifying struct-vs-leaf spelling (#14682) — breaks those 3 tests. `tests/ir/undefined-combined-texture-sampler-whole-value.slang` likewise pins that a never-written combined sampler KEEPS its whole call argument on glsl/cpp, so #14342's undefined-handle arg-specialization cannot be lifted out of the SPIR-V path. legalizeUndefined's decomposition (PR #14686) makes the struct spelling equal the leaf spelling per target, and `diagnoseUndefinedOpaqueHandles` on SPIR-V now matches containment (arrays of resources) with a getDiagnosticPos fallback. Verification protocol that caught the boundary: full slang-test run → build master in the same worktree → rerun exactly the residual failing list on master → identical lists = environment-only fallout ([E56003 is SPIR-V-only; 13074 pins warn-only leaf reads on non-SPIR-V targets](../learnings/1795238424244-slang-e56003-is-spir-v-only-13074-pins-warn-only-l.md)).
+
 **Builtin-var Flat gate (#12064).** Prove else-branch reachability from the callers' asserts. `getBuiltinGlobalVar` asserts a pointer type, so the non-pointer branch is reachable only for `SPIRVAsmOperandBuiltinVar` (always BuiltinInput). An `IRGlobalParam` CAN be non-pointer; only `IRGlobalVar` is always a pointer ([Flat gate reachability](../learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)).
 
 ## Planning a new SPIR-V opcode
@@ -86,7 +88,8 @@ The general mechanism: if a failure path emits only a `standalone_note` (or a wa
 - [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] — varying locations, shared Input vars, depth/topology modes, `spirv_asm` execution modes
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (23):**
+**Source learnings (24):**
+- [E56003 is SPIR-V-only by contract; tests/bugs/13074 pins warn-only leaf reads on non-SPIR-V targets](../learnings/1795238424244-slang-e56003-is-spir-v-only-13074-pins-warn-only-l.md) — #14686 legalizeUndefined makes struct=leaf per target
 - [logical Ptr struct field → invalid OpCompositeConstruct (#13206)](../learnings/1790017243652-logical-address-space-ptr-as-a-struct-field-invali.md)
 - [slang#9062 SPIR-V OpCompositeConstruct of logical-pointer array escapes resource legalization (struct-field blindness)](../learnings/1783524098198-slang-9062-spir-v-opcompositeconstruct-of-logical-.md)
 - [#8002 constref ParameterBlock ICE: fix in IR copy-elision](../learnings/1784754145569-slang-8002-constref-parameterblock-opaque-ice-copi.md)

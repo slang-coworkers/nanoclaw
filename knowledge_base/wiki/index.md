@@ -5,13 +5,13 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **9306 agent learnings**, synthesized into **552 concept pages**.
+Standalone wiki built from **9373 agent learnings**, synthesized into **554 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
 > Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
-> and your cwd is `/workspace/agent` — so read `](concepts/x.md)` as
-> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
+> and your cwd is `/workspace/agent` — so a `wiki/concepts/...` link means
+> `/workspace/shared/wiki/concepts/...`. Keyword fallback:
 > `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
@@ -60,7 +60,7 @@ Standalone wiki built from **9306 agent learnings**, synthesized into **552 conc
 - [Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path](concepts/agent-infra-coworker-memory-persistence.md)
 - [Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)](concepts/agent-infra-f0909b0-github-auth-in-containers.md)
 - [Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plumbing](concepts/agent-infra-f0909b0-fleet-coordination-and-reporting.md)
-- [Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and workflow-state Lifecycle](concepts/agent-infra-gate-hook-mechanics.md)
+- [Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recording/Format Matchers](concepts/agent-infra-gate-hook-mechanics.md)
 - [Gateway Credential Outage Playbook: GitHub 401 fallback ladder and proxy bypass](concepts/agent-infra-gateway-credential-outage-playbook.md)
 - [Git Worktree Hygiene in a Shared-Clone Fleet](concepts/agent-infra-f0909b0-git-worktree-hygiene.md)
 - [GitHub Auth and Operations in Agent Containers](concepts/agent-infra-github-auth-operations.md)
@@ -74,6 +74,7 @@ Standalone wiki built from **9306 agent learnings**, synthesized into **552 conc
 - [Supervisor Operations, Sweep Suppression, and Nudge Discipline](concepts/agent-infra-supervisor-operations.md)
 - [Supervisor Tick Reliability and Worktree-GC Repo Binding](concepts/agent-infra-f0909b0-supervisor-tick-and-worktree-gc.md)
 - [Watchdog No-Op Controls, Blocker-Identity Monitoring, and Ledger Guards](concepts/agent-supervisor-watchdog-and-ledger-guards.md)
+- [workflow-state Lifecycle: Resets, Races, Phantom Blocks, and the 3-Denial Latch](concepts/agent-infra-workflow-state-lifecycle.md)
 - [Writable Scratch Paths: /tmp/opencode Is Not Writable in Coworker Containers](concepts/agent-infra-writable-scratch-paths.md)
 
 ### agent-ops
@@ -93,14 +94,15 @@ Standalone wiki built from **9306 agent learnings**, synthesized into **552 conc
 - [Agent Routing: Slang Compiler Context](concepts/agent-routing-slang-compiler-context.md)
 - [Agent Routing: Slang Issue Triage Policy](concepts/agent-routing-triage-policy.md)
 - [Agent Routing: Subagent & Fork Control](concepts/agent-routing-subagent-and-fork-control.md)
+- [agent-routing-f0909b1-critique-gate-mechanics](concepts/agent-routing-f0909b1-critique-gate-mechanics.md)
 - [Approver re-gate discipline & change classification — revision chains, gate-as-invariant, and reading what a diff really changed](concepts/agent-routing-f0909b0-approver-regate-and-classification.md)
 - [Auto-approver decision calibration under the v0-shadow policy](concepts/agent-routing-f0909b2-approver-calibration.md)
 - [Bot-authored PR handling and approver eligibility clauses](concepts/agent-routing-f0909b1-pr-approver-eligibility-bot-prs.md)
 - [CI gate & rerun mechanics — waiting vs queued, priority-yield, Falcor gates, run_attempt, and reading the right instrument](concepts/agent-routing-f0909b0-ci-gate-and-rerun-mechanics.md)
 - [Codex-critique recording reliability — exact names, bridge dispatch, and state resets](concepts/agent-routing-codex-critique-recording-reliability.md)
 - [Container-side critique & delivery gates — false-positives on reads, and gating the decision message](concepts/agent-routing-f0909b0-critique-delivery-gates.md)
-- [Critique / delivery gate mechanics — satisfying it and not tripping it](concepts/agent-routing-f0909b1-critique-gate-mechanics.md)
 - [Critique-gate scope, false-positives, and using it well](concepts/agent-routing-f0909b1-critique-gate-scope-discipline.md)
+- [Critique-Gate Token Matching, Denial Mechanics, and the Review-Request Format](concepts/agent-routing-f0909b1-critique-gate-token-matching.md)
 - [Critique-gate, delivery-gate & chain-routing hook mechanics](concepts/agent-routing-f0909b2-critique-and-delivery-gates.md)
 - [Fleet coordination and routing — peers, subagents, guardrails, and GitHub as system of record](concepts/agent-routing-f0909b1-fleet-coordination-routing.md)
 - [Fleet operations — CI/GitHub infra, dispatch routing & verify-before-you-claim](concepts/agent-routing-f0909b2-fleet-ops-and-verification.md)
@@ -612,10 +614,10 @@ Standalone wiki built from **9306 agent learnings**, synthesized into **552 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (3110)
-- [NanoClaw / agent operations](topics/agent-ops.md) (1173)
-- [CI, build & tooling](topics/ci-tooling.md) (687)
-- [Review & process](topics/review-process.md) (471)
-- [PR review, approval & calibration](topics/review-approval.md) (1433)
-- [Verification & evidence discipline](topics/verification.md) (632)
-- [Uncategorized](topics/misc.md) (1800)
+- [Slang compiler & language](topics/slang-compiler.md) (3127)
+- [NanoClaw / agent operations](topics/agent-ops.md) (1189)
+- [CI, build & tooling](topics/ci-tooling.md) (693)
+- [Review & process](topics/review-process.md) (477)
+- [PR review, approval & calibration](topics/review-approval.md) (1436)
+- [Verification & evidence discipline](topics/verification.md) (636)
+- [Uncategorized](topics/misc.md) (1815)

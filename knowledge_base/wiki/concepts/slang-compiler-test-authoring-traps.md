@@ -3,7 +3,7 @@ title: "Slang Compiler: Test-Authoring & Repro Traps"
 type: concept
 group: slang-grab-bag
 tags: [testing, SLANG_ASSERT, diagnostics, DIAGNOSTIC_TEST, expected-files, Xslang, spirv-validation, constant-folding, exit-codes, plan-tracker]
-source_count: 4
+source_count: 5
 ---
 
 # Slang Compiler: Test-Authoring & Repro Traps
@@ -18,7 +18,7 @@ Recurring traps when writing or running slang tests and repro shaders: release-i
 - Generate `.expected` files by copying the harness-written `<testpath>.actual`, never by extracting `ACTUAL{{{…}}}` from stdout (pending-retry prints it twice).
 - `SLANG_RUN_SPIRV_VALIDATION=1` silently no-ops unless slangc can dlopen `libslang-glslang-*.so` — run with `LD_LIBRARY_PATH=build/Release/lib`.
 - Repro shaders for comparison-opcode bugs must derive operands from buffer loads — literal/constant operands get constant-folded before emit.
-- `-Xslang` in a `//TEST` directive forwards exactly ONE token per prefix; two-token flags need one `-Xslang` per token.
+- `-Xslang` in a `//TEST` directive forwards exactly ONE token per prefix; two-token flags need one `-Xslang` per token. `-xslang` itself is a render-test-only prefix — SIMPLE legs spawn slangc directly, which rejects it with E00017.
 - Never pin ICE/E99997 exit codes in tests or reports — they vary by build and crash path; describe the abort instead.
 - The fixer plan-tracker hook only records Write-tool plan updates and resets every turn — re-Write the plan file first in any turn that will edit source.
 
@@ -38,7 +38,10 @@ Recurring traps when writing or running slang tests and repro shaders: release-i
 
 In slang-test `//TEST(compute):COMPARE_COMPUTE` directives, `-Xslang` forwards exactly ONE token to slangc: a two-token flag like `-warnings-as-errors 40021` needs `-Xslang -warnings-as-errors -Xslang 40021`; a single `-Xslang -warnings-as-errors 40021` leaks `40021` as a positional arg to the harness (error 1005, failing CPU + synthesized-cuda variants only). Bare flags in SIMPLE tests don't go through `-Xslang` and work as-is. Fixer workflow trap from the same chain: the plan-tracker hook (PLAN REQUIRED refusal on bash/Edit) resets at EVERY message-batch/turn boundary and only records Write-tool updates to the plan file — sed/Edit on the plan does not clear it; at the start of any turn that will edit source, re-Write the plan file first even if nothing else changed [Slang fixer: plan-tracker resets per turn (Write-tool only) and -Xslang forwards one token per prefix](../learnings/1795073095370-slang-fixer-plan-tracker-resets-per-turn-write-too.md).
 
-**Source learnings (4):**
+Related scope trap (#14129): `-xslang` is a RENDER-TEST option prefix (`options.cpp`), not slang-test's — `//TEST:SIMPLE(filecheck=...)` spawns slangc directly, which rejects `-xslang` with E00017, so the test "fails" with result code 1 and the filecheck miss is on the command-line error, not the IR. For SIMPLE and other direct-slangc directives, pass the pass-through flag plainly (e.g. `-experimental-feature`); read slang-test's failure output for `result code = N` — N≠0 means the COMPILER failed, and only then look at filecheck misses. A test that "fails as expected" can be failing for the wrong reason ([render-test-only -xslang; result-code decoder](../learnings/1795199396295-slang-test-xslang-prefix-hook-refused-compound-com.md)).
+
+**Source learnings (5):**
+- [-xslang is a render-test-only prefix; SIMPLE legs spawn slangc (E00017); read `result code = N` before filecheck misses](../learnings/1795199396295-slang-test-xslang-prefix-hook-refused-compound-com.md) — a "fails as expected" test can fail for the wrong reason
 - [SLANG_ASSERT Release-inert; source targets need `-o`; `//IDS:` substring matches; never pin ICE exit codes](../learnings/1795047726129-slang-final-round-traps-slang-assert-is-release-in.md)
 - [copy `.actual` for `.expected`; one diagnostic per `//CHECK:`; `R"rs(...)rs"` delimiters](../learnings/1795050942267-slang-generating-expected-files-and-diagnostic-tes.md)
 - [validation no-ops without `LD_LIBRARY_PATH`; repro operands from buffer loads](../learnings/1795051966467-spir-v-validation-silently-skipped-without-ld-libr.md)

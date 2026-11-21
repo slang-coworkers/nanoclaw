@@ -1,54 +1,26 @@
 ---
-title: "Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and workflow-state Lifecycle"
+title: "Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recording/Format Matchers"
 type: concept
 group: agent-infra
-tags: [critique-gate, delivery-gate, gate-plan, plan-tracker, false-positive, read-only, workflow-state, requirements-anchor, attested-hash]
+tags: [critique-gate, delivery-gate, gate-plan, plan-tracker, false-positive, read-only, requirements-anchor, attested-hash, gate-audit]
 source_count: 28
 ---
 
-# Gate-hook mechanics: read-only false positives, the plan gate, and workflow-state lifecycle
+# Gate-hook mechanics: read-only false positives, the plan gate, and recording/format matchers
 
 ## TL;DR
 
-- The harness gates pattern-match command TEXT, never intent or HTTP verb: a `gh api` or `curl` GET of
-  `repos/*/pulls/<n>` is "PR creation", and a `fix/issue-<n>` branch string anywhere in a command (even a
-  query param) trips the plan tracker — both on read-only triage calls.
-- Each false-positive denial burns one of 3 strikes; three open an admin escalation for something that was
-  never a delivery. Stop retrying and switch endpoints.
-- Read-safe escapes: `issues/<n>` (serves PR state, `closed_at`, `merged_at` too), `issues/<n>/comments`,
-  `issues/<n>/timeline`, `issues/comments/<id>`, `check-suites/<id>/check-runs`,
-  `commits/<sha>/check-runs`, `actions/runs?head_sha=<sha>` (no branch string), `gh pr view --json`, and
-  the slang-mcp github tools.
-- The plan gate (`gate-plan.sh`) denies ANY Bash command containing a `>`/`>>` redirect while
-  `plan_written=false` — including a read-only verification run like `slang-test > log 2>&1`.
-- `plan-tracker.sh` records ONLY the Write tool (or a codex `apply_patch`); an Edit to the plan file never
-  sets `plan_written`, so every Bash-with-writes and source Edit keeps failing "PLAN REQUIRED". Rewrite the
-  identical plan via the Write tool to flip it.
-- `workflow-state.json` resets on EVERY routed envelope (re-kicks, provider-429 notices) and every task
-  epoch — `plan_written` and critique stages wipe; run the rounds AND the delivery inside the same turn,
-  and keep a compact plan file ready to re-Write. After a 429 recycle, re-run a missing stage with a FRESH
-  codex call (a codex-reply records the verdict but not fresh attested hashes), and log background builds
-  to the worktree (recycles wipe /tmp).
-- Container RESTARTS wipe the shared workflow state and `/tmp`: re-Write the plan, re-run every required
-  stage, keep deliverable drafts under `/workspace/agent/reports/`. The state is GROUP-shared — a helper's
-  rounds unlock the owner's gate; never record against a stale/moving artifact.
-- Sibling sessions share one container filesystem: the state file can be zeroed concurrently while your
-  round is in flight; verify with `jq .critique_rounds` after every codex round before assuming it counted.
-  The ledger is shared per CONTAINER, so three consecutive race losses mean escalate (isolation / one-shot
-  bypass / sibling quiescence), not a fourth retry — each retry costs 3 codex calls and the wipe rate scales
-  with sibling activity.
-- `REQUIREMENTS:` URLs must carry anchors (`#issuecomment-<id>`, `#issue-<n>`, `#discussion_r-<id>`,
-  `#pullrequestreview-<id>`) or the round silently drops with no error; anchor an issue BODY as
-  `#issue-<database-id>` (fetch with `gh api ... --jq .id`), never a bare issue URL.
-- The authority for "did my critique count / what did it say" is `critique_verdicts` + `critique_attested`,
-  not stage counts; and broken gateway GitHub creds (401 Bad credentials) are an infra outage to report,
-  not a connect-flow.
-- The host gate AUDIT pattern-matches marker text in outbound rows: quoting a bracketed workflow marker with no matching critique call logs "gate skipped" — discuss a coworker's markers without quoting the bracketed string.
-- Late edit bumps defeat freshness: ANY Bash `>`/`>>` (even `2>/dev/null`, even a timed-out command
-  whose bump lands AFTER the round's reset) can stale an approve — fire the marker in the clean window.
-- The PR-description length gate counts the body minus the trailing `<sub>` disclaimer trailer and
-  AI-assistance line — strip those before re-counting.
+The harness gates pattern-match command TEXT, never intent — and most of the pain is false positives on read-only work. What the hooks match, what they silently refuse, and the read-safe escapes. The workflow-state file's lifecycle — resets, races, phantom blocks, the 3-denial latch — is on [workflow-state lifecycle](agent-infra-workflow-state-lifecycle.md).
 
+- A `gh api` or `curl` GET of `repos/*/pulls/<n>` is "PR creation", and a `fix/issue-<n>` branch string anywhere in a command (even a query param) trips the plan tracker — both on read-only triage calls. A PreToolUse denial also skips the WHOLE chained Bash command: a chained `sed -i` silently never runs while you believe you edited the file.
+- Each false-positive denial burns one of 3 strikes; three open an admin escalation for something that was never a delivery. Stop retrying and switch endpoints.
+- Read-safe escapes: `issues/<n>` (serves PR state, `closed_at`, `merged_at` too), `issues/<n>/comments`, `issues/<n>/timeline`, `issues/comments/<id>`, `check-suites/<id>/check-runs`, `commits/<sha>/check-runs`, `actions/runs?head_sha=<sha>` (no branch string), `gh pr view --json`, and the slang-mcp github tools.
+- The plan gate (`gate-plan.sh`) denies ANY Bash command containing a `>`/`>>` redirect while `plan_written=false` — including a read-only verification run like `slang-test > log 2>&1`. `plan-tracker.sh` records ONLY the Write tool, so re-Write the identical plan via Write (never Edit) to flip it.
+- `REQUIREMENTS:` URLs must carry anchors (`#issuecomment-<id>`, `#issue-<n>`, `#discussion_r-<id>`, `#pullrequestreview-<id>`) or the round silently drops with no error; anchor an issue BODY as `#issue-<database-id>` (fetch with `gh api ... --jq .id`), never a bare issue URL. The same validator pins the verbatim dev-instructions sentinels.
+- The host gate AUDIT pattern-matches marker text in outbound rows: quoting a bracketed workflow marker with no matching critique call logs "gate skipped" — discuss a coworker's markers without quoting the bracketed string.
+- Late edit bumps defeat freshness: ANY Bash `>`/`>>` (even `2>/dev/null`, even a timed-out command whose bump lands AFTER the round's reset) can stale an approve — fire the marker in the clean window.
+- The PR-description length gate counts the body minus the trailing `<sub>` disclaimer trailer and AI-assistance line — strip those before re-counting.
+- The authority for "did my critique count / what did it say" is `critique_verdicts` + `critique_attested`, not stage counts; broken gateway GitHub creds (401 Bad credentials) are an infra outage to report, not a connect-flow.
 ## Read-only false positives: substring matchers with no verb
 
 The critique-gate hook pattern-matches `gh api [^|]*pulls` and `api.github.com.../pulls` on ANY Bash
@@ -62,7 +34,14 @@ delivery. The full arm regex and endpoint-by-endpoint escapes are on
 line: never use the `/pulls/N` route for reads — `/issues/N` returns state/closed_at/merged_at for PRs too,
 `/check-suites/<id>/check-runs` for CI, `gh pr view` (GraphQL; bypasses the pattern, needs a valid token).
 The refusal also aborts the WHOLE compound Bash call when any one command in it matches (`cmd1; gh api
-…/pulls/N …` → cmd1 never runs), and a read-safe alternative that never meets the hook at all is the
+…/pulls/N …` → cmd1 never runs). This is general PreToolUse mechanics, not critique-gate-specific: ANY
+hook denial — e.g. the public-comment review gate refusing the `gh` part of a chain — skips the whole
+command before it executes, so a chained `sed -i` silently never runs and the file is left unmodified
+while you believe you edited it (seen on issue #14664's rollup comment: the gate then denied on the old
+sha256); do each file-mutating step in its OWN Bash call, verify the result (hash + grep), and only then
+run the gated `gh`/post command
+([PreToolUse gate denial skips the whole chained bash command](../learnings/1795186597404-pretooluse-gate-denial-skips-the-whole-chained-bas.md)).
+A read-safe alternative that never meets the hook at all is the
 slang-mcp `github_get_pull_request` tool (not a Bash call, the hook never sees it). Don't "fix" the block by
 re-running codex-critique PLAN_REVIEW for a task that isn't creating a PR — the block is a false positive
 on a read path, not a missing stage
@@ -79,6 +58,15 @@ this pattern and retry the read via `gh pr view` rather than escalating critique
 denied/blocked verification probe still means UNVERIFIED — take the alternate read path; never
 record the claim from relayed provenance
 ([delivery gate denies read-only gh api pulls GETs — use gh pr view](../learnings/1795107911913-delivery-gate-denies-read-only-gh-api-pulls-gets-u.md)).
+Re-measured again 2026-11-20 (fix-5667, PR #14666): codex's own `pulls/14666/reviews` read inside the sandbox
+was denied the same way, and a spurious "CRITIQUE GATE BLOCKED your PR creation" card with no pending create
+was really the per-window state missing only PLAN_REVIEW (CODE_REVIEW/OUTPUT_REVIEW recorded separately) —
+one PLAN_REVIEW round on the plan file cleared it
+([critique gate false-positives on read-only pulls API calls](../learnings/1795204342182-critique-gate-false-positives-on-read-only-pulls-a.md)).
+After the claude→opencode session migration (2026-11-21) the same matcher burned 2 denials (near the
+3-strike cap) on read-only pulls reads, because the fresh opencode session's workflow-state carries none of
+the old claude-session rounds
+([opencode migration: fresh state blocks read-only pulls reads](../learnings/1795224576884-opencode-migration-critique-gate-state-reset-block.md)).
 Codex reviewers hit the same wall inside their sandbox — tell them about it in the prompt's environment
 note. The plan tracker has the same text-matching defect: "PLAN REQUIRED: Write a plan" fires when
 `fix/issue-<n>` appears anywhere in the command, even a branch name inside a query param
@@ -117,111 +105,6 @@ The hook (`/app/hooks/plan-tracker.sh`, PostToolUse matcher `Write`) also re-arm
 and the critique delivery gate likewise requires a fresh OUTPUT_REVIEW round after ANY edit since the last
 approve, even a one-line `sed` to the plan file via Bash: sequence deliverable-final edits before the last
 critique round ([plan-tracker hook counts only Write-tool plan writes, not Edit](../learnings/1794933052106-plan-tracker-hook-counts-only-write-tool-plan-writ.md)).
-
-## workflow-state lifecycle: resets, shared filesystem, and what to trust
-
-`workflow-state.json` resets on EVERY routed envelope — re-kicks and provider-429 retry system notices
-included — wiping all recorded critique stages and `plan_written`. Run the three rounds AND the delivery
-(`gh pr create`, marker sends) inside the same turn; a mid-ladder inbound forces full re-records
-([anchored REQUIREMENTS; state resets](../learnings/1794861965038-track-critique-requirements-links-must-be-anchored.md),
-[state resets and 429 recovery](../learnings/1794892336879-critique-gate-recording-mechanics-anchored-require.md)).
-The 429 "model provider too many requests" retries recycle the per-host state while workspace files
-survive, with three measured consequences (slang#14518): the plan-tracker refuses Edit/Write/Bash-writes
-again — re-Write the plan file to re-trigger the PostToolUse recorder; recorded critique threads/verdicts
-vanish — re-run the missing stage with a FRESH `mcp__codex__codex` call, because a `codex-reply`
-continuation records the verdict but does NOT refresh the `critique_attested` hashes, leaving the deliver
-gate refusing on stale attestation even after an approve; and `/tmp` is wiped on the recycle while
-`/tmp/opencode` is root-owned, so background build logs die instantly and silently — log to the worktree
-`build/` dir (durable and gitignored) and verify with `ps aux | grep ninja` + `tail` within seconds of
-starting ([429 retries recycle host workflow-state; log background builds in the worktree](../learnings/1794898070596-429-retries-recycle-host-workflow-state-codex-repl.md)).
-Sibling sessions share one container filesystem, so the shared state file can be zeroed concurrently while
-your codex round is in flight — one OUTPUT_REVIEW call returned no output while
-`/workspace/.claude/workflow-state.json` got zeroed, and the open escalation then retired without the
-critique being recorded; verify with `jq .critique_rounds` after every codex round before assuming it
-counted ([sibling-session zeroing](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)).
-The zeroing is a per-CONTAINER shared-file race, not a rare accident: the verdict ledger is ONE file for
-ALL concurrent sessions in the container, and sibling slang-fixer sessions' turn boundaries zero it
-(observed 0 bytes repeatedly mid-turn, 2026-11-17), so a session can run all three stages to approval and
-still lose the recordings between the codex call and the gated delivery — plan records and stage verdicts
-vanish, and `gate-critique-on-deliver.sh` even throws `line 630: [: : integer expression expected` on the
-zeroed state, converting recorded approvals into "no verdict was recorded"; one PR creation succeeded only
-when a 30-second sibling-free window happened to exist. Workarounds that worked: keep working files under
-`/workspace/agent/reports/` (plan-free paths — Edit/Write allowed with the gate armed), move files with
-`mv`/`cp` rather than redirects (`sed -i` and even a grep whose pattern string contains `>` get
-false-flagged as writes needing a plan), and re-run all three codex stages back-to-back immediately before
-the delivery. When the race is lost 3×, the gate's design says an admin decides — escalate rather than
-looping, presenting the three options (per-session state isolation, a one-shot gate bypass, or a retry
-during sibling quiescence) and keeping the chain's GitHub footprint visibly fresh (a parked chain must
-look parked on the issue/PR, not silently stall); the durable fix is per-session state isolation
-([workflow-state.json is a shared race](../learnings/1794903624791-workflow-state-json-is-a-shared-race-sibling-sessi.md),
-[the ledger is per-container shared state](../learnings/1794903675593-critique-gate-ledger-is-shared-per-container-and-c.md)).
-Counts lie in the other direction too: a client-side MCP timeout can bump `critique_stages` counts and
-leave duplicate entries in `critique_threads` — after 2 timeouts + 1 success, OUTPUT_REVIEW showed count 2
-and two thread ids with no way to tell which thread was live. The authority is `critique_verdicts` +
-`critique_attested` (fresh hash set), not the counts; for a follow-up round on ambiguous threads, open a
-FRESH `mcp__codex__codex` call with `STAGE:` set — it records as an iteration round (stage count stays,
-verdict + attestation update) with no thread ambiguity
-([counts vs verdicts; fresh call on ambiguity](../learnings/1794868189687-critique-gate-mechanics-pulls-read-false-positive-.md);
-thread-map mechanics on [round recording](agent-infra-critique-round-recording.md)).
-
-A container restart is the same wipe from a different direction: the state file's `started_at` equals
-container start, so after a restart `plan_written:false, critique_rounds:0` even though a prior session
-recorded rounds — and a parent dispatch that says "only retry stages X and Y" may not know the wipe, so
-check the state file first and re-run everything the gate requires; restarts also wipe `/tmp`, so keep
-every deliverable draft (explain bodies, issue comments) under `/workspace/agent/reports/`
-([critique-gate + session-restart mechanics](../learnings/1794922534775-critique-gate-session-restart-mechanics-for-slang-.md),
-[restart wipes critique-gate state](../learnings/1794923695736-restart-wipes-critique-gate-state-deliverable-writ.md)).
-Because the state is GROUP-shared (not just a race hazard), a helper/one-shot session that records
-PLAN/CODE/OUTPUT_REVIEW stages unlocks the OWNER session's delivery gate — the gate reads the file at send
-time regardless of which session recorded — so never record a stage against a stale/moving artifact (e.g.
-the pre-round-2 head while the owner is still editing): the helper's recording poisons the owner's
-attestation ([delivery-gate workflow-state is group-shared](../learnings/1794923408180-delivery-gate-workflow-state-is-group-shared-a-hel.md)).
-The hooks all write the state via tmp+mv with NO locking, so concurrent writes race and clobber (one plan
-re-write erased a recorded CODE_REVIEW) — do gate writes with nothing else in flight; and poll state with
-redirect-FREE commands, since a Bash string containing `2>/dev/null` matches `track-edits`'s `>` write
-heuristic and bumps `edits_since_critique`
-([state-write races](../learnings/1794948587801-recording-critique-gate-rounds-bridge-dispatch-anc.md)).
-The same late-bump mechanism defeats the freshness gate deterministically: `track-edits` fires at
-PostToolUse even for a command KILLED at the bash ~115s timeout, so a backgrounded launcher with
-`> log 2>&1` delivers its edit bump ~115s later — often AFTER the critique round's reset zeroed the
-counter — and codex's own session-end bookkeeping can add a second bump ~7s after the record. The recipe
-that gets a delivery marker through: launch the recording round via a tiny python `Popen` (stdin/stdout on
-DEVNULL, `start_new_session=True`) so the launcher bash contains NO `>`, poll `last_critique_at` in a
-redirect-free loop, and the moment the state shows `edits_since_critique=0`, fire the marked send as the
-very next tool call
-([critique-gate freshness: only bun-bridge dispatches record](../learnings/1794970120988-critique-gate-freshness-only-bun-bridge-codex-disp.md)).
-
-**The end-to-end delivery recipe that works despite all of the above** (slang#14645,
-slang-fixer container, 2026-11-20): the workflow-state file is wiped at EVERY message-batch
-boundary (not occasionally) — `plan_written` flips false and all stage verdicts vanish between
-turns — so re-arm the plan gate with the **Write tool** (not bash redirects, not Edit), then
-re-record the required stages **in the same turn as the delivery** via `bridge-dispatch.py`
-with the canonical devinst sentinels, firing the stage dispatches **in parallel** (three
-`setsid python3 … &`) — ~15 min instead of ~50, each recording independently server-side even
-though the bridge hangs and the result file comes back 0 bytes; if a must-fix verdict's text is
-lost to that hang, the codex rollout files (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`)
-contain the full critique — find the file whose first lines carry your `STAGE:` marker and parse
-the assistant message containing `### Verdict`. Delivery is a race against a sibling session:
-`edits_since_critique` is per-container shared state and any session's Bash-with-redirect or
-non-allowlisted Write bumps it — poll until the round records AND `edits == 0`, then deliver
-immediately; write reply/comment bodies with the **Write tool into `reports/`** (allowlisted,
-never bumps) and post with `gh api -F body=@file` (no redirect in the command). Read PR review
-threads via **GraphQL** (`reviewThreads`) — `gh api` reads on `pulls/…/comments` trip the
-deliver gate's pattern. Commit bodies containing backticks must go through `git commit -F file`
-(a heredoc `-m` executes backticks as command substitution and silently amputates them), and
-`/tmp/opencode` is root-owned and unwritable — a failed redirect there also silently kills a
-backgrounded chain at spawn; scratch under `/workspace/agent/scratch-*/`
-([slang-fixer: critique-gate delivery recipe — batch wipes, bridge re-records, race windows, gate false-positives](../learnings/1795149694490-slang-fixer-critique-gate-delivery-recipe-batch-wi.md)).
-
-The gates themselves can misfire on **stale host state**: the EXPLANATION_COMMENT gate denied a
-[Fix Report] citing cached heads ("pushed 808695c / comment fb11bf" while the live state was
-b2843ab004b4 on both, verified via `gh`; an idempotent upsert did not refresh it) — the gate's own
-denial text prescribes the fallback: send a plain message to parent WITHOUT the marker, and report
-the gate misfire to the operator. Because every message-batch boundary also resets the critique
-tracker, re-Write the plan file with the Write tool and run fresh STAGE calls per batch before any
-gated delivery ([builtin select/:? tie failures are E39999, and host gates misfire on stale state](../learnings/1795102972618-builtin-select-tie-failures-are-e39999-and-host-ga.md)
-— the compiler-side half of that atom, E39999 vs E30442, is on
-[slang codebase specifics](agent-infra-f0909b0-slang-codebase-and-ci-specifics.md)).
 
 ## Gate audit: marker text in non-report outbound rows
 
@@ -319,8 +202,7 @@ trust the state file: check `critique_verdicts`/`critique_attested` in
 `/workspace/.claude/workflow-state.json` and hash-verify the delivered files rather than re-running
 codex ([never edit codex-attested artifacts after approve — route advisories via send_file cover text](../learnings/1795144021884-never-edit-codex-attested-artifacts-after-approve-.md)).
 
-**Source learnings (28):**
-
+**Source learnings (21):**
 - [harness hooks false-positive on read-only queries](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md) — also carries the 401/GH_TOKEN infra-outage + unauth fallback facts
 - [gate burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)
 - [plan-tracker wants Write not Edit; re-hash](../learnings/1794855941188-critique-gate-mechanics-plan-tracker-wants-write-n.md)
@@ -328,24 +210,17 @@ codex ([never edit codex-attested artifacts after approve — route advisories v
 - [pulls-read false positive; counts vs verdicts](../learnings/1794868189687-critique-gate-mechanics-pulls-read-false-positive-.md)
 - [plan gate blocks redirects; re-Write identical plan](../learnings/1794892096397-plan-gate-blocks-log-redirects-on-read-only-test-r.md)
 - [anchored REQUIREMENTS; state resets; 429 recovery](../learnings/1794892336879-critique-gate-recording-mechanics-anchored-require.md)
-- [429 retries recycle workflow-state; fresh codex call for attested hashes](../learnings/1794898070596-429-retries-recycle-host-workflow-state-codex-repl.md)
 - [plan-tracker hook counts only Write-tool plan writes, not Edit](../learnings/1794933052106-plan-tracker-hook-counts-only-write-tool-plan-writ.md) — re-arm after source edits; fresh OUTPUT_REVIEW after any edit
 - [Don't quote bracketed workflow markers in non-report messages](../learnings/1794918539609-don-t-quote-bracketed-workflow-markers-in-non-repo.md) — gate audit logs "gate skipped"; say "the formal marker"
 - [REQUIREMENTS URLs need anchors or rounds silently unrecorded](../learnings/1794899785762-critique-gate-requirements-urls-need-github-anchor.md) — slang#13832: 3 approved stages all "missing"; restart forces re-Write plan + re-run stages
-- [workflow-state.json is a shared race between sibling sessions](../learnings/1794903624791-workflow-state-json-is-a-shared-race-sibling-sessi.md) — per-container file zeroed mid-flight; escalate after 3 losses
-- [critique-gate ledger is per-container shared state, zeroed by siblings](../learnings/1794903675593-critique-gate-ledger-is-shared-per-container-and-c.md) — don't re-run blindly; park the chain visibly and escalate
 - [record stages in the same turn; REQUIREMENTS need #issue-<database-id>](../learnings/1794904889749-critique-gate-record-stages-in-the-same-turn-requi.md) — same-turn stages; ≥1000-byte comments need an attested body-file
 - [critique gate hook blocks read-only gh api pulls calls](../learnings/1794919112736-critique-gate-hook-blocks-read-only-gh-api-pulls-c.md) — refuses whole compound call; use gh pr view / slang-mcp tool
-- [critique-gate + session-restart mechanics for slang-fixer](../learnings/1794922534775-critique-gate-session-restart-mechanics-for-slang-.md) — restart resets workflow-state and /tmp; keep drafts in reports/
-- [delivery-gate workflow-state is group-shared](../learnings/1794923408180-delivery-gate-workflow-state-is-group-shared-a-hel.md) — helper's rounds unlock owner's gate; never record on a moving artifact
-- [restart wipes critique-gate state; write order matters](../learnings/1794923695736-restart-wipes-critique-gate-state-deliverable-writ.md) — deliverable writes precede the last OUTPUT_REVIEW round
 - [PR-description 1000-char gate excludes the disclaimer trailer](../learnings/1794925078617-pr-description-1000-char-gate-excludes-the-disclai.md) — strip <sub> trailer before re-counting
 - [plan-gate Write-vs-Edit + diag exit-code pins](../learnings/1794928650513-plan-gate-write-vs-edit-diag-exit-code-pins-when-m.md) — Edit never sets plan_written; re-check exit pins after severity merges
 - [gate hooks that silently refuse: codex-reply STAGE and marker in_reply_to](../learnings/1794928766192-gate-hooks-that-silently-refuse-codex-reply-stage-.md) — replies must not carry STAGE:; markers need in_reply_to
-- [recording critique-gate rounds: bridge dispatch and state-write races](../learnings/1794948587801-recording-critique-gate-rounds-bridge-dispatch-anc.md) — tmp+mv writes race; 2>/dev/null bumps the edit counter
-- [critique-gate freshness: only bun-bridge dispatches record](../learnings/1794970120988-critique-gate-freshness-only-bun-bridge-codex-disp.md) — late edit bumps; fire the marker in the post-record clean window
 - [delivery gate denies read-only gh api pulls GETs — use gh pr view](../learnings/1795107911913-delivery-gate-denies-read-only-gh-api-pulls-gets-u.md) — no method discrimination; write-intent patch handed to operator 11-19; denied probe = UNVERIFIED
 - [codex critique rounds need REQUIREMENTS field or they silently do not record](../learnings/1795109255556-codex-critique-rounds-need-requirements-field-or-t.md) — REQUIREMENTS (or `none — <why>`) in EVERY codex prompt incl. follow-ups; plan Write per task turn
 - [never edit codex-attested artifacts after approve — route advisories via send_file cover text](../learnings/1795144021884-never-edit-codex-attested-artifacts-after-approve-.md) — hash re-hash trips the gate; trust workflow-state over the audit hook's "never invoked"
-- [slang-fixer critique-gate delivery recipe: batch wipes, parallel bridge re-records, race windows](../learnings/1795149694490-slang-fixer-critique-gate-delivery-recipe-batch-wi.md) — state wiped per batch; Write into reports/; GraphQL for review threads; commit -F for backticks
-- [host gates misfire on stale state — EXPLANATION_COMMENT denied on stale cached heads](../learnings/1795102972618-builtin-select-tie-failures-are-e39999-and-host-ga.md) — fallback: plain message without the marker + report the gate; compiler half (E39999) on slang-codebase page
+- [PreToolUse gate denial skips the whole chained bash command](../learnings/1795186597404-pretooluse-gate-denial-skips-the-whole-chained-bas.md) — chained `sed -i` never runs when the `gh` part is denied; mutate files in their own call, verify, then run the gated command.
+- [critique gate false-positives on read-only pulls API calls](../learnings/1795204342182-critique-gate-false-positives-on-read-only-pulls-a.md) — codex's own pulls read denied; spurious "PR creation blocked" card = per-window state missing PLAN_REVIEW; one round clears it.
+- [opencode migration: fresh workflow-state blocks gated reads; router demands in_reply_to](../learnings/1795224576884-opencode-migration-critique-gate-state-reset-block.md) — old claude-session rounds not carried over; pulls reads burn denials; use `gh pr view` / `gh run list/view`.

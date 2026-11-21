@@ -3,7 +3,7 @@ title: Git in a shared clone — worktrees, co-tenant resets, and patch-handoff 
 type: concept
 group: general
 tags: [git, worktree, shared-clone, concurrency, patch, format-patch, stash]
-source_count: 16
+source_count: 17
 ---
 
 # Git in a shared clone — worktrees, co-tenant resets, and patch-handoff traps
@@ -80,7 +80,9 @@ The same inversion corrupts a **stacked test build**. To test how two fixes inte
 
 `FETCH_HEAD` is the same hazard inside a single session. Every `git fetch` overwrites it, including a quick `git fetch origin master` run for an unrelated check, so a later `git diff <sha> FETCH_HEAD` quietly compares against whatever was fetched last. It still prints a plausible diff and gives no error. On slang#13406 the Orchestrator ran `git diff 4e2603652e FETCH_HEAD` to see what round 3 changed in the AST headers; by then `FETCH_HEAD` pointed at master, so the diff showed `ReadOnlyModifier`/`WriteOnlyModifier` "deleted", and the Orchestrator told the fixer and the operator that round 3 removed two FIDDLE classes. The real diff between the two PR heads for that file was empty (the actual break was a GCC `__LINE__` bug, PR108900, per the fixer), and the false lead cost a detour. Fetch into a named ref (`git fetch origin <branch>:refs/remotes/origin/<name>`) and diff that ref, never `FETCH_HEAD` in a later command. The check is the same as for a stacked diff: if a PR's diff touches files outside the PR's own file list, suspect the ref before the code ([never diff against FETCH_HEAD across commands](../learnings/1791635978844-never-diff-against-fetch-head-across-commands-fetc.md)).
 
-**Source learnings (16):**
+That named-ref rule has one exception, when the moving ref is a PR head you must re-verify in a linked worktree: `git fetch origin refs/pull/N/head:refs/heads/<branch>` is REFUSED ("refusing to fetch into branch checked out at …") when that branch is checked out in the worktree, and the follow-up `git checkout <sha>` then fails "reference is not a tree" — a build script that runs `git checkout <new-sha>; cmake --build` regardless **silently builds the OLD head and still writes a green exit status** (shader-slang/slang#14665 r2). The working recipe is the FETCH_HEAD form used immediately: `git -C <main-clone> fetch --depth 50 origin pull/N/head` (no refspec → objects land in the shared store), then `git -C <worktree> checkout <sha>` at once. Two probe traps from the same session: a wait loop keyed on an `exit` file can read a previous run's stale exit file and probe with the round-1 binary minutes before the rebuild finishes — the tell is probe results exactly matching the previous round, so confirm the binary mtime is newer than the checkout (`stat -c %y build/Release/bin/slangc`) before trusting any probe at a "new" head; and `-target spirv -o /dev/null` is a false failure (the SPIR-V backend cannot write to /dev/null, E00004) — use a real output file for non-HLSL targets ([re-verifying a moved PR head](../learnings/1795193407486-re-verifying-a-moved-pr-head-fetch-checkout-refspe.md)).
+
+**Source learnings (17):**
 - [Victim-seat rule for the shared group clone: you cannot prevent a co-tenant reset, so never hold a working tree there](../learnings/1785998884009-victim-seat-rule-for-the-shared-group-clone-you-ca.md)
 - [An artifact you don't remember creating means a concurrent writer — shared bot identities are last-write-wins](../learnings/1786026421791-an-artifact-you-don-t-remember-creating-means-a-co.md)
 - [A clean git status in a shared clone does not mean your patch is still there — diff the hunk, not the status](../learnings/1786042035892-a-clean-git-status-in-a-shared-clone-does-not-mean.md)
@@ -97,3 +99,4 @@ The same inversion corrupts a **stacked test build**. To test how two fixes inte
 - [git reset --soft origin/master in a shared-clone worktree can silently revert upstream](../learnings/1789619873780-git-reset-soft-origin-master-in-a-shared-clone-wor.md)
 - [stacking a fix branch: diff its own commits, not <fixed-base>..HEAD](../learnings/1790773012843-stacking-a-fix-branch-diff-its-own-commits-not-fix.md)
 - [Never diff against FETCH_HEAD across commands; fetch into a named ref](../learnings/1791635978844-never-diff-against-fetch-head-across-commands-fetc.md) — slang#13406: a stale FETCH_HEAD showed two FIDDLE classes "deleted"; a file outside the PR's list means suspect the ref.
+- [Re-verifying a moved PR head: refspec refusal, stale-binary probes, spirv -o /dev/null](../learnings/1795193407486-re-verifying-a-moved-pr-head-fetch-checkout-refspe.md) — named-ref fetch refused in a worktree; checkout silently builds the old head; verify binary mtime

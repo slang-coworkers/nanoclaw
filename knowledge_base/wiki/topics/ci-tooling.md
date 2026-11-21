@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-687 learnings. [Catalog](../index.md)
+693 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -167,6 +167,7 @@ type: topic
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
 - [Background build exit code masked by trailing `tail`/`echo` — check BUILD_EXIT, not the wrapper](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
 - [Bare file-name #line CHECK-DAGs can be satisfied by struct types from incidental meta locations](../learnings/1792583190960-bare-file-name-line-check-dags-can-be-satisfied-by.md)
+- [Bareword ParseModifiers on enum cases recurred in #14665; probe it yourself, and never cite line ranges from learnings without re-grepping the head](../learnings/1795188722331-bareword-parsemodifiers-on-enum-cases-recurred-in-.md)
 - [Base-refresh merges stale the file:line citations in posted PR explanation comments](../learnings/1794929369108-base-refresh-merges-stale-the-file-line-citations-.md)
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md)
 - [Before building a bot fix, check for a reporter-opened PR that fixes the same issue](../learnings/1793622493442-before-building-a-bot-fix-check-for-a-reporter-ope.md)
@@ -367,6 +368,7 @@ type: topic
 - [Falcor test-falcor opaque logs are now universal (class 2), not branch-specific — verify signature before deferring](../learnings/1789618761733-falcor-test-falcor-opaque-logs-are-now-universal-c.md)
 - [Falcor2 CI bridge: manual smoke only, failed 2026-09-08 then dormant; Falcor1 nightly proves shared runner alive](../learnings/1794894179320-falcor2-ci-bridge-manual-smoke-only-failed-2026-09.md)
 - [Fast compile-verify a single-TU C++ change via compile_commands.json (no full rebuild)](../learnings/1789819901846-fast-compile-verify-a-single-tu-c-change-via-compi.md)
+- [Fastly rejects Range requests on raw.githubusercontent.com — breaks heartbeat precheck CI fetch](../learnings/1795224008854-fastly-rejects-range-requests-on-raw-githubusercon.md)
 - [fiddle:13 'friend' outside class on GCC runner = stale PCH, not poisoned cache](../learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)
 - [Find where a parked design issue's decision will be made with the GitHub sub-issue API](../learnings/1793991783678-find-where-a-parked-design-issue-s-decision-will-b.md)
 - [First real release CI failure verified — runner infra, not source; verification loop works unchanged on red runs](../learnings/1786930405064-first-real-release-ci-failure-verified-runner-infr.md)
@@ -500,6 +502,7 @@ type: topic
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
 - [Per-conformer specialization of a caller under dynamic dispatch: use a traversal-owned interface + blanket extension](../learnings/1790404968818-per-conformer-specialization-of-a-caller-under-dyn.md)
 - [pgrep -f self-matches inside the Bash tool; eval_run.py has no RUNNER EXIT line](../learnings/1793876577443-pgrep-f-self-matches-inside-the-bash-tool-eval-run.md)
+- [pgrep self-match and silent nohup failures fake a running build](../learnings/1795191845301-pgrep-self-match-and-silent-nohup-failures-fake-a-.md)
 - [Pin the denominator when comparing a CI rate to a stored baseline](../learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md)
 - [Pointer function parameters are provisional in the specialize-address-space pre-pass](../learnings/1789249737483-pointer-function-parameters-are-provisional-in-the.md)
 - [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](../learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
@@ -602,6 +605,7 @@ type: topic
 - [Slang CI: Saturday CMake Options burst blinds CI Health; MQ skips test-falcor](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)
 - [Slang CI: splitting a build/test job — Git-Bash-PATH gotcha + bot cannot push workflow files](../learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md)
 - [slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked](../learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)
+- [slang CI: warped-sampling-1d sign-flip flake on windows debug GPU job](../learnings/1795212558949-slang-ci-warped-sampling-1d-sign-flip-flake-on-win.md)
 - [Slang CI: wasm build failures are usually real linker errors, not infra](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [Slang CI: WASM link regression + slang-rhi timing flake signatures](../learnings/1780891496263-slang-ci-wasm-link-regression-slang-rhi-timing-fla.md)
 - [Slang CI: Windows test-slang disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
@@ -635,6 +639,7 @@ type: topic
 - [Stall remedy: distinguish hung build from repeatedly-killed background build before authorizing a clear-and-rebuild](../learnings/1787337196578-stall-remedy-distinguish-hung-build-from-repeatedl.md)
 - [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
 - [Subagent depth limit — run builds directly with extended bash timeout](../learnings/1794995695015-subagent-depth-limit-run-builds-directly-with-exte.md)
+- [Subagent repros racing a concurrent rebuild hit the half-linked binary](../learnings/1795166029073-subagent-repros-racing-a-concurrent-rebuild-hit-th.md)
 - [Submodule gitlinks silently survive merges — diff external/ against master before calling a CI failure environmental](../learnings/1794960851167-submodule-gitlinks-silently-survive-merges-diff-ex.md)
 - [Sum-check a CI decomposition, and never describe a sparse build matrix as a cross-product](../learnings/1785968857587-sum-check-a-ci-decomposition-and-never-describe-a-.md)
 - [Templated operator-wake ≠ explicit scoped override of a considered hold](../learnings/1782734222994-templated-operator-wake-explicit-scoped-override-o.md)
@@ -673,6 +678,7 @@ type: topic
 - [Verify passed-vs-FAILED before citing a test signature in an escalation](../learnings/1784096353229-verify-passed-vs-failed-before-citing-a-test-signa.md)
 - [Verify PR-report "CI failing" labels with one GraphQL isRequired query](../learnings/1793002682253-verify-pr-report-ci-failing-labels-with-one-graphq.md)
 - [Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](../learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)
+- [Verify verdict file:line citations against the PR-version file, not diff-hunk arithmetic](../learnings/1795195510424-verify-verdict-file-line-citations-against-the-pr-.md)
 - [Verify-at-head: check enforce logic against COMBINED inputs + prove build-wiring, don't accept it](../learnings/1784568390472-verify-at-head-check-enforce-logic-against-combine.md)
 - [Verifying a citation: extract it from the artifact, never retype it](../learnings/1785967745164-verifying-a-citation-extract-it-from-the-artifact-.md)
 - [Verifying a cross-reference cluster: assert >= 1 not == 1, grep case-insensitively, and check the edge from the reader's landing point — three instrument defects found inside the notes asserting the discipline](../learnings/1785847532091-verifying-a-cross-reference-cluster-assert-1-not-1.md)

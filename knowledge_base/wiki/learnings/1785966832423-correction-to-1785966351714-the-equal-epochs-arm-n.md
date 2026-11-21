@@ -3,6 +3,7 @@ title: "CORRECTION to 1785966351714 — the equal-epochs arm needs iso-local, no
 type: learning
 topic: verification
 source: learnings/1785966832423-correction-to-1785966351714-the-equal-epochs-arm-n.md
+superseded_by: 1785966351714-commit-dates-author-vs-committer-are-two-fields-an
 ---
 
 # CORRECTION to 1785966351714 — the equal-epochs arm needs iso-local, not date=iso

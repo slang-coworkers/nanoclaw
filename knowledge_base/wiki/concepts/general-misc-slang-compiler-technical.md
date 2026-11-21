@@ -3,7 +3,7 @@ title: "Slang Compiler Technical Findings"
 type: concept
 group: general-misc
 tags: [slang, compiler, spirv, ir, descriptor-heap, coopmat, deepwiki, rebase, expected-failure, uninit-checker, macro, diagnostics, slang-test, expected-baseline, filecheck, slang-module, import-resolution, sourceloc, isession, composite-component-type, threading]
-source_count: 22
+source_count: 23
 ---
 
 # Slang Compiler Technical Findings
@@ -44,6 +44,8 @@ Concrete findings about the Slang compiler codebase: checking external-tool clai
 DeepWiki's RAG index can miss files that declare semantics in string literals (glslang `Initialize.cpp` / `Builtins.cpp`), because those chunks sit far from the declaration sites a question asks about. It also indexes `main`/HEAD, which can differ from the submodule pin. Before calling a code claim a "contradiction" with DeepWiki, fetch the file at the exact pinned SHA (`curl https://raw.githubusercontent.com/.../<pinned-sha>/<file>`) and grep it. A DeepWiki "no, X doesn't do Y" is a hypothesis ([deepwiki-can-miss-files-in-large-or-vendored-codebases-cross-check-source](../learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md)).
 
 DeepWiki also conflates cooperative-**vector** with cooperative-**matrix**. Asked about SM 6.10 `linalg` `InterlockedAccumulate`, it answers "yes" and cites CoopVec helpers, but `Matrix::Accumulate` and `Matrix::InterlockedAccumulate` are absent from `struct CoopMat` in `hlsl.meta.slang` (checked at HEAD). The `InterlockedAccumulate` string in the CoopVec prelude is a name collision. Confirm CoopMat coverage by reading `hlsl.meta.slang` ([CoopMat vs CoopVec linalg InterlockedAccumulate — DeepWiki conflates them](../learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md)).
+
+DeepWiki's index also **lags recent additions**: the `targets=` test-directive option added in #14561 (with the old-format warning in `_addTestLine`) was absent from its knowledge base, so it answered "can't confirm" on the exact parsing rules while the local checkout had the full answer. Rule of thumb: for anything landed in the last ~2 months, read local code first — DeepWiki is useful only for stable background (CI workflows, test-framework architecture), not the new mechanism itself ([DeepWiki lags recent slang-test changes](../learnings/1795208677211-deepwiki-lags-recent-slang-test-changes-prefer-loc.md)).
 
 ## IR Crash Diagnosis: Dump IR, Don't Trust the Stack Trace Alone
 
@@ -115,7 +117,7 @@ A user told only "unsupported" about the bottom-right cell blames their own code
 When a guard rejects X regardless of how X arrived, document the guarantee ("drops X regardless of provenance"), not an enumeration of arrival paths. An arrival-path claim is a checkable statement about compiler behavior and can be wrong while the guard is right: in one three-round review, three successive explanations of why a foreign-FileDecl case was impossible were each wrong, and the guard conjunct was correct throughout ([Document a guard's guarantee, not the enumeration of how the bad input arrives](../learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md)).
 
 ---
-**Source learnings (22):**
+**Source learnings (23):**
 - [Blender→glTF PBR too-bright + gamma mismatch: candela units, ×683 Spec-mode export, AgX view transform](../learnings/1784300430455-blender-gltf-pbr-too-bright-gamma-mismatch-candela.md)
 - [Slang normal-map/TBN debugging: mul arg-order + NaN-tangent diagnostic ladder](../learnings/1784305210428-slang-normal-map-tbn-debugging-mul-arg-order-nan-t.md)
 - [DeepWiki can miss files in large or vendored codebases](../learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md)
@@ -138,5 +140,6 @@ When a guard rejects X regardless of how X arrived, document the guarantee ("dro
 - [Unsupported-and-unchecked is the dangerous quadrant — cross-session `CompositeComponentType` (slang#8437) returns `SLANG_OK` then crashes; serialize+deserialize to reuse a module](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)
 - [UPDATE slang#11568: UntypedResourceHandle proxy design](../learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md) — concrete proxy sidesteps return-only generic inference
 - [CORRECTION: ResourceDescriptorHeap Approach A is a dead end — E39999](../learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md) — return-position-only generic subscript cannot be inferred
+- [DeepWiki lags recent slang-test changes — prefer local code for post-#14561 test-directive mechanics](../learnings/1795208677211-deepwiki-lags-recent-slang-test-changes-prefer-loc.md) — index lags ~2 months; local checkout is the source for new mechanisms
 
 _Catalog: [[wiki/index.md]]_
