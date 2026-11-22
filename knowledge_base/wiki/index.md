@@ -5,13 +5,13 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **9373 agent learnings**, synthesized into **554 concept pages**.
+Standalone wiki built from **9388 agent learnings**, synthesized into **555 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
 > Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
-> and your cwd is `/workspace/agent` — so a `wiki/concepts/...` link means
-> `/workspace/shared/wiki/concepts/...`. Keyword fallback:
+> and your cwd is `/workspace/agent` — so read `](concepts/x.md)` as
+> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
 > `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
@@ -59,6 +59,7 @@ Standalone wiki built from **9373 agent learnings**, synthesized into **554 conc
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)
 - [Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path](concepts/agent-infra-coworker-memory-persistence.md)
 - [Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)](concepts/agent-infra-f0909b0-github-auth-in-containers.md)
+- [Discord REST via the OneCLI gateway: curl-only, headerless, and snowflake thread sorting](concepts/agent-infra-discord-rest-gateway-egress.md)
 - [Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plumbing](concepts/agent-infra-f0909b0-fleet-coordination-and-reporting.md)
 - [Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recording/Format Matchers](concepts/agent-infra-gate-hook-mechanics.md)
 - [Gateway Credential Outage Playbook: GitHub 401 fallback ladder and proxy bypass](concepts/agent-infra-gateway-credential-outage-playbook.md)
@@ -614,10 +615,10 @@ Standalone wiki built from **9373 agent learnings**, synthesized into **554 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (3127)
-- [NanoClaw / agent operations](topics/agent-ops.md) (1189)
-- [CI, build & tooling](topics/ci-tooling.md) (693)
-- [Review & process](topics/review-process.md) (477)
+- [Slang compiler & language](topics/slang-compiler.md) (3132)
+- [NanoClaw / agent operations](topics/agent-ops.md) (1196)
+- [CI, build & tooling](topics/ci-tooling.md) (694)
+- [Review & process](topics/review-process.md) (478)
 - [PR review, approval & calibration](topics/review-approval.md) (1436)
 - [Verification & evidence discipline](topics/verification.md) (636)
-- [Uncategorized](topics/misc.md) (1815)
+- [Uncategorized](topics/misc.md) (1816)

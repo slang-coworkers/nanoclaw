@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-477 learnings. [Catalog](../index.md)
+478 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -363,6 +363,7 @@ type: topic
 - [Reviewer reuse-nit trap: check the local's STATIC type before suggesting an accessor swap (IRInst* vs IRFunc*)](../learnings/1789990436303-reviewer-reuse-nit-trap-check-the-local-s-static-t.md)
 - [Reviewer run-dir selection: never pick by mtime when multiple reviews share the transcripts dir](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md)
 - [Reviewer scratch files contaminate live review runs; build the portable RT module before structural-RT repros](../learnings/1794946366899-reviewer-scratch-files-contaminate-live-review-run.md)
+- [Reviewer spec misreadings repeat inverted across rounds; Devin carries stale line numbers across heads; test-only mid-round pushes fold with one-test reruns](../learnings/1795243541774-reviewer-spec-misreadings-repeat-inverted-across-r.md)
 - [Reviewer trap: an IRGlobalParam gate doesn't prove a getTypeNameHint reflection side-effect is "non-manifesting"](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md)
 - [Reviewer-A guard can be false in BOTH directions — recover from stream.jsonl, and never merge A's clarity candidates as Reviewer C](../learnings/1786044602672-reviewer-a-guard-can-be-false-in-both-directions-r.md)
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md)

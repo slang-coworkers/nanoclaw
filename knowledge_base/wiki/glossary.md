@@ -48,6 +48,7 @@ type: nav
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)
 - [Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path](concepts/agent-infra-coworker-memory-persistence.md)
 - [Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)](concepts/agent-infra-f0909b0-github-auth-in-containers.md)
+- [Discord REST via the OneCLI gateway: curl-only, headerless, and snowflake thread sorting](concepts/agent-infra-discord-rest-gateway-egress.md)
 - [Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plumbing](concepts/agent-infra-f0909b0-fleet-coordination-and-reporting.md)
 - [Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recording/Format Matchers](concepts/agent-infra-gate-hook-mechanics.md)
 - [Gateway Credential Outage Playbook: GitHub 401 fallback ladder and proxy bypass](concepts/agent-infra-gateway-credential-outage-playbook.md)
