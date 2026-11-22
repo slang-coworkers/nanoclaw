@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-693 learnings. [Catalog](../index.md)
+694 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -610,6 +610,7 @@ type: topic
 - [Slang CI: WASM link regression + slang-rhi timing flake signatures](../learnings/1780891496263-slang-ci-wasm-link-regression-slang-rhi-timing-fla.md)
 - [Slang CI: Windows test-slang disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [Slang CI: windows-11-vs2026-arm64 runner image not yet in docs/building.md compiler-version allowlist](../learnings/1788242807926-slang-ci-windows-11-vs2026-arm64-runner-image-not-.md)
+- [slang ci_failed a month later: falcor-build-approval-gate 30-day expiry re-fires old yielded bot CI runs — and retry-yielded-bot-ci will never rerun them](../learnings/1795290396692-slang-ci-failed-a-month-later-falcor-build-approva.md)
 - [Slang CMake: SLANG_BUILD_MIMALLOC is unreachable at top-level scope (PARENT_SCOPE trap)](../learnings/1789247912043-slang-cmake-slang-build-mimalloc-is-unreachable-at.md)
 - [Slang DISABLE CI jobs are build-only — no slang-test run step](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
 - [Slang LLVM prebuilt GCS key moves with ANY edit to external/build-llvm.sh, even a comment](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md)

@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-3127 learnings. [Catalog](../index.md)
+3132 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -1495,6 +1495,8 @@ type: topic
 - [Slang corpus A/B emit-diff: control for bindir path + nondeterminism, use the tests' own SIMPLE args](../learnings/1792102021857-slang-corpus-a-b-emit-diff-control-for-bindir-path.md)
 - [Slang coverage examples: dispatch is reusable but manifest/LCOV tail is not in the unit tests](../learnings/1783455979540-slang-coverage-examples-dispatch-is-reusable-but-m.md)
 - [Slang coverage target-support gate ≠ atomic64 capability membership](../learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md)
+- [slang coverage-macos -api -mtl is the only executor of TEST(metal) targets=all cpu/llvm legs](../learnings/1795248615558-slang-coverage-macos-api-mtl-is-the-only-executor-.md)
+- [Slang coverage-macos red since 11-21: metal coop-matrix tests x targets=all x [require] enforcement — TRACKED by #14690](../learnings/1795248757311-slang-coverage-macos-red-since-11-21-metal-coop-ma.md)
 - [slang coworker /dev/shm is 64M — parallel C++ builds SIGBUS in cc1plus; set TMPDIR on disk](../learnings/1781716025205-slang-coworker-dev-shm-is-64m-parallel-c-builds-si.md)
 - [Slang coworker containers HAVE an NVIDIA GPU (L40S) — "no GPU" docs are stale; verify with nvidia-smi](../learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md)
 - [Slang coworker GitHub App lacks workflows scope](../learnings/1787914861084-slang-coworker-github-app-lacks-workflows-scope.md)
@@ -2893,6 +2895,7 @@ type: topic
 - [SPIR-V Patch decoration puts a variable in a SEPARATE location space for validation](../learnings/1787639466581-spir-v-patch-decoration-puts-a-variable-in-a-separ.md)
 - [SPIR-V patch-constant user varyings: Patch decoration necessary but not sufficient (12726)](../learnings/1787670044220-spir-v-patch-constant-user-varyings-patch-decorati.md)
 - [SPIR-V pointer-to-sized-array ArrayStride: two distinct pointer types carry different strides](../learnings/1788199529800-spir-v-pointer-to-sized-array-arraystride-two-dist.md)
+- [SPIR-V selections get no break semantics — why Slang's breakable-region OpSwitch idiom cannot become OpBranchConditional at emit level](../learnings/1795269794735-spir-v-selections-get-no-break-semantics-why-slang.md)
 - [SPIR-V SER capability over-requires 1.5; capdef floor edit alone is insufficient](../learnings/1784052492569-spir-v-ser-capability-over-requires-1-5-capdef-flo.md)
 - [SPIR-V snippet emit tests: FileCheck-local-ignore, half-hex-vs-float-decimal, test-only string snippets](../learnings/1789726457708-spir-v-snippet-emit-tests-filecheck-local-ignore-h.md)
 - [SPIR-V spec-constant composite tests: bind rows per container, anchor small values, don't pin hoist-dependent opcodes](../learnings/1793768669232-spir-v-spec-constant-composite-tests-bind-rows-per.md)
@@ -2932,6 +2935,7 @@ type: topic
 - [Stale GCC PCH snapshots FIDDLE macro state → bogus codegen errors (slang#12227)](../learnings/1784991435802-stale-gcc-pch-snapshots-fiddle-macro-state-bogus-c.md)
 - [Stale prebuilt slangc + inlining mask SPIR-V static-local bugs (verify-at-HEAD pitfalls)](../learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md)
 - [Stale prebuilt slangc embeds old core module — false tests/spirv failures](../learnings/1785167843971-stale-prebuilt-slangc-embeds-old-core-module-false.md)
+- [Stale slang-test binary silently runs 0 tests for targets= COMPARE_COMPUTE probes — exit 0 false green](../learnings/1795249553532-stale-slang-test-binary-silently-runs-0-tests-for-.md)
 - [Static-requirement witness synthesis is chosen at conformance time — generic T.f(p) reproduces the same bug as dynamic dispatch](../learnings/1790320772089-static-requirement-witness-synthesis-is-chosen-at-.md)
 - [static_assert CAN check sizeof(T, Std430DataLayout); slang-check-expr.cpp:3010 only limits checker folding](../learnings/1792678592260-static-assert-can-check-sizeof-t-std430datalayout-.md)
 - [static_assert(false) in a switch(T.kind) arm fires EAGERLY for generic export functions](../learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires-e.md)
@@ -2978,6 +2982,7 @@ type: topic
 - [tint-validate.mjs rejects all f16 WGSL unless the device requests shader-f16](../learnings/1792085503561-tint-validate-mjs-rejects-all-f16-wgsl-unless-the-.md)
 - [Trace slang-glslang calls without a debugger: logging shim via -spirv-opt-path <dir>](../learnings/1792539973371-trace-slang-glslang-calls-without-a-debugger-loggi.md)
 - [Triage brief named a function that does not exist (slang#14548 checkFunctionCommon)](../learnings/1795179603114-triage-brief-named-a-function-that-does-not-exist-.md)
+- [Triage briefs: validator-test SPIR-V control-flow claims before recommending emit-level fixes](../learnings/1795270698775-triage-briefs-validator-test-spir-v-control-flow-c.md)
 - [Triage discriminator: Slang embedded spirv-tools vs system Vulkan validation layer (version-skew)](../learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md)
 - [Triage SPIR-V binding/layout bugs via -target spirv -O0 -reflection-json when glslang downstream is unavailable](../learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md)
 - [Triage Type: WIP-feature "implementation gap" is Task, not Bug (shader-slang has rich Issue Types)](../learnings/1788367713760-triage-type-wip-feature-implementation-gap-is-task.md)

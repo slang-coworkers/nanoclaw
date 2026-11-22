@@ -3,7 +3,7 @@ title: "Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine
 type: concept
 group: agent-infra
 tags: [memory, okf, reap, persistence, spine, git-tracking, backup, dossier, snapshot]
-source_count: 7
+source_count: 8
 ---
 
 # Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path
@@ -20,6 +20,7 @@ How a coworker's `/workspace/agent/memory/` tree behaves under container reap/re
 - Don't burn turns chasing a churning tree: write a compact resume note once, verify it persists ~20s later, and move on. The wipe is infra, not your error.
 - Before folding an old `triage-<N>.md` memo into a concept page, re-check the issue's live state and latest comments; write the current truth and mark the memo's hypothesis superseded.
 - **Startup auto-loads ONLY the root `memory/index.md` + `system/definition.md`** — a correction recorded in a sub-index (`memory/<topic>/index.md`) is invisible to a fresh session that never navigates there. Pin hard "never do X" rules in the root index's Core Memory section (always loaded), with a pointer requiring the topic index's classified/noise lists to be read before calling anything "untracked".
+- In the slang-fixer OKF tree, `okf_synth.py scan`'s root INDEX-STALE is a **structural floor** (1100+ root leaves by design, 16k index cap): repair means `bash reindex.sh --check` (ORPHANED=0), not linking leaves from the root. Fold oversize fix chronicles into `fix-<n>-rounds.md` siblings; use surgical python + a tree-wide commit when siblings have uncommitted edits.
 
 ## Coworker memory is best-effort — reap-restore wipes in-session dossiers
 
@@ -41,11 +42,15 @@ The same baked path keeps recreating OKF defects after a migration. The `/*-tria
 
 OKF memo files also carry their frontmatter *outward*: a memo staged in an OKF file (e.g. `memory/issues/`, `type: comment`) and posted verbatim as a GitHub comment renders the `--- type: comment ---` block as plain text at the top of the comment (slang#14468, 2026-11-16, had to be PATCHed in place after the host sent a [Comment fix] notification). Keep the frontmatter in the memo file itself (the OKF convention requires it) and strip it **only at the post boundary** — e.g. `awk 'BEGIN{n=0} /^---$/{n++; next} n>=2{print}' file` before `gh api ... --input -` / `-F body=@file` ([strip OKF frontmatter before posting a memo file as a comment](../learnings/1794828548178-strip-okf-frontmatter-before-posting-a-memo-file-a.md)).
 
+## The slang-fixer OKF tree: INDEX-STALE is a structural floor; the repair is reindex.sh
+
+In the slang-fixer OKF memory tree, `okf_synth.py scan` ALWAYS reports one INDEX-STALE on the root index.md: 1100+ flat fix-*/technique-* leaves live at the root by design, the 16k-capped index deliberately links only topic rows (it says so inline), and the real reachability authority is `bash reindex.sh --check` — it regenerates the index-fix-N / index-technique-N shards from leaf descriptions and repairs orphaned leaves (18 orphans fixed in one 2026-11-20 run). The defect is a permanent +500 backlog floor, under the 2000 gate floor, so it never escalates: treat "repair stale indexes" for this tree as run `bash reindex.sh`, verify `--check` prints ORPHANED=0, and don't try to link leaves from the root. Oversize fix chronicles (fix-12627.md, 17.5k) fold cleanly into a sibling `fix-<n>-rounds.md` (existing convention: fix-10641-rounds.md) keeping current state + maintainer direction in the core file; terminal fixlog index splits follow the number-range shard convention (active-fixlog-closed-14500s-index.md). When folding while sibling sessions have uncommitted memory edits, use surgical python (assert the exact file size first, atomic `os.replace`) so a concurrent append aborts loudly instead of being clobbered, and commit the whole tree afterwards to protect their uncommitted rows ([okf-synthesis in slang-fixer: root INDEX-STALE is a structural floor; the real repair is reindex.sh](../learnings/1795155306373-okf-synthesis-in-slang-fixer-root-index-stale-is-a.md)).
+
 ## Recall: sub-index rules are invisible to fresh sessions — pin hard rules in Core Memory
 
 Persistence is only half the hazard; the other half is **recall**. Startup, clear, and compaction auto-load only the ROOT `memory/index.md` (plus `system/definition.md`) — a correction recorded in a topic sub-index (`memory/<topic>/index.md`) is NOT guaranteed to reach a fresh session, which will regress on any rule buried there unless it happens to navigate into that index. Observed twice (2026-11-17 and 11-19): a scan session classified failures from its gate payload without reading the topic index and violated a tracked-rule recorded only there. The fix is placement, not repetition: pin hard "never do X" rules in the root index's **Core Memory** section (the always-loaded block), and add a Core Memory pointer requiring the topic index's classified/noise lists to be read before calling anything "untracked". Detail bullets still belong in the topic index — Core Memory holds the one-line rule plus the pointer ([OKF recall pitfall: sub-index rules are invisible to fresh sessions](../learnings/1795118706104-okf-recall-pitfall-sub-index-rules-are-invisible-t.md)).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [Strip OKF frontmatter before posting a memo as a GitHub comment](../learnings/1794828548178-strip-okf-frontmatter-before-posting-a-memo-file-a.md) — strip at the post boundary only; keep frontmatter in the memo file
 - [Coworker memory/ is best-effort: reap-restore wipes in-session dossiers; okf-synthesis relocates issue memos to issues/](../learnings/1789187760131-coworker-memory-is-best-effort-reap-restore-wipes-.md) — don't trust the local memo as durable; re-derive live state from GitHub; write a resume note once and move on.
 - [Coworker OKF memory trees are not git-tracked; memo-write path is spine-baked](../learnings/1789188194373-coworker-okf-memory-trees-are-not-git-tracked-memo.md) — tarball-snapshot before a memory migration; relocated memos regrow until a host-side spine + skill edit.
@@ -53,5 +58,6 @@ Persistence is only half the hazard; the other half is **recall**. Startup, clea
 - [triage-issue workflow heredoc path recreates OKF memory defects](../learnings/1791397174831-triage-issue-workflow-heredoc-path-recreates-okf-m.md) — step-6 `memory/triage-<N>.md` heredoc trips NO-FRONTMATTER + INDEX-STALE and duplicates `triage/<num>-*.md`; edit/create the indexed triage page instead
 - [Shared git memory store: commit by explicit path, never -a](../learnings/1793211339402-shared-git-memory-store-commit-by-explicit-path-ne.md) — slang-fixer's shared memory repo: a sibling's `commit -a` swallowed another session's fold and broke `git log -- <file>` authorship
 - [OKF recall pitfall: sub-index rules are invisible to fresh sessions — pin hard rules in Core Memory](../learnings/1795118706104-okf-recall-pitfall-sub-index-rules-are-invisible-t.md) — startup loads only the root index; hard rules go in Core Memory with a pointer to the topic index's lists
+- [okf-synthesis in slang-fixer: root INDEX-STALE is a structural floor; the real repair is reindex.sh](../learnings/1795155306373-okf-synthesis-in-slang-fixer-root-index-stale-is-a.md) — run reindex.sh --check (ORPHANED=0), don't link root leaves; fix-<n>-rounds.md folding convention; surgical python + tree commit when siblings are editing
 
 _Catalog: [[wiki/index.md]]_

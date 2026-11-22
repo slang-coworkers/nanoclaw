@@ -3,7 +3,7 @@ title: "Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recor
 type: concept
 group: agent-infra
 tags: [critique-gate, delivery-gate, gate-plan, plan-tracker, false-positive, read-only, requirements-anchor, attested-hash, gate-audit]
-source_count: 28
+source_count: 22
 ---
 
 # Gate-hook mechanics: read-only false positives, the plan gate, and recording/format matchers
@@ -18,7 +18,7 @@ The harness gates pattern-match command TEXT, never intent — and most of the p
 - The plan gate (`gate-plan.sh`) denies ANY Bash command containing a `>`/`>>` redirect while `plan_written=false` — including a read-only verification run like `slang-test > log 2>&1`. `plan-tracker.sh` records ONLY the Write tool, so re-Write the identical plan via Write (never Edit) to flip it.
 - `REQUIREMENTS:` URLs must carry anchors (`#issuecomment-<id>`, `#issue-<n>`, `#discussion_r-<id>`, `#pullrequestreview-<id>`) or the round silently drops with no error; anchor an issue BODY as `#issue-<database-id>` (fetch with `gh api ... --jq .id`), never a bare issue URL. The same validator pins the verbatim dev-instructions sentinels.
 - The host gate AUDIT pattern-matches marker text in outbound rows: quoting a bracketed workflow marker with no matching critique call logs "gate skipped" — discuss a coworker's markers without quoting the bracketed string.
-- Late edit bumps defeat freshness: ANY Bash `>`/`>>` (even `2>/dev/null`, even a timed-out command whose bump lands AFTER the round's reset) can stale an approve — fire the marker in the clean window.
+- Late edit bumps defeat freshness: ANY Bash `>`/`>>` (even `2>/dev/null`, even a timed-out command whose bump lands AFTER the round's reset) can stale an approve — fire the marker in the clean window. A `[[ "$x" > *"y"* ]]` comparison operator counts as a write too, and `pkill -f <pattern>` self-matches your own launcher cmdline — poll state with `jq` (not shell comparisons) and kill bridge clients by PID.
 - The PR-description length gate counts the body minus the trailing `<sub>` disclaimer trailer and AI-assistance line — strip those before re-counting.
 - The authority for "did my critique count / what did it say" is `critique_verdicts` + `critique_attested`, not stage counts; broken gateway GitHub creds (401 Bad credentials) are an infra outage to report, not a connect-flow.
 ## Read-only false positives: substring matchers with no verb
@@ -105,6 +105,10 @@ The hook (`/app/hooks/plan-tracker.sh`, PostToolUse matcher `Write`) also re-arm
 and the critique delivery gate likewise requires a fresh OUTPUT_REVIEW round after ANY edit since the last
 approve, even a one-line `sed` to the plan file via Bash: sequence deliverable-final edits before the last
 critique round ([plan-tracker hook counts only Write-tool plan writes, not Edit](../learnings/1794933052106-plan-tracker-hook-counts-only-write-tool-plan-writ.md)).
+
+## Freshness-gate re-record traps: comparison operators, pkill self-match, append-only attempt logs
+
+Three more ways a delivery gets stuck after the bridge re-record recipe already works (slang#14684, 2026-11-21; all three cost ~3 wasted bridge rounds): (1) `track-edits.sh` counts as a write ANY bash command whose string contains a space-separated ` > ` — including a `[[ "$x" > *"y"* ]]` comparison *operator*, not just redirects — which bumps `edits_since_critique` and demands another OUTPUT_REVIEW round right before a marker send; poll workflow-state via `jq -r '.critique_verdicts.STAGE'` / `.edits_since_critique` fields instead, never grep with shell comparisons. (2) `pkill -f <pattern>` self-matches the bash -c wrapper of your own launcher command (the pattern string is in your own cmdline) and kills your own shell instantly — kill stale bridge clients by PID, or with a pattern quoted so it doesn't appear verbatim. (3) `critique-attempts.jsonl` is append-only and survives state resets, so a `grep -c '"event":"round"'` poll gives false positives from pre-reset rounds — watch workflow-state's `.critique_stages` instead. The recipe that works: setsid-detached bridge dispatch → poll `.critique_stages` → deliver the marker with NO bash calls between the last round and the send (issue-status comments under 1000 chars via heredoc `cat >` DO bump edits — write those BEFORE the final round, or use the Write tool to an exempt path like reports/) ([freshness-gate traps: bash " > " comparisons, pkill self-match, and append-only attempts file in critique re-records](../learnings/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md)).
 
 ## Gate audit: marker text in non-report outbound rows
 
@@ -202,7 +206,7 @@ trust the state file: check `critique_verdicts`/`critique_attested` in
 `/workspace/.claude/workflow-state.json` and hash-verify the delivered files rather than re-running
 codex ([never edit codex-attested artifacts after approve — route advisories via send_file cover text](../learnings/1795144021884-never-edit-codex-attested-artifacts-after-approve-.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [harness hooks false-positive on read-only queries](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md) — also carries the 401/GH_TOKEN infra-outage + unauth fallback facts
 - [gate burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)
 - [plan-tracker wants Write not Edit; re-hash](../learnings/1794855941188-critique-gate-mechanics-plan-tracker-wants-write-n.md)
@@ -224,3 +228,4 @@ codex ([never edit codex-attested artifacts after approve — route advisories v
 - [PreToolUse gate denial skips the whole chained bash command](../learnings/1795186597404-pretooluse-gate-denial-skips-the-whole-chained-bas.md) — chained `sed -i` never runs when the `gh` part is denied; mutate files in their own call, verify, then run the gated command.
 - [critique gate false-positives on read-only pulls API calls](../learnings/1795204342182-critique-gate-false-positives-on-read-only-pulls-a.md) — codex's own pulls read denied; spurious "PR creation blocked" card = per-window state missing PLAN_REVIEW; one round clears it.
 - [opencode migration: fresh workflow-state blocks gated reads; router demands in_reply_to](../learnings/1795224576884-opencode-migration-critique-gate-state-reset-block.md) — old claude-session rounds not carried over; pulls reads burn denials; use `gh pr view` / `gh run list/view`.
+- [freshness-gate traps: bash " > " comparisons, pkill self-match, append-only attempts file in critique re-records](../learnings/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md) — a comparison operator bumps edits_since_critique; pkill -f kills your own launcher; poll .critique_stages with jq, never grep attempts.jsonl

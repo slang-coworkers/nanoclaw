@@ -3,7 +3,7 @@ title: Devin review-signal reliability — freshness, false positives, and low-i
 type: concept
 group: review-process
 tags: [approver, challenger, devin, staleness, head-currency, commit-match, devin-fetch, fallback-tier, false-positive, positive-control, reachability, coverage]
-source_count: 21
+source_count: 23
 ---
 
 ## TL;DR
@@ -21,7 +21,7 @@ lag the head by minutes. ALWAYS open `review/devin-commit-status.txt` first (`"u
 "out of date" / "behind" ⇒ freshness unproven) and cross-check Devin's shown diff / cited
 file:lines against YOUR SHA-pinned head read (`gh pr diff`, `gh api contents?ref=<sha>`).
 Watch the `Loading diffs…` banner and top-clustered "empty stubs" claims — a partial render
-from a `devin-fetch.sh` limit no prompt "wait" can fix. Draft status is irrelevant to whether Devin
+from a `devin-fetch.sh` limit no prompt "wait" can fix. Two refresh tells: a first fetch on a new head can return the stale previous-head analysis (commit-status "behind the head commit") — refetch ~10 min later returns "up to date"; and Devin's per-PR page re-lists unresolved findings from PREVIOUS heads at their ORIGINAL line numbers — line numbers that don't shift across a changed diff are stale carry-over, not fresh analysis. Draft status is irrelevant to whether Devin
 renders: an exit-3 timeout is a fetch-script done-check defect, never a property of the PR, so never
 consult `isDraft` to skip or retry B — read `devin-error.txt`, mark B skipped, report stale selectors upstream. Never stamp `commit_id = pinned
 head` to fake a `commit_match`; omit it (→ honestly unevaluable) or mark stale. On a
@@ -73,6 +73,8 @@ That last atom also documents the correct rate-limit move: when the shared insta
 hits 6000/6000, read `X-Ratelimit-Reset`, background-poll for the reset, then RE-RESOLVE
 `headRefOid` (it can move twice during the wait) — waiting beats an infra-abstain, and
 first-write-wins per `commit_sha` means deciding against a stale head wastes the ledger row.
+
+Two confirmation tells from live 2026-11-20/21 rounds (#14663, #14683). First, **Devin's first fetch on a new head returns the stale previous-head analysis** — `devin-commit-status.txt` reading "behind the head commit" — and one refetch ~10 min later returns "Analysis is up to date": keep the first fetch dir as evidence and use the refetch's output ([Human APPROVE dismissed by later push — re-fetch review state every round; Devin new-head refetch discipline confirmed](../learnings/1795185602095-human-approve-dismissed-by-later-push-re-fetch-rev.md)). Second, **Devin's per-PR page re-lists unresolved findings from previous heads at their ORIGINAL line numbers**: in round 2 of #14683 (head e8ab322) Devin's bugs list showed identical titles AND identical line numbers (:4145/:5281/:2561) as round 1 (head fcc1f1d) despite the code having moved — stale carry-over, not fresh analysis of the new head. The tell is line numbers that don't shift across a changed diff; weight only Devin items whose line numbers track the current head, and adjudicate the rest against your own probes ([Reviewer spec misreadings repeat inverted across rounds; Devin carries stale line numbers across heads](../learnings/1795243541774-reviewer-spec-misreadings-repeat-inverted-across-r.md)).
 
 Note the distinction from the content false-positives below: a stale 🔴 is an *artifact of
 the wrong commit*, not an error of judgment — the fix is a re-review at the settled head,
@@ -242,7 +244,9 @@ Real execution leaves logs/durations/exit codes; the only build control that cou
 own conclusion or a binary you can point at
 [Don't launder an AI-review 'Testing' block into an executed positive control](../learnings/1787953818152-approver-critique-mustfix-don-t-launder-an-ai-revi.md).
 
-**Source learnings (21):**
+**Source learnings (23):**
+- [Human APPROVE dismissed by later push — re-fetch review state every round; Devin new-head refetch discipline confirmed](../learnings/1795185602095-human-approve-dismissed-by-later-push-re-fetch-rev.md) — first fetch on a new head returns the stale analysis; refetch ~10 min later is "up to date".
+- [Reviewer spec misreadings repeat inverted across rounds; Devin carries stale line numbers across heads](../learnings/1795243541774-reviewer-spec-misreadings-repeat-inverted-across-r.md) — identical line numbers across a changed diff = stale carry-over; weight only head-tracking items.
 - [Verify Devin head-currency on dependency-ordered draft→ready PRs](../learnings/1787906963169-approver-critique-mustfix-verify-devin-head-curren.md) — draft-era Devin analysis stamped head-current; re-run pinned + read freshness widget + prose tells + live cross-check.
 - [CORRECTION: Devin Review renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md) — drafts render anonymously; B's exit-3 timeouts were the 2026-09-17 heading rename + unclicked "View results" in `devin-fetch.sh` (fixed slang-skills #62); never gate B on `isDraft`, never retry within a review.
 - [master-merge head + Devin commit-status unknown ⇒ head-current unverifiable](../learnings/1787914554673-approver-infra-abstain-master-merge-head-devin-com.md) — Devin bound to pre-merge commit; content byte-identity is not the head-current review check; ABSTAIN NO_REVIEW_SIGNAL.

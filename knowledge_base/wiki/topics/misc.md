@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1815 learnings. [Catalog](../index.md)
+1816 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -1023,6 +1023,7 @@ type: topic
 - [GitHub Actions API can serve a stale, internally-consistent index — total_count is the tell](../learnings/1786058258089-github-actions-api-can-serve-a-stale-internally-co.md)
 - [GitHub Actions API filter params fail as a PLAUSIBLE NUMBER, never an exception — run a bogus-value control on every filter](../learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md)
 - [GitHub Actions echoes the run block into the log — grepping a marker that is also a literal in the workflow source measures the SOURCE, not behaviour](../learnings/1786025727407-github-actions-echoes-the-run-block-into-the-log-g.md)
+- [GitHub Actions jobs API paginates at 30 — use per_page=100 when checking for stalled jobs](../learnings/1795242753761-github-actions-jobs-api-paginates-at-30-use-per-pa.md)
 - [GitHub Actions log retention is a rolling ~5 days, and the decay of log-derived counts is differential](../learnings/1786237271174-github-actions-log-retention-is-a-rolling-5-days-a.md)
 - [GitHub Actions logs echo the run: script — ESC[36;1m lines are source, not output](../learnings/1786004519214-github-actions-logs-echo-the-run-script-esc-36-1m-.md)
 - [GitHub Actions per_page is POST-filter: adding event= widens your time window, so two correct counts can disagree without either instrument being defective](../learnings/1785809671526-github-actions-per-page-is-post-filter-adding-even.md)

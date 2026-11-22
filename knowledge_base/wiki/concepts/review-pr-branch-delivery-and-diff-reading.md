@@ -3,7 +3,7 @@ title: "PR Review: Approval State, Branch Delivery, and Diff Reading"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, github, approval-state, delivery-verification, pass-gating, diff-reading, partial-fix, fetch-head, remote-blob]
-source_count: 15
+source_count: 16
 ---
 
 # PR Review: Approval State, Branch Delivery, and Diff Reading
@@ -25,6 +25,7 @@ A measurement made inside your own container, or taken from the wrong field, tel
 - **Don't force-push over a commit a reviewer already reviewed.** When gh REST is rate-limited, `gh pr diff` returns an empty diff; verify through git instead.
 - **A byte-identical revert drill passes on a dead flag BY CONSTRUCTION.** Require a two-sided control matrix, where the trigger-absent row is what makes it evidence. Apply this only to new-flag-plus-new-gate PRs; a widening-only change is monotone.
 - **Prefer a STRUCTURAL safety argument to a contingent one.** "A implies B, gate on A" raises two questions. First, can the optimizer remove A? Second, is there a producer path where A never exists at all?
+- **A proposed test pin can be verified in ~2 minutes without a fresh build**: emit with the main checkout's slangc (`-target hlsl`), then `-pass-through dxc -target dxil-assembly` and grep the DXIL assembly for the pinned lines; `-emit-spirv-via-glsl` proves a glslang leg. Verify pins before recommending them.
 - **For claims about INTENT, read the diff.** Current state plus the commit title leaves out why the author did it. Never judge a commit's content by its subject; a "Document" commit can carry live code.
 - **A partial fix is honest only with three things:** a test that is visibly disabled in the file, no auto-close keyword, and a real follow-up issue.
 - **The unifying check:** ask what the output would look like if the thing were absent. If the answer is "the same," it isn't a measurement.
@@ -129,6 +130,8 @@ And compute the branch delta against the **recorded base SHA, never a branch nam
 
 Instrument trap on the same PR: **`slang-test -OX <file>` does not override a directive's own `-O`.** `tools/slang-test/slang-test-optimization-options.h` injects `-O0` only when the args have no `-O` of their own. A fixer's "verified at `-O1/-O2/-O3`" was therefore four compiles at `-O0`. To measure optimization sensitivity, call `slangc` directly at each level. `DebugNoScope` counts came out 14 / 16 / 12 / 12 for `-O0` through `-O3`, which is why the author pinned `-O0`. Anchor such greps: `-g3` embeds the source, so a naive `grep -c` also counts comment lines ([read the diff for intent](../learnings/1785828146545-read-the-diff-for-intent-claims-current-state-plus.md)).
 
+**A proposed test pin can be verified empirically in ~2 minutes without a fresh build.** To validate a new DXIL FileCheck pin before recommending it, emit with the main checkout's slangc (`-target hlsl`), then run `slangc emitted.hlsl -pass-through dxc -target dxil-assembly -stage compute -entry <e> -profile cs_6_6` and grep the DXIL assembly for the pinned lines (the emitted file needs a `.hlsl` extension or slangc errors E00012); similarly `-target spirv-asm -emit-spirv-via-glsl` proves a proposed glslang-acceptance leg passes. On #14667 r2 this verified verbatim the `createHandleFromHeap(i32 218, i32 %2, i1 false, i1 true)` pins (resource heap samplerHeap=false, sampler heap true, both nonUniformIndex=true), closing the issue's DXC propagation question by direct evidence ([mid-round fixer pushes signal a live maintainer review; fast DXIL pin verification via pass-through dxc](../learnings/1795200327873-mid-round-fixer-pushes-signal-a-live-maintainer-re.md)).
+
 **A commit's subject doesn't tell you what it contains.** On #12336, a recorded state said "2 files +45/-8." Live, the PR was +70/-8 over two commits. The second commit, "Document the gating invariants each new flag depends on," added `result.tagType = true;` to the `tagOps` arm of `calcRequiredLoweringPassSet`. A count of non-comment added lines returned 1, which only tells you a live line exists. Reading the patch shows whether it matters. That line was monotone-safe, since all new flags are only assigned `true`. But that safety was derived after the fact, and the evidence already published was measured on the first commit only. Rules:
 - Read `gh api repos/O/R/commits/<sha> --jq '.files[].patch'` rather than trusting a subject. "Document", "typo" and "rename" are the subjects most often trusted unread.
 - Re-read the PR head before refreshing any artifact that quotes a diffstat.
@@ -141,7 +144,7 @@ Instrument trap on the same PR: **`slang-test -OX <file>` does not override a di
 
 Self-check: *if I disappeared now, would a stranger reading the tracker know what's still broken?* ([honest partial fix](../learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [Verify a PR diff via git fetch when gh REST is rate-limited](../learnings/1789995692862-verify-a-pr-diff-via-git-fetch-when-the-gh-rest-ap.md) — 403 → empty diff e3b0c442; git is a separate bucket
 - [Don't force-push over a peer-reviewed commit](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md) — strands the reviewed base; push nits as new commits
@@ -158,3 +161,4 @@ Self-check: *if I disappeared now, would a stranger reading the tracker know wha
 - [A commit whose subject says "document" can carry live code](../learnings/1785839519730-a-commit-whose-subject-says-document-can-carry-liv.md) — read the patch; a count shows existence, not impact
 - [A dispatched CI run on a bot draft PR is not CI evidence — check job states, head SHA, conclusion](../learnings/1791181406511-a-dispatched-ci-run-on-a-bot-draft-pr-is-not-ci-ev.md) — PR-event CI skipped on drafts; dispatch waits on wait-for-human-priority; no re-dispatch
 - [PR-body freshness: post with gh pr edit BEFORE the final OUTPUT_REVIEW round; diff against the branch base SHA, not a shared clone's master](../learnings/1795062366391-pr-body-freshness-post-with-gh-pr-edit-before-the-.md) — the live body is the deliverable; gh pr edit is not gate-bound (one trailing newline added); a moved local master reverses into `git diff master..HEAD`.
+- [Mid-round fixer pushes signal a live maintainer review; fast DXIL pin verification via pass-through dxc](../learnings/1795200327873-mid-round-fixer-pushes-signal-a-live-maintainer-re.md) — verify proposed DXIL/GLSL pins from the main checkout in ~2 min; `.hlsl` extension required.

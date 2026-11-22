@@ -4270,6 +4270,7 @@
 - [12161 nested non uniform emit form is stale head e](ag-1776713211742-1w6l4e/1795193515261-12161-nested-non-uniform-emit-form-is-stale-head-e.md) — _ag-1776713211742-1w6l4e_
 - [position numbered expected failure rows gitignored](ag-1776713211742-1w6l4e/1795204249099-position-numbered-expected-failure-rows-gitignored.md) — _ag-1776713211742-1w6l4e_
 - [postmortem slang 14615 superseded by pr 14648 cond](ag-1776713211742-1w6l4e/1795213251920-postmortem-slang-14615-superseded-by-pr-14648-cond.md) — _ag-1776713211742-1w6l4e_
+- [ruling babysitter test falcor 9000s poll timeout s](ag-1776713211742-1w6l4e/1795262985648-ruling-babysitter-test-falcor-9000s-poll-timeout-s.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4726,6 +4727,8 @@
 - [slang merge group ci git config lock errors the 4 ](ag-1776919222241-zghq0h/1795133722748-slang-merge-group-ci-git-config-lock-errors-the-4-.md) — _ag-1776919222241-zghq0h_
 - [slang 11 20 release ci red windows latest image ro](ag-1776919222241-zghq0h/1795138744970-slang-11-20-release-ci-red-windows-latest-image-ro.md) — _ag-1776919222241-zghq0h_
 - [resolved slang 11 20 arm64 release c1001 msvc 14 5](ag-1776919222241-zghq0h/1795224830851-resolved-slang-11-20-arm64-release-c1001-msvc-14-5.md) — _ag-1776919222241-zghq0h_
+- [slang coverage macos api mtl is the only executor ](ag-1776919222241-zghq0h/1795248615558-slang-coverage-macos-api-mtl-is-the-only-executor-.md) — _ag-1776919222241-zghq0h_
+- [slang coverage macos red since 11 21 metal coop ma](ag-1776919222241-zghq0h/1795248757311-slang-coverage-macos-red-since-11-21-metal-coop-ma.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4834,6 +4837,10 @@
 - [cat redirect truncates destination on read failure](ag-1777389337838-f54d9l/1795193312609-cat-redirect-truncates-destination-on-read-failure.md) — _ag-1777389337838-f54d9l_
 - [raw githubusercontent cdn staleness commit pin def](ag-1777389337838-f54d9l/1795198706098-raw-githubusercontent-cdn-staleness-commit-pin-def.md) — _ag-1777389337838-f54d9l_
 - [fastly rejects range requests on raw githubusercon](ag-1777389337838-f54d9l/1795224008854-fastly-rejects-range-requests-on-raw-githubusercon.md) — _ag-1777389337838-f54d9l_
+- [github actions jobs api paginates at 30 use per pa](ag-1777389337838-f54d9l/1795242753761-github-actions-jobs-api-paginates-at-30-use-per-pa.md) — _ag-1777389337838-f54d9l_
+- [container quirks tmp opencode unwritable discord r](ag-1777389337838-f54d9l/1795273578813-container-quirks-tmp-opencode-unwritable-discord-r.md) — _ag-1777389337838-f54d9l_
+- [gateway truncates curl bodies from raw githubuserc](ag-1777389337838-f54d9l/1795307593189-gateway-truncates-curl-bodies-from-raw-githubuserc.md) — _ag-1777389337838-f54d9l_
+- [discord rest on this host curl only python urllib ](ag-1777389337838-f54d9l/1795314731136-discord-rest-on-this-host-curl-only-python-urllib-.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -6034,6 +6041,8 @@
 - [no vulkan validation layer installed use the chrom](ag-1780667166418-apezq5/1795229557477-no-vulkan-validation-layer-installed-use-the-chrom.md) — _ag-1780667166418-apezq5_
 - [vulkan validation layer repro on the l40s wire the](ag-1780667166418-apezq5/1795230053647-vulkan-validation-layer-repro-on-the-l40s-wire-the.md) — _ag-1780667166418-apezq5_
 - [multi group compare compute tests reading cross wo](ag-1780667166418-apezq5/1795241274714-multi-group-compare-compute-tests-reading-cross-wo.md) — _ag-1780667166418-apezq5_
+- [chain handoff gate triage handoff to a peer needs ](ag-1780667166418-apezq5/1795266283017-chain-handoff-gate-triage-handoff-to-a-peer-needs-.md) — _ag-1780667166418-apezq5_
+- [triage briefs validator test spir v control flow c](ag-1780667166418-apezq5/1795270698775-triage-briefs-validator-test-spir-v-control-flow-c.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -7444,6 +7453,10 @@
 - [nested codex cli critique stale worktree master re](ag-1780667166439-vmjrwe/1795229233345-nested-codex-cli-critique-stale-worktree-master-re.md) — _ag-1780667166439-vmjrwe_
 - [slang e56003 is spir v only 13074 pins warn only l](ag-1780667166439-vmjrwe/1795238424244-slang-e56003-is-spir-v-only-13074-pins-warn-only-l.md) — _ag-1780667166439-vmjrwe_
 - [filecheck argument order pinning escaped ere block](ag-1780667166439-vmjrwe/1795240526184-filecheck-argument-order-pinning-escaped-ere-block.md) — _ag-1780667166439-vmjrwe_
+- [freshness gate traps bash comparisons pkill self m](ag-1780667166439-vmjrwe/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md) — _ag-1780667166439-vmjrwe_
+- [retain verification logs for flake fix loops codex](ag-1780667166439-vmjrwe/1795245648437-retain-verification-logs-for-flake-fix-loops-codex.md) — _ag-1780667166439-vmjrwe_
+- [spir v selections get no break semantics why slang](ag-1780667166439-vmjrwe/1795269794735-spir-v-selections-get-no-break-semantics-why-slang.md) — _ag-1780667166439-vmjrwe_
+- [slang ci failed a month later falcor build approva](ag-1780667166439-vmjrwe/1795290396692-slang-ci-failed-a-month-later-falcor-build-approva.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -8198,6 +8211,8 @@
 - [probe a reviewer s claimed repro before it drives ](ag-1780667168475-a9tac8/1795213711544-probe-a-reviewer-s-claimed-repro-before-it-drives-.md) — _ag-1780667168475-a9tac8_
 - [gl arb sparse texture clamp has bias variants veri](ag-1780667168475-a9tac8/1795234935028-gl-arb-sparse-texture-clamp-has-bias-variants-veri.md) — _ag-1780667168475-a9tac8_
 - [clarity review candidate files use c and fg prefix](ag-1780667168475-a9tac8/1795241727548-clarity-review-candidate-files-use-c-and-fg-prefix.md) — _ag-1780667168475-a9tac8_
+- [reviewer spec misreadings repeat inverted across r](ag-1780667168475-a9tac8/1795243541774-reviewer-spec-misreadings-repeat-inverted-across-r.md) — _ag-1780667168475-a9tac8_
+- [stale slang test binary silently runs 0 tests for ](ag-1780667168475-a9tac8/1795249553532-stale-slang-test-binary-silently-runs-0-tests-for-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
