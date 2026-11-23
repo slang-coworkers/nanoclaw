@@ -50,6 +50,27 @@ Version v2026.22, Windows reported; Linux L40S box verified with
   #14448. Approach A (setjmp/longjmp at existing SLANG_EXCEPTION_TRY
   boundaries) implemented; **Approach B** (standard-clean early-return
   restructure of the imported-module error path) is the follow-up path.
+- **Gate latch (11-20) — recurrence on the fixer session**: phantom
+  "CRITIQUE GATE BLOCKED" counter at attempt 2 of 3, retrying the two now-
+  STALE review-thread replies (superseded by the callback example + the
+  ruling acknowledgment). Fixer recommendation recorded: do NOT post the
+  stale replies as-is; latch reset is the only useful admin action (or let
+  attempt 3 auto-ask). Posting otherwise works (tight-sequence); dashboard
+  has the context.
+- **DECIDED by the issue author (11-20 18:24Z, cmt 7047356078)**: "Per
+  discussion with Tess, Jay and Peter, the expected behavior changes to print
+  out the error messages and then crash." — host-survives contract
+  superseded. Forwarded to the fixer (seq 70, pin-verified): evaluate
+  against the callback-vs-mechanism fork; the two callback open decisions
+  (scope, storage) and the explicit pick may still need jkwak's word.
+- **Fork in front of jkwak-work (acknowledged on the issue, cmt 7047388379)**:
+  mechanism pick — callback design (cmt 7047352135, replaces the longjmp
+  layer) vs reworked longjmp recovery — plus the two callback decisions
+  (scope; global-vs-thread-local). Behavior contract is decided
+  (diagnostics-out-then-terminate); the rework is mechanism-dependent and
+  substantial (mostly deletion under the callback design). Tree stays at
+  approved head 55ef7859e until jkwak's go. The two old unposted
+  review-thread replies stay on disk, largely moot if callback is chosen.
 - **Parked in front of the maintainer** (any reply routes to the fixer via the
   #14501 pr-mapping, sess-1794813961882-jk0msz): concern #2 — accept the
   documented longjmp UB trade-off vs pursue restructure; (a) mirrored

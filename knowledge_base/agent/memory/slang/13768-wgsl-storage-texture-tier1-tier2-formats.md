@@ -108,3 +108,8 @@ description: Human-filed (albertrodriguezclo) WGSL texel-format mapping + E56106
   told the triager (msg 71) to arm a **final one-shot at 2026-11-20T13:00Z** (armed as `i13768-recheck-1120-3d42`): if maintainers are silent, no post and no ping, report once, no further
   re-check (webhooks carry the chain after that); if a maintainer decides or reviews, send it to me verbatim before any part-2 work or merge of master.
   The ready-flip HOLD still stands.
+- 2026-11-20 13:00Z final one-shot `i13768-recheck-1120-3d42` (triager): **no change**. No maintainer activity since the reporter's
+  11-06 22:57Z comment; #13768 labels/assignee unchanged (WebGPU+reproduced, jkwak-work); #13778 still draft @9cfc373449, 0 reviews,
+  no ready flip; no competing PR. Per instruction branch (a): no post, no ping, no part-2 work, no master merge.
+  **PARKED, NO TIMER, terminal for this chain's active driving**: supervisor-state.json updated to `parked:awaiting-maintainer`;
+  webhooks (maintainer comment, B1–B4 pick, review, or ready flip) are the only reopen path. Do not ask the operator again.

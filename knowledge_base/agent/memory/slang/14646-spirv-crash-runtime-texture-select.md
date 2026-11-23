@@ -40,8 +40,26 @@ description: Human-filed 11-19 by pdeayton-nv; triaged to a UAF root cause and h
   reuse, indistinguishable at clone time). Cloner hardening filed separately by the fixer as **slang#14651**
   (bot-filed, open, carries verification results → our own Terminal filing: **do NOT dispatch a triage
   chain on its issue_opened**). Per the handoff's explicit fallback, B-alone ships in #14649.
-- **Review:** all three critique stages approve (PLAN/CODE/OUTPUT_REVIEW); [Fix Review Request] with
-  slang-reviewer; verdict → final [Fix Report] → maintainer review. Ready-flip → weekly list (no per-PR ask).
+- **Review:** all three critique stages approve (PLAN/CODE/OUTPUT_REVIEW); slang-reviewer R1
+  REQUEST_CHANGES (2 test-hardening gaps) → applied; R2 APPROVE_WITH_NITS (1 coverage gap + 4 comment
+  questions) → applied, no further round. CODE_REVIEW caught misspelled `[notinline]` → `[noinline]` (E31000).
+- **TERMINAL our side 00:36→03:38Z 11-20:** final [Fix Report] in. PR #14649 @ head `c9e450ca7`, 2 files
+  +189/−4 (pass fix with documented contract + debug assert; 5 regression variants in
+  tests/spirv/resource-selection-uninitialized-param.slang). Suites: repro 5/5, resource-selection 160/160,
+  opaque-handle diagnostics 100%, full 12384/12402 (18 failures pre-existing infra; 13 stale std-module —
+  regenerated, functional re-verified 14/14). Light checks green 6/6; full CI matrix run 44667087438 queued.
+  Codex confirmed 6 emitted modules pass spirv-val directly (container's SLANG_RUN_SPIRV_VALIDATION is a
+  silent no-op — no spirv-val on PATH). **Draft flipped ready-for-review by the REPORTER pdeayton-nv
+  (not the fixer — spine intact), who also requested review**; explanation comment 7026260576.
+- **Next:** maintainer review + merge of #14649; follow-up slang#14651 (cloner hardening) for a human
+  to triage. **04:17Z 11-20: APPROVED by maintainer pdeayton-nv** (review 5987411008, empty body; issue
+  status comment 7028424926 updated in place). CI matrix run 44667087438 still queued at head
+  `c9e450ca7`; merge pending — maintainer's move. Webhook-driven on #14649.
+- **✅ TERMINAL 10:43Z 11-20 — MERGED:** PR #14649 merged (squashed) by pdeayton-nv at `c9e450ca7`;
+  issue #14646 auto-closed via Fixes reference; final [Resolution] comment 7028424926. Worktree
+  wt-slang-14646 removed, sentinel deleted. **Chain complete in <13 h** (filed 22:02Z → merged 10:43Z).
+  Follow-up slang#14651 (cloner hardening + autodiff cross-function reuse classification) open for human
+  triage — bot-filed, do not dispatch on its issue_opened. Nothing in flight.
 - **Next:** reviewer verdict → [Fix Report] → ready-flip pending human review.
 - **Follow-up filed 11-20 (#14651):** the fix chain filed a bot-authored hardening issue on the cloner's
   `findCloneForOperand` fallback (classify autodiff cross-function reuse; also flag

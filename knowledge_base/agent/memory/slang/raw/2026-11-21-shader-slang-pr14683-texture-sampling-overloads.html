@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Explanation — shader-slang/slang#14683 (head fcc1f1d)</title>
+<style>
+body { font-family: Georgia, 'Times New Roman', serif; line-height: 1.6; margin: 0 auto; max-width: 900px; padding: 1em 2em 4em; color: #1a1a2e; background: #fdfdfb; }
+h1 { font-size: 1.6em; border-bottom: 3px solid #3a7ca5; padding-bottom: .3em; }
+h2 { color: #16425b; margin-top: 2em; }
+h3 { color: #2c5f7c; }
+nav { background: #eef4f8; border: 1px solid #cfe0ea; border-radius: 8px; padding: .8em 1.2em; margin: 1em 0 2em; }
+nav a { color: #16425b; text-decoration: none; margin-right: 1em; }
+pre, .code { white-space: pre-wrap; font-family: 'SF Mono', Consolas, monospace; background: #f4f4f0; border: 1px solid #ddd; border-radius: 6px; padding: .8em; overflow-x: auto; }
+code { font-family: 'SF Mono', Consolas, monospace; background: #f0f0ec; padding: 0 .25em; border-radius: 3px; }
+.callout { border-left: 4px solid #d4a017; background: #fdf6e3; padding: .6em 1em; margin: 1em 0; border-radius: 0 6px 6px 0; }
+.shape-flow { display: flex; gap: 1em; flex-wrap: wrap; margin: 1em 0; }
+.shape-box { flex: 1 1 260px; border: 1px solid #9fc2d6; border-radius: 8px; padding: .6em 1em; background: #f4f9fc; }
+.shape-box h4 { margin: .2em 0 .4em; color: #16425b; }
+.shape-box ul { margin: 0; padding-left: 1.2em; }
+.q { border: 1px solid #cfe0ea; border-radius: 8px; padding: .8em 1.2em; margin: 1em 0; background: #fff; }
+.q .opt { display: block; margin: .35em 0; padding: .35em .6em; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: #fafafa; }
+.q .opt:hover { background: #eef4f8; }
+.q .opt.correct { background: #e6f4ea; border-color: #5aa469; }
+.q .opt.wrong { background: #fdecea; border-color: #c0392b; }
+.q .expl { display: none; margin-top: .5em; border-top: 1px dashed #bbb; padding-top: .5em; }
+details { margin: .8em 0; }
+footer { margin-top: 3em; font-size: .85em; color: #666; border-top: 1px solid #ccc; padding-top: .8em; }
+</style>
+</head>
+<body>
+<h1>Align texture sampling overloads with HLSL and target capabilities</h1>
+<p><b>PR:</b> shader-slang/slang#14683 (draft) · <b>head:</b> fcc1f1d · <b>2026-11-21</b> · <b>Fixes:</b> #14671</p>
+<nav>
+<a href="#background">Background</a>
+<a href="#intuition">Intuition</a>
+<a href="#code">Code walkthrough</a>
+<a href="#open">Open questions</a>
+<a href="#quiz">Quiz</a>
+</nav>
+
+<h2 id="background">Background</h2>
+<details><summary>Deep background (skippable)</summary>
+<p>Slang compiles texture calls like <code>tex.SampleGrad(s, loc, gx, gy, clamp)</code> through declaration, not through C++ built-ins: the methods are generic extension members of <code>_Texture&lt;T, Shape, isArray, …&gt;</code> in <code>source/slang/hlsl.meta.slang</code>. Each overload resolves a call by its parameter list, then lowers through a <code>__target_switch</code> with one body per backend. SPIR-V lowering is declarative: a <code>spirv_asm</code> block names its operands (<code>Grad|MinLod</code>, <code>OpImageSparse…</code>, <code>OpStore</code> of the resident code) and the emitter writes exactly that. Availability is gated by <code>[require]</code> capability attributes; shape rules by <code>static_assert</code> on the <code>Shape</code> type parameter, which produces a clear diagnostic at the call site. Because there is no legalization pass after the fact, an overload that compiles emits precisely what its block says — wrong shape rules mean silently invalid code.</p>
+<p>The HLSL authority for the overload table is DXC's <code>gen_intrin_main.txt</code>: cube and cube-array textures have <b>no</b> texel-offset overload on any method; the six implicit-LOD methods instead take <code>(clamp)</code> / <code>(clamp, status)</code>; the explicit-LOD methods take status-only <code>(status)</code>; noncube textures take <code>(offset)</code> / <code>(offset, clamp)</code> / <code>(offset, clamp, status)</code>, and comparison sampling has no 3D form at all. SPIR-V agrees mechanically: <code>ConstOffset</code> on a cube image is invalid; <code>MinLod</code> corresponds to Vulkan's <code>shaderResourceMinLod</code> feature; sparse residency is a separate capability.</p>
+</details>
+<p>The narrow facts this change needs: Slang's cube overloads did have offset forms (a fictional <code>int3</code> for <code>SampleGrad</code>, <code>int2</code> elsewhere), did not have the cube clamp forms, and the <code>GL_ARB_sparse_texture_clamp</code> capability alias mapped its SPIR-V alternative to <code>spvSparseResidency</code> — a different feature from the <code>spvMinLod</code> a clamp actually needs.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Consider the issue's motivating example:</p>
+<pre>TextureCube&lt;float4&gt; testCube;
+SamplerState testSampler;
+return testCube.SampleGrad(testSampler, dir, gx, gy, minLod);  // minLod is a minimum-LOD clamp</pre>
+<p>Before the fix, cube <code>SampleGrad</code> had no clamp overload, so the fifth argument resolved to the <i>offset</i> overload: an implicit <code>float → vector&lt;int,3&gt;</code> conversion warning, then E40012 ("expected a compile-time constant") because a clamp is not a constant offset. Passing a constant offset instead compiled <i>silently</i> and emitted <code>Lod|ConstOffset</code> on a cube image — invalid SPIR-V. The fix makes the declaration surface equal the HLSL table: assert the shapes a form can never take, add the forms that are missing, and name the capabilities the lowerings actually use.</p>
+<div class="shape-flow">
+  <div class="shape-box"><h4>Cube / CubeArray (per DXC)</h4><ul>
+    <li>implicit-LOD: <code>()</code>, <code>(clamp)</code>, <code>(clamp, status)</code></li>
+    <li>explicit-LOD: <code>()</code>, <code>(status)</code></li>
+    <li>any offset parameter → static_assert diagnostic</li></ul></div>
+  <div class="shape-box"><h4>1D / 2D / 3D / arrays</h4><ul>
+    <li><code>()</code>, <code>(offset)</code></li>
+    <li><code>(offset, clamp)</code>, <code>(offset, clamp, status)</code></li>
+    <li><code>SampleLevel</code> family: <code>(offset, status)</code></li></ul></div>
+</div>
+
+<h2 id="code">Code walkthrough</h2>
+<h3>1 · The failing repro</h3>
+<p><code>tests/hlsl-intrinsic/texture/sample-grad-cube-minlod.slang</code> — the exact call above, checking for <code>OpImageSampleExplicitLod … Grad|MinLod</code> with <code>CHECK-NOT: ConstOffset</code>. It failed with E40012 on master; it passes on this branch.</p>
+<h3>2 · Reject invalid shapes</h3>
+<p>The existing cube-exclusion precedent on <code>SampleCmpGrad</code>/<code>SampleCmpBias</code> is extended to every offset overload of <code>Sample</code>, <code>SampleBias</code>, <code>SampleLevel</code>, <code>SampleGrad</code>, <code>SampleCmp</code>, <code>SampleCmpLevel</code>, <code>SampleCmpLevelZero</code>, and to the eight <code>__texture_gather_[Cmp_]offset[s]</code> helpers — plain and combined samplers. Comparison sampling gains <code>static_assert(!(Shape is __Shape3D))</code> (no DXC <code>SampleCmp*</code> on Texture3D, invalid <code>OpImage*Dref*</code> on 3D images). The always-true WGSL offset check becomes the intended 2D-or-3D restriction (rejecting 1D too). Two quiet bugs go with them: the combined <code>Sample(location, offset)</code> GLSL case called <code>textureOffsetClampARB</code> with no clamp argument plus a stray <code>OpCapability MinLod</code>, and <code>SampleGrad</code> offsets used <code>Shape.dimensions</code> (fictional <code>int3</code> on cube) instead of <code>Shape.planeDimensions</code>.</p>
+<h3>3 · The missing forms</h3>
+<p>Cube <code>(clamp)</code>/<code>(clamp, status)</code> on the six implicit-LOD methods; cube status-only <code>(status)</code> on the three explicit-LOD methods; noncube <code>(offset, clamp)</code> on <code>SampleBias</code>/<code>SampleCmp</code>/<code>SampleCmpBias</code>/<code>SampleCmpGrad</code> and <code>(offset, clamp, status)</code> on the last two — each with a real per-target body: HLSL positional passthrough, GLSL <code>textureClampARB</code>-family intrinsics under <code>GL_ARB_sparse_texture_clamp</code>, Metal bodies for the documented cube gradient/bias clamp, and SPIR-V blocks emitting <code>MinLod</code> (and <code>OpImageSparse*</code> plus the resident-code <code>OpStore</code> for status forms). The combined <code>SampleBias (offset, clamp, status)</code> SPIR-V body, which dropped the clamp entirely, now emits <code>Bias|ConstOffset|MinLod … $clamp</code>. The two short <code>(offset, status)</code> comparison forms become spirv-only: the HLSL emitter passed them through positionally where DXC reads the last argument as the <i>clamp</i> — targets silently disagreed; HLSL callers now get a clean overload error and the table's <code>(offset, clamp, status)</code>.</p>
+<h3>4 · Capability wiring</h3>
+<p><code>GL_ARB_sparse_texture_clamp</code>'s SPIR-V alternative becomes <code>spvMinLod</code> (the feature a clamp needs), not <code>spvSparseResidency</code>. The two plain <code>(offset, clamp)</code> forms require the clamp atom like their combined twins. Every residency form splits <code>[require(hlsl_spirv, sm_5_0)]</code> into an hlsl clause and a spirv clause adding <code>spvSparseResidency</code>; the fallback-style <code>Sample (offset, clamp, status)</code> forms gain stacked availability+spirv clauses (new <code>cpp_glsl_hlsl_metal</code> compound alias). <code>SampleCmpLevel</code>'s SM 6.7 requirement is branch-local <code>__requireCapability(sm_6_7)</code> inside the HLSL cases — a declared clause propagates into the GLSL-module wrappers that call it and would raise their minimum GLSL version to 4.60 (the build fails exactly that way before the branch-local choice).</p>
+<h3>5 · The matrix</h3>
+<p>Positive coverage across 1D/2D/3D/cube/array for the clamp forms (separate and combined samplers), shape diagnostics for cube offsets, 3D comparison and WGSL 1D/cube offsets, the SM 6.7 upgrade-warning behavior, and the migrated sparse comparison tests. <code>tests/hlsl-intrinsic/</code>: 744/744; full suite green except three pre-existing fp8-cuda PTX-JIT environment failures.</p>
+
+<h2 id="open">Open questions for the maintainer</h2>
+<div class="callout">
+<p><b>E41012 policy.</b> The issue complained that Slang "emits <code>SampleCmpLevel</code> for an HLSL SM 6.6 profile, even though DXC requires SM 6.7." After this change an <code>sm_6_6</code> request gets <code>warning[E41012]: profile implicitly upgraded</code> (lib_6_6 → sm_6_7) and a coherent upgraded module — warn-and-upgrade is Slang's standing <code>__requireCapability</code> behavior, not a new policy. A <i>hard error</i> for SM-family requirements would be a capability-policy decision (#9210); deliberately not made unilaterally.</p>
+<p><b>Cube-array SampleCmpGrad.</b> The SM 6.8 proposal excludes it; DXC <code>main</code> declares it. This branch keeps Slang's existing exclusion — two asserts to remove if you prefer DXC parity.</p>
+<p><b>Short (offset, status) comparison forms.</b> Now spirv-only (they lowered to sparse residency on SPIR-V but to a misread clamp on HLSL). If downstream Slang code relied on them for HLSL, it was getting silently divergent code; alternative migrations (explicit diagnostic, different spelling) are on the table.</p>
+</div>
+
+<h2 id="quiz">Quiz — five questions</h2>
+<div class="quiz" id="quiz"></div>
+<footer>Explanation of shader-slang/slang#14683 · head fcc1f1d · generated 2026-11-21.</footer>
+<script>
+const QUIZ = [
+  { q: "Before the fix, why did cubeTex.SampleGrad(s, dir, gx, gy, minLod) fail with E40012 rather than an overload error?",
+    opts: [["The clamp overload existed but required SM 6.8.", false],
+           ["No cube clamp overload existed, so resolution picked the offset overload and tried to use the clamp as a constexpr texel offset.", true],
+           ["SampleGrad on cube textures was gated behind texture_shadowgrad.", false],
+           ["The SPIR-V backend rejected the MinLod operand on cube images.", false]],
+    expl: "The fifth argument's only candidate was the (…, constexpr offset) overload; a float is not a compile-time constant offset, hence E40012 after an implicit-conversion warning. The fix adds the missing (…, float clamp) form, which resolves exactly and lowers to Grad|MinLod." },
+  { q: "Why does the cube offset rejection use static_assert at the overload rather than a check in the SPIR-V emitter?",
+    opts: [["It fires at the call site for every target, and the declaration is where the HLSL API's shape table lives; the emitter would only catch the SPIR-V case after resolution already succeeded.", true],
+           ["The emitter has no access to Shape.", false],
+           ["static_asserts are cheaper at compile time.", false],
+           ["The checker does not visit spirv_asm blocks.", false]],
+    expl: "The shape rule is a property of the API, not of one backend: HLSL has no cube offset either, and GLSL/Metal/WGSL offset functions cover only 2D/3D. Asserting at the overload gives one clear diagnostic per call site, extending the existing SampleCmpGrad precedent." },
+  { q: "What was wrong with the combined-sampler SampleBias(location, bias, offset, clamp, status) SPIR-V path?",
+    opts: [["It emitted Bias without ConstOffset.", false],
+           ["It swapped the bias and clamp operands.", false],
+           ["It emitted Bias|ConstOffset and never referenced $clamp — the clamp was silently dropped, without MinLod.", true],
+           ["It stored the resident code to the wrong output.", false]],
+    expl: "The block read $bias $offset and omitted both the MinLod operand and the $clamp argument, so the declared form compiled but sampled unclamped. It now emits Bias|ConstOffset|MinLod $bias $offset $clamp." },
+  { q: "Why is SampleCmpLevel's SM 6.7 requirement branch-local (__requireCapability inside the HLSL case) instead of a stacked [require(hlsl, sm_6_7)]?",
+    opts: [["Stacked [require]s on one declaration are OR-ed conjunctions, and a callee's declared capability propagates into its callers' declared sets — the GLSL-module wrappers that call SampleCmpLevel would have to declare sm_6_7, raising their minimum GLSL version to 4.60.", true],
+           ["[require] cannot name shader models.", false],
+           ["Branch-local checks run earlier in the pipeline.", false],
+           ["The texture_shadowlod atom conflicts with sm_6_7.", false]],
+    expl: "The GLSL textureLod(sampler1DShadow, …) wrappers target GLSL 1.50 baselines; a declared clause on the callee forces every caller to cover it (the build fails with E36104 exactly this way). Branch-local requirements fire only when that target case is compiled — the established __glsl_shadow_lod_* idiom." },
+  { q: "What does an sm_6_6 profile request get now when it uses SampleCmpLevel on HLSL?",
+    opts: [["A hard capability error.", false],
+           ["Silent emission of a 6.7 instruction.", false],
+           ["warning[E41012]: profile implicitly upgraded, and a coherent upgraded module.", true],
+           ["The call resolves to SampleCmpLevelZero instead.", false]],
+    expl: "Warn-and-upgrade is the standing __requireCapability policy; the issue's original complaint was the silent part, which is gone. Whether SM-family requirements should hard-error is an open policy question (#9210), flagged for the maintainer rather than changed here." }
+];
+const box = document.getElementById('quiz');
+QUIZ.forEach((item, i) => {
+  const div = document.createElement('div'); div.className = 'q';
+  const t = document.createElement('p'); t.innerHTML = '<b>Q' + (i+1) + '.</b> ' + item.q; div.appendChild(t);
+  const opts = item.opts.slice();
+  for (let j = opts.length - 1; j > 0; j--) { const k = Math.floor(Math.random() * (j+1)); [opts[j], opts[k]] = [opts[k], opts[j]]; }
+  opts.forEach(([text, correct]) => {
+    const o = document.createElement('span'); o.className = 'opt'; o.textContent = text;
+    o.onclick = () => {
+      box.querySelectorAll('.opt').forEach(el => el.onclick = null);
+      o.classList.add(correct ? 'correct' : 'wrong');
+      if (!correct) { box.querySelectorAll('.opt').forEach(el => { if (el.dataset.c === '1') el.classList.add('correct'); }); }
+      o.closest('.q').querySelector('.expl').style.display = 'block';
+    };
+    o.dataset.c = correct ? '1' : '0';
+    div.appendChild(o);
+  });
+  const e = document.createElement('div'); e.className = 'expl'; e.textContent = item.expl; div.appendChild(e);
+  box.appendChild(div);
+});
+</script>
+</body>
+</html>

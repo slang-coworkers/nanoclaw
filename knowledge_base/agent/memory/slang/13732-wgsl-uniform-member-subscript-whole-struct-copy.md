@@ -18,7 +18,8 @@ in lowerBufferElementType pass"). Mechanism: the `deferBufferLoad` size gate (>1
 
 **Fix:** the reporter's own **PR #13734** (human PR — no fixer chain; review events route as a human PR,
 approvers paused). Verified by slang-triager across heads 28bf262e96 → ae4db91cd7 → cb4ad5253a (10-27
-force-push = pure rebase onto 9a4817c881, same patch-id as ae4db91cd7):
+force-push = pure rebase onto 9a4817c881, same patch-id as ae4db91cd7) → caf4c9c96 (11-19 force-push,
+re-verified 11-22: pure rebase onto 56dd72555 over the source-reorg, content identical):
 
 - Fixes the repro and its 12 variants; member-only loads only. Attributed loads kept whole via the
   `deferBufferLoad` rule (`slang-ir-lower-buffer-element-type.cpp:1268-1272`) + shared `hasWholeAccessAttr`
@@ -34,15 +35,14 @@ force-push = pure rebase onto 9a4817c881, same patch-id as ae4db91cd7):
 - Bot comments on the issue: [6236090926](https://github.com/shader-slang/slang/issues/13732#issuecomment-6236090926)
   (triage; labels `regression`+`reproduced`, Type=Bug) and
   [6278114155](https://github.com/shader-slang/slang/issues/13732#issuecomment-6278114155)
-  (follow-up, edited in place at each verify; newest, names cb4ad5253a).
+  (follow-up, edited in place at each verify; newest, names caf4c9c96 after the 11-22 PATCH).
 
-**State (last verified 2026-11-19 15:00Z):** PR #13734 OPEN, not merged, head unchanged cb4ad5253a;
-`mergeable_state` now **dirty** (merge conflicts with master; was BEHIND at 11-08). jkwak-work still the
-requested reviewer; no human maintainer review or comment; issue/PR comments and timeline silent since
-10-30; issue #13732 OPEN, assigned jkwak-work; comment 6278114155 still names cb4ad5253a. 21-day dashboard
-row sent 11-19 (thread gh-issue-shader-slang/slang-13732).
-**Parked on maintainer review; next re-check: one-shot ~11-22 (no dashboard row unless changed); weekly
-rows only - next 11-26, then 12-03.**
+**State (last verified 2026-11-22 15:39Z):** PR #13734 OPEN, head `caf4c9c964177d784e0d7b8dc3ee91466f07088c`,
+re-verified clean at the new head (pure rebase, all claims re-hold; see history file). `mergeable_state`
+behind (was dirty; rework resolved the conflicts). jkwak-work still the requested reviewer; no human
+maintainer review or comment; issue #13732 OPEN, assigned jkwak-work.
+**Parked on maintainer review; watch-only until merge or another head move; weekly dashboard rows — next
+11-26 (one-shot already scheduled, that fire sends the row).**
 
 **Side finding, unfiled, operator call:** on master, struct `storeCoherent<16, MemoryScope::Device>`
 through a `Big*` splits into member `OpStore`s with only `Aligned` — the coherent flags are lost (a
@@ -52,3 +52,13 @@ again, leave it to the operator.
 
 Dated re-chase readings and decision rows live in [[13732-history-rechases.md]] — new dated entries go
 there, never here.
+
+## Re-check 2026-11-22 15:00Z — case 3: head moved (triager dispatched)
+
+- PR #13734 OPEN, head moved cb4ad5253a → `caf4c9c964177d784e0d7b8dc3ee91466f07088c`: albertrodriguezclo force-pushed 11-19 15:06:48Z (8 reworked commits at 14:38Z; per commit messages: partial member loads reworked to load each member once and keep attributed/guarded loads whole; SPIR-V logical-copy store no longer takes the source load's attributes; new tests). The force-push landed 6 min after the 11-19 fire's live check, so the 11-19 "nothing changed" baseline missed it.
+- mergeable_state now `behind` (was `dirty` — conflicts resolved by the rework). jkwak-work still the only requested reviewer; no human review; no comments/timeline activity since the force-push.
+- Issue comment 6278114155 still names cb4ad5253a (updated_at 10-29 15:22:35Z).
+- Action: dispatched slang-triager (pinned sess-1792248984408-me86v2, thread gh-issue-shader-slang/slang-13732, in_reply_to = task row seq 2, message id 27) to re-verify head caf4c9c96 and edit 6278114155 in place. No dashboard row this fire (off weekly cadence; next row 11-26).
+- Side finding (master storeCoherent split-member OpStores, probe scratch-13732/store-coh2.slang): still no operator answer as of 11-22 15:00Z (dashboard sess-1776713576150-9fon2n rows 11-18 22:17→11-22 14:54 checked; only our own 11-19 row mentions 13732). Not re-asked.
+- Successor one-shot scheduled for 2026-11-26 15:00Z (that fire sends the weekly dashboard row).
+- Result (triager msg 66, 15:40Z): re-verify clean at caf4c9c96; comment 6278114155 PATCHed 15:39:41Z to name the new head; watch-only. Detail in [[13732-history-rechases.md]].

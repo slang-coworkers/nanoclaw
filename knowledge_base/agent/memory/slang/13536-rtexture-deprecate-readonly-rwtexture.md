@@ -81,6 +81,12 @@ event is still Cyphall's subscribe on 10-20. No PR references #13536. The fixer 
 author has not been re-asked. A one-line note went to the dashboard. Re-armed as
 `rechase-13536-hlsl-choic-e16e`, firing 2026-11-22T22:00Z.
 
+**2026-11-22 22:00Z re-chase: still silent.** Checked live: the issue is open and still assigned to
+jhelferty-nv, `updated_at` still 10-15, no labels. The only comment is still the bot triage; no timeline
+events since 10-20 (searches for `13536` still find only the merged #13406 and the unrelated #11418).
+The fixer is still HELD and the author has not been re-asked. A one-line note went to the dashboard.
+Re-armed as `rechase-13536-hlsl-choic-2f75`, firing 2026-11-29T22:00Z.
+
 **Resume:**
 - The author answers and asks for a bot PR → the triager releases the fixer (Approach A plus the
   chosen HLSL lowering, GPU-free FileCheck tests, a DIAGNOSTIC_TEST that includes silence for

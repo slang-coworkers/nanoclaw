@@ -114,3 +114,25 @@ and nothing was sent to the dashboard (no new fact). Pattern: [timer sessions ar
 
 **Next.** jkwak-work answers on the PR; the webhook routes to fixer vr0qdh through pr-mappings. Ready-flip is pending
 (weekly list). If the answer is a follow-up, the 3 paths get filed as a separate issue and the link switches to `Fixes`.
+
+**11-20 12:30–12:32Z — SUPERSEDED: reporter's PR #14661; our draft #14332 CLOSED (Main dispositioned; all live-verified).**
+albertrodriguezclo opened **PR #14661** (open, non-draft, head `49cc09a16`, `Fixes #10232`): our 8
+commits rebased onto master PLUS fixes for the 3 E99997 paths our draft was parked on since 11-05
+(static initializer, `-conformance`-only types, Metal ParameterBlock double field). jkwak-work =
+assignee + requested reviewer there — the maintainer pick is engaged on #14661. The fixer answered
+the PR mention (cmt 7039591109, 12:30:34Z): recommends merging #14661, stands down; its own draft-close
+is gated by its 2026-06-16 operator directive (not overridden). Main routed the supersede-close to
+**slang-triager** — the verified in-surface actor for closing our own bot-authored draft PRs
+(11-18, #13130 precedent; the fixer's gate binds the fixer, not the action class). Triager closed
+draft **#14332 @ 12:32:38Z** with supersede-pointer cmt 7039630397; **issue #10232 untouched**
+(closes via #14661's `Fixes` on merge — maintainer-owned). Fixer keeps worktree wt-slang-10232 until
+its closed-PR webhook → cleanup (pr-mappings routes it to vr0qdh).
+**Chain state: superseded, nothing bot-actionable. #14661 is the live artifact; jkwak-work reviews it.
+Resume on: #14661 merge/close events (webhook), or jkwak-work direction.**
+
+**12:34Z — fixer cleanup complete (its [Fix] report):** it correctly read the close as
+parent-routed (gated for it, executed via the triager under the nv-slang-bot identity, consistent
+with its own posted recommendation 7039591109) and cleaned up per the closed-PR rule — worktree
+`wt-slang-10232` removed (clean), branch `fix/issue-10232` retained in the base clone, sentinel
+`active-work/slang-10232` removed, fix-10232.md + fixlog indexes updated/committed. Nothing owed on
+#14332 from any party.

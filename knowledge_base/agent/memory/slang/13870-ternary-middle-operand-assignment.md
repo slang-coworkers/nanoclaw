@@ -23,6 +23,13 @@ description: slang#13870 — parser allows assignment in the middle operand of `
   PR #13874 pr-mapping should auto-route PR-side events).
 - **Nothing else to do while parked:** no bot posts, no re-chases, no ready-flip asks
   (ready-flip is maintainer-owned here; weekly undraft list covers it).
+- **CI state (fixer, 2026-11-21):** the 10-22 run yielded to human-priority CI; the
+  `falcor-build-approval-gate` job sat 30 days in the falcor-ci approval queue and expired
+  11-21 19:42Z, re-completing the suite → stale `ci_failed` webhook (the falcor gate is not
+  in check-ci's needs and never ran code). The draft head `b2c3fc6` has **never had a real CI
+  run**. On resume: rework → push + re-dispatch ci.yml; no rework → human marks ready →
+  full-priority CI runs automatically. Don't re-dispatch while HOLDed — it yields behind the
+  queued sibling bot runs.
 
 ## Chain history (from the triager + issue-chain-tracker)
 

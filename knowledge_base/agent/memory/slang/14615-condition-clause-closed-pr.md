@@ -7,7 +7,7 @@ tags: [slang, closed-pr, maintainer-relations, terminal-pending-human]
 
 # slang#14615 — ConditionClause / HLSL decl-as-condition (PR #14627 closed unmerged)
 
-**Status (2026-11-20): TERMINAL-PENDING-HUMAN. No bot action on this issue or PR without operator direction.**
+**Status (2026-11-20 22:40Z): TERMINAL-CLOSED. tangent-vector merged his own superseding PR #14648 ("Supersedes #14627", 4 commits, 907+/119−) at 20:13:48Z and closed the issue `completed`. The parked operator decision (resubmit/fresh PR/stand down) is moot — the maintainer solved it himself. Postmortem captured (learning `postmortem: slang#14615 superseded by PR #14648`): his version uses an explicit ConditionClause AST node with generated-visitor per-form handling, bounded disambiguating lookahead, serialization version bump to 45, and debug-scope fidelity; ours was closed for tone/terminology + process churn, not technical content. No bot comment posted on either PR (respecting the no-bot-action hold; #14627 was already closed unmerged).**
 
 ## Timeline (all 2026-11-18/19/20 UTC)
 

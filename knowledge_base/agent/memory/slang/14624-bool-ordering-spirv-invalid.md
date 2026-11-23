@@ -64,11 +64,12 @@ session sess-1795050878493-8b24ef).
 - **MAINTAINER APPROVED 11-20 00:04Z** (Main-verified live): PR #14628 flipped ready by a human and
   APPROVED by tangent-vector at head `585eea914` (review 5985403150, empty body, nothing to apply).
   Ready-flip weekly-list entry retired (human flipped it).
-- **BEHIND cleared 11-20 00:28Z** (Main-verified): fixer merged master `2aeded1fd` into
-  fix/issue-14624 as merge commit `b115660f0` (merge NOT rebase, per repo convention; zero conflicts,
-  PR content byte-identical — none of its 3 files touched; critique stages re-recorded approve at the
-  merged head). **Auto-merge armed (SQUASH) by tangent-vector; CI run 44644346792 queued — CI green ⇒
-  GitHub auto-merges.** Fixer cleans up worktree+sentinel on the MERGED webhook.
+- **MERGED 11-20 03:29:57Z — CHAIN TERMINAL** (Main-verified live): PR #14628 squashed by
+  auto-merge (tangent-vector) as `85bde8dc0` after the test-falcor flake rerun went green;
+  issue #14624 auto-closed 03:29:59Z. Fixer cleaned up worktree wt-slang-14624 + sentinel.
+  End-to-end: repro → fix → 3-reviewer APPROVE_WITH_NITS (applied) → maintainer approval →
+  master merge (BEHIND) → flake rerun → auto-merge. No further webhooks need dispatch;
+  #14631 (FILED-ONLY side-find) is the only open descendant.
 - Issue asks in "Additional context" whether bool ordering should exist at all — that deprecation
   question may warrant a maintainer take; the fix itself is uncontroversial per the issue author
   (a maintainer) prescribing the expected lowering.
@@ -77,3 +78,14 @@ session sess-1795050878493-8b24ef).
   Main-verified live) — the issue's resumable artifact.
 
 Resume on human-maintainer review / comment webhook. Do not re-dispatch issue webhooks for #14624 — chain owns them.
+
+**11-20 03:27Z — CI failure classified external Falcor flake; rerun dispatched (1 of ≤3).** The
+post-merge-wait run 44644346792 (pull_request event, only run at head `b115660f0` = the live
+verdict) failed one job: `test-falcor / Test (Falcor)`. Fixer classification (6-point rationale):
+opaque bridge to the NVIDIA-internal Falcor pipeline (GitLab 83830234, per-test detail invisible);
+`test-falcor-perf` PASSED on the same head/artifacts; falcor-gated Windows build + approval gate
+passed; recent PRs' test-falcor green; known Falcor flakes tracked in shared learnings; the fix is
+value-identical on Falcor's HLSL path. `gh run rerun --failed` dispatched (Main-checked: run back
+to `queued`, no failure rows at the new attempt). **Auto-merge stays armed** — fires when the rerun
+goes green. If red again with the same shape: attempt 3/3, then escalate for a human/NVIDIA-side
+look (per-test detail internal; not blind-fixable). Webhook routes the outcome to the fixer.

@@ -174,6 +174,11 @@ sentinel cleaned; no open sessions owed. Do not re-dispatch #14612 or #14618 web
   never ran, and the shared-ledger zeroing defect is a known fleet issue). **If attempt 3/3
   triggers the admin decision: input = stale replay of a resolved gate refusal; no action
   owed; no work is blocked.** Open items remain only the queued CI + auto-merge.
+  **Post-terminal closure (06:53Z 11-20):** "critique_gate_bypass request was rejected by admin"
+  notifications (06:52Z) = same stale-replay machinery; fixer never requested a bypass, the
+  only PR create succeeded 23:26Z 11-18 after recorded stages, and with the PR merged
+  (00:43Z) + issue closed nothing is blocked. Full disposition: any future replay on another
+  chain — verify a real gated delivery is in flight before treating the notification as live.
 - **Watch:** issue label was "Tess's Label" at intake (not a stand-down); the 256-truncation
   repro answer from tangent-vector may re-scope the fix; C stays maintainer-gated.
 - **Triager memo:** verbatim copy at [raw/triage-14612.md](raw/triage-14612.md); also cites

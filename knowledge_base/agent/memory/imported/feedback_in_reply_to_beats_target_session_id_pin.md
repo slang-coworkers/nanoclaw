@@ -131,3 +131,28 @@ seq 28), predictably. Two NEW facts:
    a dated notice to the owner's live next-steps file (`reports/slang-13686-status.md`) delivered the facts verifiably
    (re-checked on disk by the helper, and it corrected its task work log). Cheap, one extra wake of a session that was
    waking anyway, no routing involved. Prefer this over retrying doomed pins or burning a third-group relay wake.
+
+**2026-11-21 (#14682, 9th occurrence — the CROSS-GROUP SUCCESS variant, derived from source).**
+Turn's only inbound (id 2) was the slang-**triager**'s escalation; the target was the stalled
+slang-**fixer** owner session (`pldciv`) — a DIFFERENT group. No null-source row existed (in_reply_to=1
+errored: "no inbound message with that id"). Sent `target_session_id` + `thread_id` with NO explicit
+in_reply_to → landed pinned as pldciv seq 24 in seconds. **Why the auto-stamp didn't win this time**
+(`agent-route.ts` `resolveExplicitReplyTarget`, ~line 294): the candidate resolved from the stamped
+in_reply_to is rejected when `candidate.agent_group_id !== targetAgentGroupId` → Layer 1 returns null
+→ **the pin wins by default**. ⇒ **Refines the #14664 corollary: the pin is structurally unavailable
+only when the turn's inbound is FROM the target group. Cross-group (inbound from group A, target
+sibling/owner in group B), pin + thread_id alone is sufficient — no null-source in_reply_to row
+needed.** Verified from source at /workspace/agent/nanoclaw-kb before sending; delivery verified with
+the recipient's `messages --reverse --limit 3`. This wake recovered a session silent 5.5h that two
+prior inbounds had bounced.
+
+**Recurred 2026-11-20 (#14664, 6th occurrence — structural corollary).** A cross-chain
+`send_message` with `target_session_id` AND `thread_id` set together STILL landed back in this
+turn's sender: the implicit/auto-stamped reply route beat both. Pin alone is never enough — the
+send also needs an explicit `in_reply_to` that cannot resolve into the target group. **Structural
+corollary: when this turn's inbound is FROM the target group, you CANNOT pin to a different
+sibling session of that group** — every candidate `in_reply_to` resolves into the group and the
+reply edge wins. Route such corrections on the sender's own edge instead; if the true target must
+be reached, do it in a turn whose inbound is from a different group. Verify delivery with the
+target's `ncl sessions messages --reverse --limit 3`. Chain record:
+[[slang/14664-require-enum-cases-feature.md]].
