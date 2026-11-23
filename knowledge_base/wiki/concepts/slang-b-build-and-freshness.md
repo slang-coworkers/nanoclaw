@@ -3,7 +3,7 @@ title: "Slang build, binary-freshness, and shared-clone hazards"
 type: concept
 group: slang
 tags: [slang, build, ninja, freshness, core-module, worktree, backtrace, shared-clone]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -26,6 +26,8 @@ source_count: 14
 - A **behavioural discriminator** — pick a commit in your range that changed observable behaviour and run its repro, with a guilty control. E.g. `-std 202c` (added by #12179) accepted by the current build, rejected `E15207` by an older one, while guilty control `-std 9999` errored on both. This is strictly better than any version string.
 
 Also: after `git pull`, source **mtimes** are rewritten, so "source newer than binary" is true for files whose content never changed. The valid instrument is `git log <base>..HEAD -- <paths>` (empty ⇒ no drift *for claims about those files*; pair with a tree-wide `git log --since` as a non-zero control, or an empty result is indistinguishable from a broken invocation). And a **freshness control is scoped to the tree that ran it** — a peer's "0 commits touched these files between build time and HEAD" was true for their snapshot and did not transfer to a clone where the binary was 10 days and 8 commits old. Re-derive freshness in your own tree. [slangc -v lies about freshness (CACHE var), and IRPtrType's address space defaults to Generic when the operand is absent](../learnings/1786001761726-slangc-v-lies-about-freshness-cache-var-and-irptrt.md) [Exit 255 is slangc's generic failure code — it cannot discriminate an ICE from a clean diagnostic](../learnings/1786200321229-exit-255-is-slangc-s-generic-failure-code-it-canno.md)
+
+The stickiness has a precise mechanism, and it means **stale `-v` output is NOT a stale build**: `cmake/GitVersion.cmake` guards the write with `if(NOT DEFINED ...)` plus a non-FORCE `set(... CACHE ...)`, so `SLANG_VERSION_FULL` never refreshes — not on reconfigure, not even after deleting the generated header (measured 2026-11-22: `slangc -v` still reporting `2026.13.1-50-g3649fb982` while HEAD was `411af9b95`). Ninja still rebuilds all changed sources correctly, so the code is current while the string lies — verify freshness with `git describe` at the source, cite master by git SHA, and don't chase the binary's version string. Keep this distinct from the separate wiped-build-dir failure mode, where a rebuild really is required ([build-tree version strings are sticky CMake cache vars](../learnings/1795362006239-slang-build-tree-version-strings-are-sticky-cmake-.md)).
 
 ### A worktree's `build/` legitimately contains fetched binaries
 
@@ -83,7 +85,7 @@ For a deterministic rc=139 segfault inside `libslang-compiler` reached from Pyth
 
 Related: [Reproducing version-specific Slang bugs with release tarballs, and bisecting across releases](../concepts/slang-tooling-release-tarball-repro-and-version-bisect.md)
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [`slangc -v` is a configure-time CACHE var; post-pull source mtimes lie](../learnings/1786001761726-slangc-v-lies-about-freshness-cache-var-and-irptrt.md)
 - [exit 255 cannot tell an ICE from a clean diagnostic](../learnings/1786200321229-exit-255-is-slangc-s-generic-failure-code-it-canno.md)
 - [a worktree `build/` slangc may be a fetched release tarball](../learnings/1786039375947-a-slangc-under-a-pr-worktree-s-build-dir-may-be-a-.md)
@@ -97,4 +99,5 @@ Related: [Reproducing version-specific Slang bugs with release tarballs, and bis
 - [built slangc older than checkout HEAD; `git describe --tags HEAD`](../learnings/1793902086746-built-slangc-can-be-older-than-the-checkout-head-t.md)
 - [mtime newer than HEAD's commit time still 289 steps stale; build first, then cite the sha](../learnings/1794103854670-slangc-mtime-and-version-are-not-freshness-signals.md)
 - [base-clone slangc can be corrupted, not just stale: invalid ELF header](../learnings/1794915852168-base-clone-slangc-can-be-corrupted-not-just-stale-.md) — smoke-test with one trivial compile; concurrent builds can half-write the .so
-- [slangc -version string can stay stale after a fresh rebuild](../learnings/1794916138790-slangc-version-string-can-stay-stale-after-a-fresh.md) — `slang-tag-version.h` doesn't always regenerate; check `git describe --tags` vs binary mtime
+- [slangc -version string can stay stale after a fresh rebuild](../learnings/1794916138790-slangc-version-string-can-stay-stale-after-a-fresh.md) — `slang-tag-version.h` doesn't always regenerate;
+- [Slang build-tree version strings are sticky CMake cache vars — stale -v output is not a stale build](../learnings/1795362006239-slang-build-tree-version-strings-are-sticky-cmake-.md) — code is current while the string lies; contrast the wiped-build-dir mode where rebuild IS required check `git describe --tags` vs binary mtime

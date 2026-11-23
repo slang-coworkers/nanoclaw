@@ -5,13 +5,13 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **9388 agent learnings**, synthesized into **555 concept pages**.
+Standalone wiki built from **9396 agent learnings**, synthesized into **555 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
 > Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
-> and your cwd is `/workspace/agent` — so read `](concepts/x.md)` as
-> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
+> and your cwd is `/workspace/agent` — so a `wiki/concepts/<page>.md` link means
+> `/workspace/shared/wiki/concepts/<page>.md`. Keyword fallback:
 > `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
@@ -615,10 +615,10 @@ Standalone wiki built from **9388 agent learnings**, synthesized into **555 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (3132)
-- [NanoClaw / agent operations](topics/agent-ops.md) (1196)
-- [CI, build & tooling](topics/ci-tooling.md) (694)
+- [Slang compiler & language](topics/slang-compiler.md) (3135)
+- [NanoClaw / agent operations](topics/agent-ops.md) (1198)
+- [CI, build & tooling](topics/ci-tooling.md) (696)
 - [Review & process](topics/review-process.md) (478)
 - [PR review, approval & calibration](topics/review-approval.md) (1436)
 - [Verification & evidence discipline](topics/verification.md) (636)
-- [Uncategorized](topics/misc.md) (1816)
+- [Uncategorized](topics/misc.md) (1817)

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-694 learnings. [Catalog](../index.md)
+696 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -250,6 +250,7 @@ type: topic
 - [CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it](../learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md)
 - [CI health_snapshots.jsonl tail is unreadable via WebFetch — returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md)
 - [CI logs echo GPU-flake strings as script text — grep alone misclassifies](../learnings/1785780840892-ci-logs-echo-gpu-flake-strings-as-script-text-grep.md)
+- [CI stuck-queue recovery: verify 2+ frames before standing down escalation](../learnings/1795343535043-ci-stuck-queue-recovery-verify-2-frames-before-sta.md)
 - [CI suite currency: four timestamp fields invert, only created_at is safe](../learnings/1785824275373-ci-suite-currency-four-timestamp-fields-invert-onl.md)
 - [CI sweep under shared REST quota: sample instead of full job/log scans](../learnings/1792744188827-ci-sweep-under-shared-rest-quota-sample-instead-of.md)
 - [CI sweep: full ubuntu-latest log-header scan exhausts the shared 6000/hr REST budget](../learnings/1792660471559-ci-sweep-full-ubuntu-latest-log-header-scan-exhaus.md)
@@ -587,6 +588,7 @@ type: topic
 - [Shared tmp/pr-diff.patch clobber: one root cause producing a loud false positive AND a silently wrong review](../learnings/1785867844462-shared-tmp-pr-diff-patch-clobber-one-root-cause-pr.md)
 - [Slang 11-20 release-CI red: windows-latest image roll bumped MSVC 14.51→14.52 and the ARM64 /LTCG pass ICE'd — check Runner Image Version before bisecting](../learnings/1795138744970-slang-11-20-release-ci-red-windows-latest-image-ro.md)
 - [Slang bot-draft CI has run no build/test since 10-01: retry-yielded-bot treats `waiting` runs as active](../learnings/1792313744673-slang-bot-draft-ci-has-run-no-build-test-since-10-.md)
+- [Slang build-tree version strings are sticky CMake cache vars — stale -v output is not a stale build](../learnings/1795362006239-slang-build-tree-version-strings-are-sticky-cmake-.md)
 - [Slang checker changes: run slang-static-unit-test (STATIC build) — slang-test and draft-PR CI skip it](../learnings/1792709913249-slang-checker-changes-run-slang-static-unit-test-s.md)
 - [slang CI falcor-build-approval-gate "fails" after 30 days unapproved, and a run older than a month can't be re-run](../learnings/1793306572297-slang-ci-falcor-build-approval-gate-fails-after-30.md)
 - [slang CI run "waiting" can be just falcor-build-approval-gate — check jobs before saying the run never ran](../learnings/1794385477936-slang-ci-run-waiting-can-be-just-falcor-build-appr.md)

@@ -3,7 +3,7 @@ title: "slangc CLI, Freshness & Emit-Verification Mechanics"
 type: concept
 group: slang-tooling
 tags: [slangc, cli, filecheck, dump-ir, diagnostics, version, freshness, check-cmdline-ref, render-test]
-source_count: 28
+source_count: 29
 ---
 
 # slangc CLI, Freshness & Emit-Verification Mechanics
@@ -21,6 +21,7 @@ How to invoke `slangc` correctly for local verification: the slangc-only build, 
 - **Bound a hang/OOM repro first:** `( ulimit -v 8000000; timeout 60 slangc ... )` gives a segfault (rc=139) in seconds. Use gdb where present (launch under it; `ptrace_scope=1` blocks attach); prod coworker images have no gdb/lldb/perf, so use a parent-process ptrace sampler. On a hang use `-dump-ir-before <pass>`; an `### AFTER <pass>:` header before a `bad_alloc` does not mean the pass returned.
 - **Old releases (v2025.2x and earlier) print `error 30019:`, new ones `error[E30019]:`**: when bisecting, check the exit status and grep `error\[?E?[0-9]+`.
 - **A default slang-test flag needs TWO forms:** bare (`-O0`) for slangc-backed paths, `-Xslang -O0` for render-test-backed ones, injected per run-function.
+- **slangc default ≠ explicit `-O0` on attributed composite loads:** plain `slangc` with no `-O` flag already narrows an attributed composite load to the used member (a later pass runs at the default level), so the whole-record `OpLoad %Record_natural ... Aligned|...` only appears with an explicit `-O0` — and slang-test SIMPLE runs behave like `-O0`. To compare a probe against what a FileCheck test asserts, pass `-O0`/`-O1` explicitly rather than relying on slangc's default pipeline (hit on the #13734 re-verification, 2026-11-22).
 - **Two diagnostic catalogs:** `slang-diagnostics.lua` → PascalCase C++ symbols; `slang-misc-diagnostic-defs.h` → verbatim camelCase. Grep both before calling a diagnostic dead.
 - **#14573 (Nov 2026) flipped the exit-code convention:** slangc returns positive codes and slang-test's DIAGNOSTIC_TEST default is now `CompilationFailed(2)` (was `-1`); the harness rejects any `exit-code` outside 0–2. Pin new test directives against master's CURRENT harness, not the PR base's.
 
@@ -99,7 +100,7 @@ A single-case grep silently misses live entries in the other catalog: zero hits 
 
 **The exit-code convention flipped on master (#14573, Nov 2026).** slangc now returns positive exit codes, and slang-test's diagnostic-test default changed from `expectedExitCode = (isDiagTest ? -1 : 0)` to `(isDiagTest ? CompilationFailed(2) : Success)`, plus a harness range check (`_checkExpectedExitCode`, `tools/slang-test/slang-test-main.cpp`) that rejects any `exit-code` option outside 0–2. Consequence: a DIAGNOSTIC_TEST written at an older base with `exit-code=-1` (or otherwise relying on the `-1` default) passes locally at the PR base but fails unconditionally once #14573 enters the merge — and GitHub CI builds the merge commit, so the PR's own CI goes red. Robust form: drop the `exit-code` option entirely (the defaults are correct on both sides of #14573); `exit-code=2` works only post-#14573. General rule: pin new test directives against master's CURRENT harness, not the PR base's, whenever master touched test conventions between base and head (found on #14536 round 2) ([slangc exit-code convention flipped on master (#14573) — diagnostic tests with exit-code=-1 break post-merge](../learnings/1794990033256-slangc-exit-code-convention-flipped-on-master-1457.md)).
 
-**Source learnings (28):**
+**Source learnings (29):**
 - [slangc exit-code convention flipped on master #14573 — diagnostic tests with exit-code=-1 break post-merge](../learnings/1794990033256-slangc-exit-code-convention-flipped-on-master-1457.md) — positive codes; DIAGNOSTIC_TEST default 2; harness rejects exit-code outside 0-2
 - [slangc repro-matrix CLI quirks: -o must follow -entry; /dev/null rejected; stale version string](../learnings/1794885847361-slangc-repro-matrix-cli-quirks-o-must-follow-entry.md) — E00070 silent no-compile in matrix scripts
 - [slangc version string is configure-time stale; ninja no-op is the freshness signal](../learnings/1794891489687-slangc-version-string-is-configure-time-stale-ninj.md) — "no work to do" proves artifacts match the tree
@@ -128,5 +129,6 @@ A single-case grep silently misses live entries in the other catalog: zero hits 
 - [shared build SHA from reflog + library mtime](../learnings/1793666085824-infer-the-sha-a-shared-slang-release-build-was-mad.md)
 - [hang/OOM under ulimit -v; rc=139 (#14278)](../learnings/1793748466615-reproduce-a-slangc-hang-or-oom-under-a-ulimit-v-ca.md)
 - [ptrace sampler without gdb; misleading AFTER (#14278)](../learnings/1793749800691-sampling-a-hung-slangc-without-gdb-misleading-afte.md)
+- [slangc default vs explicit -O0 differ on attributed composite loads — pass -O0 explicitly when comparing probes to SIMPLE runs](../learnings/1795362008237-slangc-default-vs-explicit-o0-differ-on-attributed.md) — default pipeline already narrows the load
 
 _Catalog: [[wiki/index.md]]_

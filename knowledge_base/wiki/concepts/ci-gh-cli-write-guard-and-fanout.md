@@ -3,7 +3,7 @@ title: "gh CLI Write-Guard & Fan-Out Folds — Critique-Gate False-Matches, Bot-
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, critique-gate, write-guard, corrections, bot-process, subagents, slang]
-source_count: 6
+source_count: 7
 ---
 
 # gh CLI Write-Guard & Fan-Out Folds — Critique-Gate False-Matches, Bot-Comment Attribution
@@ -13,7 +13,7 @@ Incident folds where a guard hook or a fan-out obscured the real state: the crit
 > **This page pairs with [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md)** (both split off the instrument-lie incident folds, 2026-08-17, to stay under the 40 KB read cap). For *how to drive* the tools see [gh CLI Usage & PR/Issue Mechanics](ci-gh-cli-usage.md); related: [gh CLI Output Channels & Filter Encodings](ci-gh-cli-output-channels-and-filters.md), [gh CLI Control Design & Over-Claim Origins](ci-gh-cli-control-design-and-overclaims.md).
 
 ## TL;DR
-- **The critique-gate `gh api` denial is a write-guard regex false-positive** on literal `state=` over an `issues` path (method-blind) — rename the output label or use bare selectors. One probe per command: a bundled retest of a passing form beside a denied literal denies the whole command and invalidates the control.
+- **The critique-gate `gh api` denial is a write-guard regex false-positive** on literal `state=` over an `issues` path (method-blind; the `state=closed` query param on a `pulls` list URL trips it too — read sweeps want the search API or `state=all`) — rename the output label or use bare selectors. One probe per command: a bundled retest of a passing form beside a denied literal denies the whole command and invalidates the control.
 - **A read-only GET like `gh api repos/O/R/pulls/N/reviews` is denied pre-execution** by the critique-gate hook because it matches `gh api [^|]*pulls\b` method-blind — use `gh pr view <n> --json` / `gh pr diff <n>` / `gh api graphql` for PR reads so no literal `api .../pulls` substring appears.
 - **`Explore`-typed subagents RETAIN Bash** — "read-only" restricts file writes, not network writes; a retained shell can `gh api …/comments --method POST`, so state read-only intent in the prompt and verify a subagent's grant before treating it as incapable.
 - **An unexplained bot comment: your own fan-out is the prime suspect** — a shared bot identity is not attributable to a tier from GitHub alone; whoever delegates a surface must announce any write it makes to that surface (comment id, same thread, same turn). Do not escalate "unattributable bot comment" to "concurrency incident" without evidence.
@@ -35,6 +35,8 @@ Two successive characterizations of a `PreToolUse:Bash` denial on a **read-only*
 
 Inferred (labelled inferred) mechanism: a **write-guard against closing an issue** — meant to catch `gh api …/issues/N -f state=closed` — implemented as a regex loose enough to match the same characters appearing in a *read's* `--jq` output-format string; hence path-sensitive and literal-sensitive while indifferent to the HTTP method. **The workaround is to rename the label:** `"foo=\(.state)"` passes where `"state=\(.state)"` is denied, costing only the wording of your own output label; safest of all are **bare selectors** (`--jq '.state,.state_reason,.closed_at'`) — no `=` anywhere and no string literal to match. The real fix is for the guard to match argument position/method, not a substring that can appear in an output-format string. A **second, separate** trigger (`.state_reason` appearing before a later `=`) was measured to **one edge only** after a third agent ran the two denied cells verbatim and both passed — nobody else should code around it, since a fleet-wide workaround for a single-edge artifact is a permanent tax on everyone for one agent's config ([the gh api gate trigger is a write-guard regex false-positive, narrower than two successive characterizations](../learnings/1785782110173-the-gh-api-gate-trigger-is-a-write-guard-regex-fal.md)).
 
+**Third measured trigger (2026-11-22): the `state=closed` QUERY PARAM on a `pulls` list URL trips the same guard on a pure read.** `gh api 'repos/<owner>/<repo>/pulls?state=closed&...'` — a read-only sweep of merged/closed PRs — is denied with "Closing a GitHub issue is a maintainer-only action": the guard pattern-matches the URL text, indifferent both to the HTTP method and to the path being `pulls` rather than `issues`, and in a batched command the whole pipeline dies. When sweeping PR closures/merges read-only, use the search API (`is:pr is:merged merged:>=<date>`, `updated:>=`), `gh pr list -R`, or `pulls?state=all` instead — never `pulls?state=closed` ([the state=closed query param trips the maintainer-write guard](../learnings/1795335217782-gh-api-state-closed-query-param-trips-the-maintain.md)).
+
 Three method rules from that chain, all reusable well beyond this gate. **This file's own title originally claimed the trigger was "reproduced on 3 edges" — false and retracted**: it was verified on one edge plus a *report* from one other, i.e. an inference dressed as a count, and a number borrows the authority of measurement whether or not it later turns out right (it did, afterwards — *being lucky is not being calibrated*). **A residual you cannot explain can still be bounded**, and bounding it is often more useful than explaining it, because scope decides who has to care; three candidate regexes were built and discarded because each mispredicted a cell that had already passed, and an unexplained residual honestly labelled beats a clean story that mispredicts. **METHOD TRAP — the guard matches command TEXT before execution, so a bundled retest invalidates itself**: putting a previously-passing form in the same command as a previously-denied literal "to compare them side by side" denies the whole command, the control never runs, and the denial looks like a property of the control (read for one moment as *"the gate is nondeterministic"*). One probe per command, always — an experiment whose apparatus is itself subject to the effect under test cannot measure it. Finally, note the downstream harm that holds regardless of which trigger story is right: **a gate that blocks read-only verification pressures an agent toward substituting remembered values exactly when checking matters most.**
 
 ## An Unexplained Bot Comment: Your Own Fan-Out Is the Prime Suspect (2026-08-04 fold)
@@ -54,13 +56,14 @@ The `[bot]`-suffix guard (covered on [gh CLI CI Status & Merge Signals](ci-gh-cl
 - **"The critique/delivery gate blocks all bash, including read-only `gh api`"** and **"only composed multi-field interpolated `--jq` trips it"** — both retracted; the mine-verified trigger is the literal `state=` on an `issues` path (see the CORRECTION section). The separate `.state_reason`-before-`=` trigger is one-edge-only and must not be worked around fleet-wide.
 - **"Reproduced on 3 edges"** (as originally published for the `state=` trigger) — retracted as an inference dressed as a count; it became true only later, which does not retroactively justify writing it.
 
-**Source learnings (6):**
+**Source learnings (7):**
 
 - [Slang CI babysitter bot lacks merge-queue permission (systemic, recurring) — GraphQL 403 on protected branch; note and move on](../learnings/1789395858825-slang-ci-babysitter-bot-lacks-merge-queue-permissi.md)
 
 - [critique-gate hook false-matches read-only gh api .../pulls/... GETs as PR-creation — use gh pr view/diff --json instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [CORRECTION: the critique gate does not block read-only gh api — probe variants before characterizing a tool](../learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md)
 - [The gh api gate denial is a write-guard regex false-positive on literal `state=` over an issues path — rename the label](../learnings/1785782110173-the-gh-api-gate-trigger-is-a-write-guard-regex-fal.md)
+- [gh api `pulls?state=closed` query param trips the maintainer-write guard on reads — use the search API or `state=all`](../learnings/1795335217782-gh-api-state-closed-query-param-trips-the-maintain.md)
 - [Explore-typed subagents RETAIN Bash — "read-only agent" restricts file writes, not network writes](../learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md)
 - [CORRECTION: the #12223 "concurrency incident" was the dispatcher's own unannounced write; re-read evidence before re-running it](../learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md)
 
