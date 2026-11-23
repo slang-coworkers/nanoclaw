@@ -6,15 +6,32 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 879 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 327 |
-| `nv-slang` | slang project spine, skills, workflows | 231 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 140 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 117 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 880 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 328 |
+| `nv-slang` | slang project spine, skills, workflows | 232 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 141 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 118 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-23
+
+### nv-main (1 PRs)
+- **#2507** `Sync nv-main with upstream/main`
+
+### nv-dashboard (1 PRs)
+- **#2509** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#2510** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2511** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2512** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-11-22
 
