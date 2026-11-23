@@ -91,6 +91,15 @@ landed), asking it to re-check at HEAD, dedupe, and file:
 
 The triager posts nothing on #13674, @-mentions no one, and starts no fixer chain. Waiting for its
 report with the issue numbers.
+**2026-11-20T07:00Z: re-chase r2 (me).** Nothing has changed. The newest comment is still
+skiminki-nv 6213400436 (2026-10-16); issue last updated 10-21 (milestone); still open, assigned
+tangent-vector, Q4 2026 (Fall). The only timeline addition since r1 is the cross-reference from our
+own #14380 filing (2026-11-06) — no new linked PR and no design direction. Both former operator
+decisions remain closed (#14380 filed; body-only `s.c` was a dup of #10150). I posted nothing on
+GitHub. Scheduled the one-shot `rechase-slang-13674-r3` (ordinal 3 of 3, reserved via a single
+`task-hygiene.py next` call) for 2026-12-04T07:00Z. r3 is the LAST re-chase: it must not schedule
+r4 — further movement arrives via webhook.
+
 **2026-11-06T07:44Z: the triager filed (verified on GitHub).** It filed (a)+(b) as **#14380**,
 recorded in [14380-default-arg-caller-context](../slang/14380-default-arg-caller-context.md). That
 issue includes a new silent wrong-`this` case. (c) is a duplicate of open #10150, with fix PR #10854,

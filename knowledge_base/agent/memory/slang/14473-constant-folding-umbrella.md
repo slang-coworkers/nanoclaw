@@ -52,3 +52,20 @@ folding FP constants. Same ruling as the parent: maintainer tracking issue, **no
 (FloatToHalf NaN narrowing) was made a sub-issue of #14481 on 11-13 — the hold there is unaffected
 (see [14386](14386-floattohalf-half-nan-signaling.md)). GitHub API still 401 at intake (known
 fleet-wide outage, already on the dashboard).
+
+## 2026-11-20 sub-umbrella #14478 re-check verdicts
+
+#14478 ("Missing folds") grew to 10 formal sub-items; the umbrella re-check task triaged the 6
+previously unchained ones on 11-20:
+
+- **#9855** — FIXED by #9776 (close suggested).
+- **#14399** — no longer reproduces (close suggested; human-owned by jkwak-work).
+- **#8235 + #10491** — root-caused; **fixer dispatch HELD while #14468 is alive** (same
+  constant-folding area).
+- **#14327** — parked on canonical-size decision.
+- **#12443** — went to its [PR #12479 re-review round](12443-enum-tag-coercion-pr12479.md)
+  (fixer merged master 11-20; resting on human re-review).
+
+Related at re-check: #13424 (held), #14214 (stood down). Children-sweep one-shot armed for 11-24.
+New dated entries in this section go to a sibling history page if it regrows, not to the
+`slang/index.md` row.

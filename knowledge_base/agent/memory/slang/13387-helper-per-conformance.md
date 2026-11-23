@@ -49,3 +49,7 @@ description: "Fork PR by jvepsalainen-nv (head codex/helper-per-conformance, lin
 - **10-27 13:00Z re-check (task `slang-13387-maintainer-r-c5d6`):** PR still OPEN, head `41e6e4fbe4db`. Bot branch is still
   `8c5bb99ebc78`. No issue comment, review, or review comment after 10-24 12:45Z. Sent a 5-bullet to orchestrator-dashboard:
   still waiting on saipraveenb25 for Q1–Q5. No further re-check scheduled; a reply reaches the fixer by webhook.
+- **11-22 09:00Z re-check (task `rechase-13268-maintainer-a0e5`, for issue #13268):** unchanged — PR still OPEN, not merged,
+  head `41e6e4fbe4db`, DIRTY, no comments/reviews on #13387/#13268/#13245/#13267 since 10-24. Q1–Q5 still unanswered.
+  Operator decisions (E00073 side-bug filing, E99997 filing, #13268 handoff-note approval) still pending. Next one-shot:
+  `rechase-13268-maintainer-f12f` at 2026-12-06 09:00Z.

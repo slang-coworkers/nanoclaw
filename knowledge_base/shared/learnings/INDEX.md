@@ -4484,6 +4484,7 @@
 - [gh search use gh search issues cli not gh api sear](ag-1776713258088-r8pp2t/1795076325643-gh-search-use-gh-search-issues-cli-not-gh-api-sear.md) — _ag-1776713258088-r8pp2t_
 - [the support bot answers pings via github filings n](ag-1776713258088-r8pp2t/1795076462686-the-support-bot-answers-pings-via-github-filings-n.md) — _ag-1776713258088-r8pp2t_
 - [slang sweep mcp closed issue filter and merged at ](ag-1776713258088-r8pp2t/1795162404103-slang-sweep-mcp-closed-issue-filter-and-merged-at-.md) — _ag-1776713258088-r8pp2t_
+- [gh api state closed query param trips the maintain](ag-1776713258088-r8pp2t/1795335217782-gh-api-state-closed-query-param-trips-the-maintain.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4729,6 +4730,8 @@
 - [resolved slang 11 20 arm64 release c1001 msvc 14 5](ag-1776919222241-zghq0h/1795224830851-resolved-slang-11-20-arm64-release-c1001-msvc-14-5.md) — _ag-1776919222241-zghq0h_
 - [slang coverage macos api mtl is the only executor ](ag-1776919222241-zghq0h/1795248615558-slang-coverage-macos-api-mtl-is-the-only-executor-.md) — _ag-1776919222241-zghq0h_
 - [slang coverage macos red since 11 21 metal coop ma](ag-1776919222241-zghq0h/1795248757311-slang-coverage-macos-red-since-11-21-metal-coop-ma.md) — _ag-1776919222241-zghq0h_
+- [mdl perf triage sample minima vs baseline median s](ag-1776919222241-zghq0h/1795334954741-mdl-perf-triage-sample-minima-vs-baseline-median-s.md) — _ag-1776919222241-zghq0h_
+- [slang mdl apiloadmodule perf regression 11 21 22 1](ag-1776919222241-zghq0h/1795335025048-slang-mdl-apiloadmodule-perf-regression-11-21-22-1.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4841,6 +4844,9 @@
 - [container quirks tmp opencode unwritable discord r](ag-1777389337838-f54d9l/1795273578813-container-quirks-tmp-opencode-unwritable-discord-r.md) — _ag-1777389337838-f54d9l_
 - [gateway truncates curl bodies from raw githubuserc](ag-1777389337838-f54d9l/1795307593189-gateway-truncates-curl-bodies-from-raw-githubuserc.md) — _ag-1777389337838-f54d9l_
 - [discord rest on this host curl only python urllib ](ag-1777389337838-f54d9l/1795314731136-discord-rest-on-this-host-curl-only-python-urllib-.md) — _ag-1777389337838-f54d9l_
+- [ci stuck queue recovery verify 2 frames before sta](ag-1777389337838-f54d9l/1795343535043-ci-stuck-queue-recovery-verify-2-frames-before-sta.md) — _ag-1777389337838-f54d9l_
+- [tmp opencode root owned temp dir unwritable by nod](ag-1777389337838-f54d9l/1795348043514-tmp-opencode-root-owned-temp-dir-unwritable-by-nod.md) — _ag-1777389337838-f54d9l_
+- [tmp opencode writes permission denied in support b](ag-1777389337838-f54d9l/1795398391647-tmp-opencode-writes-permission-denied-in-support-b.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -6043,6 +6049,8 @@
 - [multi group compare compute tests reading cross wo](ag-1780667166418-apezq5/1795241274714-multi-group-compare-compute-tests-reading-cross-wo.md) — _ag-1780667166418-apezq5_
 - [chain handoff gate triage handoff to a peer needs ](ag-1780667166418-apezq5/1795266283017-chain-handoff-gate-triage-handoff-to-a-peer-needs-.md) — _ag-1780667166418-apezq5_
 - [triage briefs validator test spir v control flow c](ag-1780667166418-apezq5/1795270698775-triage-briefs-validator-test-spir-v-control-flow-c.md) — _ag-1780667166418-apezq5_
+- [slang build tree version strings are sticky cmake ](ag-1780667166418-apezq5/1795362006239-slang-build-tree-version-strings-are-sticky-cmake-.md) — _ag-1780667166418-apezq5_
+- [slangc default vs explicit o0 differ on attributed](ag-1780667166418-apezq5/1795362008237-slangc-default-vs-explicit-o0-differ-on-attributed.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_

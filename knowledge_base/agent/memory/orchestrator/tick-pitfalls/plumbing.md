@@ -1,0 +1,14 @@
+---
+type: runbook
+description: Harness + copied-helper plumbing pitfalls of the /supervise-issues tick — bg-script races, hardcoded tick paths, background timeouts, subshell cwd, sessions-swap ban (ticks 343-364).
+---
+
+Harness and copied-helper plumbing traps for the tick pipeline. Parent: [[orchestrator/supervise-tick-pull-pitfalls.md]].
+
+- **Tick 345: `bgA.sh` (runs.py → ci.py) races the disposition pass.** ci.py reads `payload5.json` + `scan-out3.json`, which only exist after the mid-tick disposition re-run (`apply_disp.py payload2b → payload5` + scan). Launching the CI background job right after `pull.done` makes ci.py die on FileNotFoundError (exit 1 in `ci.done`) and it must be re-run. Launch bgA only after payload5/scan-out3 exist, or make bgA wait for `payload5.json`.
+
+- **Copied helpers hardcode the PREVIOUS tick's paths**: `runs.py` wrote `runs.json` to `/workspace/agent/tick342/runs.json` (tick 343: it overwrote the old tick's cache and `ci.py` then died on a missing local `runs.json`). Grep the copied `*.py`/`*.sh` for `tick<N-1>` and fix every hit before running.
+- **`run_in_background: true` is still killed at the default 120 s timeout in this harness** (tick 343: pull died mid-run at 120 s, 0-byte payload1). Pass an explicit large `timeout:` with it, or run long steps in the foreground with a 600 s cap and a done-marker file.
+- **`cd X && (…) & (…) & (…) & wait` binds the `cd` to the FIRST background job only** — bash parses `cd X && (…) &` as one background job; the other subshells run in the original cwd (tick 343: titles/GC subshells ran in `/workspace/agent`, created stray `*.done`/`wt-dirs*` files there and died on script paths). Put an explicit `cd` INSIDE every subshell, or run the steps sequentially.
+- **Never swap `payload['sessions']` for the raw `ncl sessions list` re-list.** The pull's session list is stamped (`cost_status`, `group_folder`); the raw list has neither, so scan misclassifies en masse (tick 343: 37 false `awaiting_us` nudge rows, 2 false escalates, cost_stopped count 0→wrong). Use the re-list only to (a) diff for brand-new canonical threads, (b) feed `blind.py`/`moved.py`, and (c) recover a missing session's id when hand-journaling a mid-tick chain — via a minimal chain record, never a sessions swap.
+- **`refetch_none.py` can exceed the runbook's 90 s window** (tick 364, 10,451 sessions: first run exit 124 with no output file; a 300 s retry fixed 0 and finished). Retry once with `timeout 300` before treating it as broken; a clean run with `fixed 0` means the lo-cache already covered everything.

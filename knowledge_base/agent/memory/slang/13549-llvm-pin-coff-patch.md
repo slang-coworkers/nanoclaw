@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13549 — bump pinned LLVM to drop the ARM COFF patch
-description: OPEN, blocked upstream. llvm/llvm-project#229712 MERGED to main 10-26 (811ba37d61f4), but no LLVM release tag has it yet (not 23.1.5, checked 11-06) and no 23.x backport has been requested. Maintainer jkwak-work owns it (Q4 2026). Next one-shot re-chase rechase-slang-13549-r2-8b4e at 11-20 09:00Z (ordinal 2 of 3).
+description: OPEN, blocked upstream. llvm/llvm-project#229712 MERGED to main 10-26 (811ba37d61f4), but no LLVM release tag has it yet (re-verified 11-20 on jhelferty-nv's ask — not 23.1.6, release/23.x head f51e6963, no 24.x line) and no 23.x backport has been requested. Maintainer jkwak-work owns it (Q4 2026). Next one-shot re-chase rechase-slang-13549-r3-fda3 at 12-04 09:00Z (ordinal 3 of 3 — the cap; if it also comes up empty, the series is exhausted).
 tags: [slang, dependencies, llvm, parked-upstream]
 ---
 
@@ -39,3 +39,18 @@ backport of llvm/llvm-project#229712, and the issue asks us to bump the pin and 
   so nothing was posted. Next: one-shot `rechase-slang-13549-r2-8b4e` (11-20 09:00Z, ordinal 2 of 3),
   which also routes any new human comment. `/workspace/extra/ephemeral` is read-only, so the
   blobless probe clone goes under `/tmp`.
+- **11-20 maintainer re-check ask:** jhelferty-nv @-mentioned the bot (cmt 7044592811, 16:19Z) asking
+  "check again if it's in a published LLVM release". Triager re-checked live and answered cmt
+  7044677779 (16:23Z): still no — newest tag `llvmorg-23.1.6` lacks it, `release/23.x` head
+  `f51e6963` unchanged and lacks it, no `llvmorg-24.*` tags / `release/24.x` branch, no open
+  backport PR (`gh search prs` works for llvm via GraphQL). Fix is on `main` only; first ships with
+  the LLVM 24 line unless maintainers request a `/cherry-pick` to `release/23.x`. Chain memory
+  `issues/13549.md` also updated on the triager side. r3 prompt retargeted to route only comments
+  after 2026-11-20T16:23Z.
+- **r2 re-chase (11-20):** still no release has the fix. `llvmorg-23.1.6` is new but lacks
+  `read32AArch64LdrAddend` (raw-blob probe of the RuntimeDyldCOFFAArch64.h file, 393 lines — fetch
+  verified non-404); the `release/23.x` head moved to `f51e6963` and still lacks it; no
+  `llvmorg-24.*` tags. #13549 had no new comments (updatedAt still 10-28T14:22:59Z, jkwak-work
+  assigned, labels `dependencies`). Nothing posted (case (a)). task-hygiene allowed ordinal 3 of 3;
+  scheduled `rechase-slang-13549-r3-fda3` for 12-04 09:00Z. Note: task-hygiene.py lives at
+  `worktrees/nc-gate/container/skills/supervise-issues/scripts/`, not `tools/`.

@@ -37,3 +37,30 @@ candidates by `candidate.agent_group_id !== targetAgentGroupId` (agent-route.ts:
 pin (my task inbound from slang-triager, send `to: slang-fixer` + `target_session_id`), the auto-stamped
 triager-row in_reply_to resolves to null and the pin WINS. The recorded in_reply_to-beats-pin failures were
 all same-group sibling sends. Pin + thread_id + verify delivery worked first try (no phantom minted).
+
+**11-20 04:50Z — second merge-conflict request resolved same-turn (fixer report; Main-verified).**
+jkwak-work's second conflict request (cmt 7030712467): master had gone DIRTY again; merged
+origin/master at `854dd3cda` (Main-checked: PR #14540 head). One content conflict — master deleted
+the two DISABLE_TEST ray-query runs in hit-object-make-hit.slang; took the deletion. Rebuilt, 23/23
+targeted files green, pushed: PR MERGEABLE (mergeable_state=blocked only on pending fresh CI), fresh
+CI running, **auto-merge (squash) still armed — green CI completes it autonomously**. Confirmation
+posted (cmt 7030756351, 04:50:44Z, verified). Webhook watch continues; fixer cleans up on the
+merged webhook.
+
+**11-20 09:06Z — TERMINAL (Main-verified: PR #14540 squash-merged by jkwak-work,
+merge commit `b7a2ce2a3`, 09:06:05Z; issue #14430 CLOSED via "Fixes #14430").** Chain complete
+end-to-end: repro → 9-commit fix (full visitStaticMemberExpr parity + core-module require
+alignment) → two bot review rounds closed → three maintainer-requested conflict resolutions →
+CI green → merged by the reporter who authored the original fix plan. Worktrees
+(wt-slang-14430 + ctl-14430-master control build) removed, sentinel cleared, memory moved to the
+terminal fixlog. Closing learning filed. **Nothing owed on this chain.**
+
+## Side effect (11-21): contributes to coverage-macos red — #14690
+
+The enforcement our PR #14540 landed (require fires on static members reached through generic types) is
+one of two interacting causes of the coverage-macos nightly going red 11-21: jkwak-work's #14662 rewrote
+8 metal coopmat test files to `targets=all`, whose new cpu/llvm legs now correctly get E36107 from our
+enforced `[require(cooperative_matrix)]` (they can't satisfy it). Enforcement is intentional (this
+chain's purpose); the test lines are the breakage. Tracked in #14690 (TOT-scan find, filed 11-21);
+suggested fix = restore `targets=metal` on the 8 files or capability-gate. A follow-up test-only fix
+chain is a natural cleanup for this chain — GO held with the operator (see 14690 record).

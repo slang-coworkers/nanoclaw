@@ -32,4 +32,7 @@ Per filing policy: external filing + new fixer chain both need the operator.
 
 **Artifacts:** issue comment 6988124513 (2026-11-18T18:43Z, verified live). Fix brief:
 [raw/triage-14541.md](raw/triage-14541.md) (triager memo, 11-18). Triager state:
-`memory/issues/14541.md` (triager group). Re-check task: `recheck-14541-operator-decision` (one-shot, fires 2026-11-21T19:00Z).
+`memory/issues/14541.md` (triager group). Re-check task `recheck-14541-operator-decision` fired 11-21 19:00Z: no operator reply, no maintainer
+direction — decision re-surfaced ONCE to orchestrator-dashboard (msg id 9, 11-21) per its decision table,
+task deleted (cancelled). Do not re-create the re-check or re-ask; next action on this chain is the
+operator's (A)/(B)/(C) choice.
