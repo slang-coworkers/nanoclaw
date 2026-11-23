@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-3132 learnings. [Catalog](../index.md)
+3135 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -1823,6 +1823,7 @@ type: topic
 - [Slang master already accepts loose `_` in integer literals (123_, 1__0, 0x_FF)](../learnings/1791798884194-slang-master-already-accepts-loose-in-integer-lite.md)
 - [Slang master scan: git-modules config-lock merge-queue eviction flake + docs/generated drift from #14502/#14511/#14406](../learnings/1795133431581-slang-master-scan-git-modules-config-lock-merge-qu.md)
 - [Slang matrix inverse is GLSL/SPIR-V only; determinant CUDA/CPU caps at 4x4](../learnings/1793284894132-slang-matrix-inverse-is-glsl-spir-v-only-determina.md)
+- [Slang MDL apiLoadModule perf regression (11-21/22, 1.10-1.19x) is real and TRACKED by #14693 — minima-lift discriminator](../learnings/1795335025048-slang-mdl-apiloadmodule-perf-regression-11-21-22-1.md)
 - [Slang MDL perf nightly red since 11-19 = bench.py exit-code contract break (#14573) — TRACKED by #14634](../learnings/1795090161085-slang-mdl-perf-nightly-red-since-11-19-bench-py-ex.md)
 - [Slang member call on concrete struct: interface-requirement default-arg vs lowering witness-resolve mismatch](../learnings/1787182352078-slang-member-call-on-concrete-struct-interface-req.md)
 - [Slang member lookup through pointers: classify each implicit-deref level, not the outermost type](../learnings/1793817716920-slang-member-lookup-through-pointers-classify-each.md)
@@ -2636,6 +2637,7 @@ type: topic
 - [slangc Debug-build LD_LIBRARY_PATH order matters when prebuilt lib is colocated](../learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md)
 - [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md)
 - [slangc default diagnostics are unconditionally rust-style post-#10125 — no flag restores classic](../learnings/1794889363285-slangc-default-diagnostics-are-unconditionally-rus.md)
+- [slangc default vs explicit -O0 differ on attributed composite loads — pass -O0 explicitly when comparing probes to slang-test SIMPLE runs](../learnings/1795362008237-slangc-default-vs-explicit-o0-differ-on-attributed.md)
 - [slangc exit 255 is a normal error, not a crash — verify signals + the real null path before fixing](../learnings/1786873188157-slangc-exit-255-is-a-normal-error-not-a-crash-veri.md)
 - [slangc exit codes are positive since #14573 (2 = failed compile, 3 = ICE)](../learnings/1795027136177-slangc-exit-codes-are-positive-since-14573-2-faile.md)
 - [slangc exit-code convention flipped on master (#14573) — diagnostic tests with exit-code=-1 break post-merge](../learnings/1794990033256-slangc-exit-code-convention-flipped-on-master-1457.md)
@@ -2980,6 +2982,7 @@ type: topic
 - [Tint PreventInfiniteLoops: only a WGSL `for` with var-in-init and a ±1 update is provably finite; `loop{continuing}` is not](../learnings/1792251784378-tint-preventinfiniteloops-only-a-wgsl-for-with-var.md)
 - [Tint-path layout fixes also change matrix storage on wgsl-spirv(-asm)](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md)
 - [tint-validate.mjs rejects all f16 WGSL unless the device requests shader-f16](../learnings/1792085503561-tint-validate-mjs-rejects-all-f16-wgsl-unless-the-.md)
+- [tmp-opencode-root-owned — temp dir unwritable by node user](../learnings/1795348043514-tmp-opencode-root-owned-temp-dir-unwritable-by-nod.md)
 - [Trace slang-glslang calls without a debugger: logging shim via -spirv-opt-path <dir>](../learnings/1792539973371-trace-slang-glslang-calls-without-a-debugger-loggi.md)
 - [Triage brief named a function that does not exist (slang#14548 checkFunctionCommon)](../learnings/1795179603114-triage-brief-named-a-function-that-does-not-exist-.md)
 - [Triage briefs: validator-test SPIR-V control-flow claims before recommending emit-level fixes](../learnings/1795270698775-triage-briefs-validator-test-spir-v-control-flow-c.md)

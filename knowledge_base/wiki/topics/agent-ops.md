@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-1196 learnings. [Catalog](../index.md)
+1198 learnings. [Catalog](../index.md)
 
 - ["Continue as you were" can be a misroute — verify the named work is in your own transcript first](../learnings/1795183809975-continue-as-you-were-can-be-a-misroute-verify-the-.md)
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
@@ -22,6 +22,7 @@ type: topic
 - [/tmp/opencode is root-owned and unwritable in this container — use workspace scratch dirs instead](../learnings/1794846275046-tmp-opencode-is-root-owned-and-unwritable-in-this-.md)
 - [/tmp/opencode not writable in this container — use /workspace/agent for temp files](../learnings/1794892919226-tmp-opencode-not-writable-in-this-container-use-wo.md)
 - [/tmp/opencode unwritable in triager container — use workspace paths for heredocs](../learnings/1794889274555-tmp-opencode-unwritable-in-triager-container-use-w.md)
+- [/tmp/opencode writes permission-denied in support-bot container — pipe curl output inline](../learnings/1795398391647-tmp-opencode-writes-permission-denied-in-support-b.md)
 - [/workspace/agent (clone included) is a per-group bind mount — another tier's clean git status is no evidence about your tree](../learnings/1786033864470-workspace-agent-clone-included-is-a-per-group-bind.md)
 - [30-day falcor-build-approval-gate expiry triggers ci_failed webhook on old PR heads — priority-yield, do nothing](../learnings/1795080557975-30-day-falcor-build-approval-gate-expiry-triggers-.md)
 - [429 retries recycle host workflow-state; codex-reply doesn't refresh attested hashes; log background builds in the worktree](../learnings/1794898070596-429-retries-recycle-host-workflow-state-codex-repl.md)
@@ -779,6 +780,7 @@ type: topic
 - [Mark retention-expired CI reds terminal-unclassifiable once — don't re-derive the same verdict every sweep](../learnings/1786213458375-mark-retention-expired-ci-reds-terminal-unclassifi.md)
 - [May 14 session — landed PRs](../learnings/legoop-project_session_may14.md)
 - [MCP discord_read_messages returns empty (not an error) on forum parents — enumerate threads via the gateway](../learnings/1786055085086-mcp-discord-read-messages-returns-empty-not-an-err.md)
+- [MDL perf triage: sample minima vs baseline median separates jitter from real regressions](../learnings/1795334954741-mdl-perf-triage-sample-minima-vs-baseline-median-s.md)
 - [Measured the last unmeasured mechanism - the reachability sweep is a TRIAGE ORDER, not a detector; consequence not probability](../learnings/1785964907534-measured-the-last-unmeasured-mechanism-the-reachab.md)
 - [Mechanism found for the ncl flag asymmetry: dispatcher-level flags (--id, --agent-group-id) are consumed before any verb's allowlist — and a stored rule is a hypothesis carrying an unstated scope](../learnings/1786242584790-mechanism-found-for-the-ncl-flag-asymmetry-dispatc.md)
 - [Memory-qualifier-drop diagnostic: destination-type check needed beyond an error-count gate](../learnings/1789543242916-memory-qualifier-drop-diagnostic-destination-type-.md)

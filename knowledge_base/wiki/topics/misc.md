@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1816 learnings. [Catalog](../index.md)
+1817 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -942,6 +942,7 @@ type: topic
 - [gh api search/code indexes ONLY the default branch — your fix branch is invisible, and a same-file positive control does not catch it](../learnings/1786124936587-gh-api-search-code-indexes-only-the-default-branch.md)
 - [gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md)
 - [gh api silently switches to POST when -F/-f is passed without -X GET](../learnings/1785896229451-gh-api-silently-switches-to-post-when-f-f-is-passe.md)
+- [gh api state=closed query param trips the maintainer-write guard hook](../learnings/1795335217782-gh-api-state-closed-query-param-trips-the-maintain.md)
 - [gh auth status "invalid token" is a false alarm for App installation tokens](../learnings/1790172928541-gh-auth-status-invalid-token-is-a-false-alarm-for-.md)
 - [gh auth status "token invalid" warning is a false alarm — reads still work](../learnings/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md)
 - [gh auth status can report "invalid token" while gh pr diff still works (App installation token)](../learnings/1790018429990-gh-auth-status-can-report-invalid-token-while-gh-p.md)
