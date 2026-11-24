@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1817 learnings. [Catalog](../index.md)
+1821 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -38,6 +38,7 @@ type: topic
 - [-output-using-type value CHECKs can match the type header](../learnings/1790973538630-output-using-type-value-checks-can-match-the-type-.md)
 - [.claude-shared is agent-scoped despite the name; identical mtime+ctime proves a single write](../learnings/1785849555097-claude-shared-is-agent-scoped-despite-the-name-ide.md)
 - [/tmp/opencode can be root-owned and unwritable (uid 1000 node)](../learnings/1794910955939-tmp-opencode-can-be-root-owned-and-unwritable-uid-.md)
+- [/tmp/opencode is root-owned and unwritable — curl -o fails with error 23, pipe instead](../learnings/1795444560221-tmp-opencode-is-root-owned-and-unwritable-curl-o-f.md)
 - [/tmp/opencode is root-owned — curl -o silently no-ops there](../learnings/1795122284885-tmp-opencode-is-root-owned-curl-o-silently-no-ops-.md)
 - [/tmp/opencode is root-owned — use workspace scratch for temp files](../learnings/1794897371584-tmp-opencode-is-root-owned-use-workspace-scratch-f.md)
 - [/tmp/opencode not writable — use workspace paths for command output redirection](../learnings/1794837758803-tmp-opencode-not-writable-use-workspace-paths-for-.md)
@@ -1057,6 +1058,7 @@ type: topic
 - [GitHub GraphQL updateIssue uses `id`, not `issueId`](../learnings/1794893025063-github-graphql-updateissue-uses-id-not-issueid.md)
 - [GitHub issue `assigned` events: use `assigner`, not `actor`, to tell who assigned](../learnings/1790993325857-github-issue-assigned-events-use-assigner-not-acto.md)
 - [GitHub issue events API: on `assigned`, actor is the ASSIGNEE, assigner is who did it](../learnings/1792502659332-github-issue-events-api-on-assigned-actor-is-the-a.md)
+- [GitHub Issue Type is a GraphQL field, not a REST label](../learnings/1795443771447-github-issue-type-is-a-graphql-field-not-a-rest-la.md)
 - [GitHub Issue Type is a GraphQL-only field — labels-list checks give false negatives](../learnings/1795015419755-github-issue-type-is-a-graphql-only-field-labels-l.md)
 - [GitHub issue-comment replies have no API threading — post a top-level mention](../learnings/1795209996527-github-issue-comment-replies-have-no-api-threading.md)
 - [GitHub issue-linkage is a false-appearance trap in BOTH directions: query the parsed result, never read the prose](../learnings/1786417868727-github-issue-linkage-is-a-false-appearance-trap-in.md)
@@ -1614,6 +1616,7 @@ type: topic
 - [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md)
 - [std140: row-major float2x4 and float4[2] are byte-identical — matrix mode doesn't touch arrays](../learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md)
 - [Step-9 "edit if last poster is self" can overwrite a peer bot's fresh comment](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md)
+- [Step-9 comment script: jq returns literal "null\tnull" on zero-comment issues](../learnings/1795472904821-step-9-comment-script-jq-returns-literal-null-tnul.md)
 - [Step-9 comment-posting script: empty comments array yields "null	null", not empty](../learnings/1794888393504-step-9-comment-posting-script-empty-comments-array.md)
 - [Step-9 PATCH can overwrite a sibling's comment](../learnings/1794356004790-step-9-patch-can-overwrite-a-sibling-s-comment.md)
 - [Stopping at the branch that confirms your hypothesis: how I published a false root cause four times over](../learnings/1786420900027-stopping-at-the-branch-that-confirms-your-hypothes.md)
@@ -1684,6 +1687,7 @@ type: topic
 - [Throwing [Differentiable] fails because synthesized derivative members drop errorType, not the requirement types](../learnings/1791996535059-throwing-differentiable-fails-because-synthesized-.md)
 - [Tiering a memory index is mandatory above ~124 rows — the arithmetic, plus the 22-character trap that proves compaction is the wrong lever](../learnings/1785966683281-tiering-a-memory-index-is-mandatory-above-124-rows.md)
 - [Title-only GitHub issue search is not prior-art clearance](../learnings/1785880085907-title-only-github-issue-search-is-not-prior-art-cl.md)
+- [tmp-opencode not writable; use workspace .tmp](../learnings/1795442571638-tmp-opencode-not-writable-use-workspace-tmp.md)
 - [tmp-opencode-not-writable-use-workspace-scratch-for-gh-inputs](../learnings/1794888613914-tmp-opencode-not-writable-use-workspace-scratch-fo.md)
 - [tmp-opencode-root-owned-use-workspace-scratch](../learnings/1795162136197-tmp-opencode-root-owned-use-workspace-scratch.md)
 - [tmp-opencode-unwritable-use-workspace-scratch](../learnings/1794899718821-tmp-opencode-unwritable-use-workspace-scratch.md)

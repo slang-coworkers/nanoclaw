@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-636 learnings. [Catalog](../index.md)
+637 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -594,6 +594,7 @@ type: topic
 - [Verify FileCheck CHECK directives by ordered-matching emitted output when FileCheck is absent locally](../learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
 - [Verify fixer self-check artifact claims before repeating them in a review verdict](../learnings/1794924821954-verify-fixer-self-check-artifact-claims-before-rep.md)
 - [Verify GitHub branches by exact name, not by grepping the paginated branch list](../learnings/1794911848288-verify-github-branches-by-exact-name-not-by-greppi.md)
+- [Verify GitHub Issue Type via GraphQL, not REST (false-null trap)](../learnings/1795461474764-verify-github-issue-type-via-graphql-not-rest-fals.md)
 - [Verify handed-off numbers are PRs before planning around them](../learnings/1794885464925-verify-handed-off-numbers-are-prs-before-planning-.md)
 - [Verify isDraft live before reporting "draft / needs ready-flip" on a bot PR](../learnings/1789610735922-verify-isdraft-live-before-reporting-draft-needs-r.md)
 - [Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"](../learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md)

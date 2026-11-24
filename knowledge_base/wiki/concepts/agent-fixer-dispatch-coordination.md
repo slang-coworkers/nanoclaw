@@ -3,7 +3,7 @@ title: "Fixer Dispatch & Coordination Failure Modes"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, dispatch, coordination, subagent-typing, echo-loop, fixer-silence, hallucination-vs-invisible-edge, artifact-verification, slang]
-source_count: 14
+source_count: 15
 ---
 
 # Fixer Dispatch & Coordination Failure Modes
@@ -82,11 +82,16 @@ A dispatched handoff can carry an *incomplete* scope just as easily as it can si
 
 A relay can also go stale without being wrong when written, because maintainers edit comments. On slang#13822 jkwak-work edited the direction comment (6323476509) at 18:33Z, 2 minutes after the triager's handoff quoted it, adding "Question (1) is answered"; the handoff's "(1) and (3) are open" was then stale, and only codex PLAN_REVIEW's live fetch caught the misquote. So when building the `## Maintainer requirements` list, fetch each cited comment with `gh api repos/<o>/<r>/issues/comments/<id> --jq '{created_at,updated_at,body}'`; if `updated_at` is later than the handoff, re-quote from the live body, and never quote the parent's relay ([maintainer comments can be edited after the triage handoff — check updated_at](../learnings/1792608633600-maintainer-comments-can-be-edited-after-the-triage.md)).
 
+## Fixer chains dispatch their own peer review — Main must not double-dispatch
+
+Measured 2026-11-23 (slang#14614 → PR #14702): the slang-fix workflow's own steps include dispatching slang-reviewer ("round 1") after opening the PR, and the fixer's interim report to Main states "Peer review dispatched to slang-reviewer" — so when Main separately dispatched the reviewer off the PR-creation notification, the dispatch was redundant. It was harmless only because Main used the canonical `thread_id`, so both dispatches landed in the SAME reviewer session; a thread-less Main dispatch would have minted a phantom reviewer session instead. **Rule:** on a fix chain, the fixer owns peer-review dispatch. Main's job after PR creation is to VERIFY (pr-mapping row exists, 5-bullet posted on the issue thread, PR state) and route only what the fixer does not own — approver webhooks, operator reports, the weekly undraft list. If the fixer's report already says "peer review dispatched", do not dispatch the reviewer again; wait for the verdict ([fixer chains dispatch their own peer review; Main must not double-dispatch](../learnings/1795462902688-fixer-chains-dispatch-their-own-peer-review-main-m.md)).
+
 ## Contradictions / Supersessions
 
 - The "fixer silence usually is NOT a dropped chain" framing ([Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)) is QUALIFIED: it remains the right default for a *nudge-before-restart* decision, but it is not a licence to relay the fixer's last message as status. Dispatches do silently die — slang#11917 batch-2 produced no branch and no PR across 7 days while a later dispatch completed in 2h — so the artifact check (`git/matching-refs/heads/<prefix>` + `gh pr list --search`) is mandatory before any downstream "in progress" claim ([a dispatched handoff can silently die](../learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
+- [Fixer chains dispatch their own peer review; Main must not double-dispatch the reviewer](../learnings/1795462902688-fixer-chains-dispatch-their-own-peer-review-main-m.md)
 - [Maintainer comments can be edited after the triage handoff — check updated_at before planning](../learnings/1792608633600-maintainer-comments-can-be-edited-after-the-triage.md) — slang#13822: a direction comment edited 2 min after the handoff quoted it; re-quote from the live body when `updated_at` is later.
 - [Don't fork (omit subagent_type) for read-only recall/scan steps](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
 - [slang-fixer: contributor PR combined review is advisory](../learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)

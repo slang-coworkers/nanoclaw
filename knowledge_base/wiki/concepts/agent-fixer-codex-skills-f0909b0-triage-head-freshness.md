@@ -3,7 +3,7 @@ title: "Triage discipline: verify at HEAD, distrust stale memos, check for exist
 type: concept
 group: agent-fixer-codex-skills
 tags: [triage, head-freshness, stale-checkout, verification, draft-pr, close-recommendation]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -50,11 +50,14 @@ The same decay bites decisions premised on *another* PR's state. On #13176 a rel
 
 The mirror case is a superseding PR. On slang#13046 a path-A "supersede #12935" GO rested on a SUPERSEDE measurement against #12935 @ `f4ed573edb`; three hours later a parallel slang-fixer chain (#13259) pushed #12935 @ `a0f6d1550b` with the same producer-side fix (a shared `isRefinedInfoType` in `tryGetInfo` + `makeInfoForConcreteType`), differing only in comments — the path-A PR would have been a duplicate also claiming `Fixes #12934`. Two chains in one fixer group can converge on one fix without seeing each other, and a GO gated only on the critique gate/codex can fire long after its premise went stale. Rule: immediately before opening any superseding or competing PR, the chain owner (or check task) re-reads the competitor's head (`gh api repos/<r>/pulls/<N>/commits --jq '.[-1].sha'`) against the SHA recorded in the SUPERSEDE claim and diffs its core source change against ours; if the head moved, hold and re-decide — don't open the PR ([re-check a competing PR's head before opening a superseding PR](../learnings/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md)).
 
+The same "verify it isn't already fixed" rule applies to a **maintainer's explicit ask to prepare a PR** — the ask can trail the merged fix by days. On slang#14634 (2026-11-23) a maintainer asked for a PR fixing a bench.py exit-code issue, but another PR had merged the exact fix 4 days earlier; the merged PR's body referenced a different issue, so the ask's issue stayed open and looked unfixed. Right move: before building anything, fetch HEAD and grep the tree for the fix (`git log --oneline -- <files>`); if it is already merged, run a verification-only session (import-time self-checks pass at HEAD, siblings clean, nightly green post-fix) and post an evidence comment asking the maintainer to close-or-repurpose — never open a duplicate PR, never close the issue yourself ([verify the fix hasn't already merged before building a PR](../learnings/1795458885092-slang-14634-verify-the-fix-hasn-t-already-merged-b.md)). The same atom carries a nightly-badge reading rule: a red nightly badge is not one failure — check WHICH step failed (the `nightly` sweep vs the `analyze` perf-trend alert are different mechanisms; exit-code reds differ from 1.10–1.19× trend-alert reds).
+
 ## Contradictions / supersessions
 
 No contradictions; the atoms are one discipline observed across many issues, all pointing to "re-verify at current HEAD before asserting or dispatching." The draft-PR atoms ([#12691 family](../learnings/1787671421853-12691-family-the-fix-is-often-the-commit-after-the.md), [checkpoint SHA](../learnings/1787669533760-a-triage-checkpoint-sha-can-be-stale-within-minute.md), [re-verify at HEAD](../learnings/1787669928995-re-verify-a-triaged-draft-pr-issue-at-pr-head-befo.md)) are progressive refinements of the same pattern rather than competing claims.
 
-**Source learnings (19):**
+**Source learnings (20):**
+- [slang#14634: verify the fix hasn't already merged before building a PR — maintainer asks can trail merged fixes](../learnings/1795458885092-slang-14634-verify-the-fix-hasn-t-already-merged-b.md)
 - [scoping-out is not a correctness certificate](../learnings/1786985585376-triage-trap-an-issue-scoping-something-out-is-not-.md) — an issue scoping a neighboring block OUT does not certify it correct; open and check, or say "not evaluated."
 - [triage handoff out-of-scope claim unverified](../learnings/1786985585404-a-triage-handoff-s-out-of-scope-already-correct-cl.md) — incidental "X is correct/out of scope" handoff claims are hypotheses; verify at source and surface contradictions as a separate flag.
 - [check for an author's self-implemented PR](../learnings/1787035926588-triage-check-for-an-author-s-self-implemented-pr-b.md) — search for a companion `Fixes #N` PR before building; verify it (named ref, git show, run tests), don't just read it.

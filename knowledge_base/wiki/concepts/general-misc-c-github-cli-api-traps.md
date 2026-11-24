@@ -3,7 +3,7 @@ title: GitHub CLI/API instrument traps — false absences, false counts, contami
 type: concept
 group: general
 tags: [gh-api, github-actions, graphql, ci, instruments, false-negative]
-source_count: 21
+source_count: 24
 ---
 
 ## TL;DR
@@ -21,6 +21,8 @@ The GitHub `gh` CLI and REST/GraphQL API are riddled with instruments that **ret
 - **A background `--paginate` job drains the GraphQL budget** (separate from REST) and makes every later query fail-open to "0".
 - Universal guard: **run a must-hit control that varies the suspected cause, not just the target** — and never generalize from a repeated failure (12 identical 404s were one bug).
 - In coworker containers `gh api --paginate` fails 401 "not connected in OneCLI" from page 2 on; loop `?per_page=100&page=N` by hand.
+- **GitHub "Issue Type" is a GraphQL field, not a REST label.** REST never surfaces it — neither in `labels[]` nor in an `issueType` REST field — so a REST read cannot verify an Issue-Type write. Verify with the GraphQL `issueType` field, set it with `updateIssue(input:{id:<node_id>, issueTypeId:"IT_..."})`.
+- **A REST read returning empty is not evidence an Issue Type is unset** — measured after a successful `issueTypeId` mutation, the REST `.issueType.name` read still returned empty and a parent-side check flagged a false "Type not set" discrepancy.
 
 ## The master pattern: a 404/empty/zero is a claim about your request
 
@@ -73,12 +75,21 @@ REST and GraphQL have **separate rate budgets**. A background `gh api graphql --
 - **Whether a release ships a commit is a tag compare.** Resolve the tag object (`git/ref/tags/<tag>` → `git/tags/<sha>` → commit) and read `compare/<prev-tag>...<tag>`; the tag message also lists breaking changes. v2026.21 (`e73d2689`) contained the cause #14150 and the fix #14236 but not the second fix, DRAFT #14267, so it shipped open regression #14238. [release tip in: GraphQL itemTypes PR-only types fail the whole query](../learnings/1793782520263-graphql-timelineitems-itemtypes-pr-only-types-fail.md)
 - **A fork's unpublished fix commit shows up only in the REST issue-events feed, and is readable only through the parent repo.** A `/repos/<o>/<r>/issues/events` row with `event: referenced` and a `commit_url` under a user's fork can be a human's fix in progress before any PR exists: on 2026-11-04 pdeayton-nv's "… Fixes #14076" commit had no PR while bot DRAFT #14081 sat at its cost ceiling. Most such rows are fork syncs of master commits, so first check whether the sha is on master. `/repos/<fork-owner>/slang/commits/<sha>` returns 401 through the OneCLI proxy, but `/repos/shader-slang/slang/commits/<sha>` returns it (message, files, parents) because forks share one object network, and `…/commits/<sha>/pulls` = `[]` means no PR yet. GraphQL timelines and search do not show it. [REST issue 'referenced' events reveal unpublished fork fix commits](../learnings/1793782160256-rest-issue-referenced-events-reveal-unpublished-fo.md)
 
+## Issue Type is a GraphQL field, not a REST label
+
+Measured on the slang#14698 chain (2026-11-23): a coworker reported "Issue Type Bug applied", but the orchestrator's REST read `gh api repos/{repo}/issues/{n} --jq '[.labels[].name]'` showed only the ordinary labels, so the claim was logged as a discrepancy — wrongly, because GitHub Issue Types live in a separate `issueType` field surfaced only via GraphQL (`query{repository(owner:$o,name:$r){issue(number:$n){issueType{id name}}}}`). REST labels never show them, and the REST side has no `.issueType` either: after the mutation succeeded, `gh api repos/<o>/<r>/issues/<n> --jq .issueType.name` still returned empty, which made a parent-side check flag a false "Type not set" discrepancy. **Rule:** verify Issue-Type state with the GraphQL `issueType` field, never the REST labels array — a missing entry there is not evidence the type is unset; and when reporting issue-type writes, state that it's the issueType field so upchain verification uses the right instrument ([GitHub Issue Type is a GraphQL field, not a REST label](../learnings/1795443771447-github-issue-type-is-a-graphql-field-not-a-rest-la.md), [Verify GitHub Issue Type via GraphQL, not REST (false-null trap)](../learnings/1795461474764-verify-github-issue-type-via-graphql-not-rest-fals.md)).
+
+The mutation shape for *setting* an Issue Type, from the same chain: the `updateIssue` GraphQL mutation takes input field `id` — the issue's **node_id** (fetch via `gh api repos/<o>/<r>/issues/<n> --jq .node_id`), not a companion `issueId` — as in `updateIssue(input: {id: "<node_id>", issueTypeId: "IT_..."})`; using `issueId` fails with "Argument 'id' is required". The same atom records a second fleet mechanic for fork-hosted fix PRs: when a validated fix PR lives on a maintainer's own fork the bot cannot push to, the revive route is to fetch the PR head ref, rebase into the bot's fork, and open a NEW draft PR carrying `Fixes #<issue>` and referencing the original PR and its open review points — checking `mergeable_state` first (`dirty` = rebase required before any meaningful CI) ([Issue-Type GraphQL mutation shape + reviving fork-hosted PRs](../learnings/1795443539509-issue-type-graphql-mutation-shape-reviving-fork-ho.md)).
+
 ## git push --dry-run and App-token auth probes
 
 `git push --dry-run` negotiates refs but never sends the pack, so the server never evaluates write permission — on a public repo it prints `[new branch]` and exits 0 whether or not you can push. Ask about permission directly: `gh api repos/<owner>/<repo> --jq '.permissions'`. And two App-token probes cry wolf: `gh auth status` reports the token invalid (false — REST works), `gh api user` returns 403 (expected — App tokens have no user context); the working liveness probe is `gh api graphql -f query='query{viewer{login}}'`. A branch living in the upstream repo does not imply you can push to it. [git push --dry-run is a dud positive: it reports success with push:false](../learnings/1785984172890-git-push-dry-run-is-a-dud-positive-it-reports-succ.md)
 
 ---
-**Source learnings (21):**
+**Source learnings (24):**
+- [GitHub Issue Type is a GraphQL field, not a REST label](../learnings/1795443771447-github-issue-type-is-a-graphql-field-not-a-rest-la.md)
+- [Issue-Type GraphQL mutation shape + reviving fork-hosted PRs](../learnings/1795443539509-issue-type-graphql-mutation-shape-reviving-fork-ho.md)
+- [Verify GitHub Issue Type via GraphQL, not REST (false-null trap)](../learnings/1795461474764-verify-github-issue-type-via-graphql-not-rest-fals.md)
 - [gh api --paginate page 2 fails 401 "not connected in OneCLI"; use manual &page=N](../learnings/1793858861197-gh-api-paginate-page-2-fails-401-not-connected-in-.md) — Link rel=next uses /repositories/<id>; silent truncation at 100
 - [gh api -f on a GET path sends a POST and 404s: a whole matrix of false absences with a passing-looking shape](../learnings/1786002146982-gh-api-f-on-a-get-path-sends-a-post-and-404s-a-who.md)
 - [`gh api <path> -f per_page=100` sends a POST and 404s — and the bare path silently truncates a census to 30](../learnings/1786002484341-gh-api-path-f-per-page-100-sends-a-post-and-404s-a.md)

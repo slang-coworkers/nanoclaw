@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-478 learnings. [Catalog](../index.md)
+479 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -185,6 +185,7 @@ type: topic
 - [Enumerate every write site before asserting an invariant — grep beats mutual review](../learnings/1785928854026-enumerate-every-write-site-before-asserting-an-inv.md)
 - [eval-bank review_history.py hides judge failures and has no gh retry](../learnings/1793713929111-eval-bank-review-history-py-hides-judge-failures-a.md)
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md)
+- [Fixer chains dispatch their own peer review; Main must not double-dispatch the reviewer](../learnings/1795462902688-fixer-chains-dispatch-their-own-peer-review-main-m.md)
 - [formatting.sh: markdown stage omits run_all — bare and --modified runs silently skip all .md](../learnings/1785936156369-formatting-sh-markdown-stage-omits-run-all-bare-an.md)
 - [Gating: answering a formal human review verdict is pre-authorized; only discretionary chatter is held](../learnings/1788247484430-gating-answering-a-formal-human-review-verdict-is-.md)
 - [gh 'invalid token' in auth status still allows public-repo reads — verify before aborting a pr-mode review](../learnings/1788469857073-gh-invalid-token-in-auth-status-still-allows-publi.md)

@@ -5,13 +5,13 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **9396 agent learnings**, synthesized into **555 concept pages**.
+Standalone wiki built from **9422 agent learnings**, synthesized into **556 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
 > Links below are relative to the KB root. In a container that root is `/workspace/shared/`,
-> and your cwd is `/workspace/agent` — so a `wiki/concepts/<page>.md` link means
-> `/workspace/shared/wiki/concepts/<page>.md`. Keyword fallback:
+> and your cwd is `/workspace/agent` — so a link to `concepts/x.md` under the wiki root is
+> `/workspace/shared/wiki/concepts/x.md`. Keyword fallback:
 > `grep -ril <term> /workspace/shared/sources/learnings/`.
 
 ## Concepts (synthesized)
@@ -165,6 +165,7 @@ Standalone wiki built from **9396 agent learnings**, synthesized into **555 conc
 - [GitHub Query Confidence & Cheap Structural Gates](concepts/ci-github-query-confidence-and-gates.md)
 - [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](concepts/ci-github-instrument-limits.md)
 - [Green CI carries zero bits — positive controls, check-runs vs status, coverage PRs](concepts/ci-tooling-f0909b0-ci-green-zero-bits.md)
+- [Hostile-PR Detection and pull_request_target Exposure Auditing](concepts/ci-hostile-pr-detection-and-pull-request-target-audit.md)
 - [Merge-Queue Refs & Evictions — Stale Heads, checks_timed_out and gh-readonly-queue Leftovers](concepts/ci-merge-queue-refs-and-evictions.md)
 - [PR-approver CI clauses and calibration — the ci_green_on_sha check-runs blind spot](concepts/ci-tooling-f0909b1-approver-ci-clauses.md)
 - [PR-review runner tooling and gh pr diff file-status pitfalls](concepts/ci-tooling-f0909b0-review-runner-tooling.md)
@@ -615,10 +616,10 @@ Standalone wiki built from **9396 agent learnings**, synthesized into **555 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (3135)
-- [NanoClaw / agent operations](topics/agent-ops.md) (1198)
-- [CI, build & tooling](topics/ci-tooling.md) (696)
-- [Review & process](topics/review-process.md) (478)
+- [Slang compiler & language](topics/slang-compiler.md) (3145)
+- [NanoClaw / agent operations](topics/agent-ops.md) (1205)
+- [CI, build & tooling](topics/ci-tooling.md) (699)
+- [Review & process](topics/review-process.md) (479)
 - [PR review, approval & calibration](topics/review-approval.md) (1436)
-- [Verification & evidence discipline](topics/verification.md) (636)
-- [Uncategorized](topics/misc.md) (1817)
+- [Verification & evidence discipline](topics/verification.md) (637)
+- [Uncategorized](topics/misc.md) (1821)

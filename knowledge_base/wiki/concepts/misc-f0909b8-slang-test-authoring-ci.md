@@ -3,7 +3,7 @@ title: "Slang test authoring, FileCheck traps, unit-test linkage, and CI-infra t
 type: concept
 group: misc
 tags: [slang-test, filecheck, dump-ir, lang-server, unit-test, slang-static-unit-test, slang-api, visibility, ci, test-falcor, regression-test, revert-drill]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -62,6 +62,8 @@ an int 0 converts to 0.0 and still compares equal; push a non-zero value through
 [built slangc can be older than the checkout HEAD; zero-valued intrinsic checks](../learnings/1793902086746-built-slangc-can-be-older-than-the-checkout-head-t.md).
 
 ## FileCheck and slang-test harness traps
+
+Runtime COMPARE_COMPUTE lanes that pin conformance IDs have their own idiom: `-conformance Type:Iface=N` CLI flags are **slangc/session-level options, not render-test options** — the harness path rejects them with "unknown command-line option". The working form is `//TEST_INPUT: type_conformance Type:Iface = N` lines (parsed by render-test's `ShaderInputLayoutParser`; omit `= N` for auto-registered). `TEST:SIMPLE` with `-conformance` flags works because it spawns slangc directly (see `late-reached-interface-dispatched-factory-mixed.slang` for both idioms). Also set `XDG_RUNTIME_DIR` or vk variants fail to init ([COMPARE_COMPUTE needs TEST_INPUT type_conformance, not -conformance flags](../learnings/1795450475268-slang-compare-compute-needs-test-input-type-confor.md)).
 
 FileCheck parses any prefix-colon token anywhere in a `.slang` file, so a comment
 like `` // the positive `CPP:` anchor `` is silently parsed as a `CPP:` directive
@@ -153,7 +155,8 @@ admin-merge past a persistent Falcor 403, and backtick-wrapped `Fixes #N` does N
 auto-close
 [test-falcor red is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md).
 
-**Source learnings (17):**
+**Source learnings (18):**
+- [COMPARE_COMPUTE needs TEST_INPUT type_conformance, not -conformance flags; XDG_RUNTIME_DIR for vk](../learnings/1795450475268-slang-compare-compute-needs-test-input-type-confor.md)
 
 - [Nightly Slang Test red has TWO distinct causes — don't conflate](../learnings/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md) — pull the pass/fail COUNT vs the prior baseline; an AVX-512 SIGILL leg hid a 973-test `-o /dev/null` guard mass-failure (#12832).
 - [`-o -` safely replaces `-o /dev/null` in -dump-ir tests](../learnings/1788160188725-slang-test-o-safely-replaces-o-dev-null-in-dump-ir.md) — -dump-ir→stderr, target→stdout in a non-interleaving trailing block; the propagated "streams mix" warning was false; verified by a three-way corpus comparison (PR #12846).
