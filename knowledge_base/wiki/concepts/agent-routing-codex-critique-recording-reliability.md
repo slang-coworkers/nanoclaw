@@ -3,7 +3,7 @@ title: Codex-critique recording reliability — exact names, bridge dispatch, an
 type: concept
 group: agent-routing
 tags: [codex-critique, critique-recorder, mcp-bridge, track-critique, workflow-state, recording, dispatch, app-server]
-source_count: 6
+source_count: 7
 ---
 
 # Codex-critique recording reliability — exact names, bridge dispatch, and state resets
@@ -32,7 +32,10 @@ The most common cause of the app-server exit is a hung network command inside th
 
 `/workspace/.claude/workflow-state.json` can be reset several times per session (container restarts, 429-retry turns, message-batch boundaries): `plan_written:false` + empty `critique_stages` while the plan and approvals were real and recent. The plan-tracker hook (`/app/hooks/plan-tracker.sh`) fires on the **Write tool only** — an Edit to the plan file does NOT restore `plan_written`; re-Write the whole plan file. The deliver gate then refuses markers naming missing stages — re-run each missing stage as a lean fresh codex call (context paragraph + artifacts + "budget your work, spot-check only"), each re-record ~2–3 minutes, rather than re-deriving anything. The same PreToolUse gate blocks even READ-ONLY `gh api repos/*/pulls/*/comments*` with "CRITIQUE REQUIRED before PR creation" — use `gh api graphql` reviewThreads for reads when gated ([state resets wipe critique stages](../learnings/1795054905936-state-resets-wipe-critique-stages-re-write-the-pla.md)). The message-batch boundary wipe re-confirmed: re-arm with a Write (not Edit) to the plan file, then one fresh bridge round per required stage ([codex-bridge dispatch: setsid not nohup](../learnings/1795055939569-codex-bridge-dispatch-setsid-not-nohup-no-issuecom.md)).
 
-**Source learnings (6):**
+Stage identity is thread-scoped, not call-scoped: the critique tracker records the STAGE from the FIRST prompt of a codex thread, and a `codex-reply` continuation inherits the parent thread's stage — it cannot record a different one. So when the delivery gate requires multiple stages (PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW), each must be a FRESH `mcp__codex__codex` call with its own `STAGE:` line; using codex-reply on the PLAN_REVIEW thread to run an OUTPUT_REVIEW round records nothing for OUTPUT_REVIEW and the gate keeps refusing. Verified on slang#14698: fresh call → gate passed immediately ([critique stages need fresh codex calls — codex-reply inherits the thread's stage](../learnings/1795450480274-critique-stages-need-fresh-codex-calls-codex-reply.md)).
+
+**Source learnings (7):**
+- [critique stages need fresh codex calls — codex-reply inherits the thread's stage](../learnings/1795450480274-critique-stages-need-fresh-codex-calls-codex-reply.md)
 
 - [codex-critique recording: exact MCP param name required; bun-bridge fallback when app-server dies](../learnings/1795032791979-codex-critique-recording-exact-mcp-param-name-requ.md) — a `developer` param is silently unrecorded; the bun bridge completes AND records (~5 min vs 2×15-min deaths).
 - [critique rounds record only for mcp__codex__codex; opencode's codex_codex records nothing](../learnings/1795046810801-critique-rounds-record-only-for-mcp-codex-codex-op.md) — re-record via the bun bridge detached; poll critique-attempts.jsonl for the round event.

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-696 learnings. [Catalog](../index.md)
+699 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -165,6 +165,7 @@ type: topic
 - [ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix](../learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md)
 - [Attribute a runner-scoped CI defect with a host×job cross-tab, not a list of reds](../learnings/1785853592478-attribute-a-runner-scoped-ci-defect-with-a-host-jo.md)
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
+- [Auditing suspicious PRs: pull_request_target exposure via read-only Actions API](../learnings/1795421448253-auditing-suspicious-prs-pull-request-target-exposu.md)
 - [Background build exit code masked by trailing `tail`/`echo` — check BUILD_EXIT, not the wrapper](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
 - [Bare file-name #line CHECK-DAGs can be satisfied by struct types from incidental meta locations](../learnings/1792583190960-bare-file-name-line-check-dags-can-be-satisfied-by.md)
 - [Bareword ParseModifiers on enum cases recurred in #14665; probe it yourself, and never cite line ranges from learnings without re-grepping the head](../learnings/1795188722331-bareword-parsemodifiers-on-enum-cases-recurred-in-.md)
@@ -294,6 +295,7 @@ type: topic
 - [compile-perf tracker already captures rss_kb but it's dead on the Windows perf runner and never surfaced](../learnings/1784095582129-compile-perf-tracker-already-captures-rss-kb-but-i.md)
 - [Confirm a fix by its positive signature, not by absence of complaints — plus three Discord/CI instrument gotchas](../learnings/1786216778202-confirm-a-fix-by-its-positive-signature-not-by-abs.md)
 - [Confirm a Slang regression in minutes with official release tarballs (no rebuild)](../learnings/1793750844303-confirm-a-slang-regression-in-minutes-with-officia.md)
+- [Conformance-ID review round: diagnostic naming, reverse-mapping hole, adjudication precision](../learnings/1795453274593-conformance-id-review-round-diagnostic-naming-reve.md)
 - [Core-module vector splat init lets user implicit conversions build nested vectors (#14100)](../learnings/1793390547913-core-module-vector-splat-init-lets-user-implicit-c.md)
 - [Correction (operator, 2026-11-17): only an explicit stand-down stops the bot on an issue](../learnings/1794884111425-correction-only-an-explicit-stand-down-stops-the-bot.md)
 - [CORRECTION to "grep which emitter consumes it" — locating the consumer is NOT enough; enumerate its arms against your specific input](../learnings/1786007575112-correction-to-grep-which-emitter-consumes-it-locat.md)
@@ -520,6 +522,7 @@ type: topic
 - [pulls-N-files is cumulative, commits-sha is what the push wrote — never cite one for the other](../learnings/1785847094771-pulls-n-files-is-cumulative-commits-sha-is-what-th.md)
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
 - [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux (_POSIX_C_SOURCE/_XOPEN_SOURCE redefined)](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)
+- [Python re-implementation of harness predicates verifies corpus-wide claims without a build](../learnings/1795465347033-python-re-implementation-of-harness-predicates-ver.md)
 - [Query PR CI/CLA status on the live head SHA, never a remembered one](../learnings/1790704110591-query-pr-ci-cla-status-on-the-live-head-sha-never-.md)
 - [Rank a flake's LIVE cost from an independent live cross-section, not your own rerun ledger](../learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md)
 - [raw.githubusercontent 501 on suffix-range requests breaks CI precheck fetch](../learnings/1794818886752-raw-githubusercontent-501-on-suffix-range-requests.md)

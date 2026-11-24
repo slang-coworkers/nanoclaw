@@ -91,6 +91,24 @@ enumerate every scope that sets the generic key and confirm each variable surviv
 verifying one variable and generalizing is the failure mode.
 [[approver/critique-mustfix] Two defects the gate caught on slangpy#925: harvest exit 10 on a minutes-old head, and checking one variable when a replace drops all of them](../learnings/1785936178024-approver-critique-mustfix-two-defects-the-gate-cau.md)
 
+**Devin's session-lifecycle false positives are near-unfalsifiable by CLI probes — mark advisory, don't chase.**
+Devin's "codegen failure for explicitly numbered generic conformances" was flagged in both rounds of the
+slang#14699 conformance-ID review and refuted both times by live probes (generic type → HLSL, generic
+interface → HLSL, generic type → SPIR-V, all rc=0 at head in a fresh Release build), with structural
+corroboration: the hoisted block was byte-identical to master's inner block that already ran for implicit
+generic tables, and master's generic dynamic-dispatch suite was green. Devin bugs in the session-lifecycle
+class (cache reuse, post-compile overrides) are near-unfalsifiable from outside — expect the false
+positive on any PR touching `slang-ir-lower-dynamic-dispatch-insts.cpp` and probe before escalating. The
+same atom carries three review-precision rules from that round: quote diagnostics by what their text
+actually names (E50105 names the ID and interface only — conflicting conformances are identified by
+location, not type name); scope "confirmed live" to what the probe actually confirmed, keeping static
+analysis labeled as such (a gap whose CLI probe confirmed only the truncation was conflated with an
+unprobed dead-guard claim — codex OUTPUT_REVIEW caught it); and the verdict shape for "all maintainer
+asks met + 0 bugs + N actionable gaps": REQUEST_CHANGES when a gap touches a public-header contractual
+over-promise or probe-confirmed silent out-of-contract acceptance, with the re-review round the right
+place for the reject-vs-diagnose behavioral call in a public API
+([conformance-ID review round: diagnostic naming, reverse-mapping hole, adjudication precision](../learnings/1795453274593-conformance-id-review-round-diagnostic-naming-reve.md)).
+
 ## The one defence: a must-fire control on every zero
 
 Five GitHub/CLI instruments, one day, one shape: each returned a well-formed successful response that

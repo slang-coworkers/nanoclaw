@@ -3,7 +3,7 @@ title: "Session Identity, Shared Bot Identity, and Attribution Under Concurrency
 type: concept
 group: agent
 tags: [session-identity, attribution, concurrency, sibling-sessions, shared-clone, permissions, routing, teardown, worktrees, mounts]
-source_count: 3
+source_count: 5
 ---
 
 ## TL;DR
@@ -64,6 +64,12 @@ Several of your own sessions run concurrently in one container, all posting as t
 - **Verify on RELAY, not on suspicion.** A plausible sibling claim written in your own idiom generates zero suspicion; if you wait to feel doubt you will never check. Check its falsifiable claims *because* you are relaying them onward [A sibling session can post to GitHub under YOUR bot identity — the author field does not identify the writer](../learnings/1785922218439-a-sibling-session-can-post-to-github-under-your-bo.md).
 - ⛔ **Never post a second comment to supplement or correct a sibling's** — that is a double-post under one identity, reading as the bot contradicting itself. If the sibling's artifact is right, the correct action on the public surface is **nothing**.
 - **`comments: 1` on an issue you never posted to may be *us*.** Read author *and* timestamps before concluding "no footprint" or "an external writer did this."
+
+The 2026-11-23 slang#14693 incident measured the limit precisely: a same-identity hypothesis comment appeared on the issue; **every session live at that timestamp grepped clean of `14693`, the fixer denied posting it, and that was still not evidence** — because bash `gh api -X POST` calls (and any other bash-side GitHub writes) create **no rows in `ncl sessions messages` transcripts**; only chat/webhook messages appear there. "Not in my transcript" is weak evidence a session did NOT post, the only positive evidence a transcript can show is an inbound reason (a webhook or dispatch mentioning the issue), and attribution of a same-identity comment is therefore often **unresolvable** — timing + which sessions were live on the thread is circumstantial only; internal records should say "attribution unconfirmed" even when the public comment uses "my earlier reply" framing for thread consistency ([GitHub posts via gh CLI leave no ncl session rows — transcript greps cannot attribute them](../learnings/1795462956675-github-posts-via-gh-cli-leave-no-ncl-session-rows-.md)).
+
+### Same-identity supersession on one thread
+
+When N concurrent sessions share one bot identity on one issue, a *contradictory pair* of same-name posts is worse than one wrong post — the maintainer cannot tell which is current. Measured on slang#14693 (2026-11-23): another nv-slang-bot session posted a code-reading hypothesis at 18:49Z while the owner was measuring; the profiling falsified it, and the correcting answer had to **open with an explicit supersession of "my reply above"** — cite the falsified comment, own the supersession in the newer comment, and keep the older content's still-valid parts labeled as forward-looking options. Routine: re-fetch the comment list right before posting anything substantive, and if the thread already carries your name on a claim you contradict, open with the correction ([same-identity supersession + loaded-host perf A/B methodology](../learnings/1795462545262-slang-14693-same-identity-supersession-loaded-host.md)). The same atom records the companion measurement discipline for the *content* of such an answer on a loaded shared host: consecutive same-label benchmark runs gave stdev 27–66 ms on a 107 ms median (unusable), while alternating-order interleaved runs (AB BA AB…) got stdev ~2 ms, and valgrind `--tool=callgrind` instruction counts are load-independent tie-breakers (+0.023% ≈ 0) — also, the compile-perf api-driver's module-graph-bin mode writes `.slang-module` binaries into `--out-dir`, so reusing one corpus dir across binary/source modes silently alternates fast/slow artifact loads; use a fresh dir per mode.
 
 ### Resolving "who owns this chain / who wrote this comment"
 
@@ -126,7 +132,9 @@ An authorization that exists only in session context is **deleted by the next re
 
 The test: *if my container died right now, could the next session tell this action was authorized?* If the only answer is "it's in my conversation history," it isn't recorded. Aggravating factors: `git merge-base --is-ancestor <old> <new>` → false looks exactly like history vandalism but is the *expected* signature of re-authoring (compare commit subjects and per-commit file stats — identical subjects + new hashes = re-authoring, not replacement); and a refutation delivered to the gate-holder does not reach the alarm-raiser (confirm it reached whoever raised the alarm, or it re-asserts with compounding confidence). Corollary: **refute the claim, keep the concern** — the alarm was false while the underlying worry (unverified pushed tree) was real. A learning about your own conduct written after a context loss must be checked against the transcript before filing; if already published, publish the correction.
 
-**Source learnings (3):**
+**Source learnings (5):**
+- [GitHub posts via gh CLI leave no ncl session rows — transcript greps cannot attribute them](../learnings/1795462956675-github-posts-via-gh-cli-leave-no-ncl-session-rows-.md)
+- [slang#14693: same-identity supersession on one thread + loaded-host perf A/B methodology (interleave + callgrind Ir)](../learnings/1795462545262-slang-14693-same-identity-supersession-loaded-host.md)
 - [Destination names front multiple sessions — pin target_session_id](../learnings/1794814415245-coworker-destination-names-front-multiple-sessions.md)
 - [Resolve session identity before acting on "continue as you are"](../learnings/1794814597142-resolve-session-identity-before-acting-on-a-contin.md)
 - ["Continue as you were" can be a misroute — verify the named work is in your own transcript first](../learnings/1795183809975-continue-as-you-were-can-be-a-misroute-verify-the-.md) — #14664: "Maintainer GO" landed via reply-edge auto-stamp on the wrong session; transcript/sentinel/worktree checks caught it

@@ -3,7 +3,7 @@ title: "Slang Compiler: Generics Memoization & Build Options (-g, buildHash, mod
 type: concept
 group: slang-grab-bag
 tags: [generics, memoization, substitution, conformance-witness, compile-perf, SubstitutionCache, debug-level, IRDebugLine, folding, strip-debug-info, module-serialization, loadSerializedModuleContents, up-to-date-check, endianness, pointer-size, ABI, CompilerOptionSet, buildHash, shader-cache, DownstreamArgs, option-composition, linkWithOptions, TargetProgram]
-source_count: 27
+source_count: 28
 ---
 
 # Slang Compiler: Generics Memoization & Build Options
@@ -51,6 +51,8 @@ At 6a244fee2, `Linkage::loadSerializedModuleContents` (`slang-session.cpp:2248`)
 
 Related C-ABI pitfall, appending fields to a versioned struct chain by inheritance (`struct Req_1_3 : public Req_1_2 { newFields; }`, PR #12206): a class with a public base AND own data members is not standard-layout, so `offsetof(Req_1_3, field)` is conditionally-supported and fails under `-Werror` (`-Winvalid-offsetof`). Downgrade by base-slicing (`static_cast<const Base&>(derived)`), never `offsetof` or raw reads of the base prefix (base-at-offset-0 is a toolchain property, not a C++ guarantee). The class is still a C++17 aggregate and trivially copyable without user special members; assert `std::is_base_of<B,D>` + `std::is_trivially_copyable_v<D>` — `sizeof(D) > sizeof(B)` does not prove B is a byte-prefix of D ([versioned-struct inheritance: base-slicing, not offsetof](../learnings/1784851897134-c-versioned-struct-inheritance-non-standard-layout.md)).
 
+The 32-bit half of the same typedef family bit a shipped fix: `SlangInt` is `int64_t` only when `SLANG_PTR_IS_64=1`; on 32-bit hosts (wasm32 sets it to 0, `include/slang.h:470-481`) it is `int32_t`, so an API-side range check written as `(SlangInt)0xFFFFFFFF == expected-limit` degenerates on 32-bit (`0xFFFFFFFF` wraps to -1) and silently rejects every valid input — this exact bug shipped in PR #14699's round-1 hardening and was caught only by review round 2 (64-bit CI and live x86_64 probes are blind to it). Width-independent pattern: widen to `uint64_t` and compare against `0xFFFFFFFFull` (an `int32_t` parameter can never exceed `INT32_MAX`, so the upper bound correctly never fires on 32-bit), and guard unit tests that pass above-2^32 literals with `#if SLANG_PTR_IS_64` — those literals narrow on the call and would fail equality assertions on the very platforms the fix enables ([SlangInt is 32-bit on wasm32 — SlangInt-cast range checks break there](../learnings/1795461391304-slangint-is-32-bit-on-wasm32-slangint-cast-range-c.md)).
+
 ## The Four CompilerOptionSet Levels (#13847)
 
 Which `getOptionSet()` a caller reads decides everything below. At 135570a76a (#13847):
@@ -90,7 +92,8 @@ When triaging anything touching specialization or "pending layout", don't assume
 
 Type-inference ties in `TryJoinTypes` (shader-slang/slang#10164, fixed in PR #14636): the equal-cost tie that made implicit generic binding order-dependent was `{bool, float}` — bool↔any-scalar conversions cost `kConversionCost_GeneralConversion` (900) in BOTH directions, so bool mixed with any fundamental type is the pair most likely to hit an equal-cost tie. `{float, uint}` is NOT a tie (uint→float IntegerToFloat 400 < float→uint lossy cost) — join asymmetry resolves those correctly. When triaging order-dependent generic inference, test bool-mixed calls first; failed joins surface as E30442 "conflicting requirements" [bool↔scalar joins are the equal-cost tie pairs (900/900)](../learnings/1795102978633-slang-10164-bool-scalar-joins-are-the-equal-cost-t.md).
 
-**Source learnings (27):**
+**Source learnings (28):**
+- [SlangInt is 32-bit on wasm32 — SlangInt-cast range checks break there; widen to 0xFFFFFFFFull and #if-guard tests](../learnings/1795461391304-slangint-is-32-bit-on-wasm32-slangint-cast-range-c.md)
 - [getEntryPointHash omits a linked component's own option set](../learnings/1790001366182-getentrypointhash-omits-a-component-s-own-link-tim.md) — only `Module::buildHash` hashes its options
 - [Legacy pending-layout already removed from slang + slang-rhi](../learnings/1794885917536-legacy-pending-layout-already-removed-from-slang-s.md) — #8691 + slang-rhi #558; `specialize()` front door must stay
 - [PR #13215 review: buildHash hashes DownstreamArgs; Module re-hash harmless](../learnings/1790048442419-getentrypointhash-link-time-downstreamargs-fix-con.md) — misses only, no false hits

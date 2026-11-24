@@ -154,6 +154,7 @@ type: nav
 - [GitHub Query Confidence & Cheap Structural Gates](concepts/ci-github-query-confidence-and-gates.md)
 - [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](concepts/ci-github-instrument-limits.md)
 - [Green CI carries zero bits — positive controls, check-runs vs status, coverage PRs](concepts/ci-tooling-f0909b0-ci-green-zero-bits.md)
+- [Hostile-PR Detection and pull_request_target Exposure Auditing](concepts/ci-hostile-pr-detection-and-pull-request-target-audit.md)
 - [Merge-Queue Refs & Evictions — Stale Heads, checks_timed_out and gh-readonly-queue Leftovers](concepts/ci-merge-queue-refs-and-evictions.md)
 - [PR-approver CI clauses and calibration — the ci_green_on_sha check-runs blind spot](concepts/ci-tooling-f0909b1-approver-ci-clauses.md)
 - [PR-review runner tooling and gh pr diff file-status pitfalls](concepts/ci-tooling-f0909b0-review-runner-tooling.md)
