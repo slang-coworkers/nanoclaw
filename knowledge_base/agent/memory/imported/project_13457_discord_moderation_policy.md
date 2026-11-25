@@ -36,3 +36,11 @@ Held, nothing dispatched or posted.
 
 **Resume** on a comment that mentions @nv-slang-bot (for example, asking for the doc-link PR once the policy exists).
 That arrives as a `pr_mention` webhook, so no re-chase timer is needed.
+
+**11-17, triage comment posted; 11-24 re-check — terminal-parked.** The triager chain ran a triage pass and posted
+comment [6939367859](https://github.com/shader-slang/slang/issues/13457#issuecomment-6939367859) (2026-11-17):
+triaged, parked for maintainer direction, no code change in scope. The one-shot re-check (task
+`i13457-recheck-1467`, 2026-11-24) verified via live read: issue still open, still assigned to swoods-nv, no
+maintainer reply; the triage comment remains the last one. Decision (close-as-covered vs. a CONTRIBUTING.md
+moderation note) stays with swoods-nv. **No further timers or re-dispatches** — the chain is terminal-parked
+on the triage side; resume only on a webhook/human inbound (maintainer comment).

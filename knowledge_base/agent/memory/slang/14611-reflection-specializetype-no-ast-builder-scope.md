@@ -12,8 +12,8 @@ description: BOT-filed side-find of the #14604/PR #14605 chain; filed-only, park
   for fresh filings).
 - Substance: `spReflection_specializeType` (slang-reflection-api.cpp:5575) → `Linkage::specializeType`
   (slang-check-shader.cpp:4210) runs semantic checking with no `SLANG_AST_BUILDER_RAII` scope —
-  same stale/null thread-local builder defect family as #14604 (fixed by PR #14605, maintainer-approved,
-  awaiting merge). Static defect confirmed on master; NO dynamic repro — six debug-build shapes pass
+  same stale/null thread-local builder defect family as #14604 (fixed by PR #14605, MERGED 11-19
+  12:29Z by skiminki-nv @ `c0188daeb`). Static defect confirmed on master; NO dynamic repro — six debug-build shapes pass
   clean (warm witness caches short-circuit `isSubtype`); the fixer retracted its original "verified repro"
   claim BEFORE filing; graded honestly (review called it question-severity); no `reproduced` label.
 - Fix shape: one-line `SLANG_AST_BUILDER_RAII` at slang-check-shader.cpp:4210. Related deferred twin:

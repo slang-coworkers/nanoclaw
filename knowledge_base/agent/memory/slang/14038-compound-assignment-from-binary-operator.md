@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14038 — `a -= b` not synthesized from a user `operator-`
-description: Human-filed (albertrodriguezclo) 2026-10-29 17:10:23Z; reporter's option-A PR #14246 MERGED 11-06 (squash 442487688), issue still OPEN for maintainer direction; bot report-only, next triager one-shot t-737169 11-16 17:15Z., same reporter as the cloth-sim batch #14026–#14031. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z. 11-03 skiminki-nv leaned to diagnostics (A), floated an opt-in `[AddCompoundOp]` attribute, labeled 'slang 202c', then asked tangent-vector; held for tangent-vector, no fixer handoff.
+description: Human-filed (albertrodriguezclo) 2026-10-29; reporter's option-A PR #14246 MERGED 11-06; issue OPEN as a maintainer tracking item (labeled Typesystem+document 11-18); bot re-checks STOPPED 11-23 after two silent weekly re-checks — parked on maintainer direction, a bot mention re-opens. Triaged feature/low/P3, recommendation A (diagnostic note). Parked 5-bullet posted 2026-11-02 17:12Z. 11-03 skiminki-nv leaned to diagnostics (A), floated an opt-in `[AddCompoundOp]` attribute, labeled 'slang 202c', then asked tangent-vector; held for tangent-vector, no fixer handoff.
 tags: [operators, overload-resolution, diagnostics, feature-request, r6]
 ---
 
@@ -136,3 +136,17 @@ head `110d70c6d`). If the maintainers want the qualifier, it is a ~2-line re-lan
 compound-assignment-binary-operator-note test). The other half of the ask: #13936's dropped `8e6a3090d9` (Metal unsigned coords for
 `texture2d_ms` reads) substance IS on master via the rewritten `$1`-packed overloads (`read(vec<uint,2>(($1).xy), uint(($1).z)…` in
 `hlsl.meta.slang` ~5236–5265) — no follow-up owed there.
+
+**11-23: re-checks STOPPED — chain parked on maintainers.** Silent re-check #2 (no new
+comments; still 7, latest skiminki-nv 11-09). One non-conversation delta: jhelferty-nv
+relabeled on 11-18T19:12:17Z (removed `Office-Tess`, added `Typesystem` + `document`) — the
+maintainers have themselves bucketed the remaining direction (core interfaces + docs). The
+triager also noted related open PR #12765 (compound-assignment operators for public arithmetic
+interfaces; untouched since Sept, no cross-ref to #14038) — already tracked under the #12591
+chain. **Decision (mine):** stop the weekly re-checks and cancel the armed one-shot
+`i14038-recheck-9c31-4177` (11-30). The bot's actionable work (option-A diagnostics, PR
+#14246) has landed; the remaining items are maintainer-owned; two silent weekly re-checks
+show nothing is moving that needs a bot reaction, and label churn is maintainer-internal.
+Wake paths that re-open the chain: an @nv-slang-bot mention on the issue (webhook), an
+operator ask, or a maintainer re-landing the missing E40026 qualifier ("if evaluating 'x'
+twice is safe", dropped with d959f7318 — still absent on master).

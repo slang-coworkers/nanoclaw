@@ -58,4 +58,5 @@ that exists on your edge"*. ⭐⭐**Cheaper than the alternative, where the only
 decision lives where nobody else can read it — and no check reports a file that wasn't moved.**
 
 See also [[feedback_naming_a_blocker_is_not_building_the_path_around_it]] (the other half of this
-exchange), [[feedback_file_paths_in_reports_refer_to_the_authors_filesystem]].
+exchange), [[feedback_broader_read_access_is_not_higher_authority]] ("report file paths refer to
+the writer's filesystem and are opaque to the reader unless attached").

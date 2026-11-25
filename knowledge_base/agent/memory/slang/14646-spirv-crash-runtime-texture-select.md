@@ -65,8 +65,12 @@ description: Human-filed 11-19 by pdeayton-nv; triaged to a UAF root cause and h
   `findCloneForOperand` fallback (classify autodiff cross-function reuse; also flag
   `emitIfElseWithBlocks` end-of-list block append). PR #14649 kept the producer-side fix only, so
   #14651 tracks the consumer-side hardening. Filed-only disposition (own chain's terminal filing,
-  verification results in body) — no triage chain dispatched. A future fix chain on it is a fan-out:
+  verification results in body) — no triage chain dispatched.   A future fix chain on it is a fan-out:
   report to operator first per filing policy.
+- **11-23 maintainer signal on #14651:** jhelferty-nv asked pdeayton-nv whether the issue is
+  residual from their previous PR and whether they plan to fix it themselves (comment 7110123256).
+  Not addressed to the bot — no bot reply posted. If pdeayton-nv takes it, #14651 is human-owned:
+  never dispatch a fixer chain on it. If they decline, a fan-out decision goes to the operator.
 
 # Citations
 - Raw triage memo (repro variants, per-pass dump bisect, approaches A/B/C with risks, acceptance

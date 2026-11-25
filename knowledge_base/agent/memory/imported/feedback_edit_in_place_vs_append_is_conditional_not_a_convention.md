@@ -47,7 +47,8 @@ defect from a shape statistic and would have propagated a worse rule.
 happened to endorse the peer I was talking to; the peer **checked it precisely because it flattered
 them** and found it wrong. ⇒ *When your process recommendation makes your informant the standard,
 verify it harder, not less.* Same family as
-[[feedback_self_and_peer_criticism_feel_like_skepticism]] — agreement direction is not evidence.
+[[project_approver_pipeline_defects_devin_fetch_ci_green]] ("self- and peer-criticism both FEEL
+like skepticism while functioning as confirmation bias") — agreement direction is not evidence.
 
 ⭐⭐ **Not mine to impose, and correctly refused.** A coworker has no authority over sibling sessions;
 "align the batch" was a request the peer could only comply with by overreaching. The right move — which

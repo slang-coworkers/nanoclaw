@@ -60,6 +60,8 @@ self-assignee (jkwak-work) — human self-fix → stand our draft down.**
    auto-closes on merge). No separate fixer chain.
    **Self-echo `issue_opened` arrived 19:45Z and was consumed FILED-ONLY (no 👀, no triage/fixer
    dispatch) — operator informed same minute. Fixer start still gates on the operator.**
+   **RESOLVED 11-23: closed as duplicate by jhelferty-nv (cmt 7109798635, closed 18:11Z, label
+   `Downstream: glslang`) — pending fixer-decision on this side-find is moot; nothing further.**
 2. WGSL float-matrix `%` unimplemented (raw infix text): **NOT filed — no WGSL validator in the
    container** (tint/naga absent, "Tint not found"), rejection unvalidated on master → record-only;
    evidence lives in the r2 review (combined-review-slang-pr14599-r2.md) + the emitter scoping comment.

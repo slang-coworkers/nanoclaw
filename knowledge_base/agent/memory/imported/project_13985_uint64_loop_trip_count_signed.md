@@ -51,3 +51,12 @@ tentative rewrite never lands. Fixer memory: its `fix-13985.md` + log shards hol
 prior review rounds stand (R2 APPROVE_WITH_NITS @9b5f00221, nits applied at head 963a7b086).
 **Chain complete — no further bot action; resume only if the maintainer asks for our test material
 or his rewrite stalls.**
+
+**2026-11-24 14:07Z — maintainer's refined diagnosis (no action taken).** skiminki-nv comment
+[7133872094](https://github.com/shader-slang/slang/issues/13985#issuecomment-7133872094) on the
+terminal chain: two separate problems — (1) AST-level loop-count inference misreads
+`0xFFFFFFFFFFFFFFFFull` as −1 → the zero-trip **warning only** ("this does not remove the loop");
+(2) the loop **deletion** is the IR-level issue **#13978** (SCCP plausibly folds
+`i < 0xFFFFFFFFFFFFFFFFull` to `0 < -1`). No bot mention (checked live) → no reply, no dispatch.
+Recorded for the #13978/#13984 parked chain in
+[project_13973_builtin_call_constant_fold_history] — terminal-his state unchanged.

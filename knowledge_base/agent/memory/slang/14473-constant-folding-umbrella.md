@@ -51,7 +51,9 @@ constant bugs get their own chain files, citing #14479/#14473 same-repo.
 folding FP constants. Same ruling as the parent: maintainer tracking issue, **no dispatch**. #14386
 (FloatToHalf NaN narrowing) was made a sub-issue of #14481 on 11-13 — the hold there is unaffected
 (see [14386](14386-floattohalf-half-nan-signaling.md)). GitHub API still 401 at intake (known
-fleet-wide outage, already on the dashboard).
+fleet-wide outage, already on the dashboard). Re-checked 11-24: no change since the triager's
+11-17 comment (still newest, no maintainer reply). Final one-shot re-check armed for 12-01
+(`14481-float-umbr-recheck-ce12`); after that the chain rests on webhook delivery only.
 
 ## 2026-11-20 sub-umbrella #14478 re-check verdicts
 
@@ -69,3 +71,14 @@ previously unchained ones on 11-20:
 Related at re-check: #13424 (held), #14214 (stood down). Children-sweep one-shot armed for 11-24.
 New dated entries in this section go to a sibling history page if it regrows, not to the
 `slang/index.md` row.
+
+## 2026-11-24 children sweep (triager one-shot, report 09:02Z)
+
+All 7 children checked, **no action fired, no re-arm** — everything rests on human items:
+
+- **#14327** — still parked; no maintainer answer on the bool canonical-size decision.
+- **#9855 + #14399** — still open, no human response since the close suggestions; no re-comment.
+- **#12443 / PR #12479** — UNBLOCKED: fixer merged master 11-20 09:27Z, now MERGEABLE;
+  CHANGES_REQUESTED pending human re-review (no escalation).
+- **#14468** — chain alive, parked on the jkwak-work implementer decision; no human comment on issue.
+- **#8235 + #10491** — fixer-dispatch hold stands (#14468 chain not closed).

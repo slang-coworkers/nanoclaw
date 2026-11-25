@@ -15,3 +15,5 @@ tags: [r6, standards, newcomer-gate, scheduled-task, 13596]
 
 ## Run log
 (created 2026-11-17; append one line per weekly run)
+
+- **2026-11-23** (first fire): window 11-16→11-23. issues_total=78, bot_filed=39, human_filed=39, newcomer_labeled_dropped=0 (no GoodFirstBug/HelpWanted/no-bot), bot_ok_labeled=0, prs_bot=294 (open bot PRs), prs_human=48 (human PRs created in window; 122 total − 74 bot). Report: `/workspace/shared/reports/r6-weekly-2026-11-23.json` (+latest copy). 4 gh api calls. Bot share of new issues exactly 50%.

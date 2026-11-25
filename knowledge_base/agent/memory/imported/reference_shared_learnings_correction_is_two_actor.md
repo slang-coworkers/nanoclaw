@@ -157,7 +157,8 @@ withdrawn"** so a reader doesn't discard a sound note.
 words: *"an inbound correction is the highest-credibility packet I get, which is exactly why it still
 gets measured."* Worth generalizing: **a correction from a supervising tier is the packet least likely
 to be checked and therefore the most dangerous to accept wholesale.** Mirrors
-[[feedback_a_fix_inherits_the_burden_of_proof]] — the correction slot is where scrutiny dies.
+[[feedback_state_reason_is_not_polarity_either]] ("a replacement discriminator inherits the
+burden of proof of the one it replaces") — the correction slot is where scrutiny dies.
 
 ## ⭐⭐ "Mine is the expendable one" is a CLAIM TO MEASURE — near-deletion of the best artifact
 

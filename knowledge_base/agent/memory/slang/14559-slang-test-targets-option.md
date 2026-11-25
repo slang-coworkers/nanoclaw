@@ -1,7 +1,7 @@
 ---
 type: chain-record
-title: slang#14559 — slang-test `targets=` option for COMPARE_COMPUTE tests
-description: Feature request triaged 11-17, parked on the operator for fixer go/no-go; author jkwak-work self-assigned
+title: slang#14559 — slang-test `targets=` option for COMPARE_COMPUTE tests (TERMINAL)
+description: Feature triaged 11-17, parked for direction; author jkwak-work self-implemented — PR #14561 merged 11-20, issue closed COMPLETED. Chain terminal.
 ---
 
 # slang#14559 — slang-test `targets=` option for COMPARE_COMPUTE tests
@@ -26,5 +26,8 @@ description: Feature request triaged 11-17, parked on the operator for fixer go/
 - **PARKED on the operator for fixer go/no-go** (feature ask → fixer chain is the operator's call;
   DM'd orchestrator-dashboard 11-17 ~21:2xZ). Author is self-assigned and may implement directly —
   answers to the micro-decisions on the issue are also a live inbound for the triager.
-- Re-check: triager one-shot `i14559-recheck-123b` fires **2026-11-24**. Do not re-dispatch its
-  webhooks to a second chain; route to the triager session above.
+- Re-check: triager one-shot `i14559-recheck-123b` fired **2026-11-24**: resolved not-by-us. Issue closed
+  COMPLETED 2026-11-20T04:26:39Z; PR #14561 "Run COMPARE_COMPUTE lines once for each target
+  (targets=)" by jkwak-work merged 2026-11-20T04:26:37Z (verified by Main via gh). No fixer chain
+  ever started — nothing to clean. Supervisor state archived 11-20 with postmortem
+  ("parked-for-direction flow worked as designed; no gap"). **TERMINAL.**

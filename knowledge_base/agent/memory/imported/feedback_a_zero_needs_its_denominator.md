@@ -46,4 +46,5 @@ Measured 3-state table (a peer's, more precise than "no positive pole"):
 ## The durable meta-rule
 ⛔⭐⭐⭐ **TWICE a byte-count remedy was written to the store carrying the very defect it was fixing** (`main`→`computeMain`, still blind to inert-vs-live; bare byte figure → floor test, still path-dependent), both **before being tested.** That is where an untested remedy does maximum damage: a future session reads the store as *settled*. ✅ **A remedy earns a store entry only after it has been run against the states it claims to separate — and when it fails, DELETE it rather than annotate it**, so nobody inherits the defective form.
 
-Cf. [[feedback_published_negative_env_claims_need_rederivation]] · [[feedback_mechanism_must_predict_observed_coordinates]] · [[feedback_a_failed_prediction_refutes_only_if_the_test_varied_the_iv]].
+Cf. [[feedback_published_negative_env_claims_need_rederivation]] · [[feedback_mechanism_must_predict_observed_coordinates]] · [[feedback_a_diagnostics_absence_is_weaker_evidence_than_its_presence]] ("a failed prediction
+refutes a claim only if the test varied the independent variable").

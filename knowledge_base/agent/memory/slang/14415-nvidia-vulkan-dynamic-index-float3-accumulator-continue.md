@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14415 — NVIDIA Vulkan (RTX 5080, 617.14) nondeterministic skipped float3 component in rolled loop with continue
-description: Human-filed (j8asic) suspected NVIDIA driver bug on Slang's Function-var OpAccessChain dynamic-index lowering; routed to slang-triager 2026-11-09
+description: Human-filed (j8asic) NVIDIA driver bug, triaged 2026-11-09, RESOLVED 2026-11-23 — reporter confirmed fixed in driver 621.x; maintainer closes; no Slang-side defect
 tags: [slang, spirv, vulkan, nvidia-driver, dynamic-index, triage]
 ---
 
@@ -44,3 +44,23 @@ tags: [slang, spirv, vulkan, nvidia-driver, dynamic-index, triage]
   that my earlier decision ask now has an owner.
 - 2026-11-09 18:26Z triager [Report]: holding under rung 4. It cancelled t-ddf365 and removed the active-work sentinel. It will act
   only on a relayed webhook, such as a reporter reply on driver 621.14 or a bot mention. RESTING.
+- 2026-11-23 jhelferty-nv re-pinged the reporter (cmt 7110824639): "@j8asic Checking in, did you have a chance to test if the
+  newer driver fixed this for you?" Live body has no `@nv-slang-bot` — not a bot mention. No state change: reporter silent since
+  11-09, jhelferty-nv still assignee, labels unchanged (Needs reporter feedback + Vendor Driver Bug). Triager session
+  sess-1794214647063-qdddiv on the thread is active/resting (container stopped, NOT cost-stopped) and will wake normally when a
+  reporter reply or bot mention is relayed. Not relayed this time — the comment is addressed to the reporter, changes no decision,
+  and the triager's resting condition is unmet; relaying would only mint a content-free round trip.
+- 2026-11-23 20:09Z j8asic replied (cmt 7112654686, verbatim): "@jhelferty-nv Thanks. I updated to driver 621.24 and tested. On
+  617.14, my kernel family failed in about 9 of 10 long runs, so I think 621.x fixed it. We'll keep the [ForceUnroll] workaround
+  for users on older drivers. I'm fine with closing this as a driver issue that's fixed in 621.x." This is the activating webhook
+  the resting triager waited for. Not a bot mention (no post authorization). Relayed verbatim to the triager owner session
+  sess-1794214647063-qdddiv (pin + thread_id + in_reply_to=34-recipe; landed seq 32, verified) — awaiting its disposition report.
+  Expected terminal state: maintainer closes as driver-fixed-in-621.x; bot posts nothing.
+- 2026-11-23 20:10Z triager [Report] (msg 40): **RESOLVED, chain closed on our side.** No Slang-side defect, no fixer action, no
+  code change; driver 621.24 fixes it, `[ForceUnroll]` stays as a workaround for older drivers. No GitHub post (no mention);
+  closing + `Needs reporter feedback` label cleanup are maintainer-only — jhelferty-nv (assignee) closes at their convenience,
+  reporter already consented on-thread. No sentinel, no tasks, nothing in flight. Triager's own record: its
+  `memory/issues/14415.md`. Told the dashboard. TERMINAL — no ack sent to the triager (content-free round trip).
+- 2026-11-23 23:49:49Z jhelferty-nv closed the issue (`state_reason: completed`), removed `Needs reporter feedback`, kept
+  `Vendor Driver Bug`; their "@j8asic Thanks for confirming!" (cmt 7117408808) is a courtesy close-out with no bot mention —
+  not relayed (chain already terminal). Predicted terminal state realized; chain fully closed.
