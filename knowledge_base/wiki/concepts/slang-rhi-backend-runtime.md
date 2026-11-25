@@ -3,7 +3,7 @@ title: "slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA 
 type: concept
 group: slang-backends
 tags: [slang-rhi, abi, api-compatibility, vulkan, cuda, cuda-heap, memory-leak, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule, lavapipe, non_semantic_info, render-test, device-creation, push-constant, slangpy, metal, mtlfence, memory-barrier, encoder, timestamp-query, counter-sampling, thread-group-size, atomic-half, fp16-atomics]
-source_count: 25
+source_count: 26
 ---
 
 # slang-rhi backend runtime internals
@@ -23,6 +23,7 @@ source_count: 25
 - **Don't route WebGPU `readBuffer` through the shared `StagingHeap`** (redundant queue-wide wait, whole 16 MiB page mapped); use a small dedicated buffer.
 - **Vulkan VUID fixes in Slang examples are not CI-gated**; say "verified by construction".
 - **D3D11/D3D12 `clearTextureUint`/`Sint` silently do nothing on a RenderTarget-only texture.**
+- **App-provided Metal objects wrap as `NS::RetainPtr`/`SharedPtr`, never `NS::TransferPtr`** — `existingDeviceHandles` transfers no ref, so TransferPtr over-releases at queue shutdown and crashes the app; slot conventions live at include/slang-rhi.h:3667-3671.
 - **CUDA `cuModuleGetFunction … NOT_FOUND` at pipeline creation: grep for E40100 first** (`main` → `main_0`). slang-rhi squash-merges: re-pin submodules after merge.
 - **Run `-vk` on the L40S (`nvidia-smi -L`; failure is infra); lavapipe is only a fallback**, where device creation fails on the unconditional `VK_KHR_shader_non_semantic_info` (local-only guard for readbacks, never commit).
 - **The L40S has no Vulkan float16 atomics**, so `VK_EXT_shader_atomic_float2` stays off and a `-vk` float32 atomic min/max loses the device; cover min/max with compile tests.
@@ -105,7 +106,9 @@ Metal timestamps have been disabled since rhi#307, so `Feature::TimestampQuery` 
 
 **The maintainer rejected the stage-boundary implementation (PR #963).** A Dawn-style implementation (split encoders, render-pass writes mapped onto the 4 sample points) passed the ordered+nonzero cmd-query tests, but the maintainer found three problems: it deadlocks after 64 write/resolve cycles (native command buffers are allocated during recording but committed only at submit); dropped writes become Resolved and return stale data; and render-pass timestamps do not measure between draws. He prefers Metal-4-only (`MTL4CommandBuffer::writeTimestamp` + counter heaps); until then the legacy path keeps `TimestampQuery` off and rejects timestamp pools. The reporter's MTL4 prototype found its own traps (render-encoder timestamps still pass-boundary only, >5 per pass silently dropped, stale unwritten heap slots). For any GPU-query triage memo, write these acceptance criteria: unsupported or dropped writes never report Resolved; no unbounded native allocation during recording; the measured interval is the requested one. Ordered+nonzero is not enough ([impl rejected](../learnings/1793909749042-metal-timestamp-queries-stage-boundary-impl-reject.md)).
 
-**Source learnings (25):**
+**Wrapping app-provided Metal objects via `DeviceDesc::existingDeviceHandles` must use `NS::RetainPtr`/`NS::SharedPtr`, never `NS::TransferPtr`** (rhi#985). `TransferPtr` adopts a ref the API contract never transferred, so slang-rhi over-releases at `CommandQueueImpl::shutdown` (`m_commandQueue.reset()`) and crashes the app; a balanced retain/release leaves the app's `MTLDevice`/`MTLCommandQueue` alive — `CommandQueueImpl::init` (metal-command.cpp:1218) already takes the queue as `SharedPtr` by value. The `existingDeviceHandles` slot conventions (D3D12 slot0=device AddRef; Vulkan 0/1/2 borrow with shutdown guards; CUDA type-tag scan + `m_ownsContext`) are documented at include/slang-rhi.h:3667-3671 — a new backend adds its slot sentence there, and Metal's `NativeHandleType` tags for MTLDevice/MTLCommandQueue already exist (slang-rhi.h:642-643, no enum change). Maintainer skallweitNV prefers explicit own/borrow fields over a pointer that doubles as an ownership flag ([slang-rhi Metal existingDeviceHandles: RetainPtr not TransferPtr; no slang-rhi labeling policy](../learnings/1795547203828-slang-rhi-metal-existingdevicehandles-retainptr-no.md)).
+
+**Source learnings (26):**
 - [Metal GPU timestamps: stage-boundary only; Dawn empty-blit trick (rhi#962)](../learnings/1793565036279-metal-gpu-timestamps-apple-silicon-samples-only-at.md) — `sampleBufferAttachments`; GPU ticks
 - [Apple Metal docs via DocC JSON; Metal barrier/encoder facts (rhi#964)](../learnings/1793570718425-apple-metal-docs-are-readable-via-the-docc-json-en.md) — one queue `MTLFence`
 - [CUDA `main` renamed `main_0` (E40100) breaks `cuModuleGetFunction`](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md) — re-pin squash-merged submodules
@@ -131,3 +134,4 @@ Metal timestamps have been disabled since rhi#307, so `Feature::TimestampQuery` 
 - [direct-bound struct args skip leaf gen_calldata (InterlockedAddF16Emulated aside)](../learnings/1793852099467-slangpy-direct-bound-struct-args-skip-the-leaf-mar.md) — emulated fp16 add works on L40S
 - [slang-rhi no longer guarantees ABI (README policy since #895)](../learnings/1793622511423-slang-rhi-no-longer-guarantees-abi-readme-policy-s.md) — pre-Oct objections stale; keep wrappers
 - [Metal timestamp queries: stage-boundary impl rejected by slang-rhi maintainer](../learnings/1793909749042-metal-timestamp-queries-stage-boundary-impl-reject.md) — PR #963; MTL4-only preferred
+- [slang-rhi Metal existingDeviceHandles: RetainPtr not TransferPtr; no slang-rhi labeling policy](../learnings/1795547203828-slang-rhi-metal-existingdevicehandles-retainptr-no.md) — balanced retain/release; slot conventions at slang-rhi.h:3667-3671

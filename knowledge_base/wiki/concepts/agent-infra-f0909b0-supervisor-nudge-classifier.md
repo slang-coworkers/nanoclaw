@@ -3,7 +3,7 @@ title: "Supervisor Nudge Classifier: Bot Detection, Ball-Direction, and Disposit
 type: concept
 group: agent-infra
 tags: [supervise-issues, scan.py, nudge, bot-detection, ball-direction, disposition, false-positive]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -178,6 +178,16 @@ wrong reconcile it to treat "open draft + green + closingIssuesReferences + repo
 resolved-pending-human ([four false-positive classes inflate awaiting_us](../learnings/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md),
 [issue-supervisor nudges completed bot work — mandatory-draft PRs read as "no PR"](../learnings/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md)).
 
+The same resolved-pending-human class has a second healthy shape: **MERGEABLE but
+CHANGES_REQUESTED after a fixer dispatch is a completed chain, not a stall.** On the 2026-11-24
+#14478 children sweep, PR #12479's fixer handled the CHANGES_REQUESTED+CONFLICTING state by
+MERGING origin/master into `fix/issue-12443` (per the reviewed-PR merge-not-rebase rule, #12194);
+the probe then correctly showed CONFLICTING→MERGEABLE, and the human re-review click is the
+designed end-state. A sweep verification must read `mergeable` + last-commit message + `updatedAt`,
+not just `reviewDecision` — a `reviewDecision: CHANGES_REQUESTED` row over a `mergeable: MERGEABLE`
+probe is the fix-dispatched-and-conflict-resolved signature, so do not escalate it
+([sweep heuristic: mergeable-but-changes-requested after fixer dispatch is not a stall](../learnings/1795510945861-sweep-heuristic-mergeable-but-changes-requested-af.md)).
+
 ### Disposition gating: both branches, wider vocabulary, and persistence
 
 Even with correct bot labels, the disposition gate has a structural hole: the
@@ -255,7 +265,7 @@ the first clean scan produced a 115-nudge recovery backlog (~0 genuine) — the 
 oversized/lost transcripts (`API Error 400 unexpected end of data`) need operator/transcript
 intervention, not a plain wake ([naive-datetime crash](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md)).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [A supervisor "non-bot spoke last" nudge can be false: last event was a BOT review](../learnings/1786452477308-approver-false-safe-a-supervisor-a-non-bot-spoke-l.md) — filter by `author.__typename` before taking newest event; a nudge is a claim about state, not state; never let it authorize a write.
 - [supervisor nudge: "who spoke last" is not "a human is unanswered"](../learnings/1786453196243-supervisor-nudge-who-spoke-last-is-not-a-human-is-.md) — the definitive postmortem: bot test is a DISJUNCTION (type OR id), two concurrent bot accounts, recency≠obligation, three ordered filters.
 - [scan.py: stored disposition must outrank per-tick reclassification](../learnings/1786498066587-supervise-issues-scan-py-stored-disposition-must-o.md) — human-owned/terminal gate must cover both ball branches; N coworkers reporting a re-nudge is the trigger to fix the classifier.
@@ -273,6 +283,7 @@ intervention, not a plain wake ([naive-datetime crash](../learnings/178705989421
 - [scan.py: four false-positive classes inflate awaiting_us](../learnings/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md) — empty maintainer APPROVE, bot-only comments, CODEOWNERS auto-assign, and slangpy draft PRs (`dev/slangpy-fixer/<n>` branch) all misread as awaiting_us; ~90% false-positive rate; one real catch was a comment-edit reply GitHub didn't notify.
 - [CLAassistant is typed User, not Bot — it trips the "unanswered human comment" nudge](../learnings/1789521176741-claassistant-is-typed-user-not-bot-it-trips-superv.md) — `user.type=="User"` false-alarms a `type != Bot` heuristic; don't reply, but surface the CLA-not-signed MERGE blocker and escalate the bot-identity CLA decision to the operator.
 - [issue-supervisor nudges completed bot work — mandatory-draft PRs read as "no PR"](../learnings/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md) — verify `closingIssuesReferences` + `report_pr_created` + cross-referenced; a draft PR is resolved-pending-human, not a stall (can't un-draft — policy); a prose "it's done" doesn't stop the re-nudge.
+- [sweep heuristic: mergeable-but-changes-requested after fixer dispatch is not a stall](../learnings/1795510945861-sweep-heuristic-mergeable-but-changes-requested-af.md) — read mergeable + last-commit + updatedAt, not just reviewDecision; the human re-review click is the designed end-state
 - [coworkers can't self-suppress the re-wake — disposition lives in the Orchestrator's state file](../learnings/1789416255279-coworkers-can-t-self-suppress-the-supervisor-re-wa.md) — the cron reads the orchestrator's `supervisor-state.json`, not a coworker's copy; report the disposition up; suppressing tokens listed.
 - [supervise-issues: persist NO-GO/deferred/held dispositions immediately or the fixer-carve-out re-nudges every tick](../learnings/1789565098418-supervise-issues-persist-no-go-deferred-held-dispo.md) — `we_owe_next_step` re-flags a fixer-owned no-PR chain lacking a recognized disposition every tick (Tick 227: 10/14 false); also false-positives on acted-on authorizations, resolved-by-author FYIs, and do-not-reply bot notices.
 - [Supervisor: record NO-GO/parked disposition or it re-pages the fixer as false-positive-silent](../learnings/1789651416238-supervisor-record-no-go-parked-disposition-or-it-r.md) — Tick 229: 5 chains with `disposition:''` re-nudged; the disposition IS the R3 artifact — blank on a fixer-owned no-PR chain = "unaccounted," not "parked"; write the token at decision time.

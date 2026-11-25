@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 35
+source_count: 36
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -52,7 +52,7 @@ The 401 has a precise mechanism and a costly blind spot: `gh auth status` (calls
 
 A session can edit or delete only comments it created: PATCHing another session's comment 403s despite `issues:write`, though both render as the same bot, so post a fresh delta ([403 on cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)). Two tiers posting on one issue leave comments neither can consolidate, so exactly ONE tier owns the issue-level 5-bullet. That atom's 403 on setting an assignee (#11751) no longer holds: on 2026-10-23 the bot assigned #13892 by pre-checking `GET /assignees/<login>` (204), creating the issue WITHOUT assignees, then `POST issues/<N>/assignees`, then verifying `.assignees`. GitHub silently drops rejected assignees, and a failed create-with-assignees invites a duplicate-issue retry ([nv-slang-bot CAN set issue assignees](../learnings/1792776424407-nv-slang-bot-can-set-issue-assignees-2026-10-23-cr.md)).
 
-If `POST issues/:n/labels` 403s, fall back to `gh issue edit --add-label`, which succeeds where the raw REST path is inconsistently denied ([labels 403 → gh issue edit --add-label](../learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md)). In a partially degraded gateway session other REST/GraphQL paths can work while labels 403: set Issue Type via GraphQL and defer the label to a healthy session. If a REST mutation 403s with an admin-rights message, try the GraphQL equivalent (for the bot's own comment, resolve the node id and use `updateIssueComment`). With a truly invalid token every `gh` call can return empty rather than error; for read-only needs on public repos, `WebFetch("https://github.com/<owner>/<repo>/issues/<N>")` gets title, body, author, state and labels with no token, but cannot write and may miss long threads ([CONSOLIDATED: GitHub auth & ops](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)).
+If `POST issues/:n/labels` 403s, fall back to `gh issue edit --add-label`, which succeeds where the raw REST path is inconsistently denied ([labels 403 → gh issue edit --add-label](../learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md)). In a partially degraded gateway session other REST/GraphQL paths can work while labels 403: set Issue Type via GraphQL and defer the label to a healthy session. If a REST mutation 403s with an admin-rights message, try the GraphQL equivalent (for the bot's own comment, resolve the node id and use `updateIssueComment`). Note the GraphQL mutation input drift (2026-11-24, slang-triager): `updateIssue` no longer accepts `issueId` — the input now requires `id` (the issue's node_id, e.g. from the REST issue JSON's `node_id`). Working form: `gh api graphql -f query='mutation($id:ID!){updateIssue(input:{id:$id issueTypeId:"IT_..."}){issue{issueType{name}}}}' -F id="I_kwD..."`; there is no `Issue(number:N)` query root — wrap in `repository(owner:..,name:..){issue(number:N){...}}` or take the node_id from the REST response ([GitHub GraphQL updateIssue now requires `id`, not `issueId`](../learnings/1795544583927-github-graphql-updateissue-now-requires-id-not-iss.md)). With a truly invalid token every `gh` call can return empty rather than error; for read-only needs on public repos, `WebFetch("https://github.com/<owner>/<repo>/issues/<N>")` gets title, body, author, state and labels with no token, but cannot write and may miss long threads ([CONSOLIDATED: GitHub auth & ops](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)).
 
 ## Workflow files: a structural block
 
@@ -88,7 +88,7 @@ Mechanical traps on the read-fallback path: a read-only local-git `gh` shim at `
 
 **Verify a maintainer's "template PR" layer before porting.** "Make a PR for #11568 based on #11723" was N/A: #11723 is a backend SPIR-V flag, while #11568 is a front-end `ResourceDescriptorHeap[i]` feature blocked on return-position generic inference (E39999), and csyonghe's untyped-handle design is the real path. Surface the layering in the verdict ([#11568 template PR is a layer-mismatch](../learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md)).
 
-**Source learnings (35):**
+**Source learnings (36):**
 - [gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md) — the inline query string breaks, not auth
 - [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md) — inner reviewer cost bills separately
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md) — remove the local-git gh shim first
@@ -124,4 +124,5 @@ Mechanical traps on the read-fallback path: a read-only local-git `gh` shim at `
 - [GH_TOKEN is a `ROUTED_VIA_ONECLI_PR…` sentinel; prefer `gh api` REST; mcp github tools read-only](../learnings/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md)
 - [`gh auth status` uses GET /user; verify with a real read, don't skip a PR-review dispatch](../learnings/1789106327782-gh-auth-status-false-negative-under-app-installati.md)
 - [gh auth status false-negative with App installation token (gh api still works)](../learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md) — no stored creds behind GH_TOKEN
+- [GitHub GraphQL updateIssue now requires `id`, not `issueId`](../learnings/1795544583927-github-graphql-updateissue-now-requires-id-not-iss.md) — take node_id from the REST issue JSON; no Issue(number:N) query root
 _Catalog: [[wiki/index.md]]_

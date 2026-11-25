@@ -3,7 +3,7 @@ title: "Codex-Critique Round Recording: Bridge Path, Client Timeouts, and the Th
 type: concept
 group: agent-infra
 tags: [codex-critique, critique-gate, track-critique, codex-mcp-bridge, mcp-timeout, critique-threads, thread-map, recording]
-source_count: 27
+source_count: 28
 ---
 
 # Codex-critique round recording: bridge path, client timeouts, and the thread map
@@ -55,6 +55,8 @@ The residual failure mode is a turn that never completes inside the budget. With
 
 Each fresh `codex_codex` call with a `STAGE:` line starts a NEW codex thread; `codex-reply` continuations inherit the PARENT thread's stage from `critique_threads`. Sending a round-2 reply to an old thread records the approve under the wrong stage and leaves the real stage stuck at must-fix — the delivery gate then blocks with "missing critique stages" even though you hold an approve. Before any round-2 reply, `jq .critique_threads /workspace/.claude/workflow-state.json` and reply on the thread id whose STAGE matches the round you are answering. Codex calls often return intermediate progress text — a plain "Please print your final review now." reply gets the structured block; hashes in `### Attested` bind the verdict to exact file bytes, so any later edit (even a required disclaimer append) needs one more approve round ([codex-reply rounds inherit the parent thread's STAGE — reply on the right thread id](../learnings/1794889217597-codex-reply-rounds-inherit-the-parent-thread-s-sta.md)). `track-critique` maps threadId→STAGE only on the successful initial call; replying on the wrong thread silently updates the WRONG stage's verdict (one OUTPUT_REVIEW round-2 went to the CODE_REVIEW thread). Never guess the threadId ([read the map first; low-effort recipe](../learnings/1794837209510-codex-critique-client-timeouts-never-record-use-lo.md)).
 
+The mechanism is exact and was measured end-to-end (2026-11-24, slang#14707): `track-critique.sh` maps threadId→stage from the INITIAL `mcp__codex__codex` call and, for `codex-reply` calls, IGNORES the reply's `STAGE:` marker entirely (`REPLY_STAGE` from the map wins). Running CODE_REVIEW and OUTPUT_REVIEW as codex-reply rounds on a PLAN_REVIEW thread returned genuine approve verdicts both times, yet the delivery gate refused with "missing critique stages: CODE_REVIEW, OUTPUT_REVIEW" — workflow-state showed only PLAN_REVIEW recorded and `critique-attempts.jsonl` logged the replies as bare `start` events. So each gated stage needs a FRESH `mcp__codex__codex` call carrying `STAGE: <stage>`, the canonical reviewer developer-instructions block verbatim (the sentinel check), and a valid `REQUIREMENTS:` field (`none — <reason>` or GitHub comment URLs). This sharpens the "codex-reply doesn't record toward the gate" note: a reply DOES re-verify a stage — only ever the stage its thread was born with ([critique gate: each STAGE needs a fresh codex call — codex-reply inherits the thread's birth stage](../learnings/1795525755219-critique-gate-each-stage-needs-a-fresh-codex-call-.md)).
+
 ## Dead threads and recovery
 
 A codex call killed by the bridge's 15-minute cap leaves a thread that can NEVER record rounds. Symptom: the rollout jsonl stops growing at exactly 900s with `turn_aborted / reason: interrupted` and no `task_complete`; a `codex-reply` on that thread returns full verdict content but records NOTHING. Fix: re-record the stage with a FRESH call framed as a re-recording round ("prior rounds ran on a killed thread; verify and record"), with a tightly-scoped artifact list so it finishes under 15 min. Threads whose initial call COMPLETED record both their own and later reply rounds fine ([codex rounds on bridge-killed threads never record](../learnings/1794868443680-codex-rounds-on-bridge-killed-threads-never-record.md)). A related death mode is a provider-429 killing the turn mid-review ("exceeded retry limit" in the session jsonl): resume by `codex-reply` with the thread_id grepped from the newest rollout file — the reply inherits the stage via the thread map; an empty codex response means the turn died, so check the jsonl before re-sending.
@@ -63,7 +65,7 @@ A cheap sibling of the gate: run the codex OUTPUT_REVIEW on a **[Review Verdict]
 
 For cross-cutting recording rules (fails-open verdict parser, recall-stub replies, `### Attested` format) see [critique gate and decision recording](review-critique-gate-and-recording.md); for stage counting and delivery sequencing, [gate mechanics](agent-routing-f0909b1-critique-gate-mechanics.md); for the delivery-side freshness window, [gate-hook mechanics](agent-infra-gate-hook-mechanics.md).
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [Critique rounds record via the codex bridge, not the hook — timeouts are cosmetic](../learnings/1794851587389-critique-rounds-record-via-the-codex-bridge-not-th.md)
 - [codex MCP -32001 timeout is cosmetic — poll ~/.codex/sessions rollout files for the real verdict](../learnings/1794852776159-codex-mcp-32001-timeout-is-cosmetic-poll-codex-ses.md)
 - [Codex MCP timeout ≠ failure: verdict records in background; recover via codex-reply on the recorded thread](../learnings/1794835792483-codex-mcp-timeout-failure-verdict-records-in-backg.md)
@@ -91,3 +93,4 @@ For cross-cutting recording rules (fails-open verdict parser, recall-stub replie
 - [Retain verification logs for flake-fix loops; codex rounds need developer-instructions and real dbIds](../learnings/1795245648437-retain-verification-logs-for-flake-fix-loops-codex.md)
 - [codex-critique rounds only record with the verbatim developer-instructions block](../learnings/1794847766178-codex-critique-rounds-only-record-with-the-verbati.md)
 - [Gate state resets on every inbound; codex-reply rounds don't record](../learnings/1794898781583-gate-state-resets-on-every-inbound-codex-reply-rou.md)
+- [critique gate: each STAGE needs a fresh codex call — codex-reply inherits the thread's birth stage](../learnings/1795525755219-critique-gate-each-stage-needs-a-fresh-codex-call-.md) — track-critique ignores the reply's STAGE marker; REPLY_STAGE comes from the birth map

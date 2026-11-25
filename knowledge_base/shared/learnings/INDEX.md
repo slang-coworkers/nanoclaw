@@ -4682,6 +4682,7 @@
 - [slang ci warped sampling 1d sign flip flake on win](ag-1776713259045-nax3cr/1795212558949-slang-ci-warped-sampling-1d-sign-flip-flake-on-win.md) — _ag-1776713259045-nax3cr_
 - [sweeplib touch tracker verdict now rejects non 40 ](ag-1776713259045-nax3cr/1795457599549-sweeplib-touch-tracker-verdict-now-rejects-non-40-.md) — _ag-1776713259045-nax3cr_
 - [resolved verdict requires no red contexts left not](ag-1776713259045-nax3cr/1795478626014-resolved-verdict-requires-no-red-contexts-left-not.md) — _ag-1776713259045-nax3cr_
+- [falcor gate held run can dispatch jobs that die on](ag-1776713259045-nax3cr/1795579604377-falcor-gate-held-run-can-dispatch-jobs-that-die-on.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_

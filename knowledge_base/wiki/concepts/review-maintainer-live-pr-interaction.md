@@ -3,7 +3,7 @@ title: "Working Live PRs Alongside Maintainers and Sibling Bots"
 type: concept
 group: review-process
 tags: [maintainer, live-pr, supersede, test-header-comments, scope-directive, concurrent-edit, design-divergence, peer-bot-session, pr-body-edit, coupled-pr, github-write-discipline]
-source_count: 37
+source_count: 38
 ---
 
 # Working Live PRs Alongside Maintainers and Sibling Bots
@@ -12,7 +12,7 @@ source_count: 37
 
 - Re-derive a maintainer's scope directive from the LIVE primary comment — a dropped "also fix #N" clause or an inferred narrowing inverts scope.
 - Only the maintainer can waive a maintainer's requirement: grade met/missed; "partial", "known partials", orchestrator scope-outs are not deferrals. Direction = a human maintainer's review/comment verified live; a reporter's proposal (even MEMBER) is an "issue requirement".
-- Re-read maintainer direction right before the verdict goes out; report new human MEMBER comments with timestamps. Direction lives on THREE surfaces — issue thread, `pulls/<n>/reviews`, inline `pulls/<n>/comments`; review-count drift on `pulls/<n>/reviews` = a human reviewed inline.
+- Re-read maintainer direction right before the verdict goes out; report new human MEMBER comments with timestamps. Direction lives on FOUR surfaces — the PR's own issue-shaped thread, `pulls/<n>/reviews`, inline `pulls/<n>/comments`, and (for issue-fixing PRs) the LINKED issue's own thread; review-count drift on `pulls/<n>/reviews` = a human reviewed inline.
 - A human APPROVE mid-review calibrates the verdict: with 0 bugs, gaps become named nits/follow-ups (APPROVE_WITH_NITS) — never a REQUEST_CHANGES headline beside a ship blessing. The next push dismisses that APPROVE — re-fetch review state every round, calibrate per-head.
 - A draft follows the literal requirement; a bot-introduced invariant is design input; an exception shrinks to what is technically forced, posed as a question.
 - A hands-on maintainer may push onto your branch; comment batches are often resolution notes — re-fetch HEAD first; don't race a self-fixer (one ack, read-only inspection, ONE stand-down).
@@ -80,6 +80,8 @@ The divergence is cheaper to catch before any code exists: when a change redefin
 
 Run the anti-dup check against a live re-read right before posting, not the start-of-turn snapshot. On slang#13247 a peer `nv-slang-bot` session beat us to a 0-comment issue — posting the full triage produced a same-identity double-post. Run `gh api repos/<r>/issues/<n>/comments --jq '.[-1].user.login'`; if it is `nv-slang-bot[bot]`, PATCH in place or post only a delta. An auto-filed tracking issue can read stale; check the referenced PR's head before triaging it as open ([a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)).
 
+For a fix-chain review of an issue-fixing PR, the pre-verdict freshness sweep covers a FOURTH surface: the linked issue's own thread. On #14710 (2026-11-25) the sweep read `pulls/<n>/reviews`, `pulls/<n>/comments`, and the PR's issue-shaped comments, but the linked issue's thread (`issues/14707/comments`) is where maintainer direction could have appeared — it was verified bots-only there. One cheap `gh api issues/<issue>/comments` call closes the gap that the "requirements taken from the issue body" claim otherwise leaves open ([pre-verdict freshness sweep: include the linked issue thread for issue-fixing PRs](../learnings/1795565724409-pre-verdict-freshness-sweep-include-the-linked-iss.md)).
+
 ## Leave Maintainer Comments Byte-for-Byte; Your Push Dismisses Their Approval
 
 **Never reword a comment you did not write in this PR, not even a typo.** On slang#13406 the bot changed tangent-vector's `ParamPassingMode` ref-mode doc comment from "without also using the `readonly` or `writeonly` modifiers" to "without also using `const`"; he demanded a revert — the comment recorded design intent the code does not (`const` on `__ref` is a legacy alias for `readonly`). Document alongside it in their vocabulary (`readonly ref`), ask in a review reply if your change makes it wrong, and before committing run `git diff origin/master...HEAD | grep -E '^-\s*//'` and justify or revert every hit ([never reword a maintainer's existing source comment](../learnings/1790967868088-never-reword-a-maintainer-s-existing-source-commen.md); [never reword; a push dismisses approval](../learnings/1790967953965-never-reword-a-maintainer-s-existing-code-comment-.md)).
@@ -108,7 +110,7 @@ jkwak-work closed slang#12938 unmerged: "This content seems redundant to the inf
 
 skallweitNV corrected the shape of bot fixes rather than their direction. On slang-rhi#860 the bot kept `VKBufferHandleRAII::m_api` as the implicit owns-the-buffer flag; the maintainer closed bot PR #868 and landed #945, keeping the routing but adding explicit `m_ownsBuffer`/`m_ownsMemory` ([explicit ownership over a double-duty field](../learnings/1793091793971-slang-rhi-maintainer-prefers-explicit-ownership-ov.md)). On slang-rhi#866 they took the PR over, squashed it, deleted the bot's GPU-free test, and validated with the existing Release Vulkan tests ([run the existing Vulkan GPU tests](../learnings/1793111769425-slang-rhi-run-the-existing-vulkan-gpu-tests-mainta.md)). If a minimal fix works around a field that means two things, name the conflation and offer the explicit refactor — the maintainer may want the root fixed even when a reviewer accepted it as out of scope. Detail: [slang-rhi backend runtime internals](slang-rhi-backend-runtime.md), [Slang & slang-rhi test harness](slang-a-test-harness.md).
 
-**Source learnings (37):**
+**Source learnings (38):**
 - [postmortem: shader-slang/slang#14557 superseded by PR #14560](../learnings/1794982445190-postmortem-shader-slang-slang-14557-superseded-by-.md)
 - [Re-derive maintainer scope directives from the primary GitHub comment — webhook bodies truncate, and never ADD scope you inferred](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)
 - [A spec requirement left unimplemented is a merge blocker until the maintainer defers it — "known partial" in the PR body is not a deferral](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md)
@@ -147,4 +149,5 @@ skallweitNV corrected the shape of bot fixes rather than their direction. On sla
 - [Human APPROVE dismissed by later push — re-fetch review state every round; Devin new-head refetch discipline confirmed](../learnings/1795185602095-human-approve-dismissed-by-later-push-re-fetch-rev.md)
 - [Mid-round fixer pushes signal a live maintainer review; fast DXIL pin verification via pass-through dxc](../learnings/1795200327873-mid-round-fixer-pushes-signal-a-live-maintainer-re.md)
 
+- [pre-verdict freshness sweep: include the linked issue thread for issue-fixing PRs](../learnings/1795565724409-pre-verdict-freshness-sweep-include-the-linked-iss.md) — `issues/<linked-n>/comments` is the fourth surface; one cheap gh api call
 _Catalog: [[wiki/index.md]]_
