@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#14690 — coverage-macos: 8 metal coopmat tests fail cpu/llvm legs (#14662 targets=all × #14540 require-enforcement) — TOT-scan find, filed-only"
-description: Found by the 11-21 08:0xZ TOT scan; verified live by Main; filed 11-21 ~08:2xZ as #14690 (reproduced + Type Bug). coverage-macos nightly red since 11-21 (run 44853626851) — jkwak-work's #14662 (targets=metal→targets=all on 8 metal coopmat tests) added cpu/llvm legs that OUR #14540 (#14430's require-enforcement fix, merged 11-20) now correctly rejects with E36107 (CoopMat.__init [require(cooperative_matrix)]). Test-infra, not a compiler bug; fix = restore targets=metal or capability-gate. Filed-only; fixer GO offered, held for operator.
+description: RESOLVED 2026-11-23 (found resolved, no fixer needed): coverage-macos metal-coopmat red was fixed by #14674 (CI test-tiering, 411af9b9, 11-21 13:26Z — 5h after the filing) rewriting the 8 files to targets=all-cpu-llvm, excluding the failing cpu/llvm legs. Resolution comment posted 11-23 (id 7100454117); GO offered 11-21 withdrawn; issue left for maintainer close. Coverage-macos green on 11-23 nightly.
 tags: [slang, coverage-macos, cooperative-matrix, targets-all, require-enforcement, tot-scan, filed-only]
 ---
 

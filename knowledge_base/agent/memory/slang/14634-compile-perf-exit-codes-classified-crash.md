@@ -21,6 +21,17 @@ tags: [slang, compile-perf, exit-codes, ci-harness, tot-scan, filed-only]
   asserts, check `sweep.py`/`trend.py`/`manifest.py` consumers. The nightly stays red until it lands.
 - **Disposition:** FILED-ONLY per the filing policy (low-severity CI-harness bug, shepherds loaded); fixer GO
   offered to the operator 11-19. Scan task told the tracker exists (prevents re-flagging as untracked).
+- **2026-11-23: maintainer GO.** jhelferty-nv commented ([7110058275](https://github.com/shader-slang/slang/issues/14634#issuecomment-7110058275)):
+  "@nv-slang-bot Please prepare a PR fixing this" — fixer chain dispatched on the canonical thread same day.
+- **2026-11-23 18:34Z: fixer outcome — resolved upstream, no PR.** slang-fixer verified (Main spot-checked: #14635 MERGED
+  2026-11-19 15:45Z by jkwak-work, `68cd6edd0`; bot evidence comment [7110354340](https://github.com/shader-slang/slang/issues/14634#issuecomment-7110354340)
+  posted) that the exact requested change merged as **#14635** four days BEFORE the maintainer ask. At master `f0b143178`:
+  bench.py:696 `_EXIT_COMPILATION_FAILED = 2`; rc==2 accepted as expected_failure; 3/255/0xFFFFFFFF still crashes;
+  self-check asserts pass; sweep.py/trend.py/track.py/lib/manifest.py clean. Nightly green Nov 20 (44679451686) and
+  Nov 23 (45116441940); **Nov 21/22 reds (44869688840, 44988301006) are a separate `analyze` step perf-trend alert
+  (1.10–1.19x vs trailing median) — untracked, out of #14634's scope.**
+- **Parked on maintainer decision:** close #14634 as fixed by #14635, or repurpose for the Nov 21/22 trend-alert reds.
+  One-shot re-check `recheck-14634-maintainer-decision` scheduled for 2026-11-26; decision named to operator DM.
 - **Source:** the 12:00Z TOT scan's report (slang-release-regression-check), which located the mechanism.
 
 # Citations

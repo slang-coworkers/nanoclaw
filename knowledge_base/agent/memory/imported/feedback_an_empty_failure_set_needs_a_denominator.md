@@ -41,8 +41,8 @@ inverted: there the numerator was assumed, here it was measured and the denomina
   against the family **first**; twice the correct shape was already written 20 lines away.
 - Stub ordering trap, third instance: a `case` arm matching `*per_page=1` prefix-matches
   `per_page=100`, so the injection lands on the wrong guard and passes for the wrong reason. Put the
-  page-loop arm first, and always read WHICH guard fired — [[feedback_a_bail_is_not_a_pass]] if that
-  leaf exists.
+  page-loop arm first, and always read WHICH guard fired — [[feedback_a_state_row_carries_only_the_fields_you_asked_of_it]]
+  ("a bail is not a pass").
 - When a fix widens the fingerprint FORMAT, do not restore the pre-widening string as "the true
   latch": the next real fire would differ on the format change alone and wake on nothing. Store the
   new-format encoding of the state you actually read this wake, and restore `lastwake` (the budgeted

@@ -1,7 +1,7 @@
 ---
 type: project
 title: "slang#14570 — CPU targets reject all wave intrinsics (wave-of-one proposal)"
-description: "Human issue (albertrodriguezclo): wave intrinsics all fail E36107 on C++ CPU targets though each thread could be a wave of one lane. TRIAGED 11-18: root cause = subgroup_* capability aliases exclude cpp (capdef:2579+); CPU dispatch is sequential, wave-of-one factually correct. Parked on assignee jhelferty-nv (bless semantics + scope, WaveReadLaneAt(lane≠0), interaction with #8244). Recommended fix approach A (add cpp disjuncts + single-lane bodies). One-shot re-check 2026-11-25 02:30Z (triager-armed). No fixer until maintainer go."
+description: "Human issue (albertrodriguezclo): wave intrinsics all fail E36107 on C++ CPU targets though each thread could be a wave of one lane. TRIAGED 11-18: root cause = subgroup_* capability aliases exclude cpp (capdef:2579+); CPU dispatch is sequential, wave-of-one factually correct. Parked on assignee jhelferty-nv (bless semantics + scope, WaveReadLaneAt(lane≠0), interaction with #8244). Recommended fix approach A (add cpp disjuncts + single-lane bodies). Re-checked 2026-11-25 02:31Z: no direction; assignee now jkwak-work. No fixer until maintainer go."
 ---
 
 **Issue #14570** (albertrodriguezclo, human, open; assignee jhelferty-nv; label `reproduced` +
@@ -32,4 +32,10 @@ nv-slang-bot 02:20:50Z, label live, assignee live).**
   memory/issues/{triage-14570,14570}.md; triage memo also in Main inbox
   (a2a-1794968439572-c9gwft). Domain note added by triager: cpp-target capability gating.
 
-Resume on: jhelferty-nv's reply (webhook + the re-check), maintainer go-ahead → fixer with approach A.
+**2026-11-25 02:31Z one-shot re-check fired (triager): still parked.** Issue OPEN, only comment is
+our parked 5-bullet; no maintainer reply. Only delta: assignee jhelferty-nv → **jkwak-work**
+(2026-11-18T18:48Z) — jkwak-work is now the decision owner to watch. Nothing posted (no-spam).
+**No further re-check scheduled** — next trigger is any maintainer comment (webhook).
+
+Resume on: jhelferty-nv's or jkwak-work's reply (webhook), maintainer go-ahead → fixer with
+approach A.

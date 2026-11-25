@@ -23,5 +23,6 @@ description: Verification ask (jhelferty-nv 11-18) — resolved in effect by #83
   year ago. Closing.") — chain fully terminal; humans triage #14614.
 
 **TERMINAL (2026-11-18):** issue closed by the maintainer; verdict comment stands as the record;
-only live follow-up is human triage of #14614.
+follow-up moved to the #14614 chain — 11-23 jhelferty-nv requested the fix PR; fix shipped as
+draft PR #14702, parked on human review ([14614 record](14614-near-miss-directive-silently-skipped.md)).
 - Triager-side memo: slang-triager group memory `memory/issues/triage-8050.md`.

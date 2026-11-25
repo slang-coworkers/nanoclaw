@@ -17,3 +17,20 @@ page, and a genuinely new topic gets its own page linked here — do not grow th
 - **[GitHub auth and quota](hazards-github-auth.md)** — `app_not_connected` near 00:00Z is quota exhaustion, not a lost credential (and can be transient at low quota too); several agents failing at once = one vault-credential problem, not per-agent reconnects.
 - **[Discord posting boundaries](hazards-discord-boundaries.md)** — the Slang Maintainer is read-only (one weekly surface); the bot fleet's send allowlist covers only the watched forums, so source-channel replies need an operator decision.
 - **[Edit-tool append technique](hazards-edit-append.md)** — anchor memory-file appends on the final line, never on a bullet's opening line.
+
+**Detection gap (11-23, #14695 miner-probe incident):** plain PR-open events reach NO Main webhook (only pr_mention /
+issue_opened / ready_for_review / ci_failed) — so a hostile or broken PR from a stranger is invisible to the fleet until the
+Slang Maintainer's daily sweep catches it (16h in this case; the humans' 3-minute close was faster). The maintainer's daily
+report is effectively the fleet's only detection layer for probe/spam PRs. If recurring, ask the operator about a pr_opened
+webhook route or sweep-side trigger keywords ("miner", "self-hosted GPU runner identity" — the #14695 tells).
+
+**Update 11-23:** the maintainer's `discord_send_message` is now entirely ABSENT from its tool allowlist (post-migration) — not
+just channel-gated: even its former one permitted post (#slang-committers weekly PR report) is unreachable. Consequences: (a) its
+bi-weekly rotation ask (term 11-24→12-07 started 11-24) relies on a human posting the relayed text; (b) any PR-report "re-home to
+Discord" decision must account for the send tool being gone until the operator restores it.
+
+**Relay-verification miss (11-24, rows 515078→515122-class):** I relayed the maintainer's "#14692/#14639 closed unmerged" claim
+into an SM80 escalation without checking the `merged` field — both had MERGED (11-22 17:35Z / 20:03Z; its own blocker note admits
+merge status is inferred from closure time because its search data lacks `merged_at`). ⇒ **Any merge-state claim from a coworker's
+sweep (closed-unmerged, merged, "first merge since…") gets verified via REST `/pulls/{n}` (`merged`, `merged_at`) before it enters a
+dashboard escalation** — closure-time inference misclassifies closed-by-merge as closed-unmerged.

@@ -16,6 +16,7 @@ Pull- and cache-stage traps for the tick pipeline. Parent: [[orchestrator/superv
   `HTTP 5`/`fallback` and compare per-repo `with pr`/`with comments` counts against the previous payload3. Fix: confirm
   nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
   repo (`payload3r.json`), re-scan. Compare `pr` counts against the previous **payload1** (prfix/botbind add ~20 PRs in payload3), and find the stripped set as chains whose previous payload1 had comments/pr and this one has none (tick 326: 41 contiguous #12909–#12962; carried pr/comments/our_last_push/issue_open, re-fetched the 1 that moved).
+- **Tick 385: a list-index guess at `payload3.json['chains']` yields a 0-chain lo-cache SILENTLY** — print the chain count right after building lo-cache to catch it (the dict-keyed shape is documented above, tick 324).
 
 - **Build `lo-cache.json`/`prev-la.json` before launching `run-pull.sh`** — they are not among the copied helpers; a missing
   `lo-cache.json` makes `pull.sh` die at its line-83 `open()` after the cost-cap stamp (~1 min lost, tick 333).

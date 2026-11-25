@@ -16,6 +16,8 @@ GitHub API quirks for the tick pipeline. Parent: [[orchestrator/supervise-tick-p
   isDraft autoMergeRequest{mergeMethod}`. **Simpler one-call sweep (tick 376):** `gh pr list -R shader-slang/slang --state
   open --limit 400 --json number,autoMergeRequest,mergeStateStatus` returns armed PRs directly (`autoMergeRequest != null`
   = armed, with `enabledAt`/`enabledBy`/`mergeMethod` inside) — no REST pagination, no GraphQL; retry once on an HTTP 502.
+  **But it UNDERCOUNTS as a one-off probe (ticks 386/396):** tick 386 caught 1 of 6 armed PRs, tick 396 3 of 7 — the
+  `ghfeeds.sh` am-sweep cross-check is authoritative over it. Treat the one-call sweep as a quick check, never the count of record.
 
 - **`ncl pr-mappings list` returns only 200 rows by default** — pass `--limit 10000` (1,069 rows at tick 337). Tick 336's
   `prmap.json` was truncated, so `deliv.py` missed mappings for older PRs.

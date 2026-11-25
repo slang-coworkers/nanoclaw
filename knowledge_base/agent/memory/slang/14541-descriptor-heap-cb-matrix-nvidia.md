@@ -36,3 +36,9 @@ Per filing policy: external filing + new fixer chain both need the operator.
 direction — decision re-surfaced ONCE to orchestrator-dashboard (msg id 9, 11-21) per its decision table,
 task deleted (cancelled). Do not re-create the re-check or re-ask; next action on this chain is the
 operator's (A)/(B)/(C) choice.
+
+**11-23:** jhelferty-nv asked "which discord channel was this reported in?" (cmt 7110798001) —
+answered by the triager (cmt 7110836867, 18:55Z, verified live): **#slang-discussion** (channel
+1305995870046650368), h7per/H7perus, first report 10-26 23:32Z (msg 1564421436276219965), repro
+10-27 13:09Z (msg 1564626980031168593) — sourced from the maintainer's draft-08 handoff. Housekeeping
+only; the parked operator decision stands.

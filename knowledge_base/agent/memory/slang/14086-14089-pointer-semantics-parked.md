@@ -55,6 +55,15 @@ The triager's t-fb3521 report (msg 4, 16:02Z) says #14086 is still parked. I ver
 No maintainer has chosen a diagnostic shape. jkwak-work is also the assignee of #14268, which carries the bundled decision.
 The next one-shot is the triager's **t-964832, 2026-11-13 16:00Z**. Main did not reply: the report asks nothing.
 
+## 11-23 re-check (#14086)
+
+The triager's one-shot (session `system:tasks:i14086-recheck-881c`, created 11-16, fired 11-23 16:01Z)
+reports: still parked, gh access OK, no human activity since 10-30. I verified on GitHub: open, 1 comment
+(last 10-30), assignee jkwak-work, `updated_at` 2026-11-02T18:50Z (the assignment event). The triager
+re-armed the next one-shot itself: `i14086-recheck-cbd3` (session sess-1795449664838-mbfh71, created
+11-23 16:01Z, process-after 2026-11-30 16:00Z). Report asks nothing; no reply, no operator escalation
+(parked-chain register + webhooks cover the wake path).
+
 ## 11-06 re-check (#14089)
 
 The triager's t-e18700 report (msg 2, 16:31Z) says #14089 is still parked. I verified it on GitHub: 1 comment (the

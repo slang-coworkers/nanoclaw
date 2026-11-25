@@ -24,3 +24,4 @@ supervisor-state merge and scan quirks. Parent: [[orchestrator/supervise-tick-pu
   03:00 gate and the full scan flagged it. Fix: before dispositioning a fixer-no-PR nudge as genuine, read the
   owning fixer session's transcript (`ncl sessions messages <id> --reverse --limit 3`) — the outbound is there,
   and record `advisory:fixer-active` for one tick.
+- **Tick 385: a `notes.json` demote pass that only mutates the dict in memory is lost** — it must end in `json.dump`, or the stale 🔼 markers resurface in the next board render (#10232/#13973, caught at review).

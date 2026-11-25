@@ -6,18 +6,57 @@ description: Per-chain records for shader-slang issue and PR work driven through
 
 # Slang chains
 
-> **🆕 #14693 (filed-only, 11-22):** MDL perf apiLoadModule 1.10–1.19x regression since 11-21
-> (suspect #14509 constant-folding overhaul); rerun-minima evidence; bisect/fix held as maintainer
-> terrain. [record](14693-mdl-apiloadmodule-perf-regression.md)
+> **🆕 #14707 → PR #14710 (FIX-SHIPPED, parked on maintainer review/un-draft, 11-25):** GLSL
+> unsuffixed sign-bit integer literals typed `uint`/`int64` (P1 regression from #11357; human
+> andy-slater). Draft PR #14710 (head 29fcac005, GLSL branch at the single typing point + fold
+> self-corrects, repro 2/2 + suites green, APPROVE_WITH_NITS applied). P1 exception flag sent to
+> the operator (dashboard, 11-25); ready-flip also on weekly list. Routing incident (2h silent
+> self-misidentification) folded into Core Memory. Resume on PR webhook only.
+> [record](14707-glsl-sign-bit-integer-literals.md)
 
-> **🆕 #14691 (LIVE, 11-21):** default-only `OpSwitch` for inlined early-return / `continue` regions
-> → Mesa lowers to single-trip loops (perf). Triaged enhancement/P2 (reproduced master 0a87e8963,
-> mechanism = `emitLoopHeaderBlock` slang-emit-spirv.cpp:8340-8368; cleanup miss = 2 breaks by
-> construction). Fixer ycwsbo live on canonical thread; recommended fix A2 OpBranchConditional.
-> [record](14691-default-only-opswitch-early-return.md)
+> **🆕 slang-rhi #986 (PARKED-FOR-DIRECTION, 11-24):** portable prefix-scan + radix-sort proposal
+> (same reporter as #961/#974; companion #984 cooperative-launch). Triager verified premise TRUE,
+> no dup; placement is design-gated (A rhi engines / B slangpy module / C std module — triager
+> recommends B first). 5-bullet posted (7141635610), `enhancement` + Feature type set; one-shot
+> gated re-check `rhi986-direction-recheck-4c6f` 12-01 09:00Z. No fixer until maintainer picks.
+> [record](rhi-986-prefix-scan-radix-sort-proposal.md)
 
-> **🆕 #14690 (filed-only, 11-21):** coverage-macos red — 8 metal coopmat tests fail cpu/llvm legs
-> (#14662 targets=all × our #14540 require-enforcement); fixer GO held for the operator.
+> **🆕 #14614 → PR #14702 (FIX-SHIPPED, parked on maintainer un-draft/review, 11-23):** near-miss
+> `//TEST:` directive spellings now fail slang-test collection with a did-you-mean error (our own
+> bot-filed residual from #8050; maintainer jhelferty-nv asked for the PR, cmt 7109993582). Draft
+> PR #14702 (head 90c605e61, review r1 nits applied, unit 729/729, 0 near-miss hits corpus-wide);
+> CI skips while draft; un-draft on the weekly list. [record](14614-near-miss-directive-silently-skipped.md)
+
+> **🆕 #14698 → PR #14699 (FIX-SHIPPED, parked on maintainer review, 11-23):** conformance seq-ID
+> collision silent miscompile — triaged reproduced, fixer shipped draft PR #14699 (head 03c901283,
+> #10797 semantics ported + hardened, 2 review rounds applied, repro 0/11→11/11 incl. GPU,
+> Fixes #14698+#6924). Triage side closed (resolution 7111368756); re-chase r1 one-shot 11-30.
+> [record](14698-conformance-seqid-collision-miscompile.md)
+
+> **🆕 #14697 (filed-only, 11-23):** HitObject transform getters survive DCE on CUDA/OptiX —
+> terminal bot filing (triager, side-find of the #13262/PR #14696 chain); parked for maintainer
+> attention, no chain. Do NOT dispatch triage on its issue_opened webhook. [record](14697-hitobject-transform-getter-dce.md)
+
+> **🆕 #13262 → PR #14696 (LIVE, 11-23):** maintainer tdavidovicNV un-stuck our old fix branch
+> (applies cleanly to master, verified by them); explicit ask → fixer rebased `fix/issue-13262`
+> onto ced08cd4e (head d78d2e4) and opened draft PR #14696 (NoSideEffect on the 4 transform
+> getters; the 2 open triage questions flagged in the PR). pr-mappings verified. Draft ready-flip
+> pending on the weekly operator list. [record](13262-optix-transform-query-dce.md)
+
+> **✅ #14693 (RECOVERED, 11-23):** apiLoadModule self-recovered on the 11-23 nightly with NO code
+> change on the suspect path — re-attributed to a degraded nightly runner (which also explains the
+> rerun-minima signature); recovery + re-attribution comment posted (7106560618); close left to
+> maintainers unless the signature returns. [record](14693-mdl-apiloadmodule-perf-regression.md)
+
+> **✅ #14691 (TERMINAL-CLOSED-OUT, 11-23):** maintainer jhelferty-nv ruled the default-only OpSwitch
+> → Mesa-loops perf issue isn't the compiler's to fix ("output is already correct"); a contributed
+> self-contained pass could be evaluated. A2 minimal fix proven invalid (spirv-val: selections grant
+> no break semantics); corrected two-producer root cause (emitLoopHeaderBlock + spirv-opt at -O1+).
+> Bot close-out cmt 7112780365; worktree reaped; groundwork parked (branch fix/issue-14691 + reports).
+> Issue open, next mover = maintainer/contributor. [record](14691-default-only-opswitch-early-return.md)
+
+> **✅ #14690 (RESOLVED, 11-23):** fixed externally by #14674's `targets=all-cpu-llvm` rewrite (5 h after
+> the filing) — resolution comment posted (7100454117), GO withdrawn, close left to a maintainer.
 > [record](14690-coverage-macos-metal-coopmat-e36107.md)
 
 > **✅ #14615 (TERMINAL-CLOSED, 11-20 20:13Z):** tangent-vector merged his own superseding PR #14648 and closed
@@ -63,23 +102,8 @@ decay and must be re-read, not remembered.
   **Draft PR #14689 @ head 1880bd2 09:08Z** (test-only dispatch fix + re-derived CHECKs; review APPROVE_WITH_NITS applied;
   30/30 vk, 5/5 cuda). **PARKED on human review + CI; ready-flip weekly list;** webhook-driven (pr-mapping → fixer cjhbhb).
 - [slang#14682 — E56003 "use of uninitialized opaque handle" for an uninitialized struct whose texture field is never used](14682-uninit-opaque-handle-field-insensitive.md) — human-filed 11-21 (pdeayton-nv), triaged bug/medium/P2 (IR type legalization: `legalizeUndefined` is field-insensitive); **PR #14686 draft LIVE @ 5fac1baa** (undef-aggregate decomposition), reviewer round in flight. Full state in the record.
-- [slang#14672 — Move the slangc multiple-source-files test into slang-test, remove tools/slangc-test (PR #14675)](14672-migrate-slangc-test-multiple-source-files.md) —
-  maintainer-filed 11-20 20:41Z (jkwak-work; R6 dispatch, 👀). Triaged (enhancement/low/P2/CI, cmt 7050403771);
-  fixer v89zbl shipped PR **#14675** @ `66aba89e` (11 files +27/−82; test → tests/language-feature/modules/multiple-source-files/,
-  tools/slangc-test deleted, 3 workflows + stress-loop tarball stripped; peer APPROVE_WITH_NITS 0-bugs, codex approve;
-  acceptance 1/1, modules 56/56, CI green). **jkwak-work flipped READY himself 22:30:43Z + approved at 6bdd62 —
-  approval auto-dismissed by the nit push. 11-22 05:22Z: maintainer-requested master sync (tier-split #14674 conflict,
-  resolved for the deletion) → head `2deaddee` merge commit, tests re-green — TERMINAL our side, awaiting his
-  re-approval + merge.** Webhook-driven (pr-mapping → fixer); do not re-dispatch.
-- [slang#14671 — Align texture sampling overloads with HLSL and target capabilities](14671-texture-sampling-overloads-hlsl-targets.md) —
-  maintainer-filed 11-20 (tangent-vector; R6 dispatch, 👀). TRIAGED 20:02Z bug/high/P2 (silent
-  invalid cube `ConstOffset` SPIR-V exit-0 + valid HLSL cube clamp rejected E40012, reproduced
-  master `410071448`; `reproduced` + Type Bug). **✅ TERMINAL OUR SIDE 07:44Z 11-21: draft PR
-  #14683 @ `82500e64a`** — review chain CLOSED (reviewer r2 APPROVE_WITH_NITS, 0 real bugs,
-  all nits applied + verified; GLSL clamp-order silent-mis-sampling bug fixed en route;
-  tests 751/751). Handed to maintainer tangent-vector: 5 open rulings listed in the PR
-  explanation cmt; draft ready-flip on the weekly list. Webhooks via pr-mapping → fixer.
-  Related: #9210. Do not re-dispatch.
+- [slang#14672 — Move the slangc multiple-source-files test into slang-test, remove tools/slangc-test (PR #14675)](14672-migrate-slangc-test-multiple-source-files.md) — TERMINAL our side: PR #14675 head `2deaddee` (master sync 11-22; tier-split #14674 conflict resolved); jkwak-work flipped READY + approved once (auto-dismissed by the nit push) — awaiting re-approval + merge. Webhook-driven (pr-mapping → fixer).
+- [slang#14671 — Align texture sampling overloads with HLSL and target capabilities](14671-texture-sampling-overloads-hlsl-targets.md) — TERMINAL our side 11-21: draft PR #14683 @ `82500e64a` (APPROVE_WITH_NITS), 5 open rulings with tangent-vector; ready-flip weekly list; webhook-driven. Related: #9210.
 - [slang#14670 — CI: close slang-test coverage gaps (job matrix, skip-lists, disabled tests)](14670-ci-coverage-gaps.md) —
   maintainer CI-meta issue (jkwak-work, self-assigned; R6 dispatch 11-20). Triaged 18:36Z:
   enhancement/medium/P2, not a dup; headline claims verified with 2 count corrections
@@ -87,37 +111,8 @@ decay and must be re-read, not remembered.
   do not blanket-delete). PARKED on jkwak-work's 3 open infra questions + cluster
   sequencing; re-check i14670-recheck-d359 (+7d). Readiness verdict = issuecomment-7047631095
   (an early 0-comment read on my side raced the triager's POST, not a false claim).
-- [slang#14684 — Reduce2x2 8x8 half coopmat shape fails Vulkan validation on SM 8.9](14684-reduce2x2-coopmat-shape-validation.md) —
-  HUMAN-filed 11-21 02:02Z by jkwak-work (R6 dispatch; 👀 posted). Triaged+reproduced on our L40S
-  02:54Z (cmt 7056193274, `reproduced` label): Reduce2x2 emits an 8x8 half `OpTypeCooperativeMatrixKHR`
-  unrepresentable on SM 8.9 (flexible-dims granularity M/N=16); real emission/test problem, not a layer
-  false positive. Side find (Main-verified): no `reduce.slang.3` entry in ANY expected-failure file on
-  master despite the issue's claim; master CI green. **Operator go/no-go ask timed out → then fact change:
-  triager had dispatched slang-fixer f3yh9m at 02:57Z BEFORE Main's hold landed — chain LIVE, building
-  since 03:05Z (path A, test-infra only: wire existing `IDevice::isCooperativeMatrixSupported` into
-  render-test, gate the `.3` subtest on the 8x8 f16 accumulator shape; no compiler change). Narrowed
-  operator ask (dashboard msg 37): let run to draft PR (recommended) vs stand down; silent = proceed;
-  one-shot recheck recheck-14684-fixer-deci-de5d fires 11-22 03:30Z.**
-  **⭐ 11-21 ~04:40Z: fix landed as draft PR #14685** (`nv-slang-bot`, `fix/issue-14684`, pr-mapping →
-  fixer f3yh9m, Main-verified): harness gate only — new `-require-coopmat-shape` render-test option via
-  `IDevice::isCooperativeMatrixSupported`; `.3` skips cleanly, `.0`–`.2` pass layers on/off, positive
-  16x16x16 path runs; critique stages approve; L40S-verified. **[Fix Report] 06:39Z: FIX COMPLETE —
-  APPROVE_WITH_NITS applied + re-verified (0 bugs), head `7c910beff`, 7 files +283/−115, unit 722/722,
-  CI re-triggered; ready-flip pending weekly list; human review is the gate. Declined-with-justification
-  follow-up candidate: mixed-type grammar + gating sibling coopmat tests.** Reviewer verdict in flight, webhook-driven;
-  **Follow-up filed 11-21 06:45Z: [slang#14688](https://github.com/shader-slang/slang/issues/14688)** (triager, P3
-  Feature — sibling coopmat tests fail-not-skip on shape-lacking devices; latent). Fixer go/no-go = operator
-  decision when #14685 merges; grammar extension parked for a maintainer; triager re-check 11-28; its
-  issue_opened webhook is self-echo — filed-only, no re-triage. Register row added 11-21 06:50Z.
-  ready-flip → weekly list after review.
-- [slang#12161 — NonUniform DescriptorHandle round-trip: non-SPIR-V test coverage (PR #14667)](12161-nonuniform-heap-test-coverage.md) —
-  maintainer-directed (jhelferty-nv cmt 7044166728, 11-20: "Create a small, targeted PR for addressing
-  the test gap"). Tests-only: `.Handle` construction spelling + GLSL/DXIL/glslang legs (fixer found the
-  relayed nested-form premise STALE — HEAD emits canonical post-#12263 form; correction learning
-  appended). Fixer c5w1fd on `gh-issue-shader-slang/slang-12161`; **TERMINAL our side: draft PR #14667**
-  @ `8ac38d6e9` (19:10Z) — maintainer jhelferty-nv reviewed inline himself (review 5997104349, 5
-  findings, all applied); R2 APPROVE_WITH_NITS, nit + advisories applied; CI 44797156179 pending.
-  Ready-flip pending weekly list; maintainer verdict awaited (shepherd engaged).
+- [slang#14684 — Reduce2x2 8x8 half coopmat shape fails Vulkan validation on SM 8.9](14684-reduce2x2-coopmat-shape-validation.md) — LIVE: draft PR #14685 @ `7c910beff` (test-infra gate only, L40S-verified; Fix Report COMPLETE, 0 bugs; ready-flip → weekly list, human review is the gate; operator: silent = proceed). Follow-up #14688 filed-only (self-echo; triager re-check 11-28). Register row added; history in the record.
+- [slang#12161 — NonUniform DescriptorHandle round-trip: non-SPIR-V test coverage (PR #14667)](12161-nonuniform-heap-test-coverage.md) — maintainer-directed (jhelferty-nv "small, targeted PR"). TERMINAL our side: draft PR #14667 @ `8ac38d6e9` — maintainer reviewed inline himself (5 findings, all applied); R2 APPROVE_WITH_NITS; CI pending. Ready-flip on weekly list; maintainer verdict awaited (shepherd engaged).
 - [slang#5667 — metal: re-enable Metal render tests (PR #14666)](5667-metal-render-tests.md) —
   maintainer-directed (jhelferty-nv, assignee). 11-18 triage verdict (fixed at master via #6063;
   -mtl rows disabled) → 11-20 fixer chain: PR #14666, review APPROVE_WITH_NITS; maintainer Q
@@ -141,76 +136,12 @@ decay and must be re-read, not remembered.
   metal/wgsl, bot-filed, gate missing metal/wgsl in hlsl.meta.slang) — **HELD filed-only** (low severity +
   ~7 live fixer chains; dashboard-noted 11-20); dispatch on `gh-issue-shader-slang/slang-14454` when
   load drops or operator asks.
-- [slang#14646 — SPIR-V crash: runtime-selected texture + uninitialized texture arg](14646-spirv-crash-runtime-texture-select.md) —
-  HUMAN-filed 11-19 22:02Z by pdeayton-nv (R6 dispatch at once; 👀 posted). **TRIAGED 22:39Z** (bug/high/P2;
-  use-after-free: out-of-dominance-order block list from select-sinking makes the call-specialization
-  cloner share original-func insts, then specializeCall frees the original → dangling operand; merge-block
-  fix B shipped). `reproduced` + Issue Type Bug applied. **TERMINAL our side 03:38Z 11-20:** PR
-  **#14649** @ `c9e450ca7` ready-for-review (**flipped by the REPORTER**, not the fixer — spine intact),
-  2-round review APPROVE_WITH_NITS applied; suites 12384/12402 (18 pre-existing infra); light checks
-  6/6, full CI matrix run 44667087438 queued. Thin-A cloner assert dropped (fires on 39 legit
-  autodiff-dstdlib tests) → hardening filed separately as bot-filed **#14651** (own Terminal filing —
-  no triage dispatch). **✅ TERMINAL 10:43Z 11-20: MERGED** by pdeayton-nv (squash) at `c9e450ca7`;
-  issue auto-closed, [Resolution] comment 7028424926; chain complete in <13 h; #14651 open for human triage.
-- [slang#14632 — Linux: NVRTC lookup only tries unversioned libnvrtc.so (runtime-only CUDA installs fail)](14632-nvrtc-linux-versioned-soname-lookup.md) —
-  HUMAN-filed 11-19 09:26Z by 0z5a (R6 dispatch at once; 👀 posted). **TRIAGED 09:32Z** (bug/medium/P2;
-  `locateCompilers` tries only `libnvrtc.so`, `_findAndLoadNVRTC` Windows-guarded; Issue Type Bug;
-  `reproduced` not applied — no docker locally, mechanism verified via `-nvrtc-path`).
-  **13:20Z — SHEPHERD MODE:** reporter's byte-identical PR **#14633** opened mid-flight → no
-  duplicate opened (per #14557 precedent); our verified test contributed to their PR (cmt 7009708159,
-  branch `nvrtc-soname-lookup-test` @ e4c939b1b921) + issue note 7009723158; patch-mode peer review
-  dispatched 12:58Z → [Fix Report] next.
-  **15:27Z TERMINAL:** review APPROVE_WITH_NITS, all nits applied; test contribution now at branch
-  head `2998d89fc` + follow-up cmt 7013595276 — human cherry-picks the BRANCH HEAD (not the inline
-  pre-review patch) into #14633, then maintainer review proceeds there. Chain closed bot-side;
-  webhook-driven on #14633.
-  **Fixer LIVE** (sess-1795080763053-o2m98c on canonical thread) on reporter's Approach A:
-  versioned-soname fallback `libnvrtc.so.13/.12/.11.2` newest-first + docs/cuda-target.md line.
-  WATCH: reporter has validated fork commit 0z5a/slang@a29bcef, will self-PR after CLA →
-  stand down and shepherd if their PR lands first. Related: #14447 (Windows cousin), #14557.
-- [slang#14620 — HLSL dialect: support RootSignature attributes — MERGED](14620-rootsignature-user-attribute.md) —
-  HUMAN-filed 11-18 23:4xZ by tangent-vector (maintainer, self-assigned — NOT a stand-down).
-  Maintainer blessed both-dialects scope on the issue (cmt 6995244317). **TERMINAL 02:04Z
-  11-20: PR #14623 MERGED** @ `d41f96a52` (issue auto-closed via `Fixes`) — Approach A
-  core-module user-defined `RootSignatureAttribute` (5 commits; APPROVE_WITH_NITS applied;
-  maintainer doc-comment round applied; maintainer approved → ready-flipped himself → merged,
-  ~26 h filed→merged). Side-finding (spurious-E31002) disproven + closed — attributes bind to
-  the FOLLOWING declaration; a repro premise must be checked against the saved bytes before
-  flagging a checker bug.
-- [slang#14617 — slangc can't read/write 260+ char paths on Windows (longPathAware manifest)](14617-longpathaware-manifest-windows-max-path.md) —
-  HUMAN-filed 11-18 by pdeayton-nv; triaged 23:15Z (no `longPathAware` manifest anywhere → registry
-  opt-in inert; gates slang-stream.cpp:180, slang-io.cpp:190/:646). **PR #14622 MERGED 11-20 01:55Z
-  by pdeayton-nv @ `c71a23cf6`** (after his APPROVED review 5980203360; 4 bot rounds + both his
-  comments applied; RT_MANIFEST embed test green on a real Windows runner). **Issue stays OPEN
-  (Part-of) pending the reporter's Windows runtime verification** (mt.exe + both repros) — else the
-  pre-agreed CreateFileW+FILE_FLAG_BACKUP_SEMANTICS follow-up at slang-io.cpp:190/:646 if the read
-  still fails. Webhook-driven; chain closed bot-side.
-  Reporter took the lifecycle (ready-flip + review request). Family: #14612, #14618 (same surface).
-- [slang#14618 — `#include` with `..` segments fails once the joined path reaches 260 chars (Windows MAX_PATH)](14618-include-dotdot-max-path.md) —
-  HUMAN-filed 11-18 23:10Z by pdeayton-nv (R6 dispatch at once; 👀 posted). **TRIAGED 23:19Z** (bug/medium/P2,
-  `reproduced` label; Linux PATH_MAX analogue on master 4a1d62c5b; root cause = `IncludeSystem::findFile` passes
-  the unsimplified `..`-laden joined path to the OS check). Fixer session errored 23:59Z (infra), triager
-  re-dispatched clean 00:00Z. **TERMINAL our side 02:38Z: draft PR #14625** @ `7dcd9fe65` (one-line simplify at
-  slang-include-system.cpp:63 + preprocessor dup-simplify deleted + regression test; APPROVE_WITH_NITS all
-  applied, revert drill E15300→PASS, preprocessor 85/85). **Maintainer round 3 done 11-19 11:00Z: head
-  `4faa7d5ef`** (clean rebase onto a4d69f877 + Windows multiFileModuleCache delimiter fix via
-  `Path::kPathDelimiter`; unit 687/687; codex gates approve). **TERMINAL: MERGED 11-19 18:53Z** by
-  pdeayton-nv (merge cmt `bb2b7e33d`, issue auto-closed; re-approved after the push auto-dismissed
-  round-2 approval). Loose end: falcor rerun on 4faa7d5ef still queued at merge — if it fails,
-  possible real Falcor regression on master (lexical-`..` gap), fixer watches the webhook; no new
-  chain unless it fails. Detail: [14618-include-dotdot-max-path.md](14618-include-dotdot-max-path.md).
-  Related: #14612 (same surface).
-- [slang#14624 — bool ordering comparisons emit invalid SPIR-V (OpULessThan on %bool)](14624-bool-ordering-spirv-invalid.md) —
-  HUMAN-filed 11-19 01:0xZ by tangent-vector (maintainer, self-assigned — R6 dispatch at once; 👀 posted).
-  **TRIAGED 01:32Z** Main-verified (bug/P2; reproduced on master `d9a12fa17`: bool's `IComparable`
-  conformance from #3317 uses raw `__intrinsic_op(kIROp_Less/Leq)` → `OpULessThan`; GLSL/WGSL invalid
-  too, vector<bool> already fine). **CHAIN TERMINAL — MERGED 11-20 03:29:57Z**: PR #14628 squash-merged
-  `85bde8dc0` (branchless `and/or(!this, other)` bodies in core.meta.slang, 3-reviewer APPROVE_WITH_NITS,
-  maintainer-approved, test-falcor flake rerun green, auto-merge); issue auto-closed. Triage cmt
-  6996912415; explanation cmt 6998076222. **Side-find #14631 FILED-ONLY** (triager, reproduced+deduped;
-  issue_opened = self-echo, NO dispatch; glsl.meta.slang:293-300 bool-vector `lessThan()` free functions
-  still emit raw Less — fixer start + solution approach = maintainer/operator).
-  Related: #12720, #14402, #3317.
+- [slang#14646 — SPIR-V crash: runtime-selected texture + uninitialized texture arg](14646-spirv-crash-runtime-texture-select.md) — TERMINAL: MERGED 11-20 10:43Z by pdeayton-nv (PR #14649 @ `c9e450ca7` squash; issue auto-closed; [Resolution] cmt 7028424926; <13h E2E). Thin-A cloner assert dropped (fires on 39 legit autodiff tests); hardening split off as bot-filed #14651 — filed-only, self-echo, no dispatch.
+- [slang#14632 — Linux: NVRTC lookup only tries unversioned libnvrtc.so (runtime-only CUDA installs fail)](14632-nvrtc-linux-versioned-soname-lookup.md) — SHEPHERD: reporter's PR #14633 carries the fix (APPROVE_WITH_NITS, test verified @ `2998d89fc`); fixer LIVE; watch for self-PR after CLA. Related: #14447, #14557.
+- [slang#14620 — HLSL dialect: support RootSignature attributes — MERGED](14620-rootsignature-user-attribute.md) — TERMINAL 02:04Z 11-20: PR #14623 MERGED @ `d41f96a52` (issue auto-closed via Fixes; core-module user-defined RootSignatureAttribute; ~26h filed→merged). Side-finding (spurious-E31002) disproven — attributes bind to the FOLLOWING declaration; check a repro premise against saved bytes before flagging a checker bug.
+- [slang#14617 — slangc can't read/write 260+ char paths on Windows (longPathAware manifest)](14617-longpathaware-manifest-windows-max-path.md) — PR #14622 MERGED 11-20 01:55Z by pdeayton-nv @ `c71a23cf6`; issue stays OPEN (Part-of) pending his Windows runtime verification (mt.exe + both repros), else the pre-agreed CreateFileW follow-up. Chain closed bot-side; reporter took the lifecycle. Family: #14612, #14618.
+- [slang#14618 — `#include` with `..` segments fails once the joined path reaches 260 chars (Windows MAX_PATH)](14618-include-dotdot-max-path.md) — TERMINAL: MERGED 11-19 18:53Z by pdeayton-nv (PR #14625, merge cmt `bb2b7e33d`; issue auto-closed). Loose end: falcor rerun on head `4faa7d5ef` was queued at merge — fixer watches the webhook; no new chain unless it fails. Related: #14612 (same surface).
+- [slang#14624 — bool ordering comparisons emit invalid SPIR-V (OpULessThan on %bool)](14624-bool-ordering-spirv-invalid.md) — TERMINAL: MERGED 11-20 03:29Z (PR #14628 squash `85bde8dc0`; branchless and/or bodies in core.meta.slang; auto-merge after flake rerun green; issue auto-closed). Side-find #14631 FILED-ONLY (self-echo, no dispatch; fixer start = maintainer/operator). Related: #12720, #14402, #3317.
 - [slang#8479 — IntVal folding keeps literal type: default-arg `Payload<16>` != explicit](8479-intval-fold-default-arg-type-identity.md) —
   HUMAN-filed; 11-18 22:22Z jhelferty-nv (maintainer) asked @nv-slang-bot to triage + check if fixed.
   **TRIAGED 23:00Z: NOT fixed** (E30019 self-mismatch reproduced on master v2026.22-37-g4a1d62c5b);
@@ -218,17 +149,7 @@ decay and must be re-read, not remembered.
   slang-check-constraint.cpp:944) vs explicit path coercing (slang-check-overload.cpp:579). Verdict cmt
   6994144955; labels [Diagnostics, reproduced]. **TERMINAL our side 02:10Z: draft PR #14626** @ `6837bbbc0`
   (reviewer dispatched; ready-flip → weekly list). Family: #14476, #14595 (PR #14601 fixes #14595 only).
-- [slang#10234 — int8_t/uint8_t on WGSL gives ICE E99997 instead of a diagnostic](10234-int8-wgsl-ice-triage.md) —
-  HUMAN-filed; 11-18 22:48Z jhelferty-nv (maintainer) asked @nv-slang-bot to triage. **TRIAGED 22:56Z**:
-  bug/low/P2, WGSL emit (`SLANG_UNEXPECTED` at slang-emit-wgsl.cpp:569-573,1106-1110 vs int16's `diagnoseOnce`
-  E56103); reproduced on master; `reproduced` label applied; triage cmt 6994071092.   Rec A = new int8 56xxx
-  diagnostic + `diagnoseOnce` at both emit sites + DIAGNOSTIC_TEST twin of tests/wgsl/int16-uint16-error.slang.
-  **GO-AHEAD 11-19 15:0xZ**: jhelferty-nv "Implement an equivalent approach to int16" (cmt 7012849554) →
-  **TERMINAL our side ~17:3xZ: draft PR #14640** @ `b25fab365` (E56110 diagnoseOnce at both WGSL emit sites
-  + 2 DIAGNOSTIC_TEST twins; r1 REQUEST_CHANGES applied, r2 APPROVE_WITH_NITS all nits applied; local tests
-  green, CI draft-gated; PR behind master — merge-master before ready-flip; awaiting human review, no
-  maintainer response since draft — "acknowledged" misrelay caught by Main codex OUTPUT_REVIEW + corrected).
-  Side-find = already-tracked **#10232** (verified live). Family: #10232, #14188, #14186.
+- [slang#10234 — int8_t/uint8_t on WGSL gives ICE E99997 instead of a diagnostic](10234-int8-wgsl-ice-triage.md) — jhelferty-nv go-ahead 11-19 ("equivalent approach to int16") → TERMINAL our side: draft PR #14640 @ `b25fab365` (E56110 diagnoseOnce at both WGSL emit sites + DIAGNOSTIC_TEST twins; r2 APPROVE_WITH_NITS). PR behind master (merge-master before ready-flip); awaiting human review. Side-find = tracked #10232; family #14188/#14186.
 - [slang#14613 — Support any/all intrinsics on scalars](14613-any-all-scalar-boolean-mask.md) —
   HUMAN-filed 11-18 22:0xZ by tangent-vector ("Tess's Label"). R6 dispatch → triage 22:19Z (P2; gap =
   unranked numerics `IBooleanMask` wrappers → E39999 scalar ambiguity + E40021 tie-breaker crutch) →
@@ -236,89 +157,21 @@ decay and must be re-read, not remembered.
   applied, maintainer APPROVED + flipped ready, **squash-MERGED 11-19 07:22Z (`a4d69f877`), issue
   auto-closed. TERMINAL** — clean E2E in ~9h; tier rule now in wrappers.slang header. Record holds the
   "unranked numerics wrapper" pattern for future E39999 reports.
-- [slang#14612 — Windows: long paths truncated in diagnostics (path-handling scrub)](14612-windows-long-path-truncation-diagnostics.md) —
-  **⭐ TERMINAL 11-20 00:43Z: PR #14621 MERGED** (squash `692a53379` via tangent-vector's armed
-  auto-merge, CI green at head `0790ed0d5`); issue auto-closed by Fixes keyword. E2E ~27h
-  filed→merged. Human-filed 11-18 by tangent-vector; triaged 22:23Z (no in-tree 256-truncation
-  point — real weakness = `_calcCombinedPath` never collapses `..` + wide-API fail >260 chars +
-  MAX_PATH buffers). Fix = interface-normative `calcCombinedPath` simplify (OS/memory/zip aligned,
-  invalid-arg contract) + Windows buffer scrub; 2 review rounds applied (R1 REQUEST_CHANGES 6
-  gaps; R2 APPROVE_WITH_NITS); deterministic Windows CI regression (multiFileModuleCache
-  delimiter) fixed at the test layer; master reconciliation with sibling #14625 (#14618's
-  #include-layer fix) adopted + verified idempotent. Standing items on the issue: 256-display
-  truncation never reproduced in-tree (repro request stands); `\\?\` enablement parked.
+- [slang#14612 — Windows: long paths truncated in diagnostics (path-handling scrub)](14612-windows-long-path-truncation-diagnostics.md) — TERMINAL 11-20: PR #14621 MERGED (squash `692a53379`), issue auto-closed; standing repro request + `\\?\` parked in the record.
 - [slang#8050 — autoformatter mangles `//TEST:`, slang-test silently ignores tests](8050-autoformatter-silently-ignores-tests.md) —
   jhelferty-nv ask 11-18 22:08Z ("check if resolved"). Verdict: resolved **in effect** by #8363 (formatter
   still inserts the space, but slang-test now tolerates it — 3/3 PASS on vk/cpu/cuda). Residual gap
   **FILED as #14614** (bot-filed Terminal, self-echo — no dispatch on its issue_opened).
   **CLOSED by jhelferty-nv 11-18 — chain terminal.**
-- [slang#14611 — spReflection_specializeType runs specialization with no AST-builder scope (latent, #14604 family)](14611-reflection-specializetype-no-ast-builder-scope.md) —
-  BOT-filed 11-18 ~20:47Z by slang-triager (side-find relayed from the PR #14605 review chain; fixer retracted
-  its "verified repro" claim before filing — static-only, no `reproduced` label, honestly graded).
-  **Its issue_opened = self-echo, NO dispatch** (match by title, not number-grep). PARKED for maintainer
-  direction, triager one-shot re-check 2026-11-25; fix = one-line RAII at slang-check-shader.cpp:4210; unfiled
-  twin `ComponentType::isSubType` (linkable.cpp:1230) in scope. Parent chain: #14604 / PR #14605.
-  **11-19 09:11Z: maintainer-requested master sync done** (skiminki-nv "@nv-slang-bot Please sync the PR
-  with master." cmt 7004187932) — head now merge commit **`c0188daeb`** (856b1636 preserved as first
-  parent, no rebase/force-push), PR MERGEABLE, skiminki-nv **re-APPROVED 08:57:27Z**, acceptance re-run
-  green (12/12/8/8/18/18/90/90), guards intact post-reorg (Module guard now at
-  semantic-checking/slang-check-shader.cpp per #14514), CI re-triggered. **MERGED 11-19 12:29:09Z by
-  skiminki-nv @ `c0188daeb`; issue #14604 auto-closed — CHAIN TERMINAL (~18h filed→merged), no further
-  dispatch on its webhooks.** Outstanding: #14611 re-check 11-25; unit-test PR operator-gated.
-- [slang#14595 — array size >INT32_MAX from generic value param silently truncated](14595-generic-array-size-truncation.md) —
-  HUMAN-filed 11-18 15:36Z by skiminki-nv (self-assigned, Diagnostics). Ownership-only park struck per
-  operator/1794884111425; fixer chain ran to **TERMINAL our side 20:23Z, review-complete 21:00Z: draft PR #14601** @ `39f8251c0`
-  (E30034/E30025 at getTypeForDeclRef; 2 RC rounds + APPROVE_WITH_NITS applied; CI green; **stacks under in-flight #14509 —
-  ready-flip only after #14509 merges + maintainer review**, weekly list). WATCH: sentinel boundary
-  `> 2147483646` (#14509's own `>` has the same unsized-sentinel hole — in PR body for his rebase);
-  stand-down sentence retained on issue cmt 6983423985. Side-find **#14610 FILED-ONLY** (layout/reflection
-  escape; durable home #14509 layer) — its issue_opened = self-echo, NO triage dispatch.
-- [slang#14591 — GLSL via-glsl: matrix `%` emits matrix-arg sign/mod/abs; per-row FRem legalization](14591-glsl-matrix-frem-per-row.md) —
-  human (jkwak-work, self-assigned) 11-18, bug/P2. **TERMINAL our side 19:41Z: draft PR #14599** @ `6f0c3ae82`
-  (new legalizeMatrixFRemForGLSL pass + tests; r1 REQUEST_CHANGES + r2 APPROVE_WITH_NITS all applied, codex
-  approve; suites + real-GPU vk via-GLSL green) awaiting human review; ready-flip weekly list; resume on PR
-  webhook only. WATCH: author self-assignee — human self-fix → stand down. Side-find scalar-dividend
-  vector `%`: **DUP RACE — canonical #14608** (triager, 19:44:09Z, `reproduced`) vs fixer's #14609
-  (19:44:31Z, dup; pointer comment pending, human closes). **Both issue_opened = self-echo, NO triage
-  dispatch.** Fold approved into PR #14599 (vector-typed FRem extension, `Fixes #14608`) — no separate
-  chain. WGSL matrix `%` not filed (no validator) — record-only, do not file unvalidated.
+- [slang#14611 — spReflection_specializeType runs specialization with no AST-builder scope (latent, #14604 family)](14611-reflection-specializetype-no-ast-builder-scope.md) — BOT-filed side-find; issue_opened = self-echo, no dispatch. PARKED for maintainer direction; re-check 2026-11-25. Fix = one-line RAII at slang-check-shader.cpp:4210; unfiled twin isSubType (linkable.cpp:1230) in scope. Parent #14604/PR #14605 MERGED 11-19 @ `c0188daeb`.
+- [slang#14595 — array size >INT32_MAX from generic value param silently truncated](14595-generic-array-size-truncation.md) — TERMINAL our side: draft PR #14601 @ `39f8251c0` (E30034/E30025; APPROVE_WITH_NITS; CI green), STACKED under in-flight #14509 — ready-flip only after #14509 merges + maintainer review. WATCH: sentinel boundary >2147483646 (#14509 has the same hole, in its PR body). Side-find #14610 FILED-ONLY (self-echo).
+- [slang#14591 — GLSL via-glsl: matrix `%` emits matrix-arg sign/mod/abs; per-row FRem legalization](14591-glsl-matrix-frem-per-row.md) — TERMINAL our side: draft PR #14599 @ `6f0c3ae82` (r2 APPROVE_WITH_NITS) awaiting human review; ready-flip weekly list; watch self-assignee self-fix; side-find folded as Fixes #14608.
 - [slang#14607 — docs: DescriptorHandle example writes to a read-only StructuredBuffer](14607-descriptorhandle-docs-ro-buffer.md) —
   BOT-filed 11-18 (Discord relay; verified repro + root cause + fix in body). Terminal filing: no triage
   dispatched on its own `issue_opened` (rule from #14548); 👀 posted. **FILED-ONLY — fixer/docs-fix start
   gates on operator**; one-line doc fix, flagged as maintainer-takeable. Do not re-dispatch its webhooks.
-- [slang#14604 — `-specialize` checks its type argument with a stale thread-local AST builder](14604-specialize-stale-ast-builder.md) —
-  HUMAN-filed 11-18 18:17Z by skiminki-nv (MEMBER, self-assigned, `Test Intermittency`): order-dependent debug
-  assert (slang-ast-builder.cpp:468) — `-specialize` path in `executeActionsInner` uses the thread-local
-  current AST builder left by an earlier same-thread compilation; makes
-  `generic-entrypoint-specialization-capabilities.slang` intermittent after `std-lib-serialize.slang`.
-  NOT our filing → R6 dispatch: 👀 posted, **triager dispatched 18:2xZ** on canonical thread (verify the
-  reporter's analysis; reporter's proposed fix = `SLANG_AST_BUILDER_RAII` in `executeActionsInner`). **TRIAGED +
-  REPRODUCED 18:38Z** (triager sess dvzixo; `reproduced` label 18:36:41, triage cmt 6988003103; reporter's
-  analysis Main-verified on master 4a1d62c5b, repro 8/12; not a #13538 dup — distinct unguarded path; recommended
-  fix: RAII in `executeActionsInner` + Module guard; sibling unguarded paths enumerated in the triage memo).
-  **Fixer chain LIVE** — sess-1795027094066-6xrbq9 on the canonical thread since 18:38. **Fixer [Report] 19:15Z,
-  Main-verified: draft PR #14605** @ `856b1636` (2 guards: executeActionsInner + Module::_validateSpecializationArgsImpl,
-  +9/−0, `pr: non-breaking`; repro 8/12→12/12, serialization 18/18, -specialize+FE 90/90; explanation cmt 6988741372;
-  pr-mapping wired; reviewer sess 8jblk9 running since 19:15). Fixer's ⚠ "#13538 misattribution" correction was itself
-  mostly wrong — verified + corrected with receipts (msg 55): family claim is real via our #13538-r5 chain (learning
-  1792060186315), PR #9245 = twin-guard precedent (diff-verified, already cited in triage cmt); wiki concept page is
-  accurate, do not "fix" it (fixer ACCEPTED + closed 19:18Z; no GitHub surface carried the wrong framing).
-  Reflection-chain guards deferred (maintainer tracking). **MAINTAINER APPROVED 19:47Z**: skiminki-nv APPROVED
-  PR #14605 (review 5963842760 "LGTM", head unchanged `856b1636`); PR flipped ready by a human, CI queued;
-  fixer ack cmt 6989652772. **[Fix Report] 20:37Z, Main-verified — TERMINAL ON OUR SIDE**: APPROVE_WITH_NITS
-  (0 bugs, reviewer-lead independent repro 8/12→12/12; the "no CI-runnable test" claim empirically refuted —
-  deterministic two-session unit test, repro at reviewer's runs/drill-14605/), maintainer-approved, CI green so
-  far on `856b1636`, resumable state cmt 6990881573; **awaiting human merge of PR #14605**. Open follow-ups
-  (operator-gated): unit-test PR (C001/C002 nits) + deferred reflection/isSubType guards (side find routed
-  fixer→triager sess dvzixo 20:35 for dedup-before-filing; path already documented as latent in the triage
-  memo/comment). Resume on merge webhook / human comment / triager side-find disposition.
-- [slang#14592 — Vulkan validation errors for atomics on RWBuffer via-glsl: render-test stale format name](14592-atomics-buffer-format-name.md) —
-  human (jkwak-work, self-assigned) 11-18, bug/low/P2, tools/render-test. Triage exonerated the emitters (GLSL
-  `r32ui uimageBuffer`+`imageAtomicAdd` correct): root cause = stale `R_UInt32` TEST_INPUT name silently →
-  `Format::Undefined` → `VK_FORMAT_UNDEFINED` texel-buffer view; atomics no-op'd. **Draft PR #14598** @ `5f6bbc858`
-  (fixer sess g79t42; data fix + render-test parse hardening + GPU-free emission pin; review APPROVE_WITH_NITS
-  applied, codex gates approve; repro 2/2 + atomics 21/21 on L40S). Ready-flip weekly list; issue closes on merge;
-  slang-rhi Undefined-view guard left as optional cross-repo follow-up. WATCH: author self-assignee — human self-fix → stand down.
+- [slang#14604 — `-specialize` checks its type argument with a stale thread-local AST builder](14604-specialize-stale-ast-builder.md) — TERMINAL: PR #14605 MERGED 11-19 12:29Z by skiminki-nv @ `c0188daeb` (~18h filed→merged); no dispatch on its webhooks. Outstanding: #14611 re-check 11-25 + operator-gated unit-test PR. History in the record.
+- [slang#14592 — Vulkan validation errors for atomics on RWBuffer via-glsl: render-test stale format name](14592-atomics-buffer-format-name.md) — TERMINAL: draft PR #14598 @ `5f6bbc858` (APPROVE_WITH_NITS, repro + atomics green on L40S), ready-flip weekly list; render-test root cause, rhi view guard optional; watch self-assignee self-fix.
 - [slang#14590 — GLSL via-glsl: no scalar-splat legalization, glslang rejects scalar>>int2](14590-glsl-scalar-vector-shift.md) —
   human (jkwak-work, self-assigned) 11-18, bug/P2. Triaged 15:16Z on master `4a1d62c5b`; fix = approach A1 (reuse
   `legalizeScalarOperandsToMatchComposite` via a Khronos-branch hook). **Draft PR #14597** @ `272b43619` (4 commits,
@@ -350,22 +203,12 @@ decay and must be re-read, not remembered.
   maintainer asks, merge); issue auto-closed via Fixes. Nothing owed.
 - [slang#14570 — CPU targets reject all wave intrinsics (wave-of-one proposal)](14570-cpu-wave-intrinsics-rejected.md) —
   human (albertrodriguezclo) 11-18, enhancement/P2. TRIAGED: root cause = subgroup_* capability aliases exclude cpp (capdef:2579+), CPU dispatch sequential so wave-of-one is correct; recommended approach A (cpp disjuncts + single-lane bodies). PARKED on assignee jhelferty-nv (semantics + scope, WaveReadLaneAt(lane≠0), #8244 interaction); triage cmt 6967058645; one-shot re-check 11-25 02:30Z; fixer on maintainer go.
-- [slang#14569 — LLVM CPU: E41403 "invalid atomic destination" on RWStructuredBuffer<Atomic<T>> element atomics](14569-cpu-llvm-sb-atomic-e41403.md) —
-  human (albertrodriguezclo, #14036/#14567 reporter) 11-18 00:22Z. Triaged+reproduced same night (bug/P2, `reproduced` label, Type Bug);
-  root cause per triage: `lowerCPUResourceTypes` rewrites SB element ptrs to `AddressSpace::Generic` BEFORE `validateAtomicOperations` →
-  `isValidAtomicDest` rejects (approach A: emit `UserPointer` at the 3 lowering sites). Draft PR #14575 (head `9799acfab`,
-  r3 APPROVE_WITH_NITS applied, E55219 gate + 5-variant test; tests/llvm 22/22) **PARKED 11-18 19:02Z on maintainer direction:
-  land ExprInfo PR #14470 first** (jhelferty-nv, cmt 6988569380; Tess: may become a systematic check) — ready-flip CANCELLED,
-  [Triage Resolution] held; one-shot re-check i14569-recheck-exprinfo-d889 (11-25) watches #14470. Side-finds **#14578**
-  (static-init atomics silently dropped) / **#14579** (0-param kernel verifier-invalid call sites) triager-filed,
-  **FILED-ONLY — fixer chains gate on operator** (dashboard msg 65; re-check t-9e76ed 09:30 UTC).
-  Guards: #14191 emitter gap is this chain's expected terminal state, not a failure; #14190–#14193
-  remain maintainer-owned filed-only — no side fixer chains.
+- [slang#14569 — LLVM CPU: E41403 "invalid atomic destination" on RWStructuredBuffer<Atomic<T>> element atomics](14569-cpu-llvm-sb-atomic-e41403.md) — PARKED 11-18 on maintainer: land ExprInfo PR #14470 first (jhelferty-nv cmt 6988569380); ready-flip CANCELLED; one-shot re-check i14569-recheck-exprinfo-d889 (11-25). Side-finds #14578/#14579 filed-only (operator-gated). Guards: #14191 = expected terminal; #14190–#14193 maintainer-owned.
 - [slang#14567 — C++ target `-fp-mode precise` leaves no trace → downstream FMA contraction](14567-cpp-precise-fp-contract.md) —
   human (albertrodriguezclo) 11-17/18, cpp sibling of #14036 (CUDA) and #13689 (Metal). **TERMINAL on our side 11-18 04:05Z: draft PR #14574 @ `07e612452`** (review complete, suites green, issue cmt 6965116899 PATCHed to fix-in-PR state). RESTING on maintainer review; ready-flip weekly list; detail in the record.
 - [slang#14557 / PR #14563 — NVRTC: enable OptiX headers for compute shaders that use optix_coopvec](14557-nvrtc-optix-coopvec-compute.md) —
   **TERMINAL 11-18 06:16Z**: fixed via maintainer jkwak-work's own PR **#14560** (merged 04:51:23Z, auto-closed issue; same RequireOptix-style approach + optix-dev v9.1.0). Our reviewed duplicate draft #14563 closed 06:14:12Z per the leave-open/shepherd-picks disposition (cross-ref cmt 6964115180). Fleet lesson (fixer-shared): check for a maintainer's own PR before opening ours. No open items; its webhooks need no dispatch.
-- [slang#14559 — slang-test `targets=` option for COMPARE_COMPUTE tests](14559-slang-test-targets-option.md) — triaged 11-17 (feature/P2, cmt 6961208634); **PARKED on operator fixer go/no-go**; triager one-shot re-check 11-24 (`i14559-recheck-123b`, sess iwa977) — no re-dispatch. Detail in the record.
+- [slang#14559 — slang-test `targets=` option for COMPARE_COMPUTE tests](14559-slang-test-targets-option.md) — **TERMINAL**: author jkwak-work self-implemented, PR #14561 merged 11-20, issue closed COMPLETED; re-check 11-24 confirmed. No fixer chain existed.
 - [slang#14555 — general sourceLoc/decoration preservation through type legalization](14555-triage-memo.md) — TRIAGED 11-19 enhancement/P2 (own filing at maintainer request, follow-up to #14517); assignee = requesting maintainer; no fixer dispatch. Full triage memo in the record.
 - [slang#13534 — allow link-time constants in vk::binding arguments](13534-link-time-vk-binding-constants.md) — TERMINAL on our side 11-17: draft PR #14549 (review-complete APPROVE_WITH_NITS) resting on maintainer review; before undraft A5 regen + CI green + E39034/#14497 collision caveat; weekly list, no timer; side-find #14556 filed-only. State in the record.
 - [slang#13833 / PR #14530 — borrow parameter read-only in the body](13833-14530-borrow-param-readonly.md) — **TERMINAL 11-18:** draft PR #14530 @ `b713622d1` (review rounds + CI green) awaits jhelferty-nv review; formal [Fix Report] marker undeliverable (fleet defect escalated, msg 54353). Webhook-driven from here; detail in the record.
@@ -691,7 +534,7 @@ decay and must be re-read, not remembered.
 - [slang PR #12674 — attribute-name parsing](12674-attribute-name-parsing.md) —
   bot PR pushed 10-24 (head c7879c5a31), CI green. **Parked on maintainers**; webhooks deliver replies to the fixer.
 - [slang PR #11387 — autodiff readNone carry gate](11387-autodiff-readnone-carry-gate.md) —
-  bot PR waiting on jvepsalainen-nv (A)/(B) + #12502 placement; CI green bar falcor. Last checked 11-17 (no human activity, BEHIND); next one-shot `rechase-11387-maintainer-7584` (11-24).
+  bot PR waiting on jvepsalainen-nv (A)/(B) + #12502 placement; CI green bar falcor. 11-24: BEHIND→DIRTY, dispatched slang-fixer (pinned) for a plain master merge + L40S tests + push; next one-shot +7d after merge verification.
 - [slang#13877 — packed StructuredBuffer record loads stay scalar on CUDA/Vulkan](13877-packed-structuredbuffer-scalar-loads.md) —
   member perf report, triaged 10-22. **TERMINAL 10-29**: human-owned (kaizhangNV, Q4). Resumes only on a human comment.
 - [slang#13870 — parser allows assignment in the middle operand of `?:`](13870-ternary-middle-operand-assignment.md) —
@@ -1028,6 +871,10 @@ decay and must be re-read, not remembered.
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   PR #881 (`handOffShared`/`takeOverShared`, non-draft, GPU-CI-green @`ec514f4`) parked on jhelferty's R4/R5 answer + skallweitNV's review. Re-chase `rhi-881-review-rechase-4658` 11-04.
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md)
+- [slang-rhi#985 — Metal: honour `existingDeviceHandles` (MTLDevice, MTLCommandQueue)](rhi-985-metal-existing-device-handles.md) —
+  triaged 11-24 (feature-request, P2, all premises confirmed). PARKED on direction: skallweitNV confirms
+  slot layout + own/borrow treatment, or operator authorizes a fix chain (RetainPtr never TransferPtr crux).
+  Re-check `recheck-rhi-985-36bc` 12-01.
 - [slang#13549 — bump pinned LLVM to drop the ARM COFF patch](13549-llvm-pin-coff-patch.md) — OPEN; llvm/llvm-project#229712 merged 10-26 but is in no LLVM release yet (not 23.1.5, 11-06); maintainer-owned (jkwak-work); one-shot re-chase `rechase-slang-13549-r2-8b4e` 11-20 09:00Z
 - [slang#13565 — SemanticChecking compile-time step since 10-07](13565-semcheck-compile-perf-step.md) — OPEN, maintainer-owned (jvepsalainen-nv), silent; re-measure from absolute daily medians. Re-chase `rechase-13565-r5-a966`.
 
@@ -1122,6 +969,10 @@ decay and must be re-read, not remembered.
 - [slang-rhi#974 — CPU dispatch runs all thread groups sequentially on the submitting thread](slang-rhi-974-cpu-parallel-dispatch.md) — human feature request 11-17; triaged 11-18 feature/perf medium/P2, rec approach A (per-dispatch fork-join on `globalTaskPool()` in `cpu-command.cpp`). Parked for maintainer direction (asks in triage cmt 6964717623); one-shot re-check t-d34cce 12-02 09:00Z.
 
 - [slang-rhi#976 — CPU texture classification uses `arrayLength > 1` (cube array arrayLength=1 reads face 0)](rhi-976-cpu-texture-array-classification.md) — **TERMINAL-on-our-side 11-18 22:34Z**: draft PR slang-rhi#977 @ `4330c53` (type-based classification, review converged APPROVE_WITH_NITS — nits applied, tests + CI green) — awaits human review, ready-flip on the weekly list. Scope guard held: #960 separate.
+
+- [slang-rhi#984 — CUDA cooperative launch (grid-wide barrier)](rhi-984-cuda-cooperative-launch.md) — human feature request 11-24 (albertrodriguez, has ~130-line prototype, will self-PR); triaged 11-24 feature/low/P3, rec approach A (adopt as written; `cuLaunchKernelEx` opt-symbol via #982 pattern). Parked for author's PR — NO fixer dispatch; triage cmt 7141574764; one-shot re-check 11-28 to route the PR into review when it lands.
+
+- [slang#14480 — static_assert/constexpr constant-folding umbrella](14480-static-assert-constexpr-umbrella.md) — sub-umbrella of #14473. Triaged 11-17; **parked awaiting maintainer direction** (decomposition/child seeding). Re-check 11-24: no change; re-chase r1 `rechase-slang-14480-r1` fires 12-08 04:00Z (cap 3).
 
 - [Discord drafts filing batch 2026-11-17](discord-drafts-batch-2026-11-17.md) — h7per P0-cand + 5 verified
   Discord drafts (11/12/14/15/16) + #6947 comment, all verified PASS on master; staged, blocked on the triager's

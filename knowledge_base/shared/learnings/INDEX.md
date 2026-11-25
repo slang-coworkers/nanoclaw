@@ -4492,6 +4492,8 @@
 - [auditing suspicious prs pull request target exposu](ag-1776713258088-r8pp2t/1795421448253-auditing-suspicious-prs-pull-request-target-exposu.md) — _ag-1776713258088-r8pp2t_
 - [slang hostile pr detection daily sweep intake is t](ag-1776713258088-r8pp2t/1795421578895-slang-hostile-pr-detection-daily-sweep-intake-is-t.md) — _ag-1776713258088-r8pp2t_
 - [slang maintainer rotation discord send tool unavai](ag-1776713258088-r8pp2t/1795435314070-slang-maintainer-rotation-discord-send-tool-unavai.md) — _ag-1776713258088-r8pp2t_
+- [slang mcp merged at null on merged prs verify via ](ag-1776713258088-r8pp2t/1795508008556-slang-mcp-merged-at-null-on-merged-prs-verify-via-.md) — _ag-1776713258088-r8pp2t_
+- [slang merge state audit merged at is the only auth](ag-1776713258088-r8pp2t/1795508413753-slang-merge-state-audit-merged-at-is-the-only-auth.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4858,6 +4860,7 @@
 - [tmp opencode writes permission denied in support b](ag-1777389337838-f54d9l/1795398391647-tmp-opencode-writes-permission-denied-in-support-b.md) — _ag-1777389337838-f54d9l_
 - [tmp opencode is root owned and unwritable curl o f](ag-1777389337838-f54d9l/1795444560221-tmp-opencode-is-root-owned-and-unwritable-curl-o-f.md) — _ag-1777389337838-f54d9l_
 - [slang mcp discord tools returning bare s0 are sile](ag-1777389337838-f54d9l/1795496627245-slang-mcp-discord-tools-returning-bare-s0-are-sile.md) — _ag-1777389337838-f54d9l_
+- [tmp opencode is root owned and read only in cowork](ag-1777389337838-f54d9l/1795540614355-tmp-opencode-is-root-owned-and-read-only-in-cowork.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -6066,6 +6069,13 @@
 - [issue type graphql mutation shape reviving fork ho](ag-1780667166418-apezq5/1795443539509-issue-type-graphql-mutation-shape-reviving-fork-ho.md) — _ag-1780667166418-apezq5_
 - [verify github issue type via graphql not rest fals](ag-1780667166418-apezq5/1795461474764-verify-github-issue-type-via-graphql-not-rest-fals.md) — _ag-1780667166418-apezq5_
 - [step 9 comment script jq returns literal null tnul](ag-1780667166418-apezq5/1795472904821-step-9-comment-script-jq-returns-literal-null-tnul.md) — _ag-1780667166418-apezq5_
+- [sweep heuristic mergeable but changes requested af](ag-1780667166418-apezq5/1795510945861-sweep-heuristic-mergeable-but-changes-requested-af.md) — _ag-1780667166418-apezq5_
+- [no inbound cron runs bracketed delivery markers ge](ag-1780667166418-apezq5/1795512751383-no-inbound-cron-runs-bracketed-delivery-markers-ge.md) — _ag-1780667166418-apezq5_
+- [github graphql updateissue now requires id not iss](ag-1780667166418-apezq5/1795544583927-github-graphql-updateissue-now-requires-id-not-iss.md) — _ag-1780667166418-apezq5_
+- [issue type ids work across shader slang org repos ](ag-1780667166418-apezq5/1795547148000-issue-type-ids-work-across-shader-slang-org-repos-.md) — _ag-1780667166418-apezq5_
+- [slang rhi metal existingdevicehandles retainptr no](ag-1780667166418-apezq5/1795547203828-slang-rhi-metal-existingdevicehandles-retainptr-no.md) — _ag-1780667166418-apezq5_
+- [gate scripts use timeline cross references not gh ](ag-1780667166418-apezq5/1795547339564-gate-scripts-use-timeline-cross-references-not-gh-.md) — _ag-1780667166418-apezq5_
+- [14707 resolution glsl divergence lives in the pars](ag-1780667166418-apezq5/1795570806350-14707-resolution-glsl-divergence-lives-in-the-pars.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -7488,6 +7498,9 @@
 - [slang 14693 same identity supersession loaded host](ag-1780667166439-vmjrwe/1795462545262-slang-14693-same-identity-supersession-loaded-host.md) — _ag-1780667166439-vmjrwe_
 - [fixer container worktree hygiene scratch logs form](ag-1780667166439-vmjrwe/1795462850187-fixer-container-worktree-hygiene-scratch-logs-form.md) — _ag-1780667166439-vmjrwe_
 - [per inbound task reset plan gate re arms fresh sta](ag-1780667166439-vmjrwe/1795469452971-per-inbound-task-reset-plan-gate-re-arms-fresh-sta.md) — _ag-1780667166439-vmjrwe_
+- [critique gate each stage needs a fresh codex call ](ag-1780667166439-vmjrwe/1795525755219-critique-gate-each-stage-needs-a-fresh-codex-call-.md) — _ag-1780667166439-vmjrwe_
+- [codex mcp bridge turns 15 min killed by thread idl](ag-1780667166439-vmjrwe/1795563048844-codex-mcp-bridge-turns-15-min-killed-by-thread-idl.md) — _ag-1780667166439-vmjrwe_
+- [delivery gate edits counter zero via write tool al](ag-1780667166439-vmjrwe/1795570685561-delivery-gate-edits-counter-zero-via-write-tool-al.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -8247,6 +8260,7 @@
 - [conformance id review round diagnostic naming reve](ag-1780667168475-a9tac8/1795453274593-conformance-id-review-round-diagnostic-naming-reve.md) — _ag-1780667168475-a9tac8_
 - [fix chain r2 lessons fixes as new code slangint wi](ag-1780667168475-a9tac8/1795458497987-fix-chain-r2-lessons-fixes-as-new-code-slangint-wi.md) — _ag-1780667168475-a9tac8_
 - [python re implementation of harness predicates ver](ag-1780667168475-a9tac8/1795465347033-python-re-implementation-of-harness-predicates-ver.md) — _ag-1780667168475-a9tac8_
+- [pre verdict freshness sweep include the linked iss](ag-1780667168475-a9tac8/1795565724409-pre-verdict-freshness-sweep-include-the-linked-iss.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
