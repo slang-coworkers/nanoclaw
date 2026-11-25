@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-3145 learnings. [Catalog](../index.md)
+3151 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -23,6 +23,7 @@ type: topic
 - [#12871 host-VM PathInfo::type UB is not neg()-specific — hits builtin-scalar autodiff too](../learnings/1788537147888-12871-host-vm-pathinfo-type-ub-is-not-neg-specific.md)
 - [#13742/#13301: the slangpy issue it fixes is #1204 (not #1167). Second-order autodiff through an existential or generic segfaults slangc on master](../learnings/1792299824761-13742-13301-the-slangpy-issue-it-fixes-is-1204-not.md)
 - [#14537: compressed subtype witness bypasses normalization on the method-call lookup path (two-level inherited requirement via existential box)](../learnings/1794909027127-14537-compressed-subtype-witness-bypasses-normaliz.md)
+- [#14707 resolution: GLSL divergence lives in the parser; producer narrowing is load-bearing](../learnings/1795570806350-14707-resolution-glsl-divergence-lives-in-the-pars.md)
 - [#language glsl version mis-validates against Slang versions (not isValidGLSLVersion)](../learnings/1784916319659-language-glsl-version-mis-validates-against-slang-.md)
 - [$q intrinsic strings must also be understood by the emitter's fold heuristic](../learnings/1792284128530-q-intrinsic-strings-must-also-be-understood-by-the.md)
 - [-cpu/host-callable and slangi/HostVM are distinct emit paths; PathInfo::type UB fix is HostVM-only](../learnings/1788383948543-cpu-host-callable-and-slangi-hostvm-are-distinct-e.md)
@@ -565,6 +566,7 @@ type: topic
 - [extras/formatting.sh exits 0 without formatting when only clang-format-17 is installed](../learnings/1790719063408-extras-formatting-sh-exits-0-without-formatting-wh.md)
 - [extras/formatting.sh exits rc=0 when clang-format/gersemi/shfmt are missing](../learnings/1785894269381-extras-formatting-sh-exits-rc-0-when-clang-format-.md)
 - [Falcor approval gate makes intermittent test-slang reds un-rerunnable](../learnings/1786465690642-falcor-approval-gate-makes-intermittent-test-slang.md)
+- [Falcor gate-held run can dispatch jobs that die on expired build artifacts (slang#14704 sm80)](../learnings/1795579604377-falcor-gate-held-run-can-dispatch-jobs-that-die-on.md)
 - [Fast fresh Slang source + cross-release codegen diff without REST quota](../learnings/1793089764882-fast-fresh-slang-source-cross-release-codegen-diff.md)
 - [Fast slangc build in a fresh slang PR worktree (for SPIR-V measurement)](../learnings/1793463061545-fast-slangc-build-in-a-fresh-slang-pr-worktree-for.md)
 - [Fast SlangPy scratch worktree: clone submodules from a sibling worktree; build slangpy_torch into a --target dir](../learnings/1793838656591-fast-slangpy-scratch-worktree-clone-submodules-fro.md)
@@ -765,6 +767,7 @@ type: topic
 - [isSimpleType polarity in Slang empty-type legalization: true = RETAINED, and Metal returns false](../learnings/1786001077628-issimpletype-polarity-in-slang-empty-type-legaliza.md)
 - [Issue #5667 Metal render tests: PR #5666 fix landed via #6063, render rows still disabled](../learnings/1795035417817-issue-5667-metal-render-tests-pr-5666-fix-landed-v.md)
 - [Issue-closing is maintainer-only for slang-triager (hook blocks command text too)](../learnings/1794824034217-issue-closing-is-maintainer-only-for-slang-triager.md)
+- [Issue-Type IDs work across shader-slang org repos; /tmp/opencode may be unwritable](../learnings/1795547148000-issue-type-ids-work-across-shader-slang-org-repos-.md)
 - [issue_opened webhook by nv-slang-bot[bot] is often our own in-flight chain — check before dispatching](../learnings/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md)
 - [jhelferty-nv's GitHub identity is used by the slang triage automation](../learnings/1793176874441-jhelferty-nv-s-github-identity-is-used-by-the-slan.md)
 - [JSON reflection drops the global/entry-point scope's own container binding (the $Globals cbuffer)](../learnings/1785535775197-json-reflection-drops-the-global-entry-point-scope.md)
@@ -1842,6 +1845,7 @@ type: topic
 - [Slang merge-queue eviction with green merge_group CI = check the slangpy-side "Slang PR #N" run](../learnings/1792830200492-slang-merge-queue-eviction-with-green-merge-group-.md)
 - [slang merge-queue evictions with green merge_group CI = slangpy's SlangPy Tests check](../learnings/1793349571474-slang-merge-queue-evictions-with-green-merge-group.md)
 - [slang merge-queue green ≠ C++ unit-test health (test-server masking, #11911)](../learnings/1783239972308-slang-merge-queue-green-c-unit-test-health-test-se.md)
+- [Slang merge-state audit: merged_at is the only authoritative window clock; MQ commits land before PR close; and "closed in window" ≠ "merged in window"](../learnings/1795508413753-slang-merge-state-audit-merged-at-is-the-only-auth.md)
 - [Slang Metal 'folds' global-varying shadows via generic deferBufferLoad forwarding, not KernelContext](../learnings/1792695049867-slang-metal-folds-global-varying-shadows-via-gener.md)
 - [Slang Metal backend emits FP literals with NO type suffix (issue #11837)](../learnings/1782814984950-slang-metal-backend-emits-fp-literals-with-no-type.md)
 - [slang Metal/WGSL entry-point output-struct flatten desyncs var-layout (crash)](../learnings/1784382530471-slang-metal-wgsl-entry-point-output-struct-flatten.md)
@@ -2251,6 +2255,7 @@ type: topic
 - [slang-mcp discord_read_messages fails "Unsupported channel type" on thread channels](../learnings/1789537044392-slang-mcp-discord-read-messages-fails-unsupported-.md)
 - [slang-mcp github_search_issues date qualifiers return empty](../learnings/1780906273275-slang-mcp-github-search-issues-date-qualifiers-ret.md)
 - [slang-mcp github_search_issues returning empty (use list+filter)](../learnings/1785073457026-slang-mcp-github-search-issues-returning-empty-use.md)
+- [slang-mcp merged_at null on merged PRs — verify via PR API](../learnings/1795508008556-slang-mcp-merged-at-null-on-merged-prs-verify-via-.md)
 - [slang-mcp: github_list_issues and github_get_discussions return FALSE EMPTIES (is:merged actually works; merged_at is the broken field)](../learnings/1785744880116-slang-mcp-github-list-issues-and-github-get-discus.md)
 - [slang-pr-report script actual path differs from scheduled-task instructions](../learnings/1787548020529-slang-pr-report-script-actual-path-differs-from-sc.md)
 - [slang-pr-report: two on-disk copies at different versions; select by capability not path](../learnings/1787593536039-slang-pr-report-two-on-disk-copies-at-different-ve.md)
@@ -2323,6 +2328,7 @@ type: topic
 - [slang-rhi imported-buffer null m_api: the create site shares the deref, not just the destructor](../learnings/1789372389751-slang-rhi-imported-buffer-null-m-api-the-create-si.md)
 - [slang-rhi macOS CI: a green macOS job does NOT mean Metal was tested](../learnings/1785756797105-slang-rhi-macos-ci-a-green-macos-job-does-not-mean.md)
 - [slang-rhi maintainer prefers explicit ownership over a field doing double duty (#860 → #945)](../learnings/1793091793971-slang-rhi-maintainer-prefers-explicit-ownership-ov.md)
+- [slang-rhi Metal existingDeviceHandles: RetainPtr not TransferPtr; slot conventions; no slang-rhi labeling policy](../learnings/1795547203828-slang-rhi-metal-existingdevicehandles-retainptr-no.md)
 - [slang-rhi Metal: GitHub paravirtual GPU uses useResource fallback; pointers stored inside buffers are never made resident](../learnings/1793686704462-slang-rhi-metal-github-paravirtual-gpu-uses-useres.md)
 - [slang-rhi no longer guarantees ABI (README policy since #895) — older "ABI break" objections may be stale](../learnings/1793622511423-slang-rhi-no-longer-guarantees-abi-readme-policy-s.md)
 - [slang-rhi NV-extension feature gate (fp16-vector atomics) + Vulkan-Headers v1.4.318 retires bump caveat](../learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md)

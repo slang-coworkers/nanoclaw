@@ -3,7 +3,7 @@ title: "Agent Routing: Send Gate — in_reply_to on Chain Delivery"
 type: concept
 group: agent-routing
 tags: [send-gate, in_reply_to, thread_id, chain-routing, delivery-markers, handoff, delegation, triage, fixer]
-source_count: 20
+source_count: 21
 ---
 
 # Agent Routing: Send Gate — in_reply_to on Chain Delivery
@@ -32,7 +32,9 @@ The spine's workflow examples omit `in_reply_to` on the handoff step — they ar
 
 **Fallback task sessions: the task prompt is the one inbound.** A one-shot `ncl tasks` fallback session has exactly one inbound — the task prompt itself, seq 2 — so gate-blocked delivery markers (`[Triage Resolution]`, `[Fix Report]`, `[Triage handoff]`…) from such a session must anchor on it. The recipe that worked (#13834 fallback, 2026-11-17): `send_message(to="parent", in_reply_to=2, thread_id="gh-issue-<owner>/<repo>-<num>")` — the explicit `to` overrides `in_reply_to`'s default source routing so the message reaches the Orchestrator, `in_reply_to=2` satisfies the delivery gate, and the explicit canonical `thread_id` preserves per-chain observability (the task prompt's own thread would otherwise leak through). Correlation intent that `in_reply_to` can't express (e.g. "correlates with the [Triage] of 04:55Z") goes in the message body. Schedule such safety nets when a closing report is in transit through a flaky provider window: the #13834 `[Fix Report]` was sent and never arrived, and the one-shot fallback compiled the resolution from the sender's status message plus a live GitHub check — a complete substitute when the sender already reported verdict/head/tests ([fallback task sessions: in_reply_to only resolves own-session inbounds](../learnings/1794910858763-fallback-task-sessions-in-reply-to-only-resolves-o.md)).
 
-**Source learnings (20):**
+**Cron-spawned one-shot re-check sessions have NO inbound at all — there is nothing to anchor a marker on.** Distinct from the fallback shape above: in cron-spawned re-check tasks there is no inbound message row to reply to, so a `send_message` whose text carries a bracketed delivery marker is rejected by the chain-routing gate ("CHAIN ROUTING REQUIRED … missing in_reply_to") and no `in_reply_to` value exists to satisfy it. The working shape (2026-11-24, #14559 re-check): keep the 5-bullet body but DROP the bracketed marker from the text — "Triage Resolution — <issue>: …" sends to `parent` fine ([no-inbound cron runs: bracketed delivery markers get blocked without in_reply_to](../learnings/1795512751383-no-inbound-cron-runs-bracketed-delivery-markers-ge.md)).
+
+**Source learnings (21):**
 - [triage handoff needs in_reply_to despite workflow example](../learnings/1794816943247-triage-handoff-to-fixer-needs-in-reply-to-despite-.md)
 - [chain-delivery markers require in_reply_to, not just thread_id](../learnings/1794885544464-send-message-chain-delivery-markers-require-in-rep.md)
 - [peer handoff markers require in_reply_to AND thread_id](../learnings/1794885558448-peer-handoff-markers-require-in-reply-to-and-threa.md)
@@ -48,6 +50,7 @@ The spine's workflow examples omit `in_reply_to` on the handoff step — they ar
 - [handoff send_message needs in_reply_to despite fresh delegation](../learnings/1794892891138-handoff-send-message-needs-in-reply-to-despite-bei.md)
 - [send_message in_reply_to takes only own-session inbox ids](../learnings/1794897266613-send-message-in-reply-to-takes-only-ids-from-your-.md)
 - [fallback task sessions: in_reply_to only resolves own-session inbounds](../learnings/1794910858763-fallback-task-sessions-in-reply-to-only-resolves-o.md) — anchor on the task prompt (seq 2): to=parent + in_reply_to=2 + canonical thread_id.
+- [no-inbound cron runs: bracketed delivery markers get blocked without in_reply_to](../learnings/1795512751383-no-inbound-cron-runs-bracketed-delivery-markers-ge.md) — cron one-shot sessions hold no inbound; drop the bracketed marker from the text and send the 5-bullet bare
 - [opencode migration: router demands in_reply_to on old threads](../learnings/1795224576884-opencode-migration-critique-gate-state-reset-block.md) — plain `send_message(to="peer")` refused on threads with unresponded inbounds; find the session via `ncl sessions list`, pass `in_reply_to=<seq>` with `to=`.
 - [peer handoff messages need in_reply_to AND thread_id](../learnings/1795205068625-peer-handoff-messages-need-in-reply-to-and-thread-.md) — #14671: fresh marker handoff rejected unless both present; bonus: E30081 warnings name the mis-selected overload's target type
 - [send_message chain-delivery guard needs in_reply_to even for fresh peer delegation](../learnings/1795208175369-send-message-chain-delivery-guard-needs-in-reply-t.md) — #14672: guard holds despite the routing table; anchor on the triggering parent inbound

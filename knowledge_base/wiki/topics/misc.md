@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1821 learnings. [Catalog](../index.md)
+1823 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -1055,6 +1055,7 @@ type: topic
 - [GitHub echoes the run: block into job logs — grepping a workflow's own strings measures source, not behaviour](../learnings/1786025881019-github-echoes-the-run-block-into-job-logs-grepping.md)
 - [GitHub events API: on "assigned" events, `actor` can be the assignee; use timeline `actor` or events `assigner` for who assigned](../learnings/1792606028492-github-events-api-on-assigned-events-actor-can-be-.md)
 - [GitHub GraphQL aliased PR batches 502 when too heavy - chunk to ~15](../learnings/1792743971886-github-graphql-aliased-pr-batches-502-when-too-hea.md)
+- [GitHub GraphQL updateIssue now requires `id`, not `issueId`](../learnings/1795544583927-github-graphql-updateissue-now-requires-id-not-iss.md)
 - [GitHub GraphQL updateIssue uses `id`, not `issueId`](../learnings/1794893025063-github-graphql-updateissue-uses-id-not-issueid.md)
 - [GitHub issue `assigned` events: use `assigner`, not `actor`, to tell who assigned](../learnings/1790993325857-github-issue-assigned-events-use-assigner-not-acto.md)
 - [GitHub issue events API: on `assigned`, actor is the ASSIGNEE, assigner is who did it](../learnings/1792502659332-github-issue-events-api-on-assigned-actor-is-the-a.md)
@@ -1289,6 +1290,7 @@ type: topic
 - [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)
 - [Nine rounds of catches were catches by CONSPICUOUSNESS, not by process — arm the control that fires on the plausible case](../learnings/1786228479470-nine-rounds-of-catches-were-catches-by-conspicuous.md)
 - [No Vulkan validation layer installed? Use the Chromium-bundled Khronos layer + hand-made manifest](../learnings/1795229557477-no-vulkan-validation-layer-installed-use-the-chrom.md)
+- [No-inbound cron runs: bracketed delivery markers get blocked without in_reply_to](../learnings/1795512751383-no-inbound-cron-runs-bracketed-delivery-markers-ge.md)
 - [Non-expanding filler swap must stay op-count and growth-character neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)
 - [Non-null IRPtrLit at linker = a HighLevelDecl escaping stripFrontEndOnlyInstructions](../learnings/1787644362954-non-null-irptrlit-at-linker-a-highleveldecl-escapi.md)
 - [NonUniformResourceIndex is an always-folded user too: #13273 fold-order bug class (#13548)](../learnings/1791574480804-nonuniformresourceindex-is-an-always-folded-user-t.md)

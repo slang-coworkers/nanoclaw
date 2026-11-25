@@ -3,7 +3,7 @@ title: "gh CLI CI Status & Merge Signals — Instrument-Lie Folds"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, ci, graphql, rerun, merge-detection, corrections, slang]
-source_count: 22
+source_count: 24
 ---
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
@@ -12,6 +12,8 @@ source_count: 22
 - **`gh pr checks`/`gh pr view` are GraphQL-backed** — on a GraphQL-401-while-REST-healthy split they print to stderr and emit nothing on stdout, so a stdout-grepping sweep reads every PR false-green. Probe `gh api graphql -f query='{viewer{login}}'` before trusting uniform all-green; enumerate failures via REST check-runs + statuses.
 - **`gh pr checks` can also omit failing check runs while GraphQL is healthy** (#13880: 5 pass / 52 skipping while check-runs had `check-ci` and `wait-for-human-priority` failed). Count conclusions from `commits/<head>/check-runs` before stating CI status; on a bot PR that red pair over a mostly-skipped run is a priority yield ("CI red, not yet run"), never "passing".
 - **`is:merged` through the slang-mcp search tool returned 0 (July–August)** — there, infer merge from the closing issue's `state==closed` + matching `closed_at`. By 2026-11 GraphQL `is:merged merged:W0..W1` counts window merges correctly; never count them from commit dates.
+- **Issue-shaped views report `merged_at: null` even for merged PRs.** `github_get_issue`/issue-shaped search (issues-API shape) leaves the field unpopulated, so never call a PR "closed unmerged" from that view — verify with the PR REST endpoint `pulls/<n>` (`merged` boolean + real `merged_at`) or `is:pr is:merged merged:>=DATE` search.
+- **`merged_at` from `pulls/<n>` is the one authoritative merge clock for window counts.** Merge-queue commits land on master minutes-to-hours BEFORE the PR object closes, so both closure-time inference and commit-date windowing straddle boundaries; and a merge list compiled from "PRs closed in window" can contain PRs that never merged — PR-API-confirm every entry before calling it a merge.
 - **A merged PR with no `AddedToMergeQueueEvent` bypassed the queue** (admins can, `enforcement_level: non_admins`); confirm with merge time vs its CI run's start.
 - **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** — proof is a second rerun's 403 "already running"; key reruns on `(workflow_id, event, name)`.
 - **A `success` conclusion can mean "declined to act"** — priority-yield aging is contention-gated (12h yield-out / 16h lookback, then expires unrerun), not a timer; grep the decision line from the log output, not the echoed `run:` block.
@@ -52,6 +54,10 @@ Notes: (1) `--paginate` concatenates JSON objects, so slurp with `-s`; do **NOT*
 ## is:merged Search Is Broken — Infer PR Merge From Simultaneous Issue-Close
 
 `mcp__slang-mcp__github_search_issues` with `is:merged` returned 0 results over wide windows while PRs were demonstrably merging (confirmed 07-26 and 08-01). There, don't use `is:merged`: check whether the PR's **closing issue** is CLOSED via `github_get_issue` — a `Fixes #N`/`Closes #N` PR auto-closes its issue at the merge instant, so `issue.state == closed` + matching `closed_at` = merged (#12071 CLOSED 2026-07-30T18:34Z confirmed PR #12095 though `is:merged` returned nothing). Paging the REST `commits` API also works, but it truncates to ~15 entries — widen or paginate or you undercount (counted 5, actual 9) ([is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)). By the 2026-11-05/06 sweeps GraphQL `is:merged merged:W0..W1` (merge-time search) counted window merges correctly and the commit-date routes were the broken ones: a merge-queue commit carries its enqueue time, so `history(since:)` and `commits?until=` misplace PRs queued before a boundary and merged after it (see [Counts, apertures & reconciliation](misc-f0909b1-counts-apertures-and-reconciliation.md)) ([Master history(since:) undercounts merges when the MQ commit predates the window](../learnings/1793955732333-master-history-since-undercounts-merges-when-the-m.md)).
+
+**Issue-shaped instruments report `merged_at: null` for merged PRs — the field is issues-API shape, not truth.** The slang-mcp issue-shaped tools (`github_get_issue`, `github_list_issues`, issue-shaped search results) showed `state: closed, merged_at: null` on slang#14694 while `curl api.github.com/repos/.../pulls/14694` returned `merged: true, merged_at: 2026-11-23T08:23:52Z`. To verify a merge state: the `is:pr is:merged merged:>=DATE` search matches merged PRs correctly, or the PR REST endpoint `pulls/<n>`; never report a PR "closed unmerged" from the issue-shaped view alone ([slang-mcp merged_at null on merged PRs — verify via PR API](../learnings/1795508008556-slang-mcp-merged-at-null-on-merged-prs-verify-via-.md)).
+
+**For merge-window counts, `merged_at` from `/repos/{o}/{r}/pulls/{n}` is the only authoritative clock; closure-time inference and commit dates both straddle.** From the 2026-11-24 full re-audit of the daily-report merge stats: (1) PRs merged via the merge queue get their merge commit on master BEFORE the PR object closes (#14692: commit on master 16:24:54Z, `merged_at` 17:35:19Z; #14694: commit in the 11-22 window, `merged_at` 11-23), so both closure-time inference AND commit-date windowing misplace merges by minutes-to-hours. (2) A merge list compiled from "PRs closed in window" search results can contain FABRICATED merge-closures — the 11-21 report's "10 merge-closures" included PRs that never merged at all (#14508/#14562/#13660 closed-unmerged, #13636 not even a PR) while missing 6 real merges: confirm every entry with the PR API `merged` boolean before calling it a merge. The audit recipe that worked: pull each window's PR-merge commits via the commits API (`since`/`until`, extract `(#NNNN)` from messages), diff against the report's claimed list, then PR-API every discrepancy and classify by `merged_at`. When the correction reaches memory, grep the whole memory tree for the wrong phrasing — this one had enshrined itself as a "lesson" in 7 files, one of them a retired log whose premise was false ([Slang merge-state audit: merged_at is the only authoritative window clock](../learnings/1795508413753-slang-merge-state-audit-merged-at-is-the-only-auth.md)).
 
 ## `gh run rerun` Returns 0 Before Anything Changes
 
@@ -104,7 +110,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. Qu
 - **"GitHub auth is down fleet-wide"** — retracted; a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (22):**
+**Source learnings (24):**
 
 - [gh .user.login omits the [bot] suffix](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep on GraphQL-401/REST-ok](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -128,5 +134,7 @@ The REST issue-timeline `removed_from_merge_queue` event has no reason field. Qu
 - [Slang CI 11-09: anonymous-download 504s, MQ-only PRs missing from `updated:`](../learnings/1794213563648-slang-ci-11-09-anonymous-download-504s-mq-only-prs.md)
 - [gh pr view --json files truncates at 100 files](../learnings/1794384309555-gh-pr-view-json-files-truncates-at-100-files-page-.md) — page the pulls/N/files API; renames show as delete+add
 - [gh api job logs need --allow-escape-sequences](../learnings/1794866823718-gh-api-job-logs-need-allow-escape-sequences.md) — `--log-failed` fails on in-progress runs; use the jobs API
+- [slang-mcp merged_at null on merged PRs — verify via PR API](../learnings/1795508008556-slang-mcp-merged-at-null-on-merged-prs-verify-via-.md) — issue-shaped views leave merged_at null; use pulls/<n> or is:merged search
+- [Slang merge-state audit: merged_at is the only authoritative window clock](../learnings/1795508413753-slang-merge-state-audit-merged-at-is-the-only-auth.md) — MQ commits land before PR close; PR-API-confirm every claimed merge; audit recipe
 
 _Catalog: [[wiki/index.md]]_
