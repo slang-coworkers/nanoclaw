@@ -3,7 +3,7 @@
 Usage (on the install host; GitLab is reached only through the credential gateway):
 
     HTTPS_PROXY=<gateway proxy URL> SSL_CERT_FILE=<gateway CA> \\
-    python3 -I khr/replay/corpus.py \\
+    python3 -I .claude/skills/khr-replay/scripts/corpus.py \\
         --gitlab-url https://<gitlab host> --account <bot account> \\
         --project <id-or-path> [--project ...] \\
         --before 2026-11-20T00:00:00Z \\
@@ -349,9 +349,8 @@ def main(argv: list[str] | None = None) -> int:
     args = ap.parse_args(argv)
 
     out = Path(args.out).resolve()
-    if (Path(__file__).resolve().parents[2] / ".git").exists() and out.is_relative_to(
-        Path(__file__).resolve().parents[2]
-    ):
+    repo_root = next((p for p in Path(__file__).resolve().parents if (p / ".git").exists()), None)
+    if repo_root is not None and out.is_relative_to(repo_root):
         ap.error("--out must be outside this repository (the corpus is confidential)")
 
     builder = CorpusBuilder(

@@ -17,7 +17,7 @@ For each accepted record, in corpus order:
 Dry by default: it prints what it would do. Pass ``--send`` to stage and send.
 A job already staged is skipped unless ``--force`` is given.
 
-    python3 -I khr/replay/inject.py --corpus <data>/khr-replay/corpus.jsonl \\
+    python3 -I .claude/skills/khr-replay/scripts/inject.py --corpus <data>/khr-replay/corpus.jsonl \\
         --install-root ~/khr-coworkers/nanoclaw --folder khrbotnv \\
         --channel-type dashboard --platform-id dashboard:khrbotnv [--send]
 """
