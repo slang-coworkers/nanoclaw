@@ -1,0 +1,10 @@
+# nv-khr — the khr coworker overlay (khrbotnv).
+#
+# Derived, not guessed: every file this branch changes since its merge-base
+# with nv-main sits in the namespaces below, and none of them exists on
+# nv-main or another overlay. Dry-run replay tooling is kept outside the repo.
+
+container/spines/khr/**
+container/skills/khr-*/**
+container/workflows/khr-*/**
+coworkers/khrbotnv.yaml
