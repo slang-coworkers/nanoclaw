@@ -1,6 +1,6 @@
 # spine-khr
 
-Khronos specification coworker spine (lego coworker model). It provides the identity, invariants, context and coworker types `khr-common` (abstract) and `khr-writer`, and the `khr-implement` workflow.
+Khronos specification coworker spine (lego coworker model). It provides the identity, invariants, context and coworker types `khr-common` (abstract) and `khr-writer`, the `khr-implement` workflow, and the skills `khr-job-prep`, `khr-repo-tools`, `khr-spec-authoring` and `khr-validation`.
 
 It ports a mention-driven GitLab agent harness for Khronos spec and tooling work onto nanoclaw with the Codex provider. Port status, the parity checklist and decisions are in [PORT.md](PORT.md).
 

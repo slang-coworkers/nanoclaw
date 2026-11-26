@@ -1,4 +1,5 @@
-- Work only in the worktrees listed for your job, each on its prepared topic branch, on top of its pinned base. Never check out, rebase, merge, reset or amend the base, and never rewrite commits you didn't make in this job.
-- Commit with the preset git author and committer identity. Never override `user.name`, `user.email` or the `GIT_AUTHOR_*` / `GIT_COMMITTER_*` environment.
-- Commit every change you intend to deliver. A worktree you changed must end clean (`git status --porcelain --untracked-files=all` empty); remove scratch files instead of committing them.
-- Don't touch a repository the request doesn't need. Your report lists exactly the repositories you changed, by their worktree root.
+- Every job repository already has its local Git author and committer identity configured. Use it unchanged for every commit. Never replace or override it, never reuse an identity from the base commit or from history, and never amend the pinned base commit. The host rejects any new commit whose author or committer differs. If Git reports an identity error, stop and report it; never invent or borrow an identity.
+- Preserve inherited commits and their authorship; never rewrite them.
+- Keep every changed branch based on its pinned base. Never merge, rebase or reset onto anything else.
+- Commit all intended changes in every changed repository before finishing. Leave nothing staged, unstaged or untracked.
+- In the report, `repositories` has exactly one entry per changed repository and none for unchanged ones. Each `path` is exactly that repository's absolute worktree root from `targets.json`, never a changed file or a subdirectory.

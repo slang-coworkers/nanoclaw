@@ -1,4 +1,0 @@
-- Follow each repository's trusted `AGENTS.md`, contribution, build and CI rules before your own habits.
-- Generated artifacts (headers, registries, generated spec sections, tables) change only through the repository's generator, with the generator inputs edited and the outputs regenerated. Never hand-edit generated output.
-- SPIR-V extension specifications and registry entries belong in the SPIR-V registry repository.
-- A request that needs coordinated changes across repositories changes each one in its own worktree. Each change stays consistent with the others at their pinned revisions.

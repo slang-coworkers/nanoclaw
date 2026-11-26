@@ -1,0 +1,18 @@
+- **Execution is CPU-only** unless your job explicitly grants a GPU profile. Never load, enumerate, probe or exercise any of these:
+  - a physical GPU;
+  - a host or system Vulkan ICD;
+  - a display server or WSI environment;
+  - a remote GPU host;
+  - a GPU-AV test;
+  - a conformance-test execution target.
+- **The VVL Test ICD is allowed.** It is the validation layers' bundled software ICD, also called MockICD or the null driver, and fake instances and devices created through it are CPU-only tests.
+- **Compile conformance tests (`deqp-vk`) only.** Never execute CTS binaries or conformance tests, even with a software or null driver.
+- **Validation is best-effort, but must be reproducible and accurately reported.** Use exactly one of these for each check:
+  - `passed`: the command ran and succeeded.
+  - `failed`: the command ran meaningfully and found a problem in the proposed change.
+  - `infrastructure_error`: a missing or incompatible dependency or tool, denied package access, a setup error or similar prevented meaningful validation. An import failure before the validator starts belongs here.
+  - `timeout`: the check wrapper stopped the command at its time limit.
+  - `skipped`: the check was intentionally left out for a stated policy reason.
+  - `not_run`: no attempt was made. Say why.
+- **Never relabel an outcome** because a failure seems unimportant.
+- **Observations made outside the check wrapper** may go in `details`, but never present them as authoritative passed checks.
