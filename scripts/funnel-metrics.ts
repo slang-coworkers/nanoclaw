@@ -475,3 +475,277 @@ export async function collectRoutedIssues(logPath: string): Promise<Set<string>>
   }
   return out;
 }
+
+// ── GitHub response handling ─────────────────────────────────────────────────
+// A REST error still carries a JSON body. A rate-limit 403 is
+// `{"message": "API rate limit exceeded for installation ID …", "documentation_url": …}`,
+// and parsed without its status it reads as data: a timeline that is not a list
+// looks like "no linked PR", so the issue drops out of the merged count. Each
+// response is therefore classified by its status first, and only a 2xx body is
+// ever stored or used as data.
+
+export interface CurlResponse {
+  status: number;
+  /** Header names lower-cased. */
+  headers: Record<string, string>;
+  body: string;
+}
+
+/**
+ * Split the output of `curl -sS -D -` into the final status code, its headers
+ * and the body. curl prints one header block per response it received (an
+ * interim `100 Continue` or a redirect adds one), so we skip to the last block.
+ * Returns null when the output does not start with a status line.
+ */
+export function parseCurlResponse(raw: string): CurlResponse | null {
+  let rest = raw;
+  let status = 0;
+  let headers: Record<string, string> = {};
+  let sawBlock = false;
+  while (/^HTTP\/[\d.]+ \d{3}/.test(rest)) {
+    const end = rest.search(/\r?\n\r?\n/);
+    if (end < 0) return null;
+    const block = rest.slice(0, end);
+    rest = rest.slice(end).replace(/^\r?\n\r?\n/, '');
+    const lines = block.split(/\r?\n/);
+    status = Number(lines[0].split(' ')[1]);
+    headers = {};
+    for (const line of lines.slice(1)) {
+      const i = line.indexOf(':');
+      if (i > 0) headers[line.slice(0, i).trim().toLowerCase()] = line.slice(i + 1).trim();
+    }
+    sawBlock = true;
+  }
+  return sawBlock ? { status, headers, body: rest } : null;
+}
+
+/**
+ * True for the body GitHub sends with an error: a top-level `message` with a
+ * `documentation_url` or `status`. No resource the funnel reads has a top-level
+ * `message` (a commit's message is nested under `commit`), so a cached entry of
+ * this shape is an error that was stored as data.
+ */
+export function isGithubErrorBody(data: unknown): boolean {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return false;
+  const d = data as Record<string, unknown>;
+  return typeof d.message === 'string' && ('documentation_url' in d || 'status' in d);
+}
+
+export type FetchOutcome =
+  | { kind: 'ok'; data: unknown }
+  | { kind: 'missing' } // 404/410: a definite answer that the resource is gone
+  | { kind: 'failed'; reason: string };
+
+/** Classify one REST response: only a 2xx body that parses and is not an error body is data. */
+export function classifyGithubResponse(res: CurlResponse | null): FetchOutcome {
+  if (!res) return { kind: 'failed', reason: 'unreadable response' };
+  if (res.status === 404 || res.status === 410) return { kind: 'missing' };
+  let data: unknown;
+  try {
+    data = JSON.parse(res.body);
+  } catch {
+    return { kind: 'failed', reason: `HTTP ${res.status}, body is not JSON` };
+  }
+  if (res.status < 200 || res.status > 299 || isGithubErrorBody(data)) {
+    const message = isGithubErrorBody(data) ? String((data as { message: string }).message) : '';
+    return { kind: 'failed', reason: `HTTP ${res.status}${message ? `: ${message.slice(0, 80)}` : ''}` };
+  }
+  return { kind: 'ok', data };
+}
+
+/**
+ * The installation's remaining REST budget from a response, or null when the
+ * headers do not carry it. The funnel shares this budget with the coworkers, so
+ * it stops calling below a floor instead of spending the last of it.
+ */
+export function rateLimitState(headers: Record<string, string>): { remaining: number; resetAtMs: number } | null {
+  const remaining = Number(headers['x-ratelimit-remaining']);
+  const reset = Number(headers['x-ratelimit-reset']);
+  if (!Number.isFinite(remaining) || !Number.isFinite(reset)) return null;
+  return { remaining, resetAtMs: reset * 1000 };
+}
+
+// ── issue partition ──────────────────────────────────────────────────────────
+// "Not our problem": issues that do not count against the bot's win-rate,
+// state_reason not_planned or any of these labels (case-insensitive substring).
+export const NOT_A_BUG_LABELS = [
+  'not a slang bug',
+  'not reproduced',
+  'duplicate',
+  'invalid',
+  'wontfix',
+  "won't fix",
+  'question',
+  'by design',
+];
+
+export function isNotOurProblem(stateReason: string | null, labels: string[]): boolean {
+  if (stateReason === 'not_planned') return true;
+  const lc = labels.map((l) => l.toLowerCase());
+  return lc.some((l) => NOT_A_BUG_LABELS.some((bad) => l.includes(bad)));
+}
+
+/**
+ * Terminal stage of a PR, given its state and draft flag and the linked issue's
+ * state. The PR spine and the issue partition share it so the two agree.
+ */
+export function classifyPrStage(prState: string | null, isDraft: boolean | null, issueState: string | null): string {
+  if (prState === 'merged') return 'merged';
+  if (prState === 'closed') return issueState === 'closed' ? 'superseded' : 'pr-closed';
+  if (isDraft === false) return 'pr-ready';
+  if (isDraft === true) return 'shipped-draft';
+  return 'pr-open';
+}
+
+export interface IssuePart {
+  repo: string;
+  number: number;
+  url: string;
+  bucket: string; // not_our_problem | never_engaged | triage_only | resolved_elsewhere | bot_pr
+  stage?: string; // bot-PR sub-stage (merged|shipped-draft|pr-ready|pr-closed|superseded|pr-open)
+  prNumber?: number;
+  prUrl?: string;
+  note?: string;
+  createdAt?: string; // issue created_at, used for the weekly WIN trend
+}
+
+/** A PR that cross-references an issue, as the GraphQL timeline reports it. */
+export interface LinkedPr {
+  number: number;
+  url: string | null;
+  author: string | null;
+  isBot: boolean;
+  prState: 'merged' | 'open' | 'closed' | null;
+  isDraft: boolean | null;
+}
+
+// The order in which a bot PR represents its issue. An issue often collects
+// several bot PRs (a first attempt closed, a later one merged); the issue's
+// outcome is the furthest any of them got, so a merged PR outranks an earlier
+// closed one.
+const BOT_PR_RANK: Record<string, number> = { merged: 0, ready: 1, draft: 2, open: 3, closed: 4 };
+const botPrRank = (p: LinkedPr): number =>
+  p.prState === 'merged'
+    ? BOT_PR_RANK.merged
+    : p.prState === 'closed'
+      ? BOT_PR_RANK.closed
+      : p.isDraft === false
+        ? BOT_PR_RANK.ready
+        : p.isDraft === true
+          ? BOT_PR_RANK.draft
+          : BOT_PR_RANK.open;
+
+/** The bot PR that represents an issue: the furthest along, earliest first on a tie. */
+export function pickBotPr(prs: LinkedPr[]): LinkedPr | undefined {
+  let best: LinkedPr | undefined;
+  for (const p of prs) {
+    if (!p.isBot) continue;
+    if (!best || botPrRank(p) < botPrRank(best)) best = p;
+  }
+  return best;
+}
+
+/** The issue fields the GraphQL issue scan reads (see ISSUE_SCAN_QUERY in funnel.ts). */
+export interface GraphqlIssueNode {
+  number: number;
+  url: string;
+  createdAt: string;
+  state: string; // OPEN | CLOSED
+  stateReason: string | null; // COMPLETED | NOT_PLANNED | REOPENED | DUPLICATE | null
+  labels?: { nodes?: Array<{ name?: string } | null> };
+  timelineItems?: { nodes?: Array<{ source?: Record<string, any> | null } | null> };
+  /** PRs GitHub links as closing the issue (the issue's Development box), merged or not. */
+  closedByPullRequestsReferences?: { nodes?: Array<Record<string, any> | null> };
+  comments?: { nodes?: Array<{ author?: { login?: string } | null } | null> };
+}
+
+function linkedPrOf(src: Record<string, any>): LinkedPr {
+  const author: string | null = src.author?.login ?? null;
+  const state = typeof src.state === 'string' ? src.state.toLowerCase() : null;
+  return {
+    number: src.number,
+    url: src.url ?? null,
+    author,
+    isBot: isOurBotLogin(author),
+    prState: src.merged ? 'merged' : state === 'open' || state === 'closed' ? state : null,
+    isDraft: typeof src.isDraft === 'boolean' ? src.isDraft : null,
+  };
+}
+
+/** The PRs in an issue's cross-reference timeline, in timeline order. Non-PR sources are dropped. */
+export function linkedPrsFromTimeline(node: GraphqlIssueNode): LinkedPr[] {
+  const out: LinkedPr[] = [];
+  for (const item of node.timelineItems?.nodes ?? []) {
+    const src = item?.source;
+    if (!src || src.__typename !== 'PullRequest' || typeof src.number !== 'number') continue;
+    out.push(linkedPrOf(src));
+  }
+  return out;
+}
+
+/** The PRs GitHub links as closing the issue. */
+export function closingPrsOf(node: GraphqlIssueNode): LinkedPr[] {
+  return (node.closedByPullRequestsReferences?.nodes ?? [])
+    .filter((n): n is Record<string, any> => !!n && typeof n.number === 'number')
+    .map(linkedPrOf);
+}
+
+/**
+ * The bot PRs that count for an issue. Every bot attempt counts (open, draft,
+ * closed). A merged bot PR counts as the issue's fix only when GitHub links it
+ * as closing the issue, or when no PR is linked as closing and the issue is
+ * closed. A merged bot PR that only mentions an issue still open did not fix it.
+ */
+export function botPrCandidates(linked: LinkedPr[], closing: LinkedPr[], issueState: string): LinkedPr[] {
+  const mentionMayFix = closing.length === 0 && issueState === 'closed';
+  const out: LinkedPr[] = closing.filter((p) => p.isBot);
+  const seen = new Set(out.map((p) => p.url ?? `#${p.number}`));
+  for (const p of linked) {
+    if (!p.isBot || seen.has(p.url ?? `#${p.number}`)) continue;
+    if (p.prState === 'merged' && !mentionMayFix) continue;
+    out.push(p);
+  }
+  return out;
+}
+
+/**
+ * Place one issue in the partition. Buckets are exclusive and checked in order:
+ *   not_our_problem    — not_planned, or a not-a-bug label
+ *   bot_pr             — a bot PR counts for it (botPrCandidates; stage from pickBotPr)
+ *   resolved_elsewhere — closed as completed with only human PRs linked, or
+ *                        closed as completed with no bot artifact at all
+ *   triage_only        — the bot commented but opened no PR
+ *   never_engaged      — no bot comment and no bot PR
+ * The node's timeline and comment lists must be complete (all pages).
+ */
+export function classifyIssue(node: GraphqlIssueNode, repo: string): IssuePart {
+  const base = { repo, number: node.number, url: node.url, createdAt: node.createdAt };
+  const issueState = node.state.toLowerCase();
+  const stateReason = node.stateReason ? node.stateReason.toLowerCase() : null;
+  const labels = (node.labels?.nodes ?? []).map((l) => l?.name).filter((n): n is string => !!n);
+  if (isNotOurProblem(stateReason, labels)) {
+    return { ...base, bucket: 'not_our_problem', note: stateReason || 'not-a-bug label' };
+  }
+  const linked = linkedPrsFromTimeline(node);
+  const closing = closingPrsOf(node);
+  const botPr = pickBotPr(botPrCandidates(linked, closing, issueState));
+  if (botPr) {
+    return {
+      ...base,
+      bucket: 'bot_pr',
+      stage: classifyPrStage(botPr.prState, botPr.isDraft, issueState),
+      prNumber: botPr.number,
+      prUrl: botPr.url ?? undefined,
+    };
+  }
+  const closedCompleted = issueState === 'closed' && (stateReason === 'completed' || stateReason == null);
+  const otherPrs = [...closing, ...linked];
+  if (closedCompleted && otherPrs.length > 0) {
+    return { ...base, bucket: 'resolved_elsewhere', prNumber: otherPrs[0].number };
+  }
+  const botCommented = (node.comments?.nodes ?? []).some((c) => isOurBotLogin(c?.author?.login));
+  if (closedCompleted && !botCommented) {
+    return { ...base, bucket: 'resolved_elsewhere', note: 'closed; no bot artifact' };
+  }
+  return { ...base, bucket: botCommented ? 'triage_only' : 'never_engaged' };
+}
