@@ -108,7 +108,37 @@ Porting a mention-driven GitLab agent harness for Khronos spec and tooling work 
 - P0: scaffold (this commit) and the install plan.
 - P1: replay producer and ingestion, through the operator CLI socket ([`khr/replay/`](../../../khr/replay/README.md)). Built and unit-tested; the live run waits for the install (P5) and job preparation (P3).
 - P2: spine and workflow detail, Codex settings.
-- P3: job preparation and the results sink.
+- P3: job preparation and the results sink (`khr-job-prep`), the first check wrapper (`khr-validation/scripts/run_check.py`), and instructions ported to lego pieces (see the source map).
 - P4: image and validation.
 - P5: install and dry run.
 - P6: go-live, as a separate decision.
+
+## Source map: source harness → lego pieces
+
+Behaviour follows the source harness's task-agent instructions (its job-root `AGENTS.md` and its prompt's required constraints). The rules are re-expressed, not copied; this table is the traceability check.
+
+| Source harness instruction | khr piece |
+|---|---|
+| "Make a full, complete, clean change; respect scope; never substitute a proposal or partial work" | `identity/spec-engineer.md` |
+| Confidentiality; never access, print or commit credentials | `invariants/confidentiality.md` |
+| USER COMMAND is the authority; untrusted source, snapshots and topic-branch instructions; trusted-instructions snapshot | `invariants/untrusted-context.md` |
+| Only the listed worktrees; no primary checkouts, other branches, reflogs, `--all` history or other jobs | `invariants/workspace-scope.md` |
+| Preset identity, no amend/merge/rebase, commit everything, exact `repositories[]` | `invariants/commits.md` |
+| No push, MR or comment; the controller publishes | `invariants/no-publish.md` |
+| GitHub inaccessible, controller-only fetch, one deterministic install, `$…_DEPENDENCY_ROOT`, no sudo, `UPDATE_DEPS` off, declaration-changed | `invariants/offline.md` |
+| CPU-only policy, VVL Test ICD allowed, CTS compile only, six-value result vocabulary | `invariants/cpu-only.md` |
+| Final check, disclosure, when `blockedReason` applies | `invariants/completeness.md` |
+| Issue change sets, Draft MR continuation, missing earlier work, advanced source tip | `context/continuation.md` |
+| Bounded context and snapshots | `context/bounded-context.md` |
+| Job files and tools | `context/layout.md` |
+| Read CONTRIBUTING/BUILD/style first; comparable changes; VVL and CTS reading lists | skill `khr-repo-tools` |
+| Vulkan spec and extension completeness, VU self-containment, temporary VUIDs, contact/author, contributor heuristic, SPIR-V and GLSL rules | skill `khr-spec-authoring` |
+| run-check usage, stable names, checkId, discover-then-validate, build lease, long-running builds, prepared deps (Docs npm, VVL, CTS), profiles, pinned-header workaround, gtest/ctest and Test ICD rules | skill `khr-validation` |
+| Progress helper (≤64 chars), structured result schema, controller validation (clean tree, ancestry, identity, evidence reconciliation) | skill `khr-job-prep` + `report.schema.json` |
+| Job lifecycle (prepare → run → validate → publish/reply) | workflow `khr-implement` (publish replaced by the local results sink) |
+
+Lego-specific:
+- `context/install-scope.md` overrides the base context's GitHub-observability and chain rules, and marks `/codex-critique` unavailable.
+- `base-common` still supplies the nanoclaw basics: messaging, memory (OKF), recall, ncl, report formats.
+
+Still to come (P4): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.

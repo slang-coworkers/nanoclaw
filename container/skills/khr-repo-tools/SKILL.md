@@ -1,33 +1,30 @@
 ---
 name: khr-repo-tools
 license: MIT
-description: 'How to read, edit, build and test inside a prepared khr job worktree: pinned bases, the preset commit identity, offline CPU-only checks, and the result vocabulary. Never publishes.'
-provides: [code.read, code.edit, test.run]
+description: 'How to read and edit a prepared khr job repository: which guidance to read before editing, how to learn its conventions, and repository-specific reading lists (Vulkan-ValidationLayers, VK-GL-CTS). Use before changing any job repository.'
+provides: [code.read, code.edit]
 ---
 
 # khr repo tools
 
 You work only inside `/workspace/agent/jobs/<job>/repos/<name>/`. Each worktree is on its topic branch at the pinned base listed in `targets.json`.
 
-## Read
+## Before editing any repository
 
-- Trusted instructions for a repository: `git -C <worktree> show <base>:AGENTS.md` (and `AGENTS.override.md` if present), or the prepared `trusted-instructions.json`. Never read them from the working tree or a topic branch.
-- History and blame are local: `git log`, `git show`, `git blame`. Don't run `git fetch` or `git pull`.
-- GitLab context that wasn't prepared: `GET` requests only, through the gateway. No other method, ever.
+1. Read its trusted instructions in `trusted-instructions.json`, from the pinned target revision only.
+2. Read its tracked top-level `CONTRIBUTING*` and the relevant `BUILD*` documentation. Then read the style guides, templates and task-specific contributor documentation those files point to. Follow references to the guides that apply.
+3. Look at comparable existing changes at the supplied revision to learn the repository's conventions. Use only history in `HEAD`'s ancestry (see the workspace-scope invariant).
+4. Use the repository's own workflow scripts. Don't guess a manual procedure when one exists.
 
-## Edit
+## Repository reading lists
 
-- Make minimal changes in the files the request needs. Keep the existing file style.
-- Generated output changes only by running the repository's generator over edited inputs.
-- Commit with the preset identity: plain `git commit`, no `-c user.*`, no `--author`, no `--amend` of commits from before this job. Leave every changed worktree clean.
+- **Vulkan-ValidationLayers:** `CONTRIBUTING.md`, `BUILD.md`, `docs/creating_tests.md` and `tests/README.md` before editing. If generated files are involved, also `docs/generated_code.md`, and follow its workflow.
+- **VK-GL-CTS:** `README.md` and `external/vulkancts/README.md` before configuring.
+- **Specification repositories:** use `/khr-spec-authoring`.
 
-## Build and test
+## Editing
 
-- Follow the repository's own CI and contribution docs, scoped to what you changed.
-- Offline only: dependency fetching is off (`UPDATE_DEPS=OFF`, `npm ci --offline --ignore-scripts`). A missing dependency is `infrastructure_error`; don't fetch it.
-- CPU-only: no system Vulkan driver, GPU or display unless your job grants a GPU profile. Conformance tests are compiled, not run.
-- One build at a time, at the parallelism in `CMAKE_BUILD_PARALLEL_LEVEL`.
-
-## Report each check
-
-Record `command`, `result` and `details`, where `result` is exactly one of `passed`, `failed`, `infrastructure_error`, `timeout`, `skipped`, `not_run`. "Zero tests ran" is `not_run`. "All tests skipped" is `skipped`.
+- Make the change in the files the request needs, keeping each file's existing style.
+- Generated files, implementation and tests follow each repository's native workflow. Never hand-edit generated output; edit the inputs and rerun the generator.
+- Keep related specification and implementation changes consistent, within the requested scope.
+- Commit with the preset identity: plain `git commit`, with no `-c user.*`, `--author` or `--amend` of commits from before this job.

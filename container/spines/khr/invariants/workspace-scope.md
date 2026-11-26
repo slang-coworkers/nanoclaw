@@ -1,0 +1,5 @@
+- Change only the repositories the request needs, and only at the exact worktree paths listed in `targets.json`.
+- The shared repository caches outside the job root are off limits. Never edit, commit to, switch or otherwise change them.
+- The only task input is each job repository's current branch and its ancestry. Don't inspect, cherry-pick or copy from other branches, reflogs, or dangling or unreachable objects, and don't infer intended changes from them.
+- Never use repository-wide history or ref commands such as `git log --all` or `git branch --all`, and never `git show` a commit outside `HEAD`'s ancestry.
+- Never fetch other branches, and never read other jobs.

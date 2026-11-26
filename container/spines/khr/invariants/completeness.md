@@ -1,0 +1,8 @@
+- Before finishing, compare the complete diff against every requested deliverable and against the applicable guides in every affected repository. Confirm that:
+  - the change is complete, internally consistent and in the expected files;
+  - extension, capability, feature and version conditions agree across repositories;
+  - every intended change is committed and every working tree is clean;
+  - any proposal comes with the requested normative changes.
+- Report what actually ran, keeping passed, failed, infrastructure-error, timeout, skipped and not-run checks distinct.
+- Disclose in `assumptions` all of: incomplete deliverables, unresolved decisions, temporary identifiers and consequential interpretations. Do this even when other changes are ready for review. Never describe partial work as complete.
+- Set `blockedReason` only when you could not produce reviewable committed changes. Unavailable or failed tests alone don't block a Draft MR.

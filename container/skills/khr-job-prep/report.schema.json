@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "khr job report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["summary", "assumptions", "repositories", "tests", "blockedReason"],
+  "properties": {
+    "summary": { "type": "string" },
+    "assumptions": { "type": "array", "items": { "type": "string" } },
+    "repositories": {
+      "type": "array",
+      "description": "One entry per changed repository; none for unchanged ones.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "summary"],
+        "properties": {
+          "path": { "type": "string", "description": "Exact absolute worktree root from targets.json." },
+          "summary": { "type": "string" }
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result", "details", "checkId", "exitCode", "failureKind"],
+        "properties": {
+          "command": { "type": "string" },
+          "result": { "enum": ["passed", "failed", "infrastructure_error", "timeout", "skipped", "not_run"] },
+          "details": { "type": "string" },
+          "checkId": { "type": ["string", "null"] },
+          "exitCode": { "type": ["integer", "null"] },
+          "failureKind": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "blockedReason": { "type": ["string", "null"] }
+  }
+}
