@@ -136,3 +136,42 @@ describe('gcInboundHistory', () => {
     db.close();
   });
 });
+
+describe('gcInboundHistory — consumed ncl replies', () => {
+  function addReply(id: string, seq: number, ts: string, status: string): void {
+    const db = new Database(inboundPath);
+    db.prepare(
+      "INSERT INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, 'system', ?, ?, '{}')",
+    ).run(id, seq, ts, status);
+    db.close();
+  }
+  const REPLY_CUTOFF = '2026-09-26T00:00:00.000Z'; // later than CUTOFF
+
+  it('drops consumed replies older than the reply cutoff, and only those', () => {
+    addReply('cli-resp-a', 20, '2026-09-25T00:00:00.000Z', 'completed'); // → gone
+    addReply('cli-resp-b', 22, '2026-09-26T12:00:00.000Z', 'completed'); // inside → kept
+    addReply('cli-resp-c', 24, '2026-09-25T00:00:00.000Z', 'pending'); // unread → kept
+    addReply('sys-x', 26, '2026-09-25T00:00:00.000Z', 'completed'); // not a reply, inside main window → kept
+    addReply('cli-resp-last', 28, '2026-09-25T00:00:00.000Z', 'completed'); // newest row → kept (seq allocation)
+    const db = openInboundDb(inboundPath);
+    const result = gcInboundHistory(db, { cutoffIso: CUTOFF, cliReplyCutoffIso: REPLY_CUTOFF, outboundPath });
+    const left = (db.prepare('SELECT id FROM messages_in').all() as Array<{ id: string }>).map((r) => r.id);
+    db.close();
+    expect(result.systemRows).toBe(3); // sys-old-done + sys-old-failed + cli-resp-a
+    expect(left).not.toContain('cli-resp-a');
+    expect(left).toEqual(expect.arrayContaining(['cli-resp-b', 'cli-resp-c', 'sys-x', 'cli-resp-last']));
+  });
+
+  it('ignores a reply cutoff that is not later than the main cutoff', () => {
+    addReply('cli-resp-a', 20, '2026-09-10T00:00:00.000Z', 'completed'); // older than CUTOFF → main rule removes it
+    addReply('chat-last', 22, NEW, 'completed');
+    const db = openInboundDb(inboundPath);
+    const result = gcInboundHistory(db, {
+      cutoffIso: CUTOFF,
+      cliReplyCutoffIso: '2026-09-01T00:00:00.000Z',
+      outboundPath,
+    });
+    db.close();
+    expect(result.systemRows).toBe(3);
+  });
+});
