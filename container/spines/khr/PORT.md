@@ -106,7 +106,7 @@ Porting a mention-driven GitLab agent harness for Khronos spec and tooling work 
 ## Phases
 
 - P0: scaffold (this commit) and the install plan.
-- P1: replay producer and ingestion.
+- P1: replay producer and ingestion, through the operator CLI socket ([`khr/replay/`](../../../khr/replay/README.md)). Built and unit-tested; the live run waits for the install (P5) and job preparation (P3).
 - P2: spine and workflow detail, Codex settings.
 - P3: job preparation and the results sink.
 - P4: image and validation.
