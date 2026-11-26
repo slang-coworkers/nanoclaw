@@ -12,24 +12,25 @@ v2 adds an independent **per-issue pass** in `scripts/funnel.ts` that enumerates
 
 **Window:** the PR-mapping era — `MIN(pr_session_mappings.created_at)` → now. (`issues?since=` is *updated*-time, so the pass also filters `created_at >= windowStart` client-side; a safe superset.)
 
-**Denominator:** `actionable = filed − not_our_problem`. **Win-rate = bot_pr.merged ÷ actionable.**
+**Denominator:** `actionable = filed − not_our_problem`. **Win-rate = bot_pr.merged ÷ bot_pr.total** (merged ÷ issues the bot opened a PR for).
 
 **Buckets** (first match wins), per `TRACKED_REPOS` (slang, slangpy, slang-rhi):
 
 | Bucket | Definition |
 |--------|-----------|
 | `not_our_problem` | `state_reason==='not_planned'` OR a not-a-bug label (`NOT_A_BUG_LABELS`: "Not a Slang Bug", duplicate, invalid, wontfix, question, by design, …). **Excluded from the denominator.** |
-| `bot_pr` | A **nv-slang-bot**-authored PR is cross-referenced to the issue (via the issue *timeline*). Sub-classified by `classifyPrStage()`: `merged ★` / `shipped-draft` / `pr-ready` / `pr-open` / `pr-closed`+`superseded`. |
+| `bot_pr` | A **nv-slang-bot** PR counts for the issue (`botPrCandidates()`): every bot attempt, from the issue's closing links or its timeline cross-references. A merged bot PR is the issue's fix only when GitHub links it as closing the issue, or when no PR is linked as closing and the issue is closed. The furthest attempt sets the stage (`pickBotPr()`, `classifyPrStage()`): `merged ★` / `shipped-draft` / `pr-ready` / `pr-open` / `pr-closed`+`superseded`. |
 | `resolved_elsewhere` | Issue closed-completed, only **human** PR(s) linked (or no bot artifact at all). Neutral exit — not our win, not our failure. |
 | `triage_only` | Bot left a comment but opened no PR. This is the corrected `engagedNoPr` residue (replaces the old log-derived `routedNoPr`). |
 | `never_engaged` | No bot comment, no bot PR. Top-of-funnel leak. |
 
 **Signals & traps that matter here:**
-- "Bot PR" is detected from the **timeline cross-references**, not `pr_session_mappings` — this catches bot PRs linked to a *sibling* issue or whose body lacks `Fixes #N` (the old funnel's blind spot).
-- The `/issues` endpoint mixes PRs into its output — drop items with a `pull_request` key.
-- PR-author check uses `BOT_LOGIN` (`nv-slang-bot[bot]`).
+- "Bot PR" comes from the issue's **closing links** (`closedByPullRequestsReferences`) and **timeline cross-references**, not `pr_session_mappings`. This catches bot PRs linked to a *sibling* issue or whose body lacks `Fixes #N`. A merged bot PR that only mentions an issue still open is not a win.
+- The issue scan is one paginated GraphQL query per repo (50 issues per page, newest first, stopping at the window start), with follow-up pages for an issue's long timeline or comment list. It spends the GraphQL point budget, not the REST budget the coworkers use.
+- PR-author check uses `isOurBotLogin()`, which accepts both `nv-slang-bot` and `nv-slang-bot[bot]`.
+- **Failures never become data.** A REST response is data only when its status is 2xx (`classifyGithubResponse()`); a failed call uses the last good cached copy. The funnel stops calling below `FUNNEL_REST_FLOOR` (1000) remaining REST calls or `FUNNEL_GRAPHQL_FLOOR` (500) points. A run whose issue scan is incomplete, or whose PR board has fetches with no data, keeps the previous snapshot and exits 3; `fetchHealth` in the snapshot records what each run fetched.
 
-**Weekly WIN trend:** issues are cohorted by the Monday of the week they were *filed*; per week we report `winRate = merged/actionable` and a **trailing 4-week rolling** win-rate, so the dashboard graph shows whether we're trending up or down. Emitted as `issuePartition.weekly[]`.
+**Weekly WIN trend:** issues are cohorted by the Monday of the week they were *filed*; per week we report `winRate = merged/botPr` and a **trailing 4-week rolling** win-rate, so the dashboard graph shows whether we're trending up or down. Emitted as `issuePartition.weekly[]`.
 
 **Snapshot shape** (`reports/funnel.json`): adds `issuePartition: { window, counts, winRate, weekly[], issues[] }` and `engagedNoPr[]` alongside the existing `board`, `rows`, `routedWindowed`, `routedNoPr` (legacy, kept for back-compat).
 
