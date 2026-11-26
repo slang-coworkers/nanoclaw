@@ -96,7 +96,26 @@ net diff vs master back to 2 GLSL-gated source files + `tests/glsl/array-nested-
 (verified live: head 711a3266, 3 files, +141/−3, draft). Surfaces refreshed; explanation comment
 + PR description cite #14659 as the Slang-mode coverage. **Fixer holding for #14659's merge
 notification → fold master + run his test against the GLSL-gated build (any failure = report at
-once as real regression).**
+once as real regression).** **11-25 20:17Z:** pdeayton-nv asked on the PR (direct mention, 7173352049)
+"could you confirm how DXC treats the HLSL?" — fixer answered same-turn (7173443251, verified live)
+with empirical DXC 1.9 probes: leading form `int[2][3] a;` = hard parse error in DXC (Slang/GLSL
+extension, no DXC counterpart to conflict with); trailing form DXC reads first-bracket-outermost
+and Slang's HLSL mode matches exactly — no DXC divergence on any spelling DXC parses. Probes saved
+(tmp/dxc-probe/). No PR/state changes; still holding for #14659 merge notification.
+**11-25 22:05Z — cast-spelling follow-up (pdeayton-nv 7175582801: `int a[2][3] = (int[2][3])0;`)
+answered (7175927786, verified live):** DXC parses it first-bracket-outermost; Slang HLSL/Slang
+modes reject it under the spec reading — a **genuine pre-existing spec-vs-DXC divergence in the one
+type-position spelling DXC parses** (same on master, untouched by the PR; GLSL mode after the PR
+aligns with DXC ordering). Flagged for the humans on the PR; possible follow-up spec issue is the
+maintainers' call — NOT filed by us. Harness lesson captured to shared learnings (delivery gate
+rolls back whole bash invocations — files coupled with gated `gh` posts are silently lost). **11-25 23:03Z — fold-and-run executed:** discovered #14659 had MERGED
+2026-11-20 13:46Z with skiminki-nv's promised notification never firing; the fixer live-verified the
+merge and proceeded correctly. Master folded (30 commits, clean) → head **f687fc06** (verified live,
+draft). **His merged test passes on the branch (1/1) — no regression in the GLSL gating** — plus our
+GLSL regression test 2/2; suites green at master's new baseline (language-feature 4184/4184, GLSL
+409/409, autodiff 1747/1747). Explanation comment current at the folded head. **Chain parked solely
+on: maintainer review of the draft + CI (run 45716743180), plus skiminki-nv's legacy-ordering switch
+question (humans', no action unless tasked).**
 
 **Chain parked on: CI verdict (→fixer webhook), maintainer review of the draft, skiminki-nv's
 legacy-ordering switch question (humans', no action unless tasked), and the #14659 merge

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#14259 — HLSL constant double RWByteAddressBuffer.Store emits untyped `.Store(` → DXC f32 store
-description: Human-filed (tdavidovicNV) 2026-11-03. CLOSED fixed 2026-11-11 by skiminki-nv via bot PRs #14322 (L suffix) + #14416 (strongly-typed HLSL literals); #14385 closed superseded. Remaining tracked in #14458 (draft #14276 retargeted) and #14456; re-check recheck-14259-review-sta-a089 11-25.
+description: Human-filed (tdavidovicNV) 2026-11-03. CLOSED fixed 2026-11-11 by skiminki-nv via bot PRs #14322 (L suffix) + #14416 (strongly-typed HLSL literals); #14385 closed superseded. Remaining tracked in #14458 (draft #14276 retargeted) and #14456; re-check recheck-14259-review-sta-b361 12-09 (final, then parked on webhooks).
 tags: [hlsl, byte-address-buffer, double, emit-c-like]
 ---
 
@@ -23,9 +23,11 @@ New dated entries go there, not here.
   fixer sess-1793742971321-k0j5bx. Relay maintainer asks to the triager session, verbatim, with `<github-post-authorized />` when the
   comment mentions the bot.
 - **Assignee / decider:** skiminki-nv (repo admin).
-- **Timer:** one-shot `recheck-14259-review-sta-a089` (11-16 12:00Z); its case (b) covers the post-merge state.
-- **Next:** skiminki-nv closes #14259. #14276 waits for direction under #14458. A new fixer chain for the #14458 test work needs a
-  maintainer ask or the operator, not a reflex dispatch.
+- **Timer:** one-shot `recheck-14259-review-sta-b361` (12-09 12:00Z, final — its case (c) parks the chain on webhooks, no further timer).
+  The 11-25 recheck (`recheck-14259-review-sta-a089`) found no change: no maintainer direction since 11-11 18:10Z; #14276 added to the
+  weekly undecided list as a parked carry-over.
+- **Next:** #14276 waits for direction under #14458 (listed on the weekly undecided list). A new fixer chain for the #14458 test work
+  needs a maintainer ask or the operator, not a reflex dispatch.
 
 | PR | approach | state | notes |
 |----|----------|-------|-------|

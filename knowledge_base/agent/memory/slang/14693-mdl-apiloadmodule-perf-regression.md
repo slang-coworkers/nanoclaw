@@ -1,7 +1,7 @@
 ---
 type: chain
-title: "slang#14693 — MDL perf: apiLoadModule 1.10-1.19x regression since 11-21 (suspect #14509) — TOT-scan find, filed-only"
-description: RECOVERED 2026-11-23 — the apiLoadModule "regression" self-recovered on the 11-23 nightly (run 45116441940 green at head ced08cd4) with NO perf-relevant code change on the suspect path (only CI/parser-side merges since first-red). Re-attributed to a degraded nightly runner lifting the whole sample distribution (which also explains the rerun-minima signature). Recovery + re-attribution comment posted 11-23 (7106560618); close left to maintainers unless the signature returns. Filed 11-22 as #14693 after two-night + rerun-minima evidence; the original window analysis stands in the issue for the record.
+title: "slang#14693 — MDL perf: apiLoadModule false alarm (nightly-runner shift), closed environmental 11-25 — TERMINAL"
+description: TERMINAL 2026-11-25 18:20Z — jhelferty-nv closed the issue as a false alarm ([comment 7170768792](https://github.com/shader-slang/slang/issues/14693#issuecomment-7170768792)), accepting the measured evidence: RECOVERED 2026-11-23 — the apiLoadModule "regression" self-recovered on the 11-23 nightly (run 45116441940 green at head ced08cd4) with NO perf-relevant code change on the suspect path. Re-attributed to a degraded nightly runner lifting the whole sample distribution (which also explains the rerun-minima signature). Recovery + re-attribution comment posted 11-23 (7106560618, TOT-scan chain); fixer's profiled negative finding posted 11-23 (7111816336) — #14509's folding checks measured flat (+1.4% overlapping spreads vs ≥5% bar; callgrind fold machinery 0.00%). Filed 11-22 as #14693 after two-night + rerun-minima evidence; the original window analysis stands in the issue for the record.
 tags: [slang, mdl-perf, apiLoadModule, perf-regression, tot-scan, filed-only]
 ---
 
@@ -42,9 +42,17 @@ tags: [slang, mdl-perf, apiLoadModule, perf-regression, tot-scan, filed-only]
   unattributed (likely the TOT-scan chain-of-record; benign, consistent with the filing).
   Durable rule (fixer's learning): re-fetch the thread right before posting; own the
   same-identity supersession explicitly.
+- **TERMINAL 11-25 18:20Z — maintainer closed as false alarm** ([comment 7170768792](https://github.com/shader-slang/slang/issues/14693#issuecomment-7170768792)):
+  "It sounds like this was a false alarm; closing." jhelferty-nv accepted the fixer's measured
+  finding (environmental, no restructuring warranted). Re-check task
+  `recheck-14693-jhelferty-c13e` cancelled before firing; worktree wt-slang-14693 + saved A/B
+  released as moot. Outcome: filed → maintainer ask → profiled negative finding → closed
+  environmental in ~2 days, no code change. If apiLoadModule ever re-flags, file fresh from the
+  nightly evidence (the A/B harness recipe is in the fixer's fix-14693.md learning, ~5 min re-run).
 - **Parked on jhelferty-nv's response** (close-as-environmental is the fixer's recommendation;
   closing is maintainer-only). One-shot re-check scheduled: task `recheck-14693-jhelferty-c13e`,
   process-after 2026-11-26 19:45Z (no recurrence). Future mentions route via webhook normally.
+  *(Superseded by the TERMINAL entry above — re-check cancelled.)*
   Re-run path if the counter re-flags: fixer's saved A/B (scratch-14693/ab2.sh + lib-* builds,
   worktree wt-slang-14693) re-runs in ~5 min.
 - **Also from the same scan (NOT filed):** CMake Options weekly red — deterministic C1001 at
