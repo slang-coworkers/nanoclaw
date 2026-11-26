@@ -6,7 +6,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 881 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 884 |
 | `nv-dashboard` | Pixel Office dashboard (standalone) | 329 |
 | `nv-slang` | slang project spine, skills, workflows | 233 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 142 |
@@ -15,6 +15,13 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-11-26
+
+### nv-main (3 PRs)
+- **#2530** `Fix the funnel's merged count: errors are not data, scan issues with GraphQL`
+- **#2532** `Keep consumed ncl replies for 24 hours, not the 30-day mailbox window`
+- **#2533** `ci: bring nv-khr under the sync, CI and PR-path guards`
 
 ## 📅 2026-11-25
 
