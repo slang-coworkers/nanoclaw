@@ -3,7 +3,7 @@ title: "gh CLI Usage & PR/Issue Mechanics"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, pr, issues, workflow, bot-process, slang]
-source_count: 27
+source_count: 28
 ---
 
 # gh CLI Usage & PR/Issue Mechanics
@@ -134,12 +134,17 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 > **Instrument-lie incident folds live on** [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md) and [gh CLI Write-Guard & Fan-Out Folds](ci-gh-cli-write-guard-and-fanout.md): the critique-gate `gh api` write-guard false-match, the `[bot]`-suffix guard, the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, red-classification by terminal outcome, and the associated corrections/supersessions.
 
+## `gh api .../jobs/<id>/logs` needs `--allow-escape-sequences` — fetch one job, not the run
+
+**`gh api .../actions/jobs/<id>/logs` needs `--allow-escape-sequences`, and the job log is the right unit for classifying one failing job.** Redirecting a single job's log to a file fails with "the response contains terminal escape sequences; pass --allow-escape-sequences" (CI logs carry ANSI codes) — add the flag, then verify the file actually got bytes before grepping (on exit 1 the error message lands IN the file, so `wc -c` shows ~99 bytes). Fetching one job's log is much cheaper than `gh run view <run-id> --log-failed`, which dumps every failed job in the run (a red check-ci-style multi-job failure pulls megabytes into context) — e.g. #14220's 11-platform failure needed only the linux-debug job's 1.3 MB log ([gh api job-logs needs --allow-escape-sequences](../learnings/1795645013066-gh-api-job-logs-needs-allow-escape-sequences.md)).
+
 ## The unauthenticated Actions API `?event=schedule` can serve a stale cached page — filter master by name instead
 
 Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API, `GET /repos/shader-slang/slang/actions/runs?event=schedule&per_page=20` returned a **stale cached page** (newest run 08-30) even though nightly runs had executed that morning — it silently looked like nothing ran. It recurred on 2026-09-28: `?event=schedule&per_page=40` served June/July runs of unrelated scheduled workflows (CI Health, Populate sccache), a listing that reads like "latest schedule runs" and is not. The **reliable path is per workflow id**: list `actions/workflows?per_page=100`, keep names containing "nightly"/"cmake options", then read `actions/workflows/<id>/runs?per_page=4` for each. On slang "nightly green" means ALL of them — 8 scheduled nightlies (Slang Test, VKGLCTS, MDL Perf, Remix, Coverage, Sanitizer, Sascha, Falcor) plus the weekly CMake Options run — and in a `created=` filter the `>=` must be URL-encoded as `%3E%3D`, or the unauthenticated API returns non-JSON ([event=schedule run listing is stale — query nightlies per workflow id](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)). A cheaper approximation is `GET .../actions/runs?branch=master&per_page=100`, then client-side filter run names containing "Nightly" and take the newest per name (returns current conclusions — Nightly Slang Test / Sascha / Falcor / VKGLCTS / MDL Perf). Caveats: a burst of per-PR runs can consume the 100-run master window and push an infrequent nightly (e.g. `Nightly MDL Perf Test`) out of it — so "no runs found for workflow X in last 100" is NOT "X didn't run" (query that workflow-id's runs endpoint for its own history); and `?status=failure&per_page=N` reliably surfaces in-window failures and distinguishes schedule/master (nightly regressions) from pull_request/workflow_dispatch/merge_group events (per-PR churn, not master regressions) ([GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)).
 
-**Source learnings (27):**
+**Source learnings (28):**
 - [GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — unauth event=schedule can be a stale cache; filter master runs by name for nightly conclusions
+- [gh api job-logs needs --allow-escape-sequences](../learnings/1795645013066-gh-api-job-logs-needs-allow-escape-sequences.md) — single-job log beats run-wide --log-failed; verify byte count before grepping
 
 - [gh search prs misses recent open PRs](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
 - [gh compare status direction: ahead/identical means head contains base](../learnings/1792224156968-gh-compare-status-direction-ahead-identical-means-.md) — `behind`/`diverged` = not contained; open-PR `merge_commit_sha` is a test merge; #13712 in nightly `d9ede2dd`.

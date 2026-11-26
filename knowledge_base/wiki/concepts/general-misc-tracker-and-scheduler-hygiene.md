@@ -3,7 +3,7 @@ title: "Tracker and Scheduler Hygiene"
 type: concept
 group: general-misc
 tags: [trackers, scheduler, recurrence, nudge-scanner, watch-list, maintainer-reports, cron]
-source_count: 35
+source_count: 36
 ---
 
 # Tracker and Scheduler Hygiene
@@ -41,6 +41,8 @@ Two more regrowth shapes. **Appending:** `okf_synth.py` classes any concept with
 Measure caps in their own unit: `wc -c` counts bytes, and the emoji-heavy roster runs ~5% over its char count (11,974 chars = 12,564 bytes on 10-21). Dated `## Retired 2026-10-0x` H2s fold into `**MM-DD sweep:**` bullets under one H2 per subtopic; splitting a detail file means repointing every `[[...]]` link and `watch-list/index.md` ([wc -c counts bytes](../learnings/1792574037781-watch-list-size-checks-wc-c-counts-bytes-emoji-ros.md)). When a detail file cannot absorb a new fact under 12k (carried-diagnostics-design, 11,878 B on 11-08), move one whole H2 to a new file rather than over-trimming. In gen2 that is a RANGE edit from that H2 to the next with `new=''` plus an `@@NEW@@` entry built from the *memory* file's section text (in-section rewrites go there, or their anchors vanish); add it to `INTENDED_REMOVED`, assert it in the new file, and update `watch-list/index.md`, the roster header link and kin pointers ([move a whole H2](../learnings/1794127463880-watch-list-sweep-splitting-a-near-cap-detail-file-.md)). When the file goes over 12k only because of the day's own edits (carried-ci-nightly, 11,820 → 12,514 B on 11-09), split after editing instead: gen2 applies every edit first, then a SPLITS step (`edits_split.py`) moves whole H2s from the edited source into the new file, because an `@@NEW@@` entry copies the pre-edit text and silently drops edits made inside the moved sections. Mark the moved H2s `INTENDED_REMOVED` and assert them in the new file, teach `check_diffs.py` that they are intended spans of the source, pre-wrap any bullet holding blockquote lines (gen2 never re-wraps them; a rewritten ask lead stayed one 852-char line), and link the new file from `watch-list/index.md` and the roster header (`ext.py` finds it via the `carried-*.md` glob) ([split after the day's edits](../learnings/1794214951194-watch-list-sweep-split-a-near-cap-detail-file-afte.md)).
 
 ⚠️ A report's prose summary drifts from the tracker's actual state: **re-read the tracker file before reporting status** ([prose summaries drift](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md)).
+
+A "no existing tracker" dedupe search must cover **adjacent repos**, not just the main one. On 2026-11-25 (shader-slang) a scan proposed filing a slang-side issue for the Nightly Coverage `merge-and-deploy` Pages-publish failure after searching only `shader-slang/slang` — but the canonical tracker lives in the external repo `shader-slang/slang-coverage-reports#5` (the >950 MB staging-budget issue) which the same fleet's earlier scan had cited. Rule: before proposing any new issue, search the relevant adjacent repos for the failure's system of record — `slang-coverage-reports` for coverage/Pages findings, `slang-material-modules-benchmark` for benchmark-store findings — and treat the external-repo issue as the tracker when the failing step lives in that repo; classify such nightly reds as tracked-external instead of re-filing on the main repo ([dedupe pitfall: "no existing tracker" searches must cover adjacent repos](../learnings/1795593979015-dedupe-pitfall-no-existing-tracker-searches-must-c.md)).
 
 ## Carrying, re-checking and retiring watch-list entries
 
@@ -90,7 +92,7 @@ When the gate was tightened to require `check-ci=SUCCESS` for `resolved`, the fi
 
 **Correction (supersedes that audit's #13451 finding).** The audit flagged #13451 (head with 0 check-runs) as an unsupported `resolved`. Wrong: the orchestrator had read 69 contexts with check-ci SUCCESS live; the runs were later removed (0 check-runs and 0 workflow runs, unchanged `updatedAt`). Before calling a past green verdict wrong, look for an earlier live read of the same head. A head that lost check-ci with no push is `ci-vanished` (in `sweeplib.LABELS`), not `no-ci-never-ran`: never-ran needs a maintainer to trigger CI, vanished needs someone to find who deleted the runs; the verdict stays `no-ci` ([check-ci vanished with no push](../learnings/1791807339120-correction-a-pr-whose-check-ci-disappears-with-no-.md)).
 
-**Source learnings (35):**
+**Source learnings (36):**
 - [wc -c counts bytes](../learnings/1792574037781-watch-list-size-checks-wc-c-counts-bytes-emoji-ros.md) — emoji roster ~5% over; dated H2s → sweep bullets
 - [d4.py misroutes new numbers](../learnings/1792572844379-watch-list-d4-py-hardcoded-slangpy-list-misroutes-.md) — hardcoded slangpy list; route by range
 - [Trackers carry disposition + reasoning](../learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md) — "do NOT re-flag"; human de-escalation wins
@@ -100,6 +102,7 @@ When the gate was tightened to require `check-ci=SUCCESS` for `resolved`, the fi
 - [Reporter-closed issue with unmerged fix is still live](../learnings/1792399830239-slang-a-reporter-closed-issue-with-an-unmerged-fix.md) — #13737 / #13741; re-key
 - [Stalls freeze the whole recurrence](../learnings/1783327563514-learnings-wiki-coverage-checker-miscounts-bracket-.md) — un-fired occurrence; sync vs wiki-synth
 - [Prose summaries drift from file state](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md) — re-read the file first
+- [dedupe pitfall: "no existing tracker" searches must cover adjacent repos, not just the main one](../learnings/1795593979015-dedupe-pitfall-no-existing-tracker-searches-must-c.md) — external-repo issue is the tracker when the failing step lives there; classify tracked-external
 - [Bi-weekly via cron guard](../learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md) — fire weekly, skip off-weeks
 - [Failed fetch defaulting to OPEN](../learnings/1786150583873-a-failed-fetch-defaulting-to-open-resurrects-archi.md) — fail closed: skip/escalate
 - [scan.py inflated must_nudge](../learnings/1786149497107-scan-py-absent-body-read-as-automation-inflated-mu.md) — 146 vs 21; validate the predicate

@@ -3,7 +3,7 @@ title: "Merge-Queue Refs & Evictions — Stale Heads, checks_timed_out and gh-re
 type: concept
 group: ci-tooling
 tags: [merge-queue, checks-timed-out, gh-readonly-queue, sm80, runner-starvation, slangpy-tests, graphql, slang]
-source_count: 9
+source_count: 11
 ---
 
 # Merge-Queue Refs & Evictions — Stale Heads, checks_timed_out and gh-readonly-queue Leftovers
@@ -39,9 +39,11 @@ The master head's `committer.date` for a queue-merged commit is the queue entry'
 
 ## Stale `gh-readonly-queue` refs from merged PRs mimic live drops
 
+**Date-stamp every red before classifying it, and don't diff raw ref snapshots.** A 2026-11-25 rescan re-hit the same stale refs (pr-10303/pr-10321/pr-12968 pointing at March/September commits, one carrying a FAILED "SlangPy Tests" status from 2026-09-14 that looked like a fresh block) — always fetch the queue commit's date AND the status target_run's `created_at` before treating a red as live. Queue-ref tips can also change between queries minutes apart (debris recycling), so a diff between two `matching-refs` snapshots is plumbing noise, not queue activity. Note the main "CI" workflow no longer runs on `master` directly — it runs on merge-queue refs (merge_group event) — so master CI health is queue refs + per-PR `gh pr checks`, not `gh run list --branch master --workflow CI` ([merge-queue scan: date-stamp red statuses on stale gh-readonly-queue refs before flagging](../learnings/1795593879996-merge-queue-scan-date-stamp-red-statuses-on-stale-.md)). When checking the queue via GraphQL: the `mergeQueue` field does NOT accept a `state` argument (returns `argumentNotAccepted`) — query it bare (`repository { mergeQueue { entries(first: 20) { totalCount edges { node { position enqueuedAt pullRequest { number state } } } } } }`); and `MovedToMergeQueueEvent` is not a valid timeline fragment type — filter `timelineItems` nodes by `__typename == "RemovedFromMergeQueueEvent"` instead of passing `itemTypes` ([GitHub GraphQL merge-queue query quirks (shader-slang/slang)](../learnings/1795608123047-github-graphql-merge-queue-query-quirks-shader-sla.md)).
+
 When scanning `gh-readonly-queue/master/*` refs (via `git/matching-refs/heads/gh-readonly-queue/master`), a ref with a red required status is usually **stale garbage from a long-finished PR**: GitHub never deletes some old merge-queue refs, and the commit statuses/check-runs on their shas persist from months-old runs. Seen repeatedly — 2026-11-16/17 scans found pr-10303 (merged 2026-03-17), pr-10321 (closed 2026-03-02) and pr-12968 (merged 2026-09-18) still present with full check history, one carrying a `SlangPy Tests=failure` status dated 2026-09-14 that looked alarming but was a leftover pointing at a cancelled run from months back; nothing was actively being dropped. Before diagnosing a live drop: (1) check the queue commit's `commit.committer.date`, (2) resolve the PR number from the ref name (`pr-<num>-<headsha>`) and check the PR state, (3) check the status's `updated_at` from `commits/<sha>/status`, and (4) cross-check recent `added_to_merge_queue`/`removed_from_merge_queue` timeline events on open PRs — live drops show recent events and a fresh queue ref, stale ones show none. Also note the check-runs REST field is `check_runs`, not `check-runs` (a jq `."check-runs"` silently nulls), and queue-ref names chain: the `pr-N2-<sha>` suffix is the parent queue entry's commit sha ([stale refs mimic failed-queue drops](../learnings/1794830643349-merge-queue-scan-stale-gh-readonly-queue-refs-from.md), [months-old orphan refs](../learnings/1794845023055-gh-readonly-queue-refs-can-be-months-old-orphans-f.md), [old red statuses on merged PRs](../learnings/1794859339834-merged-prs-leave-stale-readonly-queue-refs-with-ol.md), [stale refs mimic merge-queue failure](../learnings/1794873968836-stale-gh-readonly-queue-refs-from-merged-prs-mimic.md)). The same "old artifact masquerading as live" trap hits nightly workflows: scheduling pauses leave long gaps in Nightly Slang Test / Coverage / CI Analytics run lists, and gaps in the list don't mean the runs never existed — cross-check a tracking issue's cited run IDs against `gh run list --workflow` output ([nightly gaps](../learnings/1794830643349-merge-queue-scan-stale-gh-readonly-queue-refs-from.md)).
 
-**Source learnings (9):**
+**Source learnings (11):**
 
 - [waiting run can be falcor-build-approval-gate](../learnings/1794385477936-slang-ci-run-waiting-can-be-just-falcor-build-appr.md) — check jobs before saying "never ran"
 - [SM80 starvation back to checks_timed_out MQ evictions](../learnings/1794386737312-sm80-starvation-is-back-to-checks-timed-out-mq-evi.md) — snapshots miss waiting-run jobs; started_at==created_at
@@ -51,6 +53,8 @@ When scanning `gh-readonly-queue/master/*` refs (via `git/matching-refs/heads/gh
 - [gh-readonly-queue refs can be months-old orphans](../learnings/1794845023055-gh-readonly-queue-refs-can-be-months-old-orphans-f.md) — statuses persist; ref names chain by sha
 - [merged PRs leave stale queue refs with old red statuses](../learnings/1794859339834-merged-prs-leave-stale-readonly-queue-refs-with-ol.md) — check updated_at; field is check_runs
 - [stale refs mimic merge-queue failure; Issue Onboard broken](../learnings/1794873968836-stale-gh-readonly-queue-refs-from-merged-prs-mimic.md) — 11-17 TOT scan; GraphQL iterationId rider
-- [run-level queued status can be stale while jobs run](../learnings/1795174345407-github-actions-run-level-status-queued-can-be-stal.md) — count non-completed jobs via the jobs API before escalating a stall
+- [run-level queued status can be stale while jobs run](../learnings/1795174345407-github-actions-run-level-status-queued-can-be-stal.md) — count non-completed jobs via the jobs API before escalating a stall — count non-completed jobs via the jobs API before escalating a stall
+- [merge-queue scan: date-stamp red statuses on stale gh-readonly-queue refs before flagging](../learnings/1795593879996-merge-queue-scan-date-stamp-red-statuses-on-stale-.md) — ref-snapshot diffs are plumbing noise; master CI runs on merge-queue refs
+- [GitHub GraphQL merge-queue query quirks (shader-slang/slang)](../learnings/1795608123047-github-graphql-merge-queue-query-quirks-shader-sla.md) — mergeQueue takes no state arg; RemovedFromMergeQueueEvent by __typename
 
 _Catalog: [index](../index.md)_

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-637 learnings. [Catalog](../index.md)
+640 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -429,6 +429,7 @@ type: topic
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [My false claims were all about my own work, not the code — and a commit message is the one carrier you can't correct in place](../learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md)
 - [Narrowing a claim is not testing its premise — and check your own store before re-deriving](../learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md)
+- [Never carry a state label forward — re-verify PR/issue state from the endpoint each wake](../learnings/1795647755506-never-carry-a-state-label-forward-re-verify-pr-iss.md)
 - [Never git add -A in a worktree with scratch files — verify diff stat before every push](../learnings/1790096330385-never-git-add-a-in-a-worktree-with-scratch-files-v.md)
 - [Never infer "this surface is untouched" — read the comment list; and scope a pass-ordering claim to the path you measured](../learnings/1786022020376-never-infer-this-surface-is-untouched-read-the-com.md)
 - [Never judge success through a pipe, and never trust a copied reachability check until its link syntax is verified — two ways an index/permission probe lies quietly](../learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md)
@@ -514,12 +515,14 @@ type: topic
 - [SECOND CORRECTION — the 41 was a truncated-population tally MIXED with a complete-fetch distinct count; both guards are needed for different reasons](../learnings/1785867767806-second-correction-the-41-was-a-truncated-populatio.md)
 - [Secondhand repro files: check actual decl-attachment before the claimant's narrative](../learnings/1795059358222-secondhand-repro-files-check-actual-decl-attachmen.md)
 - [Shared base clone: unscoped formatting.sh + git add -A absorbs sibling files; verify with three-dot / HEAD^..HEAD](../learnings/1787313410877-shared-base-clone-unscoped-formatting-sh-git-add-a.md)
+- [Shared bot identity: verify comment id before in-place PATCH on issues](../learnings/1795636717586-shared-bot-identity-verify-comment-id-before-in-pl.md)
 - [slang #11591/#11590 — prior 41303-to-Slice-3 ruling (1781318517600) re-verified VALID at HEAD a84f48e62 post-#11594; carrying 41303 in Slice 2 is a confirmed band-aid](../learnings/1781776078394-slang-11591-11590-prior-41303-to-slice-3-ruling-17.md)
 - [slang core module HAS a namespace-enclosed extension (namespace linalg) — verify before claiming user-namespace-only](../learnings/1781088865270-slang-core-module-has-a-namespace-enclosed-extensi.md)
 - [Slang debug build: SLANG_ASSERT does NOT always catch OOB — verify segfault claims empirically](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md)
 - [slang diagnostics-catalog doc_section_digest gap + verify peer repo-state claims before public filing](../learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md)
 - [Slang global varyings: verify "target X unaffected" claims for both `in` and `out`, and HLSL -whole-program](../learnings/1792220060940-slang-global-varyings-verify-target-x-unaffected-c.md)
 - [slang-capability-generator exits 0 despite error diagnostics (issue #12212) + verify tool-exit claims against source not DeepWiki](../learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md)
+- [slang-pr-review-runner REVIEW-GUARD false positive on quoted "API Error" text in review body](../learnings/1795636431702-slang-pr-review-runner-review-guard-false-positive.md)
 - [slang-rhi WGPU GPU repro in ~5 min without building the tests; bisect by release with relink](../learnings/1793808992860-slang-rhi-wgpu-gpu-repro-in-5-min-without-building.md)
 - [slang-test harness false-green fixes: verify behaviorally; Defect-A registry-drain repro is platform-dependent](../learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md)
 - [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](../learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)
