@@ -1,4 +1,0 @@
-# Replay corpora and staged outputs hold confidential discussion content.
-*.jsonl
-out/
-__pycache__/

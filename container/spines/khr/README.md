@@ -13,7 +13,6 @@ This branch only adds files. It owns:
 - `container/skills/khr-*/**`
 - `container/mcp-servers/khr-*/**`
 - `coworkers/khr-*.yaml` and `coworkers/khrbotnv.yaml` (named after the source harness's bot, by owner decision)
-- `khr/**`: operator tools that run on the host, such as `khr/replay/`
 
 It changes no file owned by nv-main. Anything that needs core (`src/**`, `container/agent-runner/**`, `.github/**`, `docs/**`) goes to nv-main as a separate, generic pull request.
 
