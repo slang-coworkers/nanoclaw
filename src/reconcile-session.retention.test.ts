@@ -16,6 +16,7 @@ import {
   _resetMailboxGcForTesting,
   gcMailboxHistory,
   reclaimMailboxSpace,
+  resolveCliReplyRetentionHours,
   resolveMailboxRetentionDays,
 } from './reconcile-session.js';
 
@@ -313,5 +314,60 @@ describe('reclaimMailboxSpace (inbound.db, host = sole writer)', () => {
     const o = new Database(outP, { readonly: true });
     expect(o.pragma('auto_vacuum', { simple: true })).toBe(0);
     o.close();
+  });
+});
+
+describe('consumed ncl replies (short window)', () => {
+  const hoursAgo = (h: number) => new Date(NOW - h * 3_600_000).toISOString();
+
+  function addReplies(): void {
+    const db = new Database(inboundPath);
+    const ins = db.prepare(
+      'INSERT INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, ?, ?, ?, ?)',
+    );
+    ins.run('cli-resp-old-done', 20, 'system', hoursAgo(48), 'completed', '{}'); // consumed, past 24 h → gone
+    ins.run('cli-resp-old-failed', 22, 'system', hoursAgo(30), 'failed', '{}'); // consumed, past 24 h → gone
+    ins.run('cli-resp-recent-done', 24, 'system', hoursAgo(2), 'completed', '{}'); // inside 24 h → kept
+    ins.run('cli-resp-old-pending', 26, 'system', hoursAgo(48), 'pending', '{}'); // unread → kept
+    ins.run('sys-old-other', 28, 'system', hoursAgo(48), 'completed', '{}'); // not a reply → main window
+    ins.run('chat-last', 30, 'chat', hoursAgo(0), 'pending', '{}');
+    db.close();
+  }
+
+  it('resolves the window: 24 h by default, an explicit value honoured, 0 = main window', () => {
+    expect(resolveCliReplyRetentionHours(undefined)).toBe(24);
+    expect(resolveCliReplyRetentionHours('  ')).toBe(24);
+    expect(resolveCliReplyRetentionHours('-3')).toBe(24);
+    expect(resolveCliReplyRetentionHours('abc')).toBe(24);
+    expect(resolveCliReplyRetentionHours('6')).toBe(6);
+    expect(resolveCliReplyRetentionHours('0')).toBe(0);
+  });
+
+  it('drops consumed replies past the short window and nothing else inside the main window', () => {
+    addReplies();
+    const db = openInboundDb(inboundPath);
+    const result = gcMailboxHistory(wrapSqliteInbound(db), { id: 's1' }, 30, NOW, 24);
+    db.close();
+    expect(result).toEqual({ systemRows: 4, deliveredRows: 0, more: false }); // 2 replies + the 2 past 30 d
+    const left = ids();
+    expect(left).not.toContain('cli-resp-old-done');
+    expect(left).not.toContain('cli-resp-old-failed');
+    expect(left).toEqual(
+      expect.arrayContaining(['cli-resp-recent-done', 'cli-resp-old-pending', 'sys-old-other', 'sys-20d-done']),
+    );
+  });
+
+  it('keeps replies for the main window when the short window is 0', () => {
+    addReplies();
+    const db = openInboundDb(inboundPath);
+    gcMailboxHistory(wrapSqliteInbound(db), { id: 's1' }, 30, NOW, 0);
+    db.close();
+    expect(ids()).toEqual(expect.arrayContaining(['cli-resp-old-done', 'cli-resp-old-failed']));
+  });
+
+  it('passes the reply cutoff to the mailbox', () => {
+    const gcHistory = vi.fn(() => ({ systemRows: 0, deliveredRows: 0 }));
+    gcMailboxHistory({ gcHistory }, { id: 's1' }, 30, NOW, 24);
+    expect(gcHistory).toHaveBeenCalledWith(daysAgo(30), { cliReplyCutoffIso: hoursAgo(24) });
   });
 });
