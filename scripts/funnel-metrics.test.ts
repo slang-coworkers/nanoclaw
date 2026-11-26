@@ -20,8 +20,15 @@ import {
   type ApproverWeeklyInput,
   type ReviewCycleInput,
   type TerminalLookup,
+  type GraphqlIssueNode,
+  type LinkedPr,
+  botPrCandidates,
   aggregateApproverWeekly,
   aggregateReviewCycles,
+  classifyGithubResponse,
+  classifyIssue,
+  classifyPrStage,
+  closingPrsOf,
   collectRoutedFromLine,
   collectRoutedIssues,
   countHumanReview,
@@ -29,10 +36,16 @@ import {
   fetchAllReviewsWith,
   humanVerdictOf,
   isBotLogin,
+  isGithubErrorBody,
+  isNotOurProblem,
   isOurBotLogin,
+  linkedPrsFromTimeline,
   mondayUtc,
   normaliseLogin,
   parentResource,
+  parseCurlResponse,
+  pickBotPr,
+  rateLimitState,
   reviewsApiPath,
 } from './funnel-metrics.js';
 
@@ -699,5 +712,289 @@ describe('collectRoutedIssues (streamed host log)', () => {
     collectRoutedFromLine('dev-routed issue to peer', s);
     collectRoutedFromLine('repo="a/b" issue=1', s);
     expect(s.size).toBe(0);
+  });
+});
+
+// ── GitHub response handling ─────────────────────────────────────────────────
+// The 2026-11-25 rate limit: each 403 body was parsed and cached as data, so 279
+// issue timelines read as "no linked PR" and the merged count fell from 459 to 239.
+
+const RATE_LIMIT_BODY = JSON.stringify({
+  message: 'API rate limit exceeded for installation ID 122982130.',
+  documentation_url: 'https://docs.github.com/rest/overview/rate-limits-for-the-rest-api',
+  status: '403',
+});
+
+const curlOut = (statusLine: string, headers: string[], body: string) =>
+  `${statusLine}\r\n${headers.join('\r\n')}\r\n\r\n${body}`;
+
+describe('parseCurlResponse', () => {
+  it('reads the status, lower-cased headers and the body', () => {
+    const r = parseCurlResponse(
+      curlOut('HTTP/2 200', ['X-RateLimit-Remaining: 42', 'x-ratelimit-reset: 1795700000'], '[1]'),
+    );
+    expect(r).toEqual({
+      status: 200,
+      headers: { 'x-ratelimit-remaining': '42', 'x-ratelimit-reset': '1795700000' },
+      body: '[1]',
+    });
+  });
+
+  it('skips an interim 100 Continue block to the final response', () => {
+    const raw =
+      'HTTP/1.1 100 Continue\r\n\r\n' +
+      curlOut('HTTP/1.1 403 Forbidden', ['x-ratelimit-remaining: 0'], RATE_LIMIT_BODY);
+    expect(parseCurlResponse(raw)?.status).toBe(403);
+    expect(parseCurlResponse(raw)?.body).toBe(RATE_LIMIT_BODY);
+  });
+
+  it('returns null when the output has no status line', () => {
+    expect(parseCurlResponse('{"data": 1}')).toBeNull();
+    expect(parseCurlResponse('')).toBeNull();
+  });
+});
+
+describe('isGithubErrorBody', () => {
+  it('recognises a rate-limit body', () => {
+    expect(isGithubErrorBody(JSON.parse(RATE_LIMIT_BODY))).toBe(true);
+    expect(isGithubErrorBody({ message: 'Not Found', documentation_url: 'x' })).toBe(true);
+  });
+
+  it('does not mistake data for an error', () => {
+    expect(isGithubErrorBody([])).toBe(false);
+    expect(isGithubErrorBody([{ message: 'a', status: 'b' }])).toBe(false);
+    expect(isGithubErrorBody({ number: 1, state: 'closed', title: 't' })).toBe(false);
+    expect(isGithubErrorBody({ sha: 'abc', commit: { message: 'subject' } })).toBe(false);
+    expect(isGithubErrorBody(null)).toBe(false);
+  });
+});
+
+describe('classifyGithubResponse', () => {
+  const res = (status: number, body: string) => ({ status, headers: {}, body });
+
+  it('treats a 2xx JSON body as data', () => {
+    expect(classifyGithubResponse(res(200, '[{"event":"cross-referenced"}]'))).toEqual({
+      kind: 'ok',
+      data: [{ event: 'cross-referenced' }],
+    });
+  });
+
+  it('never treats a rate-limit 403 as data', () => {
+    const out = classifyGithubResponse(res(403, RATE_LIMIT_BODY));
+    expect(out.kind).toBe('failed');
+    expect(out.kind === 'failed' && out.reason).toContain('API rate limit exceeded');
+  });
+
+  it('treats an error body as a failure even under a 2xx status', () => {
+    expect(classifyGithubResponse(res(200, RATE_LIMIT_BODY)).kind).toBe('failed');
+  });
+
+  it('reports 404 and 410 as missing, not as failures', () => {
+    expect(classifyGithubResponse(res(404, '{"message":"Not Found"}'))).toEqual({ kind: 'missing' });
+    expect(classifyGithubResponse(res(410, '{"message":"Gone"}'))).toEqual({ kind: 'missing' });
+  });
+
+  it('fails on a body that is not JSON and on an unreadable response', () => {
+    expect(classifyGithubResponse(res(502, '<html>Bad gateway</html>')).kind).toBe('failed');
+    expect(classifyGithubResponse(null).kind).toBe('failed');
+  });
+});
+
+describe('rateLimitState', () => {
+  it('reads the remaining calls and the reset time', () => {
+    expect(rateLimitState({ 'x-ratelimit-remaining': '900', 'x-ratelimit-reset': '1795700000' })).toEqual({
+      remaining: 900,
+      resetAtMs: 1795700000000,
+    });
+  });
+
+  it('returns null when the headers are absent', () => {
+    expect(rateLimitState({})).toBeNull();
+  });
+});
+
+// ── issue partition ──────────────────────────────────────────────────────────
+
+const pr = (o: Partial<LinkedPr>): LinkedPr => ({
+  number: 1,
+  url: null,
+  author: 'nv-slang-bot',
+  isBot: true,
+  prState: 'open',
+  isDraft: true,
+  ...o,
+});
+
+describe('pickBotPr', () => {
+  it('lets a later merged bot PR outrank an earlier closed one', () => {
+    const picked = pickBotPr([pr({ number: 10, prState: 'closed' }), pr({ number: 11, prState: 'merged' })]);
+    expect(picked?.number).toBe(11);
+  });
+
+  it('ranks ready above draft, and draft above closed', () => {
+    expect(pickBotPr([pr({ number: 1, isDraft: true }), pr({ number: 2, isDraft: false })])?.number).toBe(2);
+    expect(pickBotPr([pr({ number: 1, prState: 'closed' }), pr({ number: 2, isDraft: true })])?.number).toBe(2);
+  });
+
+  it('keeps the earliest PR on a tie and ignores human PRs', () => {
+    expect(pickBotPr([pr({ number: 5 }), pr({ number: 6 })])?.number).toBe(5);
+    expect(pickBotPr([pr({ number: 7, isBot: false, prState: 'merged' })])).toBeUndefined();
+  });
+});
+
+const prSource = (o: Record<string, unknown>) => ({
+  source: {
+    __typename: 'PullRequest',
+    number: 1,
+    url: 'u',
+    merged: false,
+    state: 'OPEN',
+    isDraft: true,
+    author: { login: 'nv-slang-bot' },
+    ...o,
+  },
+});
+
+const issue = (o: Partial<GraphqlIssueNode> = {}): GraphqlIssueNode => ({
+  number: 100,
+  url: 'https://github.com/shader-slang/slang/issues/100',
+  createdAt: '2026-11-20T00:00:00Z',
+  state: 'OPEN',
+  stateReason: null,
+  labels: { nodes: [] },
+  timelineItems: { nodes: [] },
+  comments: { nodes: [] },
+  ...o,
+});
+
+describe('linkedPrsFromTimeline', () => {
+  it('maps the GraphQL PR fields and drops non-PR sources', () => {
+    const node = issue({
+      timelineItems: {
+        nodes: [
+          prSource({ number: 3, merged: true, state: 'MERGED', isDraft: false }),
+          { source: { __typename: 'Issue', number: 4 } },
+          prSource({ number: 5, state: 'CLOSED', author: { login: 'someone' } }),
+          null,
+        ],
+      },
+    });
+    expect(linkedPrsFromTimeline(node)).toEqual([
+      { number: 3, url: 'u', author: 'nv-slang-bot', isBot: true, prState: 'merged', isDraft: false },
+      { number: 5, url: 'u', author: 'someone', isBot: false, prState: 'closed', isDraft: true },
+    ]);
+  });
+});
+
+describe('classifyIssue', () => {
+  const repo = 'shader-slang/slang';
+
+  it('counts an issue as merged when any bot PR merged', () => {
+    const node = issue({
+      state: 'CLOSED',
+      stateReason: 'COMPLETED',
+      timelineItems: {
+        nodes: [
+          prSource({ number: 10, state: 'CLOSED' }),
+          prSource({ number: 11, merged: true, state: 'MERGED', isDraft: false }),
+        ],
+      },
+    });
+    expect(classifyIssue(node, repo)).toMatchObject({ bucket: 'bot_pr', stage: 'merged', prNumber: 11 });
+  });
+
+  it('sub-classifies an open bot PR by its draft flag', () => {
+    expect(classifyIssue(issue({ timelineItems: { nodes: [prSource({})] } }), repo).stage).toBe('shipped-draft');
+    expect(classifyIssue(issue({ timelineItems: { nodes: [prSource({ isDraft: false })] } }), repo).stage).toBe(
+      'pr-ready',
+    );
+  });
+
+  it('excludes not_planned issues and not-a-bug labels', () => {
+    expect(classifyIssue(issue({ state: 'CLOSED', stateReason: 'NOT_PLANNED' }), repo).bucket).toBe('not_our_problem');
+    expect(classifyIssue(issue({ labels: { nodes: [{ name: 'Duplicate' }] } }), repo).bucket).toBe('not_our_problem');
+  });
+
+  it('puts a closed issue with only a human PR in resolved_elsewhere', () => {
+    const node = issue({
+      state: 'CLOSED',
+      stateReason: 'COMPLETED',
+      timelineItems: { nodes: [prSource({ number: 9, author: { login: 'human' } })] },
+    });
+    expect(classifyIssue(node, repo)).toMatchObject({ bucket: 'resolved_elsewhere', prNumber: 9 });
+  });
+
+  it('separates triage_only, resolved_elsewhere and never_engaged by the bot comment', () => {
+    const botComment = { nodes: [{ author: { login: 'nv-slang-bot' } }] };
+    expect(classifyIssue(issue({ comments: botComment }), repo).bucket).toBe('triage_only');
+    expect(classifyIssue(issue({ state: 'CLOSED', stateReason: 'COMPLETED', comments: botComment }), repo).bucket).toBe(
+      'triage_only',
+    );
+    expect(classifyIssue(issue({ state: 'CLOSED', stateReason: 'COMPLETED' }), repo)).toMatchObject({
+      bucket: 'resolved_elsewhere',
+      note: 'closed; no bot artifact',
+    });
+    expect(classifyIssue(issue(), repo).bucket).toBe('never_engaged');
+  });
+
+  it('keeps the shared stage rules', () => {
+    expect(classifyPrStage('closed', false, 'closed')).toBe('superseded');
+    expect(classifyPrStage('closed', false, 'open')).toBe('pr-closed');
+    expect(isNotOurProblem('completed', ['bug'])).toBe(false);
+  });
+});
+
+describe('botPrCandidates — a merged mention is not a fix', () => {
+  const repo = 'shader-slang/slang';
+  const mergedBot = { merged: true, state: 'MERGED', isDraft: false };
+
+  it('does not count a merged bot PR that only mentions an issue still open', () => {
+    const node = issue({ timelineItems: { nodes: [prSource({ number: 20, ...mergedBot })] } });
+    expect(classifyIssue(node, repo).bucket).toBe('never_engaged');
+  });
+
+  it('counts a merged bot PR that GitHub links as closing the issue, open or not', () => {
+    const closing = { nodes: [{ number: 21, url: 'u21', ...mergedBot, author: { login: 'nv-slang-bot' } }] };
+    expect(classifyIssue(issue({ closedByPullRequestsReferences: closing }), repo)).toMatchObject({
+      bucket: 'bot_pr',
+      stage: 'merged',
+      prNumber: 21,
+    });
+  });
+
+  it('counts a merged bot mention when the issue is closed and no PR is linked as closing', () => {
+    const node = issue({
+      state: 'CLOSED',
+      stateReason: 'COMPLETED',
+      timelineItems: { nodes: [prSource({ number: 22, ...mergedBot })] },
+    });
+    expect(classifyIssue(node, repo).stage).toBe('merged');
+  });
+
+  it('does not credit the bot when a human PR is linked as the fix', () => {
+    const node = issue({
+      state: 'CLOSED',
+      stateReason: 'COMPLETED',
+      timelineItems: { nodes: [prSource({ number: 23, ...mergedBot })] },
+      closedByPullRequestsReferences: { nodes: [{ number: 24, url: 'u24', ...mergedBot, author: { login: 'human' } }] },
+    });
+    expect(classifyIssue(node, repo)).toMatchObject({ bucket: 'resolved_elsewhere', prNumber: 24 });
+  });
+
+  it('still counts an unmerged bot attempt found only as a mention', () => {
+    expect(classifyIssue(issue({ timelineItems: { nodes: [prSource({ number: 25 })] } }), repo).stage).toBe(
+      'shipped-draft',
+    );
+  });
+
+  it('lists a closing PR once when it is also a mention', () => {
+    const node = issue({
+      timelineItems: { nodes: [prSource({ number: 26, url: 'u26', ...mergedBot })] },
+      closedByPullRequestsReferences: {
+        nodes: [{ number: 26, url: 'u26', ...mergedBot, author: { login: 'nv-slang-bot' } }],
+      },
+    });
+    const linked = linkedPrsFromTimeline(node);
+    expect(botPrCandidates(linked, closingPrsOf(node), 'open')).toHaveLength(1);
   });
 });

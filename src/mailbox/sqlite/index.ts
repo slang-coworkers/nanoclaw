@@ -199,7 +199,12 @@ export function wrapSqliteInbound(
   opts: { outboundPath?: string } = {},
 ): InboundMailbox {
   return {
-    gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
+    gcHistory: (cutoffIso, gcOpts) =>
+      gcInboundHistory(db, {
+        cutoffIso,
+        cliReplyCutoffIso: gcOpts?.cliReplyCutoffIso,
+        outboundPath: opts.outboundPath,
+      }),
     reclaimSpace: () => reclaimFreePages(db, mailboxReclaimOptions()),
     expireOrphanedCliResponses: (cutoffIso) => expireOrphanedCliResponses(db, cutoffIso),
     getPendingTriggerRows: (opts) => getPendingTriggerRows(db, opts),
