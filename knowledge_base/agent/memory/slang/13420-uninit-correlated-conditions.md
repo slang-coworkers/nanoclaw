@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13420 — false-positive E41035 when the store and the read sit under the same condition
-description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open, conflicting with master and idle since 10-16 (as of 11-18)
+description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open, conflicting with master and idle since 10-16 (as of 11-25)
 tags: [slang, ir, diagnostics, uninitialized-values, regression, parked]
 resource: /workspace/inbox/a2a-1790993086700-996pfk/triage-13420.md
 ---
@@ -101,3 +101,11 @@ timeline events on the PR after the 10-09 cluster; no other PR references #13420
 on the dashboard and did not touch the PR. NO-GO holds. Next one-shot:
 `rechase-13420-pr13543-c45c`
 (2026-11-25).
+
+**2026-11-25 re-chase: still stalled (40 days idle).** #13543 is open, non-draft, head still
+`91955cc99`, `updatedAt` still 2026-10-16T22:02Z, still `DIRTY`/`CONFLICTING`; 0 check-runs on the
+head commit, so the `pull_request`-event CI has still never run on it. The only review and only PR
+comment are coderabbit's (10-09); no human comments. Issue #13420 is open, assigned to pdeayton-nv,
+only comment still the bot triage, last timeline event still the 10-09 cross-reference. No other PR
+references #13420. Posted one line on the dashboard; did not touch the PR. NO-GO holds. Next
+one-shot: `rechase-13420-pr13543-*` (2026-12-02).

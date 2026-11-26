@@ -88,6 +88,11 @@ or the merged PR need no dispatch.
      [14611-reflection-specializetype-no-ast-builder-scope.md](14611-reflection-specializetype-no-ast-builder-scope.md);
      its issue_opened = self-echo, no dispatch); `ComponentType::isSubType` (linkable.cpp:1230) remains
      the unfiled latent twin, folded into the #14611 follow-up scope.
+     **11-25 update — park lifted**: skiminki-nv directed on #14611 (cmt 7170973978, 18:29Z):
+     "Please implement the suggested fix". slang-fixer chain dispatched on the #14611 canonical
+     thread (guard confirmed still absent at origin/master, now at
+     semantic-checking/slang-check-shader.cpp:4212 post-#14514). Active state:
+     [14611-reflection-specializetype-no-ast-builder-scope.md](14611-reflection-specializetype-no-ast-builder-scope.md).
 - **Maintainer full-suite confirmation 11-19 08:42Z (Main-verified)**: skiminki-nv on PR #14605 —
   "Local full test runs without and with this PR confirm that the test retries go away" (cmt 7004151812;
   fixer replied 7004178860). Strongest regression evidence yet; chain otherwise unchanged — PR
@@ -102,5 +107,5 @@ or the merged PR need no dispatch.
   re-run green at the merged head (12/12 pair, 8/8 spec-alone, 18/18 serialization, 90/90 targeted);
   diff vs master unchanged (2 files +9). TODO closed (7004290747), explanation comment refreshed for the
   new head. CI re-triggered by the synchronize push — results via webhook.
-- Resume on: PR #14605 merge webhook (fixer session owns pr-mapping), human comment, or the triager's
-  side-find disposition.
+- Resume on: PR #14605 merge webhook (fixer session owns pr-mapping), human comment, the #14611 fixer
+  chain's reports, or operator direction.

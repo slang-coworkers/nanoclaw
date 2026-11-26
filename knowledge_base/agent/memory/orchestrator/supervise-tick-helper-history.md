@@ -149,3 +149,18 @@ copied (tick333/337). Split a board message part whenever it passes ~14.5-15 KB
 tick300 established the disp-overrides reset rule (runbook). Board msg2/msg3
 splitting began tick323; tick321's board274.py inlines any row whose notes.json
 next-cell contains ⚠️ so a carried operator-blocked `same` row is not collapsed.
+
+## tick 405 (2026-11-25 20:00 gate tick)
+
+tick405 = tick404 helpers unchanged, paths repointed, since= reset to
+2026-11-25T10:00Z, ghfeeds SINCE/awk re-dated to the same. Gate nudge flags
+(slang-14212, rhi-986) both verified false positives: 14212 self-resolved
+pre-tick (kaizhangNV's 19:59Z merge-conflict ask answered 20:00–20:01Z,
+master merged clean); rhi-986 dispositioned `active:human-debate` (jhelferty-nv's
+placement question addressed to @skallweitNV, owning session had evaluated
+18:13Z) → re-scan must_nudge 1→0, 0 nudges sent. 4 🆕: 14722 (fix chain, PR
+#14725), 14726 (bot-filed side-find of #14611, `advisory:follow-up-backlog`
+per filing policy), 5892 (recheck answered), rhi-989 (round-2 cycle, fixer
+iterating CI on PR #990). 22 escalates / cost_stopped 14589 unchanged. 14693 +
+14703 closed+archived. Runbook "latest tick dir" pointer advanced tick401 →
+tick405.

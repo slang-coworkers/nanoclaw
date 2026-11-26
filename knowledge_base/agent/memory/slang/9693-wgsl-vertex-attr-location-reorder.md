@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#9693 — WGSL reorders vertex attribute locations
-description: Triaged 11-18 (jhelferty-nv mention); root cause verified; parked on maintainer review of human PR #13736. One-shot recheck recheck-9693-12b0 fires 2026-11-25.
+description: Triaged 11-18; root cause verified; parked on maintainer review of human PR #13736. One-shot recheck fired 11-25: still no review activity; refreshed triage comment; stays parked.
 tags: [wgsl, vertex-input, location, parked, webgpu]
 ---
 
@@ -21,9 +21,13 @@ tags: [wgsl, vertex-input, location, parked, webgpu]
   locally and verified. Fixer handoff would duplicate it. This mirrors the #8557 pattern (fix in a
   human PR, park on its merge).
 - **Triage comment:** issuecomment-6994314556 (nv-slang-bot, 2026-11-18 23:08Z).
+- **Recheck (2026-11-25, recheck-9693-12b0, triager report):** PR #13736 still OPEN, no review
+  activity since 2026-10-23 (~1-month stall). Triage comment 6994314556 patched in place with a
+  refreshed 5-bullet naming #13736 as the pending fix and the stall. No fixer dispatched (fix lives
+  in the human PR). Task was deliberately non-recurring — a further check needs a fresh one-shot
+  (or the /supervise-issues parked-chain walk) if the operator wants one.
 - **Next action:** maintainer review/merge of #13736 (decision owner: maintainers; requested reviewer
   dshreiner-nv as of 11-18). PR's closing keywords do NOT list #9693 — link it on merge.
-- **Timer:** triager's one-shot `recheck-9693-12b0` fires 2026-11-25: verify merged+closed, else nudge.
 - **Full triage memo:** [9693-triage-memo.md](9693-triage-memo.md) — archived 11-18; holds the
   approach map (A = PR #13736's emitter-reads-layout; B = seed indices from VarLayout; C ruled out),
   the test surface to watch if a re-fix is ever needed, and related issues (#13892 umbrella, #8388,

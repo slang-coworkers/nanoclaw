@@ -142,6 +142,14 @@ until a new push or re-run). Reviews: only github-actions (10-07) and tangent-ve
 is coderabbit 10-07. #13419 open, 1 comment, updated 10-08. **Dormant 33 days.** One dashboard line
 sent. Next one-shot: `rechase-13419-pr13487-<next>` (2026-11-25).
 
+**2026-11-25 re-chase (`…-f4-502f`):** no substantive change. #13487 is open, not a draft, head `53035c247`
+(last push 10-16), updatedAt still 2026-10-16. **New: mergeStateStatus moved BEHIND → DIRTY** — the branch
+now has merge conflicts with master. Head still has 0 runs and 0 check-runs (CI unreadable until a new
+push or re-run; no fresh Falcor signal). Reviews unchanged: github-actions (10-07) + tangent-vector's 5
+COMMENTED (10-16) — 0 author replies; dshreiner-nv/jkwak-work still requested; only PR comment is
+coderabbit 10-07. #13419 open, 1 comment, updated 10-08. **Dormant 40 days.** One dashboard line sent
+(id 3). Next one-shot: `rechase-13419-pr13487-<next>` (2026-12-02).
+
 **2026-11-17 — spin-off filing #14556 (compiler crash, self-referential `extern const`):** filed by
 nv-slang-bot with full verification in the body (SIGSEGV repro, root cause: extern branch of
 `tryConstantFoldDeclRef` bypasses check-time circularity detection → unguarded recursion in

@@ -62,3 +62,8 @@ holds a reverted prototype at `scratch-13491/prototype.diff`.
     updated 11-17) and #68 (`precise`, opened 11-17) — neither touches `try`, and no spec issue/PR/comment mentions 13491
     or try coverage (spec#63 remains the last). Discord channel still silent since 10-09 16:34Z; Yong hasn't posted. Told
     dashboard and created `rechase-13491-try-covera-dccc` for 11-25.
+- 2026-11-25 17:00Z re-chase: still parked. #13491 unchanged (open, 2 comments, last update 10-08 01:18Z, still
+    assigned to skiminki-nv); #13490 and #13492 have no new comments (last update 10-08). No spec PR or issue updated
+    since 11-18 (latest spec items remain #67/#68; nothing mentions 13491 or try coverage; spec#63 is still the last
+    `try` item). Discord channel still silent since 10-09 16:34Z; Yong hasn't posted. Told dashboard and created
+    `rechase-13491-try-covers-8091` for 12-02.
