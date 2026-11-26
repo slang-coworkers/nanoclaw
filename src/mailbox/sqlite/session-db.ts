@@ -552,6 +552,13 @@ export interface OutboundMessage {
 export interface GcInboundOptions {
   /** ISO instant; rows older than this are eligible. */
   cutoffIso: string;
+  /**
+   * A later cutoff for consumed `ncl` replies (`cli-resp-*` system rows). A
+   * reply is read once by the call that asked for it; nothing reads it again,
+   * and one session's replies can reach gigabytes inside the main window.
+   * Ignored unless it is later than `cutoffIso`.
+   */
+  cliReplyCutoffIso?: string;
   /** This session's outbound.db; needed to tell an orphan `delivered` row from a live one. */
   outboundPath?: string;
   /**
@@ -578,7 +585,8 @@ export interface GcInboundResult {
  * and a 193k-row `delivered` table. Nothing in the system deletes either.
  *
  *   - consumed system frames (`kind='system'`, terminal status) older than the
- *     cutoff go; chat/task rows are the conversation and stay;
+ *     cutoff go; consumed `ncl` replies go from the later `cliReplyCutoffIso`;
+ *     chat/task rows are the conversation and stay;
  *   - `delivered` rows older than the cutoff go ONLY when their messages_out
  *     row no longer exists. A `delivered` row whose message still exists is
  *     the only thing standing between that message and a redelivery, so the
@@ -616,7 +624,19 @@ export function gcInboundHistory(db: Database.Database, opts: GcInboundOptions):
           AND seq < (SELECT MAX(seq) FROM messages_in)
         LIMIT ?)`,
   );
-  const systemRows = drain(() => delSystem.run(cutoff, chunk).changes);
+  let systemRows = drain(() => delSystem.run(cutoff, chunk).changes);
+  const cliCutoff = opts.cliReplyCutoffIso?.replace('T', ' ').replace('Z', '').slice(0, 19);
+  if (cliCutoff && cliCutoff > cutoff) {
+    const delCliReplies = db.prepare(
+      `DELETE FROM messages_in WHERE rowid IN (
+         SELECT rowid FROM messages_in
+          WHERE kind = 'system' AND status IN ('completed', 'failed') AND id LIKE 'cli-resp-%'
+            AND ${norm('timestamp')} < ?
+            AND seq < (SELECT MAX(seq) FROM messages_in)
+          LIMIT ?)`,
+    );
+    systemRows += drain(() => delCliReplies.run(cliCutoff, chunk).changes);
+  }
   let deliveredRows = 0;
   if (opts.outboundPath && fs.existsSync(opts.outboundPath)) {
     db.prepare('ATTACH DATABASE ? AS outb').run(opts.outboundPath);
