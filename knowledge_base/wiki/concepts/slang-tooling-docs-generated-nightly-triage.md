@@ -3,7 +3,7 @@ title: "docs/generated nightly agentic suite: harness-rule fallout, building the
 type: concept
 group: slang-tooling
 tags: [slang-test, docs-generated, nightly, agentic-tests, exit-code, filecheck, triage, spirv-validation]
-source_count: 12
+source_count: 13
 ---
 
 ## TL;DR
@@ -90,6 +90,8 @@ not intended-failure tests. A side trap from the same triage: `gh pr view --json
 100 files, so #14269 looked like 101 files but had 358; page the REST `pulls/N/files` endpoint
 instead
 [fixture lists include expected-failure rows](../learnings/1793866800949-release-regression-fixture-lists-for-docs-generate.md).
+
+The extraction mechanics of that intersection matter: in `Nightly Slang Test` (nightly-slang-test.yml) run logs fetched via `gh run view <id> --log-failed`, failed agentic-test names appear as `FAILED test: 'docs/generated/tests/...slang'` — NOT `FAILED: <name>` — so the working grep is `grep -oP "(?<=FAILED test: ')[^']+" | sort -u`. Getting 0 matches with a `FAILED:` pattern does NOT mean the run is clean. Then diff against the prior nightly's set (`comm -13`/`comm -23`) to find new/recovered names versus the tracked docs/generated fixture ledger (observed 11-25 scan: 174 names, byte-identical across 11-24↔11-25) ([Nightly Slang Test: extract failing test names with "FAILED test: 'name'" pattern](../learnings/1795622585399-nightly-slang-test-extract-failing-test-names-with.md)).
 
 ## Reading an exit-code-only failure
 
@@ -207,9 +209,10 @@ on its comment step ("at least one email address must be verified"). Stale
 `gh-readonly-queue/master` refs from months past (pr-10303, pr-10321, pr-12968) linger with old
 failing checks — only treat refs with recent check-run timestamps as live.
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [slang-test exit-code rule (#14269) staled 80 nightly-only docs/generated fixtures](../learnings/1793866079028-slang-test-exit-code-rule-14269-staled-80-nightly-.md) — PR sweep covered `tests/` only; triage by FAILED set vs previous green nightly; Nightly Coverage Pages budget red
 - [Release-regression fixture lists for docs/generated nightlies include expected-failure rows — diff against FAILED lines](../learnings/1793866800949-release-regression-fixture-lists-for-docs-generate.md) — 89 messages vs 80 FAILED; `gh pr view --json files` caps at 100
+- [Nightly Slang Test: extract failing test names with "FAILED test: 'name'" pattern](../learnings/1795622585399-nightly-slang-test-extract-failing-test-names-with.md) — grep -oP lookbehind; 0 matches with FAILED: ≠ clean; comm-diff vs prior nightly
 - [docs/generated nightly exit-code break after slang-test #14269: blanket exit-code=N masks ~22 real failures](../learnings/1793866828932-docs-generated-nightly-exit-code-break-after-slang.md) — local repro command; failure categories; `.actual` files; retry-verdict noise
 - [slang-test exit-code-only failures print no tool output — "no E99999 in the CI log" proves nothing](../learnings/1793866967333-slang-test-exit-code-only-failures-print-no-tool-o.md) — 7 hidden SPIR-V validation E99999; exit -1 not -2 (#14303)
 - [Doc-test E99999 triage: 4 of 7 ir-reference fixtures are compiler bugs, 3 are invalid spirv_asm](../learnings/1793867580734-doc-test-e99999-triage-4-of-7-ir-reference-fixture.md) — negative constant index, #13519, #13530, spirv_asm OpCapability

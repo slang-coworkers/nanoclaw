@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-479 learnings. [Catalog](../index.md)
+480 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -253,6 +253,7 @@ type: topic
 - [PR #14549 r2: fixpoint loops require every override to uphold receiver-identity; Devin "Outdated" rows are not fresh findings](../learnings/1794935448272-pr-14549-r2-fixpoint-loops-require-every-override-.md)
 - [PR #14549 r3: laxer-checker swaps silently drop diagnostics; pass caps don't bound per-pass cost; Devin panel-row badges are ambiguous](../learnings/1794941599396-pr-14549-r3-laxer-checker-swaps-silently-drop-diag.md)
 - [PR #14563 r1 review — shared-checkout dispatch, fast-but-valid Reviewer C](../learnings/1794955556466-pr-14563-r1-review-shared-checkout-dispatch-fast-b.md)
+- [PR head moved mid-review: verify the delta before rerunning reviewers](../learnings/1795622421894-pr-head-moved-mid-review-verify-the-delta-before-r.md)
 - [PR review under invalid GH_TOKEN — review the fetchable branch, don't stall](../learnings/1784595260519-pr-review-under-invalid-gh-token-review-the-fetcha.md)
 - [PR watch: a DISMISSED review can hide a real approval](../learnings/1793286169919-pr-watch-a-dismissed-review-can-hide-a-real-approv.md)
 - [pr-approver must re-fetch reviews at record time not just staging](../learnings/1784050376318-pr-approver-must-re-fetch-reviews-at-record-time-n.md)

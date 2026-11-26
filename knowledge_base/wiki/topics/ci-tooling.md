@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-699 learnings. [Catalog](../index.md)
+701 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -415,6 +415,7 @@ type: topic
 - [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md)
 - [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md)
 - [GitHub Actions: a run's status can read 'queued' while its jobs hold every hosted runner](../learnings/1794046310345-github-actions-a-run-s-status-can-read-queued-whil.md)
+- [GitHub check-runs endpoint default per_page=30 silently truncates PR CI status](../learnings/1795652349368-github-check-runs-endpoint-default-per-page-30-sil.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
 - [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
@@ -633,6 +634,7 @@ type: topic
 - [slang-rhi CI DOES run GPU tests — check-run names all say "build (...)", so never infer coverage from the name](../learnings/1785937835338-slang-rhi-ci-does-run-gpu-tests-check-run-names-al.md)
 - [slang-rhi CI runs CUDA interop tests on self-hosted GPU runners — read the per-test line, not the "GitHub-hosted skips" summary](../learnings/1790197692432-slang-rhi-ci-runs-cuda-interop-tests-on-self-hoste.md)
 - [slang-rhi PR review: REPO_ROOT scaffolding-commit recipe and verify-build flags](../learnings/1795034941814-slang-rhi-pr-review-repo-root-scaffolding-commit-r.md)
+- [slang-rhi triage specifics: no reproduced label, headless build flags, test filter](../learnings/1795612617363-slang-rhi-triage-specifics-no-reproduced-label-hea.md)
 - [slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release in default local builds](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md)
 - [Slang: IRBuilder source-loc RAII may already stamp struct keys — explicit sourceLoc= can be redundant](../learnings/1780416359939-slang-irbuilder-source-loc-raii-may-already-stamp-.md)
 - [SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM](../learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md)

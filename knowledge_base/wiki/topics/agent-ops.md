@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-1212 learnings. [Catalog](../index.md)
+1217 learnings. [Catalog](../index.md)
 
 - ["Continue as you were" can be a misroute — verify the named work is in your own transcript first](../learnings/1795183809975-continue-as-you-were-can-be-a-misroute-verify-the-.md)
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
@@ -21,6 +21,7 @@ type: topic
 - [/tmp/opencode is read-only in this container — use runs/ dirs for scratch files](../learnings/1795094690652-tmp-opencode-is-read-only-in-this-container-use-ru.md)
 - [/tmp/opencode is root-owned and read-only in coworker containers](../learnings/1795540614355-tmp-opencode-is-root-owned-and-read-only-in-cowork.md)
 - [/tmp/opencode is root-owned and unwritable in this container — use workspace scratch dirs instead](../learnings/1794846275046-tmp-opencode-is-root-owned-and-unwritable-in-this-.md)
+- [/tmp/opencode is root-owned in triager container — use /tmp/slang-* for scratch](../learnings/1795631211604-tmp-opencode-is-root-owned-in-triager-container-us.md)
 - [/tmp/opencode not writable in this container — use /workspace/agent for temp files](../learnings/1794892919226-tmp-opencode-not-writable-in-this-container-use-wo.md)
 - [/tmp/opencode unwritable in triager container — use workspace paths for heredocs](../learnings/1794889274555-tmp-opencode-unwritable-in-triager-container-use-w.md)
 - [/tmp/opencode writes permission-denied in support-bot container — pipe curl output inline](../learnings/1795398391647-tmp-opencode-writes-permission-denied-in-support-b.md)
@@ -280,6 +281,7 @@ type: topic
 - [Codex critique gate is human-reserved — agents (even Main) cannot self-waive it](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md)
 - [codex critique gates can approve-by-analogy and miss enum-ordering bugs a test-build catches](../learnings/1784424200204-codex-critique-gates-can-approve-by-analogy-and-mi.md)
 - [codex critique often answers the first call with a recall summary; the gate also misreads `gh api …/pulls/<n>`](../learnings/1794316305654-codex-critique-often-answers-the-first-call-with-a.md)
+- [codex critique param-name trap + clean-merge-vs-DIRTY-PR resolution pattern](../learnings/1795639666119-codex-critique-param-name-trap-clean-merge-vs-dirt.md)
 - [codex critique rounds don't record in opencode sessions — synthetic payload workaround](../learnings/1794926576842-codex-critique-rounds-don-t-record-in-opencode-ses.md)
 - [codex critique rounds need developer-instructions even on the codex_codex MCP tool](../learnings/1795146830771-codex-critique-rounds-need-developer-instructions-.md)
 - [codex critique rounds need REQUIREMENTS field or they silently do not record](../learnings/1795109255556-codex-critique-rounds-need-requirements-field-or-t.md)
@@ -433,6 +435,7 @@ type: topic
 - [Critique attestation lines must be plain `- <sha> <path>` or the public-comment gate won't recognize them](../learnings/1793909331003-critique-attestation-lines-must-be-plain-sha-path-.md)
 - [Critique delivery gate re-hashes attested files — edit-after-approve blocks delivery](../learnings/1789505147702-critique-delivery-gate-re-hashes-attested-files-ed.md)
 - [Critique delivery-gate: codex attesting a volatile file (.claude-trace jsonl) blocks delivery forever](../learnings/1788423324537-critique-delivery-gate-codex-attesting-a-volatile-.md)
+- [Critique dispatch bash redirects re-trip the edit gate after every round](../learnings/1795636526953-critique-dispatch-bash-redirects-re-trip-the-edit-.md)
 - [Critique freshness counter is cross-session; CHECK-DAG-SAME is silently ignored by FileCheck](../learnings/1794992119333-critique-freshness-counter-is-cross-session-check-.md)
 - [critique gate arms on MEMORY-file edits and denies read-only gh api — verify state before you start editing notes](../learnings/1785881956405-critique-gate-arms-on-memory-file-edits-and-denies.md)
 - [Critique gate blocks PR CLOSE, not just create — and branch-delete is a destructive false workaround](../learnings/1785799595481-critique-gate-blocks-pr-close-not-just-create-and-.md)
@@ -530,6 +533,7 @@ type: topic
 - [Delivered-but-not-executing handoff: phantom-session misroute and the $0-spend dead-wake detector](../learnings/1794903139694-delivered-but-not-executing-handoff-phantom-sessio.md)
 - [Delivery gate counts ANY file edit — update memory/notes before the final OUTPUT critique](../learnings/1789554373150-delivery-gate-counts-any-file-edit-update-memory-n.md)
 - [Delivery gate denies read-only gh api pulls GETs — use gh pr view](../learnings/1795107911913-delivery-gate-denies-read-only-gh-api-pulls-gets-u.md)
+- [Delivery gate rolls back the whole bash call — never write files in the same invocation as a gated gh post](../learnings/1795644727360-delivery-gate-rolls-back-the-whole-bash-call-never.md)
 - [Delivery gate: any edit after an OUTPUT_REVIEW approve re-arms it; codex must emit plain Attested lines](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md)
 - [Delivery-gate + codex-attestation mechanics that block GitHub review replies](../learnings/1786490307277-delivery-gate-codex-attestation-mechanics-that-blo.md)
 - [Delivery-gate blocks the Bash call that writes PR-body files too](../learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md)
@@ -1025,6 +1029,7 @@ type: topic
 - [SGL ui::Context::begin_frame gates mouse-cursor sync on a non-null window arg](../learnings/1789818274564-sgl-ui-context-begin-frame-gates-mouse-cursor-sync.md)
 - [shader-slang/spec has no writable path from the slang-fixer container (no push, no fork, invalid GH_TOKEN)](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md)
 - [Shared bot identity: an artifact's updated_at cannot tell you which session wrote it](../learnings/1786040214790-shared-bot-identity-an-artifact-s-updated-at-canno.md)
+- [Shared bot identity: edit-if-poster-is-self must check session ownership, not login](../learnings/1795636727142-shared-bot-identity-edit-if-poster-is-self-must-ch.md)
 - [Shared-worktree git hazards: stash stack, checkout-dance edit loss, stale test servers, reply-verdict gate](../learnings/1795044043145-shared-worktree-git-hazards-stash-stack-checkout-d.md)
 - [Sibling coworkers' /workspace/agent artifact paths are not visible from your container](../learnings/1795159547503-sibling-coworkers-workspace-agent-artifact-paths-a.md)
 - [Side-find routing: the 2026-10-30 "hold / do not file" rule is superseded](../learnings/1794019126217-side-find-routing-the-2026-10-30-hold-do-not-file-.md)

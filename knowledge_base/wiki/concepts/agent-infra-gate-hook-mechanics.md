@@ -3,7 +3,7 @@ title: "Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recor
 type: concept
 group: agent-infra
 tags: [critique-gate, delivery-gate, gate-plan, plan-tracker, false-positive, read-only, requirements-anchor, attested-hash, gate-audit]
-source_count: 22
+source_count: 23
 ---
 
 # Gate-hook mechanics: read-only false positives, the plan gate, and recording/format matchers
@@ -110,6 +110,8 @@ critique round ([plan-tracker hook counts only Write-tool plan writes, not Edit]
 
 Three more ways a delivery gets stuck after the bridge re-record recipe already works (slang#14684, 2026-11-21; all three cost ~3 wasted bridge rounds): (1) `track-edits.sh` counts as a write ANY bash command whose string contains a space-separated ` > ` — including a `[[ "$x" > *"y"* ]]` comparison *operator*, not just redirects — which bumps `edits_since_critique` and demands another OUTPUT_REVIEW round right before a marker send; poll workflow-state via `jq -r '.critique_verdicts.STAGE'` / `.edits_since_critique` fields instead, never grep with shell comparisons. (2) `pkill -f <pattern>` self-matches the bash -c wrapper of your own launcher command (the pattern string is in your own cmdline) and kills your own shell instantly — kill stale bridge clients by PID, or with a pattern quoted so it doesn't appear verbatim. (3) `critique-attempts.jsonl` is append-only and survives state resets, so a `grep -c '"event":"round"'` poll gives false positives from pre-reset rounds — watch workflow-state's `.critique_stages` instead. The recipe that works: setsid-detached bridge dispatch → poll `.critique_stages` → deliver the marker with NO bash calls between the last round and the send (issue-status comments under 1000 chars via heredoc `cat >` DO bump edits — write those BEFORE the final round, or use the Write tool to an exempt path like reports/) ([freshness-gate traps: bash " > " comparisons, pkill self-match, and append-only attempts file in critique re-records](../learnings/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md)).
 
+A self-invalidating variant of the same counter (slang#14722, 2026-11-25, hit 3 times): the bash command that dispatches the codex bridge client carried `> out.log 2> err.log` redirects, and its PostToolUse (track-edits counts any bash write) fired when the tool returned — i.e. AFTER the round event had zeroed the counter — so the delivery gate denied the very round just recorded, on every re-record. Fix: dispatch the bridge client REDIRECT-FREE (it writes its own result file via fs.writeFileSync — `setsid nohup env PATH="/pnpm:$PATH" bun run <client> <prompt> <devinst> <outfile> &`), poll with a plain `sleep N; tail -1 /workspace/.claude/critique-attempts.jsonl`, then run the delivery marker immediately as a clean command. Two corollaries from the same incident: `2>&1 | tail` does NOT match the IS_WRITE regex (the `>` must directly follow start/whitespace/pipe), and a `cat > file <<EOF` heredoc inside a `gh api` comment-post command trips the 1000-byte public-comment gate — write comment bodies with the Write tool in a separate step (bodies under 1000 bytes need no OUTPUT_REVIEW) ([critique dispatch bash redirects re-trip the edit gate after every round](../learnings/1795636526953-critique-dispatch-bash-redirects-re-trip-the-edit-.md)).
+
 ## Gate audit: marker text in non-report outbound rows
 
 The host runs a gate audit on outbound rows: any message containing a literal workflow-marker string
@@ -206,7 +208,7 @@ trust the state file: check `critique_verdicts`/`critique_attested` in
 `/workspace/.claude/workflow-state.json` and hash-verify the delivered files rather than re-running
 codex ([never edit codex-attested artifacts after approve — route advisories via send_file cover text](../learnings/1795144021884-never-edit-codex-attested-artifacts-after-approve-.md)).
 
-**Source learnings (22):**
+**Source learnings (23):**
 - [harness hooks false-positive on read-only queries](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md) — also carries the 401/GH_TOKEN infra-outage + unauth fallback facts
 - [gate burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)
 - [plan-tracker wants Write not Edit; re-hash](../learnings/1794855941188-critique-gate-mechanics-plan-tracker-wants-write-n.md)
@@ -229,3 +231,4 @@ codex ([never edit codex-attested artifacts after approve — route advisories v
 - [critique gate false-positives on read-only pulls API calls](../learnings/1795204342182-critique-gate-false-positives-on-read-only-pulls-a.md) — codex's own pulls read denied; spurious "PR creation blocked" card = per-window state missing PLAN_REVIEW; one round clears it.
 - [opencode migration: fresh workflow-state blocks gated reads; router demands in_reply_to](../learnings/1795224576884-opencode-migration-critique-gate-state-reset-block.md) — old claude-session rounds not carried over; pulls reads burn denials; use `gh pr view` / `gh run list/view`.
 - [freshness-gate traps: bash " > " comparisons, pkill self-match, append-only attempts file in critique re-records](../learnings/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md) — a comparison operator bumps edits_since_critique; pkill -f kills your own launcher; poll .critique_stages with jq, never grep attempts.jsonl
+- [critique dispatch bash redirects re-trip the edit gate after every round](../learnings/1795636526953-critique-dispatch-bash-redirects-re-trip-the-edit-.md) — dispatch the bridge redirect-free; `2>&1 | tail` is not a write; Write tool for comment bodies in a separate step

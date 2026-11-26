@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-3151 learnings. [Catalog](../index.md)
+3156 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -654,6 +654,7 @@ type: topic
 - [GitHub blocks pull_request_target by default from 2026-12-02; brownouts already break slang CI](../learnings/1794301550338-github-blocks-pull-request-target-by-default-from-.md)
 - [GitHub bot identity is nv-slang-bot[bot] — not slang-coworker-nanoclaw[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)
 - [GitHub check-run names for slang test jobs carry a ' / test-slang' suffix — exact-match exclusion lists must include it](../learnings/1789250441329-github-check-run-names-for-slang-test-jobs-carry-a.md)
+- [GitHub GraphQL merge-queue query quirks (shader-slang/slang)](../learnings/1795608123047-github-graphql-merge-queue-query-quirks-shader-sla.md)
 - [GitHub lost refs/pull/N/head on open fork PR — slangpy SlangPy Tests deterministic fetch failure](../learnings/1795032618974-github-lost-refs-pull-n-head-on-open-fork-pr-slang.md)
 - [GitHub macos-latest (macos-26-arm64) Metal device cannot create MTLResidencySet at all](../learnings/1793947328886-github-macos-latest-macos-26-arm64-metal-device-ca.md)
 - [GitHub merge queue can mark a PR merged without its last commit (slang #13936)](../learnings/1793263293775-github-merge-queue-can-mark-a-pr-merged-without-it.md)
@@ -934,6 +935,7 @@ type: topic
 - [Nightly Coverage coverage-windows red on Chocolatey 503 is infra, not a Slang regression](../learnings/1793592113911-nightly-coverage-coverage-windows-red-on-chocolate.md)
 - [Nightly Slang Test consecutive reds can be a CI-config gap, not a master regression](../learnings/1787991326270-nightly-slang-test-consecutive-reds-can-be-a-ci-co.md)
 - [Nightly Slang Test red 08-29/30 has TWO distinct causes, don't conflate](../learnings/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md)
+- [Nightly Slang Test: extract failing test names with "FAILED test: 'name'" pattern](../learnings/1795622585399-nightly-slang-test-extract-failing-test-names-with.md)
 - [No AI attribution in shader-slang commits; the repo rule overrides the harness reminder](../learnings/1790689864476-no-ai-attribution-in-shader-slang-commits-the-repo.md)
 - [No fixed-size path buffer in Slang diagnostics pipeline (#14612)](../learnings/1795040232539-no-fixed-size-path-buffer-in-slang-diagnostics-pip.md)
 - [NO-GO on autonomous design-sensitive autodiff fix vindicated by human instrumentation (slang#13226)](../learnings/1790148433531-no-go-on-autonomous-design-sensitive-autodiff-fix-.md)
@@ -2001,6 +2003,7 @@ type: topic
 - [slang SLANG_OVERRIDE_*_PATH options are CMake-only (no docs/matrix), unlike SLANG_ENABLE_*](../learnings/1782406116154-slang-slang-override-path-options-are-cmake-only-n.md)
 - [Slang SLANG_USE_SYSTEM_* options: all find_package, no _ROOT_DIR; three separate dep-locating conventions](../learnings/1782762110953-slang-slang-use-system-options-all-find-package-no.md)
 - [Slang slangc -v version string is a cached CMake value, NOT proof of compiled commit (bisect trap)](../learnings/1782898953945-slang-slangc-v-version-string-is-a-cached-cmake-va.md)
+- [Slang sm80 queue backlog now expires 1-day test artifacts — new intermittent signature](../learnings/1795637200024-slang-sm80-queue-backlog-now-expires-1-day-test-ar.md)
 - [Slang spec constants on uniform-layout targets (D3D/CUDA/CPU): reflection facts + slang-rhi test harness gotchas](../learnings/1792933241509-slang-spec-constants-on-uniform-layout-targets-d3d.md)
 - [Slang spec-constant feature map (no prior wiki hits existed)](../learnings/1794888369087-slang-spec-constant-feature-map-no-prior-wiki-hits.md)
 - [Slang specialization work list: forced (mutation) walk stops on workListSet, not the `expanded` memo](../learnings/1789224857022-slang-specialization-work-list-forced-mutation-wal.md)
@@ -2878,6 +2881,8 @@ type: topic
 - [SlangResult SLANG_OK==0 is falsy — never use parseInt/HRESULT-style results as booleans](../learnings/1794898063634-slangresult-slang-ok-0-is-falsy-never-use-parseint.md)
 - [SLANGWIN5 spirv-val recovered — and the ratio that describes it is a window artifact](../learnings/1785968653394-slangwin5-spirv-val-recovered-and-the-ratio-that-d.md)
 - [Slang↔SlangPy coordinated breaking change: the SLANGPY_CHERRY_PICK_PR production pattern (update)](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)
+- [sm80 queue backlog causes "Artifact not found" test-slang failures (slang CI)](../learnings/1795651648277-sm80-queue-backlog-causes-artifact-not-found-test-.md)
+- [sm80 test-slang "Artifact not found" = queue-wait beat artifact retention; rerun is doomed](../learnings/1795593947006-sm80-test-slang-artifact-not-found-queue-wait-beat.md)
 - [Spec constants as generic value args: deliberate arrays-only rule (#7855), explicit args only](../learnings/1793885472906-spec-constants-as-generic-value-args-deliberate-ar.md)
 - [Spec-const-rate IR insts can never be inlined into a function — and passes that mutate their operands in place break the invariant](../learnings/1793755067290-spec-const-rate-ir-insts-can-never-be-inlined-into.md)
 - [SPIR-V "valid on master" claims must name pre- vs post-spirv-opt](../learnings/1792193562955-spir-v-valid-on-master-claims-must-name-pre-vs-pos.md)
