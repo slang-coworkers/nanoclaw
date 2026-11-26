@@ -21,7 +21,7 @@ This tool replays past GitLab bot requests into a khr nanoclaw install for a dry
 2. **List what would be injected.** Without `--send` nothing is written or sent:
    ```bash
    python3 -I khr/replay/inject.py --corpus <...>/corpus.jsonl --install-root <install> \
-     --channel-type dashboard --platform-id dashboard:khr-implement
+     --channel-type dashboard --platform-id dashboard:khrbotnv
    ```
 3. **Inject.** Add `--send`. `--only <job>` and `--limit N` let you go one job at a time.
 
