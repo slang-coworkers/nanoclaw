@@ -38,14 +38,23 @@ import {
   REVIEW_PAGE_CAP,
   TTL_LONG,
   type ApproverWeeklyInput,
+  type FetchOutcome,
+  type GraphqlIssueNode,
+  type IssuePart,
   type TerminalLookup,
   aggregateApproverWeekly,
   aggregateReviewCycles,
+  classifyGithubResponse,
+  classifyIssue,
+  classifyPrStage,
   collectRoutedIssues,
   countHumanReview,
   diskCacheTtl,
   fetchAllReviewsWith,
+  isGithubErrorBody,
   isOurBotLogin,
+  parseCurlResponse,
+  rateLimitState,
   reviewsApiPath,
 } from './funnel-metrics.js';
 import { initDb } from '../src/db/connection.js';
@@ -86,35 +95,6 @@ const fetchAllReviews = (repo: string, pr: number): any[] | null =>
 // "ALL issues filed" denominator must be enumerated directly — so we list them.
 const TRACKED_REPOS = ['shader-slang/slang', 'shader-slang/slangpy', 'shader-slang/slang-rhi'];
 
-// "Not our problem" — issues that should NOT count against the bot's win-rate.
-// state_reason==='not_planned' OR any label here (case-insensitive substring).
-// Seeded from labels observed on shader-slang/slang; tune freely.
-const NOT_A_BUG_LABELS = [
-  'not a slang bug',
-  'not reproduced',
-  'duplicate',
-  'invalid',
-  'wontfix',
-  "won't fix",
-  'question',
-  'by design',
-];
-function isNotOurProblem(stateReason: string | null, labels: string[]): boolean {
-  if (stateReason === 'not_planned') return true;
-  const lc = labels.map((l) => l.toLowerCase());
-  return lc.some((l) => NOT_A_BUG_LABELS.some((bad) => l.includes(bad)));
-}
-
-// Terminal stage of a PR, given its state/draft and the linked issue's state.
-// Factored out so the PR spine (rows[]) and the issue partition agree.
-function classifyPrStage(prState: string | null, isDraft: boolean | null, issueState: string | null): string {
-  if (prState === 'merged') return 'merged';
-  if (prState === 'closed') return issueState === 'closed' ? 'superseded' : 'pr-closed';
-  if (isDraft === false) return 'pr-ready';
-  if (isDraft === true) return 'shipped-draft';
-  return 'pr-open';
-}
-
 const args = process.argv.slice(2);
 const JSON_OUT = args.includes('--json');
 const SKIP_ROUTED = args.includes('--no-routed');
@@ -137,6 +117,14 @@ const SINCE_OVERRIDE = (() => {
 // the "merged" count with self-development noise. Pass --all-orgs to include them.
 const ALL_ORGS = args.includes('--all-orgs');
 const orgAllowed = (repo: string) => ALL_ORGS || repo.startsWith('shader-slang/');
+// --allow-degraded writes the snapshot even when a fetch it depends on failed.
+// Without it, such a run keeps the previous snapshot and exits 3.
+const ALLOW_DEGRADED = args.includes('--allow-degraded');
+// The funnel spends the App installation's API budgets, which the coworkers
+// share. It stops calling when the remaining REST calls or GraphQL points fall
+// below these floors, so a cold cache cannot take the coworkers' last calls.
+const REST_FLOOR = Number(process.env.FUNNEL_REST_FLOOR ?? 1000);
+const GRAPHQL_FLOOR = Number(process.env.FUNNEL_GRAPHQL_FLOOR ?? 500);
 const STAMP = new Date().toISOString();
 
 // ── token cache (one installation token per org, ~1h TTL; we run well under) ──
@@ -189,7 +177,8 @@ function saveDiskCache(): void {
     const cutoff = Date.now() - 2 * TTL_LONG;
     const pruned: Record<string, DiskCacheEntry> = {};
     for (const [k, v] of Object.entries(diskCache)) {
-      if (v.fetchedAt > cutoff) pruned[k] = v;
+      // An error body is never data; a cache written before that rule held them.
+      if (v.fetchedAt > cutoff && !isGithubErrorBody(v.data)) pruned[k] = v;
     }
     fs.writeFileSync(DISK_CACHE_PATH, JSON.stringify(pruned));
   } catch {
@@ -214,27 +203,46 @@ const terminalLookup =
     return data.merged === true || data.state === 'closed';
   };
 
-function gh(repo: string, apiPath: string): any {
-  const key = `${repo}|${apiPath}`;
-  if (ghMemCache.has(key)) return ghMemCache.get(key);
-  // Check disk cache
-  const cached = diskCache[key];
-  if (cached) {
-    const ttl = diskCacheTtl(apiPath, cached.data, terminalLookup(repo));
-    if (Date.now() - cached.fetchedAt < ttl) {
-      diskCacheHits++;
-      ghMemCache.set(key, cached.data);
-      return cached.data;
-    }
+// What this run could and could not fetch. Published in the snapshot and the
+// log; a failure the board depends on (`criticalUnresolved`) or an incomplete
+// issue scan stops the snapshot from being written.
+const fetchHealth = {
+  restCalls: 0,
+  restFailed: 0, // failed REST calls, whether or not a stale copy covered them
+  staleServed: 0, // failures answered with the last good cached copy
+  unresolved: 0, // failures with no copy at all: the caller got null
+  criticalUnresolved: 0, // the subset the PR board depends on
+  rateSkipped: 0, // calls not made because the REST budget was below REST_FLOOR
+  missing: 0, // 404/410 answers
+  graphqlCalls: 0,
+  graphqlFailed: 0,
+  issueScanGaps: [] as string[],
+  samples: [] as string[],
+};
+let restBudget: { remaining: number; resetAtMs: number } | null = null;
+
+function noteSample(s: string): void {
+  if (fetchHealth.samples.length < 10) fetchHealth.samples.push(s);
+}
+
+// One REST GET. The status decides what the body is (see classifyGithubResponse),
+// and every response refreshes the known budget so the floor check stays current.
+function fetchRest(repo: string, apiPath: string): FetchOutcome {
+  if (restBudget && restBudget.remaining < REST_FLOOR && Date.now() < restBudget.resetAtMs) {
+    fetchHealth.rateSkipped++;
+    return { kind: 'failed', reason: `REST budget ${restBudget.remaining} is below the floor ${REST_FLOOR}` };
   }
-  diskCacheMisses++;
   const tok = tokenFor(repo);
-  if (!tok) return null;
+  if (!tok) return { kind: 'failed', reason: 'no installation token' };
+  fetchHealth.restCalls++;
+  let raw: string;
   try {
-    const out = execFileSync(
+    raw = execFileSync(
       'curl',
       [
         '-sS',
+        '-D',
+        '-',
         '--noproxy',
         '*',
         '-H',
@@ -245,28 +253,227 @@ function gh(repo: string, apiPath: string): any {
       ],
       { encoding: 'utf-8', maxBuffer: 20 * 1024 * 1024 },
     );
-    const json = JSON.parse(out);
-    ghMemCache.set(key, json);
-    diskCache[key] = { data: json, fetchedAt: Date.now() };
-    return json;
-  } catch {
-    return null;
+  } catch (err) {
+    return { kind: 'failed', reason: `curl: ${String((err as Error).message).split('\n')[0]}` };
   }
+  const res = parseCurlResponse(raw);
+  const budget = res ? rateLimitState(res.headers) : null;
+  if (budget) restBudget = budget;
+  return classifyGithubResponse(res);
 }
 
-// Paginated GET: follows ?page=N until a short page (< per_page) is returned.
-// Used for listing all issues in a repo (the denominator). Returns the
-// concatenated array, or [] on any failure.
-function ghPaged(repo: string, apiPathNoPage: string, perPage = 100): any[] {
-  const out: any[] = [];
-  for (let page = 1; page <= 50; page++) {
-    const sep = apiPathNoPage.includes('?') ? '&' : '?';
-    const chunk = gh(repo, `${apiPathNoPage}${sep}per_page=${perPage}&page=${page}`);
-    if (!Array.isArray(chunk) || chunk.length === 0) break;
-    out.push(...chunk);
-    if (chunk.length < perPage) break;
+// Cached REST GET. A fresh cached copy answers directly. Otherwise we fetch; on
+// a failure the last good copy answers (stale beats wrong), and with no copy the
+// caller gets null and the miss is counted. `critical` marks the calls the PR
+// board depends on. A cached error body from an older run counts as no copy.
+function gh(repo: string, apiPath: string, opts: { critical?: boolean } = {}): any {
+  const key = `${repo}|${apiPath}`;
+  if (ghMemCache.has(key)) return ghMemCache.get(key);
+  const cached = diskCache[key] && !isGithubErrorBody(diskCache[key].data) ? diskCache[key] : undefined;
+  if (cached) {
+    const ttl = diskCacheTtl(apiPath, cached.data, terminalLookup(repo));
+    if (Date.now() - cached.fetchedAt < ttl) {
+      diskCacheHits++;
+      ghMemCache.set(key, cached.data);
+      return cached.data;
+    }
   }
-  return out;
+  diskCacheMisses++;
+  const outcome = fetchRest(repo, apiPath);
+  if (outcome.kind === 'ok') {
+    ghMemCache.set(key, outcome.data);
+    diskCache[key] = { data: outcome.data, fetchedAt: Date.now() };
+    return outcome.data;
+  }
+  if (outcome.kind === 'missing') {
+    fetchHealth.missing++;
+    ghMemCache.set(key, null);
+    return null;
+  }
+  fetchHealth.restFailed++;
+  if (cached) {
+    fetchHealth.staleServed++;
+    ghMemCache.set(key, cached.data);
+    return cached.data;
+  }
+  fetchHealth.unresolved++;
+  if (opts.critical) fetchHealth.criticalUnresolved++;
+  noteSample(`${repo} ${apiPath}: ${outcome.reason}`);
+  return null;
+}
+
+// ── GitHub GraphQL ──
+// The issue scan reads 50 issues per call, each with its cross-referenced PRs and
+// comment authors, from the GraphQL point budget. The REST version spent two
+// calls per issue plus one per bot PR from the REST budget the coworkers use.
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+type GraphqlOutcome = { kind: 'ok'; data: any } | { kind: 'failed'; reason: string; retryAfterMs?: number };
+
+function graphqlOnce(owner: string, query: string, variables: Record<string, unknown>): GraphqlOutcome {
+  const tok = tokenFor(`${owner}/_`);
+  if (!tok) return { kind: 'failed', reason: 'no installation token' };
+  fetchHealth.graphqlCalls++;
+  let raw: string;
+  try {
+    raw = execFileSync(
+      'curl',
+      [
+        '-sS',
+        '-D',
+        '-',
+        '--noproxy',
+        '*',
+        '-X',
+        'POST',
+        '-H',
+        `Authorization: bearer ${tok}`,
+        '-H',
+        'Content-Type: application/json',
+        '--data-binary',
+        '@-',
+        'https://api.github.com/graphql',
+      ],
+      { encoding: 'utf-8', maxBuffer: 40 * 1024 * 1024, input: JSON.stringify({ query, variables }) },
+    );
+  } catch (err) {
+    return { kind: 'failed', reason: `curl: ${String((err as Error).message).split('\n')[0]}` };
+  }
+  const res = parseCurlResponse(raw);
+  if (!res) return { kind: 'failed', reason: 'unreadable response' };
+  let doc: any;
+  try {
+    doc = JSON.parse(res.body);
+  } catch {
+    return { kind: 'failed', reason: `HTTP ${res.status}, body is not JSON` };
+  }
+  const rateLimited = (doc?.errors ?? []).some((e: any) => e?.type === 'RATE_LIMITED');
+  if (res.status !== 200 || rateLimited || !doc?.data?.repository) {
+    const reason = doc?.errors?.[0]?.message ?? doc?.message ?? `HTTP ${res.status}`;
+    const resetAtMs = Number(res.headers['x-ratelimit-reset']) * 1000;
+    return {
+      kind: 'failed',
+      reason: `HTTP ${res.status}: ${String(reason).slice(0, 100)}`,
+      retryAfterMs: rateLimited && Number.isFinite(resetAtMs) ? Math.max(0, resetAtMs - Date.now()) : undefined,
+    };
+  }
+  const remaining = doc.data.rateLimit?.remaining;
+  if (typeof remaining === 'number' && remaining < GRAPHQL_FLOOR) {
+    return { kind: 'failed', reason: `GraphQL budget ${remaining} is below the floor ${GRAPHQL_FLOOR}` };
+  }
+  return { kind: 'ok', data: doc.data };
+}
+
+// A transient failure gets up to three more tries. A rate limit that resets
+// within a minute is waited out; a longer one fails the call.
+async function graphql(owner: string, query: string, variables: Record<string, unknown>): Promise<any | null> {
+  let last: GraphqlOutcome = { kind: 'failed', reason: 'not tried' };
+  for (let attempt = 0; attempt < 4; attempt++) {
+    last = graphqlOnce(owner, query, variables);
+    if (last.kind === 'ok') return last.data;
+    if (last.reason.includes('below the floor')) break;
+    if (last.retryAfterMs !== undefined && last.retryAfterMs > 60_000) break;
+    await sleep(last.retryAfterMs ?? 3000 * (attempt + 1));
+  }
+  fetchHealth.graphqlFailed++;
+  noteSample(
+    `graphql ${owner} ${JSON.stringify(variables).slice(0, 80)}: ${last.kind === 'failed' ? last.reason : ''}`,
+  );
+  return null;
+}
+
+const PR_SOURCE_FIELDS = `__typename ... on PullRequest { number url merged state isDraft author { login } }`;
+const TIMELINE_FIELDS = `pageInfo { hasNextPage endCursor }
+  nodes { ... on CrossReferencedEvent { source { ${PR_SOURCE_FIELDS} } } }`;
+const COMMENT_FIELDS = `pageInfo { hasNextPage endCursor } nodes { author { login } }`;
+
+// Newest first, so the scan stops at the first issue filed before the window.
+const ISSUE_SCAN_QUERY = `query($owner: String!, $name: String!, $cursor: String) {
+  rateLimit { remaining resetAt }
+  repository(owner: $owner, name: $name) {
+    issues(first: 50, after: $cursor, orderBy: { field: CREATED_AT, direction: DESC }) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        number url createdAt state stateReason
+        labels(first: 50) { nodes { name } }
+        timelineItems(first: 100, itemTypes: [CROSS_REFERENCED_EVENT]) { ${TIMELINE_FIELDS} }
+        closedByPullRequestsReferences(first: 25, includeClosedPrs: true) {
+          nodes { number url merged state isDraft author { login } }
+        }
+        comments(first: 100) { ${COMMENT_FIELDS} }
+      }
+    }
+  }
+}`;
+
+const ISSUE_TIMELINE_PAGE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  rateLimit { remaining resetAt }
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      timelineItems(first: 100, after: $cursor, itemTypes: [CROSS_REFERENCED_EVENT]) { ${TIMELINE_FIELDS} }
+    }
+  }
+}`;
+
+const ISSUE_COMMENTS_PAGE_QUERY = `query($owner: String!, $name: String!, $number: Int!, $cursor: String) {
+  rateLimit { remaining resetAt }
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) { comments(first: 100, after: $cursor) { ${COMMENT_FIELDS} } }
+  }
+}`;
+
+// Fetch the rest of one issue connection in place. Comments matter only as
+// "did the bot comment", so their paging stops at the first bot comment.
+async function completeConnection(
+  owner: string,
+  name: string,
+  node: any,
+  field: 'timelineItems' | 'comments',
+): Promise<boolean> {
+  const conn = node[field];
+  if (!conn) return false;
+  const done = () => field === 'comments' && (conn.nodes ?? []).some((c: any) => isOurBotLogin(c?.author?.login));
+  let pageInfo = conn.pageInfo;
+  while (pageInfo?.hasNextPage && !done()) {
+    const query = field === 'timelineItems' ? ISSUE_TIMELINE_PAGE_QUERY : ISSUE_COMMENTS_PAGE_QUERY;
+    const data = await graphql(owner, query, { owner, name, number: node.number, cursor: pageInfo.endCursor });
+    const more = data?.repository?.issue?.[field];
+    if (!more) return false;
+    conn.nodes = [...(conn.nodes ?? []), ...(more.nodes ?? [])];
+    pageInfo = more.pageInfo;
+  }
+  return true;
+}
+
+// Classify every issue filed in the window. `complete: false` means a page or an
+// issue's follow-up page failed, so `parts` is not the whole repo.
+async function scanIssues(
+  repo: string,
+  windowStart: string,
+): Promise<{ parts: IssuePart[]; complete: boolean; reason?: string }> {
+  const [owner, name] = repo.split('/');
+  const startMs = Date.parse(windowStart);
+  const parts: IssuePart[] = [];
+  let cursor: string | null = null;
+  for (let page = 1; page <= 400; page++) {
+    const data = await graphql(owner, ISSUE_SCAN_QUERY, { owner, name, cursor });
+    const conn = data?.repository?.issues;
+    if (!conn) return { parts, complete: false, reason: `issue page ${page} failed` };
+    for (const node of (conn.nodes ?? []) as GraphqlIssueNode[]) {
+      if (!node) continue;
+      if (Date.parse(node.createdAt) < startMs) return { parts, complete: true };
+      const ok =
+        (await completeConnection(owner, name, node, 'timelineItems')) &&
+        (await completeConnection(owner, name, node, 'comments'));
+      if (!ok) return { parts, complete: false, reason: `follow-up page for #${node.number} failed` };
+      parts.push(classifyIssue(node, repo));
+    }
+    if (!conn.pageInfo?.hasNextPage) return { parts, complete: true };
+    cursor = conn.pageInfo.endCursor;
+  }
+  return { parts, complete: false, reason: 'page cap reached' };
 }
 
 interface Row {
@@ -537,7 +744,7 @@ async function main() {
   const seenIssues = new Set<string>();
 
   for (const map of mappings) {
-    const pr = gh(map.repo, `pulls/${map.pr}`);
+    const pr = gh(map.repo, `pulls/${map.pr}`, { critical: true });
     // Issue# = thread_id if present, else parse the PR body's Fixes/Closes #N
     // (the authoritative PR→issue link when the session wasn't gh-issue-threaded).
     let issue = issueNumFromThread(map.thread_id);
@@ -624,7 +831,7 @@ async function main() {
   //   resolved_elsewhere — closed-completed, only human PR(s) linked
   //   triage_only      — bot commented, no bot PR
   //   never_engaged    — no bot comment, no bot PR
-  // win-rate = bot_pr.merged / actionable, where actionable = filed − not_our_problem.
+  // win-rate = bot_pr.merged / bot_pr.total (merged ÷ issues the bot opened a PR for).
   const WINDOW_END = STAMP;
   // --since wins; otherwise auto-derive from the earliest tracked PR mapping,
   // falling back to a fixed default.
@@ -638,116 +845,12 @@ async function main() {
     }
   }
 
-  interface IssuePart {
-    repo: string;
-    number: number;
-    url: string;
-    bucket: string; // not_our_problem | never_engaged | triage_only | resolved_elsewhere | bot_pr
-    stage?: string; // bot-PR sub-stage (merged|shipped-draft|pr-ready|pr-closed|superseded|pr-open)
-    prNumber?: number;
-    prUrl?: string;
-    note?: string;
-    createdAt?: string; // issue created_at — used for the weekly WIN trend
-  }
   const issueParts: IssuePart[] = [];
   const partRepos = (REPO_FILTER ? [REPO_FILTER] : TRACKED_REPOS).filter(orgAllowed);
-
   for (const repo of partRepos) {
-    // since= is *updated*-time → superset; we filter created_at >= windowStart below.
-    const listed = ghPaged(repo, `issues?state=all&since=${encodeURIComponent(windowStart)}`);
-    for (const it of listed) {
-      if (it?.pull_request) continue; // the /issues endpoint mixes PRs in — drop them
-      if (!it?.created_at || it.created_at < windowStart) continue; // window guard
-      const num = it.number as number;
-      const labels: string[] = Array.isArray(it.labels)
-        ? it.labels.map((l: any) => (typeof l === 'string' ? l : l?.name)).filter(Boolean)
-        : [];
-      const issueState: string = it.state ?? 'open';
-      const stateReason: string | null = it.state_reason ?? null;
-      const url: string = it.html_url ?? `https://github.com/${repo}/issues/${num}`;
-
-      if (isNotOurProblem(stateReason, labels)) {
-        issueParts.push({
-          repo,
-          number: num,
-          url,
-          createdAt: it.created_at,
-          bucket: 'not_our_problem',
-          note: stateReason || 'not-a-bug label',
-        });
-        continue;
-      }
-
-      // Linked PRs via timeline cross-references (catches bot PRs not in our
-      // mapping table, and tells bot-authored from human-authored apart).
-      const timeline = gh(repo, `issues/${num}/timeline?per_page=100`);
-      const linkedPrs: Array<{ number: number; author: string; isBot: boolean }> = [];
-      if (Array.isArray(timeline)) {
-        for (const e of timeline) {
-          if (e?.event !== 'cross-referenced') continue;
-          const src = e?.source?.issue;
-          if (!src?.pull_request) continue;
-          const author = src?.user?.login ?? '';
-          linkedPrs.push({ number: src.number, author, isBot: isOurBotLogin(author) });
-        }
-      }
-      const botPr = linkedPrs.find((p) => p.isBot);
-
-      if (botPr) {
-        const pr = gh(repo, `pulls/${botPr.number}`);
-        const prState = pr ? (pr.merged ? 'merged' : pr.state) : 'open';
-        const isDraft = pr ? Boolean(pr.draft) : null;
-        const stage = classifyPrStage(prState, isDraft, issueState);
-        issueParts.push({
-          repo,
-          number: num,
-          url,
-          createdAt: it.created_at,
-          bucket: 'bot_pr',
-          stage,
-          prNumber: botPr.number,
-          prUrl: pr?.html_url ?? `https://github.com/${repo}/pull/${botPr.number}`,
-        });
-        continue;
-      }
-
-      // No bot PR. If closed-completed with a human PR linked, it's resolved
-      // elsewhere (neutral exit, not our win, not our failure).
-      if (issueState === 'closed' && (stateReason === 'completed' || stateReason == null) && linkedPrs.length > 0) {
-        issueParts.push({
-          repo,
-          number: num,
-          url,
-          createdAt: it.created_at,
-          bucket: 'resolved_elsewhere',
-          prNumber: linkedPrs[0].number,
-        });
-        continue;
-      }
-
-      // Did the bot at least comment? (triage)
-      const comments = gh(repo, `issues/${num}/comments?per_page=100`);
-      const botCommented = Array.isArray(comments) && comments.some((c: any) => isOurBotLogin(c?.user?.login));
-      // A closed-completed issue with no bot artifact at all is also resolved elsewhere.
-      if (issueState === 'closed' && (stateReason === 'completed' || stateReason == null) && !botCommented) {
-        issueParts.push({
-          repo,
-          number: num,
-          url,
-          createdAt: it.created_at,
-          bucket: 'resolved_elsewhere',
-          note: 'closed; no bot artifact',
-        });
-        continue;
-      }
-      issueParts.push({
-        repo,
-        number: num,
-        url,
-        createdAt: it.created_at,
-        bucket: botCommented ? 'triage_only' : 'never_engaged',
-      });
-    }
+    const scan = await scanIssues(repo, windowStart);
+    issueParts.push(...scan.parts);
+    if (!scan.complete) fetchHealth.issueScanGaps.push(`${repo}: ${scan.reason}`);
   }
 
   const partCount = (pred: (p: IssuePart) => boolean) => issueParts.filter(pred).length;
@@ -890,11 +993,35 @@ async function main() {
       // so nothing is quarantined YET — not that nothing ever will be.
       legacy: legacyLedger,
     },
+
+    // What this run fetched and what it could not. A snapshot is only written
+    // with issueScanGaps empty and criticalUnresolved 0 (or --allow-degraded).
+    fetchHealth: { ...fetchHealth, restRemaining: restBudget?.remaining ?? null },
   };
+
+  const degraded = fetchHealth.issueScanGaps.length > 0 || fetchHealth.criticalUnresolved > 0;
+  const healthLine =
+    `REST ${fetchHealth.restCalls} calls (${fetchHealth.restFailed} failed, ${fetchHealth.staleServed} served stale, ` +
+    `${fetchHealth.unresolved} unresolved, ${fetchHealth.rateSkipped} skipped at the floor); ` +
+    `GraphQL ${fetchHealth.graphqlCalls} calls (${fetchHealth.graphqlFailed} failed)`;
+  console.error(`[funnel] fetch health: ${healthLine}`);
+  if (degraded) {
+    for (const gap of fetchHealth.issueScanGaps) console.error(`  WARNING issue scan incomplete: ${gap}`);
+    if (fetchHealth.criticalUnresolved > 0)
+      console.error(`  WARNING ${fetchHealth.criticalUnresolved} PR-board fetches have no data and no cached copy`);
+    for (const s of fetchHealth.samples) console.error(`    ${s}`);
+  }
 
   // --out <path>: write the snapshot to a file for the dashboard panel to serve
   // (Phase 2). Kept out of the dashboard request path on purpose — this makes
   // ~180 GitHub calls; the dashboard reads the cached JSON, never recomputes.
+  // A degraded run keeps the previous file: a snapshot built on missing data
+  // shows a confident wrong number, while the old one shows its own timestamp.
+  if (OUT_PATH && degraded && !ALLOW_DEGRADED) {
+    console.error(`funnel snapshot NOT written: ${OUT_PATH} keeps the previous run (pass --allow-degraded to force)`);
+    process.exitCode = 3;
+    return;
+  }
   if (OUT_PATH) {
     fs.mkdirSync(path.dirname(OUT_PATH), { recursive: true });
     fs.writeFileSync(OUT_PATH, JSON.stringify(snapshot, null, 2));
