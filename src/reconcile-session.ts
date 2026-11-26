@@ -689,6 +689,22 @@ export function resolveMailboxRetentionDays(
 }
 
 export const MAILBOX_RETENTION_DAYS = resolveMailboxRetentionDays();
+
+// Consumed `ncl` replies keep a much shorter window. The requester reads its
+// reply once, so a consumed reply is transport, not history, and a session that
+// lists every session several times a day collects gigabytes of them within the
+// main window.
+// NANOCLAW_CLI_REPLY_RETENTION_HOURS overrides; 0 keeps them for the main window.
+export const DEFAULT_CLI_REPLY_RETENTION_HOURS = 24;
+export function resolveCliReplyRetentionHours(
+  raw: string | undefined = process.env.NANOCLAW_CLI_REPLY_RETENTION_HOURS,
+): number {
+  if (raw === undefined || raw.trim() === '') return DEFAULT_CLI_REPLY_RETENTION_HOURS;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_CLI_REPLY_RETENTION_HOURS;
+  return n;
+}
+export const CLI_REPLY_RETENTION_HOURS = resolveCliReplyRetentionHours();
 const MAILBOX_GC_INTERVAL_MS = 24 * 60 * 60_000;
 const lastMailboxGc = new Map<string, number>();
 
@@ -751,15 +767,18 @@ export function gcMailboxHistory(
   session: Pick<Session, 'id'>,
   retentionDays: number = MAILBOX_RETENTION_DAYS,
   now: number = Date.now(),
+  cliReplyRetentionHours: number = CLI_REPLY_RETENTION_HOURS,
 ): { systemRows: number; deliveredRows: number; more?: boolean } | null {
   if (!mailbox.gcHistory || retentionDays <= 0) return null;
   if (now < dueAt(lastMailboxGc, session.id, now, MAILBOX_GC_INTERVAL_MS, MAILBOX_GC_COLD_START_SPREAD_MS)) return null;
   if (!budgetAvailable(now)) return null; // stays due; a later tick picks it up
   lastMailboxGc.set(session.id, now);
   const cutoff = new Date(now - retentionDays * 86_400_000).toISOString();
+  const cliReplyCutoffIso =
+    cliReplyRetentionHours > 0 ? new Date(now - cliReplyRetentionHours * 3_600_000).toISOString() : undefined;
   const started = Date.now();
   try {
-    const result = mailbox.gcHistory(cutoff);
+    const result = mailbox.gcHistory(cutoff, { cliReplyCutoffIso });
     // Backlog left (chunk budget ran out): due again right away — the global
     // budget, not the 24 h interval, paces the rest.
     if (result.more) lastMailboxGc.set(session.id, now - MAILBOX_GC_INTERVAL_MS);
@@ -768,6 +787,7 @@ export function gcMailboxHistory(
         sessionId: session.id,
         ...result,
         retentionDays,
+        cliReplyRetentionHours,
         durationMs: Date.now() - started,
       });
     }
