@@ -38,7 +38,7 @@ Porting a mention-driven GitLab agent harness for Khronos spec and tooling work 
 
 `src/**`, `container/agent-runner/**`, `scripts/**`, `.github/**` and `docs/**` belong to nv-main. So:
 
-- **Dry phase: no nv-main change.** Requests are injected through an existing generic inbound route (the operator CLI socket) by a khr-owned replay skill (`.claude/skills/khr-replay/`). That tool applies the mention, authorization and bounded-context rules above before injecting. The agent fetches GitLab context through the gateway.
+- **Dry phase: no nv-main change.** Requests are injected through an existing generic inbound route (the operator CLI socket) by throwaway replay tooling kept outside the repository. That tool applies the mention, authorization and bounded-context rules above before injecting. The agent fetches GitLab context through the gateway.
 - **Live phase: one generic nv-main pull request.** GitLab webhook support next to the GitHub path: secret check, `webhook_inbox` trust `gitlab`, note-event parsing, mention gate. Nothing Khronos-specific. It needs a separate owner decision.
 - A path-guard list for this branch (`.github/nv-path-guard/nv-khr.txt`) is also nv-main-owned. It is proposed as part of that same nv-main pull request.
 
@@ -106,7 +106,7 @@ Porting a mention-driven GitLab agent harness for Khronos spec and tooling work 
 ## Phases
 
 - P0: scaffold (this commit) and the install plan.
-- P1: replay producer and ingestion, through the operator CLI socket ([`.claude/skills/khr-replay/`](../../../.claude/skills/khr-replay/SKILL.md), an operator skill: SKILL.md + scripts/). Built and unit-tested; the live run waits for the install (P5) and job preparation (P3).
+- P1: intake for the dry run. Past requests are replayed through the operator CLI socket by throwaway tooling kept **outside the repository**. Live intake comes with the GitLab webhook (P6).
 - P2: spine and workflow detail, Codex settings.
 - P3: job preparation and the results sink (`khr-job-prep`), the first check wrapper (`khr-validation/scripts/run_check.py`), and instructions ported to lego pieces (see the source map).
 - P4: image and validation.
