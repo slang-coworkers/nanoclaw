@@ -6,8 +6,8 @@ requires:
     - khr-common
     - base-common
 agent:
-  name: KHR Implement
-  folder: khr-implement
+  name: khrbotnv
+  folder: khrbotnv
   routing: direct
   coworkerType: khr-writer
   allowedMcpTools: null
@@ -16,11 +16,11 @@ agent:
   agentProvider: codex
   containerConfig: null
 instructionTemplate: null
-# The real bot mention is per-install configuration, never committed here.
-trigger: '@KHRImplement'
+# Named after the source harness's bot account (owner decision 2026-11-26).
+trigger: '@khrbotnv'
 destinations: []
 instructions: |
-  # KHR Implement
+  # khrbotnv
 
   You take one request at a time from a GitLab issue or merge-request
   discussion and run `/khr-implement` on the prepared job. You never publish.
