@@ -1,4 +1,4 @@
-# nv-khr — the khr coworker overlay (khrbotnv) and its replay tool.
+# nv-khr — the khr coworker overlay (khrbotnv) and its operator replay skill.
 #
 # Derived, not guessed: all 28 files this branch changed since its merge-base
 # with nv-main (e42210977) sit in the namespaces below, and none of them exists
@@ -9,3 +9,6 @@ container/spines/khr/**
 container/skills/khr-*/**
 container/workflows/khr-*/**
 coworkers/khrbotnv.yaml
+
+# Operator skills that run on the install host (SKILL.md + scripts), e.g. khr-replay.
+.claude/skills/khr-*/**
