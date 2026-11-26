@@ -1,0 +1,44 @@
+# Khronos spec coworker types (lego coworker model).
+#
+# A port of a mention-driven GitLab agent harness for Khronos specification and
+# tooling work (spec, headers, validation layers, SPIR-V tools, shader compilers,
+# conformance tests). Everything on this branch is additive and khr-owned:
+# container/spines/khr/**, container/workflows/khr-*/**, container/skills/khr-*/**,
+# coworkers/khr-*.yaml. Nothing here edits a file owned by nv-main.
+#
+# Provider: Codex only (see coworkers/khr-implement.yaml). No mcpServers are
+# declared on purpose: the agent has no internet tools (no DeepWiki, no web
+# search). Its only network destinations are the model endpoint and read-only
+# GitLab through the credential gateway.
+
+khr-common:
+  abstract: true
+  description: "You work on Khronos specification and tooling repositories hosted on a members-only GitLab; their content is confidential and never leaves this install."
+  project: khr
+  extends: base-common
+  identity: container/spines/khr/identity/spec-engineer.md
+  invariants:
+    - container/spines/khr/invariants/confidentiality.md
+    - container/spines/khr/invariants/untrusted-context.md
+    - container/spines/khr/invariants/no-publish.md
+    - container/spines/khr/invariants/offline.md
+  context:
+    - container/spines/khr/context/bounded-context.md
+    - container/spines/khr/context/layout.md
+  skills:
+    - khr-repo-tools
+  workflows: []
+  bindings:
+    code: khr-repo-tools
+    test: khr-repo-tools
+
+khr-writer:
+  description: "You implement a requested change across one or more pinned repository worktrees, validate it with CPU-only checks, and commit it locally; the host decides what is published."
+  project: khr
+  extends: khr-common
+  invariants:
+    - container/spines/khr/invariants/commits.md
+    - container/spines/khr/invariants/repo-rules.md
+    - container/spines/khr/invariants/validation.md
+  workflows:
+    - khr-implement

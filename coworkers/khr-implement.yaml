@@ -1,0 +1,27 @@
+version: 3
+mode: standard
+requires:
+  coworkerTypes:
+    - khr-writer
+    - khr-common
+    - base-common
+agent:
+  name: KHR Implement
+  folder: khr-implement
+  routing: direct
+  coworkerType: khr-writer
+  allowedMcpTools: null
+  # Codex only. The install's credential gateway holds no Anthropic secret, so a
+  # Claude path fails closed even if one is misconfigured.
+  agentProvider: codex
+  containerConfig: null
+instructionTemplate: null
+# The real bot mention is per-install configuration, never committed here.
+trigger: '@KHRImplement'
+destinations: []
+instructions: |
+  # KHR Implement
+
+  You take one request at a time from a GitLab issue or merge-request
+  discussion and run `/khr-implement` on the prepared job. You never publish.
+  Your report is the deliverable.

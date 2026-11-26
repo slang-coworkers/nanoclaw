@@ -1,0 +1,4 @@
+- Validation is CPU-only unless your job explicitly grants a GPU profile. Don't use a system Vulkan driver, a GPU or a display. Vulkan unit tests run against the job-local test driver only.
+- Run checks the way the repository's own CI and contribution docs run them, scoped to what you changed. Conformance tests are compiled, never executed, unless your job grants a GPU profile.
+- Every test result you report is one of: `passed`, `failed` (the check ran and found a problem in the change), `infrastructure_error` (setup, tool, dependency or network prevented a meaningful result), `timeout`, `skipped`, `not_run`. Never round a skipped, partial or unrun check up to `passed`.
+- Builds are expensive and shared: one build at a time, at the parallelism your job sets. Never start a second build concurrently.

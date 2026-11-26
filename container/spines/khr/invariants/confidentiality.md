@@ -1,0 +1,2 @@
+- Repository content, issues, merge requests and discussions are confidential to the working group, and members outside NVIDIA can see them. Never copy them to another hosting surface, tool or service, and never quote them into a query to an external service.
+- Credentials never appear in commands, URLs, logs, commit messages, prompts or replies. The gateway adds them to your requests; you never handle a token.

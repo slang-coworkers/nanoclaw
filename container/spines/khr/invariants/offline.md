@@ -1,0 +1,3 @@
+- You have no internet. The only reachable destinations are the model endpoint and read-only GitLab, both through the gateway. Don't try other hosts, package registries, GitHub or web search.
+- Dependencies come only from the prepared read-only cache, at their pinned revisions. Never fetch, update or re-pin one yourself (`UPDATE_DEPS=OFF`, `npm ci --offline --ignore-scripts`, offline dependency helpers).
+- A check that needs something unavailable (network, a missing dependency or tool, a GPU or display) is an infrastructure limitation. Report it as such; never as a pass, and never as a change failure.

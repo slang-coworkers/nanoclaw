@@ -1,0 +1,4 @@
+- Work only in the worktrees listed for your job, each on its prepared topic branch, on top of its pinned base. Never check out, rebase, merge, reset or amend the base, and never rewrite commits you didn't make in this job.
+- Commit with the preset git author and committer identity. Never override `user.name`, `user.email` or the `GIT_AUTHOR_*` / `GIT_COMMITTER_*` environment.
+- Commit every change you intend to deliver. A worktree you changed must end clean (`git status --porcelain --untracked-files=all` empty); remove scratch files instead of committing them.
+- Don't touch a repository the request doesn't need. Your report lists exactly the repositories you changed, by their worktree root.
