@@ -9,6 +9,22 @@ provides: [test.run]
 
 Tools are under `/app/skills/khr-validation/scripts/`, which is read-only. If a helper named here isn't installed in this image, record that check as `infrastructure_error` (missing tool) and carry on with the other work.
 
+## Toolchain (once per job, before any check)
+
+The image carries the CPU-only baseline (`apt-packages.txt`): compilers, CMake/Ninja, Python, asciidoctor/AsciiDoc, JRE and jing, xsltproc, `ag`, the Vulkan loader.
+
+The pinned overlay comes from `requirements-toolchain.txt`: clang-format 22.1.x, pyparsing 3.3.2, beautifulsoup4. Install it offline into the job's dependency root, through the wrapper:
+
+```
+python3 /app/skills/khr-validation/scripts/run_check.py --job /workspace/agent/jobs/<job> --kind setup \
+  --name toolchain --repository /workspace/agent/jobs/<job>/repos/<any> -- \
+  python3 /app/skills/khr-validation/scripts/setup_toolchain.py --job /workspace/agent/jobs/<job>
+```
+
+- Then put its `bin` first on `PATH`, using the printed `source …/toolchain.env`, in every later command that needs `clang-format` or the pinned Python.
+- The overlay installs only from the read-only wheel cache, never from the network. A missing cache or a failed install is `infrastructure_error`.
+- `toolchain.json` records the exact tool versions. Cite it when a check depends on a tool version.
+
 ## Every setup and check goes through the wrapper
 
 ```

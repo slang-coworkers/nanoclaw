@@ -1,0 +1,33 @@
+# khr validation baseline: Debian (bookworm) packages for the khr agent group.
+#
+# The install applies these as per-group packages, which build into the group's
+# derived image:
+#
+#   for p in $(grep -vE '^\s*(#|$)' apt-packages.txt); do ncl groups config add-package --id <khr group> --apt "$p"; done
+#   ncl groups restart --id <khr group> --rebuild
+#
+# These mirror the source harness's CPU-only host baseline: CMake/Ninja C and C++
+# builds, Python checks, AsciiDoc and Asciidoctor HTML builds, Vulkan registry
+# RELAX NG checks, and the CPU Vulkan loader (not a driver or ICD).
+# Packages the base image already provides (git, cmake, ninja, pkg-config,
+# compilers, python3/venv/pip, node) are not repeated here.
+# clang-format 22.1.x and the pinned Python overlay come from
+# requirements-toolchain.txt instead (installed offline by setup_toolchain.py).
+
+silversearcher-ag
+bubblewrap
+python3-lxml
+python3-networkx
+python3-pytest
+python3-yaml
+python3-jinja2
+ruby
+asciidoc
+asciidoctor
+default-jre-headless
+jing
+libxml2-utils
+xsltproc
+dos2unix
+bison
+libvulkan1
