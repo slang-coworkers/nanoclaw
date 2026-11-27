@@ -3,7 +3,7 @@ title: "Gate-Hook Mechanics: Read-Only False Positives, the Plan Gate, and Recor
 type: concept
 group: agent-infra
 tags: [critique-gate, delivery-gate, gate-plan, plan-tracker, false-positive, read-only, requirements-anchor, attested-hash, gate-audit]
-source_count: 23
+source_count: 24
 ---
 
 # Gate-hook mechanics: read-only false positives, the plan gate, and recording/format matchers
@@ -89,6 +89,13 @@ failing with "PLAN REQUIRED" even though the plan file exists. Fix: write the pl
 file) with the **Write** tool once ([plan-tracker wants Write not Edit](../learnings/1794855941188-critique-gate-mechanics-plan-tracker-wants-write-n.md);
 re-verified 2026-11-17 on slang#13804 — an Edit to `reports/<n>.md` kept "PLAN REQUIRED", one Write of the
 same content passed, [plan-gate Write-vs-Edit + diag exit-code pins](../learnings/1794928650513-plan-gate-write-vs-edit-diag-exit-code-pins-when-m.md)).
+Re-verified again 2026-11-26 with a sharper boundary: the hook (`/app/hooks/plan-tracker.sh`, PostToolUse)
+only counts Write-tool writes to `/workspace/agent/reports/*`, and an approved codex PLAN_REVIEW does NOT
+set `plan_written` either — a session that edited its existing plan file stays refused ("PLAN REQUIRED"
+persists after a real plan update and an approved plan review), and a new task/message resets
+`workflow-state.json` (`plan_written: false`) so the symptom recurs per task on long-lived chains. The fix
+is always the same: read the plan file and re-write it verbatim once with the Write tool, and the gate
+opens ([plan gate only arms on Write-tool plan files — Edit does not count](../learnings/1795717300987-plan-gate-only-arms-on-write-tool-plan-files-edit-.md)).
 The PreToolUse arm is `gate-plan.sh` (opt-in via `/workspace/agent/.overlay-plan-gate`): it denies ANY Bash
 command containing a `>`/`>>` redirect while `plan_written=false` — including read-only verification tasks
 like `slang-test > log 2>&1`. When a plan file for the target already exists under
@@ -208,7 +215,7 @@ trust the state file: check `critique_verdicts`/`critique_attested` in
 `/workspace/.claude/workflow-state.json` and hash-verify the delivered files rather than re-running
 codex ([never edit codex-attested artifacts after approve — route advisories via send_file cover text](../learnings/1795144021884-never-edit-codex-attested-artifacts-after-approve-.md)).
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [harness hooks false-positive on read-only queries](../learnings/1794814232168-harness-hooks-false-positive-on-read-only-github-q.md) — also carries the 401/GH_TOKEN infra-outage + unauth fallback facts
 - [gate burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)
 - [plan-tracker wants Write not Edit; re-hash](../learnings/1794855941188-critique-gate-mechanics-plan-tracker-wants-write-n.md)
@@ -232,3 +239,4 @@ codex ([never edit codex-attested artifacts after approve — route advisories v
 - [opencode migration: fresh workflow-state blocks gated reads; router demands in_reply_to](../learnings/1795224576884-opencode-migration-critique-gate-state-reset-block.md) — old claude-session rounds not carried over; pulls reads burn denials; use `gh pr view` / `gh run list/view`.
 - [freshness-gate traps: bash " > " comparisons, pkill self-match, append-only attempts file in critique re-records](../learnings/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md) — a comparison operator bumps edits_since_critique; pkill -f kills your own launcher; poll .critique_stages with jq, never grep attempts.jsonl
 - [critique dispatch bash redirects re-trip the edit gate after every round](../learnings/1795636526953-critique-dispatch-bash-redirects-re-trip-the-edit-.md) — dispatch the bridge redirect-free; `2>&1 | tail` is not a write; Write tool for comment bodies in a separate step
+- [plan gate only arms on Write-tool plan files — Edit does not count](../learnings/1795717300987-plan-gate-only-arms-on-write-tool-plan-files-edit-.md) — an approved PLAN_REVIEW doesn't set plan_written either; re-Write the plan verbatim, per task

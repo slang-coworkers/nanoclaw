@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli, scheduled-task, cron, observability]
-source_count: 47
+source_count: 48
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -23,6 +23,7 @@ Runtime mechanics of NanoClaw agent containers: restarts and reaps, container co
 - **Sibling worktrees share one `.git`:** `git stash clear` wipes every sibling's stashes (use `git reset --hard HEAD`), and any sibling's SHA resolves locally, so test ancestry, not resolvability.
 - **Reclaim `build/` dirs, not worktrees** (~6–7.6 GB each, regenerable; `container_status=stopped` is not abandoned). `df` the exact build path (`/workspace/agent` is a separate, roomier mount; the root overlay is the same device, no escape).
 - **`/tmp` and the root overlay are ephemeral** and codex cannot see `/tmp`: keep resume-critical or cross-process files under `/workspace/agent/<scratch-dir>/`, outside the worktree (root logs aren't gitignored).
+- **`/workspace/agent` is per-coworker**: a peer's `[Fix Review Request]` cites patch paths and worktrees that live in the PEER's container — verify quickly (ls patches/, find, remote/PR checks; "draft PR held" can mean unpushed and invisible to `gh`), then ask the peer to `send_file` the patch.
 - **Isolate parallel reviewers and builds in their own worktrees**: shared checkouts race on `.git/index.lock` and clobber staging paths (wrong-PR diffs).
 - **A container reset can corrupt submodule trees** while HEAD and gitlink look fine: run `git submodule update --init --recursive --force`, not CMake debugging; re-install pip tools.
 - **`ncl sessions list` is a capped, oldest-first page**; verify handoffs with `--thread-id`. A cron fire is its own row with empty `messaging_group_id` and `created_at` on the cron boundary.
@@ -53,6 +54,8 @@ Per-group config lives in `container_configs` (`ncl groups config`). Bookworm re
 A fixer "holding for a build slot" behind `/dev/vdb` contention is idle and silent: on 2026-07-11 two no-PR chains with committed fixes (slang #11967, #11970) went ~97h silent until a supervisor nudge. A bot-last, no-PR, silent chain is a promise owed, not a handoff, so fixers bound holds with a polling deadline and emit a blocker plus ETA. Reaping closed-chain worktrees took the volume from 100% to 46 GB free ([silent build-slot holds](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)).
 
 **`/tmp` and the root overlay are ephemeral**, wiped between Bash invocations and by container restarts. A slang#13263 session back ~30h later found `/tmp/pp13263` gone while the worktree survived; on PR #13507 round 2 (~11h on) `/tmp/p13507` was gone, a `cp ... /tmp/p13507/x.bak` backup failed silently inside a `;` chain (restore tracked files with `git checkout -- <file>`), and a slangc loop over the missing input printed "OK" because `grep error` found nothing, so probe loops check exit codes and output existence ([/tmp is wiped between sessions](../learnings/1791465968346-tmp-is-wiped-between-agent-sessions-keep-review-pr.md)). `codex` runs in a separate process that cannot see `/tmp`, so a PR body staged there reads as "missing" and burns a critique round. Keep repro inputs, before/after outputs, PR-body drafts, codex inputs, probe dirs (`/workspace/agent/wt-<pr>-probe/`) and logs under `/workspace/agent/<scratch-dir>/`, outside the worktree; worktree-root build/test logs aren't gitignored (`.gitignore` covers only `build/**/*.log`), so move them out before `git add` ([codex artifacts under /workspace](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md), [keep task scratch out of /tmp](../learnings/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md)).
+
+Paths a peer cites in a `[Fix Review Request]` (e.g. `/workspace/agent/patches/fix-<n>.patch`, `wt-slang-<n>`) live in the PEER's container — `/workspace/agent` is a per-coworker mount, so the reviewer cannot see them. Verify the essentials quickly (ls the local patches/, `find /workspace -iname "*<n>*"`, check origin for the branch or a pushed PR) and then `send_message(in_reply_to=<their-msg-id>)` asking the peer to `send_file` the patch, rather than hunting for files that are not yours to find. The same isolation means a fixer's "draft PR held" can be held locally — unpushed and invisible to `gh` — so confirm with `gh pr list`/`git ls-remote` before concluding it should be fetchable ([peer-cited patch/worktree paths are in the peer's container](../learnings/1795685849806-peer-cited-patch-worktree-paths-in-fix-review-requ.md)).
 
 ## Builds and Worktree Setup in Fixer Sessions
 
@@ -104,8 +107,9 @@ No remote branch and no tagged session are weak stall signals, since fixers work
 
 A nested `.git` in a tree being published is a scrub bypass no text check sees. On 2026-08-06 the nightly `knowledge_base` sync (nanoclaw to `nv-coworkers`) found its auto-memory source (`/home/node/.claude/projects/-workspace-agent/memory/`) had become a git repo, and `cp -rL <src>/. <dest>/` copied its `.git/`. `scrub_kb_pii.py` rewrites working-tree text only, so zlib-compressed `.git/objects` pass it and the `grep -rhoE '<email regex>'` check by construction. The tell was a count (~520 expected, 10,011 mirrored, 772 under `auto-memory/.git`); compare with `git ls-tree -r --name-only HEAD <path> | wc -l` before staging. The fix (PR #1094) removes `auto-memory/.git` and `__pycache__` dirs in the mirror step, before the scrub, and every publish-to-public job asserts `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` is empty ([nested .git is a scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md)).
 
-**Source learnings (47):**
+**Source learnings (48):**
 
+- [peer-cited patch/worktree paths live in the peer's container](../learnings/1795685849806-peer-cited-patch-worktree-paths-in-fix-review-requ.md) — /workspace/agent is per-coworker; verify quickly then ask for send_file; "draft PR held" can be unpushed
 - [detached full-suite runs: setsid, no mid-run rebuilds, plan-gate write patterns](../learnings/1794919009814-detached-full-suite-runs-setsid-no-mid-run-rebuild.md) — nohup alone dies with the turn; setsid survives; serialize builds vs suites
 - [ncl sessions list shows group IDs, not names](../learnings/1794817309345-ncl-sessions-list-shows-agent-group-ids-not-names-.md)
 - [Task-log entries truncate at ~2000 chars — not a crash](../learnings/1794885017981-task-log-entries-truncate-at-2000-chars-a-mid-word.md)

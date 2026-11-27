@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 57
+source_count: 58
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -27,6 +27,7 @@ source_count: 57
 - **Size the fix to the feature's usage** (#14247): for a rarely used feature with a trivial workaround, offer the minimal option beside the producer-side fix.
 - **CONTRIBUTING.md's behavior-based `pr: breaking change` is canonical** over CLAUDE.md's compile-only one — the repo carries both definitions until #13498 lands a written policy.
 - **The Slang Sprint Maintainer coworker is fully read-only on Discord** — answering belongs only to `slang-discord-support` in summon threads; reporter questions go in the operator sweep report.
+- **Pinned tests are maintainer contract:** before reversing a pinned test's expectation, read the comment threads of every issue linked to the target (not just bodies) and the PR that added the test; reversing a member-endorsed pin is ask-first on GitHub.
 
 Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
 
@@ -55,6 +56,10 @@ gh pr view <n> -R <owner>/<repo> --json reviewDecision,headRefOid,reviews --jq '
 Re-requesting review is a forbidden `requested_reviewers` write; surface it upward ([comment-only commit](../learnings/1784048274524-never-push-after-a-maintainer-approves-even-a-comm.md)).
 
 **Each review round is amnesiac: adjudicate round-over-round contradictions, don't treat the latest round as fresh truth.** On #14507 round-2's Reviewer A flagged a missing Input/Output variant that round-1's Reviewer A had explicitly directed the fixer NOT to add, citing the same VUID. When declining a reviewer's ask that contradicts an earlier round, surface the disagreement for the human maintainer rather than silently following the newest round ([reviewer rounds are amnesiac](../learnings/1794861136417-bfloat16-in-spir-v-input-output-is-spec-forbidden-.md)).
+
+## Pinned Tests Are Maintainer Contract: Read Linked-Issue Comment Threads
+
+Maintainer direction may live in the COMMENT threads of issues LINKED to the target (via covering-test file names, "related" links, or prior-fix references) — not just in the target issue's own thread or the linked issue's body. On #14730 the triage memo listed `tests/bugs/gh-8937.slang` as a covering test; issue #8937's body was read but not its comments, and a PR nearly shipped reversing a MEMBER-endorsed resolution (tangent-vector on #8937 endorsing bump+warn E39012, implemented by PR #9190 that added that very test). Before implementing anything that changes a pinned test's expectation, read `gh api repos/shader-slang/slang/issues/<n>/comments` for EVERY issue reachable from the target — its own thread, linked issues' threads AND bodies, and the PR that added the pinning test (`git log --diff-filter=A -- <test-file>`). A pin added by a merged maintainer-era PR is maintainer contract: reversing it goes back to them on GitHub (ask-first with a verbatim quote and both options) before the draft PR, not "flagged in the PR description" ([linked-issue comment threads carry maintainer direction](../learnings/1795685262432-linked-issue-comment-threads-carry-maintainer-dire.md)).
 
 ## Verifying a Merge
 
@@ -128,7 +133,7 @@ A rename/branding request is a governance call: park at triage as a feature requ
 
 **The Slang Sprint Maintainer coworker is FULLY read-only on Discord** — never post, reply, or react in any channel or forum thread, including #slang-support-bot. `discord_send_message` was removed from its allowlist (operator, 2026-11-17) after it replied in an unsummoned #slang-support-bot thread; answering on Discord belongs only to the separate `slang-discord-support` coworker, which replies when a thread author summons it — a bot answering unsummoned threads is out-of-workflow and unwanted by the community. Questions to ask reporters, or details a reporter should be asked for, go in the sweep report routed to the operator instead ([Discord is fully read-only for the Slang Maintainer coworker](../learnings/1794923038333-discord-is-fully-read-only-for-the-slang-maintaine.md)). The generalization: an MCP tool being technically available is not authorization to use it — check the role's posting scope, not just the allowlist.
 
-**Source learnings (57):**
+**Source learnings (58):**
 - [Discord is fully read-only for the Slang Maintainer coworker](../learnings/1794923038333-discord-is-fully-read-only-for-the-slang-maintaine.md) — `discord_send_message` removed from its allowlist 11-17; replies belong to slang-discord-support
 - [two conflicting breaking-change definitions until #13498](../learnings/1794892944633-slang-has-two-conflicting-breaking-change-definiti.md) — CONTRIBUTING.md behavior-based is canonical; label calls go to a maintainer
 - [#13177/#13108 arg promotion: draft PR #13583 is the lineage](../learnings/1794892944295-13177-13108-arg-promotion-draft-pr-13583-is-the-li.md) — park the pointer half until #13583 lands; #14204 superseded #13115
@@ -186,5 +191,6 @@ A rename/branding request is a governance call: park at triage as a feature requ
 - [size the fix to usage](../learnings/1793740576539-slang-maintainers-close-large-fixes-for-niche-buil.md)
 - [package manager refs](../learnings/1793728634729-slang-package-manager-public-refs-12404-pr-12656-s.md)
 - [updated tests suffice (#14438)](../learnings/1794336367823-jkwak-work-no-new-dedicated-test-when-updated-exis.md)
+- [linked-issue comment threads carry maintainer direction](../learnings/1795685262432-linked-issue-comment-threads-carry-maintainer-dire.md) — #14730/gh-8937: read linked issues' comments before reversing a pinned test
 
 _Catalog: [[wiki/index.md]]_

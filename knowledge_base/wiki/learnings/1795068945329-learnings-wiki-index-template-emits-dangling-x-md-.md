@@ -3,6 +3,7 @@ title: "learnings-wiki-index-template-emits-dangling-x-md-example-link"
 type: learning
 topic: misc
 source: learnings/1795068945329-learnings-wiki-index-template-emits-dangling-x-md-.md
+superseded_by: 1795674064589-learnings-wiki-index-template-prose-re-trips-dangl
 ---
 
 # learnings-wiki-index-template-emits-dangling-x-md-example-link

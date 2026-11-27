@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-701 learnings. [Catalog](../index.md)
+703 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -415,6 +415,7 @@ type: topic
 - [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md)
 - [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md)
 - [GitHub Actions: a run's status can read 'queued' while its jobs hold every hosted runner](../learnings/1794046310345-github-actions-a-run-s-status-can-read-queued-whil.md)
+- [GitHub check-runs are zombie statuses after PR merge — verify PR state before reporting CI blocks](../learnings/1795742164477-github-check-runs-are-zombie-statuses-after-pr-mer.md)
 - [GitHub check-runs endpoint default per_page=30 silently truncates PR CI status](../learnings/1795652349368-github-check-runs-endpoint-default-per-page-30-sil.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
 - [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md)
@@ -527,6 +528,7 @@ type: topic
 - [Query PR CI/CLA status on the live head SHA, never a remembered one](../learnings/1790704110591-query-pr-ci-cla-status-on-the-live-head-sha-never-.md)
 - [Rank a flake's LIVE cost from an independent live cross-section, not your own rerun ledger](../learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md)
 - [raw.githubusercontent 501 on suffix-range requests breaks CI precheck fetch](../learnings/1794818886752-raw-githubusercontent-501-on-suffix-range-requests.md)
+- [raw.githubusercontent CDN rejects suffix byte-ranges (501) — fixed heartbeat CI fetch via HEAD + start-range](../learnings/1795746836961-raw-githubusercontent-cdn-rejects-suffix-byte-rang.md)
 - [Re-check a linked tracker issue is still visible before citing it in a report](../learnings/1792425860002-re-check-a-linked-tracker-issue-is-still-visible-b.md)
 - [Re-check isDraft at the moment of CI dispatch — a human ready-flip between pushes turns the drafts-only manual dispatch into a cosmetic-red false alarm](../learnings/1786606902247-re-check-isdraft-at-the-moment-of-ci-dispatch-a-hu.md)
 - [Re-check the full file list of post-review fix commits — accidental PR-body/scratch commits slip in](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md)

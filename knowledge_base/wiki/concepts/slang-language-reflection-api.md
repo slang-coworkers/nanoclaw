@@ -3,7 +3,7 @@ title: "Slang Reflection API"
 type: concept
 group: slang-language-core
 tags: [reflection, reflection-json, type-layout, binding, program-layout, slang-deprecated-h, specialization-constant, slang-rhi, structured-buffer, dxc, hlsl-layout]
-source_count: 32
+source_count: 33
 ---
 
 # Slang Reflection API
@@ -27,6 +27,7 @@ The `spReflection*` C API and C++ wrappers: identity, layout, serialization and 
 - **`getElementVarLayout()` is non-null ONLY for `ParameterGroupTypeLayout`** (SSBO → null). Binding type/access come from the TYPE: a GLSL `readonly` SSBO reflects READ_WRITE (a real UAV on D3D, so fixes must be target-aware).
 - **On HLSL/CPU/CUDA a spec-constant reflects as `Uniform`**; find it via `findAttributeByName(gs, "SpecializationConstant")` / `"vk_constant_id"`.
 - **`include/slang-deprecated.h` holds the ACTIVE `spReflection*` C-API**; new accessors are append-only C-ABI, pinned by a `slang-unit-test`.
+- **A type from `specializeType` reflects as `Kind::Specialized` with zero fields** (`GetFieldCount` returns 0 for non-DeclRefType, `getFieldByIndex(0)` is nullptr) — don't pin Struct-kind or field-count facts on it.
 - **A return-value change matching `slang.h` docs can still break**: grep slangpy/slang-rhi for the OLD value as a sentinel; label `pr: breaking change`.
 
 ## Identity, lifetime, and linking
@@ -99,9 +100,11 @@ They share no code: a change only in engine 1 moves reflection while SPIR-V is u
 
 **Before assuming a reflection capability is missing, check slang-reflection-api.cpp.** The `spReflection*` C API is already DeclRef-aware: `SlangReflectionFunction*`/`SlangReflectionGeneric*` ARE `DeclRefBase*` handles (slang-reflection-api.cpp ~96-131), and `spReflectionGeneric_GetTypeParameterConstraint*` already queries function-level `where T : IFoo` constraints (backed by getCanonicalGenericConstraints, slang-check-decl.cpp ~20202). The real gaps (#14429 triage): `spReflectionType_GetKind` returns NONE for function-scope generic-param DeclRefTypes (only GlobalGenericParamDecl is classified, ~514-550), and the reflection-JSON TypeParameter path has TODOs for entry-point generics — which is why SlangPy string-parses full_name() for generic args (slangpy src/sgl/refl/type.cpp ~957) ([DeclRef-aware handles exist; GetKind is the gap for function-scope generic params](../learnings/1794885648296-slang-reflection-api-declref-aware-handles-generic.md)).
 
+**A type returned by `specializeType` (an `ExistentialSpecializedType`) reflects as `Kind::Specialized` with ZERO fields.** `spReflectionType_GetKind` maps it to `SLANG_TYPE_KIND_SPECIALIZED` (`slang-reflection-api.cpp:539`) and `spReflectionType_GetFieldCount` returns 0 for any non-DeclRefType (`:578`), so `getFieldByIndex(0)` is nullptr. The strongest true public contract for such a result is: non-null return, no diagnostics blob, `Kind::Specialized` — do not assert Struct-kind or field-count/field-type facts on it. On PR #14723 (issue #14611) a reviewer's suggested "expected type kind/field count" assertions failed at runtime; probe the actual API behavior (or run the test before pushing) instead of pinning guessed reflection facts. A success-path template now exists as `specializeTypeSuccessPath` in `tools/unit-test-specialize-type.cpp` — the file's only prior coverage was the error path ([ExistentialSpecializedType reports Kind::Specialized and zero fields](../learnings/1795690521405-slang-reflection-existentialspecializedtype-report.md)).
+
 **#14423 and #14429 are parallel designs of the same append-only ABI and must be shaped together.** #14423 (enumerate concrete variadic type-pack elements, kaizhangNV) and #14429 (query generic parameters + constraints, tangent-vector, filed 2026-11-17) both extend the `spReflectionGeneric_*` surface; #14423 is PARKED pending API-shape sign-off, and whichever is un-parked first should shape its queries coherently with the other. Implementation shortcut for the eventual fixer: `_getEntryTypes` in slang-check-portable-ray-tracing.cpp ~314-343 already enumerates the `ConcreteTypePack` bound in a `GenericAppDeclRef` exactly as #14423 wants, including the unresolved-vs-empty distinction — mirror it at the reflection layer ([reflection API design coordination: #14423 vs #14429](../learnings/1794888772263-reflection-api-design-coordination-slang-14423-vs-.md)).
 
-**Source learnings (32):**
+**Source learnings (33):**
 - [multi-EP binding bloat is real](../learnings/1790016065362-correction-entry-point-uniform-binding-bloat-acros.md) — EP offsets scope-relative
 - [two layout engines; a flag must touch both](../learnings/1789151128965-slang-layout-has-two-independent-engines-reflectio.md)
 - [new dependency must extend the cache key (#13020)](../learnings/1789172524588-threading-a-new-dependency-into-a-cached-parse-loo.md)
@@ -134,5 +137,6 @@ They share no code: a change only in engine 1 moves reflection while SPIR-V is u
 - [param defaults codegen ignores (#14228)](../learnings/1793676617873-the-slang-reflection-api-reports-default-values-on.md)
 - [prototype attributes read only by reflection (#14230)](../learnings/1793680339435-slang-ignores-attributes-on-a-function-prototype-i.md)
 - [D3D SB reflection never rounds nested struct size (#14311)](../learnings/1793815057187-d3d-structuredbuffer-reflection-never-rounds-neste.md)
+- [ExistentialSpecializedType reports Kind::Specialized and zero fields](../learnings/1795690521405-slang-reflection-existentialspecializedtype-report.md) — specializeType result: strongest contract is non-null + `Kind::Specialized`; success-path test template in unit-test-specialize-type.cpp
 
 _Catalog: [[wiki/index.md]]_

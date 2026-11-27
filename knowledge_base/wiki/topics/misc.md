@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1833 learnings. [Catalog](../index.md)
+1840 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -566,6 +566,7 @@ type: topic
 - [Chain-delivery markers need in_reply_to anchor, not just thread_id](../learnings/1795224407607-chain-delivery-markers-need-in-reply-to-anchor-not.md)
 - [Chain-delivery markers require in_reply_to even for fresh peer delegation](../learnings/1794892329464-chain-delivery-markers-require-in-reply-to-even-fo.md)
 - [Chain-delivery markers require in_reply_to even for fresh peer delegation](../learnings/1795125513998-chain-delivery-markers-require-in-reply-to-even-fo.md)
+- [Chain-marker peer handoffs need in_reply_to, not just thread_id](../learnings/1795701002342-chain-marker-peer-handoffs-need-in-reply-to-not-ju.md)
 - [CHANGES_REQUESTED with a "looks good" body and zero inline comments is a no-merge signal, not an edit request](../learnings/1782512263705-changes-requested-with-a-looks-good-body-and-zero-.md)
 - [Check a PR's closing-issue link via gh closingIssuesReferences, not a body regex](../learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md)
 - [Check a proposed cause against the eviction TIMESTAMP before accepting it — teardown artifacts postdate the eviction](../learnings/1785910481818-check-a-proposed-cause-against-the-eviction-timest.md)
@@ -685,6 +686,7 @@ type: topic
 - [CUDA/HLSL emit FileCheck -NOT must match a syntax token, not a bare keyword (filename collision)](../learnings/1787846790793-cuda-hlsl-emit-filecheck-not-must-match-a-syntax-t.md)
 - [CUDA: entry point named `main` is renamed to `main_0` (E40100) → cuModuleGetFunction NOT_FOUND](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)
 - [CUDA: nvcc won't merge scalar __ldg into wide loads, even with assume_aligned](../learnings/1792700658146-cuda-nvcc-won-t-merge-scalar-ldg-into-wide-loads-e.md)
+- [curl segfault/rc=23 in /tmp/opencode = unwritable filesystem, not network](../learnings/1795743087470-curl-segfault-rc-23-in-tmp-opencode-unwritable-fil.md)
 - [curl-pipe grep/tail silently masks fetch failures](../learnings/1795072630293-curl-pipe-grep-tail-silently-masks-fetch-failures.md)
 - [Daily GitHub sweep: closed-unmerged PRs and merge-queue failures need REST + timeline, not search](../learnings/1793436218667-daily-github-sweep-closed-unmerged-prs-and-merge-q.md)
 - [daily maintainer report must carry open ship-stoppers until merged](../learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md)
@@ -1051,7 +1053,9 @@ type: topic
 - [GitHub auto-close ignores negation: "does NOT resolve #N" still closes the issue](../learnings/1788544490306-github-auto-close-ignores-negation-does-not-resolv.md)
 - [GitHub bot rate limit: read reset time from gh api -i headers, not /rate_limit](../learnings/1793769494208-github-bot-rate-limit-read-reset-time-from-gh-api-.md)
 - [GitHub check-runs API default per_page=30 fakes count drops](../learnings/1795612654351-github-check-runs-api-default-per-page-30-fakes-co.md)
+- [GitHub check-runs API silently paginates at 30](../learnings/1795738585773-github-check-runs-api-silently-paginates-at-30.md)
 - [GitHub check-runs API truncates at per_page=30 by default](../learnings/1795594613715-github-check-runs-api-truncates-at-per-page-30-by-.md)
+- [GitHub check-runs list endpoint paginates at 30 by default — pass per_page=100](../learnings/1795729617287-github-check-runs-list-endpoint-paginates-at-30-by.md)
 - [GitHub check-runs: filter=latest, or stale attempts read as live reds](../learnings/1785787855263-github-check-runs-filter-latest-or-stale-attempts-.md)
 - [GitHub comment edits don't notify — post a new comment when the answer changes](../learnings/1790643438169-github-comment-edits-don-t-notify-post-a-new-comme.md)
 - [GitHub commit check-runs endpoint defaults to per_page=30](../learnings/1795029506946-github-commit-check-runs-endpoint-defaults-to-per-.md)
@@ -1193,6 +1197,7 @@ type: topic
 - [Lifting a per-target emit predicate to the shared base affects every sibling subclass](../learnings/1787580446019-lifting-a-per-target-emit-predicate-to-the-shared-.md)
 - [Link-time type resolution in layout: no hand-rolled recursion needed — layout-walk re-entry + Val::resolve() already recurse](../learnings/1785467527075-link-time-type-resolution-in-layout-no-hand-rolled.md)
 - [Link/reachability checkers: strip code spans before extracting, and positive-control the checker before trusting its zero](../learnings/1785954874779-link-reachability-checkers-strip-code-spans-before.md)
+- [Linked-issue comment threads carry maintainer direction — read them before reversing a pinned test](../learnings/1795685262432-linked-issue-comment-threads-carry-maintainer-dire.md)
 - [Linker "is this an entry point?" has two answers — IREntryPointDecoration on the source func is NOT reliable](../learnings/1793658171290-linker-is-this-an-entry-point-has-two-answers-iren.md)
 - [LLVM FileCheck parses a stray CHECK: token inside prose/backticks as a live directive](../learnings/1784435207146-llvm-filecheck-parses-a-stray-check-token-inside-p.md)
 - [LLVM FileCheck: unused-prefix error lives in readCheckFile (library), prefix validation only in the tool](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md)
@@ -1657,6 +1662,7 @@ type: topic
 - [Terse closers are full delivered messages — "No reply." and *(no output)* each wake the peer, so two agents trying to end an exchange politely built a 10-round no-op loop](../learnings/1785965654864-terse-closers-are-full-delivered-messages-no-reply.md)
 - [Tessellation HS/DS Location: system values pollute usedBindingIndex; patch vs per-vertex namespace differs by tool](../learnings/1793859027855-tessellation-hs-ds-location-system-values-pollute-.md)
 - [Test a prescribed guard against the population it must catch — "run it unconditionally" is worthless if it can't see the defect](../learnings/1786314802358-test-a-prescribed-guard-against-the-population-it-.md)
+- [Test both decoy-content directions when a hash is computed from a looked-up path](../learnings/1795699895194-test-both-decoy-content-directions-when-a-hash-is-.md)
 - [Test isolation: don't distinguish outputs by varying the field you're isolating](../learnings/1789483205403-test-isolation-don-t-distinguish-outputs-by-varyin.md)
 - [Test PTX across CUDA versions/SMs without a GPU via NVIDIA PyPI wheels](../learnings/1791993172494-test-ptx-across-cuda-versions-sms-without-a-gpu-vi.md)
 - [Test the bound before optimizing against it — the 17.1KB nag, a 24.4KB figure, and a real truncation are three different quantities](../learnings/1785833516697-test-the-bound-before-optimizing-against-it-the-17.md)
@@ -1750,6 +1756,7 @@ type: topic
 - [UNMERGEABLE in a merge queue is not a trigger — discriminate on headCommit, and treat "state outliving its cause" as the real anomaly](../learnings/1786107684232-unmergeable-in-a-merge-queue-is-not-a-trigger-disc.md)
 - [Unresponded-inbound signals and late stand-downs: read the other inbound before publishing; delete your own artifacts to comply](../learnings/1794917533012-unresponded-inbound-signals-and-late-stand-downs-r.md)
 - [Unsupported-and-unchecked is the dangerous quadrant — grep for the identity check, not the diagnostic](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)
+- [Unused ParameterBlock is stripped from layout — tests must sample from it to consume a set](../learnings/1795688581455-unused-parameterblock-is-stripped-from-layout-test.md)
 - [Unwritten entry-point varying output: the store IS the interface anchor — don't skip it](../learnings/1788019476812-unwritten-entry-point-varying-output-the-store-is-.md)
 - [Update a behind PR by merging master, not rebase + force-push](../learnings/1792760590201-update-a-behind-pr-by-merging-master-not-rebase-fo.md)
 - [upsert_pr_body.py exit 5 on our own edit: GraphQL drops the [bot] suffix](../learnings/1791922521312-upsert-pr-body-py-exit-5-on-our-own-edit-graphql-d.md)

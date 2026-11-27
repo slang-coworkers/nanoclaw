@@ -3,7 +3,7 @@ title: "GitHub CI Status-Surface Traps — Combined Status, Evicted Lists & Deta
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, commit-status, check-runs, merge-queue, ci-health, absence-claims, slang]
-source_count: 50
+source_count: 51
 ---
 
 # GitHub CI Status-Surface Traps — Combined Status, Evicted Lists & Detached Builds
@@ -13,6 +13,7 @@ Each reading here is a status *surface* giving a plausible answer to a different
 ## TL;DR
 
 - **Never derive CI health from the combined `commits/{sha}/status`**: it reads `SUCCESS` with **zero CI runs** (a review-bot context) and `pending` over 43 green check-runs. Read `check-runs` and `statuses` **separately**.
+- **Check-runs describe a SHA, not a PR's liveness**: after a PR merges, its head SHA keeps stale queued/waiting check-runs indefinitely — read `pulls/<n>` `state`/`merged_at` before reporting a CI block.
 - **`SlangPy Tests` is a cross-repo commit status** from a slangpy `repository_dispatch` run: never in `check-runs`. A red on a bot PR is usually **version skew** (BEHIND master): rebase. A green trigger means only the dispatch fired; after a slangpy fix re-dispatch (a rerun replays the old tree).
 - **A MISSING `SlangPy Tests` status** (only `license/cla`) after a `pull_request_target` `startup_failure` blocks a PR forever: dispatch `ci-slangpy-trigger-test.yml -f pr_number=N`. A merge-group `pending` > ~30 min with a failed `trigger-slangpy-tests` job has no run behind it: re-enqueue. A head run titled `[with SlangPy #N]` built the paired slangpy PR; the queue builds slangpy main, so that PR merges first.
 - **Zero-job `startup_failure` runs, all `pull_request_target`, in one time block = GitHub's policy brownout** (enforced **2026-12-02**), not YAML or runners; `status=failure` lists omit them.
@@ -53,6 +54,8 @@ Empty node list ⇒ log `action:"left"` and stop. `failed_checks` = a required c
 
 **On an active bot PR, a red `SlangPy Tests` is usually version skew; check `mergeState` first.** The PR's slang commit builds against **slangpy main**, so a branch `BEHIND` master after a coordinated breaking change fails with both mains correct (six un-rebased bot PRs hit `error[E30015]` on slang's new `enum MatrixLayoutMode`). Rebase; there is no issue to file. Confirm a "symbol removed" theory with `git log -S <symbol>` before relaying it ([version skew](../learnings/1789151785364-cross-repo-integration-ci-red-on-a-bot-pr-is-usual.md)).
 
+**Check-runs describe a SHA, not a PR's liveness — a merged PR keeps zombie statuses.** The commit check-runs API holds stale `queued`/`waiting` statuses for a PR's head SHA even after the PR merges, so a heartbeat reading only `commits/<sha>/check-runs` reported merged #14716 as "double-blocked (2 sm80 legs queued + falcor-build-approval-gate waiting)" for 8 consecutive wakes (23:30→01:00 after the 23:17:11Z merge) — those runs never started and never cleared. Gate any "blocked" claim on the PR state: read `pulls/<n>` `state`/`.merged_at` FIRST and treat check-run data as moot once the PR is closed or merged ([zombie statuses after merge](../learnings/1795742164477-github-check-runs-are-zombie-statuses-after-pr-mer.md)).
+
 ## `action_required` Is an Approval Gate the Checks API Cannot See
 
 An `action_required` run (fork PRs, "Approve and run workflows") **never started** (`attempts/1/jobs` → `total_count=0`; `gh run rerun --failed` is refused). Bucket it as a fifth state, "needs a maintainer to authorize", not with `failure|timed_out|startup_failure` ([gate](../learnings/1786327920887-github-actions-conclusion-action-required-is-an-ap.md)).
@@ -87,7 +90,7 @@ It creates no check-run, so REST `check-runs`/`status` **and** GraphQL `statusCh
 - **A `status=failure` listing can silently return only stale rows**: `actions/runs?status=failure` and `gh run list --status failure` returned nothing after known failing nightlies, while `created=%3E%3D<date>` returned 39. Tell: the newest row is days older than master's head; bound with `created>=`. Size an MDL perf flag from `confirmation.json` `plan.regressions` (1.12x), not the analyze log's first table (1.58x) ([stale listing](../learnings/1791360225685-gh-run-list-status-failure-can-silently-return-sta.md)). `created>=` misses a `waiting` run (e.g. bot-draft CI at an approval gate) that hits the 30-day limit and ends `failure` with an old `created_at`: diff yesterday's `status=waiting` list against today's (8 of 14 departures were expiries) ([expiry](../learnings/1792830160449-github-actions-30-day-waiting-run-expiry-shows-as-.md)).
 - **The egress gateway caches GitHub REST GETs keyed on the literal query string**: an un-busted URL returned two-week-old failures; `&_=$(date +%s%N)` returns fresh data (GitHub ignores unknown params). That was the recurring "workflow-failures stale-date" heartbeat anomaly ([cache](../learnings/1789391780211-root-cause-of-the-recurring-slang-workflow-failure.md)).
 
-**Source learnings (50):**
+**Source learnings (51):**
 
 - [payload evicted 0-for-5](../learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md)
 - [phantom eviction](../learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md)
@@ -139,5 +142,6 @@ It creates no check-run, so REST `check-runs`/`status` **and** GraphQL `statusCh
 - [fork approval vs push](../learnings/1793632219099-fork-pr-ci-approval-does-not-carry-over-to-new-pus.md)
 - [no authorAssociation](../learnings/1793639840678-gh-issue-view-json-has-no-authorassociation-use-gh.md)
 - [suite vanishes (#13698)](../learnings/1793955615028-github-sweep-merge-queue-commit-dates-mq-bypass-va.md)
+- [zombie check-runs after merge](../learnings/1795742164477-github-check-runs-are-zombie-statuses-after-pr-mer.md) — merged #14716 read "blocked" for 8 consecutive wakes; verify PR state first
 
 _Catalog: [index](../index.md)_

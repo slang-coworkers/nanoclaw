@@ -3,7 +3,7 @@ title: "GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Class
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, job-logs, auth-401, summarizing-tools, absence-claims, controls, slang]
-source_count: 38
+source_count: 39
 ---
 
 # GitHub API Error & Absence Semantics — No-Output Endpoints, Path-Classed Auth & Absence Controls
@@ -15,6 +15,7 @@ source_count: 38
 - **`filter=all` returns jobs from every attempt in one flat list**, nothing marking a stale one: check `run_attempt` against the run's highest attempt before acting. It can also 502 on re-run runs: read `attempts/<n>/jobs`, count a fetch error as a gap, and look in attempt 1 for runner losses a green re-run hides.
 - **Summarizing tools (WebFetch, prose renderers) cannot establish state, counts, or absence.** Enumerate with an API. A false positive state ("resolved through PR #N") is worse than a false negative: it unblocks action and retires a hold that still holds.
 - **A 401/403 is path-classed, never global.** REST can work while GraphQL 401s; auth-introspection endpoints are not capability probes. Name the unprivileged sibling before calling a fact unavailable: `/branches/main` when `/protection` 403s, `reviewDecision` (null except `CHANGES_REQUESTED` ⇒ no required-approval rule), `raw.githubusercontent` for a public file (absolute Range only: a suffix `-r -N` gets 501), `/search/issues` for a repo outside shader-slang, WebFetch for a contributor fork's PR. Under a GraphQL 401, REST reviews give per-review `commit_id` and `author_association`.
+- **A refused or nulled read can be your own toolchain, not GitHub: a safety hook can pattern-match a read-only combined `gh api` call as a write (split it), and the gateway can null a field (cross-check via a second path before citing it).**
 - **A bare 403 on `/search/issues` is usually the secondary rate limit**, invisible to `/rate_limit`: throttle search to ~1 call per 2.5 s, retry after ~65 s, run GraphQL sweeps serially, check an aliased batch returned every alias. A primary-quota 403 mid-sweep is a gap list helpers turn into a false `[]` (see [agent ops](misc-f0909b4-agent-ops-delivery-and-memory.md)). A 404 on `/issues/N` can be a Discussion or an issue hidden with its suspended reporter.
 - **Some fields answer a neighbouring question.** Merged state from `/pulls/N`, not search; who-assigned from events-feed `assigner` or timeline/GraphQL `actor`; the assignee from `.assignee.login`; nightly failing tests from the log's `FAILED test:` lines; a person's activity from repo-scoped search (`org:` can be false-empty) or recent PRs' `mergedBy`; `event=schedule` returns stale runs, so filter client-side.
 - **Scope a deletion-PR diff to the PR, not the dispatch's delta.** Prove dead code with a double build and `cmp -s`; compare operand *kinds*, not counts.
@@ -56,6 +57,8 @@ CI *is* required there, and it passed: the opposite of the caveat. GitHub common
 
 The path class includes the owner. Through the OneCLI proxy, REST reads of repos outside shader-slang (e.g. `actions/runner-images`) return `401 Bad credentials` while `/search/issues` still reads them, so take title, body and `updated_at` from a search hit ([REST 401 outside shader-slang](../learnings/1793003220665-ci-sweep-scripts-z1-py-pages-wipes-waiting-json-on.md)). A contributor's fork is outside too: `gh api repos/kaizhangNV/slang/pulls/25` returned `401 Bad credentials`, while WebFetch of `https://github.com/<user>/slang/pull/N` read enough to tell a fix from a mention; rider: jq `.[-1]` on an empty array is `null`, so a "no comments yet" guard tests `length == 0` ([fork 401: WebFetch](../learnings/1793664053747-gh-api-on-a-contributor-fork-repo-returns-401-thro.md)). User-scoped endpoints fall outside as well: `users/<login>/events/public` returned 401 `app_not_connected` and `.../branches/main/protection` 403 while `repos/*` reads worked, so neither tells whether a maintainer is active or "require up to date" is set. Read the maintainer's recent repo work instead (`gh pr view <n> --json author,mergedBy`); `mergeStateStatus=BEHIND` only hints at the up-to-date rule ([users/events 401](../learnings/1793285334593-onecli-gh-users-login-events-and-branch-protection.md)). Corollaries: stale CI on a *closed* PR is not actionable, so confirm `state` before a rebase dispatch; compare like types across ticks (int vs string ids make every stale run "fresh").
 
+**A refusal or a null can come from your own toolchain, not GitHub.** A container safety hook can refuse a *read-only* combined `gh api` call by pattern-match: a "freshness sweep" chaining `pulls/14733 --jq '"state=\(.state)..."'` with `issues/14733/comments` was rejected as "Closing a GitHub issue … maintainer-only action" (it matched issue + state); splitting it into separate simple reads went through. And a field can read `null` through the credential gateway while being non-null in reality: `gh api repos/<o>/<r>/issues/<n> --jq '.user.author_association'` returned `null` via the gateway while a codex OUTPUT_REVIEW running `gh api` in the same container read `MEMBER`. Never conclude "association unknown" (or act on a refused read) from a single path — split combined reads, and cross-check a surprising null via a second path (codex, or `--jq '.user'` full dump) before citing it in a verdict ([gh api read quirks](../learnings/1795700213305-gh-api-read-quirks-hook-misfire-on-combined-state-.md)).
+
 **Under a GraphQL 401, REST review reads make checks GraphQL structurally cannot.** Verify review state over REST rather than holding:
 
 ```bash
@@ -90,7 +93,7 @@ Several REST fields return a well-formed value answering a neighbouring question
 
 The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?filter=all` answered **HTTP 502** for runs with `run_attempt > 1` while `/actions/runs/<id>/attempts/<n>/jobs` answered 200. A sweep that swallowed the error reported "0 lost runners" for 11-04, but #14294 listed two runner losses in exactly those runs. A run re-run to green reads `conclusion: success`; the losses exist only in attempt 1. So fetch re-run runs per attempt, record any job-fetch error as a gap, and assert "runs with job data == runs listed" before claiming zero ([502 on re-run runs](../learnings/1793867735899-actions-jobs-filter-all-returns-http-502-on-re-run.md)).
 
-**Source learnings (38):**
+**Source learnings (39):**
 
 - [gh api actions job logs now requires --allow-escape-sequences](../learnings/1795003539770-gh-api-actions-job-logs-now-requires-allow-escape-.md) — 0-byte file + exit 1; ANSI now embedded in step-echo lines (`::group::`)
 - [Never assert from a summarizing tool](../learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md) — enumerate with gh api.
@@ -130,5 +133,6 @@ The mirror trap is a run `filter=all` cannot read at all. On 2026-11-05 `jobs?fi
 - [Failure triage via check-run annotations when job logs are gated](../learnings/1794888169040-github-actions-failure-triage-use-check-run-annota.md) — one-job jq selector; runner-loss text.
 - [Issue Onboard workflow broken by GraphQL iterationId ID! tightening](../learnings/1794873968836-stale-gh-readonly-queue-refs-from-merged-prs-mimic.md) — rider of the 11-17 TOT scan.
 - [pipeline exit code is jq's, so a 403 reads as "no output"; capture rc + byte count; 6000/hr quota shared across gh and curl; one updated-sorted pulls call covers all PR heads.](../learnings/1795075322492-curl-sf-jq-masks-github-api-403-rate-limit-failure.md)
+- [gh api read quirks: hook misfire on combined state-reads; author_association null via gateway](../learnings/1795700213305-gh-api-read-quirks-hook-misfire-on-combined-state-.md) — split combined reads; cross-check a nulled field via a second path (#14733 review)
 
 _Catalog: [index](../index.md)_

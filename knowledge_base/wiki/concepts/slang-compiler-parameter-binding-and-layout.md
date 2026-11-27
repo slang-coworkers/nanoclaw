@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 32
+source_count: 33
 ---
 
 # Slang Parameter Binding and Layout
@@ -25,6 +25,7 @@ source_count: 32
 - E31215 checks only EXPLICIT `ConstantBuffer`/`ParameterBlock`: unsized `uniform T x[]` in implicit Global/EntryPointParams gets infinite size (VUID-04680, #13530); no classifier answers "carries uniform bytes?" `GLSLBufferModifier` has no producer; guards on it are dead code.
 - Bitfield packing is fixed at check time and baked into modules; zero-width fields open the next backing (MSB-first getter reads -1). Oracle: `-target cpp` + g++ `ms_struct`.
 - Reflection lays pointer POINTEES out with scalar rules on every target (`_createTypeLayout`'s PtrTypeBase branch), so `-reflection-json` contradicts CUDA native-vector emit — one JSON, two layouts for the same struct (#14040).
+- `-bindless-space-index` is a **preference applied last, not a reservation**: `generateParameterBindings()` allocates explicit bindings → default space → auto ParameterBlock spaces → bindless heap, so the index gets bumped (E39012) whenever any auto-allocated resource exists (#14730).
 
 ## `vk::binding` Parameter-Binding Predicates
 
@@ -95,6 +96,10 @@ Extending it needs a "holds ordinary uniform bytes?" predicate no classifier pro
 
 Review of #13538 found a dead guard: nothing creates `GLSLBufferModifier` (`slang-ast-modifier.h`). GLSL `buffer` goes through `parseGLSLShaderStorageBufferDecl` to a `GLSLShaderStorageBuffer<…>` variable, which `getConstantBufferElementType` already excludes. Dropping the `hasModifier<GLSLBufferModifier>` conjunct passed 378/378; older checks at `slang-check-decl.cpp:3051` and `slang-lower-to-ir.cpp:12507` are equally unreachable. Such a guard needs a reaching test, or removal ([GLSLBufferModifier has no producer](../learnings/1791516340522-glslbuffermodifier-has-no-producer-guards-that-tes.md)).
 
+## Bindless Space Index: a Preference Applied Last, Not a Reservation (#14730)
+
+`generateParameterBindings()` (`slang-parameter-binding.cpp`) allocates spaces in a fixed order: explicit bindings first, then the default space (`$Globals`, which prefers space 0), then auto-allocated ParameterBlock whole spaces, and the bindless heap LAST. Only the final block reads `-bindless-space-index`, and there is no pre-reserve mechanism, so the option is a preference, not a reservation: it gets bumped with E39012 whenever any auto-allocated resource exists. A fix that pre-reserves the index after explicit bindings must also (1) fix the default-space block's `usedSpaces.contains(0)` reuse branch — it deliberately reuses space 0 even when occupied — and (2) make the final placement block use the reserved index directly (after marking, the index sits in `usedSpaces`, so the scan would bump it). Downstream, `programLayout->bindlessSpaceIndex` is the single source of truth (`slang-ir-lower-dynamic-resource-heap.cpp` asserts ≥0, no option fallback); heap *binding* indices are preset-fixed enums in `hlsl.meta.slang` — only the set/space is assigned ([bindless space index is a preference applied last, not a reservation](../learnings/1795682438536-bindless-space-index-is-a-preference-applied-last-.md)).
+
 ## Bitfields: Packing Fixed at Check Time, Baked Into Modules
 
 Bitfield offsets are decided at semantic check, not per target: `SemanticsDeclAttributesVisitor::visitStructDecl` (`slang-check-decl.cpp` ~20922) reads the packing rule from *linkage* options into `BitFieldModifier::offset` → `IRBitFieldAccessorDecoration`. So a `.slang-module` built with `-msvc-style-bitfield-packing` (MSB-first, though MSVC is LSB-first; #13296) stays MSB-first when imported without it; option changes reach only its builder. A new `CompilerOptionName` also needs a case in `writeCommandLineArgs` (`slang-compiler-options.cpp`) ([bitfield packing baked into modules](../learnings/1790625408306-slang-bitfield-packing-is-baked-into-precompiled-m.md)).
@@ -103,7 +108,7 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299) close
 
 **GPU-free, MSVC-free layout oracle:** `-target cpp` (emitted `struct S_0` backings and setter masks give the layout; `g++ -I prelude` runs it). To compare with MSVC host layout, compile `struct __attribute__((ms_struct)) S {...}` with g++/clang. Backing-word init rules are on [[wiki/concepts/slang-compiler-frontend-and-checking.md]].
 
-**Source learnings (32):**
+**Source learnings (33):**
 - [CUDA reflection-JSON reports scalar pointee layout while emitting native vectors (#14040)](../learnings/1794947921393-cuda-reflection-json-reports-scalar-pointee-layout.md)
 - [bool size is context-dependent](../learnings/1793830159570-slang-bool-size-is-context-dependent-sizeof-bool-1.md)
 - [#14489 redundant SV_Target on a struct return is silently accepted](../learnings/1794815315476-slang-14489-redundant-sv-target-on-a-struct-return.md) — missing duplicate-semantic validation
@@ -136,5 +141,6 @@ Zero-width fields (`T x : 0`; `slang-check-decl.cpp` ~21088-21111, #13299) close
 - [entry-point push constants alias at Offset 0 (#9643)](../learnings/1793349219262-entry-point-push-constants-all-start-at-offset-0-w.md)
 - [per-target alignment expressibility (#14032)](../learnings/1793644718087-per-target-struct-alignment-expressibility-for-ali.md)
 - [WGSL/Metal varying-location family fixed by PR #13736/#13892; #9693 parked as duplicate](../learnings/1795043376789-wgsl-metal-varying-location-bugs-check-pr-13736-be.md)
+- [bindless space index is a preference applied last, not a reservation (slang#14730)](../learnings/1795682438536-bindless-space-index-is-a-preference-applied-last-.md) — E39012 bump when auto-allocated resources exist; no pre-reserve; `programLayout->bindlessSpaceIndex` is authoritative
 
 _Catalog: [[wiki/index.md]]_
