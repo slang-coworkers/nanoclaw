@@ -149,3 +149,27 @@ P4.2 (dependency cache):
 - **Gateway:** orchestrator has GET-only egress to the reviewed GitHub/npm hosts; khrbotnv has none.
 
 Still to come (P4.3+): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.
+
+## Coworkers and hand-offs
+
+| Coworker (type) | Workflow | Talks to | Holds |
+|---|---|---|---|
+| `khrbotnv` (`khr-writer`) | `khr-implement` | `send_message(to="khr-deps", pin-request.json)`; the requester's thread; P6: `send_message(to="khr-publisher", outcome)` | read-only GitLab, inference; shared cache read-only |
+| `orchestrator` (`khr-fetcher`, admin for the shared write, `ncl` disabled) | `khr-fetch` | `send_message(to="khrbotnv", fetch summary)` | inference; GET-only to reviewed GitHub/npm hosts; shared cache read-write |
+| `khr-publisher` (`khr-publisher`, **P6, not built**) | `khr-publish` | `send_message(to="khrbotnv", MR link or failure)` | **the only** write-scoped GitLab key; no internet; no discussion text |
+
+### P6 `khr-publish` requirements (design, not yet built)
+
+1. **Receive** only from `khrbotnv`: `outcome.json` plus the per-repository bundles. Refuse any other sender.
+2. **Verify** independently, never trusting the sender's claims:
+   - the bundle commits match `outcome.json`;
+   - each topic head descends from its recorded base;
+   - every new commit's author and committer is the configured identity;
+   - the destination project is in the manifest and private;
+   - the outcome status is `complete`.
+3. **Publish** with a deterministic script, with no free-form text from the model:
+   - non-force push of the topic branch;
+   - find or create a Draft MR;
+   - post `result/reply.md` to the triggering thread.
+4. **Gateway:** POST only to `git-receive-pack`, the MR endpoints and the notes endpoints of manifest projects; everything else is blocked. The write key is attached only to this agent.
+5. **Reply** to `khrbotnv` with the MR link or the failure.
