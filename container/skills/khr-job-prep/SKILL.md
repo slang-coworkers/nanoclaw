@@ -22,6 +22,17 @@ It reads `request.json` and the install's repository manifest (`/workspace/agent
 
 If it fails, report `blocked` with its error.
 
+It also writes `dependency-inventory.json`, with each repository's pinned dependencies verified against the shared cache. If any reviewed pin is missing, it writes `pin-request.json`:
+
+1. Send that file's **exact contents** to `khr-deps` with `send_message`. It holds only URLs and refs or hashes. Never add repository or issue text to it.
+2. End your turn and wait for the reply.
+3. When the reply arrives, recompute the inventory:
+   ```
+   python3 /app/skills/khr-job-prep/scripts/prepare_job.py --job /workspace/agent/jobs/<job> --inventory-only
+   ```
+
+Pins that are still missing, refused or `unavailable` (unreviewed sources) are `infrastructure_error` for the checks that need them. Carry on with the independent work.
+
 ## Progress status
 
 ```
