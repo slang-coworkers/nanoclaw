@@ -1,0 +1,36 @@
+{
+  "schema": 1,
+  "_comment": "Reviewed public dependency sources for khr jobs. Changing this list is a security review: each addition widens what the fetcher may download. Git refs must be exact 40/64-hex SHAs or vX.Y[.Z[.W]] tags; archives and files are pinned by sha256; npm tarballs must come from registry.npmjs.org with lockfile sha512 integrity.",
+  "github": [
+    "KhronosGroup/Vulkan-Headers",
+    "KhronosGroup/Vulkan-Utility-Libraries",
+    "KhronosGroup/SPIRV-Headers",
+    "KhronosGroup/SPIRV-Tools",
+    "google/googletest",
+    "KhronosGroup/glslang",
+    "KhronosGroup/Vulkan-Loader",
+    "KhronosGroup/Vulkan-Profiles",
+    "KhronosGroup/Vulkan-Docs",
+    "google/amber",
+    "open-source-parsers/jsoncpp",
+    "KhronosGroup/VulkanSC-pcutil",
+    "KhronosGroup/Vulkan-Video-Samples",
+    "Igalia/video_generator",
+    "google/effcee",
+    "google/re2",
+    "abseil/abseil-cpp",
+    "Neargye/magic_enum",
+    "microsoft/mimalloc"
+  ],
+  "archives": {
+    "https://github.com/shader-slang/slang/releases/download/v2026.14.1/slang-2026.14.1-linux-x86_64.zip": "d7c02e044b5f2f4ceb8e220a2cf8f7d053418db1877da2656fb59e1ce545f8dd",
+    "https://github.com/madler/zlib/releases/download/v1.2.13/zlib-1.2.13.tar.gz": "b3a24de97a8fdbc835b9833169501030b8977031bcb54b3b3ac13740f846ab30",
+    "https://github.com/pnggroup/libpng/archive/refs/tags/v1.6.50.tar.gz": "71158e53cfdf2877bc99bcab33641d78df3f48e6e0daad030afe9cb8c031aa46"
+  },
+  "files": {
+    "https://raw.githubusercontent.com/baldurk/renderdoc/v1.1/renderdoc/api/app/renderdoc_app.h": "e7b5f0aa5b1b0eadc63a1c624c0ca7f5af133aa857d6a4271b0ef3d0bdb6868e"
+  },
+  "npmHost": "registry.npmjs.org",
+  "redirectHosts": ["github.com", "codeload.github.com", "raw.githubusercontent.com", "objects.githubusercontent.com", "release-assets.githubusercontent.com", "registry.npmjs.org"],
+  "limits": { "downloadBytes": 268435456, "entryBytes": 2147483648, "manifestBytes": 4194304, "pinsPerRepository": 256 }
+}

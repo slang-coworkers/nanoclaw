@@ -275,7 +275,108 @@ def prepare(job_root: Path, manifest_path: Path) -> dict[str, Any]:
     ):
         if (job_root / name).exists():
             (job_root / name).chmod(0o444)
-    return {"job": job, "repositories": [t["name"] for t in targets]}
+    inv = inventory(job_root, manifest)
+    return {
+        "job": job,
+        "repositories": [t["name"] for t in targets],
+        "dependencies": inv["summary"],
+    }
+
+
+def _deps_modules():
+    """The shared pin model lives in the khr-deps skill next to this one (read-only mount)."""
+    deps_scripts = Path(__file__).resolve().parents[2] / "khr-deps" / "scripts"
+    if str(deps_scripts) not in sys.path:
+        sys.path.insert(0, str(deps_scripts))
+    import khrdeps
+    import pins
+
+    return khrdeps, pins
+
+
+def inventory(job_root: Path, manifest: dict[str, Any]) -> dict[str, Any]:
+    """Write dependency-inventory.json (and pin-request.json when pins are missing).
+
+    Pins come from each repository's declaration at its pinned base. Each reviewed
+    pin is re-verified against the shared cache from its bytes; ``ready`` means
+    every reviewed pin is present, never that anything was configured, built or
+    tested.
+    """
+    khrdeps, pins = _deps_modules()
+    allow = khrdeps.load_allowlist()
+    root = khrdeps.deps_root()
+    targets = read_json(job_root / "targets.json")["repositories"]
+    by_name = {r["name"]: r for r in manifest["repositories"]}
+    cache_root = Path(manifest.get("cacheRoot", "/workspace/agent/khr-cache"))
+    repos_out, missing, seen = [], [], set()
+    for t in targets:
+        profile = by_name.get(t["name"], {}).get("dependencies")
+        try:
+            got = pins.extract(profile, cache_root / t["name"], t["base"], allow)
+        except (khrdeps.PinError, ValueError) as exc:
+            repos_out.append(
+                {
+                    "name": t["name"],
+                    "status": "infrastructure_error",
+                    "reason": str(exc),
+                }
+            )
+            continue
+        entries = []
+        for p in got["pins"]:
+            if p["kind"] == "unavailable":
+                entries.append(p)
+                continue
+            present = khrdeps.pin_present(root, p)
+            entries.append({**p, "present": present})
+            key = khrdeps.request_key(p)
+            if not present and key not in seen:
+                seen.add(key)
+                missing.append(
+                    {
+                        k: p[k]
+                        for k in ("kind", "url", "ref", "sha512", "sha256")
+                        if k in p
+                    }
+                )
+        reviewed = [e for e in entries if e["kind"] != "unavailable"]
+        if got["profile"] == "toolchain-only":
+            status = "toolchain-only"
+        elif any(not e["present"] for e in reviewed):
+            status = "missing"
+        else:
+            status = "ready"
+        repos_out.append(
+            {
+                "name": t["name"],
+                "profile": got["profile"],
+                "declaration": got.get("declaration"),
+                "declarationSha256": got.get("declarationSha256"),
+                "status": status,
+                "unavailable": sum(1 for e in entries if e["kind"] == "unavailable"),
+                "pins": entries,
+            }
+        )
+    summary = {
+        s: sum(1 for r in repos_out if r["status"] == s)
+        for s in ("ready", "missing", "toolchain-only", "infrastructure_error")
+    }
+    write_json(
+        job_root / "dependency-inventory.json",
+        {
+            "generatedAt": now_iso(),
+            "cacheRoot": str(root),
+            "summary": summary,
+            "repositories": repos_out,
+        },
+        0o444 if not missing else 0o644,
+    )
+    req = job_root / "pin-request.json"
+    if missing:
+        write_json(req, {"job": job_root.name, "pins": missing})
+    elif req.exists():
+        req.unlink()
+    return {"summary": summary, "missing": len(missing)}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -284,9 +385,20 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--job", required=True)
     ap.add_argument("--manifest", default=DEFAULT_MANIFEST)
+    ap.add_argument(
+        "--inventory-only",
+        action="store_true",
+        help="recompute dependency-inventory.json after the cache changed",
+    )
     args = ap.parse_args(argv)
     try:
-        result = prepare(Path(args.job).resolve(), Path(args.manifest))
+        if args.inventory_only:
+            job = Path(args.job).resolve()
+            if (job / "dependency-inventory.json").exists():
+                (job / "dependency-inventory.json").chmod(0o644)
+            result = inventory(job, read_json(Path(args.manifest)))
+        else:
+            result = prepare(Path(args.job).resolve(), Path(args.manifest))
     except JobError as exc:
         print(f"KHR_PREPARE_FAILED: {exc}")
         return 2

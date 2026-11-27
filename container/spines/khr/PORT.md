@@ -143,4 +143,9 @@ Lego-specific:
 
 P4.1 (toolchain): `khr-validation/apt-packages.txt` lists the per-group Debian baseline, installed as the group's derived image. `requirements-toolchain.txt` plus `setup_toolchain.py` add the hash-pinned overlay (clang-format 22.1.x, pyparsing 3.3.2, beautifulsoup4), installed offline from a host-prefetched wheel cache.
 
-Still to come (P4.2+): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.
+P4.2 (dependency cache):
+- **khrbotnv** (`prepare_job.py`) reads dependency pins from each repository's declaration at its pinned base (`khr-deps/scripts/pins.py`: `known_good.json`, `DEPS` parsed as a syntax tree, `package-lock.json`, `.gitmodules`; nothing executed). It checks them against the reviewed allowlist (`khr-deps/allowlist.json`), re-verifies each one in `/workspace/shared/khr-deps`, and writes `dependency-inventory.json`. Missing pins go to the fetcher as `pin-request.json` (URL plus ref or hash only).
+- **orchestrator** (`khr-fetcher` type, `khr-deps` skill, admin only for shared write, `ncl` disabled) runs `fetch_deps.py`. It re-validates the request, fetches by exact ref or hash with size and redirect limits, verifies, and writes atomically.
+- **Gateway:** orchestrator has GET-only egress to the reviewed GitHub/npm hosts; khrbotnv has none.
+
+Still to come (P4.3+): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.

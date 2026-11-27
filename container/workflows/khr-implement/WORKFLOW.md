@@ -23,7 +23,7 @@ produces:
 
 ## Steps
 
-1. **Prepare:** if `targets.json` is missing, run the `/khr-job-prep` prepare step. On failure, report `blocked` and stop. Set status "Reading guidance".
+1. **Prepare:** if `targets.json` is missing, run the `/khr-job-prep` prepare step. On failure, report `blocked` and stop. If it wrote `pin-request.json`, send it to `khr-deps` and wait for the reply, then rerun the inventory (`/khr-job-prep`). Set status "Reading guidance".
 2. **Read:**
    - `request.json` (the authority);
    - `targets.json`;

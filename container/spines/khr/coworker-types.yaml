@@ -51,3 +51,16 @@ khr-writer:
   bindings:
     test: khr-validation
     doc: khr-spec-authoring
+
+khr-fetcher:
+  description: "You fetch reviewed, pinned public dependencies into the shared khr dependency cache on request from khr jobs. You never see Khronos content, hold no forge credentials, and never write anywhere except the shared cache."
+  project: khr
+  extends: base-common
+  identity: container/spines/khr/identity/fetcher.md
+  invariants:
+    - container/spines/khr/invariants/fetcher.md
+  context:
+    - container/spines/khr/context/install-scope.md
+  skills:
+    - khr-deps
+  workflows: []
