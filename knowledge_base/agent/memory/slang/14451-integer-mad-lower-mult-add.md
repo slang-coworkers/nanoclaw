@@ -25,6 +25,11 @@ description: Terminal chain record for the integer mad() fix (PR #14452) and the
 - **Disposition (filing policy): held filed-only.** Low severity — availability error only (clean E36107,
   trivial `a*b+c` workaround, no wrong-code) — and shepherds loaded (~7 live slang-fixer chains: 14655,
   14652, 14646, 14645, 14612, 14589, 14430). Operator notified on the dashboard 11-20.
+- **11-26 update:** operator (dashboard) re-surfaced #14454 for triage — verdict delivered: our own Terminal
+  filing, subsystem = core-module capability gating, severity low, still held filed-only (5 running slang-fixer
+  chains: 14730/14611/14707/14589/14474). Issue now **assigned to jhelferty-nv** — not a stand-down per R6, but
+  if they comment/claim it we stand down. PR #14452 (the resume blocker) merged 11-20, so a dispatch is
+  unblocked whenever the operator asks.
 - **Resume condition (owner: this orchestrator):** dispatch a fixer on canonical thread
   `gh-issue-shader-slang/slang-14454` when fixer load drops or the operator asks. The fix is small (widen
   the two overloads' gate to include metal/wgsl + metal/wgsl tests); body also notes `shader5_sm_5_0`

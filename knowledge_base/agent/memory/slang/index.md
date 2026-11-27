@@ -6,24 +6,61 @@ description: Per-chain records for shader-slang issue and PR work driven through
 
 # Slang chains
 
+> **🆕 #14734 → PR #14735 (FIX-SHIPPED, parked on human review, 11-26):** perf bug —
+> `TypeLayoutContext::externTypeMap` cached by value in a memberwise-copied context, so the
+> map (which mangles every decl of every module dep) is rebuilt and discarded per extern
+> lookup → `getLayout()` grows K×N (1.4 s of 1.9 s first dispatch in a real renderer; human
+> skallweitNV). Triage reproduced on ToT (K=64/4000-decls 230.1 ms); fix = Approach A:
+> shared map on `ProgramLayout` + mangling filter + null-`programLayout` guard (the latent
+> crash the triage flagged, confirmed + fixed with unit test). **Draft PR #14735 @ `f9fd63c`**
+> (5 files +192/−20, APPROVE_WITH_NITS bugs:0, timing 363.1 → 9.4 ms). Rests with a human:
+> review + ready-flip (weekly list). [record](14734-extern-type-map-layout-perf.md)
+
+> **🆕 #14732 (PARKED-FOR-DIRECTION, 11-26):** feature ask — compiler option to
+> offset/pre-reserve register spaces before auto-binding (base/reserved space index), so
+> one shader codebase spans bindless and non-bindless pipelines (human aka0353, same
+> author as #14730). Triaged feature/P3 (cmt 7192180014): recommended approach A =
+> `ParameterBlockBaseSpace` mirroring `BindlessSpaceIndex` plumbing, byte-identical at
+> default 0; 4 design decisions need maintainer sign-off; one-shot recheck
+> `recheck-14732-park-00e5` 12-03. Approach A would fix the #14730 collision class by
+> construction — cross-mention if that review surfaces it. [record](14732-parameterblock-base-space-option.md)
+
+> **🆕 #9203 → PR #14733 (FIX-SHIPPED, parked on human review, 11-26):** maintainer-filed
+> (jhelferty-nv, assignee zangold-nv) packaging cleanup — remove `libslang.so`/`libslang.dylib`
+> symlinks + `slang.dll` pass-through proxy (rename compat from #8746, gated
+> `SLANG_ENABLE_SLANG_PROXY`) and scrub docs. P2 milestone-deadlined Q4 2026 (due 12-31).
+> **Draft PR #14733 @ `581f06f`** (4 commits, 22 files +73/−333; both review nits applied;
+> APPROVE_WITH_NITS 0 bugs; install-tree CI assertion answers the downstream-packaging ask;
+> branch on slang-coworkers fork — workflows can't be pushed by the App token). Rests with a
+> human: review + ready-flip (weekly list). #13308 header half is adjacent parked scope.
+> [record](9203-libslang-compat-removal.md)
+
+> **🆕 #14730 (FIX-HELD-ON-MAINTAINER, 11-26):** explicit `-bindless-space-index 0`
+> preempted by auto-allocated ParameterBlock/$Globals (E39012, ordering bug in
+> generateParameterBindings; human aka0353). Fix complete + fully verified (pre-reserve,
+> reviewer APPROVE_WITH_NITS applied, wide regression 2957/2957) but draft PR NOT
+> pushed: reverses the bump+warn stance tangent-vector endorsed on #8937, so the fixer
+> asked the maintainers (cmt 7187704180). One-shot recheck `recheck-14730-maintainer-6c32`
+> 11-29 10:00Z (max 3). [record](14730-bindless-space-index-preemption.md)
+
 > **🆕 #14727 (filed-only, 11-25):** compound `<<=`/`>>=` rejects enum-typed shift counts —
 > bot-filed Terminal residual of the #14722/PR #14725 chain (verification signature in body);
 > self-echo, NO triage dispatch; fixer start gates on operator (check #14725's merge state
 > first). [record](14727-compound-shift-assign-enum-count.md)
 
-> **🆕 rhi #989 → PR #990 (FIX-SHIPPED, parked on human review, 11-25):** CUDA ~1.2-1.9 µs
+> **🆕 rhi #989 → PR #990 (TERMINAL bot-side, parked on human review, closed 11-27):** CUDA ~1.2-1.9 µs
 > extra host time per compute dispatch vs raw cudaLaunchKernel (human albertrodriguezclo).
 > Version-keyed compute-state reuse (D3D12 keeps full re-bind — debug-layer copy hazard);
-> 8.2 → 3.7 µs vs 1.94 floor = 70-72% gap closure; review complete at head `45104c6`,
-> CI green (27 checks). Side-find deduped onto rhi#915. Ready-flip weekly list; P2, no per-PR ask.
+> 8.2 → 3.7 µs vs 1.94 floor = ~71% gap closure; review complete, final head `5259ff2`,
+> MERGEABLE, CI green all platforms. Side-find deduped onto rhi#915. Ready-flip weekly list; P2, no per-PR ask.
 > [record](rhi-989-cuda-dispatch-host-overhead.md)
 
-> **🆕 #14707 → PR #14710 (FIX-SHIPPED, parked on maintainer review/un-draft, 11-25):** GLSL
-> unsuffixed sign-bit integer literals typed `uint`/`int64` (P1 regression from #11357; human
-> andy-slater). Draft PR #14710 (head 29fcac005, GLSL branch at the single typing point + fold
-> self-corrects, repro 2/2 + suites green, APPROVE_WITH_NITS applied). P1 exception flag sent to
-> the operator (dashboard, 11-25); ready-flip also on weekly list. Routing incident (2h silent
-> self-misidentification) folded into Core Memory. Resume on PR webhook only.
+> **✅ #14707 (TERMINAL, MERGED 11-26 14:23Z):** GLSL unsuffixed sign-bit integer literals — P1
+> regression from #11357, human andy-slater. PR #14710 merged by skiminki-nv (`0e393b37c`) after
+> his round-2 asks + APPROVAL (review 6073829486); issue auto-closed; ~46h E2E. The P1 ready-flip
+> ask is moot (merged as draft). **↳ follow-up #14731 (bot-filed 11-26 at skiminki-nv's request,
+> FILED-ONLY — its issue_opened = self-echo, NO dispatch):** GLSL literal/integer-type alignment
+> with GL_EXT_shader_explicit_arithmetic_types; maintainers direct it.
 > [record](14707-glsl-sign-bit-integer-literals.md)
 
 > **🆕 slang-rhi #986 (PARKED-FOR-DIRECTION, 11-24):** portable prefix-scan + radix-sort proposal
@@ -77,8 +114,11 @@ description: Per-chain records for shader-slang issue and PR work driven through
 > forms, bounded lookahead, serialization v45 bump; ours superseded on process/tone, not content.
 > [record](14615-condition-clause-closed-pr.md)
 
-> **🆕 #14634 (filed-only, 11-19):** compile-perf bench.py misclassifies #14573's positive slangc exit codes
-> as crashes → Nightly MDL Perf Test red since Nov 19; fixer GO held for the operator.
+> **#14634 (filed-only 11-19 → TERMINAL 11-26):** compile-perf bench.py misclassified #14573's positive
+> slangc exit codes as crashes → Nightly MDL Perf red since Nov 19. **Closed 11-26 19:06Z by
+> jhelferty-nv as fixed by #14635** (jkwak-work, merged 11-19 15:45Z, accept exit code 2; close ~6 min
+> after the bot nudge); Nov 21/22 analyze-step trend-alert reds stay untracked by explicit maintainer
+> decision — the TOT scan re-flags if the analyze step reds again. Chain complete; postmortem saved.
 > [record](14634-compile-perf-exit-codes-classified-crash.md)
 
 > **⚠️ Supersession note (operator correction, 2026-11-17):** every "HELD rung 4 / maintainer-owned →
@@ -145,7 +185,7 @@ decay and must be re-read, not remembered.
   still inserts the space, but slang-test now tolerates it — 3/3 PASS on vk/cpu/cuda). Residual gap
   **FILED as #14614** (bot-filed Terminal, self-echo — no dispatch on its issue_opened).
   **CLOSED by jhelferty-nv 11-18 — chain terminal.**
-- [slang#14611 — spReflection_specializeType runs specialization with no AST-builder scope (latent, #14604 family)](14611-reflection-specializetype-no-ast-builder-scope.md) — TERMINAL: draft PR #14723 maintainer-approved (skiminki-nv), awaiting merge + reviewer Fix Report. Fix = one-line RAII (guard now at semantic-checking/slang-check-shader.cpp:4219). Twin isSubType **FILED as #14726** 11-25 (bot-filed, filed-only, self-echo — no dispatch; parked for maintainer direction, recheck 2026-11-27). Parent #14604/PR #14605 MERGED 11-19 @ `c0188daeb`.
+- [slang#14611 — spReflection_specializeType runs specialization with no AST-builder scope (latent, #14604 family)](14611-reflection-specializetype-no-ast-builder-scope.md) — CHAIN CLOSED 11-26: PR #14723 MERGED by skiminki-nv @ `4ba9ae2e3` (`Fixes #14611`); issue closed. Twin isSubType filed as **#14726** (filed-only, parked with triager). Parent #14604/PR #14605 MERGED 11-19.
 - [slang#14595 — array size >INT32_MAX from generic value param silently truncated](14595-generic-array-size-truncation.md) — TERMINAL our side: draft PR #14601 @ `39f8251c0` (E30034/E30025; APPROVE_WITH_NITS; CI green), STACKED under in-flight #14509 — ready-flip only after #14509 merges + maintainer review. WATCH: sentinel boundary >2147483646 (#14509 has the same hole, in its PR body). Side-find #14610 FILED-ONLY (self-echo).
 - [slang#14591 — GLSL via-glsl: matrix `%` emits matrix-arg sign/mod/abs; per-row FRem legalization](14591-glsl-matrix-frem-per-row.md) — TERMINAL our side: draft PR #14599 @ `6f0c3ae82` (r2 APPROVE_WITH_NITS) awaiting human review; ready-flip weekly list; watch self-assignee self-fix; side-find folded as Fixes #14608.
 - [slang#14607 — docs: DescriptorHandle example writes to a read-only StructuredBuffer](14607-descriptorhandle-docs-ro-buffer.md) —

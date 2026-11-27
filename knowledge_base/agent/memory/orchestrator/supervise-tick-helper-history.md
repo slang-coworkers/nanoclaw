@@ -164,3 +164,36 @@ per filing policy), 5892 (recheck answered), rhi-989 (round-2 cycle, fixer
 iterating CI on PR #990). 22 escalates / cost_stopped 14589 unchanged. 14693 +
 14703 closed+archived. Runbook "latest tick dir" pointer advanced tick401 →
 tick405.
+
+## tick 407 (2026-11-26 10:00 gate full-pass tick)
+
+tick407 = tick406 helpers unchanged, paths repointed, since= reset to
+2026-11-25T22:00Z (tick406's start), ghfeeds SINCE/awk re-dated to the same,
+relaycheck.py T= re-dated (it was still 2026-11-23 — tick406 had missed it).
+Clean cached tick (~15 min): 🆕 slang#14730 (human-filed 08:33Z, triaged 08:40Z,
+fix chain self-driving with APPROVE_WITH_NITS patch), 4 🔼 (14611 maintainer
+re-approval, 5870 fold-and-run, 14474 pinned resume nudge, slangpy-1223 profiler
+flake). Gate's 10 nudge flags all cooldown-class; must_nudge 0, 0 nudges sent;
+22 escalates unchanged (retro-wave family). Auto-merge sweep: 6 armed PRs, all
+human-authored. GC 871 GB free (35.1%), REAP 7. Runbook "latest tick dir"
+pointer advanced tick405 → tick407 — **tick406 never advanced it or appended a
+history entry** (its session ended without the bookkeeping; harmless — tick407
+copied tick406's helpers directly).
+
+## tick 409 (2026-11-27 01:00 full-pass tick)
+
+tick409 = tick408 helpers unchanged, paths repointed, since= reset to
+2026-11-26T12:00Z (tick408's start), ghfeeds SINCE/awk re-dated, relaycheck.py T=
+re-dated, closed-since search re-dated (tick408 had missed it — it still read
+>=2026-11-25T10:00Z). **tick408 never appended a history entry** (session ended
+without bookkeeping, same shape as tick406; harmless — helpers copied forward
+cleanly). Clean cached tick (~20 min): 3 🆕 (14731 bot-filed GLSL-types follow-up,
+14732 human feature ask, 14734 fix chain PR #14735), 4 🔼 (14359 CI re-dispatched,
+14730 patch-review held branch, 9203 new draft PR #14733, slangpy-1223 tracker
+outbound). must_nudge 0; 1 CI-rebase nudge sent (rhi-989 PR #990 newly BEHIND,
+pinned …-vfgn30, landed in). 22 escalates unchanged (retro-wave). PR #14710
+MERGED → #14707/#11357 archived; #14634 closed by human PR #14635 → postmortem
+learning filed (rule: bot-filed infra issue + small harness fix → file the PR,
+don't wait for maintainer tiebreak). Auto-merge sweep: 6 armed, all human. GC
+869 GB free (35.0%), REAP 7, coverage fresh. Runbook "latest tick dir" pointer
+advanced tick407 → tick409.

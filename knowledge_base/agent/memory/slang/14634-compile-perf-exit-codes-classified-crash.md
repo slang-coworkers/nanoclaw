@@ -32,6 +32,14 @@ tags: [slang, compile-perf, exit-codes, ci-harness, tot-scan, filed-only]
   (1.10–1.19x vs trailing median) — untracked, out of #14634's scope.**
 - **Parked on maintainer decision:** close #14634 as fixed by #14635, or repurpose for the Nov 21/22 trend-alert reds.
   One-shot re-check `recheck-14634-maintainer-decision` scheduled for 2026-11-26; decision named to operator DM.
+- **2026-11-26 19:0xZ: re-check — no maintainer reply, nudged once.** Issue open; last comment still the 11-23
+  evidence comment. Posted follow-up [7201096011](https://github.com/shader-slang/slang/issues/14634#issuecomment-7201096011)
+  restating the either/or (close-as-fixed-by-#14635 vs repurpose for Nov 21/22 trend reds, runs 44869688840/44988301006)
+  with run links. **No further re-checks** — chain left to the parked-chains register / webhooks.
+- **2026-11-26 19:06:52Z: TERMINAL.** jhelferty-nv closed #14634 as fixed by #14635
+  ([7201209593](https://github.com/shader-slang/slang/issues/14634#issuecomment-7201209593)), ~6 min after the nudge.
+  Close (not repurpose) chosen — **Nov 21/22 analyze-step trend-alert reds remain untracked by explicit maintainer
+  decision**; if the nightly's `analyze` step reds again, the TOT scan re-flags it as a fresh find. Chain complete.
 - **Source:** the 12:00Z TOT scan's report (slang-release-regression-check), which located the mechanism.
 
 # Citations

@@ -37,18 +37,18 @@ re-verified 11-22: pure rebase onto 56dd72555 over the source-reorg, content ide
   [6278114155](https://github.com/shader-slang/slang/issues/13732#issuecomment-6278114155)
   (follow-up, edited in place at each verify; newest, names caf4c9c96 after the 11-22 PATCH).
 
-**State (last verified 2026-11-22 15:39Z):** PR #13734 OPEN, head `caf4c9c964177d784e0d7b8dc3ee91466f07088c`,
-re-verified clean at the new head (pure rebase, all claims re-hold; see history file). `mergeable_state`
-behind (was dirty; rework resolved the conflicts). jkwak-work still the requested reviewer; no human
-maintainer review or comment; issue #13732 OPEN, assigned jkwak-work.
+**State (last verified 2026-11-26 15:00Z):** PR #13734 OPEN, head `caf4c9c964177d784e0d7b8dc3ee91466f07088c`
+(unchanged since the 11-19 force-push; re-verified clean 11-22 — pure rebase, all claims re-hold; comment
+6278114155 PATCHed 11-22 15:39:41Z to name the head). `mergeable_state` behind. jkwak-work still the
+requested reviewer; no human maintainer review or comment; issue #13732 OPEN, assigned jkwak-work.
 **Parked on maintainer review; watch-only until merge or another head move; weekly dashboard rows — next
-11-26 (one-shot already scheduled, that fire sends the row).**
+12-03 (11-26 row sent; successor one-shot scheduled 2026-11-30T15:00Z).**
 
 **Side finding, unfiled, operator call:** on master, struct `storeCoherent<16, MemoryScope::Device>`
 through a `Big*` splits into member `OpStore`s with only `Aligned` — the coherent flags are lost (a
 scalar store keeps them). Pre-existing, unrelated to #13734. Probe: `scratch-13732/store-coh2.slang` in the
-triager's workspace. Asked the operator twice (10-29 seq 65, 11-05 seq 511348), no answer — do not ask
-again, leave it to the operator.
+triager's workspace. Asked the operator twice (10-29 seq 65, 11-05 seq 511348), still no answer as of
+2026-11-26 15:00Z — do not ask again, leave it to the operator.
 
 Dated re-chase readings and decision rows live in [[13732-history-rechases.md]] — new dated entries go
 there, never here.

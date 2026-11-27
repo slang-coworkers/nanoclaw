@@ -68,8 +68,21 @@ description: TERMINAL — fixed by PR #14723 (maintainer-approved, awaiting merg
   spReflectionType_applySpecializations slang-reflection-api.cpp:842, slang-global-session.cpp:149
   thread-local note) routed to slang-triager by the fixer per reviewer request — dedup-before-filing;
   disposition via their chain / future issue_opened echo.
-- Resume on: human re-approval + merge of PR #14723 (merge webhook), human comment, or triager's
-  side-find disposition.
+- **Maintainer re-APPROVAL 11-26 09:43:53Z (Main-verified live, review 6071766721)**: skiminki-nv
+  re-APPROVED head `cd7f47811` — the fresh human approval the Fix Report flagged now exists; CI on
+  that head 63 passing / 0 failing (one falcor build job pending at 09:45). Issue-thread status
+  comment updated in place by the fixer. **Only the human merge of PR #14723 remains**; no further
+  bot action planned.
+- **CHAIN CLOSED 11-26 10:54:39Z (Main-verified live)**: PR #14723 MERGED by skiminki-nv (merge commit
+  `4ba9ae2e3`, final head cd7f47811 — guard + why-comment + success-path unit test, all nits in);
+  issue #14611 closed via `Fixes #14611`. Fixer worktree + sentinel removed, memory terminal.
+  Full arc 11-18 filing → 11-25 maintainer directive 18:29Z → dispatch 18:33 → PR 19:0x → maintainer
+  approval + ready-flip 19:18 → nits + unit test → re-approval 11-26 09:43 → merge 10:54 — ~19 months'
+  worth of parked chain resolved in <17 h of maintainer direction.
+- **Side-find home: issue #14726** (ComponentType::isSubType + spReflectionType_applySpecializations +
+  TLS note) — triager-filed, parked with the triager, no fixer chain; its `issue_opened` echo (if any)
+  = self-echo of our own filing, NO dispatch — same disposition as this issue's was (see
+  [filing policy](../orchestrator/filing-verified-issues-policy.md)).
 - **[Triage Resolution] 11-25 20:00Z (recheck task session)**: triager confirmed chain closed — PR #14723
   ready-for-review, maintainer-approved, `Fixes #14611` (issue post suppressed per resumable-artifact
   rule). Recheck task series recheck-14611-71b1 complete. **Side-finding twin filed as #14726**

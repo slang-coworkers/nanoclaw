@@ -106,3 +106,11 @@ matches the baseline: newest release "DX Compiler Release for September 2026" (`
 `gh api` to shader-slang worked (no gateway outage). `update` refused the firing one-shot (`no live task matched`), so I re-armed it as a fresh
 one-shot `rechase-13527-dxc8644-a8e4` for 11-26 18:00Z, with a prompt note to check release notes for linalg/InterlockedAccumulate before
 declaring unblocked (the December Agility 1.621 retail window is near — a SM 6.10 DXC release is likely in the next few weeks).
+
+**11-26 18:00Z re-chase: still held.** #13532 is OPEN (head `c91704bc`, non-draft, not merged, last updated 10-09). No comments on #13527 or
+#13532 since 6480214472 (both comment lists empty above that id). The DXC `releases.atom` feed still matches the baseline exactly: newest
+release "DX Compiler Release for September 2026" (`v1.9.2609`, 09-29, SM 6.9 line); newest SM 6.10 preview still "Shader Model 6.10 Preview
+Release (May 2026) - Patch 2" (`v1.10.2605.37`, 08-12, old order). No release has both SM 6.10 and DXC#8644. `gh api` to shader-slang worked
+(no gateway outage). The Agility 1.621 retail window ("early December") is now days away — a DXC SM 6.10 release is likely before the next
+re-chase. `update` refused the firing one-shot (`no live task matched`), so I re-armed it as a fresh one-shot `rechase-13527-dxc8644-d6da` for
+12-03 18:00Z.

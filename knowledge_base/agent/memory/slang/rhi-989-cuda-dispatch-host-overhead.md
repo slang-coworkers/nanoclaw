@@ -1,7 +1,7 @@
 ---
 type: chain-record
 title: slang-rhi #989 — CUDA compute-dispatch host-time overhead vs raw cudaLaunchKernel
-description: Version-keyed compute-state reuse shipped at draft PR #990; awaiting human review; ready-flip weekly list
+description: Version-keyed compute-state reuse shipped at draft PR #990 (final head 5259ff2); chain closed bot-side; parked on human review; ready-flip weekly list
 tags: [slang-rhi, performance, cuda, command-recording]
 ---
 
@@ -57,6 +57,15 @@ triage delta cmt issuecomment-7167052965; PR explanation cmt issuecomment-716646
 (worktree + sentinel retained until PR disposition). Fixer memory: `memory/fix-rhi-989.md` (its
 group); triager state: `memory/issues/slang-rhi-989.md` (its group).
 
-**Standing:** draft PR #990 awaits human review — P2 enhancement, **no per-PR un-draft ask**
-(weekly list carry-over row added); resume on PR webhook only. Post-merge watch: none beyond the
-PR disposition.
+**Standing:** chain CLOSED bot-side 11-27 02:27Z ([Triage Resolution] delivered; final head
+`5259ff2` — re-verified at that head: 3.7 µs/dispatch, guards pass, CI green all platforms,
+MERGEABLE; review request with kaizhangNV via board-sync shepherd; issue status cmt
+issuecomment-7167052965 patched to final resolution). Draft PR #990 awaits human review/merge —
+P2 enhancement, **no per-PR un-draft ask** (weekly list carry-over row added); resume on PR
+webhook only. Post-merge: un-skip `compute-binding-reuse-entry-point-mutation.vulkan` once
+rhi#915 lands.
+
+**Infra note (operator-notified 11-27):** during this chain the reviewer infra errored twice
+(18:34Z, 19:20Z Nov 25) and the fixer's session died twice (session-1 pre-repro; 01:57Z Nov 27);
+generic "couldn't answer" failures ate in-flight reports — one [Fix Report] was lost to a
+delivery gap. Pattern flagged to the operator for a runner-log look.

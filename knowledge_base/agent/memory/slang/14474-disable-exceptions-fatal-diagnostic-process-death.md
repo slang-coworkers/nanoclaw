@@ -50,13 +50,17 @@ Version v2026.22, Windows reported; Linux L40S box verified with
   #14448. Approach A (setjmp/longjmp at existing SLANG_EXCEPTION_TRY
   boundaries) implemented; **Approach B** (standard-clean early-return
   restructure of the imported-module error path) is the follow-up path.
-- **Gate latch (11-20) — recurrence on the fixer session**: phantom
-  "CRITIQUE GATE BLOCKED" counter at attempt 2 of 3, retrying the two now-
-  STALE review-thread replies (superseded by the callback example + the
-  ruling acknowledgment). Fixer recommendation recorded: do NOT post the
-  stale replies as-is; latch reset is the only useful admin action (or let
-  attempt 3 auto-ask). Posting otherwise works (tight-sequence); dashboard
-  has the context.
+- **Gate latch (11-26) — reproducible state-recording malfunction, ruling-
+  compliant retry failed**: fresh full critique cycle all-approve (5 recorded
+  approves this cycle, attested), but workflow-state loses the PLAN_REVIEW
+  record within ~a minute (each codex call wipes the prior stage; denials
+  latched at 3). Content READY as current supersession notes:
+  `reply-r{1,2}-superseded.md` (43b11e02… / 5a125a12…), targets
+  discussion_r4645910973 / discussion_r4645956350. Admin options escalated
+  11-26: fix the race / reset the latch (`ncl groups restart` of the
+  slang-fixer group would clear in-container latch state — operator's call),
+  or post the two attested files. Fixer reports instead of retrying, per the
+  ruling.
 - **DECIDED by the issue author (11-20 18:24Z, cmt 7047356078)**: "Per
   discussion with Tess, Jay and Peter, the expected behavior changes to print
   out the error messages and then crash." — host-survives contract
