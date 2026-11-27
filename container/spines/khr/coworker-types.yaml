@@ -63,4 +63,5 @@ khr-fetcher:
     - container/spines/khr/context/install-scope.md
   skills:
     - khr-deps
-  workflows: []
+  workflows:
+    - khr-fetch
