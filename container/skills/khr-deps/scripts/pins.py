@@ -25,7 +25,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from khrdeps import PinError, clean_git_env, git_pin, npm_pin
+from khrdeps import PinError, blob_pin, clean_git_env, git_pin, npm_pin
 
 # GN/CIPD-only checkouts and the separately gated fuzz dependency are never fetched.
 _DEPS_SKIP = {
@@ -96,10 +96,44 @@ def _git(name: str, url: str, ref: str, allow: dict[str, Any]) -> dict[str, str]
         )
 
 
+def release_url(entry: dict[str, Any]) -> str:
+    """The artifact URL native ``update_deps.py`` builds on the linux x86_64 job host.
+
+    Mirrors ``GoodRepo.ArtifactUrl``: ``GetDefaultArch()`` is ``64`` there, and both
+    the system and the arch go through ``url_format_map``.
+    """
+    fmt = entry.get("url_format_map") or {}
+    system, arch = "linux", "64"
+    return str(entry.get("url", "")).format(
+        release=entry.get("release"),
+        system=fmt.get(system, system),
+        arch=fmt.get(arch, arch),
+    )
+
+
+def _release(entry: dict[str, Any], allow: dict[str, Any]) -> dict[str, str] | None:
+    """A ``release`` entry is a prebuilt artifact: a reviewed, sha256-pinned download."""
+    name = str(entry.get("name", ""))
+    platforms = entry.get("build_platforms") or []
+    arches = entry.get("build_architectures") or []
+    if (platforms and "linux" not in platforms) or (arches and "64" not in arches):
+        return None  # native update_deps skips it on this host too
+    url = release_url(entry)
+    try:
+        return {**blob_pin(url, allow), "name": name}
+    except PinError as exc:
+        return _unavailable(name, url, str(exc))
+
+
 def parse_known_good(raw: bytes, allow: dict[str, Any]) -> list[dict[str, str]]:
     data = json.loads(raw)
     out: list[dict[str, str]] = []
     for r in data.get("repos", []) if isinstance(data, dict) else []:
+        if r.get("release") is not None:
+            pin = _release(r, allow)
+            if pin is not None:
+                out.append(pin)
+            continue
         out.append(
             _git(
                 str(r.get("name", "")),

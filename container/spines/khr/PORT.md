@@ -148,7 +148,9 @@ P4.2 (dependency cache):
 - **orchestrator** (`khr-fetcher` type, `khr-deps` skill, admin only for shared write, `ncl` disabled) runs `fetch_deps.py`. It re-validates the request, fetches by exact ref or hash with size and redirect limits, verifies, and writes atomically.
 - **Gateway:** orchestrator has GET-only egress to the reviewed GitHub/npm hosts; khrbotnv has none.
 
-Still to come (P4.3+): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.
+P4.3 (VVL): `khr-validation/scripts/vvl_offline_deps.py` ports Eric's `vvl_offline_deps.py`. It still loads the repository's own `scripts/update_deps.py` and replaces only acquisition. The difference is where sources come from: Eric's controller prepared a working tree per dependency, while here `Checkout` snapshots each pin (depth 1, no hooks, file protocol only) from the orchestrator's bare mirror in the read-only shared cache. `DownloadAndExtractArtifact` copies a reviewed sha256 blob from the cache and checks every member, including symlink targets, before native extraction. `Clone`, `Fetch` and `urllib` raise. `known_good.json` `release` entries (slang) are now blob pins, formatted as native `ArtifactUrl` formats them on the linux x86_64 job host. Integration mode is `--provider NAME=PATH` on the adapter (a clean, committed job repository's `HEAD`) instead of a separate profile step. `khr-offline-deps.json` records what was used.
+
+Still to come: `cts_offline_deps.py` with `fetch_sources.py` pin extraction, `prepare_profile.py` (frozen consumer tree, pinned-header workaround), the full toolchain image, and the GPU validation profile.
 
 ## Coworkers and hand-offs
 
