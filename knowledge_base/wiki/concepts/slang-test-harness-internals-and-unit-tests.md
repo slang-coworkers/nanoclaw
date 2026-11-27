@@ -3,7 +3,7 @@ title: "slang-test Harness Internals and In-Process Unit Tests"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, TestReporter, verbosity, test-server, CI, record-replay, replay-collision, slang-unit-test, target_sources, dual-compile, unexported-symbols, windows, static-crt, env-vars, compare-compute, synthesized-lane, render-test, pointer-layout]
-source_count: 28
+source_count: 29
 ---
 
 # slang-test Harness Internals and In-Process Unit Tests
@@ -27,6 +27,7 @@ slang-test reporter and discovery-output configuration (CI parses it), a replay-
 - **A slangc row's backend requirement comes from its FIRST `-target`.** `-target spirv ... -target dxil` fails rather than skips without DXC; gate with `//TEST(windows):` or put dxil first. Check precompiled-body reuse at `-O0`; `git clean -fdx tests` before a corpus A/B.
 - **"The harness is monolithic, so no unit test is possible" is overstated.** A config-propagation fix with public fields and a plain-struct input can carry a `SLANG_UNIT_TEST`; only stdout/reporting-flow behavior needs behavioral verification.
 - **To unit-test an unexported `namespace Slang` free function, put it in its own small TU compiled into both the DLL and `slang-unit-test`.** Don't export it (ABI creep); `--no-undefined` linkage, not include paths, is the constraint.
+- **`SLANG_UNIT_TEST` takes two args since #14674 (`name, usedApis`).** In-flight PRs adding 1-arg unit tests go red on the CI merge ref; fix = merge `origin/master` (never rebase/force-push a PR under review) and pass `NoRenderApi` for logic-only tests.
 - **On Windows a unit test cannot set an env var that `slang.dll` reads** (static CRT: per-DLL environment copied at load). Re-run the check in a child `slang-test <exact test name>` with the variable set and require the child's own `passed test:` line, not exit 0.
 - **slang-test defaults to direct SPIR-V (`emitSPIRVDirectly: true`)** — the `-emit-spirv-via-glsl` (glslang) path is opt-in and untested by render tests; a green COMPARE_COMPUTE file says nothing about via-glsl compilability.
 - **CHECK values must render identically in hex and decimal legs** (render-test prints `%X`, `-cpu -output-using-type` legs print decimal), and SIMPLE-leg spirv-asm pins are written against `-O0` output. Compute bit-pattern constants, never recall them (1.5f = 0x3FC00000 = 1069547520).
@@ -81,7 +82,9 @@ Design facts for adding a list-valued `//TEST:CMD(...)` option (verified while t
 
 **Windows: the test DLL and slang.dll do not share an environment.** Windows builds use `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded[Debug]` (static CRT), so each DLL has its own CRT environment table copied at load. A `_putenv_s` or `ScopedEnvVar` inside `slang-unit-test-tool.dll` is invisible to `PlatformUtil::getEnvironmentVariable` in slang.dll, so a test setting e.g. `SLANG_RECORD_LAYER` passes on Linux/macOS and fails on every Windows job; `SetEnvironmentVariableA` does not help. Re-run the check in a child `slang-test <exact test name>` launched with the variable set, guarded by a sentinel env var, and require the child's own `passed test: '<name>` line, since exit 0 alone is vacuous. Env-driven tests like SPIR-V validation work only because CI exports the variable before launch (PR #12823) ([Windows static CRT: a unit test can't set an env var that slang.dll reads](../learnings/1791936249295-windows-static-crt-a-unit-test-can-t-set-an-env-va.md)). That CI-exported `SLANG_RUN_SPIRV_VALIDATION=1` is itself a local-vs-CI difference; see [Slang & slang-rhi test harness](slang-a-test-harness.md).
 
-**Source learnings (28):**
+**`SLANG_UNIT_TEST` is 2-arg since #14674 (`name, usedApis`).** PR #14674 (merged 2026-11-21) changed `SLANG_UNIT_TEST(name)` to `SLANG_UNIT_TEST(name, usedApis)`, so any in-flight PR adding a 1-arg unit test against an older base goes 8-way build red the moment CI builds the merge ref. The fix: `git merge origin/master` into the branch (never rebase/force-push a PR under review), update submodule pointers after the merge, then pass `NoRenderApi` for logic-only tests (other tests pass their API flags). Triage note: the red shows on `pull_request`-event runs (merge ref) while a stale `workflow_dispatch` run may just be priority-yielded — check which run actually failed before diagnosing ([slang#14674 made SLANG_UNIT_TEST 2-arg — merge master + pass usedApis](../learnings/1795717299991-slang-14674-made-slang-unit-test-2-arg-merge-maste.md)).
+
+**Source learnings (29):**
 - [slang-test defaults to direct SPIR-V — via-glsl (glslang) path is untested by render tests](../learnings/1795015033026-slang-test-defaults-to-direct-spir-v-via-glsl-glsl.md)
 - [Slang test harness: -O0 SIMPLE legs, hex vs decimal COMPARE_COMPUTE output, front-end constant folding of intrinsic identity chains](../learnings/1794994061881-slang-test-harness-o0-simple-legs-hex-vs-decimal-c.md)
 - [slang-test option-list parsing and per-API display naming: design facts for new TEST-line options](../learnings/1794950105957-slang-test-option-list-parsing-and-per-api-display.md)
@@ -110,5 +113,6 @@ Design facts for adding a list-valued `//TEST:CMD(...)` option (verified while t
 - [Unbound render-test param: -cuda aborts slang-test too; -use-test-server contains it](../learnings/1794132979479-unbound-render-test-param-cuda-aborts-slang-test-t.md)
 - [Float CAS on SPIR-V: a value bitcast is not enough, because logical pointers cannot be bitcast](../learnings/1794133299455-float-cas-on-spir-v-a-value-bitcast-is-not-enough-.md)
 - [Test-harness parser fixes: pin each branch with rebuild-one-target mutation drills](../learnings/1794137071520-test-harness-parser-fixes-pin-each-branch-with-reb.md)
+- [slang#14674 made SLANG_UNIT_TEST 2-arg — merge master + pass usedApis](../learnings/1795717299991-slang-14674-made-slang-unit-test-2-arg-merge-maste.md) — 1-arg tests go red on the merge ref; `NoRenderApi` for logic-only; check the pull_request run, not a yielded dispatch run
 
 _Catalog: [[wiki/index.md]]_

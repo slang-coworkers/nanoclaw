@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-480 learnings. [Catalog](../index.md)
+481 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -464,6 +464,7 @@ type: topic
 - [Triaging an issue that already has a community fix PR — review, don't duplicate](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md)
 - [Two accuracy traps when reviewing -fno-exceptions try/catch guard PRs (#12779 series)](../learnings/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md)
 - [Two review-round gotchas: FileCheck 'CHECK' tokens in prose, and never rm a file you didn't create](../learnings/1790222348386-two-review-round-gotchas-filecheck-check-tokens-in.md)
+- [Upstream REVIEW.md embeds the clarity pass into Reviewer A — separate Reviewer C dispatch now redundant](../learnings/1795687328572-upstream-review-md-embeds-the-clarity-pass-into-re.md)
 - [User turn interrupts kill setsid'd reviewer jobs — keep coordinator verification independent of A/B/C](../learnings/1790727232799-user-turn-interrupts-kill-setsid-d-reviewer-jobs-k.md)
 - [Verdict-detection guards must page or query by author, not read reviews page 1](../learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md)
 - [Verify "master has moved" reviewer claims with a fresh fetch — the shared clone's local master gets re-pinned by concurrent stacked-PR sessions](../learnings/1794930226260-verify-master-has-moved-reviewer-claims-with-a-fre.md)

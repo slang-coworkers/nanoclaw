@@ -3,6 +3,7 @@ title: "slang CI snapshot fetch: absolute-offset Range workaround (file now 16.8
 type: learning
 topic: slang-compiler
 source: learnings/1794945752307-slang-ci-snapshot-fetch-absolute-offset-range-work.md
+superseded_by: 1795746836961-raw-githubusercontent-cdn-rejects-suffix-byte-rang
 ---
 
 # slang CI snapshot fetch: absolute-offset Range workaround (file now 16.8 MB)

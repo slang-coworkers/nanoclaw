@@ -3,7 +3,7 @@ title: "Slang Compiler: Test-Authoring & Repro Traps"
 type: concept
 group: slang-grab-bag
 tags: [testing, SLANG_ASSERT, diagnostics, DIAGNOSTIC_TEST, expected-files, Xslang, spirv-validation, constant-folding, exit-codes, plan-tracker]
-source_count: 5
+source_count: 6
 ---
 
 # Slang Compiler: Test-Authoring & Repro Traps
@@ -21,6 +21,7 @@ Recurring traps when writing or running slang tests and repro shaders: release-i
 - `-Xslang` in a `//TEST` directive forwards exactly ONE token per prefix; two-token flags need one `-Xslang` per token. `-xslang` itself is a render-test-only prefix — SIMPLE legs spawn slangc directly, which rejects it with E00017.
 - Never pin ICE/E99997 exit codes in tests or reports — they vary by build and crash path; describe the abort instead.
 - The fixer plan-tracker hook only records Write-tool plan updates and resets every turn — re-Write the plan file first in any turn that will edit source.
+- Regression tests for link-time (`extern`) types cannot feed data via `TEST_INPUT:cbuffer` / global uniforms / shader-object binding — that path has no ProgramLayout, so extern resolution is unavailable (and null-drefs on master). Bind extern data through plain resources (`StructuredBuffer<Foo>` + `TEST_INPUT:ubuffer`).
 
 ## SLANG_ASSERT, source-target `-o`, diag annotations, ICE exit codes (#14603/PR #14606)
 
@@ -40,11 +41,16 @@ In slang-test `//TEST(compute):COMPARE_COMPUTE` directives, `-Xslang` forwards e
 
 Related scope trap (#14129): `-xslang` is a RENDER-TEST option prefix (`options.cpp`), not slang-test's — `//TEST:SIMPLE(filecheck=...)` spawns slangc directly, which rejects `-xslang` with E00017, so the test "fails" with result code 1 and the filecheck miss is on the command-line error, not the IR. For SIMPLE and other direct-slangc directives, pass the pass-through flag plainly (e.g. `-experimental-feature`); read slang-test's failure output for `result code = N` — N≠0 means the COMPILER failed, and only then look at filecheck misses. A test that "fails as expected" can be failing for the wrong reason ([render-test-only -xslang; result-code decoder](../learnings/1795199396295-slang-test-xslang-prefix-hook-refused-compound-com.md)).
 
-**Source learnings (5):**
+## Extern-type tests must bind through resources (#14734)
+
+render-test binds `TEST_INPUT:cbuffer(...)`, global uniforms and shader-object inputs through `rhi::Device::createShaderObject` → `Linkage::getTypeLayout` → `TargetRequest::getTypeLayout`, which deliberately has NO ProgramLayout (`slang-target.cpp:264-274`), so extern resolution is unavailable on that path — on master it null-derefs in `buildExternTypeMap` (guarded post-#14734 to skip resolution, leaving the extern opaque). Bind extern-typed data through plain resource parameters instead (`StructuredBuffer<Foo>` + `TEST_INPUT:ubuffer(data=..., stride=4)`): element layout flows through the program layout (programLayout non-null), resolution works, and the element size (8 bytes for `{int v; int w}`) proves the linked-in definition drove the layout. Extern funcs work across `-r` slang-libs (the extern-test.slang pattern); the linkage-path extern gap (shader-object binding gets an opaque layout) is potential follow-up material ([extern-type regression tests must bind via resources](../learnings/1795705411307-slang-extern-type-regression-tests-must-bind-via-r.md)).
+
+**Source learnings (6):**
 - [-xslang is a render-test-only prefix; SIMPLE legs spawn slangc (E00017); read `result code = N` before filecheck misses](../learnings/1795199396295-slang-test-xslang-prefix-hook-refused-compound-com.md) — a "fails as expected" test can fail for the wrong reason
 - [SLANG_ASSERT Release-inert; source targets need `-o`; `//IDS:` substring matches; never pin ICE exit codes](../learnings/1795047726129-slang-final-round-traps-slang-assert-is-release-in.md)
 - [copy `.actual` for `.expected`; one diagnostic per `//CHECK:`; `R"rs(...)rs"` delimiters](../learnings/1795050942267-slang-generating-expected-files-and-diagnostic-tes.md)
 - [validation no-ops without `LD_LIBRARY_PATH`; repro operands from buffer loads](../learnings/1795051966467-spir-v-validation-silently-skipped-without-ld-libr.md)
 - [`-Xslang` = one token per prefix; plan-tracker Write-tool-only, resets per turn](../learnings/1795073095370-slang-fixer-plan-tracker-resets-per-turn-write-too.md)
+- [extern-type regression tests must bind via resources, not cbuffer/shader-object inputs](../learnings/1795705411307-slang-extern-type-regression-tests-must-bind-via-r.md) — shader-object binding path has no ProgramLayout; null-deref on master; element size proves linked-in layout
 
 _Catalog: [[wiki/index.md]]_

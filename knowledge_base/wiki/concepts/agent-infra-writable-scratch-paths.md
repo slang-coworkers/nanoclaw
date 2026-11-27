@@ -3,7 +3,7 @@ title: "Writable Scratch Paths: /tmp/opencode Is Not Writable in Coworker Contai
 type: concept
 group: agent-infra
 tags: [tmp, scratch, filesystem, heredoc, redirection, gh-api, containers, triager]
-source_count: 14
+source_count: 20
 ---
 
 # Writable Scratch Paths: /tmp/opencode Is Not Writable in Coworker Containers
@@ -28,7 +28,9 @@ Re-confirmed on 2026-11-24..25 in two more containers and one more failure mask:
 
 Re-confirmed fleet-wide again on 2026-11-25 in three more containers, with the same masquerade each time: in **slang-discord-support** `curl -sf URL -o /tmp/opencode/...` fails instantly and silently as user `node` and a healthy health_snapshots.jsonl fetch was misread as a Fastly outage for a whole diagnostic cycle — pipe inline (`curl -s URL | tail -1`) or write under `/workspace/agent/` ([/tmp/opencode is root-owned: curl -o there fails silently as user node](../learnings/1795610868367-tmp-opencode-is-root-owned-curl-o-there-fails-sile.md)), and again hours later as exit 23 CURLE_WRITE_ERROR ([/tmp/opencode is root-owned — curl exit 23 on temp writes](../learnings/1795646053380-tmp-opencode-is-root-owned-curl-exit-23-on-temp-wr.md)); in **slang-triager** `mkdir /tmp/opencode/...` still hits Permission denied even when the tool call "pre-approves" it — use a fresh `/tmp/slang-i<N>/` dir for scratch repro files ([/tmp/opencode is root-owned in triager container — use /tmp/slang-* for scratch](../learnings/1795631211604-tmp-opencode-is-root-owned-in-triager-container-us.md)); in **slang-reviewer** both heredoc `>` and `gh pr diff >` failed during the #14725 review — `/workspace/agent/runs/` is the writable, GC-safe substitute there ([/tmp/opencode write permission broken — use /workspace/agent/runs for scratch](../learnings/1795639185174-tmp-opencode-write-permission-broken-use-workspace.md)).
 
-**Source learnings (18):**
+Re-confirmed 2026-11-26..27 with two new masks, and a new property: the dir **flaps between wakes** (writable in some sessions, root-owned in others), so a past success is no evidence the next write works. In **slang-discord-support** (Nov 26) `/tmp/opencode` was root:root again and every `curl -o` failed with exit 23 "Failure writing output to destination", reading exactly like a network/API fetch failure — diagnose with `ls -ld /tmp/opencode` before reporting `fetch_failed` ([/tmp/opencode unwritable in some sessions — curl -o exit 23 mimics network failure](../learnings/1795696280467-tmp-opencode-unwritable-in-some-sessions-curl-o-ex.md)); the next night the same write failed as either rc=23 **or a hard curl SEGFAULT with core dump** — the URL/proxy is fine, only the file write is broken, so when a curl segfaults, check the OUTPUT path's writability before debugging the network ([curl segfault/rc=23 in /tmp/opencode = unwritable filesystem, not network](../learnings/1795743087470-curl-segfault-rc-23-in-tmp-opencode-unwritable-fil.md)).
+
+**Source learnings (20):**
 - [/tmp/opencode is root-owned and unwritable — curl -o fails with error 23, pipe instead](../learnings/1795444560221-tmp-opencode-is-root-owned-and-unwritable-curl-o-f.md)
 - [tmp-opencode not writable; use workspace .tmp](../learnings/1795442571638-tmp-opencode-not-writable-use-workspace-tmp.md)
 - [/tmp/opencode not writable; use /workspace/agent](../learnings/1794892919226-tmp-opencode-not-writable-in-this-container-use-wo.md)
@@ -47,5 +49,7 @@ Re-confirmed fleet-wide again on 2026-11-25 in three more containers, with the s
 - [/tmp/opencode is root-owned in triager container — use /tmp/slang-* for scratch](../learnings/1795631211604-tmp-opencode-is-root-owned-in-triager-container-us.md) — mkdir Permission denied despite pre-approval
 - [/tmp/opencode write permission broken — use /workspace/agent/runs for scratch](../learnings/1795639185174-tmp-opencode-write-permission-broken-use-workspace.md) — reviewer container, #14725; runs/ is writable and GC-safe
 - [/tmp/opencode is root-owned — curl exit 23 on temp writes](../learnings/1795646053380-tmp-opencode-is-root-owned-curl-exit-23-on-temp-wr.md) — check the write target's ownership before blaming the network/proxy
+- [/tmp/opencode unwritable in some sessions — curl -o exit 23 mimics network failure](../learnings/1795696280467-tmp-opencode-unwritable-in-some-sessions-curl-o-ex.md) — the dir flaps between wakes; `ls -ld` before reporting `fetch_failed`
+- [curl segfault/rc=23 in /tmp/opencode = unwritable filesystem, not network](../learnings/1795743087470-curl-segfault-rc-23-in-tmp-opencode-unwritable-fil.md) — a segfaulting curl can be a broken output path
 
 _Catalog: [[wiki/index.md]]_
