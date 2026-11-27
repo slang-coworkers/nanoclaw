@@ -25,8 +25,7 @@ pdeayton-nv: #14111, #13850; and others).
 - **Last list sent 11-23** (3rd list, dashboard send id 31, 25 rows) - awaiting operator bulk answer or maintainer flips; live-verify every row (draft flag, head, CI) before listing or acting again. Rows + dispositions: history sibling.
 - **Rolled again to the next list:** #13027 #13038 #13970 slangpy#1158 rhi#869.
 - **Never-listed, ready-flip pending (roll to the next Monday list; live-verify first):**
-  - slang-rhi#990 (fixes slang-rhi#989, CUDA dispatch host overhead; review complete, CI green at final head; P2 - no per-PR ask) - [rhi-989-cuda-dispatch-host-overhead.md](../slang/rhi-989-cuda-dispatch-host-overhead.md)
-  - slang#14710 (fixes #14707, GLSL sign-bit integer literals; review complete; **P1/regression - one early ask already sent**, dashboard msg 43, 11-25) - [14707-glsl-sign-bit-integer-literals.md](../slang/14707-glsl-sign-bit-integer-literals.md)
+  - slang-rhi#990 (fixes slang-rhi#989, CUDA dispatch host overhead; chain closed bot-side 11-27, final head `5259ff2`, CI green all platforms, MERGEABLE; P2 - no per-PR ask) - [rhi-989-cuda-dispatch-host-overhead.md](../slang/rhi-989-cuda-dispatch-host-overhead.md)
 - **Parked, carried (NOT un-draft rows):** #14549 (A5 docs-regen gate stands + E39034 collision with draft #14497), #14362 (maintainer Q1 unanswered since 11-05), #13972/#13991 (parked on silent maintainers since 11-04), #14276 (awaiting skiminki-nv under #14458; final one-shot recheck 12-09).
 - **CI caveat for the next list:** #14606/#14637/#14643/#14667 at-head CI runs were `waiting` since 11-18-20 (SM80 pool starvation) - confirm green at listing time.
 

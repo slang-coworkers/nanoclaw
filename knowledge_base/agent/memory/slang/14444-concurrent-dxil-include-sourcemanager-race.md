@@ -19,6 +19,7 @@ and `CacheFileSystem::_resolvePathCacheInfo :673` racing `:682`.
 (option C step 1). It could be a synchronized append-only registry or a per-job source context for downstream
 includes. The triager's #14441 re-check t-529d77 (11-17) covers it.
 
+- 11-26 — **HOLD reconfirmed (Main, live-verified)** for the operator's triage request. Live state unchanged: open, `reproduced`, 0 comments, jkwak-work still the only assignee (11-11); #14441 still open with no maintainer scope direction since 11-10. Verdict delivered to the operator: subsystem compiler-core session-shared state (SourceManager/CacheFileSystem/include system via DXC callback), severity high (crash in documented multithreaded getEntryPointCode workflow), next step filed-only hold. No triage dispatch (own chain's Terminal filing, per the #14441 chain page).
 - 11-17 — **HOLD confirmed (Main, live-verified).** jkwak-work (maintainer) assigned this issue 11-11 18:25Z and
   also took #14443 — the cluster is being worked in-house. Assignment ≠ the A/B/C scope pick, so no [Triage handoff];
   a fixer chain would collide with jkwak-work's own work. Trigger for handoff: written scope direction on #14441 or a

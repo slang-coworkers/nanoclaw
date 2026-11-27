@@ -5,7 +5,13 @@ description: Human-filed P1 regression (andy-slater, 11-24); GLSL literal typing
 tags: [slang, glsl, integer-literal, regression, parser]
 ---
 
-# #14707 — GLSL unsuffixed sign-bit integer literals mistyped (→ draft PR #14710)
+# #14707 — GLSL unsuffixed sign-bit integer literals mistyped (→ PR #14710 MERGED)
+
+**⭐ TERMINAL 11-26 14:23Z:** PR #14710 MERGED by skiminki-nv @ merge commit `0e393b37c`
+(head 01f6ad636, shepherd-approved, CI green); issue #14707 auto-closed 14:23:12Z via
+`Fixes #14707`. Worktree reaped, fixer terminal row closed. **~46h filed→merged** (incl. the
+2h routing incident on day 1). Follow-up **#14731** (bot-filed, filed-only) remains open for
+maintainers. Nothing owed on this chain.
 
 Human-filed 11-24 16:06Z by andy-slater (external, exceptional report: reproducer, GLSL 4.60 §4.1.3
 citation, version bisect). R6 dispatch; 👀 posted 16:07Z.
@@ -29,8 +35,8 @@ nudge at 18:11Z exposed it. Triager dispatched 18:15Z. Lesson folded into memory
 - Fixer handoff attempt 1 hit a fixer runtime error 20:13Z; retry clean 20:15Z.
 
 ## Fix (fixer, [Fix Report] 01:37Z 11-25; triager [Triage Resolution] 01:39Z)
-- **Draft PR #14710**, head `29fcac005`, branch fix/issue-14707, 6 commits, 3 files +119/−5,
-  `pr: non-breaking`, rebased clean on master.
+- **Draft PR #14710**, head `01f6ad636` (maintainer round 2, 11-26), branch fix/issue-14707,
+  8 commits, 3 files +119/−5, `pr: non-breaking`, rebased clean on master.
 - Approach A (triager-recommended): GLSL branch in `_determineIntegerLiteralType`
   (slang-parser.cpp:9210) + store-time `_fixIntegerLiteral` narrowing in `parseIntegerLiteralExpr`
   (:9440, avoids the isValueInRangeOfConstantType debug assert). New
@@ -52,6 +58,41 @@ nudge at 18:11Z exposed it. Triager dispatched 18:15Z. Lesson folded into memory
 - Maintainer decision flagged in PR Risk section: spec-strict >32-bit GLSL unsuffixed-literal
   diagnostic (GLSL says compile-time error; PR keeps the Slang ladder to avoid rejecting existing code).
 - Post-merge: issue auto-closes via `Fixes #14707` once ready-for-review; suppression rule takes over.
+
+## Maintainer round 2 (11-26 10:35Z)
+- skiminki-nv (MEMBER shepherd) left 3 inline comments; all applied at head `01f6ad636` (8 commits):
+  (1) new `3000000000 >> 1` test leg pinning -647483648 (arithmetic shift); (2) reshaped the GLSL
+  branch to his exact signed+unsigned ternary (behavior-identical); (3) test writes reordered
+  int→float + capital-`U` suffix cases (also removed the WGSL inline/hoist header note). Threads
+  answered, left unresolved for him to resolve.
+- Verification: repro 2/2, tests/glsl 409/409, glsl-intrinsic 255/255, Slang literal suites green,
+  clang-format diff 0; CI run 45800629841; PR body + explanation comment + issue status refreshed.
+- PLAN_REVIEW + CODE_REVIEW approve (R1–R3 grading met); one advisory (trailing newline) declined
+  as trivia; no new bot review round per the maintainer-round path.
+- Chain rests with skiminki-nv (resolve threads / review / merge the draft); fixer on webhooks.
+
+## Maintainer approval (11-26 12:05Z)
+- skiminki-nv APPROVED the draft (review 6073829486, no blocking comments). Both review rounds
+  (peer APPROVE_WITH_NITS + his inline round) fully applied and verified. Threads left for him to
+  resolve alongside the merge. Approved-but-draft: he flips/merges himself, or the weekly-list
+  flip happens once the operator answers the standing P1 ask (dashboard msg 43). No bot action.
+
+## Follow-up filed at maintainer's request (11-26 12:16Z)
+- skiminki-nv asked the bot (cmt 7191672781 on #14707) to file a follow-up ensuring literal and
+  integer types align with GL_EXT_shader_explicit_arithmetic_types. Triager filed
+  **#14731** ("GLSL: align literal and integer types with GL_EXT_shader_explicit_arithmetic_types",
+  Issue Type Feature; suffix table/keyword set/conversion-rank deltas, 3 empirically verified:
+  `5S` rejected in GLSL input while our emitter writes `int16_t(7S)`, 16-bit-arithmetic-only
+  shader over-requires GL_EXT_shader_16bit_storage, l/L-suffix typing = alignment decision).
+- Acked on #14707 (cmt 7191791839). **#14731 is bot-filed FILED-ONLY — its issue_opened webhook
+  is a self-echo, NO dispatch** (filing policy); maintainers direct it. Related open maintainer
+  call: spec-strict >32-bit GLSL literal diagnostic (#14710 Risk section).
+
+- 11-26 12:28Z: skiminki-nv directed on #14731 (cmt 7191997636) that the issue must also revisit
+  64-bit integer literals (GLSL `l`/`L` = 64-bit unconditionally, differs from Slang's
+  minimum-width ladder). Triager folded it into the issue body verbatim + acked (cmt 7192035386).
+  Still FILED-ONLY — scope guidance, not an implementation ask; no fixer dispatch (feature issue ⇒
+  operator gate). Watch for collision with unmerged approved draft #14710 (same literal-parsing path).
 
 Owner sessions: fixer on `gh-issue-shader-slang/slang-14707` (pr-mappings → #14710 webhooks route there);
 triager sess gtu362.

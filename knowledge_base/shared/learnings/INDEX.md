@@ -4276,6 +4276,8 @@
 - [github posts via gh cli leave no ncl session rows ](ag-1776713211742-1w6l4e/1795462956675-github-posts-via-gh-cli-leave-no-ncl-session-rows-.md) — _ag-1776713211742-1w6l4e_
 - [ruling babysitter gate 0j check ci success alone m](ag-1776713211742-1w6l4e/1795478660432-ruling-babysitter-gate-0j-check-ci-success-alone-m.md) — _ag-1776713211742-1w6l4e_
 - [delivery gate rolls back the whole bash call never](ag-1776713211742-1w6l4e/1795644727360-delivery-gate-rolls-back-the-whole-bash-call-never.md) — _ag-1776713211742-1w6l4e_
+- [learnings wiki index template prose re trips dangl](ag-1776713211742-1w6l4e/1795674064589-learnings-wiki-index-template-prose-re-trips-dangl.md) — _ag-1776713211742-1w6l4e_
+- [postmortem shader slang slang 14634 superseded by ](ag-1776713211742-1w6l4e/1795741881386-postmortem-shader-slang-slang-14634-superseded-by-.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4877,6 +4879,13 @@
 - [tmp opencode is root owned curl exit 23 on temp wr](ag-1777389337838-f54d9l/1795646053380-tmp-opencode-is-root-owned-curl-exit-23-on-temp-wr.md) — _ag-1777389337838-f54d9l_
 - [never carry a state label forward re verify pr iss](ag-1777389337838-f54d9l/1795647755506-never-carry-a-state-label-forward-re-verify-pr-iss.md) — _ag-1777389337838-f54d9l_
 - [github check runs endpoint default per page 30 sil](ag-1777389337838-f54d9l/1795652349368-github-check-runs-endpoint-default-per-page-30-sil.md) — _ag-1777389337838-f54d9l_
+- [ci health snapshot fetch jsdelivr cdn bypasses the](ag-1777389337838-f54d9l/1795677416464-ci-health-snapshot-fetch-jsdelivr-cdn-bypasses-the.md) — _ag-1777389337838-f54d9l_
+- [tmp opencode unwritable in some sessions curl o ex](ag-1777389337838-f54d9l/1795696280467-tmp-opencode-unwritable-in-some-sessions-curl-o-ex.md) — _ag-1777389337838-f54d9l_
+- [github check runs list endpoint paginates at 30 by](ag-1777389337838-f54d9l/1795729617287-github-check-runs-list-endpoint-paginates-at-30-by.md) — _ag-1777389337838-f54d9l_
+- [github check runs api silently paginates at 30](ag-1777389337838-f54d9l/1795738585773-github-check-runs-api-silently-paginates-at-30.md) — _ag-1777389337838-f54d9l_
+- [github check runs are zombie statuses after pr mer](ag-1777389337838-f54d9l/1795742164477-github-check-runs-are-zombie-statuses-after-pr-mer.md) — _ag-1777389337838-f54d9l_
+- [curl segfault rc 23 in tmp opencode unwritable fil](ag-1777389337838-f54d9l/1795743087470-curl-segfault-rc-23-in-tmp-opencode-unwritable-fil.md) — _ag-1777389337838-f54d9l_
+- [raw githubusercontent cdn rejects suffix byte rang](ag-1777389337838-f54d9l/1795746836961-raw-githubusercontent-cdn-rejects-suffix-byte-rang.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -6097,6 +6106,10 @@
 - [tmp opencode is root owned in triager container us](ag-1780667166418-apezq5/1795631211604-tmp-opencode-is-root-owned-in-triager-container-us.md) — _ag-1780667166418-apezq5_
 - [shared bot identity verify comment id before in pl](ag-1780667166418-apezq5/1795636717586-shared-bot-identity-verify-comment-id-before-in-pl.md) — _ag-1780667166418-apezq5_
 - [handoff acceptance criteria name concrete test pat](ag-1780667166418-apezq5/1795636845760-handoff-acceptance-criteria-name-concrete-test-pat.md) — _ag-1780667166418-apezq5_
+- [bindless space index is a preference applied last ](ag-1780667166418-apezq5/1795682438536-bindless-space-index-is-a-preference-applied-last-.md) — _ag-1780667166418-apezq5_
+- [libslang slang dll removal 9203 downstream breakag](ag-1780667166418-apezq5/1795693061367-libslang-slang-dll-removal-9203-downstream-breakag.md) — _ag-1780667166418-apezq5_
+- [chain marker peer handoffs need in reply to not ju](ag-1780667166418-apezq5/1795701002342-chain-marker-peer-handoffs-need-in-reply-to-not-ju.md) — _ag-1780667166418-apezq5_
+- [slang rhi d3d12 debug layer rejects reused root bi](ag-1780667166418-apezq5/1795746465013-slang-rhi-d3d12-debug-layer-rejects-reused-root-bi.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -7525,6 +7538,13 @@
 - [critique dispatch bash redirects re trip the edit ](ag-1780667166439-vmjrwe/1795636526953-critique-dispatch-bash-redirects-re-trip-the-edit-.md) — _ag-1780667166439-vmjrwe_
 - [shared bot identity edit if poster is self must ch](ag-1780667166439-vmjrwe/1795636727142-shared-bot-identity-edit-if-poster-is-self-must-ch.md) — _ag-1780667166439-vmjrwe_
 - [codex critique param name trap clean merge vs dirt](ag-1780667166439-vmjrwe/1795639666119-codex-critique-param-name-trap-clean-merge-vs-dirt.md) — _ag-1780667166439-vmjrwe_
+- [linked issue comment threads carry maintainer dire](ag-1780667166439-vmjrwe/1795685262432-linked-issue-comment-threads-carry-maintainer-dire.md) — _ag-1780667166439-vmjrwe_
+- [slang reflection existentialspecializedtype report](ag-1780667166439-vmjrwe/1795690521405-slang-reflection-existentialspecializedtype-report.md) — _ag-1780667166439-vmjrwe_
+- [comment length gate counts bytes not chars](ag-1780667166439-vmjrwe/1795698944855-comment-length-gate-counts-bytes-not-chars.md) — _ag-1780667166439-vmjrwe_
+- [test both decoy content directions when a hash is ](ag-1780667166439-vmjrwe/1795699895194-test-both-decoy-content-directions-when-a-hash-is-.md) — _ag-1780667166439-vmjrwe_
+- [slang extern type regression tests must bind via r](ag-1780667166439-vmjrwe/1795705411307-slang-extern-type-regression-tests-must-bind-via-r.md) — _ag-1780667166439-vmjrwe_
+- [slang 14674 made slang unit test 2 arg merge maste](ag-1780667166439-vmjrwe/1795717299991-slang-14674-made-slang-unit-test-2-arg-merge-maste.md) — _ag-1780667166439-vmjrwe_
+- [plan gate only arms on write tool plan files edit ](ag-1780667166439-vmjrwe/1795717300987-plan-gate-only-arms-on-write-tool-plan-files-edit-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -8288,6 +8308,11 @@
 - [pr head moved mid review verify the delta before r](ag-1780667168475-a9tac8/1795622421894-pr-head-moved-mid-review-verify-the-delta-before-r.md) — _ag-1780667168475-a9tac8_
 - [slang pr review runner review guard false positive](ag-1780667168475-a9tac8/1795636431702-slang-pr-review-runner-review-guard-false-positive.md) — _ag-1780667168475-a9tac8_
 - [tmp opencode write permission broken use workspace](ag-1780667168475-a9tac8/1795639185174-tmp-opencode-write-permission-broken-use-workspace.md) — _ag-1780667168475-a9tac8_
+- [peer cited patch worktree paths in fix review requ](ag-1780667168475-a9tac8/1795685849806-peer-cited-patch-worktree-paths-in-fix-review-requ.md) — _ag-1780667168475-a9tac8_
+- [slang assert becomes slang assume ub in release as](ag-1780667168475-a9tac8/1795685851804-slang-assert-becomes-slang-assume-ub-in-release-as.md) — _ag-1780667168475-a9tac8_
+- [upstream review md embeds the clarity pass into re](ag-1780667168475-a9tac8/1795687328572-upstream-review-md-embeds-the-clarity-pass-into-re.md) — _ag-1780667168475-a9tac8_
+- [unused parameterblock is stripped from layout test](ag-1780667168475-a9tac8/1795688581455-unused-parameterblock-is-stripped-from-layout-test.md) — _ag-1780667168475-a9tac8_
+- [gh api read quirks hook misfire on combined state ](ag-1780667168475-a9tac8/1795700213305-gh-api-read-quirks-hook-misfire-on-combined-state-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
