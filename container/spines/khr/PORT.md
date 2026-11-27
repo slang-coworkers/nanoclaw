@@ -141,4 +141,6 @@ Lego-specific:
 - `context/install-scope.md` overrides the base context for this install: GitLab is the only forge, the resumable record is local, there is no coworker chain, and `/codex-critique` is an optional second opinion. The runner seeds the `codex` MCP child for every session, so nothing needs configuring.
 - `base-common` still supplies the nanoclaw basics: messaging, memory (OKF), recall, ncl, report formats.
 
-Still to come (P4): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.
+P4.1 (toolchain): `khr-validation/apt-packages.txt` lists the per-group Debian baseline, installed as the group's derived image. `requirements-toolchain.txt` plus `setup_toolchain.py` add the hash-pinned overlay (clang-format 22.1.x, pyparsing 3.3.2, beautifulsoup4), installed offline from a host-prefetched wheel cache.
+
+Still to come (P4.2+): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.

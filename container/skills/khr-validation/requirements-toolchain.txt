@@ -1,0 +1,25 @@
+# khr validation toolchain overlay: hash-pinned, installed OFFLINE into the job's
+# dependency root from a host-prefetched wheel cache (never from the network):
+#
+#   python3 /app/skills/khr-validation/scripts/setup_toolchain.py --job <JOB_ROOT>
+#
+# Same pins as the source harness's validation overlay, plus the C++ formatter
+# that repository CI requires (clang-format 22.1.x), as an official PyPI wheel
+# instead of an extra apt repository. Bump deliberately: verify each hash against
+# the release metadata on pypi.org and respect the 3-day release-age rule.
+
+# Overrides the distribution's older pyparsing (scripts need DelimitedList).
+pyparsing==3.3.2 \
+    --hash=sha256:850ba148bd908d7e2411587e247a1e4f0327839c40e2e5e6d05a007ecc69911d
+
+# Local SPIR-V/GLSL HTML and anchor inspection; remote URL checks stay skipped.
+beautifulsoup4==4.13.4 \
+    --hash=sha256:9bbbb14bfde9d79f38b8cd5f8c7c85f4b8f2523190ebed90e950a8dea4cb1c4b
+soupsieve==2.7 \
+    --hash=sha256:6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4
+typing_extensions==4.13.2 \
+    --hash=sha256:a439e7c04b49fec3e5d3e2beaa21755cadbbdc391694e28ccdd36ca4a1408f8c
+
+# Vulkan-ValidationLayers formatting (CI requires 22.1.x). manylinux x86_64 wheel.
+clang-format==22.1.8 \
+    --hash=sha256:b00cff6bfd1f1686f073a4fdf1cb937dbd58bf7510c659477805c03afdea0816
