@@ -47,8 +47,22 @@ is the false-positive `MEMORY-full-archive-2026-08-05.md` DOSSIER, so the trigge
 It is the same root cause as msg 239, and the owner already has it, so do not re-send. Re-escalate only if the owner
 replies, or if a NEW real offender (not a dialect false positive) stays stuck for 3 runs.
 
-**Still true:** SKILL.md's embedded `okf_synth.py` overwrites `/workspace/agent/tools/okf_synth.py` every run, and
-the recurring task is `okf-memory-synthesis-*` gated by `okf_synth.py gate`. Groups that run it: fixer, triager, Main.
+**Still true (but now defused):** SKILL.md's step-0 instructs overwriting `/workspace/agent/tools/okf_synth.py` every run —
+**skip it while the embedded script is the #2039 regressed version** (see the 2026-11-27 fix above). The recurring task is
+`okf-memory-synthesis-*` gated by `okf_synth.py gate`. Groups that run it: fixer, triager, Main — each group's container has
+its own `tools/okf_synth.py`; the fix above is in Main's copy only, so peer groups still need their cross-check policy.
+
+**LOCAL TOOL FIXED (2026-11-27):** `/workspace/agent/tools/okf_synth.py` is no longer the SKILL.md-verbatim copy — it is the
+merged repair: **before-2039's correct classifier** (nested `metadata.type` parsing via `_fm_keys`, top-level-only
+`okf_synth: exempt`, REVIEW informational class) **+ #2039's group-root dossier pass** (GROUP_ROOT / GROUP_DOSSIER_STUB_MAX /
+COLD_STORAGE_RX, so an injected `../CLAUDE.local.md` over 4k is still caught). Verified: real tree BOUNDED (backlog 0,
+24 exempt / 1 review, exit 0 — vs the #2039 script's 1,199 false offenders / backlog 1.75M); synthetic tests pass for
+nested frontmatter, group-root live dossier (gate wakes + names it) and premigration cold-storage. `finalize` recorded
+backlog 0, no ESCALATE (trend 1742432 → 1742432 → 0). **Until the repo skill is fixed, SKIP step-0's verbatim write** —
+re-copying the embedded script reinstalls the bug and the gate wakes daily on ~1.2k false offenders again. Hand-over
+artifact for the upstream PR: `tools/okf_synth.skill-fix.diff` (vs `tools/okf_synth.py.2039-regressed`, a verbatim copy of
+the current embedded script). The `ESCALATE fires every run` paragraph above is resolved by this fix — re-escalate only if
+the fixed tool itself reports a stuck real offender.
 
 **Repo-skill tool defect (found 11-17, RESOLVED upstream 11-17):** the repo SKILL.md's embedded `_write_atomic`
 said `fh.fsync(fh.fileno())` — `TextIOWrapper` has no `fsync`, so a verbatim write crashed `finalize` (exit 1,

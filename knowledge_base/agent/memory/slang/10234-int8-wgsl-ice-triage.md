@@ -36,6 +36,19 @@ coworker session on the thread before dispatch).
 - Triage comment posted: https://github.com/shader-slang/slang/issues/10234#issuecomment-6994071092
   (includes recommended path + explicit offer to open a fixer chain on the maintainer's go-ahead).
 
+**Post-terminal inbound (11-27 12:35Z):** albertrodriguezclo (CONTRIBUTOR) reported a new
+select-of-uint8_t-constants shape (cmt 7218445975; still ICE E99997 on released 2026.23,
+expected — predates fix) and asked whether the fix widens 8-bit temporaries instead of
+diagnosing. Routed to the fixer (chain owner): verified at PR head `b25fab365` — the shape
+now gives clean `error[E56110]` (exit 2, no ICE); plain `uint8_t(1)` store still folds/compiles;
+uint16_t select twin → E56103. Bot reply posted cmt 7218557171 (Main-verified live; OUTPUT_REVIEW
+approved): explains 2026.23, routes the widen-temporaries idea (triage option B) to the
+maintainers as a follow-up — NOT folded into PR #14640. PR unchanged @ `b25fab365`, still draft,
+awaiting human review. **Duplicate follow-up (11-27 15:58Z):** the user reposted the same
+byte-identical shader/points (cmt 7222703372) ~3h17m after the bot's verified reply; fixer
+diffed (nothing materially new), posted a courteous pointer reply cmt 7222742244 (Main-verified
+live). If further near-duplicate inbounds arrive on this pattern, same disposition applies.
+
 **State:** TERMINAL ON OUR SIDE (11-19 ~17:3xZ). **Draft PR #14640** @ `b25fab365` —
 "Diagnose 8-bit integers as unsupported in WGSL instead of an ICE", 8 commits, 4 files
 +86/−4, label `pr: non-breaking`, base master, explanation comment current. Fix: new

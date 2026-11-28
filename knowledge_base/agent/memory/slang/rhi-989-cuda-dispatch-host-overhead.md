@@ -65,7 +65,11 @@ P2 enhancement, **no per-PR un-draft ask** (weekly list carry-over row added); r
 webhook only. Post-merge: un-skip `compute-binding-reuse-entry-point-mutation.vulkan` once
 rhi#915 lands.
 
-**Infra note (operator-notified 11-27):** during this chain the reviewer infra errored twice
-(18:34Z, 19:20Z Nov 25) and the fixer's session died twice (session-1 pre-repro; 01:57Z Nov 27);
-generic "couldn't answer" failures ate in-flight reports — one [Fix Report] was lost to a
-delivery gap. Pattern flagged to the operator for a runner-log look.
+**Infra note (operator-notified 11-27, addendum same day):** during this chain the reviewer infra
+errored twice (18:34Z, 19:20Z Nov 25) and the fixer's session hit **four** generic "couldn't
+answer" failures (session-1 pre-repro; 01:57Z Nov 27 ate one [Fix Report]; 22:33Z Nov 27 on
+post-close upkeep — that one lost nothing, verified live; fixer re-engaged, msg 71). Pattern
+spans both slang-fixer and slang-reviewer runners; operator asked for a runner-log look
+(dashboard msg 43 + addendum 47). Standing risk: the fixer holds PR #990's webhook mapping —
+if its session is dead when a human review event arrives, the host redrive + supervisor tick are
+the backstop.

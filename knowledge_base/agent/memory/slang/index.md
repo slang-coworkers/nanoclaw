@@ -6,6 +6,46 @@ description: Per-chain records for shader-slang issue and PR work driven through
 
 # Slang chains
 
+> **🆕 #13200 → PR #13202 (UPDATE ROUND DONE, 11-27, long-running Aug chain):** maintainer
+> (skiminki-nv) reported a `-g` debug-info route to the same missing `OpTypeInt` case and asked
+> for it in #13202's tests — done: `tests/spirv/intptr-emit-debug.slang` 2/2, A/B vs v2026.23
+> clean, #8480 concern empirically falsified (its own repro compiles with the fix), master
+> merge through the #14514 reorg (5 fix sites now in `source/slang/emission/`+`ir/`), r4
+> APPROVE_WITH_NITS all applied. **Draft PR #13202 @ `f4c8f5f5b9`** MERGEABLE, suites
+> tests/spirv 1251/1251; rests on human review; ready-flip weekly list.
+> [record](13200-intptr-spv-emit.md)
+
+> **🆕 #14745 → PR #14746 (FIX-SHIPPED, resting on human review, 11-27):** human-filed
+> (tdavidovicNV) — `Conditional<Interface, true>` struct field ICEs on dxil/spirv/ptx: typeflow has zero
+> `IRConditionalType` handling (Optional has it end-to-end), so post-lowerConditionalType emit hits
+> leftover Func/tuple insts. Fix = Approach A (Conditional mirrors Optional through typeflow); 3 review
+> rounds applied (r3 caught a release-build aliasing bug in the r2 assert — head now `033ab2a14`,
+> CI 46061206520); repro 5/5 targets, suites clean (2 autodiff failures pre-existing on ToT); reporter's
+> gist-linked patch used with SPDF credit (triager's "unreachable" claim retracted, cmt 7222671894
+> self-corrected). **Draft PR #14746 @ `033ab2a14`**; 5 on-record review-limitation items left for human
+> adjudication; ready-flip weekly list. [record](14745-conditional-interface-typeflow.md)
+
+> **🆕 #14739 → PR #14741 (FIX-SHIPPED, parked on human review, 11-27):** human-filed
+> (albertrodriguezclo) — SPIR-V: a module-scope `static const` array read with a dynamic
+> index got one Function-scope `OpVariable` + full `OpStore` PER READ SITE (multiplied by
+> inlining; ~10 s extra driver pipeline-compile in the reporter's path tracer). Fix = route
+> such reads through one shared Private `IRGlobalVar` with eager per-entry-point stores
+> (processGetElement, slang-ir-spirv-legalize.cpp), entry-point-less library compiles keep
+> the self-contained copy. 2 peer review rounds applied (r1 use-def staleness, r2
+> precompiled-library regression); repro 32 copies → 1 at every -O level; 1252/1252
+> tests/spirv/ with validation. **Draft PR #14741 @ `9c43c02d2`** rests on human review;
+> ready-flip weekly list. [record](14739-spirv-static-const-array-per-read-copy.md)
+
+> **🆕 #14738 → PR #14740 (TERMINAL our side, 11-27):** human-filed (szihs) — unmatched `__target_switch` in a
+> value-returning fn silently emits an empty non-void body on CUDA/CPP (UB); aspect 1 (E36107 blind through
+> generics) = **dup of #13995**, aspect 2 fixed. **Draft PR #14740 @ `a4d3d1e83`** (8 files +389/−4; E41037 via
+> `NoTargetCaseDecoration` after final DCE — deliberately NOT at the triage memo's `:87` site, a #13564-known
+> false-positive trap; r2 APPROVE_WITH_NITS, suite 16325/16340 A/B-clean). [Triage Resolution] posted 14:34;
+> follow-ups bot-filed: **#14742** (module-load operand validation — self-echo, no dispatch) and **#14743**
+> (stale targets.md sentence — self-echo; fix start gates on #14740's merge). HAZARD: draft #13564 claims the
+> same E41037 id — second merge renumbers. Rests on human review; ready-flip → weekly list.
+> [record](14738-target-switch-empty-body.md) · [triage memo](14738-triage-memo.md)
+
 > **🆕 #14734 → PR #14735 (FIX-SHIPPED, parked on human review, 11-26):** perf bug —
 > `TypeLayoutContext::externTypeMap` cached by value in a memberwise-copied context, so the
 > map (which mangles every decl of every module dep) is rebuilt and discarded per extern
@@ -177,7 +217,7 @@ decay and must be re-read, not remembered.
 - [slang#14618 — `#include` with `..` segments fails once the joined path reaches 260 chars (Windows MAX_PATH)](14618-include-dotdot-max-path.md) — TERMINAL: MERGED 11-19 18:53Z by pdeayton-nv (PR #14625, merge cmt `bb2b7e33d`; issue auto-closed). Loose end: falcor rerun on head `4faa7d5ef` was queued at merge — fixer watches the webhook; no new chain unless it fails. Related: #14612 (same surface).
 - [slang#14624 — bool ordering comparisons emit invalid SPIR-V (OpULessThan on %bool)](14624-bool-ordering-spirv-invalid.md) — TERMINAL: MERGED 11-20 03:29Z (PR #14628 squash `85bde8dc0`; branchless and/or bodies in core.meta.slang; auto-merge after flake rerun green; issue auto-closed). Side-find #14631 FILED-ONLY (self-echo, no dispatch; fixer start = maintainer/operator). Related: #12720, #14402, #3317.
 - [slang#8479 — IntVal folding keeps literal type: default-arg `Payload<16>` != explicit](8479-intval-fold-default-arg-type-identity.md) — maintainer-asked triage 11-18 (jhelferty-nv): **NOT fixed on master (E30019 self-mismatch reproduced)**. **TERMINAL our side: draft PR #14626** @ `6837bbbc0` (reviewer dispatched; ready-flip weekly list). Family: #14476, #14595. Root cause + verdict in the record.
-- [slang#10234 — int8_t/uint8_t on WGSL gives ICE E99997 instead of a diagnostic](10234-int8-wgsl-ice-triage.md) — jhelferty-nv go-ahead 11-19 ("equivalent approach to int16") → TERMINAL our side: draft PR #14640 @ `b25fab365` (E56110 diagnoseOnce at both WGSL emit sites + DIAGNOSTIC_TEST twins; r2 APPROVE_WITH_NITS). PR behind master (merge-master before ready-flip); awaiting human review. Side-find = tracked #10232; family #14188/#14186.
+- [slang#10234 — int8_t/uint8_t on WGSL gives ICE E99997 instead of a diagnostic](10234-int8-wgsl-ice-triage.md) — jhelferty-nv go-ahead 11-19 ("equivalent approach to int16") → TERMINAL our side: draft PR #14640 @ `b25fab365` (E56110 diagnoseOnce at both WGSL emit sites + DIAGNOSTIC_TEST twins; r2 APPROVE_WITH_NITS). PR behind master (merge-master before ready-flip); awaiting human review. Side-find = tracked #10232; family #14188/#14186. Post-terminal inbound 11-27: new select-of-uint8_t shape (albertrodriguezclo) → fixer verified clean E56110 at PR head, bot reply cmt 7218557171; widen-temporaries idea routed to maintainers as follow-up, PR unchanged.
 - [slang#14613 — Support any/all intrinsics on scalars](14613-any-all-scalar-boolean-mask.md) — HUMAN-filed 11-18 (tangent-vector), P2: unranked numerics `IBooleanMask` wrappers → E39999 scalar ambiguity; fix = `[OverloadRank(-10)]` on both wrappers. **TERMINAL: PR #14616 squash-MERGED 11-19 (`a4d69f877`), issue auto-closed.** Record holds the "unranked numerics wrapper" pattern for future E39999 reports.
 - [slang#14612 — Windows: long paths truncated in diagnostics (path-handling scrub)](14612-windows-long-path-truncation-diagnostics.md) — TERMINAL 11-20: PR #14621 MERGED (squash `692a53379`), issue auto-closed; standing repro request + `\\?\` parked in the record.
 - [slang#8050 — autoformatter mangles `//TEST:`, slang-test silently ignores tests](8050-autoformatter-silently-ignores-tests.md) —

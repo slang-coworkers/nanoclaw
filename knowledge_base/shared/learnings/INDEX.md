@@ -4278,6 +4278,8 @@
 - [delivery gate rolls back the whole bash call never](ag-1776713211742-1w6l4e/1795644727360-delivery-gate-rolls-back-the-whole-bash-call-never.md) — _ag-1776713211742-1w6l4e_
 - [learnings wiki index template prose re trips dangl](ag-1776713211742-1w6l4e/1795674064589-learnings-wiki-index-template-prose-re-trips-dangl.md) — _ag-1776713211742-1w6l4e_
 - [postmortem shader slang slang 14634 superseded by ](ag-1776713211742-1w6l4e/1795741881386-postmortem-shader-slang-slang-14634-superseded-by-.md) — _ag-1776713211742-1w6l4e_
+- [webhook body strips links read live issue](ag-1776713211742-1w6l4e/1795800483856-webhook-body-strips-links-read-live-issue.md) — _ag-1776713211742-1w6l4e_
+- [okf synthesis 2039 scanner false positives merged ](ag-1776713211742-1w6l4e/1795802602420-okf-synthesis-2039-scanner-false-positives-merged-.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4497,6 +4499,7 @@
 - [slang maintainer rotation discord send tool unavai](ag-1776713258088-r8pp2t/1795435314070-slang-maintainer-rotation-discord-send-tool-unavai.md) — _ag-1776713258088-r8pp2t_
 - [slang mcp merged at null on merged prs verify via ](ag-1776713258088-r8pp2t/1795508008556-slang-mcp-merged-at-null-on-merged-prs-verify-via-.md) — _ag-1776713258088-r8pp2t_
 - [slang merge state audit merged at is the only auth](ag-1776713258088-r8pp2t/1795508413753-slang-merge-state-audit-merged-at-is-the-only-auth.md) — _ag-1776713258088-r8pp2t_
+- [slang bot fix prs dispatch ci check ci wait for hu](ag-1776713258088-r8pp2t/1795767057761-slang-bot-fix-prs-dispatch-ci-check-ci-wait-for-hu.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4690,6 +4693,9 @@
 - [slang sm80 queue backlog now expires 1 day test ar](ag-1776713259045-nax3cr/1795637200024-slang-sm80-queue-backlog-now-expires-1-day-test-ar.md) — _ag-1776713259045-nax3cr_
 - [gh api job logs needs allow escape sequences](ag-1776713259045-nax3cr/1795645013066-gh-api-job-logs-needs-allow-escape-sequences.md) — _ag-1776713259045-nax3cr_
 - [sm80 queue backlog causes artifact not found test ](ag-1776713259045-nax3cr/1795651648277-sm80-queue-backlog-causes-artifact-not-found-test-.md) — _ag-1776713259045-nax3cr_
+- [gate 0h batch never swallow legitimate unchanged e](ag-1776713259045-nax3cr/1795802738606-gate-0h-batch-never-swallow-legitimate-unchanged-e.md) — _ag-1776713259045-nax3cr_
+- [sweeplib resolved verdict log row pairing result r](ag-1776713259045-nax3cr/1795809788837-sweeplib-resolved-verdict-log-row-pairing-result-r.md) — _ag-1776713259045-nax3cr_
+- [rerun log jsonl grep tolerate pr space no space pa](ag-1776713259045-nax3cr/1795831351895-rerun-log-jsonl-grep-tolerate-pr-space-no-space-pa.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -6110,6 +6116,11 @@
 - [libslang slang dll removal 9203 downstream breakag](ag-1780667166418-apezq5/1795693061367-libslang-slang-dll-removal-9203-downstream-breakag.md) — _ag-1780667166418-apezq5_
 - [chain marker peer handoffs need in reply to not ju](ag-1780667166418-apezq5/1795701002342-chain-marker-peer-handoffs-need-in-reply-to-not-ju.md) — _ag-1780667166418-apezq5_
 - [slang rhi d3d12 debug layer rejects reused root bi](ag-1780667166418-apezq5/1795746465013-slang-rhi-d3d12-debug-layer-rejects-reused-root-bi.md) — _ag-1780667166418-apezq5_
+- [nvvm cuda backend 14737 master integration seams a](ag-1780667166418-apezq5/1795775098623-nvvm-cuda-backend-14737-master-integration-seams-a.md) — _ag-1780667166418-apezq5_
+- [generic dispatch capability blindness is 13995 s f](ag-1780667166418-apezq5/1795777306937-generic-dispatch-capability-blindness-is-13995-s-f.md) — _ag-1780667166418-apezq5_
+- [spir v processgetelement copies module scope const](ag-1780667166418-apezq5/1795781836756-spir-v-processgetelement-copies-module-scope-const.md) — _ag-1780667166418-apezq5_
+- [conditional is a one case orphan in slang typeflow](ag-1780667166418-apezq5/1795795024081-conditional-is-a-one-case-orphan-in-slang-typeflow.md) — _ag-1780667166418-apezq5_
+- [verify attachments on the live issue body before c](ag-1780667166418-apezq5/1795800507200-verify-attachments-on-the-live-issue-body-before-c.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -7545,6 +7556,17 @@
 - [slang extern type regression tests must bind via r](ag-1780667166439-vmjrwe/1795705411307-slang-extern-type-regression-tests-must-bind-via-r.md) — _ag-1780667166439-vmjrwe_
 - [slang 14674 made slang unit test 2 arg merge maste](ag-1780667166439-vmjrwe/1795717299991-slang-14674-made-slang-unit-test-2-arg-merge-maste.md) — _ag-1780667166439-vmjrwe_
 - [plan gate only arms on write tool plan files edit ](ag-1780667166439-vmjrwe/1795717300987-plan-gate-only-arms-on-write-tool-plan-files-edit-.md) — _ag-1780667166439-vmjrwe_
+- [slang worktrees need submodule copy from base clon](ag-1780667166439-vmjrwe/1795782394776-slang-worktrees-need-submodule-copy-from-base-clon.md) — _ag-1780667166439-vmjrwe_
+- [spir v legalizer module scope constant bases judgi](ag-1780667166439-vmjrwe/1795788494518-spir-v-legalizer-module-scope-constant-bases-judgi.md) — _ag-1780667166439-vmjrwe_
+- [filecheck count counts from the previous match pro](ag-1780667166439-vmjrwe/1795789955674-filecheck-count-counts-from-the-previous-match-pro.md) — _ag-1780667166439-vmjrwe_
+- [worklist ir passes eager stores or the value you s](ag-1780667166439-vmjrwe/1795792769358-worklist-ir-passes-eager-stores-or-the-value-you-s.md) — _ag-1780667166439-vmjrwe_
+- [slang test compile lanes ignore filecheck library ](ag-1780667166439-vmjrwe/1795797663513-slang-test-compile-lanes-ignore-filecheck-library-.md) — _ag-1780667166439-vmjrwe_
+- [codex stage changes need a fresh call and bridge t](ag-1780667166439-vmjrwe/1795800408174-codex-stage-changes-need-a-fresh-call-and-bridge-t.md) — _ag-1780667166439-vmjrwe_
+- [verify no attachment links claims by fetching the ](ag-1780667166439-vmjrwe/1795800415160-verify-no-attachment-links-claims-by-fetching-the-.md) — _ag-1780667166439-vmjrwe_
+- [critique tracker drops rounds silently verify work](ag-1780667166439-vmjrwe/1795807641150-critique-tracker-drops-rounds-silently-verify-work.md) — _ag-1780667166439-vmjrwe_
+- [slang llvm fetch binary url must track current mas](ag-1780667166439-vmjrwe/1795810468789-slang-llvm-fetch-binary-url-must-track-current-mas.md) — _ag-1780667166439-vmjrwe_
+- [chain inbounds reset the task workflow state re re](ag-1780667166439-vmjrwe/1795814913149-chain-inbounds-reset-the-task-workflow-state-re-re.md) — _ag-1780667166439-vmjrwe_
+- [old five part pr bodies can t survive a gh pr edit](ag-1780667166439-vmjrwe/1795814918209-old-five-part-pr-bodies-can-t-survive-a-gh-pr-edit.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -8313,6 +8335,13 @@
 - [upstream review md embeds the clarity pass into re](ag-1780667168475-a9tac8/1795687328572-upstream-review-md-embeds-the-clarity-pass-into-re.md) — _ag-1780667168475-a9tac8_
 - [unused parameterblock is stripped from layout test](ag-1780667168475-a9tac8/1795688581455-unused-parameterblock-is-stripped-from-layout-test.md) — _ag-1780667168475-a9tac8_
 - [gh api read quirks hook misfire on combined state ](ag-1780667168475-a9tac8/1795700213305-gh-api-read-quirks-hook-misfire-on-combined-state-.md) — _ag-1780667168475-a9tac8_
+- [deferred store raw irinst stale value bug pattern ](ag-1780667168475-a9tac8/1795790177953-deferred-store-raw-irinst-stale-value-bug-pattern-.md) — _ag-1780667168475-a9tac8_
+- [entry point less precompile path verify incomplete](ag-1780667168475-a9tac8/1795794536779-entry-point-less-precompile-path-verify-incomplete.md) — _ag-1780667168475-a9tac8_
+- [fixer cited explanation artifacts can be missing l](ag-1780667168475-a9tac8/1795801479101-fixer-cited-explanation-artifacts-can-be-missing-l.md) — _ag-1780667168475-a9tac8_
+- [verify reviewer a s countable factual claims at he](ag-1780667168475-a9tac8/1795805025616-verify-reviewer-a-s-countable-factual-claims-at-he.md) — _ag-1780667168475-a9tac8_
+- [slang ir as vs cast suggested fix snippets must bi](ag-1780667168475-a9tac8/1795808314302-slang-ir-as-vs-cast-suggested-fix-snippets-must-bi.md) — _ag-1780667168475-a9tac8_
+- [extern static const bool flags fold to boollit int](ag-1780667168475-a9tac8/1795809978063-extern-static-const-bool-flags-fold-to-boollit-int.md) — _ag-1780667168475-a9tac8_
+- [devin title only bug cards on pr 13202 falsified b](ag-1780667168475-a9tac8/1795813153588-devin-title-only-bug-cards-on-pr-13202-falsified-b.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
