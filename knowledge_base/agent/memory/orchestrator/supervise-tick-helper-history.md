@@ -197,3 +197,83 @@ learning filed (rule: bot-filed infra issue + small harness fix → file the PR,
 don't wait for maintainer tiebreak). Auto-merge sweep: 6 armed, all human. GC
 869 GB free (35.0%), REAP 7, coverage fresh. Runbook "latest tick dir" pointer
 advanced tick407 → tick409.
+
+## tick 410 (2026-11-27 12:00 gate tick)
+
+tick410 = tick409 helpers unchanged, paths repointed, since= reset to
+2026-11-27T01:00Z (tick409's start), ghfeeds SINCE/awk re-dated, relaycheck.py T=
+re-dated, disp-overrides reset to {}. Clean cached tick (~20 min): gate nudge flag
+(slang-14737) verified false positive — maintainer umbrella dispositioned 10:29Z,
+re-tokenized `advisory:maintainer-driving` via disp-overrides; must_nudge 0, 0
+nudges sent. 3 🆕 (14737 dispositioned umbrella, 14738 szihs fix chain self-driving,
+14739 albertrodriguezclo fresh dispatch — first session appeared MID-TICK at
+12:10Z, caught by step-6 re-list + relaycheck, journaled via minimal payload2b
+patch; its title had to be added to titles.json by hand). 1 🔼 rhi-989 CI green
+(tick-409 merge-master nudge worked). 22 escalates / cost_stopped 14589 unchanged.
+Auto-merge sweep: 6 armed, all human. GC 855 GB free (34.5%), REAP 7. Side-find:
+PR #14675 run 44832584798 stuck `waiting` since 11-20 on
+falcor-build-approval-gate (all other jobs green) — human-owned, board note only.
+Deliv MISSING rhi#987/#975 = albertrodriguezclo on his own human PRs — not our
+chains. Runbook "latest tick dir" pointer advanced tick409 → tick410.
+
+## tick 411 (2026-11-27 13:00 gate escalate-flag tick)
+
+tick411 = tick410 helpers unchanged, paths repointed, since= reset to
+2026-11-27T12:00Z (tick410's start), ghfeeds SINCE/awk re-dated, relaycheck.py T=
+re-dated, closed-since search re-dated, disp-overrides reset to {}. Note:
+prev-la-blind.json absent in tick410 — rebuilt it from tick410/sessions.json
+({id:last_active}) before running blind.py/moved.py. Clean cached tick (~20 min):
+gate escalate flag (slang-14730) verified FALSE positive — fixer answered the
+11-26 12:10Z nudge at 12:11Z ("parked by design": fix complete + peer-reviewed on
+held branch fix/issue-14730, PR held pending maintainer answer to #8937-conflict
+question posted on the issue 11-26 09:16Z, comment 7187704180, zero maintainer
+replies ~25h later, inside the fixer's 2–3-business-day re-ping window) →
+dispositioned advisory:maintainer-decision via disp-overrides; escalate back to
+22 (retro-wave, all carry escalatedAt). must_nudge 0, 0 nudges sent. 0 🆕; 4 🔼
+(10234 reporter new 8-bit shape verified vs draft #14640, 14730 disposition,
+14738 draft PR #14740 + CI run in flight, 14739 fresh triage/root-cause). Auto-merge
+sweep: 6 armed PRs, all human (GraphQL 502 blip mid-tick — REST fallback via
+tick410's am-slang.txt worked). GC 846 GB free (34.1%), REAP 7, coverage fresh
+(16 ok + 2 operator-paused). cost_stopped 14589 unchanged. Runbook "latest tick
+dir" pointer advanced tick410 → tick411.
+
+## tick 412 (2026-11-27 14:00 gate nudge tick)
+
+tick412 = tick411 helpers unchanged, paths repointed, since= reset to
+2026-11-27T13:00Z (tick411's start), disp-overrides reset to {}. Clean cached
+tick (~12 min): gate nudge flag (slang-14739) verified FALSE positive — the
+fixer pushed draft PR #14741 and the reviewer Fix Review Request landed at
+14:07Z, after the 14:04 pull (tick-350 line-61 shape) → payload5 patched with
+the fresh session + our_last_outbound + pr record, re-scan must_nudge 1→0, 0
+nudges sent, reconciliation clean. 2 🔼 (14738 CI re-dispatched 46012545769
+after the tick-411 run was cancelled; 14739 as above); 0 🆕. 22 retro-wave
+escalates + cost_stopped 14589 unchanged. Auto-merge sweep: 1 armed
+(slangpy#934, not ours). GC 845 GB free, coverage fresh (16 ok + 2
+operator-paused). Runbook "latest tick dir" pointer advanced tick411 → tick412.
+
+## tick 414 (2026-11-27 22:00 gate nudge tick)
+
+tick414 = tick413 helpers unchanged, paths repointed, since= reset to
+2026-11-27T16:00Z (tick413's start), ghfeeds SINCE/awk re-dated, relaycheck.py T=
+re-dated, disp-overrides reset to {} (tick413's own since=/SINCE=/T= had been left
+at tick-412 values — harmless: no killed/budget/rl429/ghfeeds/relaycheck output
+was load-bearing this tick). Note: **tick 413 never appended a history entry**
+(same shape as ticks 406/408; helpers copied forward cleanly, and its state
+saved _meta.tick=413 correctly). Clean cached tick (~15 min): gate nudge flag
+(slang-14745) verified FALSE positive — the "human spoke last" comment is the
+automated pr-board-sync-assignment notice (github-actions 17:26Z, do-not-reply;
+pull.sh bot_logins covers only nv-slang-bot, so coderabbitai/github-actions read
+as human) → dispositioned advisory:awaiting-maintainer-merge, re-scan
+must_nudge 1→0, 0 nudges sent, reconciliation clean. 1 CI-rebase nudge sent
+(rhi-989 PR #990 ✅⤵️ BEHIND again — master moved 17:09Z after the 01:13Z
+rebase; tick 413 had seen the same BEHIND cell and skipped the nudge — pinned
+…-vfgn30, landed 22:12Z, nudgedAt recorded). 0 🆕; 6 real 🔼 (13200 maintainer
+decline-verify upheld by fixer, 13747/13973/13982 ci_failed webhooks all
+classified priority-yield/stale-replay no-action, 14739 PR-CI green via
+pull_request_target 46034775896 while the 14:07Z workflow_dispatch run waits at
+falcor-build-approval-gate, 14745 as above); slangpy-1223's 🔼 excluded from
+real-updates (CI-babysitter sweeps churn the reused session, no chain change).
+22 retro-wave escalates + cost_stopped 14589 unchanged. Auto-merge sweep: 1
+armed (slangpy#934, human, not ours). GC 813 GB free (32.8%), REAP 8 / KEEP 114,
+coverage fresh (16 ok + 2 operator-paused), no residue/gaps. Runbook "latest
+tick dir" pointer advanced tick412 → tick414.

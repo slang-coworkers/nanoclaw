@@ -1,0 +1,26 @@
+---
+type: chain
+title: "slang#14739 — SPIR-V: static const array with dynamic index copied per read site"
+description: Human-filed SPIR-V legalization perf bug (albertrodriguezclo, 11-27); triaged reproduced with root cause, fixer live
+---
+
+# slang#14739 — SPIR-V per-read-site copies of `static const` arrays
+
+## Origin
+Human-filed 11-27 (albertrodriguezclo — same reporter as rhi#989). Webhook `issue_opened` 12:09Z → 👀 + triager dispatched on canonical thread `gh-issue-shader-slang/slang-14739` (no sibling owner; my own session was the only 14739 hit).
+
+## Triage (12:16Z, verified reproduced on master v2026.23-2-g77e59ba7c)
+- **Class:** bug / medium / P2 / target-emit (SPIR-V legalization). Not a dup.
+- **Root cause:** `processGetElement` in `source/slang/ir-passes/slang-ir-spirv-legalize.cpp:1224-1231` deliberately skips its `m_mapArrayValueToVar` cache when the base is a module-scope constant → every dynamic-index read site materializes a fresh Function-scope `OpVariable` + full `OpStore` of the `OpConstantComposite`. Inlining multiplies it (N=16 calls → 32 copies; `static` non-const → 1 copy).
+- **Impact:** reporter's path tracer: ~1120 4 KB function-local arrays, ~10 s extra `vkCreateRayTracingPipelinesKHR` compile.
+- **Recommended fix (A):** in `processGetElement`, create ONE module-scope Private `IRVar` per module-scope constant, initialized once (wire the existing-but-unused Initializer operand of `emitOpVariable` through `emitGlobalVar`, `slang-emit-spirv.cpp:4087-4101`), cache + share across read sites. (B) minimal per-function cache; (C) producer-side rejected (breaks const emission on GLSL/HLSL).
+- **Test surface:** `tests/spirv/static-array-spv-asm.slang` filecheck bakes in the buggy OpStore pattern — needs updating.
+- Labels `reproduced` + Issue Type Bug applied; triage 5-bullet posted on the issue.
+
+## Chain state
+- Fixer session sess-1795781807751-ra0dcc LIVE since 12:16 (triager handed off directly with memo). Fan-out reported to operator dashboard 12:2xZ per filing policy.
+- **Draft PR #14741 opened 14:07Z** @ head `7e4ffd477` ("Share one Private global for SPIR-V dynamic-index reads of module-scope values", `Fixes #14739`); pr-mapping registered to the fixer session; explanation comment 7220365506.
+- **Fix complete + verified (fixer [Report] 14:07Z):** one file (slang-ir-spirv-legalize.cpp) — module-scope bases in `processGetElement` route to one shared Private global (cached across read sites), single store per entry point. Repro16: 32 copies → 0 function vars at -O0, 1 copy at -O1..3 (spirv-opt private-to-local demotion, same end state as `static`); spirv validation clean -O0..3; tests/spirv/ 1248/1248 with SLANG_RUN_SPIRV_VALIDATION=1. One pre-existing unrelated failure (dynamic-dispatch-substandard-float.slang glsl) proven by rebuild-without-fix. CI run 46013019661. [Fix Review Request] dispatched to slang-reviewer (2 rounds max). CI run 46013019661 is draft-skipped (all lanes) — real CI evidence starts only at mark-ready (same pattern as #5667). static-array-spv-asm.slang needed no update. Note: "0 function vars at -O1..3" acceptance line unattainable by design — one-copy-per-module holds at every level. Ready-flip → weekly list; rest on human review.
+- **Review r1 applied 15:19Z** @ head `0712cd3e1d0c` (9 commits): reviewer's confirmed bug (deferred init store outside use-def chain → processConstructor missed it → invalid 3-constituent composite for mixed-operand vector ctors) fixed by eager stores in `createSharedGlobalVarForModuleValue`, deferred machinery deleted. Test gaps closed (pinned initializer stores, two-entry-point leg, -O2/-O3 lanes, region-wide CHECK-NOTs). 1252/1252 tests/spirv/ with validation. r2 dispatched (last round); explanation comment current (an empty-body re-post wiped it once — recovered pre-dispatch).
+- **⭐ TERMINAL our side 16:40Z — [Fix Report] at head `9c43c02d2`** (12 commits, legalizer + 3 test files): r2 caught a precompiled-library regression (no entry points → shared global never stored → uninitialized reads in the embedded blob); fixed with the reviewer's pre-approved fallback shape — entry-point-less compiles keep the self-contained per-read-site copy; all 6 clarity items applied. Repro16: 32×4KB copies → 1 copy at every -O level; tests/spirv/ 1252/1252 + tests/library/ 19/19 under SLANG_RUN_SPIRV_VALIDATION=1; embedded-blob direct parse verified. Disclosed limitation: the library test leg can't discriminate pre-fix builds at link level (blob parse is the evidence). No unresolved findings; internal re-reviews approve. **Rests on human review of draft PR #14741; ready-flip → weekly operator list (CI lanes skip while draft).** Resume on PR webhooks only.
+- **16:52Z:** reviewer [Resolution] = zero unresolved findings; triager told to deliver the [Triage Resolution] (msg 39). Gate note: post-send codex audit flagged 3 items; all verified true against the full chain record — the weekly-list point was my own standing policy folded into the fixer's facts without an Orchestrator-note marker (attribution nit, no false fact relayed, no correction sent). **16:53Z: [Triage Resolution] PATCHed on the issue (cmt 7220403955) — chain closed bot-side; standing down to webhook-only.**
