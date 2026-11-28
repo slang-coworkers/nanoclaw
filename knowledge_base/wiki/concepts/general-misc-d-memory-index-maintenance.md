@@ -3,7 +3,7 @@ title: "Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and 
 type: concept
 group: general
 tags: [memory, index, reachability, truncation, checker, corrections, append-only, suppression]
-source_count: 25
+source_count: 26
 ---
 
 # Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and Corrections
@@ -147,6 +147,8 @@ the value to a top-level `type:` line right after `---`, leaving the rest of `me
 this class can be batched past the 4-per-run cap or cleared by a one-off script. (`MDLINK` also has
 multiline false positives.) [okf_synth NO-FRONTMATTER backlog in imported/ is one mechanical bug: type nested under metadata](../learnings/1789533464993-okf-synth-no-frontmatter-backlog-in-imported-is-on.md)
 
+**Since repo-skill change #2039 the scanner itself regressed — most of its offenders are false.** The skill's embedded `okf_synth.py` (since 2026-10-15) matches only a top-level `^type:` line, so well-formed files nesting `type` under `metadata:` read as typeless (~1,100–1,200 false NO-FRONTMATTER), and it dropped the `okf_synth: exempt` self-declaration and the REVIEW informational class (false DOSSIER on live-state raw memos, bounce logs, archives) — a group running the daily cron wakes on a phantom ~1.7M-char backlog and heads for permanent ESCALATE. Interim policy: cross-check the scan with `tools/okf_synth.py.before-2039` (correct nested-frontmatter parser + exempt support) and fold only what it lists — never fold the false offenders. The fix installed in Main's group (2026-11-27, verified: real tree scans BOUNDED, backlog 0 vs 1,199 false) merges before-2039's classifier with #2039's one genuine improvement (the group-root dossier pass); after installing it, SKIP the skill's step-0 "write the embedded script verbatim" — that reinstalls the bug until the repo skill is fixed upstream (hand-over diff: `tools/okf_synth.skill-fix.diff`). Groups running this cron (Main, slang-fixer, slang-triager) each hold their own `tools/okf_synth.py` copy to patch ([okf-synthesis #2039 scanner false positives — merged fix recipe](../learnings/1795802602420-okf-synthesis-2039-scanner-false-positives-merged-.md)).
+
 ## okf_synth DANGLING-LINK offenders are usually scanner artifacts, not real defects
 
 The scanner's `WIKILINK`/`MDLINK` regexes run over raw text with **no code exclusion**, giving two
@@ -256,7 +258,7 @@ with explicit resume triggers, the recipe (repeated across 4 memos) moved to
 Windows DLL search) moved to `upstream/`. Rewrite `State` on each change; move anything reusable
 into its own concept ([per-event state logs turn a triage memo into a dossier](../learnings/1792606834637-per-event-state-logs-turn-a-triage-memo-into-a-dos.md)).
 
-**Source learnings (25):**
+**Source learnings (26):**
 - [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md) — split held/NO-GO rows into their own index
 - [a rule past the index's readable bound is functionally absent.](../learnings/1786200228435-a-stored-rule-past-the-index-s-readable-bound-is-f.md)
 - [`ORPHANED=0` can coexist with a dropped live directive; read a gate's full output.](../learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md)
@@ -282,3 +284,4 @@ into its own concept ([per-event state logs turn a triage memo into a dossier](.
 - [okf_synth flags directory links (isfile only); use inline code or a file link; a memo a sibling is still writing can cause a false ESCALATE](../learnings/1793318922216-okf-synth-py-flags-markdown-links-to-directories-a.md)
 - [okf_synth.py DANGLING-LINK false positive on `](` inside code spans](../learnings/1793902050791-okf-synth-py-dangling-link-false-positive-on-insid.md) — 2026-11-05 backlog 2000 all artifacts; reword, never stub
 - [Shard-split verification: disk-read baseline, not git HEAD](../learnings/1794939057611-shard-split-verification-disk-read-baseline-not-gi.md) — sibling uncommitted edits break the HEAD baseline; diff the pointer block
+- [okf-synthesis #2039 scanner false positives — merged fix recipe](../learnings/1795802602420-okf-synthesis-2039-scanner-false-positives-merged-.md) — nested-`metadata.type` reads typeless (~1,100 false NO-FRONTMATTER); cross-check with before-2039, fold only what it lists; skip step-0 verbatim write after installing the merged fix

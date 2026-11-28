@@ -3,7 +3,7 @@ title: "Build System, Prebuilt Deps (DXC/LLVM) & CMake Options"
 type: concept
 group: slang-tooling
 tags: [cmake, dxc, llvm, glibc, ld_library_path, prebuilt, falcor, sccache, ci]
-source_count: 23
+source_count: 22
 ---
 
 # Build System, Prebuilt Deps (DXC/LLVM) & CMake Options
@@ -109,7 +109,7 @@ Do NOT redirect Slang's `CMAKE_RUNTIME_OUTPUT_DIRECTORY` to emit into an externa
 
 `FALCOR_LOCAL_SLANG_BUILD_DIR` is a path RELATIVE to `FALCOR_LOCAL_SLANG_DIR` and names one config, not an absolute path: Falcor resolves `$FALCOR_LOCAL_SLANG_DIR/$FALCOR_LOCAL_SLANG_BUILD_DIR/lib`. For a Release Slang at `$ROOT`, pass `-DFALCOR_LOCAL_SLANG_DIR=$ROOT -DFALCOR_LOCAL_SLANG_BUILD_DIR=build/Release` (not `$ROOT/build`), which also keeps Debug/Release mixing clean. Building Falcor from source against a local Slang needs Slang built with gfx ENABLED, because Falcor links `slang-gfx`; the CI flag set's `SLANG_ENABLE_GFX=0` is valid only for CI's copy-into-a-prebuilt-Falcor model (verified in PR #11602) ([FALCOR_LOCAL_SLANG usage details](../learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md)).
 
-Falcor CI's workflow is just `cp` into a preinstalled Falcor on a self-hosted Windows runner with no version pin on the Falcor side — fresh Falcor pulls its own Slang via packman. ([Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build](../learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md))
+Falcor CI's workflow is just `cp` into a preinstalled Falcor on a self-hosted Windows runner with no version pin on the Falcor side — fresh Falcor pulls its own Slang via packman. ([FALCOR_LOCAL_SLANG usage details](../learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md))
 
 ## Slang IR link clone ordering: on-demand deps land before the dependent
 
@@ -119,7 +119,7 @@ Settled on #14584 (2026-11-18): a cloned global's on-demand dependencies ALWAYS 
 
 When a compile-perf request proposes "add a CUDA variant of workload X following the `extra_flags=["-target","cuda"]` flag-swap pattern" (e.g. #13054), do NOT accept the premise uniformly — check two things per workload in `tools/compile-perf/lib/manifest.py` first. (1) **`mode=`.** A `mode="target"` workload (e.g. `complexity_ladder`, `codegen_spirv`) genuinely is a mechanical copy with `extra_flags` swapped — the in-tree idiom is `codegen_spirv`↔`emit_cuda` (same `gen`; keep `default_size ∈ sweep_sizes` for the module-load self-check). But a `mode="api"` workload (e.g. `rt_renderer`, `api_cmd="rt-composite"`) has NO `extra_flags` to flip — its target is hardcoded in the C++ driver (`native/api-driver.cpp`, `target.format = SLANG_SPIRV`), so a CUDA variant needs a C++ api-driver change, not a Python line. (2) **Shader intrinsics.** DXR raytracing intrinsics (`TraceRay`, `[shader("raygen")]`, `RaytracingAccelerationStructure`, `DispatchRaysIndex`) won't retarget to `-target cuda` naively — they lower via OptiX and need OptiX-capable RT lowering (a larger lift); plain compute (RWStructuredBuffer/generics/sin/cos) is CUDA-clean. Also: for these workloads the *value* is the comparison SWEEP (CUDA/SPIRV ratio + scaling exponent) on the homogeneous nightly runner, so the manifest edit alone is inert — a strong reason to defer to the self-assigned perf-initiative owner rather than dispatch a bot PR. (DeepWiki-confirmed aside: the load/store redundancy-removal pass `removeRedundancyInFunc`/`eliminateRedundantLoadStore` is target-agnostic — run for all backends via `simplifyIR`/`simplifyNonSSAIR` in `linkAndOptimizeIR`, gated by `minimalOptimization`, not by target.) ([compile-perf "add a -target cuda variant" is only a flag-swap for mode=target non-RT workloads](../learnings/1789378792842-compile-perf-add-a-target-cuda-variant-is-only-a-f.md))
 
-**Source learnings (23):**
+**Source learnings (22):**
 - [Debug slangc-only build cannot emit SPIR-V (E00100 spirv-opt) — proves lowering, not full emit](../learnings/1794999700716-debug-slangc-only-build-cannot-emit-spir-v-e00100-.md) — fresh-worktree slangc-only builds lack the downstream toolchain entirely
 - [Slang IR link clone ordering: on-demand deps land before the dependent (moveToEnd is the guarantee)](../learnings/1794994783954-slang-link-clone-ordering-on-demand-deps-land-befo.md) — #14584: mechanism-level review findings need a concrete failing input or verified trace
 - [Release slangc in fleet containers lacks the slang-glslang lib — build it or use Debug slangc](../learnings/1794977278785-release-slangc-in-fleet-containers-lacks-slang-gls.md) — E00001 spirv-opt; `--target slang-glslang`; internal validation catches uint/int mismatches
@@ -138,7 +138,6 @@ When a compile-perf request proposes "add a CUDA variant of workload X following
 - [slang SLANG_OVERRIDE_*_PATH options are CMake-only (no docs/matrix), unlike SLANG_ENABLE_*](../learnings/1782406116154-slang-slang-override-path-options-are-cmake-only-n.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
-- [Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build](../learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md)
 - [FALCOR_LOCAL_SLANG usage details (verified in PR #11602)](../learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md) — `BUILD_DIR` is relative and per-config; building Falcor from source needs Slang with gfx enabled
 - [compile-perf "add a -target cuda variant" is only a flag-swap for mode=target non-RT workloads](../learnings/1789378792842-compile-perf-add-a-target-cuda-variant-is-only-a-f.md)
 - [CMAKE_INSTALL_INCLUDEDIR doesn't relocate Slang's public headers (duplicate hardcoded install rule)](../learnings/1790672390817-cmake-install-includedir-doesn-t-relocate-slang-s-.md) — `install(DIRECTORY include DESTINATION .)` + hardcoded `.pc` paths; `libslang.so` is only the compat symlink.

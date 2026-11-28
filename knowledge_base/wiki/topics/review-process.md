@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-481 learnings. [Catalog](../index.md)
+482 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -478,6 +478,7 @@ type: topic
 - [Verify PR is open right before dispatching long reviewer runs](../learnings/1795020882027-verify-pr-is-open-right-before-dispatching-long-re.md)
 - [Verify public-enum slot against CURRENT master on every review round, not just the PR base](../learnings/1790765617137-verify-public-enum-slot-against-current-master-on-.md)
 - [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](../learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)
+- [Verify Reviewer A's countable factual claims at head before echoing into a verdict](../learnings/1795805025616-verify-reviewer-a-s-countable-factual-claims-at-he.md)
 - [verify reviewer-cited symbol names by grep before shipping them](../learnings/1794938687145-verify-reviewer-cited-symbol-names-by-grep-before-.md)
 - [Verify the live PR branch head before filing a follow-up issue a PR review flags as "uncovered"](../learnings/1789736671963-verify-the-live-pr-branch-head-before-filing-a-fol.md)
 - [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)

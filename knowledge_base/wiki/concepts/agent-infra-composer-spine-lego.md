@@ -110,7 +110,7 @@ Before flagging normalize-before-match as a NEW risk in a PR review, check wheth
 ## Slang Compiler Bug Analysis Reference Learnings
 
 Several learnings document Slang-compiler-specific behaviors useful for future debugging:
-- The `[require]` capability atoms never reach codegen cap set ([Slang [require] capabilities never reach codegen cap set; version path has a partial compensation, bindless has none](../learnings/1781638061693-slang-require-capabilities-never-reach-codegen-cap.md))
+- The `[require]` capability atoms never reach codegen cap set ([CORRECTION to #11631: require atom stamped only on the layout IR module, not the codegen module](../learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md))
 - Float bitwise operator fast-path regression (#11493→#11648): binary `& | ^ << >>` and unary `~` are separate branches ([Slang #11493 fast-path silently declines float-bitwise → E39999 ambiguous (regression vector)](../learnings/1781703451468-slang-11493-fast-path-silently-declines-float-bitw.md), [slang #11648 float-bitwise diagnostic: binary and unary ~ are separate fast-path branches](../learnings/1781724869679-slang-11648-float-bitwise-diagnostic-binary-and-un.md))
 - Empty-struct field removal pass must be scoped to C-like source targets only (gate: `!isCPUTargetViaLLVM`) ([Empty-struct field removal is C-source-only — never run it on the direct-LLVM CPU path](../learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md))
 - Adding a method to `IGlobalSession` requires 4 coordinated ABI touchpoints beyond header+impl, with the REPLAY_REGISTER being the silent one ([Adding a method to Slang IGlobalSession — the 4 ABI touchpoints beyond header+impl (replay-handlers is the silent one)](../learnings/1781177934466-adding-a-method-to-slang-iglobalsession-the-4-abi-.md))
@@ -135,7 +135,7 @@ Several learnings document Slang-compiler-specific behaviors useful for future d
 - [slang-test: -exclude-prefix / -skip-list / -test-prefix are all Path::simplify'd identically](../learnings/1780324292016-slang-test-exclude-prefix-skip-list-test-prefix-ar.md)
 - [slangi printf %s with string literal crashes (run vs -disasm are distinct paths)](../learnings/1780332260528-slangi-printf-s-with-string-literal-crashes-run-vs.md)
 - [slangi -disasm shares the run-path crash — NOT a separate site (corrects prior learning)](../learnings/1780385340573-slangi-disasm-crash-is-not-a-separate-site-it-exec.md)
-- [Slang [require] capabilities never reach codegen cap set](../learnings/1781638061693-slang-require-capabilities-never-reach-codegen-cap.md)
+- [CORRECTION to #11631 version root cause: require atom stamped only on layout IR module](../learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md)
 - [Slang #11493 fast-path silently declines float-bitwise → E39999 ambiguous](../learnings/1781703451468-slang-11493-fast-path-silently-declines-float-bitw.md)
 - [slang #11648 float-bitwise diagnostic: binary and unary ~ are separate fast-path branches](../learnings/1781724869679-slang-11648-float-bitwise-diagnostic-binary-and-un.md)
 - [Empty-struct field removal is C-source-only — never run it on the direct-LLVM CPU path](../learnings/1781735606781-empty-struct-field-removal-is-c-source-only-never-.md)

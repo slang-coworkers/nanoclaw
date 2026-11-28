@@ -3,7 +3,7 @@ title: "workflow-state Lifecycle: Resets, Races, Phantom Blocks, and the 3-Denia
 type: concept
 group: agent-infra
 tags: [workflow-state, critique-gate, state-resets, phantom-blocks, idle-reset, gate-latch, sibling-races, delivery-recipe, opencode-migration]
-source_count: 17
+source_count: 18
 ---
 
 # workflow-state lifecycle: resets, races, phantom blocks, and the 3-denial latch
@@ -56,6 +56,15 @@ is needed per task-turn before delivery gates pass; and a PreToolUse hook denial
 ENTIRE bash command — a `printf >> file && gh pr edit` chain denied by the hook never executed the printf
 either, silently losing the file edit, so check file state after any hook denial, not just the tool
 output ([per-inbound task reset: plan gate re-arms; fresh STAGE call per turn; hook denial voids whole bash chain](../learnings/1795469452971-per-inbound-task-reset-plan-gate-re-arms-fresh-sta.md)).
+The same reset hit a mid-flight chain on #13200 (2026-11-27): a new inbound gave the state a new
+`task_id` with `plan_written`, `critique_stages` and `critique_verdicts` all wiped, a Write was
+refused with "PLAN REQUIRED" after the plan file already existed, and a [Fix Report] send was
+denied with "missing critique stages" although all three stages were approved minutes earlier.
+Recovery is the standard pair — re-Write the plan file via the Write tool (Edit doesn't register),
+and re-run each required stage as a FRESH codex STAGE call in the new task, because `codex-reply`
+continuations inherit stage via the WIPED thread map and record as stage-less rounds that do not
+satisfy the gate; check `.claude/workflow-state.json` (stages + verdicts) before every gated
+send ([chain inbounds reset the task workflow-state — re-register plan and critique stages](../learnings/1795814913149-chain-inbounds-reset-the-task-workflow-state-re-re.md)).
 The zeroing is a per-CONTAINER shared-file race, not a rare accident: the verdict ledger is ONE file for
 ALL concurrent sessions in the container, and sibling slang-fixer sessions' turn boundaries zero it
 (observed 0 bytes repeatedly mid-turn, 2026-11-17), so a session can run all three stages to approval and
@@ -164,7 +173,7 @@ gated delivery ([builtin select/:? tie failures are E39999, and host gates misfi
 — the compiler-side half of that atom, E39999 vs E30442, is on
 [slang codebase specifics](agent-infra-f0909b0-slang-codebase-and-ci-specifics.md)).
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [Per-inbound task reset: plan gate re-arms mid-chain; fresh STAGE call per task-turn; hook denial voids the whole bash chain](../learnings/1795469452971-per-inbound-task-reset-plan-gate-re-arms-fresh-sta.md)
 - [gate burns denials on read-only /pulls reads](../learnings/1794814240187-critique-gate-burns-denials-on-read-only-pulls-api.md)
 - [REQUIREMENTS links must be anchored](../learnings/1794861965038-track-critique-requirements-links-must-be-anchored.md)
@@ -182,3 +191,4 @@ gated delivery ([builtin select/:? tie failures are E39999, and host gates misfi
 - [host gates misfire on stale state — EXPLANATION_COMMENT denied on stale cached heads](../learnings/1795102972618-builtin-select-tie-failures-are-e39999-and-host-ga.md) — fallback: plain message without the marker + report the gate; compiler half (E39999) on slang-codebase page
 - [workflow-state resets every inbound batch — verify the artifact before re-running](../learnings/1795197522332-workflow-state-resets-every-inbound-batch-critique.md) — phantom "gate blocked" misfires on posts that succeeded; check critique_stages per turn; attempt counter ignores misfires.
 - [critique-gate deadlock: idle-reset eats multi-stage records; 3 denials latch](../learnings/1795198795903-critique-gate-deadlock-idle-reset-eats-multi-stage.md) — 10-min idle reset wipes earlier stage records mid-cycle; latched gate refuses even read-only gh/curl; escalate, never hand-edit state.
+- [chain inbounds reset the task workflow-state — re-register plan and critique stages](../learnings/1795814913149-chain-inbounds-reset-the-task-workflow-state-re-re.md) — #13200: new task_id mid-chain wipes plan+stages+verdicts; replies inherit stage via the wiped map, so re-Write + fresh STAGE calls.

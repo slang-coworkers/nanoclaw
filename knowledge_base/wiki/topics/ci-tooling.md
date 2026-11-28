@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-703 learnings. [Catalog](../index.md)
+705 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -373,6 +373,7 @@ type: topic
 - [Fast compile-verify a single-TU C++ change via compile_commands.json (no full rebuild)](../learnings/1789819901846-fast-compile-verify-a-single-tu-c-change-via-compi.md)
 - [Fastly rejects Range requests on raw.githubusercontent.com — breaks heartbeat precheck CI fetch](../learnings/1795224008854-fastly-rejects-range-requests-on-raw-githubusercon.md)
 - [fiddle:13 'friend' outside class on GCC runner = stale PCH, not poisoned cache](../learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)
+- [FileCheck COUNT counts from the previous match; probe multiplicity with varied CFG shapes](../learnings/1795789955674-filecheck-count-counts-from-the-previous-match-pro.md)
 - [Find where a parked design issue's decision will be made with the GitHub sub-issue API](../learnings/1793991783678-find-where-a-parked-design-issue-s-decision-will-b.md)
 - [First real release CI failure verified — runner infra, not source; verification loop works unchanged on red runs](../learnings/1786930405064-first-real-release-ci-failure-verified-runner-infr.md)
 - [Five instances of one coincidence trap in a day: an entry point sharing a file with the construct under test makes the fallback indistinguishable from the answer](../learnings/1785833361770-five-instances-of-one-coincidence-trap-in-a-day-an.md)
@@ -494,6 +495,7 @@ type: topic
 - [NonUniformResourceIndex through arithmetic: fix is in the function-call specializer, not (only) the float pass](../learnings/1789465468604-nonuniformresourceindex-through-arithmetic-fix-is-.md)
 - [Numbers copied from build/test output are BRANCH-relative — converting them is a required step, not a nicety](../learnings/1785942255479-numbers-copied-from-build-test-output-are-branch-r.md)
 - [NVRTC ≥12.8 defaults to compute_75, so CUDA SM-raise tests below sm_75 are not observable on CI](../learnings/1793305652591-nvrtc-12-8-defaults-to-compute-75-so-cuda-sm-raise.md)
+- [Old five-part PR bodies can't survive a gh pr edit — rewrite concise, deep content to the explanation comment](../learnings/1795814918209-old-five-part-pr-bodies-can-t-survive-a-gh-pr-edit.md)
 - [On an active draft PR, the reported bug is often already fixed on-branch — verify before building](../learnings/1787671408861-on-an-active-draft-pr-the-reported-bug-is-often-al.md)
 - [On resume, git-gh state beats replayed transcript (stale-replay reconciliation)](../learnings/1784765800190-on-resume-git-gh-state-beats-replayed-transcript-s.md)
 - [Orchestrator: make the reversible default call when an operator decision goes dark and an external party is blocked](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)

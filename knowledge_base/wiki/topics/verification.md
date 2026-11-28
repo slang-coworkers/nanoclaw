@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-640 learnings. [Catalog](../index.md)
+644 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -352,6 +352,7 @@ type: topic
 - [Dedup/root-cause classification without a repro is provisional — a maintainer's repro can reverse a confident "not a dup"](../learnings/1788538710735-dedup-root-cause-classification-without-a-repro-is.md)
 - [Detection and severity are separately falsifiable — verifying the mechanism tells you nothing about placement](../learnings/1786454003222-detection-and-severity-are-separately-falsifiable-.md)
 - [Devin can false-positive on error-count-gated diagnostics — verify against the baseline-capture site](../learnings/1789545159389-devin-can-false-positive-on-error-count-gated-diag.md)
+- [Devin title-only bug cards on PR #13202: falsified by direct emit probe; refetch cadence confirmed](../learnings/1795813153588-devin-title-only-bug-cards-on-pr-13202-falsified-b.md)
 - [Distinct completed_at stamps CANNOT separate supersede-cancel from a per-job timeout-minutes cancel](../learnings/1786371914818-distinct-completed-at-stamps-cannot-separate-super.md)
 - [Don't apply the regression label from a code-history hypothesis — runtime-bisect first](../learnings/1787635407452-don-t-apply-the-regression-label-from-a-code-histo.md)
 - [Don't COMPUTE a correction for an untrustworthy number — re-measure it; a derived offset carries the confidence of having checked while pointing the wrong way](../learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md)
@@ -442,6 +443,7 @@ type: topic
 - [Non-terminal is the cell a health claim rounds away — not "the smallest bucket"](../learnings/1786264504844-non-terminal-is-the-cell-a-health-claim-rounds-awa.md)
 - [Non-vacuous assertions ≠ assertions that pin the claim — ask which test fails if the policy is flipped](../learnings/1785896592206-non-vacuous-assertions-assertions-that-pin-the-cla.md)
 - [OKF migration of always-injected dossier: verify distillation completeness, not just thinness](../learnings/1787038292328-okf-migration-of-always-injected-dossier-verify-di.md)
+- [okf-synthesis #2039 scanner false positives — merged fix recipe (2026-11-27)](../learnings/1795802602420-okf-synthesis-2039-scanner-false-positives-merged-.md)
 - [okf-synthesis DOSSIER heuristic false-positives on groups using memory/ as operational storage](../learnings/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md)
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)
 - [okf_synth DANGLING-LINK false positive on MSL attribute shorthand with a slash](../learnings/1794031636307-okf-synth-dangling-link-false-positive-on-msl-attr.md)
@@ -570,6 +572,7 @@ type: topic
 - [VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue comments, repeatably 403s on a PEER coworker's — creator-bound, not transient, not a flat token limit](../learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md)
 - [Verified is not durable — a control proves the instrument, not the shelf life](../learnings/1785979028311-verified-is-not-durable-a-control-proves-the-instr.md)
 - [Verified vs unfalsified are different states - and a position FAIL on one phrasing is not a FAIL on the rule](../learnings/1785965205844-verified-vs-unfalsified-are-different-states-and-a.md)
+- [Verify "no attachment links" claims by fetching the issue body yourself](../learnings/1795800415160-verify-no-attachment-links-claims-by-fetching-the-.md)
 - [Verify "PR #N exists / is verified" claims at the GitHub source before acting — a nudge premise is not state (slang #12757/#12762)](../learnings/1788453754464-verify-pr-n-exists-is-verified-claims-at-the-githu.md)
 - [Verify "separate findings" on the SAME toolchain as the PR head — stale local checkout can produce phantom bugs](../learnings/1788483703122-verify-separate-findings-on-the-same-toolchain-as-.md)
 - [Verify @-mention identity against PR/commit author before posting to GitHub](../learnings/1783355490728-verify-mention-identity-against-pr-commit-author-b.md)
@@ -591,6 +594,7 @@ type: topic
 - [Verify an empty API result with a positive control before reporting it as a finding](../learnings/1786090987541-verify-an-empty-api-result-with-a-positive-control.md)
 - [Verify ancestor before trusting a keep-ours submodule-pin merge conflict resolution](../learnings/1789529223205-verify-ancestor-before-trusting-a-keep-ours-submod.md)
 - [Verify assignee live before an orchestrator GO that rests on "unassigned"](../learnings/1792030832310-verify-assignee-live-before-an-orchestrator-go-tha.md)
+- [Verify attachments on the LIVE issue body before claiming they're missing](../learnings/1795800507200-verify-attachments-on-the-live-issue-body-before-c.md)
 - [Verify causation at the failure site — a verified correlated fact is not a verified cause](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md)
 - [Verify claimed artifacts from a CLEAN self-issued call, never from same-turn corrupted tool output](../learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md)
 - [Verify commit-presence per-sha with the contents API, not git merge-base](../learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md)

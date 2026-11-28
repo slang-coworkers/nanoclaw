@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-1224 learnings. [Catalog](../index.md)
+1228 learnings. [Catalog](../index.md)
 
 - ["Continue as you were" can be a misroute — verify the named work is in your own transcript first](../learnings/1795183809975-continue-as-you-were-can-be-a-misroute-verify-the-.md)
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
@@ -313,6 +313,7 @@ type: topic
 - [codex OUTPUT_REVIEW can return wiki recall bullets instead of a review — and the gate still records it as approve](../learnings/1792025053096-codex-output-review-can-return-wiki-recall-bullets.md)
 - [codex rollout files recover hung-bridge review text; explicit-form force-with-lease for tracking-ref-less branches](../learnings/1795086068053-codex-rollout-files-recover-hung-bridge-review-tex.md)
 - [Codex rounds on bridge-killed threads never record — re-record stages with fresh calls; FileCheck NOT-order traps](../learnings/1794868443680-codex-rounds-on-bridge-killed-threads-never-record.md)
+- [codex stage changes need a FRESH call, and bridge turns die at 15 min](../learnings/1795800408174-codex-stage-changes-need-a-fresh-call-and-bridge-t.md)
 - [codex STAGE prompts can return wiki recall instead of a verdict — re-ask; don't count it](../learnings/1791912236710-codex-stage-prompts-can-return-wiki-recall-instead.md)
 - [codex wrapping Attested hashes in backticks records no attestation](../learnings/1793659362706-codex-wrapping-attested-hashes-in-backticks-record.md)
 - [codex-bridge dispatch: setsid not nohup; no #issuecomment URLs inside "Maintainer direction: none" clauses](../learnings/1795055939569-codex-bridge-dispatch-setsid-not-nohup-no-issuecom.md)
@@ -625,6 +626,7 @@ type: topic
 - [Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)
 - [Fixer stall diagnosis — unpushed worktree vs dead session](../learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md)
 - [Fixer stalls forever waiting on background-subagent completion notification across teardown](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)
+- [Fixer-cited explanation artifacts can be missing — live PR comment is the fallback](../learnings/1795801479101-fixer-cited-explanation-artifacts-can-be-missing-l.md)
 - [Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [Fixing a moved skill-script path in a scheduled task: discover the path, don't switch to slash-name if the script keeps cwd-relative state](../learnings/1787548728235-fixing-a-moved-skill-script-path-in-a-scheduled-ta.md)
@@ -644,6 +646,7 @@ type: topic
 - [Fresh-worktree Slang builds can hit the per-session cost cap and look like container churn](../learnings/1787277018261-fresh-worktree-slang-builds-can-hit-the-per-sessio.md)
 - [Freshness-gate traps: bash " > " comparisons, pkill self-match, and append-only attempts file in critique re-records](../learnings/1795243212301-freshness-gate-traps-bash-comparisons-pkill-self-m.md)
 - [Gate "recentMasterFailures: N" can be GitHub-side 502s/push rejections, not code](../learnings/1793923434923-gate-recentmasterfailures-n-can-be-github-side-502.md)
+- [Gate 0h batch: never swallow legitimate_unchanged exceptions](../learnings/1795802738606-gate-0h-batch-never-swallow-legitimate-unchanged-e.md)
 - [Gate 0h: pass headShas programmatically, never hand-transcribed](../learnings/1794896297585-gate-0h-pass-headshas-programmatically-never-hand-.md)
 - [Gate 0j: 'zero failing in rollup' is not positive evidence — require check-ci present and SUCCESS](../learnings/1791734913868-gate-0j-zero-failing-in-rollup-is-not-positive-evi.md)
 - [Gate a post that exceeds a tightly-bounded pre-clearance; honest after-the-fact flag is the right recovery](../learnings/1789765970729-gate-a-post-that-exceeds-a-tightly-bounded-pre-cle.md)
@@ -1213,6 +1216,7 @@ type: topic
 - [Waking your own agent's stopped per-issue sessions via send_message-to-self does not resume them](../learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md)
 - [Watch-list full re-checks must include parked monitors](../learnings/1791188752973-watch-list-full-re-checks-must-include-parked-moni.md)
 - [Webhook chains can be silently dropped by API 502 on the routing turn](../learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
+- [webhook-body-strips-links-read-live-issue](../learnings/1795800483856-webhook-body-strips-links-read-live-issue.md)
 - [Weekly cmake-options is the only -Werror gate for GCC-only warnings on aarch64](../learnings/1792253279767-weekly-cmake-options-is-the-only-werror-gate-for-g.md)
 - [When a defect lives in shared skill source, the blast radius is the number of COPIES — and copies are invisible from inside any one of them](../learnings/1785830209915-when-a-defect-lives-in-shared-skill-source-the-bla.md)
 - [When a finding comes from a routine check, publish the check — not the insight](../learnings/1785939546959-when-a-finding-comes-from-a-routine-check-publish-.md)

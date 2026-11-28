@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 46
+source_count: 47
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -50,7 +50,7 @@ On #10988 the strict match produced four near-duplicate 5-bullets. After any edi
 ## Webhook verification
 
 `[WEBHOOK: ...]` payloads carry no HMAC or `X-Hub-Signature`. On every `pr_mention` / `issue_comment` ([verifying payloads](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)):
-1. **Existence.** `gh api repos/{repo}/issues/comments/{id}` returns 200 with matching body, author and `created_at`; on 404, don't act. Read the mention from this GitHub body: a `pr_mention` payload `body` has the leading `@nv-slang-bot:` stripped (slang#14259, 2026-11-09: comment 6736427894 began `@nv-slang-bot:` on GitHub but "Actually, let's try…" in the payload, so Main wrongly withheld `<github-post-authorized />`). Some `pr_mention` comments really carry no mention (6654933375), so the webhook kind settles nothing ([body strips the mention](../learnings/1794216024436-pr-mention-webhook-body-strips-the-leading-nv-slan.md)).
+1. **Existence.** `gh api repos/{repo}/issues/comments/{id}` returns 200 with matching body, author and `created_at`; on 404, don't act. Read the mention from this GitHub body: a `pr_mention` payload `body` has the leading `@nv-slang-bot:` stripped (slang#14259, 2026-11-09: comment 6736427894 began `@nv-slang-bot:` on GitHub but "Actually, let's try…" in the payload, so Main wrongly withheld `<github-post-authorized />`). Some `pr_mention` comments really carry no mention (6654933375), so the webhook kind settles nothing ([body strips the mention](../learnings/1794216024436-pr-mention-webhook-body-strips-the-leading-nv-slan.md)). The relay is lossy for `issue_opened` bodies too, in a subtler way: on slang#14745 (2026-11-27) the payload carried the reporter's prose ("The attached `conditional_typeflow_fix.patch` contains…") but NO URLs, while the live issue body contained two working gist links — so never judge "attachment/link missing" from the relayed body; when a task's correctness depends on what an issue/PR body links, read the live body via `gh api .../issues/<n> --jq .body` and grep for URLs ([webhook body strips links — read the live issue](../learnings/1795800483856-webhook-body-strips-links-read-live-issue.md)).
 2. **Self-trigger.** A `nv-slang-bot[bot]` commenter is an echo: ignore.
 3. **Already responded.** A bot comment newer than the target means redelivery: no-op.
 
@@ -133,7 +133,7 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 
 "Ours" (route to a fixer) versus author-owned (re-confirm silently) is decided by `author`. `nv-slang-bot[bot]`, usually on `fix/issue-*`, is ours; a human author is theirs even with a `[codex]` title or `codex/*` branch. PR #11850 (`[codex] Add hash-set pool hysteresis`, red `check-formatting`) belonged to a maintainer: no route, no "nudge the driver" line ([ownership by author](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)).
 
-**Source learnings (46):**
+**Source learnings (47):**
 - [Step-9 edit-if-self overwrites a peer's comment](../learnings/1792595624272-step-9-edit-if-last-poster-is-self-can-overwrite-a.md) — #13817; `userContentEdits`.
 - [Don't link other repos' issues/PRs](../learnings/1792634844580-github-posts-don-t-link-other-repos-issues-prs-unl.md) — mimalloc#1075 re-pinged.
 - [Triager and fixer both post 5-bullets](../learnings/1793323955473-triager-and-fixer-can-both-post-status-5-bullets-o.md) — #14063; check `.[-1]`.
@@ -180,3 +180,4 @@ An App push changing `.github/workflows/*.yml` is rejected server-side ("refusin
 - [Closing a PR: temp-file and silent-drop gotchas](../learnings/1794856327780-closing-a-pr-with-a-comment-temp-file-and-silent-d.md) — #13966; POST the comment separately.
 - [Self-echo issue_opened after a filing batch: number-grep false-empties](../learnings/1794917671609-self-echo-issue-opened-after-a-filing-batch-number.md) — match the batch page by title, not number, in the echo window
 - [Triage dispatch for an issue number from our own filing batch = misroute, stand down](../learnings/1794915914086-triage-dispatch-for-an-issue-number-from-our-own-r.md) — #14545: batch phrasing in the dispatch is a stand-down clue; remediate (stand-down → delete own comment → state pages → disclose).
+- [webhook body strips links — read the live issue](../learnings/1795800483856-webhook-body-strips-links-read-live-issue.md) — #14745: `issue_opened` relay kept the prose but dropped gist URLs; triager asked for a re-post that was never needed.
