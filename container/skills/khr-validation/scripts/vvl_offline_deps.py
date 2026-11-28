@@ -119,12 +119,13 @@ def _check_target(native_args: list[str]) -> None:
         )
 
 
-def _preflight(khrdeps, repo, root, native_args, providers, allow, cache) -> None:
-    """Every pin native will check out must be cached; else write pin-request.json.
+def _preflight(khrdeps, repo, root, native_args, providers, allow, cache, job) -> None:
+    """Every pin native will acquire must be cached; else write pin-request.json.
 
-    Mirrors native selection: the same known_good.json (``--known_good_dir``), the
-    platform/arch/ci_only skips (khr-deps ``pins``) and ``--optional``. Unreviewed
-    entries are left to fail in native ``Checkout`` with their own message.
+    Mirrors native selection in ``main``: the same known_good.json
+    (``--known_good_dir``); the platform/arch/ci_only skips (khr-deps ``pins``);
+    ``api``; ``--skip-existing-install``; ``--optional``; and release artifacts only
+    when building. Unreviewed entries are left to fail in native ``Checkout``.
     """
     offline_git.deps_modules()
     import pins
@@ -134,10 +135,13 @@ def _preflight(khrdeps, repo, root, native_args, providers, allow, cache) -> Non
     opts.add_argument(
         "--optional", type=lambda a: set(a.lower().split(",")), default=set()
     )
+    opts.add_argument("--no-build", dest="do_build", action="store_false", default=True)
+    opts.add_argument("--skip-existing-install", action="store_true")
+    opts.add_argument("--api", default="vulkan")
     try:
         o, _ = opts.parse_known_args(native_args)
     except SystemExit:
-        raise OfflineError("could not read --known_good_dir/--optional") from None
+        raise OfflineError("could not read the native selection options") from None
     kg_dir = (
         Path(os.path.abspath(o.known_good_dir))
         if o.known_good_dir
@@ -146,25 +150,34 @@ def _preflight(khrdeps, repo, root, native_args, providers, allow, cache) -> Non
     kg = kg_dir / "known_good.json"
     if not kg.is_file():
         return  # native reports its own error
-    raw = kg.read_bytes()
     try:
-        skipped = {
-            str(r.get("name"))
-            for r in json.loads(raw).get("repos", [])
-            if set(r.get("optional", [])) & o.optional
-        }
-        entries = pins.parse_known_good(raw, allow)
-    except (ValueError, AttributeError, khrdeps.PinError):
+        repos = json.loads(kg.read_bytes()).get("repos", [])
+        selected = []
+        for r in repos:
+            if r.get("api") is not None and r["api"] != o.api:
+                continue
+            install = r.get("install_dir")
+            if o.skip_existing_install and install and (root / install).is_dir():
+                continue
+            if set(r.get("optional", [])) & o.optional:
+                continue
+            if r.get("release") is not None and not o.do_build:
+                continue
+            selected.append(r)
+        entries = pins.parse_known_good(json.dumps({"repos": selected}).encode(), allow)
+    except (ValueError, AttributeError, TypeError, khrdeps.PinError):
         return
     missing = []
     for e in entries:
-        if e["kind"] == "unavailable" or e["name"] in skipped or e["name"] in providers:
+        if e["kind"] == "unavailable" or (
+            e["kind"] == "git" and e["name"] in providers
+        ):
             continue
         if not khrdeps.pin_present(cache, e) and not (
             e["kind"] == "git" and _resolves(khrdeps, cache, e)
         ):
             missing.append(e)
-    req = offline_git.write_pin_request(root, repo.name, missing)
+    req = offline_git.write_pin_request(root, job, missing)
     if req:
         names = ", ".join(e["name"] for e in missing)
         raise OfflineError(
@@ -186,6 +199,8 @@ def run(
     providers: dict[str, Path] | None = None,
     allow: dict[str, Any] | None = None,
     cache_root: Path | None = None,
+    *,
+    job: str,
 ) -> int:
     sys.dont_write_bytecode = True  # no __pycache__ in the job repository
     khrdeps = _deps_modules()
@@ -223,7 +238,7 @@ def run(
                 f"--provider {name} overlaps --dir; use a separate --dir"
             )
 
-    _preflight(khrdeps, repo, root, native_args, providers, allow, cache)
+    _preflight(khrdeps, repo, root, native_args, providers, allow, cache, job)
 
     record: list[dict[str, Any]] = []
     used: set[str] = set()
@@ -366,6 +381,9 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("repo", type=Path, help="checkout that owns scripts/update_deps.py")
     ap.add_argument("--provider", action="append", default=[], metavar="NAME=PATH")
+    ap.add_argument(
+        "--job", type=Path, required=True, help="job root; names the pin request"
+    )
     if native_args:
         args = ap.parse_args(argv)
     else:
@@ -380,7 +398,7 @@ def main(argv: list[str] | None = None) -> int:
     if "--dir" not in " ".join(native_args).replace("=", " ").split():
         ap.error("pass the native --dir, e.g. REPO --dir external --config debug")
     try:
-        return run(args.repo, native_args, providers)
+        return run(args.repo, native_args, providers, job=args.job.name)
     except OfflineError as exc:
         print(f"vvl_offline_deps: {exc}", file=sys.stderr)
         return 2

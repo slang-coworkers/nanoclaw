@@ -156,6 +156,7 @@ class VvlOfflineDeps(unittest.TestCase):
             providers,
             self.allow,
             self.cache,
+            job="job-1",
         )
 
     def test_pinned_baseline_materializes_exact_commits_offline(self) -> None:
@@ -222,7 +223,12 @@ class VvlOfflineDeps(unittest.TestCase):
         os.chdir(self.tmp)
         try:
             code = vod.run(
-                self.vvl, ["--dir", "external"], None, self.allow, self.cache
+                self.vvl,
+                ["--dir", "external"],
+                None,
+                self.allow,
+                self.cache,
+                job="job-1",
             )
         finally:
             os.chdir(cwd)
@@ -233,7 +239,9 @@ class VvlOfflineDeps(unittest.TestCase):
     def test_last_dir_wins_like_native_argparse(self) -> None:
         other = self.tmp / "other"
         args = ["--dir", str(other), "--dir", str(self.ext)]
-        self.assertEqual(vod.run(self.vvl, args, None, self.allow, self.cache), 0)
+        self.assertEqual(
+            vod.run(self.vvl, args, None, self.allow, self.cache, job="job-1"), 0
+        )
         self.assertTrue((self.ext / vod.RECORD).is_file())
         self.assertFalse(other.exists())
 
@@ -317,6 +325,38 @@ class VvlOfflineDeps(unittest.TestCase):
         self.assertFalse((self.ext / "pin-request.json").exists())
         with self.assertRaisesRegex(vod.OfflineError, "not in the shared cache: slang"):
             self.run_adapter()
+
+    def test_preflight_follows_native_selection(self) -> None:
+        linux = SLANG_URL.format(release="2026.1.0", system="linux", arch="x86_64")
+        sha = self.allow["archives"][self.slang_url]
+        self.allow["archives"][linux] = sha
+        (self.cache / "blobs" / sha).unlink()
+        # native acquires release artifacts only when building
+        self.assertEqual(self.run_adapter("--no-build"), 0)
+        self.assertFalse((self.ext / "pin-request.json").exists())
+        # an entry for another api is never checked out
+        self.known_good(
+            [
+                {
+                    "name": "SPIRV-Headers",
+                    "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+                    "sub_dir": "SPIRV-Headers",
+                    "commit": "f" * 40,
+                    "api": "vulkansc",
+                },
+            ]
+        )
+        shutil.rmtree(self.ext)
+        self.assertEqual(self.run_adapter(), 0)
+        self.assertFalse((self.ext / "pin-request.json").exists())
+
+    def test_pin_request_names_the_job(self) -> None:
+        shutil.rmtree(khrdeps.mirror_path(self.cache, "KhronosGroup/SPIRV-Headers"))
+        with self.assertRaises(vod.OfflineError):
+            self.run_adapter()
+        self.assertEqual(
+            json.loads((self.ext / "pin-request.json").read_text())["job"], "job-1"
+        )
 
     def test_unreviewed_repository_is_refused(self) -> None:
         self.known_good(
@@ -443,7 +483,14 @@ class VvlOfflineDeps(unittest.TestCase):
         make_repo(job, {"include/vulkan.h": "job change\n"})
         args = ["--dir", str(job / "external")]
         with self.assertRaisesRegex(vod.OfflineError, "overlaps --dir"):
-            vod.run(self.vvl, args, {"Vulkan-Headers": job}, self.allow, self.cache)
+            vod.run(
+                self.vvl,
+                args,
+                {"Vulkan-Headers": job},
+                self.allow,
+                self.cache,
+                job="job-1",
+            )
         self.assertFalse((job / "external").exists())
 
     def test_repository_itself_may_be_a_provider_with_a_separate_dir(self) -> None:
@@ -461,7 +508,14 @@ class VvlOfflineDeps(unittest.TestCase):
 
     def test_dir_containing_repository_is_refused(self) -> None:
         with self.assertRaisesRegex(vod.OfflineError, "contains the repository"):
-            vod.run(self.vvl, ["--dir", str(self.tmp)], None, self.allow, self.cache)
+            vod.run(
+                self.vvl,
+                ["--dir", str(self.tmp)],
+                None,
+                self.allow,
+                self.cache,
+                job="job-1",
+            )
         self.assertTrue((self.vvl / "scripts" / "update_deps.py").is_file())
 
     def test_artifact_copy_is_streamed(self) -> None:
@@ -521,16 +575,19 @@ class VvlOfflineDeps(unittest.TestCase):
                         "--no-build",
                         "--provider",
                         f"A={self.tmp}",
+                        "--job",
+                        "/workspace/agent/jobs/job-1",
                     ]
                 ),
                 0,
             )
         self.assertEqual(run.call_args.args[1], ["--dir", "x", "--no-build"])
         self.assertEqual(run.call_args.args[2], {"A": self.tmp})
+        self.assertEqual(run.call_args.kwargs["job"], "job-1")
 
     def test_cli_requires_native_dir(self) -> None:
         with self.assertRaises(SystemExit):
-            vod.main([str(self.vvl)])
+            vod.main([str(self.vvl), "--job", "j"])
 
 
 class KnownGoodReleasePins(unittest.TestCase):

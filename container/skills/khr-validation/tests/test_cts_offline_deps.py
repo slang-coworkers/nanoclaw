@@ -172,7 +172,9 @@ class CtsOfflineDeps(unittest.TestCase):
             make_repo(self.cts, files)
 
     def run_adapter(self, providers: dict[str, Path] | None = None) -> int:
-        return cod.run(self.cts, self.deps, providers, self.allow, self.cache)
+        return cod.run(
+            self.cts, self.deps, providers, self.allow, self.cache, job="job-1"
+        )
 
     def test_native_layout_from_cache_without_executing_fetch_sources(self) -> None:
         self.assertEqual(self.run_adapter(), 0)
@@ -243,7 +245,7 @@ class CtsOfflineDeps(unittest.TestCase):
         with self.assertRaisesRegex(cod.OfflineError, "send it to khr-deps"):
             self.run_adapter()
         req = json.loads((self.deps / "pin-request.json").read_text())
-        self.assertEqual(req["job"], "cts")
+        self.assertEqual(req["job"], "job-1")
         self.assertEqual(
             req["pins"],
             [
@@ -303,12 +305,66 @@ class CtsOfflineDeps(unittest.TestCase):
         (self.cts / "external/glslang/src/kept.h").write_text("tracked\n")
         sh(self.cts, "git", "add", "-f", "external/glslang/src/kept.h")
         sh(self.cts, "git", "commit", "-qm", "track")
-        with self.assertRaisesRegex(cod.OfflineError, "tracked files"):
+        with self.assertRaisesRegex(cod.OfflineError, "overlaps tracked"):
             self.run_adapter()
         self.assertEqual(
             (self.cts / "external/glslang/src/kept.h").read_text(), "tracked\n"
         )
         self.assertFalse((self.cts / "external/zlib/src").exists())
+
+    def test_file_removed_from_index_but_in_head_is_still_protected(self) -> None:
+        (self.cts / "external/glslang/src").mkdir(parents=True)
+        (self.cts / "external/glslang/src/kept.h").write_text("tracked\n")
+        sh(self.cts, "git", "add", "-f", "external/glslang/src/kept.h")
+        sh(self.cts, "git", "commit", "-qm", "track")
+        sh(self.cts, "git", "rm", "-q", "--cached", "external/glslang/src/kept.h")
+        with self.assertRaisesRegex(cod.OfflineError, "overlaps tracked"):
+            self.run_adapter()
+        self.assertTrue((self.cts / "external/glslang/src/kept.h").exists())
+
+    def test_tracked_gitlink_ancestor_is_protected(self) -> None:
+        sub = self.tmp / "sub"
+        sub_head = make_repo(sub, {"a": "b"})
+        # a submodule at external/glslang replaces the tracked directory there
+        sh(self.cts, "git", "rm", "-q", "external/glslang/CMakeLists.txt")
+        sh(
+            self.cts,
+            "git",
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            f"160000,{sub_head},external/glslang",
+        )
+        sh(self.cts, "git", "commit", "-qm", "gitlink")
+        with self.assertRaisesRegex(
+            cod.OfflineError, "overlaps tracked external/glslang"
+        ):
+            self.run_adapter()
+
+    def test_provider_with_git_filter_is_refused_without_running_it(self) -> None:
+        job = self.tmp / "job-glslang"
+        make_repo(
+            job, {"glslang.h": "job change\n", ".gitattributes": "*.h filter=x\n"}
+        )
+        marker = self.tmp / "filter-ran"
+        sh(job, "git", "config", "filter.x.clean", f"sh -c 'touch {marker}; cat'")
+        (job / "glslang.h").touch()
+        with self.assertRaisesRegex(cod.OfflineError, "git filters are unsupported"):
+            self.run_adapter({"glslang": job})
+        self.assertFalse(marker.exists())
+
+    def test_provider_inside_dependency_root_is_refused(self) -> None:
+        job = self.deps / ".extract-zlib"
+        head = make_repo(job, {"glslang.h": "job\n"})
+        with self.assertRaisesRegex(cod.OfflineError, "overlaps --dependency-root"):
+            self.run_adapter({"glslang": job})
+        self.assertEqual(sh(job, "git", "rev-parse", "HEAD"), head)
+
+    def test_cli_requires_job(self) -> None:
+        with self.assertRaises(SystemExit):
+            cod.main(
+                ["--repository", str(self.cts), "--dependency-root", str(self.deps)]
+            )
 
     def test_symlinked_external_dir_is_refused(self) -> None:
         outside = self.tmp / "outside"
@@ -384,7 +440,9 @@ class CtsOfflineDeps(unittest.TestCase):
 
     def test_dependency_root_inside_repository_is_refused(self) -> None:
         with self.assertRaisesRegex(cod.OfflineError, "overlaps the repository"):
-            cod.run(self.cts, self.cts / "deps", None, self.allow, self.cache)
+            cod.run(
+                self.cts, self.cts / "deps", None, self.allow, self.cache, job="job-1"
+            )
 
 
 class CtsPins(unittest.TestCase):

@@ -31,6 +31,7 @@ class GoodRepo:
         self.is_release = self.release is not None
         self.url_format_map = entry.get("url_format_map") or {}
         self.optional = set(entry.get("optional", []))
+        self.api = entry.get("api")
         top = os.path.abspath(args.dir)
         self.repo_dir = os.path.join(top, self.sub_dir)
         self.build_dir = (
@@ -95,15 +96,20 @@ def main():
     ap.add_argument("--optional", type=lambda s: set(s.split(",")), default=set())
     ap.add_argument("--no-build", dest="do_build", action="store_false")
     ap.add_argument("--arch", type=str.lower, default="64")
+    ap.add_argument("--api", default="vulkan")
     args = ap.parse_args()
     with open(KNOWN_GOOD) as f:
         repos = [GoodRepo(e, args) for e in json.load(f)["repos"]]
     os.makedirs(args.dir, exist_ok=True)
     os.chdir(args.dir)
     for repo in repos:
+        if repo.api is not None and repo.api != args.api:
+            continue
         if repo.IsOptional(args.optional):
             continue
         if repo.is_release:
+            if not args.do_build:
+                continue
             repo.AcquireReleaseArtifacts()
         else:
             repo.Checkout()

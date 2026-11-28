@@ -86,11 +86,26 @@ def _target(repo: Path, subdir: str, leaf: str) -> Path:
     return path
 
 
-def _untracked(khrdeps, repo: Path, path: Path) -> None:
-    rel = str(path.relative_to(repo))
+def _tracked(khrdeps, repo: Path) -> list[Path]:
+    """Everything under ``external/`` that the index or ``HEAD`` tracks (incl. gitlinks)."""
     env = offline_git.git_env(khrdeps, [repo])
-    if offline_git.git(env, "-C", str(repo), "ls-files", "--", rel):
-        raise OfflineError(f"{rel} has tracked files; refusing to replace it")
+    out: set[str] = set()
+    for args in (
+        ("ls-files", "-z", "--", "external"),
+        ("ls-tree", "-r", "-z", "--name-only", "HEAD", "--", "external"),
+    ):
+        listing = offline_git.git(env, "-C", str(repo), *args)
+        out.update(x for x in listing.split("\0") if x)
+    return [repo / x for x in sorted(out)]
+
+
+def _untracked(tracked: list[Path], repo: Path, path: Path) -> None:
+    for t in tracked:
+        if offline_git.overlaps(t, path):
+            raise OfflineError(
+                f"{path.relative_to(repo)} overlaps tracked {t.relative_to(repo)}; "
+                "refusing to replace it"
+            )
 
 
 def _tar_members(archive: tarfile.TarFile) -> list[tarfile.TarInfo]:
@@ -150,6 +165,8 @@ def run(
     providers: dict[str, Path] | None = None,
     allow: dict[str, Any] | None = None,
     cache_root: Path | None = None,
+    *,
+    job: str,
 ) -> int:
     sys.dont_write_bytecode = True
     khrdeps = offline_git.deps_modules()
@@ -167,6 +184,10 @@ def run(
         if path.is_relative_to(repo / "external"):
             raise OfflineError(
                 f"--provider {name} is inside external/; use a separate checkout"
+            )
+        if offline_git.overlaps(path, work.resolve()):
+            raise OfflineError(
+                f"--provider {name} overlaps --dependency-root; use a separate dependency root"
             )
 
     entries = pins.parse_cts(_declaration(khrdeps, repo), allow)
@@ -205,17 +226,18 @@ def run(
                 f"{sub} ({e['url']}) is not in the shared cache; request it via khr-deps"
             )
             missing.append(e)
-    req = offline_git.write_pin_request(work, repo.name, missing)
+    req = offline_git.write_pin_request(work, job, missing)
     if problems:
         hint = f"\n  wrote {req}: send it to khr-deps, then rerun" if req else ""
         raise OfflineError(
             "cannot prepare CTS sources offline:\n  " + "\n  ".join(problems) + hint
         )
 
+    tracked = _tracked(khrdeps, repo)
     for e, _, _ in plan:
-        _untracked(khrdeps, repo, _target(repo, e["subdir"], "src"))
+        _untracked(tracked, repo, _target(repo, e["subdir"], "src"))
         if e.get("ctsKind") == "archive":
-            _untracked(khrdeps, repo, _target(repo, e["subdir"], "packages"))
+            _untracked(tracked, repo, _target(repo, e["subdir"], "packages"))
 
     work.mkdir(parents=True, exist_ok=True)
     record: list[dict[str, Any]] = []
@@ -299,6 +321,9 @@ def run(
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument(
+        "--job", type=Path, required=True, help="job root; names the pin request"
+    )
     ap.add_argument("--repository", type=Path, required=True)
     ap.add_argument("--dependency-root", type=Path, required=True)
     ap.add_argument("--provider", action="append", default=[], metavar="DIR=PATH")
@@ -310,7 +335,7 @@ def main(argv: list[str] | None = None) -> int:
             ap.error("--provider takes distinct DIR=PATH entries")
         providers[name] = Path(path)
     try:
-        return run(args.repository, args.dependency_root, providers)
+        return run(args.repository, args.dependency_root, providers, job=args.job.name)
     except OfflineError as exc:
         print(f"cts_offline_deps: {exc}", file=sys.stderr)
         return 2

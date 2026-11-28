@@ -192,8 +192,37 @@ def write_pin_request(work: Path, job: str, missing: list[dict]) -> Path | None:
 
 
 def provider_head(khrdeps, source: Path, name: str) -> str:
-    """HEAD of a clean, committed job repository used in integration mode."""
+    """HEAD of a clean, committed job repository used in integration mode.
+
+    ``git status`` runs any clean/process filter the repository configures
+    (hooksPath and fsmonitor don't cover filters), so a provider with one is
+    refused before status runs.
+    """
     env = git_env(khrdeps, [source])
-    if git(env, "-C", str(source), "status", "--porcelain", "--untracked-files=all"):
+    env["GIT_OPTIONAL_LOCKS"] = "0"
+    r = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(source),
+            "config",
+            "--get-regexp",
+            r"^filter\..*\.(clean|process|smudge)$",
+        ],
+        capture_output=True,
+        env=env,
+        check=False,
+    )
+    if r.returncode != 1:  # 1 = no such configuration; anything else fails closed
+        raise OfflineError(f"{name}: provider git filters are unsupported")
+    if git(
+        env,
+        "-C",
+        str(source),
+        "status",
+        "--porcelain",
+        "--untracked-files=all",
+        "--ignore-submodules=all",
+    ):
         raise OfflineError(f"commit {name} edits before integration")
-    return git(env, "-C", str(source), "rev-parse", "HEAD")
+    return git(env, "-C", str(source), "rev-parse", "--verify", "HEAD^{commit}")
