@@ -121,8 +121,11 @@ def select_target_branch(cache: Path, policy: str) -> str:
         return "main"
     if _is_ancestor(cache, main, master):
         return "master"
-    t_main = int(git(cache, "log", "-1", "--format=%ct", main))
-    t_master = int(git(cache, "log", "-1", "--format=%ct", master))
+    # --no-show-signature: a repository's log.showSignature would run gpg.program.
+    t_main = int(git(cache, "log", "--no-show-signature", "-1", "--format=%ct", main))
+    t_master = int(
+        git(cache, "log", "--no-show-signature", "-1", "--format=%ct", master)
+    )
     return "master" if t_master > t_main else "main"
 
 

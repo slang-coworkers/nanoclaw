@@ -69,6 +69,45 @@ class JobGitEnv(unittest.TestCase):
             khrjob.git_bytes(self.repo, "cat-file", "blob", real), b"trusted\n"
         )
 
+    def test_no_show_signature_keeps_gpg_program_from_running(self) -> None:
+        # A commit carrying a signature header, plus log.showSignature and a
+        # marker gpg.program, as a hostile repository could configure.
+        tree = sh(self.repo, "git", "rev-parse", "HEAD^{tree}")
+        body = (
+            f"tree {tree}\nauthor T <t@x> 1 +0000\ncommitter T <t@x> 1 +0000\n"
+            "gpgsig -----BEGIN PGP SIGNATURE-----\n \n AAAA\n -----END PGP SIGNATURE-----\n\nsigned\n"
+        )
+        (self.tmp / "c").write_text(body)
+        signed = sh(
+            self.repo, "git", "hash-object", "-t", "commit", "-w", str(self.tmp / "c")
+        )
+        marker = self.tmp / "gpg-ran"
+        gpg = self.tmp / "gpg"
+        gpg.write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+        gpg.chmod(0o755)
+        sh(self.repo, "git", "config", "log.showSignature", "true")
+        sh(self.repo, "git", "config", "gpg.program", str(gpg))
+        khrjob.git(self.repo, "log", "-1", "--format=%ct", signed, check=False)
+        self.assertTrue(marker.exists(), "this git verifies signatures on plain log")
+        marker.unlink()
+        khrjob.git(
+            self.repo, "log", "--no-show-signature", "-1", "--format=%ct", signed
+        )
+        self.assertFalse(marker.exists())
+
+    def test_every_job_git_log_disables_signatures(self) -> None:
+        import re
+
+        scripts = HERE.parents[1]
+        calls = []
+        for path in sorted(scripts.glob("khr-*/scripts/*.py")):
+            text = path.read_text()
+            for m in re.finditer(r'"log",', text):
+                window = text[m.end() : m.end() + 80]
+                calls.append((path.name, "--no-show-signature" in window))
+        self.assertTrue(calls, "found no git log calls to check")
+        self.assertEqual([c for c in calls if not c[1]], [])
+
 
 if __name__ == "__main__":
     unittest.main()

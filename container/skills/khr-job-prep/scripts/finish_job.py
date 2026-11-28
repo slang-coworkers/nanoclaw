@@ -104,6 +104,7 @@ def derive_repository(
         for line in git(
             wt,
             "log",
+            "--no-show-signature",  # log.showSignature would run gpg.program
             "--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%s",
             f"{base}..{head}",
         ).splitlines():
