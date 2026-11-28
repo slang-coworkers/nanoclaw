@@ -44,6 +44,7 @@ import argparse
 import importlib.util
 import json
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -175,6 +176,48 @@ def _copy_new(source: Path, path: Path) -> None:
         shutil.copyfileobj(src, dst, length=1 << 20)
 
 
+def artifact_url(item) -> str:
+    """The URL native ``update_deps.py`` downloads for a release entry.
+
+    Newer scripts have ``GoodRepo.ArtifactUrl``; older releases (for example
+    vulkan-sdk-1.4.363.1) build the same URL inline in
+    ``DownloadAndExtractArtifact``: host system and ``--arch``, each mapped through
+    ``url_format_map``.
+    """
+    if callable(getattr(item, "ArtifactUrl", None)):
+        return item.ArtifactUrl()
+    fmt = getattr(item, "url_format_map", None) or {}
+    system = platform.system().lower()
+    arch = item._args.arch
+    return item.url.format(
+        release=item.release,
+        system=fmt.get(system, system),
+        arch=fmt.get(arch, arch),
+    )
+
+
+def _check_target(native_args: list[str]) -> None:
+    """Prepared pins cover the linux x86_64 job target only (see khr-deps ``pins``).
+
+    Native argparse accepts abbreviations, so this parser does too.
+    """
+    target = argparse.ArgumentParser(add_help=False, allow_abbrev=True)
+    target.add_argument("--arch", type=str.lower)
+    target.add_argument("--cmake_var", action="append", default=[])
+    try:
+        options, _ = target.parse_known_args(native_args)
+    except SystemExit:
+        raise OfflineError("could not read --arch/--cmake_var") from None
+    if options.arch not in (None, "64"):
+        raise OfflineError(
+            f"--arch {options.arch}: prepared pins cover the linux x86_64 job target only"
+        )
+    if any("android.toolchain.cmake" in v for v in options.cmake_var):
+        raise OfflineError(
+            "Android toolchain: prepared pins cover the linux x86_64 job target only"
+        )
+
+
 def _overlaps(a: Path, b: Path) -> bool:
     return a == b or a.is_relative_to(b) or b.is_relative_to(a)
 
@@ -225,6 +268,7 @@ def run(
         raise OfflineError("pass the native --dir") from None
     root = Path(os.path.abspath(options.dir))
     native_args = [*remaining, "--dir", str(root)]
+    _check_target(native_args)
     # Snapshots are deleted and recreated under --dir, so no job repository may
     # live there: refuse before anything is removed. Compare real paths, so a
     # symlinked spelling of the same directory cannot slip past.
@@ -326,7 +370,7 @@ def run(
         original_artifact = getattr(good, "DownloadAndExtractArtifact", None)
 
         def artifact(item) -> bool:
-            url = item.ArtifactUrl()
+            url = artifact_url(item)
             try:
                 pin = khrdeps.blob_pin(url, allow)
             except khrdeps.PinError as exc:

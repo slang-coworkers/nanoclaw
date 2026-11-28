@@ -56,7 +56,7 @@ class GoodRepo:
         self.Fetch(True)
 
     def ArtifactUrl(self):
-        system, arch = platform.system().lower(), "64"
+        system, arch = platform.system().lower(), self._args.arch
         system = self.url_format_map.get(system, system)
         arch = self.url_format_map.get(arch, arch)
         return self.url.format(release=self.release, system=system, arch=arch)
@@ -94,6 +94,7 @@ def main():
     ap.add_argument("--dir", default=".")
     ap.add_argument("--optional", type=lambda s: set(s.split(",")), default=set())
     ap.add_argument("--no-build", dest="do_build", action="store_false")
+    ap.add_argument("--arch", type=str.lower, default="64")
     args = ap.parse_args()
     with open(KNOWN_GOOD) as f:
         repos = [GoodRepo(e, args) for e in json.load(f)["repos"]]

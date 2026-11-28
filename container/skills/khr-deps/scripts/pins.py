@@ -20,8 +20,10 @@ import ast
 import configparser
 import hashlib
 import json
+import os
 import re
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +105,7 @@ def release_url(entry: dict[str, Any]) -> str:
     the system and the arch go through ``url_format_map``.
     """
     fmt = entry.get("url_format_map") or {}
-    system, arch = "linux", "64"
+    system, arch = JOB_PLATFORM, JOB_ARCH
     return str(entry.get("url", "")).format(
         release=entry.get("release"),
         system=fmt.get(system, system),
@@ -111,13 +113,36 @@ def release_url(entry: dict[str, Any]) -> str:
     )
 
 
+# Pins are extracted when the job is prepared, before any native command line
+# exists, so they describe the one supported job target: linux, native
+# ``GetDefaultArch()`` = ``64``, no CI variables. The VVL adapter refuses any
+# other target (``--arch``, an Android toolchain) instead of failing on a pin.
+JOB_PLATFORM, JOB_ARCH = "linux", "64"
+
+
+def _on_job_host(entry: dict[str, Any], env: Mapping[str, str] | None = None) -> bool:
+    """Mirror native ``update_deps`` entry selection for the job target.
+
+    Skips entries whose ``build_platforms``/``build_architectures`` exclude it, and
+    ``ci_only`` entries unless one listed variable is ``true`` (case-insensitive)
+    in the job environment, as native does.
+    """
+    platforms = entry.get("build_platforms") or []
+    arches = entry.get("build_architectures") or []
+    if (platforms and JOB_PLATFORM not in platforms) or (
+        arches and JOB_ARCH not in arches
+    ):
+        return False
+    ci = entry.get("ci_only") or []
+    if ci:
+        env = os.environ if env is None else env
+        return any(str(env.get(str(v), "")).lower() == "true" for v in ci)
+    return True
+
+
 def _release(entry: dict[str, Any], allow: dict[str, Any]) -> dict[str, str] | None:
     """A ``release`` entry is a prebuilt artifact: a reviewed, sha256-pinned download."""
     name = str(entry.get("name", ""))
-    platforms = entry.get("build_platforms") or []
-    arches = entry.get("build_architectures") or []
-    if (platforms and "linux" not in platforms) or (arches and "64" not in arches):
-        return None  # native update_deps skips it on this host too
     url = release_url(entry)
     try:
         return {**blob_pin(url, allow), "name": name}
@@ -125,10 +150,14 @@ def _release(entry: dict[str, Any], allow: dict[str, Any]) -> dict[str, str] | N
         return _unavailable(name, url, str(exc))
 
 
-def parse_known_good(raw: bytes, allow: dict[str, Any]) -> list[dict[str, str]]:
+def parse_known_good(
+    raw: bytes, allow: dict[str, Any], env: Mapping[str, str] | None = None
+) -> list[dict[str, str]]:
     data = json.loads(raw)
     out: list[dict[str, str]] = []
     for r in data.get("repos", []) if isinstance(data, dict) else []:
+        if not _on_job_host(r, env):
+            continue  # e.g. mimalloc is windows-only in some VVL releases
         if r.get("release") is not None:
             pin = _release(r, allow)
             if pin is not None:
