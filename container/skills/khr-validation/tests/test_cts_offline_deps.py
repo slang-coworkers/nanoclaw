@@ -477,6 +477,19 @@ class CtsOfflineDeps(unittest.TestCase):
             )
 
 
+class SharedGitEnv(unittest.TestCase):
+    def test_adapter_env_keeps_the_hardened_base_config(self) -> None:
+        import offline_git
+
+        env = offline_git.git_env(khrdeps, [Path("/x")])
+        pairs = [
+            (env[f"GIT_CONFIG_KEY_{i}"], env[f"GIT_CONFIG_VALUE_{i}"])
+            for i in range(int(env["GIT_CONFIG_COUNT"]))
+        ]
+        self.assertIn(("credential.helper", ""), pairs)
+        self.assertIn(("safe.directory", "/x"), pairs)
+
+
 class CtsPins(unittest.TestCase):
     def test_vvl_is_skipped_and_extras_are_recorded(self) -> None:
         allow = copy.deepcopy(khrdeps.load_allowlist())

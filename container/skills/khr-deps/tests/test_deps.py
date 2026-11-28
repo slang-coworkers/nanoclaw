@@ -406,5 +406,24 @@ class InventoryTests(unittest.TestCase):
                     pass
 
 
+class HardenedGitEnv(unittest.TestCase):
+    def pairs(self, env: dict[str, str]) -> list[tuple[str, str]]:
+        return [
+            (env[f"GIT_CONFIG_KEY_{i}"], env[f"GIT_CONFIG_VALUE_{i}"])
+            for i in range(int(env["GIT_CONFIG_COUNT"]))
+        ]
+
+    def test_clean_env_disables_repository_commands(self) -> None:
+        got = dict(self.pairs(khrdeps.clean_git_env()))
+        self.assertEqual(got["core.hooksPath"], "/dev/null")
+        self.assertEqual(got["core.fsmonitor"], "false")
+        self.assertEqual(got["credential.helper"], "")
+
+    def test_with_config_appends(self) -> None:
+        env = khrdeps.with_config({}, [("a.b", "1")])
+        env = khrdeps.with_config(env, [("c.d", "2")])
+        self.assertEqual(self.pairs(env), [("a.b", "1"), ("c.d", "2")])
+
+
 if __name__ == "__main__":
     unittest.main()

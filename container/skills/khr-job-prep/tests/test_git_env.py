@@ -95,6 +95,125 @@ class JobGitEnv(unittest.TestCase):
         )
         self.assertFalse(marker.exists())
 
+    def marker_script(self, name: str) -> tuple[Path, Path]:
+        marker = self.tmp / f"{name}-ran"
+        script = self.tmp / name
+        script.write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+        script.chmod(0o755)
+        return script, marker
+
+    def test_fsmonitor_is_not_run_by_status(self) -> None:
+        script, marker = self.marker_script("fsmonitor")
+        sh(self.repo, "git", "config", "core.fsmonitor", str(script))
+        khrjob.git(self.repo, "status", "--porcelain")
+        self.assertFalse(marker.exists())
+
+    def test_hooks_are_not_run_by_worktree_add(self) -> None:
+        script, marker = self.marker_script("post-checkout")
+        hooks = self.repo / ".git" / "hooks"
+        hooks.mkdir(exist_ok=True)
+        shutil.copy(script, hooks / "post-checkout")
+        khrjob.git(
+            self.repo,
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "t",
+            str(self.tmp / "wt"),
+            "HEAD",
+        )
+        self.assertTrue((self.tmp / "wt" / "AGENTS.md").exists())
+        self.assertFalse(marker.exists())
+
+    def test_filters_are_refused_before_checkout_or_status(self) -> None:
+        khrjob.reject_filters(self.repo)  # none in the repository's own config
+        sh(self.repo, "git", "config", "filter.x.smudge", "cat")
+        with self.assertRaisesRegex(khrjob.JobError, "git filters"):
+            khrjob.reject_filters(self.repo)
+
+    def test_linked_worktree_without_filters_is_accepted(self) -> None:
+        khrjob.git(
+            self.repo,
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "w",
+            str(self.tmp / "wt"),
+            "HEAD",
+        )
+        khrjob.reject_filters(self.tmp / "wt")
+
+    def test_filter_in_per_worktree_config_is_refused(self) -> None:
+        khrjob.git(
+            self.repo,
+            "worktree",
+            "add",
+            "--quiet",
+            "-b",
+            "w",
+            str(self.tmp / "wt"),
+            "HEAD",
+        )
+        sh(self.repo, "git", "config", "extensions.worktreeConfig", "true")
+        sh(self.tmp / "wt", "git", "config", "--worktree", "filter.x.clean", "cat")
+        with self.assertRaisesRegex(khrjob.JobError, "git filters"):
+            khrjob.reject_filters(self.tmp / "wt")
+
+    def test_filter_hidden_in_an_included_file_is_refused(self) -> None:
+        inc = self.tmp / "inc.cfg"
+        inc.write_text('[filter "x"]\n\tclean = cat\n')
+        sh(self.repo, "git", "config", "include.path", str(inc))
+        with self.assertRaisesRegex(khrjob.JobError, "git filters"):
+            khrjob.reject_filters(self.repo)
+
+    def test_log_encoding_is_forced_to_utf8(self) -> None:
+        sh(self.repo, "git", "config", "i18n.logOutputEncoding", "UTF-16")
+        out = khrjob.git(
+            self.repo,
+            "log",
+            "--no-show-signature",
+            "--encoding=UTF-8",
+            "-1",
+            "--format=%an",
+        )
+        self.assertEqual(out, "T")
+
+    def test_credential_helpers_and_askpass_are_disabled(self) -> None:
+        env = khrjob.git_env()
+        pairs = {
+            env[f"GIT_CONFIG_KEY_{i}"]: env[f"GIT_CONFIG_VALUE_{i}"]
+            for i in range(int(env["GIT_CONFIG_COUNT"]))
+        }
+        self.assertEqual(pairs["credential.helper"], "")
+        self.assertEqual(pairs["core.hooksPath"], "/dev/null")
+        self.assertEqual(pairs["core.fsmonitor"], "false")
+        self.assertEqual(env["GIT_ASKPASS"], "/bin/false")
+        self.assertEqual(env["GIT_ALLOW_PROTOCOL"], "https:file")
+        sh(self.repo, "git", "config", "credential.helper", "!touch /tmp/never")
+        got = subprocess.run(
+            ["git", "-C", str(self.repo), "config", "--get-all", "credential.helper"],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        ).stdout.splitlines()
+        self.assertEqual(got[-1], "", "command-scope empty helper resets the list")
+
+    def test_every_explicit_fetch_names_its_upload_pack(self) -> None:
+        import re
+
+        scripts = HERE.parents[1]
+        calls = []
+        for path in sorted(scripts.glob("khr-*/scripts/*.py")):
+            text = path.read_text()
+            for m in re.finditer(r'"fetch",', text):
+                window = text[m.end() : m.end() + 160]
+                calls.append((path.name, "--upload-pack=" in window))
+        self.assertTrue(calls)
+        self.assertEqual([c for c in calls if not c[1]], [])
+
     def test_every_job_git_log_disables_signatures(self) -> None:
         import re
 
@@ -103,8 +222,14 @@ class JobGitEnv(unittest.TestCase):
         for path in sorted(scripts.glob("khr-*/scripts/*.py")):
             text = path.read_text()
             for m in re.finditer(r'"log",', text):
-                window = text[m.end() : m.end() + 80]
-                calls.append((path.name, "--no-show-signature" in window))
+                window = text[m.end() : m.end() + 240]
+                calls.append(
+                    (
+                        path.name,
+                        "--no-show-signature" in window
+                        and "--encoding=UTF-8" in window,
+                    )
+                )
         self.assertTrue(calls, "found no git log calls to check")
         self.assertEqual([c for c in calls if not c[1]], [])
 

@@ -103,6 +103,27 @@ def file_digest(path: Path, algorithm: str) -> str:
     return h.hexdigest()
 
 
+# Command-scope config that outranks repository-local config: no hooks, no
+# fsmonitor, no credential helpers. A repository could otherwise make git run
+# commands of its choosing.
+HARDENED_CONFIG = (
+    ("core.hooksPath", "/dev/null"),
+    ("core.fsmonitor", "false"),
+    ("credential.helper", ""),
+)
+
+
+def with_config(env: dict[str, str], pairs) -> dict[str, str]:
+    """Append ``GIT_CONFIG_KEY_n``/``VALUE_n`` pairs, keeping any already set."""
+    n = int(env.get("GIT_CONFIG_COUNT", "0") or "0")
+    for key, value in pairs:
+        env[f"GIT_CONFIG_KEY_{n}"] = key
+        env[f"GIT_CONFIG_VALUE_{n}"] = value
+        n += 1
+    env["GIT_CONFIG_COUNT"] = str(n)
+    return env
+
+
 def clean_git_env() -> dict[str, str]:
     """No credentials, no user or system config, no prompts; https only."""
     env = {
@@ -136,7 +157,7 @@ def clean_git_env() -> dict[str, str]:
             "HOME": os.environ.get("HOME", "/tmp"),
         }
     )
-    return env
+    return with_config(env, HARDENED_CONFIG)
 
 
 def mirror_path(root: Path, repo: str) -> Path:

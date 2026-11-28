@@ -175,6 +175,7 @@ def fetch_git(root: Path, pin: dict[str, str], git_base: str) -> None:
             "fetch",
             "-q",
             "--no-tags",
+            "--upload-pack=git-upload-pack",  # ignore a repository-configured one
             "--depth",
             "1",
             "origin",

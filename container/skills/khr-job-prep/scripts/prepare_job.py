@@ -50,6 +50,7 @@ from khrjob import (
     now_iso,
     read_journal,
     read_json,
+    reject_filters,
     sha256,
     write_json,
 )
@@ -78,7 +79,8 @@ def ensure_cache(manifest: dict[str, Any], repo: dict[str, Any]) -> Path:
             str(cache),
         )
     git(cache, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
-    git(cache, "fetch", "--quiet", "--prune", "origin")
+    # An explicit --upload-pack ignores a repository-configured one.
+    git(cache, "fetch", "--quiet", "--prune", "--upload-pack=git-upload-pack", "origin")
     # Pushing is impossible from here: unsupported push scheme, nothing pushed by default.
     git(cache, "config", "remote.origin.pushurl", "no-push://disabled")
     git(cache, "config", "push.default", "nothing")
@@ -122,9 +124,27 @@ def select_target_branch(cache: Path, policy: str) -> str:
     if _is_ancestor(cache, main, master):
         return "master"
     # --no-show-signature: a repository's log.showSignature would run gpg.program.
-    t_main = int(git(cache, "log", "--no-show-signature", "-1", "--format=%ct", main))
+    t_main = int(
+        git(
+            cache,
+            "log",
+            "--no-show-signature",
+            "--encoding=UTF-8",
+            "-1",
+            "--format=%ct",
+            main,
+        )
+    )
     t_master = int(
-        git(cache, "log", "--no-show-signature", "-1", "--format=%ct", master)
+        git(
+            cache,
+            "log",
+            "--no-show-signature",
+            "--encoding=UTF-8",
+            "-1",
+            "--format=%ct",
+            master,
+        )
     )
     return "master" if t_master > t_main else "main"
 
@@ -242,6 +262,7 @@ def prepare(job_root: Path, manifest_path: Path) -> dict[str, Any]:
         base = previous[repo["name"]] if continued else pin_base(cache, branch, request)
         worktree = job_root / "repos" / repo["name"]
         topic = f"khr/{_SAFE.sub('-', job)}/{_SAFE.sub('-', repo['name'])}"
+        reject_filters(cache)  # checkout would run them
         git(cache, "worktree", "add", "--quiet", "-b", topic, str(worktree), base)
         targets.append(
             {

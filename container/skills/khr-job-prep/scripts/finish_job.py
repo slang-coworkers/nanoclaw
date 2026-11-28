@@ -36,6 +36,7 @@ from khrjob import (
     git,
     now_iso,
     read_json,
+    reject_filters,
     write_json,
 )
 from khrjob import git_env as khrjob_git_env
@@ -88,7 +89,10 @@ def derive_repository(
     wt, base = Path(target["path"]), target["base"]
     head = git(wt, "rev-parse", "HEAD")
     problems = []
-    if git(wt, "status", "--porcelain", "--untracked-files=all"):
+    reject_filters(wt)  # status would run them
+    if git(
+        wt, "status", "--porcelain", "--untracked-files=all", "--ignore-submodules=all"
+    ):
         problems.append("working tree not clean")
     if (
         subprocess.run(
@@ -105,6 +109,7 @@ def derive_repository(
             wt,
             "log",
             "--no-show-signature",  # log.showSignature would run gpg.program
+            "--encoding=UTF-8",  # i18n.logOutputEncoding would break parsing
             "--format=%H%x00%an%x00%ae%x00%cn%x00%ce%x00%s",
             f"{base}..{head}",
         ).splitlines():

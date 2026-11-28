@@ -48,11 +48,8 @@ def git_env(khrdeps, trusted: list[Path]) -> dict[str, str]:
     pairs = [("core.hooksPath", "/dev/null"), ("core.fsmonitor", "false")]
     for path in trusted:
         pairs += [("safe.directory", str(path)), ("safe.directory", str(path / ".git"))]
-    env["GIT_CONFIG_COUNT"] = str(len(pairs))
-    for i, (k, v) in enumerate(pairs):
-        env[f"GIT_CONFIG_KEY_{i}"] = k
-        env[f"GIT_CONFIG_VALUE_{i}"] = v
-    return env
+    # Appended to clean_git_env's hardened config, never replacing it.
+    return khrdeps.with_config(env, pairs)
 
 
 def git(env: dict[str, str], *args: str) -> str:
