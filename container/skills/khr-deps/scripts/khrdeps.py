@@ -127,6 +127,9 @@ def clean_git_env() -> dict[str, str]:
             "GIT_TERMINAL_PROMPT": "0",
             "GIT_ASKPASS": "/bin/false",
             "GIT_ALLOW_PROTOCOL": "https:file",
+            # Missing objects fail instead of a partial-clone lazy fetch, which
+            # would run a repository-configured upload-pack command.
+            "GIT_NO_LAZY_FETCH": "1",
             "HOME": os.environ.get("HOME", "/tmp"),
         }
     )

@@ -353,6 +353,29 @@ class CtsOfflineDeps(unittest.TestCase):
             self.run_adapter({"glslang": job})
         self.assertFalse(marker.exists())
 
+    def test_missing_object_never_runs_a_configured_upload_pack(self) -> None:
+        (self.cts / "external/unused").mkdir()
+        (self.cts / "external/unused/x.txt").write_text("x\n")
+        sh(self.cts, "git", "add", "-A")
+        sh(self.cts, "git", "commit", "-qm", "unused")
+        tree = sh(self.cts, "git", "rev-parse", "HEAD:external/unused")
+        (self.cts / ".git/objects" / tree[:2] / tree[2:]).unlink()
+        marker = self.tmp / "upload-pack-ran"
+        hook = self.tmp / "evil-upload-pack"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+        hook.chmod(0o755)
+        for key, value in (
+            ("core.repositoryformatversion", "1"),
+            ("extensions.partialClone", "origin"),
+            ("remote.origin.url", f"file://{self.tmp / 'nowhere'}"),
+            ("remote.origin.promisor", "true"),
+            ("remote.origin.uploadpack", str(hook)),
+        ):
+            sh(self.cts, "git", "config", key, value)
+        with self.assertRaises(cod.OfflineError):
+            self.run_adapter()
+        self.assertFalse(marker.exists(), "lazy fetch ran the configured upload-pack")
+
     def test_provider_inside_dependency_root_is_refused(self) -> None:
         job = self.deps / ".extract-zlib"
         head = make_repo(job, {"glslang.h": "job\n"})

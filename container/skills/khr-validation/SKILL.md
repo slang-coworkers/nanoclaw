@@ -80,7 +80,7 @@ Read `dependency-inventory.json` for every configured repository. "Ready" means 
      - Each run recreates the `external/*/src` trees; never edit them. It refuses to replace anything git tracks.
      - Integration: `--provider <dir>=<ABS_JOB_REPO>` (for example `glslang=...`) uses that job repository's committed `HEAD`. Keep the provider outside `external/` and the dependency root, and without git filters. Report it separately from the pinned baseline.
      - It writes `$KHR_DEPENDENCY_ROOT/cts/khr-offline-deps.json` (agent-reported provenance). Cite it in the report.
-  4. Configure with `-DDEQP_DISABLE_VK_VIDEO_TESTS=ON` and compile `deqp-vk` through the build lease. Never execute it.
+  4. Configure with `-G Ninja -DCMAKE_BUILD_TYPE=Debug -DDEQP_TARGET=default -DDEQP_DISABLE_VK_VIDEO_TESTS=ON -DSELECTED_BUILD_TARGETS=deqp-vk`, then `cmake --build <build> --target deqp-vk` through the build lease (allow 30 minutes). The check passes only if `<build>/external/vulkancts/modules/vulkan/deqp-vk` exists. Never execute it.
 
 ## Validation profiles
 

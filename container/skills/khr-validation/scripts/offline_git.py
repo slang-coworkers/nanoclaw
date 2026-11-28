@@ -42,6 +42,9 @@ def git_env(khrdeps, trusted: list[Path]) -> dict[str, str]:
     for k in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"):
         env.pop(k, None)
     env["GIT_ALLOW_PROTOCOL"] = "file"
+    # A missing object must fail, never trigger a partial-clone lazy fetch: that
+    # runs the repository's configured upload-pack command.
+    env["GIT_NO_LAZY_FETCH"] = "1"
     pairs = [("core.hooksPath", "/dev/null"), ("core.fsmonitor", "false")]
     for path in trusted:
         pairs += [("safe.directory", str(path)), ("safe.directory", str(path / ".git"))]

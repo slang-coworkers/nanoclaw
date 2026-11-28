@@ -219,7 +219,10 @@ def _cts_entry(call: ast.expr, allow: dict[str, Any]) -> dict[str, str] | None:
     if len(args) != _CTS_ARGS[ctor] or not all(isinstance(a, str) for a in args):
         raise PinError("unsupported CTS dependency arguments")
     subdir = args[3] if ctor in ("GitRepo", "SourceFile") else args[2]
-    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", subdir) or subdir in (".", ".."):
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", subdir) or subdir in (
+        ".",
+        "..",
+    ):
         raise PinError("CTS dependency directory must be one safe path component")
     if ctor == "GitRepo" and subdir == _CTS_SKIP:
         return None
@@ -283,7 +286,11 @@ def parse_cts(raw: bytes, allow: dict[str, Any]) -> list[dict[str, str]]:
                         name = cand
                 except (ValueError, TypeError):
                     pass
-            reason = str(exc).split(" ")[0] if str(exc).startswith("unreviewed") else str(exc)
+            reason = (
+                str(exc).split(" ")[0]
+                if str(exc).startswith("unreviewed")
+                else str(exc)
+            )
             out.append({**_unavailable(name, ast.dump(call), reason), "subdir": name})
             continue
         if pin is not None:
