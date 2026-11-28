@@ -22,12 +22,77 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+# Command-scope config outranks repository-local config (same set as khr-deps).
+HARDENED_CONFIG = (
+    ("core.hooksPath", "/dev/null"),
+    ("core.fsmonitor", "false"),
+    ("credential.helper", ""),
+)
+
+
+def git_env() -> dict[str, str]:
+    """Environment for every job git call: no prompts, no repository-chosen commands.
+
+    - a missing object fails instead of a partial-clone lazy fetch (which runs a
+      repository-configured upload-pack command);
+    - replacement refs are ignored (they can turn a blob into a signed commit);
+    - no hooks, fsmonitor, credential helpers or askpass; https and local only.
+    """
+    env = {
+        **os.environ,
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_ASKPASS": "/bin/false",
+        "GIT_ALLOW_PROTOCOL": "https:file",
+        "GIT_NO_LAZY_FETCH": "1",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+    }
+    n = int(env.get("GIT_CONFIG_COUNT", "0") or "0")
+    for key, value in HARDENED_CONFIG:
+        env[f"GIT_CONFIG_KEY_{n}"] = key
+        env[f"GIT_CONFIG_VALUE_{n}"] = value
+        n += 1
+    env["GIT_CONFIG_COUNT"] = str(n)
+    return env
+
+
+def _config(repo: Path | str, *args: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        ["git", "-C", str(repo), "config", *args],
+        capture_output=True,
+        text=True,
+        env=git_env(),
+        check=False,
+    )
+
+
+def reject_filters(repo: Path | str) -> None:
+    """Refuse a repository whose own config sets git filters (checkout and status run them).
+
+    Only repository-controlled config counts: ``--local``, plus ``--worktree`` when
+    ``extensions.worktreeConfig`` enables a per-worktree file (git refuses
+    ``--worktree`` on a linked worktree otherwise). Includes are followed
+    explicitly, since git turns them off when a scope is named. An install-level
+    filter in the image's global config, such as git-lfs, is trusted.
+    """
+    pattern = r"^filter\..*\.(clean|process|smudge)$"
+    scopes = ["--local"]
+    ext = _config(repo, "--local", "--includes", "--bool", "extensions.worktreeConfig")
+    if ext.returncode == 0 and ext.stdout.strip() == "true":
+        scopes.append("--worktree")
+    elif ext.returncode not in (0, 1):
+        raise JobError(f"{repo}: could not read git config")
+    for scope in scopes:
+        r = _config(repo, scope, "--includes", "--get-regexp", pattern)
+        if r.returncode != 1:  # 1 = no such configuration; anything else fails closed
+            raise JobError(f"{repo}: git filters are not supported in job repositories")
+
+
 def git(repo: Path | str, *args: str, check: bool = True) -> str:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         capture_output=True,
         text=True,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        env=git_env(),
         check=False,
     )
     if check and result.returncode != 0:
@@ -42,7 +107,7 @@ def git_bytes(repo: Path | str, *args: str) -> bytes:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         capture_output=True,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        env=git_env(),
         check=False,
     )
     if result.returncode != 0:

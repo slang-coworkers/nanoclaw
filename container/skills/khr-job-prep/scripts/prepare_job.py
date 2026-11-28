@@ -50,9 +50,11 @@ from khrjob import (
     now_iso,
     read_journal,
     read_json,
+    reject_filters,
     sha256,
     write_json,
 )
+from khrjob import git_env as khrjob_git_env
 
 DEFAULT_MANIFEST = "/workspace/agent/khr-manifest.json"
 _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -77,7 +79,8 @@ def ensure_cache(manifest: dict[str, Any], repo: dict[str, Any]) -> Path:
             str(cache),
         )
     git(cache, "config", "remote.origin.fetch", "+refs/heads/*:refs/remotes/origin/*")
-    git(cache, "fetch", "--quiet", "--prune", "origin")
+    # An explicit --upload-pack ignores a repository-configured one.
+    git(cache, "fetch", "--quiet", "--prune", "--upload-pack=git-upload-pack", "origin")
     # Pushing is impossible from here: unsupported push scheme, nothing pushed by default.
     git(cache, "config", "remote.origin.pushurl", "no-push://disabled")
     git(cache, "config", "push.default", "nothing")
@@ -120,15 +123,38 @@ def select_target_branch(cache: Path, policy: str) -> str:
         return "main"
     if _is_ancestor(cache, main, master):
         return "master"
-    t_main = int(git(cache, "log", "-1", "--format=%ct", main))
-    t_master = int(git(cache, "log", "-1", "--format=%ct", master))
+    # --no-show-signature: a repository's log.showSignature would run gpg.program.
+    t_main = int(
+        git(
+            cache,
+            "log",
+            "--no-show-signature",
+            "--encoding=UTF-8",
+            "-1",
+            "--format=%ct",
+            main,
+        )
+    )
+    t_master = int(
+        git(
+            cache,
+            "log",
+            "--no-show-signature",
+            "--encoding=UTF-8",
+            "-1",
+            "--format=%ct",
+            master,
+        )
+    )
     return "master" if t_master > t_main else "main"
 
 
 def _is_ancestor(repo: Path, a: str, b: str) -> bool:
     return (
         subprocess.run(
-            ["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b], check=False
+            ["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b],
+            env=khrjob_git_env(),
+            check=False,
         ).returncode
         == 0
     )
@@ -236,7 +262,23 @@ def prepare(job_root: Path, manifest_path: Path) -> dict[str, Any]:
         base = previous[repo["name"]] if continued else pin_base(cache, branch, request)
         worktree = job_root / "repos" / repo["name"]
         topic = f"khr/{_SAFE.sub('-', job)}/{_SAFE.sub('-', repo['name'])}"
-        git(cache, "worktree", "add", "--quiet", "-b", topic, str(worktree), base)
+        # Filters run on checkout. Check the cache, then the new worktree itself
+        # before any file is written: a conditional include (includeIf gitdir)
+        # can switch on a filter only inside the worktree's own git dir.
+        reject_filters(cache)
+        git(
+            cache,
+            "worktree",
+            "add",
+            "--quiet",
+            "--no-checkout",
+            "-b",
+            topic,
+            str(worktree),
+            base,
+        )
+        reject_filters(worktree)
+        git(worktree, "reset", "--hard", "--quiet", "--no-recurse-submodules", base)
         targets.append(
             {
                 "name": repo["name"],
