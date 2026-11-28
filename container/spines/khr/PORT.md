@@ -148,7 +148,18 @@ P4.2 (dependency cache):
 - **orchestrator** (`khr-fetcher` type, `khr-deps` skill, admin only for shared write, `ncl` disabled) runs `fetch_deps.py`. It re-validates the request, fetches by exact ref or hash with size and redirect limits, verifies, and writes atomically.
 - **Gateway:** orchestrator has GET-only egress to the reviewed GitHub/npm hosts; khrbotnv has none.
 
-Still to come (P4.3+): the offline dependency adapters (`vvl_offline_deps.py`, `cts_offline_deps.py`), `prepare_profile.py` and `dependency-inventory.json` preparation, the full toolchain image, and the GPU validation profile.
+P4.3 (VVL): `khr-validation/scripts/vvl_offline_deps.py` ports Eric's `vvl_offline_deps.py`. It still loads the repository's own `scripts/update_deps.py` and replaces only acquisition. The difference is where sources come from: Eric's controller prepared a working tree per dependency, while here `Checkout` snapshots each pin (depth 1, no hooks, file protocol only) from the orchestrator's bare mirror in the read-only shared cache. `DownloadAndExtractArtifact` copies a reviewed sha256 blob from the cache and checks every member, including symlink targets, before native extraction. `Clone`, `Fetch` and `urllib` raise. `known_good.json` `release` entries (slang) are now blob pins, formatted as native `ArtifactUrl` formats them on the linux x86_64 job host. Integration mode is `--provider NAME=PATH` on the adapter (a clean, committed job repository's `HEAD`) instead of a separate profile step. `khr-offline-deps.json` records what was used.
+
+Security boundary (from the codex review of #2551): the adapter executes the job repository's own `update_deps.py` in-process, and the agent may edit that file. So the adapter cannot itself enforce "offline" or "writes only under `--dir`". Eric's runner has the same property: it runs native code as the job account. Offline and cache integrity come from outside it:
+- khrbotnv's container sits on the internal-only egress network with deny-by-default OneCLI rules (GitLab reads and inference only);
+- the shared cache is mounted read-only;
+- only the orchestrator writes the cache, after re-validating every pin against the allowlist.
+
+Nothing confines the native script's filesystem writes to `--dir`. It has the agent's full writable scope, including `/workspace/agent`, job repositories and reports. Only the adapter's own writes stay under `--dir`. Real confinement would need a separate sandbox with restricted writable mounts; until then, treat a VVL dependency run like any other agent action.
+
+Within that boundary, the adapter rebuilds every snapshot fresh, disables git hooks and fsmonitor, does no fetch except local file transport, creates its own output files afresh, and rejects `..` in archive symlink targets. Its record is labelled `agent-reported`. If P6 needs authoritative provenance, it has to come from a trusted process that never imports job Python. Re-deriving pins from the base commit's declarations establishes what was declared, not which bytes were compiled; proving the latter needs the build itself in a trusted runner.
+
+Still to come: `cts_offline_deps.py` with `fetch_sources.py` pin extraction, `prepare_profile.py` (frozen consumer tree, pinned-header workaround), the full toolchain image, and the GPU validation profile.
 
 ## Coworkers and hand-offs
 

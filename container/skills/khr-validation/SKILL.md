@@ -60,7 +60,13 @@ Read `dependency-inventory.json` for every configured repository. "Ready" means 
 
 - **Vulkan-Docs:** `npm ci --offline --ignore-scripts --no-audit --no-fund` with the prepared cache (`$npm_config_cache`), through the wrapper.
 - **Vulkan-ValidationLayers:**
-  1. With ready inputs, first run `python3 /app/skills/khr-validation/scripts/vvl_offline_deps.py <REPOSITORY> --dir $KHR_DEPENDENCY_ROOT/vvl --config debug --generator Ninja`. Use absolute paths, run it through the wrapper with `--resource build`, and allow 30 minutes.
+  1. With ready inputs, first run `python3 -B /app/skills/khr-validation/scripts/vvl_offline_deps.py <REPOSITORY> --dir $KHR_DEPENDENCY_ROOT/vvl --config debug --generator Ninja`. Use absolute paths, run it through the wrapper with `--resource build`, and allow 30 minutes.
+     - It runs the repository's own `scripts/update_deps.py`, but each dependency is checked out from the shared cache at its exact pin and release artifacts come only from verified cached files. It never downloads. A pin that isn't cached fails with "request it via khr-deps": ask for it with the khr-implement hand-off, then rerun.
+     - It writes `$KHR_DEPENDENCY_ROOT/vvl/khr-offline-deps.json` with the commit or artifact used for every dependency. Cite it in the report as agent-reported provenance.
+     - Every run rebuilds each dependency snapshot from the cache, so expect the dependency builds to repeat. Never edit files under `--dir`; change the job repository and rerun instead.
+     - The adapter keeps an honest run on the reviewed pins. It isn't what keeps the job offline (the container's network and the read-only cache mount do that), and the repository's own script can still write anywhere you can.
+     - Keep `--dir` and every `--provider` checkout apart: the adapter refuses a `--dir` that contains the repository or overlaps a provider (snapshots under `--dir` are recreated on every run).
+     - Integration: add `--provider <NAME>=<ABS_JOB_REPO>` (for example `Vulkan-Headers=...`) to build against that job repository's committed `HEAD` instead of its pin. Use a separate `--dir` (for example `$KHR_DEPENDENCY_ROOT/vvl-integration`) and report it separately from the pinned baseline.
   2. Then configure with `UPDATE_DEPS=OFF`, `-C $KHR_DEPENDENCY_ROOT/vvl/helper.cmake`, `BUILD_TESTS=ON`, the approved CPU-only flags, and all Linux WSI support disabled.
   3. Never use `UPDATE_DEPS=ON`: it always fetches from GitHub and fails offline. Without ready preparation, record the missing inputs as `infrastructure_error`.
 - **VK-GL-CTS:**
