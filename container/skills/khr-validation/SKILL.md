@@ -65,6 +65,7 @@ Read `dependency-inventory.json` for every configured repository. "Ready" means 
      - It writes `$KHR_DEPENDENCY_ROOT/vvl/khr-offline-deps.json` with the commit or artifact used for every dependency. Cite it in the report as agent-reported provenance.
      - Every run rebuilds each dependency snapshot from the cache, so expect the dependency builds to repeat. Never edit files under `--dir`; change the job repository and rerun instead.
      - The adapter keeps an honest run on the reviewed pins. It isn't what keeps the job offline (the container's network and the read-only cache mount do that), and the repository's own script can still write anywhere you can.
+     - Prepared pins cover the linux x86_64 job target only: don't pass `--arch` or an Android toolchain (`--cmake_var`); the adapter refuses them.
      - Keep `--dir` and every `--provider` checkout apart: the adapter refuses a `--dir` that contains the repository or overlaps a provider (snapshots under `--dir` are recreated on every run).
      - Integration: add `--provider <NAME>=<ABS_JOB_REPO>` (for example `Vulkan-Headers=...`) to build against that job repository's committed `HEAD` instead of its pin. Use a separate `--dir` (for example `$KHR_DEPENDENCY_ROOT/vvl-integration`) and report it separately from the pinned baseline.
   2. Then configure with `UPDATE_DEPS=OFF`, `-C $KHR_DEPENDENCY_ROOT/vvl/helper.cmake`, `BUILD_TESTS=ON`, the approved CPU-only flags, and all Linux WSI support disabled.
