@@ -130,6 +130,9 @@ def clean_git_env() -> dict[str, str]:
             # Missing objects fail instead of a partial-clone lazy fetch, which
             # would run a repository-configured upload-pack command.
             "GIT_NO_LAZY_FETCH": "1",
+            # Exact objects only: replacement refs can turn a declaration blob
+            # into a signed commit, and `git show` would then run gpg.program.
+            "GIT_NO_REPLACE_OBJECTS": "1",
             "HOME": os.environ.get("HOME", "/tmp"),
         }
     )

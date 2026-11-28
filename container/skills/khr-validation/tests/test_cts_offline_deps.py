@@ -292,6 +292,15 @@ class CtsOfflineDeps(unittest.TestCase):
         with self.assertRaisesRegex(cod.OfflineError, "literals"):
             self.run_adapter()
 
+    def test_declaration_is_read_as_the_exact_committed_blob(self) -> None:
+        # A replacement ref must not change what the adapter reads.
+        real = sh(self.cts, "git", "rev-parse", "HEAD:external/fetch_sources.py")
+        (self.tmp / "fake.py").write_text("PACKAGES = []\n")
+        fake = sh(self.cts, "git", "hash-object", "-w", str(self.tmp / "fake.py"))
+        sh(self.cts, "git", "replace", "-f", real, fake)
+        self.assertEqual(self.run_adapter(), 0)
+        self.assertTrue((self.cts / "external/zlib/src/zlib.h").is_file())
+
     def test_uncommitted_declaration_edit_is_refused(self) -> None:
         with (self.cts / "external/fetch_sources.py").open("a") as fh:
             fh.write("# local edit\n")
@@ -501,6 +510,20 @@ PACKAGES = [
         )
         with self.assertRaisesRegex(khrdeps.PinError, "duplicate"):
             pins.parse_cts(dup, allow)
+
+    def test_read_at_ignores_replacement_refs(self) -> None:
+        tmp = Path(tempfile.mkdtemp(prefix="khr-ctsr-"))
+        try:
+            make_repo(tmp / "r", {"external/fetch_sources.py": "PACKAGES = [1]\n"})
+            real = sh(tmp / "r", "git", "rev-parse", "HEAD:external/fetch_sources.py")
+            (tmp / "fake").write_text("PACKAGES = [2]\n")
+            fake = sh(tmp / "r", "git", "hash-object", "-w", str(tmp / "fake"))
+            sh(tmp / "r", "git", "replace", "-f", real, fake)
+            rev = sh(tmp / "r", "git", "rev-parse", "HEAD")
+            got = pins.read_at(tmp / "r", rev, "external/fetch_sources.py", 1 << 20)
+            self.assertEqual(got, b"PACKAGES = [1]\n")
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def test_rejected_url_is_not_echoed(self) -> None:
         allow = khrdeps.load_allowlist()

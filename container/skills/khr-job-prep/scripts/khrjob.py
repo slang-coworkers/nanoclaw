@@ -22,12 +22,27 @@ def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def git_env() -> dict[str, str]:
+    """Environment for every job git call: no prompts, and objects read exactly.
+
+    A missing object fails instead of a partial-clone lazy fetch (which runs a
+    repository-configured upload-pack command), and replacement refs are
+    ignored (they can turn a blob into a signed commit and reach gpg.program).
+    """
+    return {
+        **os.environ,
+        "GIT_TERMINAL_PROMPT": "0",
+        "GIT_NO_LAZY_FETCH": "1",
+        "GIT_NO_REPLACE_OBJECTS": "1",
+    }
+
+
 def git(repo: Path | str, *args: str, check: bool = True) -> str:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         capture_output=True,
         text=True,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        env=git_env(),
         check=False,
     )
     if check and result.returncode != 0:
@@ -42,7 +57,7 @@ def git_bytes(repo: Path | str, *args: str) -> bytes:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         capture_output=True,
-        env={**os.environ, "GIT_TERMINAL_PROMPT": "0"},
+        env=git_env(),
         check=False,
     )
     if result.returncode != 0:

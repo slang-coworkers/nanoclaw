@@ -53,6 +53,7 @@ from khrjob import (
     sha256,
     write_json,
 )
+from khrjob import git_env as khrjob_git_env
 
 DEFAULT_MANIFEST = "/workspace/agent/khr-manifest.json"
 _SAFE = re.compile(r"[^A-Za-z0-9._-]+")
@@ -128,7 +129,9 @@ def select_target_branch(cache: Path, policy: str) -> str:
 def _is_ancestor(repo: Path, a: str, b: str) -> bool:
     return (
         subprocess.run(
-            ["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b], check=False
+            ["git", "-C", str(repo), "merge-base", "--is-ancestor", a, b],
+            env=khrjob_git_env(),
+            check=False,
         ).returncode
         == 0
     )

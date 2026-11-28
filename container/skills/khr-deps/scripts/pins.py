@@ -72,7 +72,7 @@ def read_at(repo: Path, rev: str, rel: str, limit: int) -> bytes:
     if size > limit:
         raise PinError(f"{rel} exceeds the declaration size limit")
     return subprocess.run(
-        ["git", "-C", str(repo), "show", f"{rev}:{rel}"],
+        ["git", "-C", str(repo), "cat-file", "blob", f"{rev}:{rel}"],
         capture_output=True,
         env=clean_git_env(),
         check=True,

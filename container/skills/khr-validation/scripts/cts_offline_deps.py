@@ -62,7 +62,7 @@ def _declaration(khrdeps, repo: Path) -> bytes:
     """``fetch_sources.py`` at the committed ``HEAD``; uncommitted edits are refused."""
     env = offline_git.git_env(khrdeps, [repo])
     r = subprocess.run(
-        ["git", "-C", str(repo), "show", f"HEAD:{DECLARATION}"],
+        ["git", "-C", str(repo), "cat-file", "blob", f"HEAD:{DECLARATION}"],
         capture_output=True,
         env=env,
         check=False,

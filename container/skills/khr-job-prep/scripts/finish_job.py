@@ -38,6 +38,7 @@ from khrjob import (
     read_json,
     write_json,
 )
+from khrjob import git_env as khrjob_git_env
 
 RESULTS = {"passed", "failed", "infrastructure_error", "timeout", "skipped", "not_run"}
 SCHEMA = Path(__file__).resolve().parent.parent / "report.schema.json"
@@ -92,6 +93,7 @@ def derive_repository(
     if (
         subprocess.run(
             ["git", "-C", str(wt), "merge-base", "--is-ancestor", base, head],
+            env=khrjob_git_env(),
             check=False,
         ).returncode
         != 0
