@@ -186,6 +186,22 @@ class VvlOfflineDeps(unittest.TestCase):
         self.assertTrue((inst / "lib" / "libslang.so").is_symlink())
         self.assertEqual((inst / ".release").read_text(), Path(self.slang_url).name)
 
+    def test_release_artifact_without_artifact_url_method(self) -> None:
+        # vulkan-sdk-1.4.363.1 builds the URL inline in DownloadAndExtractArtifact.
+        script = self.vvl / "scripts" / "update_deps.py"
+        text = script.read_text()
+        self.assertIn("def ArtifactUrl(self):", text)
+        text = text.replace("def ArtifactUrl(self):", "def _inline_url(self):")
+        script.write_text(text.replace("self.ArtifactUrl()", "self._inline_url()"))
+        self.assertEqual(self.run_adapter(), 0)
+        inst = self.ext / "slang" / "install"
+        self.assertTrue(os.access(inst / "bin" / "slangc", os.X_OK))
+        rec = {
+            d["name"]: d
+            for d in json.loads((self.ext / vod.RECORD).read_text())["dependencies"]
+        }
+        self.assertEqual(rec["slang"]["url"], self.slang_url)
+
     def test_optional_tests_skip_artifact(self) -> None:
         self.assertEqual(self.run_adapter("--optional", "tests"), 0)
         self.assertFalse((self.ext / "slang").exists())
@@ -513,6 +529,29 @@ class KnownGoodReleasePins(unittest.TestCase):
         self.assertNotIn("arm-only", got)
         self.assertEqual(got["new-slang"]["kind"], "unavailable")
         self.assertNotIn("2099", json.dumps(got["new-slang"]))
+
+    def test_git_entries_excluded_on_linux_are_skipped(self) -> None:
+        allow = khrdeps.load_allowlist()
+        raw = json.dumps(
+            {
+                "repos": [
+                    {
+                        "name": "mimalloc",
+                        "url": "https://github.com/microsoft/mimalloc.git",
+                        "commit": "v3.5.3",
+                        "build_platforms": ["windows"],
+                    },
+                    {
+                        "name": "SPIRV-Headers",
+                        "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+                        "commit": "a" * 40,
+                        "build_platforms": ["linux", "windows"],
+                    },
+                ]
+            }
+        ).encode()
+        names = [p["name"] for p in pins.parse_known_good(raw, allow)]
+        self.assertEqual(names, ["SPIRV-Headers"])
 
 
 if __name__ == "__main__":

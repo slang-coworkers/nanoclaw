@@ -44,6 +44,7 @@ import argparse
 import importlib.util
 import json
 import os
+import platform
 import re
 import shlex
 import shutil
@@ -173,6 +174,26 @@ def _copy_new(source: Path, path: Path) -> None:
     path.unlink(missing_ok=True)
     with source.open("rb") as src, path.open("xb") as dst:
         shutil.copyfileobj(src, dst, length=1 << 20)
+
+
+def artifact_url(item) -> str:
+    """The URL native ``update_deps.py`` downloads for a release entry.
+
+    Newer scripts have ``GoodRepo.ArtifactUrl``; older releases (for example
+    vulkan-sdk-1.4.363.1) build the same URL inline in
+    ``DownloadAndExtractArtifact``: host system and ``--arch``, each mapped through
+    ``url_format_map``.
+    """
+    if callable(getattr(item, "ArtifactUrl", None)):
+        return item.ArtifactUrl()
+    fmt = getattr(item, "url_format_map", None) or {}
+    system = platform.system().lower()
+    arch = item._args.arch
+    return item.url.format(
+        release=item.release,
+        system=fmt.get(system, system),
+        arch=fmt.get(arch, arch),
+    )
 
 
 def _overlaps(a: Path, b: Path) -> bool:
@@ -326,7 +347,7 @@ def run(
         original_artifact = getattr(good, "DownloadAndExtractArtifact", None)
 
         def artifact(item) -> bool:
-            url = item.ArtifactUrl()
+            url = artifact_url(item)
             try:
                 pin = khrdeps.blob_pin(url, allow)
             except khrdeps.PinError as exc:

@@ -111,13 +111,18 @@ def release_url(entry: dict[str, Any]) -> str:
     )
 
 
+def _on_job_host(entry: dict[str, Any]) -> bool:
+    """Native ``update_deps`` skips entries whose platform/arch lists exclude linux x86_64."""
+    platforms = entry.get("build_platforms") or []
+    arches = entry.get("build_architectures") or []
+    return not (platforms and "linux" not in platforms) and not (
+        arches and "64" not in arches
+    )
+
+
 def _release(entry: dict[str, Any], allow: dict[str, Any]) -> dict[str, str] | None:
     """A ``release`` entry is a prebuilt artifact: a reviewed, sha256-pinned download."""
     name = str(entry.get("name", ""))
-    platforms = entry.get("build_platforms") or []
-    arches = entry.get("build_architectures") or []
-    if (platforms and "linux" not in platforms) or (arches and "64" not in arches):
-        return None  # native update_deps skips it on this host too
     url = release_url(entry)
     try:
         return {**blob_pin(url, allow), "name": name}
@@ -129,6 +134,8 @@ def parse_known_good(raw: bytes, allow: dict[str, Any]) -> list[dict[str, str]]:
     data = json.loads(raw)
     out: list[dict[str, str]] = []
     for r in data.get("repos", []) if isinstance(data, dict) else []:
+        if not _on_job_host(r):
+            continue  # e.g. mimalloc is windows-only in some VVL releases
         if r.get("release") is not None:
             pin = _release(r, allow)
             if pin is not None:
