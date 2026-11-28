@@ -28,6 +28,14 @@ Options other than ``--provider`` go to the native script; ``--`` is optional.
 
 Writes ``<dir>/khr-offline-deps.json`` recording which commit or artifact was
 used for every dependency. Standard library only.
+
+This is not a security boundary. The native script is the job repository's own
+Python, which the job agent may edit, and it runs in this process, so it can do
+anything the agent can. What keeps a job offline and the cache intact is outside
+this script: the container's internal-only network with per-agent gateway
+rules, and the read-only mount of the shared cache. The adapter makes an honest
+run use exactly the reviewed pins and fail closed otherwise; its record is
+``agent-reported`` provenance, not proof.
 """
 
 from __future__ import annotations
@@ -70,7 +78,7 @@ def _git_env(khrdeps, trusted: list[Path]) -> dict[str, str]:
     for k in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"):
         env.pop(k, None)
     env["GIT_ALLOW_PROTOCOL"] = "file"
-    pairs = [("core.hooksPath", "/dev/null")]
+    pairs = [("core.hooksPath", "/dev/null"), ("core.fsmonitor", "false")]
     for path in trusted:
         pairs += [("safe.directory", str(path)), ("safe.directory", str(path / ".git"))]
     env["GIT_CONFIG_COUNT"] = str(len(pairs))
@@ -118,6 +126,8 @@ def snapshot(khrdeps, source: Path, target: Path, sha: str) -> None:
             "-c",
             "core.hooksPath=/dev/null",
             "-c",
+            "core.fsmonitor=false",
+            "-c",
             "uploadpack.allowAnySHA1InWant=true",
             "-c",
             f"safe.directory={source.resolve()}",
@@ -143,18 +153,19 @@ def snapshot(khrdeps, source: Path, target: Path, sha: str) -> None:
     _git(env, "-C", str(target), "checkout", "-q", "--detach", sha)
 
 
-def _clean_at(khrdeps, path: Path, sha: str) -> bool:
-    if path.is_symlink() or not (path / ".git").is_dir():
-        return False
-    env = _git_env(khrdeps, [path])
-    try:
-        head = _git(env, "-C", str(path), "rev-parse", "HEAD")
-        dirty = _git(
-            env, "-C", str(path), "status", "--porcelain", "--untracked-files=all"
-        )
-    except OfflineError:
-        return False
-    return head == sha and not dirty
+def _replace(target: Path) -> None:
+    """Remove whatever sits at ``target`` without following it."""
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.exists():
+        shutil.rmtree(target)
+
+
+def _write_new(path: Path, data: bytes) -> None:
+    """Create ``path`` afresh: never truncate an existing inode (symlink or hard link)."""
+    path.unlink(missing_ok=True)
+    with path.open("xb") as fh:
+        fh.write(data)
 
 
 def _check_members(archive: zipfile.ZipFile) -> None:
@@ -169,16 +180,8 @@ def _check_members(archive: zipfile.ZipFile) -> None:
             raise OfflineError(f"archive member written through a symlink: {name!r}")
         if stat.S_ISLNK(info.external_attr >> 16):
             dest = PurePosixPath(archive.read(info).decode("utf-8", "replace"))
-            if dest.is_absolute() or "\\" in str(dest):
-                raise OfflineError(f"archive symlink is absolute: {name!r}")
-            resolved: list[str] = []
-            for part in (p.parent / dest).parts:
-                if part == "..":
-                    if not resolved:
-                        raise OfflineError(f"archive symlink escapes: {name!r}")
-                    resolved.pop()
-                elif part not in ("", "."):
-                    resolved.append(part)
+            if dest.is_absolute() or "\\" in str(dest) or ".." in dest.parts:
+                raise OfflineError(f"unsafe archive symlink target: {name!r}")
             links.add(p)
 
 
@@ -189,6 +192,7 @@ def run(
     allow: dict[str, Any] | None = None,
     cache_root: Path | None = None,
 ) -> int:
+    sys.dont_write_bytecode = True  # no __pycache__ in the job repository
     khrdeps = _deps_modules()
     allow = allow or khrdeps.load_allowlist()
     cache = (cache_root or khrdeps.deps_root()).resolve()
@@ -199,6 +203,17 @@ def run(
         raise OfflineError("native update_deps.py escapes the repository")
     if not script.is_file():
         raise OfflineError(f"no native dependency script at {script}")
+
+    # Resolve --dir once, before native code can change directory; native argparse
+    # keeps the last --dir, and so does this.
+    dir_parser = argparse.ArgumentParser(add_help=False, allow_abbrev=False)
+    dir_parser.add_argument("--dir", required=True)
+    try:
+        options, remaining = dir_parser.parse_known_args(native_args)
+    except SystemExit:
+        raise OfflineError("pass the native --dir") from None
+    root = Path(os.path.abspath(options.dir))
+    native_args = [*remaining, "--dir", str(root)]
 
     record: list[dict[str, Any]] = []
     used: set[str] = set()
@@ -219,7 +234,6 @@ def run(
         good = native.GoodRepo
 
         def checkout(item) -> None:
-            root = Path(os.path.abspath(item._args.dir))
             target = _confined(root, item.repo_dir)
             if item.name in providers:
                 source = providers[item.name].resolve()
@@ -241,30 +255,30 @@ def run(
                     pin = khrdeps.git_pin(item.url, item.commit, allow)
                 except khrdeps.PinError as exc:
                     raise OfflineError(f"{item.name}: {exc}") from None
-                if not khrdeps.pin_present(cache, pin):
-                    raise OfflineError(
-                        f"{item.name}@{item.commit} is not in the shared cache; "
-                        "request it via khr-deps"
-                    )
                 source = khrdeps.mirror_path(cache, pin["repo"])
                 ref = pin["ref"]
                 target_ref = ref if _HEX.fullmatch(ref) else f"refs/tags/{ref}"
-                sha = _git(
-                    _git_env(khrdeps, [source]),
-                    "--git-dir",
-                    str(source),
-                    "rev-parse",
-                    "--verify",
-                    f"{target_ref}^{{commit}}",
-                )
+                try:
+                    sha = _git(
+                        _git_env(khrdeps, [source]),
+                        "--git-dir",
+                        str(source),
+                        "rev-parse",
+                        "--verify",
+                        f"{target_ref}^{{commit}}",
+                    )
+                except OfflineError:
+                    raise OfflineError(
+                        f"{item.name}@{ref} is not in the shared cache; "
+                        "request it via khr-deps"
+                    ) from None
+                if _HEX.fullmatch(ref) and sha != ref:
+                    raise OfflineError(f"{item.name}: mirror resolved {ref} to {sha}")
                 role, pin_ref = "pinned-baseline", ref
-            if not _clean_at(khrdeps, target, sha):
-                if target.exists() or target.is_symlink():
-                    if target.is_symlink() or target.is_file():
-                        target.unlink()
-                    else:
-                        shutil.rmtree(target)
-                snapshot(khrdeps, source, target, sha)
+            # Always a fresh snapshot (as Eric's per-profile clones): a reused tree
+            # can hide unpinned bytes behind index flags or ignored files.
+            _replace(target)
+            snapshot(khrdeps, source, target, sha)
             _git(
                 _git_env(khrdeps, [target]),
                 "-C",
@@ -289,7 +303,6 @@ def run(
         original_artifact = getattr(good, "DownloadAndExtractArtifact", None)
 
         def artifact(item) -> bool:
-            root = Path(os.path.abspath(item._args.dir))
             url = item.ArtifactUrl()
             try:
                 pin = khrdeps.blob_pin(url, allow)
@@ -303,9 +316,7 @@ def run(
             _confined(root, item.install_dir)
             download = build_dir / url.rsplit("/", 1)[-1]
             build_dir.mkdir(parents=True, exist_ok=True)
-            if download.is_symlink():
-                download.unlink()
-            shutil.copyfile(cache / "blobs" / pin["sha256"], download)
+            _write_new(download, (cache / "blobs" / pin["sha256"]).read_bytes())
             if khrdeps.file_digest(download, "sha256") != pin["sha256"]:
                 raise OfflineError(f"{item.name} artifact changed while copying")
             if download.suffix == ".zip":
@@ -350,28 +361,18 @@ def run(
             raise OfflineError(
                 f"--provider names no dependency that was checked out: {sorted(unknown)}"
             )
-        out_dir = Path(os.path.abspath(_dir_arg(native_args, repo)))
-        out_dir.mkdir(parents=True, exist_ok=True)
-        (out_dir / RECORD).write_text(
-            json.dumps(
-                {"schema": 1, "repository": str(repo), "dependencies": record}, indent=2
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        root.mkdir(parents=True, exist_ok=True)
+        body = {
+            "schema": 1,
+            "provenance": "agent-reported",
+            "repository": str(repo),
+            "dependencies": record,
+        }
+        _write_new(root / RECORD, (json.dumps(body, indent=2) + "\n").encode())
         return code
     finally:
         urllib.request.urlretrieve, urllib.request.urlopen = saved
         sys.modules.pop(spec.name, None)
-
-
-def _dir_arg(native_args: list[str], repo: Path) -> str:
-    for i, a in enumerate(native_args):
-        if a == "--dir" and i + 1 < len(native_args):
-            return native_args[i + 1]
-        if a.startswith("--dir="):
-            return a.split("=", 1)[1]
-    return str(Path.cwd())
 
 
 def main(argv: list[str] | None = None) -> int:

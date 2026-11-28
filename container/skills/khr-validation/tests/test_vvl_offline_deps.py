@@ -190,16 +190,83 @@ class VvlOfflineDeps(unittest.TestCase):
         self.assertEqual(self.run_adapter("--optional", "tests"), 0)
         self.assertFalse((self.ext / "slang").exists())
 
-    def test_rerun_keeps_clean_snapshot_and_replaces_dirty_one(self) -> None:
+    def test_rerun_rebuilds_snapshot_even_when_index_hides_edits(self) -> None:
         self.run_adapter()
         h = self.ext / "Vulkan-Headers"
-        marker = h / ".git" / "keep"
-        marker.write_text("x")
-        self.run_adapter()
-        self.assertTrue(marker.exists(), "a clean snapshot at the pin is kept")
-        (h / "include" / "vulkan.h").write_text("tampered\n")
+        sh(h, "git", "update-index", "--assume-unchanged", "include/vulkan.h")
+        (h / "include" / "vulkan.h").write_text("hidden edit\n")
+        (h / ".git" / "planted").write_text("x")
+        self.assertEqual(sh(h, "git", "status", "--porcelain"), "")
         self.run_adapter()
         self.assertEqual((h / "include" / "vulkan.h").read_text(), "v1\n")
+        self.assertFalse((h / ".git" / "planted").exists())
+
+    def test_relative_dir_survives_native_chdir(self) -> None:
+        cwd = os.getcwd()
+        os.chdir(self.tmp)
+        try:
+            code = vod.run(
+                self.vvl, ["--dir", "external"], None, self.allow, self.cache
+            )
+        finally:
+            os.chdir(cwd)
+        self.assertEqual(code, 0)
+        self.assertTrue((self.tmp / "external" / vod.RECORD).is_file())
+        self.assertFalse((self.tmp / "external" / "external").exists())
+
+    def test_last_dir_wins_like_native_argparse(self) -> None:
+        other = self.tmp / "other"
+        args = ["--dir", str(other), "--dir", str(self.ext)]
+        self.assertEqual(vod.run(self.vvl, args, None, self.allow, self.cache), 0)
+        self.assertTrue((self.ext / vod.RECORD).is_file())
+        self.assertFalse(other.exists())
+
+    def test_record_and_download_never_write_through_links(self) -> None:
+        victim = self.tmp / "victim"
+        victim.write_text("keep")
+        self.ext.mkdir()
+        (self.ext / vod.RECORD).symlink_to(victim)
+        dl = self.ext / "slang" / "download"
+        dl.mkdir(parents=True)
+        hard = self.tmp / "victim-hard"
+        hard.write_text("keep")
+        os.link(hard, dl / Path(self.slang_url).name)
+        self.assertEqual(self.run_adapter(), 0)
+        self.assertEqual(victim.read_text(), "keep")
+        self.assertEqual(hard.read_text(), "keep")
+        self.assertFalse((self.ext / vod.RECORD).is_symlink())
+        rec = json.loads((self.ext / vod.RECORD).read_text())
+        self.assertEqual(rec["provenance"], "agent-reported")
+
+    def test_fsmonitor_hook_in_provider_is_not_run(self) -> None:
+        job = self.tmp / "job-headers"
+        make_repo(job, {"include/vulkan.h": "job change\n"})
+        marker = self.tmp / "fsmonitor-ran"
+        hook = self.tmp / "hook.sh"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\n")
+        hook.chmod(0o755)
+        sh(job, "git", "config", "core.fsmonitor", str(hook))
+        self.assertEqual(self.run_adapter(providers={"Vulkan-Headers": job}), 0)
+        self.assertFalse(marker.exists())
+
+    def test_no_bytecode_written_into_job_repository(self) -> None:
+        saved = sys.dont_write_bytecode
+        try:
+            self.run_adapter()
+        finally:
+            sys.dont_write_bytecode = saved
+        self.assertFalse((self.vvl / "scripts" / "__pycache__").exists())
+
+    def test_foreign_owned_mirror_is_trusted_explicitly(self) -> None:
+        # The orchestrator owns the read-only mirrors; the job may run as another
+        # uid. Git's ownership test switch makes every repository look foreign.
+        real = khrdeps.clean_git_env
+
+        def foreign() -> dict[str, str]:
+            return {**real(), "GIT_TEST_ASSUME_DIFFERENT_OWNER": "1"}
+
+        with mock.patch.object(khrdeps, "clean_git_env", foreign):
+            self.assertEqual(self.run_adapter(), 0)
 
     def test_missing_pin_fails_closed(self) -> None:
         shutil.rmtree(khrdeps.mirror_path(self.cache, "KhronosGroup/SPIRV-Headers"))
@@ -260,11 +327,15 @@ class VvlOfflineDeps(unittest.TestCase):
         for entries, msg in (
             ([("../evil", "x", 0o100644)], "unsafe release archive member"),
             ([("/abs", "x", 0o100644)], "unsafe release archive member"),
-            ([("lib/l", "../../../etc", 0o120777)], "symlink escapes"),
-            ([("lib/l", "/etc", 0o120777)], "symlink is absolute"),
+            ([("lib/l", "../../../etc", 0o120777)], "unsafe archive symlink target"),
+            ([("lib/l", "/etc", 0o120777)], "unsafe archive symlink target"),
+            (
+                [("a", ".", 0o120777), (".release", "a/a/a/../../../victim", 0o120777)],
+                "unsafe archive symlink target",
+            ),
             (
                 [("lib", "/tmp", 0o120777), ("lib/x", "x", 0o100644)],
-                "absolute|through a symlink",
+                "unsafe archive symlink target|through a symlink",
             ),
         ):
             data = zip_bytes(entries)
