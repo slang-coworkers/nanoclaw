@@ -34,7 +34,11 @@ produces:
    - for each affected repository, the guidance in `/khr-repo-tools`, plus `/khr-spec-authoring` for specification text.
 3. **Plan:** decide which repositories the request needs and why. Respect explicit scope limits.
 4. **Change:** make the full change in each needed worktree, regenerating generated artifacts through their generators. Update the status as phases change.
-5. **Validate:** per `/khr-validation`, with every setup and check through the wrapper, builds under the lease, and focused CPU-only tests.
+5. **Validate** with `/khr-validation`; every setup and check goes through its `run_check.py` wrapper, builds under the lease:
+   - toolchain once per job: `setup_toolchain.py` (Toolchain);
+   - prepared dependencies per repository (Prepared dependencies): `vvl_offline_deps.py` for Vulkan-ValidationLayers, `cts_offline_deps.py` for VK-GL-CTS, `npm ci --offline` for Vulkan-Docs;
+   - if an adapter wrote `pin-request.json`, `send_message(to="khr-deps", text=<its exact contents>)` and end the turn, as in step 1; rerun the adapter when `khr-deps` replies;
+   - then the focused CPU-only checks and tests (Focused tests).
 6. **Final check:** apply the completeness invariant against every deliverable and guide.
 7. **Commit:** every changed worktree with the preset identity, leaving trees clean.
 8. **Report and finish:** write `report.json`, then run the `/khr-job-prep` finish step and reply in the thread with the outcome summary.

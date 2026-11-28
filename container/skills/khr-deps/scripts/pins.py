@@ -8,7 +8,10 @@ never from the working tree, and never executed. Supported profiles:
 - ``deps``: a Chromium-style ``DEPS`` file (SPIRV-Tools), parsed as a syntax tree.
   Only string literals, ``Var()`` and ``+`` are understood;
 - ``npm``: ``package-lock.json`` registry tarballs with sha512 integrity;
-- ``gitmodules``: ``.gitmodules`` URLs plus the gitlink SHAs recorded in the tree.
+- ``gitmodules``: ``.gitmodules`` URLs plus the gitlink SHAs recorded in the tree;
+- ``cts``: VK-GL-CTS ``external/fetch_sources.py``. ``PACKAGES`` is read as a
+  syntax tree, never executed; only literal ``GitRepo``, ``SourcePackage`` and
+  ``SourceFile`` calls are accepted.
 
 Every pin is validated against the reviewed allowlist. Anything else becomes an
 ``unavailable`` entry carrying a fingerprint of the declaration, not the URL.
@@ -192,6 +195,105 @@ def parse_known_good(
     return out
 
 
+# CTS constructor -> positional argument count; extras that native uses and we
+# reproduce exactly. Anything else makes that entry unavailable.
+_CTS_ARGS = {"GitRepo": 4, "SourcePackage": 3, "SourceFile": 4}
+_CTS_EXTRAS = {
+    ("SourcePackage", "libpng", "postExtract"): "postExtractLibpng",
+    ("GitRepo", "glslang", "removeTags"): ["main-tot", "master-tot"],
+}
+# Native fetch_sources.py skips this one unless --include-vvl is given.
+_CTS_SKIP = "vulkan-validationlayers"
+
+
+def _cts_entry(call: ast.expr, allow: dict[str, Any]) -> dict[str, str] | None:
+    if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name):
+        raise PinError("CTS dependency must be a literal constructor")
+    ctor = call.func.id
+    if ctor not in _CTS_ARGS:
+        raise PinError("unsupported CTS dependency constructor")
+    try:
+        args = [ast.literal_eval(a) for a in call.args]
+    except (ValueError, TypeError):
+        raise PinError("CTS dependency arguments must be literals") from None
+    if len(args) != _CTS_ARGS[ctor] or not all(isinstance(a, str) for a in args):
+        raise PinError("unsupported CTS dependency arguments")
+    subdir = args[3] if ctor in ("GitRepo", "SourceFile") else args[2]
+    if not re.fullmatch(r"[A-Za-z0-9_][A-Za-z0-9_.-]*", subdir) or subdir in (".", ".."):
+        raise PinError("CTS dependency directory must be one safe path component")
+    if ctor == "GitRepo" and subdir == _CTS_SKIP:
+        return None
+    extras: dict[str, str] = {}
+    for kw in call.keywords:
+        want = _CTS_EXTRAS.get((ctor, subdir, kw.arg or ""))
+        if want is None:
+            raise PinError("unsupported CTS dependency metadata")
+        if isinstance(want, str):
+            ok = isinstance(kw.value, ast.Name) and kw.value.id == want
+        else:
+            try:
+                ok = ast.literal_eval(kw.value) == want
+            except (ValueError, TypeError):
+                ok = False
+        if not ok:
+            raise PinError("unsupported CTS dependency metadata")
+        extras[str(kw.arg)] = want if isinstance(want, str) else ",".join(want)
+    if ctor == "GitRepo":
+        pin = git_pin(args[0], args[2], allow)
+    else:
+        url = args[0]
+        declared = args[1] if ctor == "SourcePackage" else args[2]
+        if ctor == "SourceFile" and args[1] != url.rsplit("/", 1)[-1]:
+            raise PinError("CTS source filename mismatch")
+        pin = blob_pin(url, allow)
+        if pin["sha256"] != declared:
+            raise PinError("CTS download checksum differs from the reviewed one")
+        pin = {**pin, "ctsKind": "archive" if ctor == "SourcePackage" else "file"}
+        if ctor == "SourceFile":
+            pin["filename"] = args[1]
+    return {**pin, "name": subdir, "subdir": subdir, **extras}
+
+
+def parse_cts(raw: bytes, allow: dict[str, Any]) -> list[dict[str, str]]:
+    """Pins for ``external/fetch_sources.py``, in native ``PACKAGES`` order."""
+    try:
+        tree = ast.parse(raw)
+    except SyntaxError:
+        raise PinError("invalid CTS declaration syntax") from None
+    decls = [
+        n.value
+        for n in tree.body
+        if isinstance(n, ast.Assign)
+        and any(isinstance(t, ast.Name) and t.id == "PACKAGES" for t in n.targets)
+    ]
+    if len(decls) != 1 or not isinstance(decls[0], ast.List):
+        raise PinError("unsupported CTS PACKAGES declaration")
+    out: list[dict[str, str]] = []
+    for call in decls[0].elts:
+        try:
+            pin = _cts_entry(call, allow)
+        except PinError as exc:
+            # A rejected URL may carry a credential: keep only the directory name
+            # (when it is a safe literal) and a fingerprint of the call.
+            name = "unavailable"
+            if isinstance(call, ast.Call) and call.args:
+                try:
+                    cand = ast.literal_eval(call.args[-1])
+                    if isinstance(cand, str) and re.fullmatch(r"[A-Za-z0-9_.-]+", cand):
+                        name = cand
+                except (ValueError, TypeError):
+                    pass
+            reason = str(exc).split(" ")[0] if str(exc).startswith("unreviewed") else str(exc)
+            out.append({**_unavailable(name, ast.dump(call), reason), "subdir": name})
+            continue
+        if pin is not None:
+            out.append(pin)
+    names = [p["subdir"] for p in out]
+    if not out or len(names) != len(set(names)):
+        raise PinError("empty or duplicate CTS dependency directories")
+    return out
+
+
 def parse_deps(raw: bytes, allow: dict[str, Any]) -> list[dict[str, str]]:
     try:
         tree = ast.parse(raw)
@@ -323,6 +425,7 @@ def extract(
         "deps": lambda: parse_deps(raw, allow),
         "npm": lambda: parse_package_lock(raw, allow),
         "gitmodules": lambda: parse_gitmodules(raw, repo, rev, allow),
+        "cts": lambda: parse_cts(raw, allow),
     }
     if kind not in parsers:
         raise PinError(f"unsupported dependency profile {kind}")

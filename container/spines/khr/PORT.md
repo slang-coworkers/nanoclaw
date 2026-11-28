@@ -159,7 +159,17 @@ Nothing confines the native script's filesystem writes to `--dir`. It has the ag
 
 Within that boundary, the adapter rebuilds every snapshot fresh, disables git hooks and fsmonitor, does no fetch except local file transport, creates its own output files afresh, and rejects `..` in archive symlink targets. Its record is labelled `agent-reported`. If P6 needs authoritative provenance, it has to come from a trusted process that never imports job Python. Re-deriving pins from the base commit's declarations establishes what was declared, not which bytes were compiled; proving the latter needs the build itself in a trusted runner.
 
-Still to come: `cts_offline_deps.py` with `fetch_sources.py` pin extraction, `prepare_profile.py` (frozen consumer tree, pinned-header workaround), the full toolchain image, and the GPU validation profile.
+P4.3 (CTS): `pins.parse_cts` ports Eric's `requests_for_cts`. It reads `PACKAGES` from `external/fetch_sources.py` as a syntax tree and accepts literal constructors only, plus exactly two extras: libpng's `postExtract` and glslang's `removeTags`. VVL is skipped, and checksums must match the reviewed allowlist. Rejected URLs are never echoed. `khr-validation/scripts/cts_offline_deps.py` goes further than Eric's adapter, which `runpy`'d the native script: ours **never executes `fetch_sources.py`**. It reproduces the native layout itself from verified cache objects:
+- fresh `src` snapshots, with local tags for tag pins;
+- `packages/<file>` plus the `extracted` marker;
+- tar/zip extraction limited to regular files, directories and in-tree links, with setuid bits and group/world write stripped;
+- libpng's prebuilt config.
+
+It reads the committed declaration, refuses to replace anything git tracks, and checks every pin before changing anything.
+
+Both adapters now preflight every pin native would use and write `pin-request.json` (prepare's format) for the missing ones. That closes the loop when a job's own commit changes a declaration, which the base-commit inventory can't see. khr-implement step 5 hands the file to `khr-deps`, as in step 1. The shared git/file helpers live in `khr-validation/scripts/offline_git.py`.
+
+Still to come: `prepare_profile.py` (frozen consumer tree, pinned-header workaround), the full toolchain image, and the GPU validation profile.
 
 ## Coworkers and hand-offs
 

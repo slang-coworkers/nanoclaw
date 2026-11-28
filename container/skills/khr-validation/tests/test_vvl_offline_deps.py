@@ -289,6 +289,35 @@ class VvlOfflineDeps(unittest.TestCase):
         with self.assertRaisesRegex(vod.OfflineError, "not in the shared cache"):
             self.run_adapter()
 
+    def test_missing_pin_writes_a_request_before_native_runs(self) -> None:
+        shutil.rmtree(khrdeps.mirror_path(self.cache, "KhronosGroup/SPIRV-Headers"))
+        with self.assertRaisesRegex(vod.OfflineError, "send it to khr-deps"):
+            self.run_adapter()
+        req = json.loads((self.ext / "pin-request.json").read_text())
+        self.assertEqual(
+            req["pins"],
+            [
+                {
+                    "kind": "git",
+                    "url": "https://github.com/KhronosGroup/SPIRV-Headers.git",
+                    "ref": self.spirv_sha,
+                }
+            ],
+        )
+        self.assertFalse((self.ext / "Vulkan-Headers").exists(), "native never ran")
+
+    def test_optional_entries_are_not_requested_when_skipped(self) -> None:
+        sha = self.allow["archives"][self.slang_url]
+        # pins name the artifact for the linux job host; on another test host the
+        # native fixture asks for its own. Review both so the preflight sees it.
+        linux = SLANG_URL.format(release="2026.1.0", system="linux", arch="x86_64")
+        self.allow["archives"][linux] = sha
+        (self.cache / "blobs" / sha).unlink()
+        self.assertEqual(self.run_adapter("--optional", "tests"), 0)
+        self.assertFalse((self.ext / "pin-request.json").exists())
+        with self.assertRaisesRegex(vod.OfflineError, "not in the shared cache: slang"):
+            self.run_adapter()
+
     def test_unreviewed_repository_is_refused(self) -> None:
         self.known_good(
             [

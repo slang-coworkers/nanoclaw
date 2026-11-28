@@ -45,65 +45,24 @@ import importlib.util
 import json
 import os
 import platform
-import re
-import shlex
-import shutil
-import stat
-import subprocess
 import sys
 import urllib.request
 import zipfile
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
-RECORD = "khr-offline-deps.json"
-_HEX = re.compile(r"[0-9a-f]{40}|[0-9a-f]{64}")
-
-
-class OfflineError(RuntimeError):
-    """A dependency that cannot be prepared without the network or a review."""
-
-
-def _deps_modules():
-    """The shared pin model lives in the khr-deps skill next to this one (read-only mount)."""
-    deps_scripts = Path(__file__).resolve().parents[2] / "khr-deps" / "scripts"
-    if str(deps_scripts) not in sys.path:
-        sys.path.insert(0, str(deps_scripts))
-    import khrdeps
-
-    return khrdeps
-
-
-def _git_env(khrdeps, trusted: list[Path]) -> dict[str, str]:
-    env = khrdeps.clean_git_env()
-    for k in ("HTTPS_PROXY", "HTTP_PROXY", "https_proxy", "http_proxy"):
-        env.pop(k, None)
-    env["GIT_ALLOW_PROTOCOL"] = "file"
-    pairs = [("core.hooksPath", "/dev/null"), ("core.fsmonitor", "false")]
-    for path in trusted:
-        pairs += [("safe.directory", str(path)), ("safe.directory", str(path / ".git"))]
-    env["GIT_CONFIG_COUNT"] = str(len(pairs))
-    for i, (k, v) in enumerate(pairs):
-        env[f"GIT_CONFIG_KEY_{i}"] = k
-        env[f"GIT_CONFIG_VALUE_{i}"] = v
-    return env
-
-
-def _git(env: dict[str, str], *args: str) -> str:
-    r = subprocess.run(
-        ["git", *args], capture_output=True, text=True, env=env, check=False
-    )
-    if r.returncode != 0:
-        raise OfflineError(f"git {args[0]} failed: {r.stderr.strip()[-300:]}")
-    return r.stdout.strip()
-
-
-def _trust_for_children(path: Path) -> None:
-    """Child CMake/version probes run git in the snapshot; trust that exact path only."""
-    n = int(os.environ.get("GIT_CONFIG_COUNT", "0") or "0")
-    os.environ[f"GIT_CONFIG_KEY_{n}"] = "safe.directory"
-    os.environ[f"GIT_CONFIG_VALUE_{n}"] = str(path)
-    os.environ["GIT_CONFIG_COUNT"] = str(n + 1)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import offline_git
+from offline_git import RECORD, OfflineError, snapshot
+from offline_git import check_zip_members as _check_members
+from offline_git import copy_new as _copy_new
+from offline_git import deps_modules as _deps_modules
+from offline_git import git as _git
+from offline_git import git_env as _git_env
+from offline_git import overlaps as _overlaps
+from offline_git import replace as _replace
+from offline_git import trust_for_children as _trust_for_children
+from offline_git import write_new as _write_new
 
 
 def _confined(root: Path, path: str | os.PathLike[str]) -> Path:
@@ -116,64 +75,6 @@ def _confined(root: Path, path: str | os.PathLike[str]) -> Path:
         if parent.is_symlink():
             raise OfflineError(f"dependency path goes through a symlink: {parent}")
     return target
-
-
-def snapshot(khrdeps, source: Path, target: Path, sha: str) -> None:
-    """A depth-1 checkout of ``sha`` from a local repository, no hooks, no network."""
-    env = _git_env(khrdeps, [source.resolve(), target])
-    upload_pack = shlex.join(
-        [
-            "git",
-            "-c",
-            "core.hooksPath=/dev/null",
-            "-c",
-            "core.fsmonitor=false",
-            "-c",
-            "uploadpack.allowAnySHA1InWant=true",
-            "-c",
-            f"safe.directory={source.resolve()}",
-            "-c",
-            f"safe.directory={source.resolve() / '.git'}",
-            "upload-pack",
-        ]
-    )
-    target.parent.mkdir(parents=True, exist_ok=True)
-    _git(env, "init", "-q", str(target))
-    _git(
-        env,
-        "-C",
-        str(target),
-        "fetch",
-        "-q",
-        "--depth=1",
-        "--no-tags",
-        f"--upload-pack={upload_pack}",
-        str(source.resolve()),
-        sha,
-    )
-    _git(env, "-C", str(target), "checkout", "-q", "--detach", sha)
-
-
-def _replace(target: Path) -> None:
-    """Remove whatever sits at ``target`` without following it."""
-    if target.is_symlink() or target.is_file():
-        target.unlink()
-    elif target.exists():
-        shutil.rmtree(target)
-
-
-def _write_new(path: Path, data: bytes) -> None:
-    """Create ``path`` afresh: never truncate an existing inode (symlink or hard link)."""
-    path.unlink(missing_ok=True)
-    with path.open("xb") as fh:
-        fh.write(data)
-
-
-def _copy_new(source: Path, path: Path) -> None:
-    """``_write_new`` for a file, streamed (release artifacts can be large)."""
-    path.unlink(missing_ok=True)
-    with source.open("rb") as src, path.open("xb") as dst:
-        shutil.copyfileobj(src, dst, length=1 << 20)
 
 
 def artifact_url(item) -> str:
@@ -218,25 +119,65 @@ def _check_target(native_args: list[str]) -> None:
         )
 
 
-def _overlaps(a: Path, b: Path) -> bool:
-    return a == b or a.is_relative_to(b) or b.is_relative_to(a)
+def _preflight(khrdeps, repo, root, native_args, providers, allow, cache) -> None:
+    """Every pin native will check out must be cached; else write pin-request.json.
+
+    Mirrors native selection: the same known_good.json (``--known_good_dir``), the
+    platform/arch/ci_only skips (khr-deps ``pins``) and ``--optional``. Unreviewed
+    entries are left to fail in native ``Checkout`` with their own message.
+    """
+    offline_git.deps_modules()
+    import pins
+
+    opts = argparse.ArgumentParser(add_help=False, allow_abbrev=True)
+    opts.add_argument("--known_good_dir")
+    opts.add_argument(
+        "--optional", type=lambda a: set(a.lower().split(",")), default=set()
+    )
+    try:
+        o, _ = opts.parse_known_args(native_args)
+    except SystemExit:
+        raise OfflineError("could not read --known_good_dir/--optional") from None
+    kg_dir = (
+        Path(os.path.abspath(o.known_good_dir))
+        if o.known_good_dir
+        else repo / "scripts"
+    )
+    kg = kg_dir / "known_good.json"
+    if not kg.is_file():
+        return  # native reports its own error
+    raw = kg.read_bytes()
+    try:
+        skipped = {
+            str(r.get("name"))
+            for r in json.loads(raw).get("repos", [])
+            if set(r.get("optional", [])) & o.optional
+        }
+        entries = pins.parse_known_good(raw, allow)
+    except (ValueError, AttributeError, khrdeps.PinError):
+        return
+    missing = []
+    for e in entries:
+        if e["kind"] == "unavailable" or e["name"] in skipped or e["name"] in providers:
+            continue
+        if not khrdeps.pin_present(cache, e) and not (
+            e["kind"] == "git" and _resolves(khrdeps, cache, e)
+        ):
+            missing.append(e)
+    req = offline_git.write_pin_request(root, repo.name, missing)
+    if req:
+        names = ", ".join(e["name"] for e in missing)
+        raise OfflineError(
+            f"not in the shared cache: {names}; wrote {req}: send it to khr-deps, then rerun"
+        )
 
 
-def _check_members(archive: zipfile.ZipFile) -> None:
-    """Reject members that could land or write outside the install directory."""
-    links: set[PurePosixPath] = set()
-    for info in archive.infolist():
-        name = info.filename
-        p = PurePosixPath(name)
-        if not name or "\\" in name or p.is_absolute() or ".." in p.parts:
-            raise OfflineError(f"unsafe release archive member: {name!r}")
-        if any(parent in links for parent in p.parents):
-            raise OfflineError(f"archive member written through a symlink: {name!r}")
-        if stat.S_ISLNK(info.external_attr >> 16):
-            dest = PurePosixPath(archive.read(info).decode("utf-8", "replace"))
-            if dest.is_absolute() or "\\" in str(dest) or ".." in dest.parts:
-                raise OfflineError(f"unsafe archive symlink target: {name!r}")
-            links.add(p)
+def _resolves(khrdeps, cache, pin) -> bool:
+    try:
+        offline_git.resolve_pin(khrdeps, cache, pin, pin.get("name", ""))
+    except OfflineError:
+        return False
+    return True
 
 
 def run(
@@ -282,6 +223,8 @@ def run(
                 f"--provider {name} overlaps --dir; use a separate --dir"
             )
 
+    _preflight(khrdeps, repo, root, native_args, providers, allow, cache)
+
     record: list[dict[str, Any]] = []
     used: set[str] = set()
 
@@ -304,17 +247,7 @@ def run(
             target = _confined(root, item.repo_dir)
             if item.name in providers:
                 source = providers[item.name]
-                env = _git_env(khrdeps, [source])
-                if _git(
-                    env,
-                    "-C",
-                    str(source),
-                    "status",
-                    "--porcelain",
-                    "--untracked-files=all",
-                ):
-                    raise OfflineError(f"commit {item.name} edits before integration")
-                sha = _git(env, "-C", str(source), "rev-parse", "HEAD")
+                sha = offline_git.provider_head(khrdeps, source, item.name)
                 role, pin_ref = "integration", None
                 used.add(item.name)
             else:
@@ -322,26 +255,8 @@ def run(
                     pin = khrdeps.git_pin(item.url, item.commit, allow)
                 except khrdeps.PinError as exc:
                     raise OfflineError(f"{item.name}: {exc}") from None
-                source = khrdeps.mirror_path(cache, pin["repo"])
-                ref = pin["ref"]
-                target_ref = ref if _HEX.fullmatch(ref) else f"refs/tags/{ref}"
-                try:
-                    sha = _git(
-                        _git_env(khrdeps, [source]),
-                        "--git-dir",
-                        str(source),
-                        "rev-parse",
-                        "--verify",
-                        f"{target_ref}^{{commit}}",
-                    )
-                except OfflineError:
-                    raise OfflineError(
-                        f"{item.name}@{ref} is not in the shared cache; "
-                        "request it via khr-deps"
-                    ) from None
-                if _HEX.fullmatch(ref) and sha != ref:
-                    raise OfflineError(f"{item.name}: mirror resolved {ref} to {sha}")
-                role, pin_ref = "pinned-baseline", ref
+                source, sha = offline_git.resolve_pin(khrdeps, cache, pin, item.name)
+                role, pin_ref = "pinned-baseline", pin["ref"]
             # Always a fresh snapshot (as Eric's per-profile clones): a reused tree
             # can hide unpinned bytes behind index flags or ignored files.
             _replace(target)

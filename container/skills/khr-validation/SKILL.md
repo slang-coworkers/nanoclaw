@@ -61,7 +61,8 @@ Read `dependency-inventory.json` for every configured repository. "Ready" means 
 - **Vulkan-Docs:** `npm ci --offline --ignore-scripts --no-audit --no-fund` with the prepared cache (`$npm_config_cache`), through the wrapper.
 - **Vulkan-ValidationLayers:**
   1. With ready inputs, first run `python3 -B /app/skills/khr-validation/scripts/vvl_offline_deps.py <REPOSITORY> --dir $KHR_DEPENDENCY_ROOT/vvl --config debug --generator Ninja`. Use absolute paths, run it through the wrapper with `--resource build`, and allow 30 minutes.
-     - It runs the repository's own `scripts/update_deps.py`, but each dependency is checked out from the shared cache at its exact pin and release artifacts come only from verified cached files. It never downloads. A pin that isn't cached fails with "request it via khr-deps": ask for it with the khr-implement hand-off, then rerun.
+     - It runs the repository's own `scripts/update_deps.py`, but each dependency is checked out from the shared cache at its exact pin and release artifacts come only from verified cached files. It never downloads.
+     - Before the native script runs, it checks every pin native will use. If any isn't cached it writes `$KHR_DEPENDENCY_ROOT/vvl/pin-request.json` and stops: hand that file to `khr-deps` (khr-implement step 5), then rerun.
      - It writes `$KHR_DEPENDENCY_ROOT/vvl/khr-offline-deps.json` with the commit or artifact used for every dependency. Cite it in the report as agent-reported provenance.
      - Every run rebuilds each dependency snapshot from the cache, so expect the dependency builds to repeat. Never edit files under `--dir`; change the job repository and rerun instead.
      - The adapter keeps an honest run on the reviewed pins. It isn't what keeps the job offline (the container's network and the read-only cache mount do that), and the repository's own script can still write anywhere you can.
@@ -72,9 +73,14 @@ Read `dependency-inventory.json` for every configured repository. "Ready" means 
   3. Never use `UPDATE_DEPS=ON`: it always fetches from GitHub and fails offline. Without ready preparation, record the missing inputs as `infrastructure_error`.
 - **VK-GL-CTS:**
   1. Read `README.md` and `external/vulkancts/README.md`.
-  2. With ready inputs, run `python3 /app/skills/khr-validation/scripts/cts_offline_deps.py --repository <ABS> --dependency-root $KHR_DEPENDENCY_ROOT/cts` through the wrapper.
-  3. Compile `deqp-vk` through the build lease with Vulkan video disabled. Never execute it.
-  4. Changed dependency declarations need host preparation again.
+  2. Commit any change to `external/fetch_sources.py` first; the adapter reads the committed file and refuses an uncommitted edit.
+  3. Run `python3 -B /app/skills/khr-validation/scripts/cts_offline_deps.py --repository <ABS> --dependency-root $KHR_DEPENDENCY_ROOT/cts` through the wrapper.
+     - It never executes `fetch_sources.py`. It reads `PACKAGES` and lays out what that script would: `external/<dir>/src` snapshots at the exact pins, `packages/` archives with their `extracted` marker, the renderdoc header, and libpng's `pnglibconf.h`. Vulkan-ValidationLayers is skipped, as native does without `--include-vvl`.
+     - Every reviewed pin is checked first. Missing ones are written to `$KHR_DEPENDENCY_ROOT/cts/pin-request.json` and nothing is changed: hand that file to `khr-deps`, then rerun. An unreviewed or changed declaration is `infrastructure_error`; never download it yourself.
+     - Each run recreates the `external/*/src` trees; never edit them. It refuses to replace anything git tracks.
+     - Integration: `--provider <dir>=<ABS_JOB_REPO>` (for example `glslang=...`) uses that job repository's committed `HEAD`. Report it separately from the pinned baseline.
+     - It writes `$KHR_DEPENDENCY_ROOT/cts/khr-offline-deps.json` (agent-reported provenance). Cite it in the report.
+  4. Configure with `-DDEQP_DISABLE_VK_VIDEO_TESTS=ON` and compile `deqp-vk` through the build lease. Never execute it.
 
 ## Validation profiles
 
