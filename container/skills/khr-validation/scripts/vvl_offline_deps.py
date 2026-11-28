@@ -233,9 +233,9 @@ def run(
         raise OfflineError("--dir contains the repository; use a separate directory")
     providers = {name: path.resolve() for name, path in providers.items()}
     for name, path in providers.items():
-        if _overlaps(path, real_root) or _overlaps(path, repo):
+        if _overlaps(path, real_root):
             raise OfflineError(
-                f"--provider {name} overlaps --dir or the repository; use a separate checkout"
+                f"--provider {name} overlaps --dir; use a separate --dir"
             )
 
     record: list[dict[str, Any]] = []

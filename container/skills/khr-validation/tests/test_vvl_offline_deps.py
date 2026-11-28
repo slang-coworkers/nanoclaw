@@ -401,6 +401,19 @@ class VvlOfflineDeps(unittest.TestCase):
             vod.run(self.vvl, args, {"Vulkan-Headers": job}, self.allow, self.cache)
         self.assertFalse((job / "external").exists())
 
+    def test_repository_itself_may_be_a_provider_with_a_separate_dir(self) -> None:
+        sh(self.vvl, "git", "init", "-q", "-b", "main")
+        (self.vvl / "include").mkdir()
+        (self.vvl / "include" / "vulkan.h").write_text("monorepo\n")
+        sh(self.vvl, "git", "add", "-A")
+        sh(self.vvl, "git", "commit", "-q", "-m", "c")
+        head = sh(self.vvl, "git", "rev-parse", "HEAD")
+        self.assertEqual(self.run_adapter(providers={"Vulkan-Headers": self.vvl}), 0)
+        self.assertEqual(
+            sh(self.ext / "Vulkan-Headers", "git", "rev-parse", "HEAD"), head
+        )
+        self.assertEqual(sh(self.vvl, "git", "rev-parse", "HEAD"), head)
+
     def test_dir_containing_repository_is_refused(self) -> None:
         with self.assertRaisesRegex(vod.OfflineError, "contains the repository"):
             vod.run(self.vvl, ["--dir", str(self.tmp)], None, self.allow, self.cache)
