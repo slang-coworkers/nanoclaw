@@ -161,6 +161,34 @@ class JobGitEnv(unittest.TestCase):
         with self.assertRaisesRegex(khrjob.JobError, "git filters"):
             khrjob.reject_filters(self.tmp / "wt")
 
+    def test_conditional_include_active_only_in_a_worktree_is_refused(self) -> None:
+        inc = self.tmp / "inc.cfg"
+        inc.write_text('[filter "x"]\n\tsmudge = cat\n')
+        sh(
+            self.repo,
+            "git",
+            "config",
+            "includeIf.gitdir:**/worktrees/**.path",
+            str(inc),
+        )
+        khrjob.reject_filters(self.repo)  # not active in the main repository
+        khrjob.git(
+            self.repo,
+            "worktree",
+            "add",
+            "--quiet",
+            "--no-checkout",
+            "-b",
+            "w",
+            str(self.tmp / "wt"),
+            "HEAD",
+        )
+        with self.assertRaisesRegex(khrjob.JobError, "git filters"):
+            khrjob.reject_filters(self.tmp / "wt")
+        self.assertFalse(
+            (self.tmp / "wt" / "AGENTS.md").exists(), "nothing checked out yet"
+        )
+
     def test_filter_hidden_in_an_included_file_is_refused(self) -> None:
         inc = self.tmp / "inc.cfg"
         inc.write_text('[filter "x"]\n\tclean = cat\n')
@@ -200,6 +228,24 @@ class JobGitEnv(unittest.TestCase):
             check=False,
         ).stdout.splitlines()
         self.assertEqual(got[-1], "", "command-scope empty helper resets the list")
+
+    def test_prepare_checks_the_worktree_before_writing_files(self) -> None:
+        text = (HERE.parent / "scripts" / "prepare_job.py").read_text()
+        add = (
+            text.index('"worktree",\n')
+            if '"worktree",\n' in text
+            else text.index('"worktree", "add"')
+        )
+        no_checkout = text.index('"--no-checkout"', add)
+        check = text.index("reject_filters(worktree)", no_checkout)
+        reset = (
+            text.index('"reset",', check)
+            if '"reset",' in text[check:]
+            else text.index('"reset"', check)
+        )
+        self.assertLess(add, no_checkout)
+        self.assertLess(no_checkout, check)
+        self.assertLess(check, reset)
 
     def test_every_explicit_fetch_names_its_upload_pack(self) -> None:
         import re

@@ -262,8 +262,23 @@ def prepare(job_root: Path, manifest_path: Path) -> dict[str, Any]:
         base = previous[repo["name"]] if continued else pin_base(cache, branch, request)
         worktree = job_root / "repos" / repo["name"]
         topic = f"khr/{_SAFE.sub('-', job)}/{_SAFE.sub('-', repo['name'])}"
-        reject_filters(cache)  # checkout would run them
-        git(cache, "worktree", "add", "--quiet", "-b", topic, str(worktree), base)
+        # Filters run on checkout. Check the cache, then the new worktree itself
+        # before any file is written: a conditional include (includeIf gitdir)
+        # can switch on a filter only inside the worktree's own git dir.
+        reject_filters(cache)
+        git(
+            cache,
+            "worktree",
+            "add",
+            "--quiet",
+            "--no-checkout",
+            "-b",
+            topic,
+            str(worktree),
+            base,
+        )
+        reject_filters(worktree)
+        git(worktree, "reset", "--hard", "--quiet", "--no-recurse-submodules", base)
         targets.append(
             {
                 "name": repo["name"],
