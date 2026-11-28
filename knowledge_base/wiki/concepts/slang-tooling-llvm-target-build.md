@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen, llvm-prebuilt, gcs, ci]
-source_count: 24
+source_count: 26
 ---
 
 ## TL;DR
@@ -110,6 +110,21 @@ not regenerate the version string (it still reports the configure-time hash), so
 freshness signal there either — cite the built SHA, not `-version`
 ([slang clone: Release slangc lacks libslang-llvm.so — use Debug slangc for LLVM CPU repros](../learnings/1794989575131-slang-clone-release-slangc-lacks-libslang-llvm-so-.md)).
 
+A pinned FETCH_BINARY URL goes stale between fix rounds the same way a stale fetch does: a worktree that
+pinned the v2026.18 zip in October and came back to life in November (master at v2026.23) failed
+`tests/llvm/float-not-equal-nan.slang (llvm)` — CHECK expected 1, got 0, because the old JIT runtime
+predates the FCMP_UNE semantics the test pins — while cuda/cpu/vk/glsl lanes passed. When a slang-llvm-only
+lane fails after a long-lived worktree resumes, re-fetch slang-llvm at the CURRENT release tag
+(`https://github.com/shader-slang/slang/releases/download/v<current>/slang-<current>-linux-x86_64.zip`)
+and re-run before debugging code; CI's full (non-shallow) builds resolve the default binary URL for current
+master, so they never see this
+([slang-llvm FETCH_BINARY URL must track current master version](../learnings/1795810468789-slang-llvm-fetch-binary-url-must-track-current-mas.md)).
+The version-string half of freshness extends here too: a rebuilt slangc still prints a stale version when
+the build dir is old, because `SLANG_VERSION_FULL` is baked into `CMakeCache.txt` at configure time —
+`slangc -v` is not a freshness signal on any path; verify via `git log -1 -- <file>` vs binary mtime, or
+reconfigure
+([SPIR-V processGetElement copies module-scope const arrays per read site](../learnings/1795781836756-spir-v-processgetelement-copies-module-scope-const.md)).
+
 ## Regression-testing the LLVM emitter: -target llvm-host-ir -o -, not host-callable
 
 For a deterministic regression in `source/slang/slang-emit-llvm.cpp` (the `-emit-cpu-via-llvm` path), emit
@@ -189,7 +204,7 @@ From triaging the static-initializer atomic drop (slang#14578, 2026-11-18), thre
 
 For a "bump LLVM to a version containing upstream PR X" issue (e.g. slang#13549 / llvm#229712), check three things. **PR state:** `gh pr view <N> -R llvm/llvm-project --json state,mergedAt,mergeCommit,milestone,comments` — `gh api repos/llvm/...` REST returns 401 through the gateway, but `gh pr view` uses GraphQL and works. **Whether the fix is in a release:** before merge, fetch the touched file from raw.githubusercontent.com at each tag (`llvmorg-21.1.8`, `22.1.8`, `23.1.x`, `main`), compare md5s, and `git apply --check` the local backport on a temp tree of just those files. Once merged, ancestry of the merge SHA settles the tag: a cheap clone (`git init; git remote add origin https://github.com/llvm/llvm-project.git; git fetch --filter=blob:none --shallow-since=<a few months back> origin refs/heads/release/23.x:refs/remotes/origin/release/23.x refs/heads/main:refs/remotes/origin/main refs/tags/llvmorg-23.1.4:refs/tags/llvmorg-23.1.4`, ~25 s), then `git merge-base --is-ancestor <sha> <tag>`. A negative in a shallow clone is weak, so back it with `git show <tag>:<file> | grep <new symbol>`. A `main` fix reaches an x.1.y release only through a backport (milestone "LLVM X.Y Release" + `/cherry-pick <sha>`, per llvm/docs/GitHub.md), and `llvmorg-N-init` is the branch point, not a release ([is an LLVM main commit in a release tag](../learnings/1793197406074-check-if-an-llvm-main-commit-is-in-a-release-tag-w.md)). **Tag dates:** `git ls-remote --tags` for the list, GraphQL `ref(qualifiedName:"refs/tags/…")` committedDate for dates. Slang facts as of 2026-10-09: the LLVM pin lives only in `external/build-llvm.sh:57` and `build-llvm.ps1:58`; deleting a backport patch rekeys the prebuilts (the key globs `external/llvm-*.patch`); LLVM 23 trips `static_assert(LLVM_VERSION_MAJOR < 23)` in `slang-llvm-jit-shared-library.cpp` (the Win64 RTDyld workaround); draft #11017 bumps to 22.1.4 ([checking whether an upstream LLVM fix has shipped](../learnings/1791577897128-checking-whether-an-upstream-llvm-fix-has-shipped-.md)).
 
-**Source learnings (24):**
+**Source learnings (26):**
 - [Release slangc lacks libslang-llvm.so — use Debug slangc for LLVM CPU repros](../learnings/1794989575131-slang-clone-release-slangc-lacks-libslang-llvm-so-.md) — FETCH_BINARY download skips build/Release/lib; `--target slangc` doesn't refresh `-version`
 - [LLVM CPU triage gotchas: -dump-ir goes to stderr; _SR mangles encode module names; statics can vanish pre-pipeline](../learnings/1794980057555-llvm-cpu-triage-gotchas-dump-ir-goes-to-stderr-sr-.md) — #14578: diff first-vs-second dump; case-insensitive greps
 - [ILLVMBuilder ABI constraint and CI testing (#13857 sNaN cluster)](../learnings/1794890998708-slang-llvm-illvmbuilder-abi-constraint-and-ci-test.md) — header changes force a slang-llvm release; cpp-only fixes are ABI-safe and CI-tested
@@ -214,5 +229,7 @@ For a "bump LLVM to a version containing upstream PR X" issue (e.g. slang#13549 
 - [Failed merge-group check-ci does not imply eviction](../learnings/1791564244082-failed-merge-group-check-ci-does-not-imply-evictio.md)
 - [LLVM prebuilt GCS key moves with ANY edit to build-llvm.sh](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md) — use hashlib, not `xxd`
 - [Is an LLVM main commit in a release tag (REST 401s)](../learnings/1793197406074-check-if-an-llvm-main-commit-is-in-a-release-tag-w.md) — blobless clone + `merge-base --is-ancestor`
+- [slang-llvm FETCH_BINARY URL must track current master version](../learnings/1795810468789-slang-llvm-fetch-binary-url-must-track-current-mas.md) — a pinned zip predating current master fails (llvm) lanes only; re-fetch at the current release tag before debugging
+- [SPIR-V processGetElement copies module-scope const arrays per read site](../learnings/1795781836756-spir-v-processgetelement-copies-module-scope-const.md) — side-fact: `SLANG_VERSION_FULL` baked into CMakeCache at configure, so `slangc -v` is never a freshness signal
 
 _Catalog: [[wiki/index.md]]_

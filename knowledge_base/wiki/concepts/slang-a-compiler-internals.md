@@ -3,7 +3,7 @@ title: Slang compiler internals — IR modeling, passes, codegen reachability, a
 type: concept
 group: slang
 tags: [slang, compiler, ir, codegen, spirv, precompilation, debugging, hang, assertions]
-source_count: 3
+source_count: 4
 ---
 
 ## TL;DR
@@ -109,7 +109,10 @@ A module split via `module "a"; __include "a-part.slang";` + `implementing "a";`
 
 Outside `_DEBUG`, `SLANG_ASSERT(X)` expands to `SLANG_ASSUME(X)`, whose branches differ in whether they evaluate the operand: `[[assume]]` and `__builtin_assume` do not, but the **GCC fallback** (`do { if (!(X)) __builtin_unreachable(); } while (0)`) does, and on the GCC 12 container `__cpp_assume` is undefined, so that branch is live (verified with a call counter). The header's "Do not rely on side effects" is a usage contract (some expansions skip evaluation), not a claim that a given expansion skips it. Rule: **a value computed solely for a `SLANG_ASSERT` is `#ifdef _DEBUG`-guarded together with the assertion**; guarding only the computation leaves the variable undeclared in release, so build release whenever you add such a guard. "Do not rely on X" means X is not guaranteed, not that X does not happen [SLANG_ASSUME evaluates its operand on GCC](../learnings/1785883273838-slang-assume-evaluates-its-operand-on-gcc-and-the-.md).
 
-**Source learnings (3):**
+The `as<>`/`cast<>` trap also bites *suggested-fix snippets* (#14746 r3): a round-2 verdict suggesting `SLANG_RELEASE_ASSERT(as<IRConditionalType>(paramType));` got applied followed by `cast<IRConditionalType>(paramType)` — a release-build type confusion, because `as<T>` unwraps `IRAttributedType` chains (slang-ir.h:833) while `cast<T>` only debug-asserts via that `as<>` and is a raw static cast in release (slang-ir.h:859-864). An attributed Conditional param (memberwise-ctor params are attributed — a shape the PR itself documents in-contract) passed the assert while the cast reinterpreted an `IRAttributedType` as an `IRConditionalType` (operand layouts `{baseType, attr}` vs `{valueType, hasValue}`, slang-ir-insts.lua:132/147); flat payloads read coincidentally correct and tests passed. Rule for any suggested fix on Slang IR: bind the unwrapped pointer first (`auto p = as<T>(x); SLANG_RELEASE_ASSERT(p);`) and use `p` — never assert on a temporary `as<>` where the fixer will naturally follow with `cast<>`. Corollary: `SLANG_ASSERT` is debug-only and expands to `SLANG_ASSUME` (UB license) in release, so invariants that must abort in shipped slangc use `SLANG_RELEASE_ASSERT` [Slang IR as&lt;&gt; vs cast&lt;&gt; — suggested-fix snippets must bind the as&lt;&gt; pointer](../learnings/1795808314302-slang-ir-as-vs-cast-suggested-fix-snippets-must-bi.md).
+
+**Source learnings (4):**
 - [SlangResult SLANG_OK==0 is falsy — never use parseInt as a boolean](../learnings/1794898063634-slangresult-slang-ok-0-is-falsy-never-use-parseint.md)
 - [whole-program linkIR is a reachability clone — unreferenced statics with initializers silently vanish pre-validation](../learnings/1794984620723-slang-whole-program-linkir-is-a-reachability-clone.md) — #14578; diff LOWER-TO-IR vs first emit pass; KeepAliveDecoration is the DCE escape hatch.
 - [IR ops are generated from slang-ir-insts.lua — never conclude an op doesn't exist from the handwritten header alone](../learnings/1794988255632-slang-ir-ops-are-generated-from-slang-ir-insts-lua.md) — `kIROp_CharType` exists; its layout-table absence is the real exclusion reason.
+- [Slang IR as<> vs cast<> — suggested-fix snippets must bind the as<> pointer](../learnings/1795808314302-slang-ir-as-vs-cast-suggested-fix-snippets-must-bi.md) — #14746 r3: assert on temporary `as<>` + follow-up `cast<>` = release type confusion; `SLANG_ASSERT` is debug-only

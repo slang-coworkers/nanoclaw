@@ -3,7 +3,7 @@ title: "Slang capability inference: how [require] propagates through referenced 
 type: concept
 group: slang-language-core
 tags: [slang, capability, require, capability-inference, generics, GenericAppDeclRef, MemberDeclRef, CapabilityDeclReferenceVisitor, E36104, E36107, E36108, E36118, parity-testing, typealias, TypeDefDecl, E40002, E36120, declaration-order, standard-modules, caps-dump]
-source_count: 21
+source_count: 22
 ---
 
 # Slang capability inference: how [require] propagates through referenced declarations
@@ -32,6 +32,8 @@ Slang infers a function's capability requirements by walking the declarations it
 ## The walk, and the generic decl-ref gap (#13579)
 
 Inference visits each referenced declaration through `CapabilityDeclReferenceVisitor`, built on `SemanticsDeclReferenceVisitor`, whose `visitVal` skips Decl-kind operands. A `GenericAppDeclRef` (inner `StructDecl` is operand 0) or a member-of-generic decl-ref therefore never contributed the struct's `[require]` — why #13579's generic struct compiled while a non-generic one gave E36107. Processing every `DeclRefBase`'s `getDecl()` breaks the core-module bootstrap (57 errors); restricting it to user aggregates builds clean [visitVal skips Decl operands](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md). PR #13616 adds `visitGenericAppDeclRef` and `visitMemberDeclRef`, both routing to `referenceStructOfDeclRef`.
+
+One gap the decl-ref hooks cannot close: capability blindness through generic/interface *dispatch* is its own tracked family — open issue #13995 ("Generic interface calls omit concrete implementation capability requirements", labeled reproduced; two `DISABLE_DIAGNOSTIC_TEST` runs wait in `tests/diagnostics/capability-generic-interface-call.slang:3-4`). Front-end entry-point capability validation (`getDeclRefCapabilityRequirements`, slang-check-decl.cpp) walks only the entry point's AST, and it runs before witness tables are materialized (`specializeModule`, slang-emit.cpp), so `[require]` sets reachable only through a concrete impl called as `q.query(x)` are invisible — E36107 fires only on direct decl refs. When triaging a repro whose capability errors route "through a generic", check #13995 before treating it as fresh (#14738's aspect 1 turned out to be its exact duplicate) ([generic-dispatch capability blindness is #13995's family](../learnings/1795777306937-generic-dispatch-capability-blindness-is-13995-s-f.md)). Related but distinct: a fully-unmatched `__target_switch` is silently replaced by `emitMissingReturn()` (slang-ir-specialize-target-switch.cpp:87; E41011 covers only same-family profile mismatches, see `tests/bugs/gh-9509.slang`), and CUDA/CPP tolerate missing returns (slang-ir-missing-return.cpp:18-26), producing empty non-void bodies.
 
 ## Hooking a new reference path
 
@@ -108,7 +110,7 @@ The same framing decides whether a changed diagnostic is a regression: ask "does
 
 For a guard that should be impossible, a debug-only `SLANG_ASSERT` beats a silent skip once a counting probe shows it never fires (0 of 2,337 test files on #13616) [twin rows](../learnings/1791946199459-pin-a-generic-vs-non-generic-parity-fix-with-twin-.md).
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [Stacked [require(spirv)] does not restore spirv-any over a GLSL_400 alias arm](../learnings/1794909964347-stacked-require-spirv-does-not-restore-spirv-any-o.md) — same-target requires conjoin (#14536); pin `-capability spirv_1_0` in tests
 - [DIAGNOSTIC_TEST has no -NOT directive](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md) — capability half: `visitVal` skips Decl operands
 - [Fixes that skip __intrinsic_type miss standard-module generic types](../learnings/1791852083392-capability-inference-fixes-that-skip-intrinsic-typ.md) — `isFromCoreModule` drift 4/219; fast fork flags
@@ -130,5 +132,6 @@ For a guard that should be impossible, a debug-only `SLANG_ASSERT` beats a silen
 - [Diff every decl's inferred caps base vs head](../learnings/1793291900446-capability-checker-prs-diff-every-decl-s-inferred-.md) — 87 decls on #14024; interface calls hide require
 - [Simulate a "contract" capability fix by annotating the interface requirement with all targets](../learnings/1793562922071-simulate-a-contract-capability-fix-by-annotating-t.md) — E36119 everywhere vs per-call-site
 - [Type gating is AST-time; unread struct fields escape; BFloat16 require vacuous](../learnings/1793819445773-slang-capability-gating-on-a-type-ast-time-rejects.md) — #10232 `double`; struct set = own `[require]`
+- [Generic-dispatch capability blindness is #13995's family; unmatched __target_switch silently emits MissingReturn](../learnings/1795777306937-generic-dispatch-capability-blindness-is-13995-s-f.md) — impl `[require]` sets via generic calls invisible pre-witness-table; #14738 was its dup; unmatched `__target_switch` → `emitMissingReturn()`
 
 _Catalog: [[wiki/index.md]]_

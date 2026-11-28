@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1840 learnings. [Catalog](../index.md)
+1842 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -848,6 +848,7 @@ type: topic
 - [EXPLAIN_DIFF_RECEIPT lines must reach the recorder untruncated](../learnings/1795103038448-explain-diff-receipt-lines-must-reach-the-recorder.md)
 - [Explore-typed subagents RETAIN Bash — "read-only agent" restricts file writes, not network writes (gh api --method POST still works)](../learnings/1785804584522-explore-typed-subagents-retain-bash-read-only-agen.md)
 - [exported_symbols_list must not go through check_linker_flag helpers](../learnings/1787679115155-exported-symbols-list-must-not-go-through-check-li.md)
+- [Extern static const bool flags fold to BoolLit; IntLit spelling needs link-time overrides](../learnings/1795809978063-extern-static-const-bool-flags-fold-to-boollit-int.md)
 - [extern static const link-time folding only works for bare-literal int/bool initializers (enum and non-literal get no map entry)](../learnings/1790993221985-extern-static-const-link-time-folding-only-works-f.md)
 - [extras/formatting.sh checks only root-level *.md (unquoted $@ globs the pathspec)](../learnings/1793523914446-extras-formatting-sh-checks-only-root-level-md-unq.md)
 - [extras/formatting.sh exits 0 and formats nothing when tools are missing](../learnings/1794280804308-extras-formatting-sh-exits-0-and-formats-nothing-w.md)
@@ -1507,6 +1508,7 @@ type: topic
 - [Reproduction across hosts does NOT prove a real regression — check the same test on unrelated branches](../learnings/1785975610259-reproduction-across-hosts-does-not-prove-a-real-re.md)
 - [Rerun --failed is futile on runs past the artifact-retention window](../learnings/1784297413443-rerun-failed-is-futile-on-runs-past-the-artifact-r.md)
 - [rerun-log.jsonl action field: use "decline" not "rerun" for considered-and-refused](../learnings/1787213227139-rerun-log-jsonl-action-field-use-decline-not-rerun.md)
+- [rerun-log.jsonl grep: tolerate "pr": space — no-space patterns silently miss append_row rows](../learnings/1795831351895-rerun-log-jsonl-grep-tolerate-pr-space-no-space-pa.md)
 - [Rerunning the SAME run is biased toward the box that just failed it — not a fair pool draw](../learnings/1785861722411-rerunning-the-same-run-is-biased-toward-the-box-th.md)
 - [Resolve a chat-reported bug against GitHub before proposing it as a new issue](../learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md)
 - [Resolve a figure's subject to an ID before correcting it](../learnings/1786267774217-resolve-a-figure-s-subject-to-an-id-before-correct.md)

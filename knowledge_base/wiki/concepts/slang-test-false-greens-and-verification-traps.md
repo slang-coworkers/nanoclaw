@@ -3,7 +3,7 @@ title: "slang-test False Greens and Verification Discipline"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-server, false-green, verification, positive-control, negative-control, stale-binary, unit-test, verbosity, replay-collision, CI]
-source_count: 35
+source_count: 36
 ---
 
 # slang-test False Greens and Verification Discipline
@@ -32,7 +32,7 @@ Before PR #11753 a unit test that crashed the test server was reported **PASSED*
 
 ## Environment Traps: Startup Crash, Device Cache, GPU-Free Devices, Flaky Workloads, wgpu
 
-`slang-test` can crash at startup in-container while `slangc` runs fine: not a compiler failure. Beware a codex "revert-without-rebuild" false positive (old binary still on disk) ([startup crash](../learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md)). Device caching silently defeats per-invocation debug-callback bridges: a cached device reuses the prior callback wiring, so a per-invocation regression goes green (from PR #11785) ([device caching](../learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md)). A GPU-free regression test of **real** RHI device code (not a mock) creates a real CPU-backend device in a `gfx-unit-test` `SLANG_UNIT_TEST` ([real CPU device](../learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)). Flaky `parallelGenericEntryPointCompile` (#11759) was over-diagnosed as a concurrency race; the maintainer's PR #11761 was a 4-line workload reduction ([postmortem](../learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md)).
+`slang-test` can crash at startup in-container while `slangc` runs fine: not a compiler failure, and direct `slangc -emit-spirv-via-glsl` works in a freshly-built worktree — the strongest local guard for GLSL-emit fixes. Beware a codex "revert-without-rebuild" false positive (old binary still on disk) ([CORRECTION: slangc -emit-spirv-via-glsl works in-container](../learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md)). Device caching silently defeats per-invocation debug-callback bridges: a cached device reuses the prior callback wiring, so a per-invocation regression goes green (from PR #11785) ([device caching](../learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md)). A GPU-free regression test of **real** RHI device code (not a mock) creates a real CPU-backend device in a `gfx-unit-test` `SLANG_UNIT_TEST` ([real CPU device](../learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)). Flaky `parallelGenericEntryPointCompile` (#11759) was over-diagnosed as a concurrency race; the maintainer's PR #11761 was a 4-line workload reduction ([postmortem](../learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md)).
 
 **`-wgpu` rows run locally only in a tree configured fresh with Dawn.** A default-preset build (`SLANG_EXCLUDE_DAWN=ON`) reports every `-wgpu` row `ignored`. A fresh tree configured with `cmake --preset default -DSLANG_EXCLUDE_DAWN=OFF` and run with `XDG_RUNTIME_DIR=/tmp` prints `Check wgpu,webgpu: Supported` on the L40S and gives real Tint + GPU runs; a tree reconfigured from excluded to OFF still reports `Not Supported` (that stale-cache state caused an earlier, now-corrected note that local wgpu rows never run). Dawn details: [WGSL on-GPU execution](slang-backends-wgsl-on-gpu-execution.md) ([-wgpu rows DO run](../learnings/1792790967029-correction-slang-test-wgpu-rows-do-run-locally-on-.md)).
 
@@ -97,6 +97,8 @@ Every new diagnostic test must FAIL on master or without the cause ([separate ca
 2. slang-test injects `-O0` when a directive gives no opt level (`slang-test -v` confirms), so a `CHECK-NOT: OpCompositeConstruct` never exercises spirv-opt: at `-O0` the #13206 repro is still invalid but emits `OpCompositeExtract`, a false green. Pass `-O1` on SIMPLE and `-Xslang -O1` on COMPARE_COMPUTE ([injects -O0](../learnings/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md)).
 3. The in-tree validator is **v2026.4.rc2** (not the recalled v2024.2) and rejects logical-pointer Function vars, so validation (plus a spirv-asm `CHECK-NOT` on `OpCompositeConstruct`/`OpCompositeExtract` of a `%_ptr_Workgroup_*` type) beats text matching. Check the version; don't recall it ([v2026.4.rc2](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)).
 
+**Precompiled-library SPIR-V regressions are invisible to `tests/spirv/`.** `slangc lib.slang -target spirv -embed-downstream-ir -incomplete-library` is an entry-point-less compile — `Module::precompileForTarget` (slang-compiler-tu.cpp) runs the whole SPIR-V pipeline on a composite whose entry-point list is empty — so an entry-point-anchored initialization design (stores at every entry point) can bake a never-stored `OpVariable` + `OpAccessChain` read (uninitialized memory) into the embedded library blob while the full suite stays green (#14741). Verify base-vs-head by extracting the blob from the `.slang-module` (find the magic `0x07230203`, `spirv-dis` from that offset — trailing container bytes error only after `OpFunctionEnd`) and diffing for `OpStore`/`OpConstantComposite` (and `Bound`); linked compiles have entry points and can repair the shape, so the blob is the real surface. Library-link tests need `-skip-spirv-validation` (incomplete libraries carry `OpCapability Linkage`, which Vulkan validation rejects by design), and delete the `.slang-module` before red/green A/B runs — a stale module gives false "pre-fix passes". Treat a reviewer claim that "path X doesn't occur on these targets" as a hypothesis to test against the flags CI actually uses, not a fact ([entry-point-less precompile path](../learnings/1795794536779-entry-point-less-precompile-path-verify-incomplete.md), [library blobs are the real precompiled-SPIR-V surface](../learnings/1795797663513-slang-test-compile-lanes-ignore-filecheck-library-.md)).
+
 ## Subagent Bottom Lines: Backend-Codegen Timing Is Measurable
 
 "Front-end or backend?" needs no compiler change: `slangc -report-perf-benchmark` prints `[*] <phase> <count> <ms>` timers, and `tools/compile-perf/breakdown.py:56` lists **`emitEntryPointsSourceFromIR`** (the `SLANG_PROFILE` at `slang-emit.cpp:2747`) as a named bucket under `generateOutput`. An `Explore` subagent concluded the opposite, reading `SLANG_PROFILE` as a flat RAII timer and missing that `breakdown.py` reconstructs nesting. The tell is a CAPABILITY claim derived from a MECHANISM one layer below; run the tool. The profiler is flat, so `breakdown.py` shows a parent's unnamed residual as `<parent> (self)` ([codegen timing](../learnings/1785838127386-backend-codegen-compile-time-is-separately-measura.md)).
@@ -105,7 +107,7 @@ Every new diagnostic test must FAIL on master or without the cause ([separate ca
 
 Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master already rejects: one bug, **present but not exercising**. Name the assertion that fails when only the defect is reintroduced, and control both directions (break each positive, expect RED; restore, confirm green).
 
-**Source learnings (35):**
+**Source learnings (36):**
 - [SPIR-V tests IGNORED without Vulkan](../learnings/1790009629117-spir-v-compile-only-tests-are-render-api-tagged-ve.md)
 - [spirv-val v2026.4.rc2](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)
 - [slang-test injects `-O0`](../learnings/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md)
@@ -113,7 +115,7 @@ Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master a
 - [RPC failure reporting (#11753)](../learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md)
 - [test-server crash reported Pass (#11751)](../learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md)
 - [flaky test: workload, not race (#11759)](../learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md)
-- [startup crash; revert-without-rebuild](../learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md)
+- [CORRECTION: slangc -emit-spirv-via-glsl works in-container (only the slang-test harness crashes)](../learnings/1782821382180-correction-slangc-emit-spirv-via-glsl-does-work-in.md)
 - [device caching defeats callback bridges](../learnings/1782862613084-device-caching-silently-defeats-per-invocation-deb.md)
 - [real CPU device in gfx-unit-test](../learnings/1782871389928-gpu-free-render-test-regression-via-a-real-cpu-dev.md)
 - [retry false-green (#11911)](../learnings/1783009679066-slang-test-test-server-retry-false-green-11911-gh-.md)
@@ -141,5 +143,6 @@ Skipped test, stale binary, vacuous assertion, inert `CHECK-NOT`, a row master a
 - [path arguments are prefixes](../learnings/1793207631255-slang-test-path-arguments-are-prefixes-not-directo.md)
 - [compare against a master binary (#12014)](../learnings/1793271336216-compare-a-compiler-fix-against-a-master-binary-not.md)
 - [new master commits: diff the harness (#14060)](../learnings/1793317790858-new-master-commits-don-t-affect-test-x-diff-the-te.md)
+- [entry-point-less precompile path: verify -incomplete-library SPIR-V blobs](../learnings/1795794536779-entry-point-less-precompile-path-verify-incomplete.md) — extract magic 0x07230203 from the .slang-module; linked output can repair the shape (#14741).
 
 _Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1436 learnings. [Catalog](../index.md)
+1439 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1392,6 +1392,7 @@ type: topic
 - [Before flagging "no maintainer approval" for a design change, check the commit authors — the maintainer may have pushed it herself](../learnings/1792056812976-before-flagging-no-maintainer-approval-for-a-desig.md)
 - [Before scoping a disagreement, check whether one side's population still exists](../learnings/1786271079698-before-scoping-a-disagreement-check-whether-one-si.md)
 - [Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface](../learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md)
+- [Chain inbounds reset the task workflow-state — re-register plan and critique stages](../learnings/1795814913149-chain-inbounds-reset-the-task-workflow-state-re-re.md)
 - [Classify-only subagent fabricated an entirely different PR list, not just wrong verdicts](../learnings/1787012272038-classify-only-subagent-fabricated-an-entirely-diff.md)
 - [COMMENTED ≠ CHANGES_REQUESTED: maintainer comments on an approved PR do not authorize dismissing another maintainer's approval](../learnings/1785866765386-commented-changes-requested-maintainer-comments-on.md)
 - [CORRECTION to "an append is not a lock": the other racer was NOT a Discord adapter — and a peer's flag verdict may not hold in your scope](../learnings/1786209854020-correction-to-an-append-is-not-a-lock-the-other-ra.md)
@@ -1403,6 +1404,7 @@ type: topic
 - [Critique gate keyword-matches [Fix Report] in verdicts; MEMBER issue-body policy tension](../learnings/1794935349519-critique-gate-keyword-matches-fix-report-in-verdic.md)
 - [Critique REQUIREMENTS URLs need a #anchor or the round silently does not record](../learnings/1794899321120-critique-requirements-urls-need-a-anchor-or-the-ro.md)
 - [Critique rounds record only with pinned developer-instructions AND anchored REQUIREMENTS URLs](../learnings/1795154512935-critique-rounds-record-only-with-pinned-developer-.md)
+- [Critique tracker drops rounds silently — verify workflow-state.json after every stage](../learnings/1795807641150-critique-tracker-drops-rounds-silently-verify-work.md)
 - [Critique-gate DECISION_REVIEW can raise a severity-classification disagreement that is an escalation, not a self-resolve](../learnings/1787324124929-critique-gate-decision-review-can-raise-a-severity.md)
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [Dampen repeat approver re-dispatch on a churning size-capped PR](../learnings/1786519685407-dampen-repeat-approver-re-dispatch-on-a-churning-s.md)
@@ -1431,6 +1433,7 @@ type: topic
 - [slang-test -xslang prefix; hook-refused compound commands silently drop side effects; critique verdicts record only on fresh STAGE calls](../learnings/1795199396295-slang-test-xslang-prefix-hook-refused-compound-com.md)
 - [Staging the bundled v0-shadow default as a per-PR APPROVAL_POLICY silently flips fork PRs to false abstain](../learnings/1786984133437-staging-the-bundled-v0-shadow-default-as-a-per-pr-.md)
 - [Stale critique verdicts from an earlier phase block even read-only gh calls](../learnings/1793274740895-stale-critique-verdicts-from-an-earlier-phase-bloc.md)
+- [sweeplib resolved-verdict log_row pairing (result:'resolved', verdict:'not-applicable')](../learnings/1795809788837-sweeplib-resolved-verdict-log-row-pairing-result-r.md)
 - [sweeplib touch_tracker_verdict vocab quirks + evicted-list re-fire within 24h window](../learnings/1795068666266-sweeplib-touch-tracker-verdict-vocab-quirks-evicte.md)
 - [The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md)
 - [touch_tracker_verdict leaves reruns/requeues keys absent for brand-new PRs](../learnings/1789812403577-touch-tracker-verdict-leaves-reruns-requeues-keys-.md)

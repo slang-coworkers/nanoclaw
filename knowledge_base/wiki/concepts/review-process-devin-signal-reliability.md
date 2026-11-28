@@ -3,7 +3,7 @@ title: Devin review-signal reliability — freshness, false positives, and low-i
 type: concept
 group: review-process
 tags: [approver, challenger, devin, staleness, head-currency, commit-match, devin-fetch, fallback-tier, false-positive, positive-control, reachability, coverage]
-source_count: 23
+source_count: 24
 ---
 
 ## TL;DR
@@ -226,6 +226,20 @@ so a lone unverified Devin device-creation 🔴 must not be auto-escalated to a 
 "probe this class" learning
 [Calibration: Devin 'device-creation breaks' on coop-mat2 #852 was likely FP](../learnings/1788465294331-approver-challenger-miss-calibration-devin-device-.md).
 
+A title-only "Bug" card with no supporting analysis is settled by direct source verification, never
+by re-fetching Devin. On slang#13202 r4 (2026-11-27, a merge+test-only delta round) Devin's fresh
+analysis emitted a title-only Bug card ("Invalid pointer-sized integer bitcasts",
+`slang-emit-spirv.cpp:2492`) that was wrong at the head: a ~2-min direct emit probe — compile
+`uniform int* q; intptr_t s = (intptr_t)q;` plus a negative spec constant and a >32-bit literal to
+spirv-asm, then grep the ops (`OpConvertPtrToU %ulong` → `OpBitcast %long` = the spec-valid #14087
+shape; `OpSpecConstant %long -1`; `OpConstant %long 4294967296`) — falsified it outright. The card
+had folded into Reviewer A's Gap-1 regression-hazard framing; the same probe doubles as evidence
+that a reviewer's suggested negative-literal test cases are liftable as-is. The stale-first-fetch
+refetch cadence is confirmed at the other end: the wrapper launched ~15 min after the first visit
+(after commit-status said "behind the head commit") returned fresh "up to date" within the 15-min
+cap, so one refetch per head is enough even when prior rounds analyzed older heads
+[Devin title-only bug cards on PR #13202: falsified by direct emit probe](../learnings/1795813153588-devin-title-only-bug-cards-on-pr-13202-falsified-b.md).
+
 ## Positive controls, no-op arms, and laundered "Testing" blocks
 
 Two cross-cutting disciplines close the loop. First, a critique flag on a **no-op /
@@ -244,7 +258,7 @@ Real execution leaves logs/durations/exit codes; the only build control that cou
 own conclusion or a binary you can point at
 [Don't launder an AI-review 'Testing' block into an executed positive control](../learnings/1787953818152-approver-critique-mustfix-don-t-launder-an-ai-revi.md).
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [Human APPROVE dismissed by later push — re-fetch review state every round; Devin new-head refetch discipline confirmed](../learnings/1795185602095-human-approve-dismissed-by-later-push-re-fetch-rev.md) — first fetch on a new head returns the stale analysis; refetch ~10 min later is "up to date".
 - [Reviewer spec misreadings repeat inverted across rounds; Devin carries stale line numbers across heads](../learnings/1795243541774-reviewer-spec-misreadings-repeat-inverted-across-r.md) — identical line numbers across a changed diff = stale carry-over; weight only head-tracking items.
 - [Verify Devin head-currency on dependency-ordered draft→ready PRs](../learnings/1787906963169-approver-critique-mustfix-verify-devin-head-curren.md) — draft-era Devin analysis stamped head-current; re-run pinned + read freshness widget + prose tells + live cross-check.
@@ -268,3 +282,4 @@ own conclusion or a binary you can point at
 - [Devin false-positive 'broken tests bypass nightly failures' on expected-failures.txt](../learnings/1788872770328-approver-challenger-calibration-devin-false-positi.md) — adding keys is the safe direction; per-run non-determinism; BLOCK needs a deleted test / removed CHECK.
 - [Don't launder an AI-review 'Testing' block into an executed positive control](../learnings/1787953818152-approver-critique-mustfix-don-t-launder-an-ai-revi.md) — Devin "Testing" section echoed the PR body; only CI's conclusion or a real build counts as a control.
 - [Devin (Reviewer B) narrative often echoes the PR description — don't treat it as independent verification](../learnings/1789227249869-devin-reviewer-b-narrative-often-echoes-the-pr-des.md) — slang#13036 A source-verified the PR's `dot`/`GenericAsm` claim false while B's AI-analysis repeated it; an A↔B "disagreement" with no B Bug/Flag is a B blind spot, not a two-sided contradiction.
+- [Devin title-only bug cards on PR #13202: falsified by direct emit probe](../learnings/1795813153588-devin-title-only-bug-cards-on-pr-13202-falsified-b.md) — a title-only card is settled by source verification, never re-fetch; ~2-min spirv-asm grep probe; one refetch per head suffices

@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 39
+source_count: 38
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -84,7 +84,7 @@ Conflicting/duplicate system-value semantics (#11855 multiple depth outputs; umb
 
 ## C++ API Option Plumbing: the Empty-Option-Set Clobber (DiagnosticColor)
 
-`DiagnosticColor = ALWAYS` via `SessionDesc::compilerOptionEntries` colored only pre-codegen diagnostics, while CLI `-diagnostic-color always` colored both (#11890/#11891, f490a52aa). `ComponentType::getTargetArtifact` applies `linkage->m_optionSet` then the component's own `m_optionSet` to one sink; `applySettingsToDiagnosticSink` applies color unconditionally and `getIntOption` returns AUTO for an absent option, so the empty second layer clobbers ALWAYS. Fix: `if (options.hasOption(CompilerOptionName::DiagnosticColor))` ([double-apply clobber](../learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md)). The empty set is the linked **composite**'s, not the module's: `Module`'s ctor copies linkage options (`slang-module.cpp:27`), but `CompositeComponentType` (`slang-linkable-impls.cpp:48`) is populated only by `linkWithOptions()` ([CORRECTION: composite's set](../learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md)). `hasOption` is path-specific: `getEntryPointCode` force-materializes keys like Optimization (false positives), but on the `getTargetCode` composite path `DiagnosticColor` is genuinely absent-vs-set; a revert-drill unit test falsifies force-materialization ([hasOption reliable here](../learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)). Test with a GPU-free `slang-unit-test` (set the option in `SessionDesc`, `loadModuleFromSourceString`, `getTargetCode`, assert the blob contains `\x1b[`); a `.slang` test cannot reach the API path.
+`DiagnosticColor = ALWAYS` via `SessionDesc::compilerOptionEntries` colored only pre-codegen diagnostics, while CLI `-diagnostic-color always` colored both (#11890/#11891, f490a52aa). `ComponentType::getTargetArtifact` applies `linkage->m_optionSet` then the component's own `m_optionSet` to one sink; `applySettingsToDiagnosticSink` applies color unconditionally and `getIntOption` returns AUTO for an absent option, so the empty second layer clobbers ALWAYS. Fix: `if (options.hasOption(CompilerOptionName::DiagnosticColor))`. The empty set is the linked **composite**'s, not the module's: `Module`'s ctor copies linkage options (`slang-module.cpp:27`), but `CompositeComponentType` (`slang-linkable-impls.cpp:48`) is populated only by `linkWithOptions()` ([CORRECTION: composite's set](../learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md)). `hasOption` is path-specific: `getEntryPointCode` force-materializes keys like Optimization (false positives), but on the `getTargetCode` composite path `DiagnosticColor` is genuinely absent-vs-set; a revert-drill unit test falsifies force-materialization ([hasOption reliable here](../learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)). Test with a GPU-free `slang-unit-test` (set the option in `SessionDesc`, `loadModuleFromSourceString`, `getTargetCode`, assert the blob contains `\x1b[`); a `.slang` test cannot reach the API path.
 
 ## False Positives: Adjudication and Known Families
 
@@ -112,7 +112,7 @@ Root cause (master): stdlib fns advertise targets they WORK ON — `normalize` i
 
 The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site guard fix complete, "a warning is not the end of a compile" (#8785 ICE/SIGSEGV), the severity-downgrade-receiver rule, shared-formatter golden regressions, `(Struct)0` deprecation, and the std140 source-loc drop — live on the companion page [Slang Diagnostics: Deep-Dive Incidents & Case Studies](slang-misc-diagnostics-deep-dives.md).
 
-**Source learnings (39):**
+**Source learnings (38):**
 - [Removing a Slang diagnostic requires syncing the diagnostics-catalog data bundle](../learnings/1794929291002-removing-a-slang-diagnostic-requires-syncing-the-d.md) — catalog.txt is test data; grep docs/generated/ for the code; clang-format-17 --dry-run check
 - [slangc default diagnostics are unconditionally rust-style post-#10125; no flag restores classic](../learnings/1794889363285-slangc-default-diagnostics-are-unconditionally-rus.md) — single-arg diagnose() bypasses the format flag; ParseDiagnosticUtil classic-only
 - ['Is it breaking?' — answer from the compiler, not the design doc](../learnings/1791569984990-is-it-breaking-answer-from-the-compiler-not-from-t.md) — #13537 master-vs-PR repro table; grep base doc comments.
@@ -137,7 +137,6 @@ The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site 
 - [newly diagnosing meaningless code is pr: non-breaking](../learnings/1790877742239-slang-pr-label-newly-diagnosing-meaningless-code-i.md) — #12992 E39026 relabeled; `check-pr-label` label-swap race.
 - [pin source citations to comment text not line numbers](../learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md)
 - [validateEntryPoint: per-param SV semantics, no aggregation (#11855)](../learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md)
-- [applySettingsToDiagnosticSink double-apply clobbers; use slang-unit-test](../learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md)
 - [CORRECTION: empty option set is the COMPOSITE's](../learnings/1782933741329-correction-to-11890-diagnostic-color-learning-the-.md)
 - [hasOption(DiagnosticColor) reliable on getTargetCode composite path](../learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)
 - [adjudicate false-positive disputes by diffing emitted code](../learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md)

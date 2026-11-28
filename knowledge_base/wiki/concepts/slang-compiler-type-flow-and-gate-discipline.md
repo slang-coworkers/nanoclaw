@@ -3,7 +3,7 @@ title: "Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline
 type: concept
 group: slang-grab-bag
 tags: [type-flow, ExtractExistential, untagged-union, singleton, gate-discipline, entry-point-reachability, E50100, SLANG_RELEASE_ASSERT, capdef, meta-slang, revert-drill, peel-walker, approver]
-source_count: 26
+source_count: 27
 ---
 
 # Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline, and 2026-07-17 Operational Fold
@@ -59,6 +59,8 @@ DXC is bundled at `build/<cfg>/lib/libdxcompiler.so`, so `-target dxil` runs in 
 
 #13261 shows where that revision stopped. `let v = createDynamicObject<IFactory>(k,0).make(n)` returns an associated type, and `v is T` / `v as T` fold to false: the checker opens an existential only when the static type is literally an `InterfaceDecl` (`isInterfaceType`), so an interface-bound `AssocTypeDecl` falls through to a static `kIROp_TypeEquals` and `_isTypeParametric` suppresses the diagnostic. Fixing the checker reaches #12934's ICE; #12935's diff on top still ICEs (`!inst || as<T>(inst)` via `GetTypeTagFromTaggedUnion`) because `none()` expects refinement to a singleton and two runtime types never refine. The miscompile needs ≥2 concrete types, so the front-end half has no ICE-free regression test. A same-file, same-mechanism PR can be necessary but insufficient ([verify a "green once PR X lands" dependency by applying X's diff](../learnings/1790318063842-verify-a-green-once-pr-x-lands-dependency-by-apply.md)).
 
+`Conditional<T,...>` is a one-case orphan in the same specialization machinery (#14745, verified @ 77e59ba7c). Typeflow gives `Optional<T>` explicit end-to-end handling for existential payloads — `isOptionalExistentialType` (:861), Make/Get/HasOptional analyze cases, specialization rewrites, `makeInfoForConcreteType` recursion, the `unionPropagationInfo` join, and Optional cases in `upcastSet` (slang-ir-typeflow-set.cpp:255-283) — but `IRConditionalType` appears ONLY in `isConcreteType` (:549). Code refining a `Conditional<Interface,...>` value (struct field/arg/return ICEs on DXIL/SPIR-V/PTX) hits the missing-cases hole: the value refines to a TaggedUnion while the destination stays unrefined, and `upcastSet`'s default `return arg` silently stores the mismatch, which `lowerConditionalType` later exposes to emit as leftover Func/tuple insts. That pass's position after `finalizeSpecialization` (slang-emit.cpp:1697) is load-bearing — lowering Conditional earlier breaks autodiff tests and non-literal flag diagnosis (lower-conditional-type.cpp:92-101) — so the fix belongs in typeflow, not in pass ordering, and must respect the refined-info discipline above ([Conditional is a one-case orphan in Slang typeflow vs Optional's end-to-end handling](../learnings/1795795024081-conditional-is-a-one-case-orphan-in-slang-typeflow.md)).
+
 ## What dynamic-dispatch lowering inlines (#12924) and what `[__specializePerConformance]` changes (#13387)
 
 Before 2026.18.2, `s_dispatch_*` and `*_wtwrapper*` carry no inline marking and stay calls; `[ForceInline]` on the user's default implementation only inlines it into the wrapper. From 2026.18.2 (PR #12924), `addForceInlineDecoration` marks wrapper and dispatcher except on CPU-via-LLVM, and `performForceInlining` runs before `eliminatePhis`, so the concrete MakeStruct reaches the caller per field. The ID→tag mapping function from `createIntegerMappingFunc` is still not inlined on master: `createDynamicObject<I>(constId, …)` inside `[ForceUnroll]` emits `uint t = _S16(0U); switch (t) {…all arms…}` per iteration. Check a release binary (`gh release download vX -R shader-slang/slang`) with `grep -c 's_dispatch.*('` on `-target cuda` output ([s_dispatch_*/wtwrapper survive as calls before v2026.18.2](../learnings/1790405268841-dynamic-dispatch-s-dispatch-wtwrapper-survive-as-c.md)).
@@ -101,7 +103,7 @@ Fixing "empty existential passed to a helper ICEs instead of a clean E50100" (#1
 - #12299 as the cause of #13169 is refuted; the hang is in target specialization.
 - "capdef `|` only works in aliases" is wrong; `def` accepts it too.
 
-**Source learnings (26):**
+**Source learnings (27):**
 - [#12934: Type/WitnessTable analyzers crash on info the Value sibling tolerates](../learnings/1788817368144-slang-type-flow-extractexistential-type-witnesstab.md)
 - [#13046 root: `isConcreteType` lacks a union case; lowered TaggedUnion re-wrapped](../learnings/1789325428139-analyzeextractexistentialtype-ice-has-a-producer-s.md)
 - [one `isRefinedInfoType` guard at the chokepoint; producer fix supersedes #12935](../learnings/1789331744961-typeflow-refined-info-double-wrap-fix-at-the-const.md)
@@ -128,3 +130,4 @@ Fixing "empty existential passed to a helper ICEs instead of a clean E50100" (#1
 - [lowered info re-read as concrete; merged #12935 fixes the producer](../learnings/1791210427063-type-flow-fixpoint-info-re-read-as-a-concrete-decl.md)
 - [`[__specializePerConformance]` (#13387) helps only inside the helper](../learnings/1791193003985-slang-specializeperconformance-pr-13387-helps-only.md)
 - [Type-flow dynamic dispatch: addresses into interface-typed storage get retyped without their storage (#14152)](../learnings/1793615402549-type-flow-dynamic-dispatch-addresses-into-interfac.md) — `analyzeFieldAddress` fallback + `specializeCall` upcasts only `In` args; inout/out args mix existential layouts
+- [Conditional is a one-case orphan in Slang typeflow vs Optional's end-to-end handling](../learnings/1795795024081-conditional-is-a-one-case-orphan-in-slang-typeflow.md) — #14745: `IRConditionalType` only in `isConcreteType`; `upcastSet` default stores the mismatch; fix in typeflow, not pass order

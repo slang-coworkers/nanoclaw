@@ -3,7 +3,7 @@ title: "Slang constant-folding umbrella (#14473) and compile-time-eval semantics
 type: concept
 group: slang-grab-bag
 tags: [slang, constant-folding, compile-time-eval, 14473, umbrella, SCCP, tryConstantFoldExpr, BuiltinOperationIntVal, constexpr, static_assert, propagateConstExpr, integer-overflow, shift, preprocessor-if, spec-gap, skiminki-nv]
-source_count: 6
+source_count: 7
 ---
 
 # Slang constant-folding umbrella (#14473) and compile-time-eval semantics
@@ -37,16 +37,19 @@ Two default-generic-arg fold sites disagree on the Type operand the same way (#8
 
 For link-time/spec constants (sub-umbrella #14479), an `extern` var's `VarDeclBase::val` is NOT its initializer's fold by default. The header-visitor val-fold (slang-check-decl.cpp ~3119, `tryConstantFoldExpr(init, LinkTime)`) runs on the **not-yet-checked** initializer, so any initializer referencing another declaration folds to null; the body-visitor fallback `_validateCircularVarDefinition` then folds with `ConstantFoldingKind::SpecializationConstant`, whose extern branch (slang-check-expr.cpp `tryConstantFoldDeclRef` ~2845) returns a **self-referential DeclRefIntVal** for any non-CompileTime kind. The exported-constants map (`getMangledNameToIntValMap`) thus published extern→self, so chained externs (`export extern static const int B = A + 1;`) could never resolve — iterating `linkTimeResolve` to a fixpoint no-ops on `map[B]==B` (pointer-stable). The fix (PR #14549, commit 4efd55a48) has body `checkVarDeclCommon` fold the extern's CHECKED initializer (LinkTime kind) into `val` first; a *reference* to the extern still folds to the symbolic self-DeclRefIntVal, which keeps linked overrides re-selecting bindings [extern var val is a self-DeclRefIntVal, not the initializer fold](../learnings/1794933057856-slang-extern-var-val-is-a-self-declrefintval-not-t.md). If you touch extern constant values, check which ConstantFoldingKind the consumer folds with.
 
+Downstream of the same machinery: an extern `static const bool` flag folds to a BoolLit at IR level under default compilation — the IntLit spelling only arises through the link-time override machinery (cf. `tests/compute/conditional-link-time-const.slang`). So a diagnostic test cannot directly pin IntLit-spelled Conditional flags; an `as<IRIntLit>` arm over a flag operand is justified by the `tryLowerConditionalType` precedent (it accepts both literal forms) and is exercised only via link-time-constant linking. If a reviewer asks for an IntLit-flag test, the right answer is "needs link-time override machinery — out of diagnostic-test scope", not a synthetic spelling ([extern static const bool flags fold to BoolLit; IntLit spelling needs link-time overrides](../learnings/1795809978063-extern-static-const-bool-flags-fold-to-boollit-int.md)).
+
 ## static_assert/constexpr anchors (#14480) drift and must be re-verified
 
 The older static_assert/constexpr learnings carry stale file:line pointers; as of 2026-11-17 (HEAD) the refreshed anchors are: the static_assert intrinsic declaration at core.meta.slang:530 (doc comment typo `@experimetal` at :525; not attribute-gated), `checkStaticAssert` at slang-emit.cpp ~720-771 called at ~2252 (post-specialization), the parser `_makeParseDecl` table at slang-parser.cpp ~11177-11210 (no static_assert entry), and `propagateConstExpr` at slang-ir-constexpr.cpp ~699 invoked from slang-lower-to-ir.cpp ~15760. Re-verify line numbers before citing them in a public comment — the earlier numbers had drifted ([line pointers refreshed](../learnings/1794888461001-static-assert-constexpr-learnings-line-pointers-re.md)). The carrier-IRFunc design and the `-emit-ir` escape are on [[wiki/concepts/slang-compiler-serialization-and-enums.md]].
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [Constant-folding umbrella hierarchy (#14473 family)](../learnings/1794888326061-constant-folding-umbrella-hierarchy-on-shader-slan.md)
 - [Umbrella family tree and diagnostics policy map](../learnings/1794888473560-constant-folding-umbrella-family-14473-tree-and-th.md)
 - [Three folders disagree on shifts; spec has no model](../learnings/1794888485621-slang-constant-folding-semantics-three-folders-dis.md)
 - [static_assert/constexpr line pointers refreshed](../learnings/1794888461001-static-assert-constexpr-learnings-line-pointers-re.md)
 - [extern var val is a self-DeclRefIntVal, not the initializer fold](../learnings/1794933057856-slang-extern-var-val-is-a-self-declrefintval-not-t.md) — #14479/#14549: header fold runs unchecked; fixpoint no-ops on extern→self; fold the checked initializer first
 - [slang#8479 false E30019 root-caused to un-narrowed default-arg IntVals — two fold sites](../learnings/1795042876526-slang-8479-false-e30019-root-caused-to-un-narrowed.md) — implicit-default vs explicit-arg paths disagree on the ConstantIntVal Type operand; "expected X, got X" triage smell
+- [extern static const bool flags fold to BoolLit; IntLit spelling needs link-time overrides](../learnings/1795809978063-extern-static-const-bool-flags-fold-to-boollit-int.md) — #14746: IntLit-spelled Conditional flags only via link-time override machinery; not pinnable in a diagnostic test
 
 _Catalog: [[wiki/index.md]]_

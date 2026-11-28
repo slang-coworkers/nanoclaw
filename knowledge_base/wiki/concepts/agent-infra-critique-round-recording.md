@@ -3,7 +3,7 @@ title: "Codex-Critique Round Recording: Bridge Path, Client Timeouts, and the Th
 type: concept
 group: agent-infra
 tags: [codex-critique, critique-gate, track-critique, codex-mcp-bridge, mcp-timeout, critique-threads, thread-map, recording]
-source_count: 28
+source_count: 29
 ---
 
 # Codex-critique round recording: bridge path, client timeouts, and the thread map
@@ -49,6 +49,8 @@ The residual failure mode is a turn that never completes inside the budget. With
 
 **When the CALLER can't emit the parameter at all, dispatch a subagent.** A main session can be structurally unable to pass `developer-instructions` on `codex_codex` — 8+ deliberate STAGE attempts all silently dropped the parameter (pin-check recorded nothing; codex ran un-instructed, returning prose verdicts that failed the parser). A general SDK subagent emits it correctly; also omit an explicit `model:` parameter (OneCLI's open-models rule 403s it) ([main session can't emit developer-instructions — use a subagent](../learnings/1794913063020-codex-gate-calls-main-session-can-t-emit-developer.md)).
 
+**A round can drop even when the call returns a clean `### Verdict\napprove` with the full kit.** On slang#14745 (2026-11-27) both the CODE_REVIEW and OUTPUT_REVIEW initial calls in one batch showed the attempts-log "start" line with no "round" line, and workflow-state kept both stages missing — the delivery gate then denied the marker with "missing critique stages" even though each review genuinely ran and approved. So the check-after-every-stage rule is not paranoia but the only detector; when a stage is missing despite an approve, don't argue with the gate — re-run the STAGE as a fresh call with a short "re-record, content unchanged since the approve at head X" prompt (fresh thread, STAGE in prompt, verbatim instruction block, ~2–3 min per stage) ([Critique tracker drops rounds silently — verify workflow-state.json after every stage](../learnings/1795807641150-critique-tracker-drops-rounds-silently-verify-work.md)).
+
 **State-write races.** The gate, plan-tracker and edit-counter hooks all write `workflow-state.json` via tmp+mv with NO locking — concurrent writes race and clobber each other (one plan re-write erased a recorded CODE_REVIEW); do gate writes with nothing else in flight. For roles requiring PLAN_REVIEW, the prompt's `REQUIREMENTS:` field must contain at least one GitHub comment URL or the round is not counted — keep the URLs and stop codex fetching them via a credential-down exception clause instead of stripping them ([bridge dispatch, anchored REQUIREMENTS, state-write races](../learnings/1794948587801-recording-critique-gate-rounds-bridge-dispatch-anc.md); URL anchoring on [gate-hook mechanics](agent-infra-gate-hook-mechanics.md), sentinels on [gate mechanics](agent-routing-f0909b1-critique-gate-mechanics.md)).
 
 ## The thread map: stage inheritance and wrong-thread replies
@@ -65,7 +67,7 @@ A cheap sibling of the gate: run the codex OUTPUT_REVIEW on a **[Review Verdict]
 
 For cross-cutting recording rules (fails-open verdict parser, recall-stub replies, `### Attested` format) see [critique gate and decision recording](review-critique-gate-and-recording.md); for stage counting and delivery sequencing, [gate mechanics](agent-routing-f0909b1-critique-gate-mechanics.md); for the delivery-side freshness window, [gate-hook mechanics](agent-infra-gate-hook-mechanics.md).
 
-**Source learnings (28):**
+**Source learnings (29):**
 - [Critique rounds record via the codex bridge, not the hook — timeouts are cosmetic](../learnings/1794851587389-critique-rounds-record-via-the-codex-bridge-not-th.md)
 - [codex MCP -32001 timeout is cosmetic — poll ~/.codex/sessions rollout files for the real verdict](../learnings/1794852776159-codex-mcp-32001-timeout-is-cosmetic-poll-codex-ses.md)
 - [Codex MCP timeout ≠ failure: verdict records in background; recover via codex-reply on the recorded thread](../learnings/1794835792483-codex-mcp-timeout-failure-verdict-records-in-backg.md)
@@ -94,3 +96,4 @@ For cross-cutting recording rules (fails-open verdict parser, recall-stub replie
 - [codex-critique rounds only record with the verbatim developer-instructions block](../learnings/1794847766178-codex-critique-rounds-only-record-with-the-verbati.md)
 - [Gate state resets on every inbound; codex-reply rounds don't record](../learnings/1794898781583-gate-state-resets-on-every-inbound-codex-reply-rou.md)
 - [critique gate: each STAGE needs a fresh codex call — codex-reply inherits the thread's birth stage](../learnings/1795525755219-critique-gate-each-stage-needs-a-fresh-codex-call-.md) — track-critique ignores the reply's STAGE marker; REPLY_STAGE comes from the birth map
+- [Critique tracker drops rounds silently — verify workflow-state.json after every stage](../learnings/1795807641150-critique-tracker-drops-rounds-silently-verify-work.md) — #14745: "start" with no "round" despite a clean approve; re-record with a short fresh STAGE call, don't argue with the gate
