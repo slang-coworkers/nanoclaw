@@ -385,6 +385,39 @@ class VvlOfflineDeps(unittest.TestCase):
         self.assertEqual(rec["Vulkan-Headers"]["role"], "integration")
         self.assertEqual(rec["SPIRV-Headers"]["role"], "pinned-baseline")
 
+    def test_provider_inside_dir_is_refused_before_anything_is_deleted(self) -> None:
+        job = self.ext / "Vulkan-Headers"
+        head = make_repo(job, {"include/vulkan.h": "job change\n"})
+        with self.assertRaisesRegex(vod.OfflineError, "overlaps --dir"):
+            self.run_adapter(providers={"Vulkan-Headers": job})
+        self.assertEqual(sh(job, "git", "rev-parse", "HEAD"), head)
+        self.assertEqual((job / "include" / "vulkan.h").read_text(), "job change\n")
+
+    def test_dir_inside_provider_is_refused(self) -> None:
+        job = self.tmp / "job-headers"
+        make_repo(job, {"include/vulkan.h": "job change\n"})
+        args = ["--dir", str(job / "external")]
+        with self.assertRaisesRegex(vod.OfflineError, "overlaps --dir"):
+            vod.run(self.vvl, args, {"Vulkan-Headers": job}, self.allow, self.cache)
+        self.assertFalse((job / "external").exists())
+
+    def test_dir_containing_repository_is_refused(self) -> None:
+        with self.assertRaisesRegex(vod.OfflineError, "contains the repository"):
+            vod.run(self.vvl, ["--dir", str(self.tmp)], None, self.allow, self.cache)
+        self.assertTrue((self.vvl / "scripts" / "update_deps.py").is_file())
+
+    def test_artifact_copy_is_streamed(self) -> None:
+        real = Path.read_bytes
+        blobs = (self.cache / "blobs").resolve()
+
+        def guarded(path: Path) -> bytes:
+            if Path(path).resolve().parent == blobs:
+                raise AssertionError("artifact read whole into memory")
+            return real(path)
+
+        with mock.patch.object(Path, "read_bytes", guarded):
+            self.assertEqual(self.run_adapter(), 0)
+
     def test_integration_provider_must_be_committed(self) -> None:
         job = self.tmp / "job-headers"
         make_repo(job, {"include/vulkan.h": "job change\n"})

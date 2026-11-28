@@ -168,6 +168,17 @@ def _write_new(path: Path, data: bytes) -> None:
         fh.write(data)
 
 
+def _copy_new(source: Path, path: Path) -> None:
+    """``_write_new`` for a file, streamed (release artifacts can be large)."""
+    path.unlink(missing_ok=True)
+    with source.open("rb") as src, path.open("xb") as dst:
+        shutil.copyfileobj(src, dst, length=1 << 20)
+
+
+def _overlaps(a: Path, b: Path) -> bool:
+    return a == b or a.is_relative_to(b) or b.is_relative_to(a)
+
+
 def _check_members(archive: zipfile.ZipFile) -> None:
     """Reject members that could land or write outside the install directory."""
     links: set[PurePosixPath] = set()
@@ -214,6 +225,18 @@ def run(
         raise OfflineError("pass the native --dir") from None
     root = Path(os.path.abspath(options.dir))
     native_args = [*remaining, "--dir", str(root)]
+    # Snapshots are deleted and recreated under --dir, so no job repository may
+    # live there: refuse before anything is removed. Compare real paths, so a
+    # symlinked spelling of the same directory cannot slip past.
+    real_root = root.resolve()
+    if repo.is_relative_to(real_root):
+        raise OfflineError("--dir contains the repository; use a separate directory")
+    providers = {name: path.resolve() for name, path in providers.items()}
+    for name, path in providers.items():
+        if _overlaps(path, real_root) or _overlaps(path, repo):
+            raise OfflineError(
+                f"--provider {name} overlaps --dir or the repository; use a separate checkout"
+            )
 
     record: list[dict[str, Any]] = []
     used: set[str] = set()
@@ -236,7 +259,7 @@ def run(
         def checkout(item) -> None:
             target = _confined(root, item.repo_dir)
             if item.name in providers:
-                source = providers[item.name].resolve()
+                source = providers[item.name]
                 env = _git_env(khrdeps, [source])
                 if _git(
                     env,
@@ -316,7 +339,7 @@ def run(
             _confined(root, item.install_dir)
             download = build_dir / url.rsplit("/", 1)[-1]
             build_dir.mkdir(parents=True, exist_ok=True)
-            _write_new(download, (cache / "blobs" / pin["sha256"]).read_bytes())
+            _copy_new(cache / "blobs" / pin["sha256"], download)
             if khrdeps.file_digest(download, "sha256") != pin["sha256"]:
                 raise OfflineError(f"{item.name} artifact changed while copying")
             if download.suffix == ".zip":
